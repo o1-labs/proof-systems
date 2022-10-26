@@ -28,7 +28,7 @@ fn test_64bit_xor() {
     let one_zeros: u64 = 11936128518282651045;
     let witness = create(zero_ones, one_zeros);
 
-    for row in 0..=9 {
+    for row in 0..=5 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -40,6 +40,9 @@ fn test_64bit_xor() {
         );
     }
 
-    assert_eq!(witness[0][7], PallasField::from(2u64.pow(32) - 1));
-    assert_eq!(witness[0][9], PallasField::from(2u64.pow(32) - 1));
+    assert_eq!(witness[2][1], PallasField::from(2u128.pow(64) - 1));
+    assert_eq!(witness[2][2], PallasField::from(2u64.pow(48) - 1));
+    assert_eq!(witness[2][3], PallasField::from(2u64.pow(32) - 1));
+    assert_eq!(witness[2][4], PallasField::from(2u32.pow(16) - 1));
+    assert_eq!(witness[2][5], PallasField::from(0));
 }

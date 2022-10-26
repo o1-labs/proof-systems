@@ -1,4 +1,4 @@
-//~ The Keccak gadget is comprised of _ circuit gates (KeccakXor, .., and Zero)
+//~ The Keccak gadget is comprised of 3 circuit gates (Xor16, Rot64, and Zero)
 //~
 //~ Keccak works with 64-bit words. The state is represented using $5\times 5$ matrix
 //~ of 64 bit words. Each compression step of Keccak consists of 24 rounds. Let us
@@ -41,84 +41,6 @@
 //~ * only 4 lookups per row
 //~ * only first 7 columns are available to the permutation polynomial
 //~
-//~ ##### 32-bit decomposition gate
-//~
-//~ This is a basic operation that is typically done for 64-bit initial state and
-//~ intermediate values.
-//~
-//~ Let `inp` be a 64-bit word. The constraint is: `in` $= 2^{32} \cdot$ `in_hi` $+$ `in_lo`.
-//~ It takes 3 cells for values `in`, `in_hi`, `in_lo`. We have not yet placed them w.r.t.
-//~ other rows of the Keccak computation; the only requirement is that all these cells be
-//~ within the first 7 columns for permutation argument accessibility.
-//
-//~ ##### XOR gate
-//~
-//~ First we consider a XOR gate that checks that a 32-bit word `out` is the XOR of `in1` and `in2`.
-//~ This gate will use 2 rows, with a `Xor` row followed by a `Zero` row.
-//~
-//~ | Gates |          `Xor`   |          `Zero`  |
-//~ | ----- | ---------------- | ---------------- |
-//~ | Rows  |           0      |           1      |
-//~ | Cols  |                  |                  |
-//~ |     0 | copy     `in1`   | copy     `out`   |
-//~ |     1 |                  | copy     `in2`   |
-//~ |     2 |                  |                  |
-//~ |     3 | plookup0 `in2_0` | plookup4 `in2_4` |
-//~ |     4 | plookup1 `in2_1` | plookup5 `in2_5` |
-//~ |     5 | plookup2 `in2_2` | plookup6 `in2_6` |
-//~ |     6 | plookup3 `in2_3` | plookup8 `in2_7` |
-//~ |     7 | plookup0 `in1_0` | plookup4 `in1_4` |
-//~ |     8 | plookup1 `in1_1` | plookup5 `in1_5` |
-//~ |     9 | plookup2 `in1_2` | plookup6 `in1_6` |
-//~ |    10 | plookup3 `in1_3` | plookup7 `in1_7` |
-//~ |    11 | plookup0 `out_0` | plookup4 `out_4` |
-//~ |    12 | plookup1 `out_1` | plookup5 `out_5` |
-//~ |    13 | plookup2 `out_2` | plookup6 `out_6` |
-//~ |    14 | plookup3 `out_3` | plookup7 `out_7` |
-//~
-//~ Now we apply this gate twice to obtain a XOR gadget for 64-bit words by halving:
-//~
-//~ Consider the following operations:
-//~ * `out_lo` $=$ `in1_lo` $\oplus$ `in2_lo` and
-//~ * `out_hi` $=$ `in1_hi` $\oplus$ `in2_hi`,
-//~ where each element is 32 bits long.
-//~
-//~ | Gates | `KeccakXor` |   `Zero` | `KeccakXor` |   `Zero` |
-//~ | ----- | ----------- | -------- | ----------- | -------- |
-//~ | Rows  |          0  |       1  |          2  |        3 |
-//~ | Cols  |             |          |             |          |
-//~ |     0 |    `in1_lo` | `out_lo` |    `in1_hi` | `out_hi` |
-//~ |     1 |             | `in2_lo` |             | `in2_hi` |
-//~ |     2 |             |          |             |          |
-//~ |     3 |     `in2_0` |  `in2_4` |     `in2_8` | `in2_12` |
-//~ |     4 |     `in2_1` |  `in2_5` |     `in2_9` | `in2_13` |
-//~ |     5 |     `in2_2` |  `in2_6` |    `in2_10` | `in2_14` |
-//~ |     6 |     `in2_3` |  `in2_7` |    `in2_11` | `in2_15` |
-//~ |     7 |     `in1_0` |  `in1_4` |     `in2_8` | `in2_12` |
-//~ |     8 |     `in1_1` |  `in1_5` |     `in2_9` | `in2_13` |
-//~ |     9 |     `in1_2` |  `in1_6` |    `in2_10` | `in2_14` |
-//~ |    10 |     `in1_3` |  `in1_7` |    `in2_11` | `in2_15` |
-//~ |    11 |     `out_0` |  `out_4` |     `in2_8` | `in2_12` |
-//~ |    12 |     `out_1` |  `out_5` |     `in2_9` | `in2_13` |
-//~ |    13 |     `out_2` |  `out_6` |    `in2_10` | `in2_14` |
-//~ |    14 |     `out_3` |  `out_7` |    `in2_11` | `in2_15` |
-//~
-//~ ```admonition::notice
-//~  We could half the number of rows of the 64-bit XOR gadget by having lookups
-//~  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
-//~ ```
-//~
-//~ ##### Gate types:
-//~
-//~ Different rows are constrained using different CircuitGate types
-//~
-//~  | Row | `CircuitGate` | Purpose                        |
-//~  | --- | ------------- | ------------------------------ |
-//~  |   0 | `KeccakXor`   | Xor first 2 bytes of low  half |
-//~  |   1 | `Zero`        | Xor last  2 bytes of low  half |
-//~  |   2 | `KeccakXor`   | Xor first 2 bytes of high half |
-//~  |   3 | `Zero`        | Xor last  2 bytes of high half |
-//~
 
 use std::marker::PhantomData;
 
@@ -129,144 +51,98 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 
-//~ ##### `KeccakXor` - XOR constraints for 32-bit words
+//~ ##### `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
 //~
-//~ * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`.
-//~ * This gate operates on the `Curr` row and the `Next` row.
+//~ * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
+//~ * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+//~ * This gate operates on the `Curr` and `Next` rows.
 //~
 //~ It uses three different types of constraints
-//~ * copy    - copy to another cell (32-bits)
-//~ * plookup - xor-table plookup (4-bits)
+//~ * copy          - copy to another cell (32-bits)
+//~ * plookup       - xor-table plookup (4-bits)
+//~ * decomposition - the constraints inside the gate
 //~
 //~ The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
 //~ | ------ | ---------------- | ---------------- |
-//~ |      0 | copy     `in1`   | copy     `out`   |
-//~ |      1 |                  | copy     `in2`   |
-//~ |      2 |                  |                  |
-//~ |      3 | plookup0 `in2_0` | plookup4 `in2_4` |
-//~ |      4 | plookup1 `in2_1` | plookup5 `in2_5` |
-//~ |      5 | plookup2 `in2_2` | plookup6 `in2_6` |
-//~ |      6 | plookup3 `in2_3` | plookup8 `in2_7` |
-//~ |      7 | plookup0 `in1_0` | plookup4 `in1_4` |
-//~ |      8 | plookup1 `in1_1` | plookup5 `in1_5` |
-//~ |      9 | plookup2 `in1_2` | plookup6 `in1_6` |
-//~ |     10 | plookup3 `in1_3` | plookup7 `in1_7` |
-//~ |     11 | plookup0 `out_0` | plookup4 `out_4` |
-//~ |     12 | plookup1 `out_1` | plookup5 `out_5` |
-//~ |     13 | plookup2 `out_2` | plookup6 `out_6` |
-//~ |     14 | plookup3 `out_3` | plookup7 `out_7` |
+//~ |      0 | copy     `in1`   | copy     `in1'`  |
+//~ |      1 | copy     `in2`   | copy     `in2'`  |
+//~ |      2 | copy     `out`   | copy     `out'`  |
+//~ |      3 | plookup0 `in1_0` |                  |
+//~ |      4 | plookup1 `in1_1` |                  |
+//~ |      5 | plookup2 `in1_2` |                  |
+//~ |      6 | plookup3 `in1_3` |                  |
+//~ |      7 | plookup0 `in2_0` |                  |
+//~ |      8 | plookup1 `in2_1` |                  |
+//~ |      9 | plookup2 `in2_2` |                  |
+//~ |     10 | plookup3 `in2_3` |                  |
+//~ |     11 | plookup0 `out_0` |                  |
+//~ |     12 | plookup1 `out_1` |                  |
+//~ |     13 | plookup2 `out_2` |                  |
+//~ |     14 | plookup3 `out_3` |                  |
 //~
-
+//~ One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
+//~ that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
+//~ to obtain a gadget for 64-bit words XOR:
+//~
+//~  | Row | `CircuitGate` | Purpose                                    |
+//~  | --- | ------------- | ------------------------------------------ |
+//~  |   0 | `Xor16`       | Xor 2 least significant bytes of the words |
+//~  |   1 | `Xor16`       | Xor next 2 bytes of the words              |
+//~  |   2 | `Xor16`       | Xor next 2 bytes of the words              |
+//~  |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+//~  |   4 | `Zero`        | Zero values, can be reused as generic gate |
+//~
+//~ ```admonition::notice
+//~  We could half the number of rows of the 64-bit XOR gadget by having lookups
+//~  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+//~  Rough computations show that if we run 8 or more Keccaks in one circuit we should
+//~  use the 8-bit XOR table.
+//~ ```
 #[derive(Default)]
-pub struct KeccakXor<F>(PhantomData<F>);
+pub struct Xor16<F>(PhantomData<F>);
 
-impl<F> Argument<F> for KeccakXor<F>
+impl<F> Argument<F> for Xor16<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakXor);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Xor16);
     const CONSTRAINTS: u32 = 3;
 
-    // Constraints for KeccakXor
+    // Constraints for Xor16
     //   * Operates on Curr and Next rows
-    //   * Constrain the decomposition of `in1`, `in2` and `out`
-    //   * The actual XOR is performed thanks to the plookups.
+    //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
+    //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let mut constraints = vec![];
-
-        let out_sum = four_bit_sum(env, 14);
-        let in1_sum = four_bit_sum(env, 10);
-        let in2_sum = four_bit_sum(env, 6);
-
-        // Check first input is well formed
-        constraints.push(in1_sum - env.witness_curr(0));
-        // Check second input is well formed
-        constraints.push(in2_sum - env.witness_next(1));
-        // Check output input is well formed
-        constraints.push(out_sum - env.witness_next(0));
-
-        constraints
+        // Returns the constraints:
+        // in1 = in1_0 + in1_1 * 2^4 + in1_2 * 2^8 + in1_3 * 2^12 + next_in1 * 2^16
+        // in2 = in2_0 + in2_1 * 2^4 + in2_2 * 2^8 + in2_3 * 2^12 + next_in2 * 2^16
+        // out = out_0 + out_1 * 2^4 + out_2 * 2^8 + out_3 * 2^12 + next_out * 2^16
+        (0..3)
+            .map(|i| {
+                env.witness_curr(i)
+                    - quarter_sum(env, 3 + i)
+                    - T::from(2u64).pow(16) * env.witness_next(i)
+            })
+            .collect::<Vec<T>>()
     }
 }
 
-//~ ##### `KeccakWord` - 32-bit decomposition gate
-//~
-//~ * This circuit gate is used to constrain that two values of 64 bits are decomposed
-//~   correctly in two halves of 32 bits. It will be used to constrain all inputs and
-//~   intermediate values of the XOR gates.
-//~ * This gate operates on the `Curr` row.
-//~ * This is not a definitive gate. It may be integrated with other gates in the future.
-//~
-//~ It uses one type of constraint
-//~ * copy    - copy to another cell (32-bits to the XOR gate, and 64-bits to the RangeCheck gate)
-//~
-//~ | Column |      `Curr`   |
-//~ | ------ | ------------- |
-//~ |      0 | copy `in1`    |
-//~ |      1 | copy `in1_lo` |
-//~ |      2 | copy `in1_hi` |
-//~ |      3 | copy `in2`    |
-//~ |      4 | copy `in2_lo` |
-//~ |      5 | copy `in2_hi` |
-//~ |      6 |               |
-//~ |      7 |               |
-//~ |      8 |               |
-//~ |      9 |               |
-//~ |     10 |               |
-//~ |     11 |               |
-//~ |     12 |               |
-//~ |     13 |               |
-//~ |     14 |               |
-//~
-//~ Note that these gates can be concatenated and the final output will still be satisfied
-//~ despite having the positions for the second input to zero, because zero is a valid instance.
-
-#[derive(Default)]
-pub struct KeccakWord<F>(PhantomData<F>);
-
-impl<F> Argument<F> for KeccakWord<F>
-where
-    F: PrimeField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakWord);
-    const CONSTRAINTS: u32 = 2;
-
-    // Constraints for Bits
-    //   * Operates on Curr row
-    //   * Constrain the decomposition of `in1` and `in2` in halves
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        vec![half(env, 0), half(env, 3)]
-    }
-}
-
-/// Constrains the decomposition of an input of 64 bits located in position `idx`
-/// into halves of 32 bits located in positions `idx+1` and `idx+2` in the `Curr` row.
-fn half<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, idx: usize) -> T {
-    let two = T::one() + T::one();
-    let two_to_32 = two.pow(32);
-    env.witness_curr(idx) - (env.witness_curr(idx + 2) * two_to_32 + env.witness_curr(idx + 1))
-}
-
-/// Computes the decomposition of a 32-bit word whose most significant 4-bit crumb
-/// is located in the `max` column of `witness_next`. The layout is the following:
+/// Computes the decomposition of a 16-bit quarter-word whose least significant 4-bit crumb
+/// is located in the `lsb` column of `witness_curr` as:
+/// sum = crumb0 + crumb1 * 2^4 + crumb2 * 2^8 + crumb3 * 2^12
 ///
-/// |        | max - 3 | max - 2 | max - 1 |     max |
+/// The layout is the following:
+///
+/// |        | lsb     | lsb + 3 | lsb + 6 | lsb + 9 |
 /// | ------ | ------- | ------- | ------- | ------- |
 /// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
-/// | `Next` |  crumb4 |  crumb5 |  crumb6 |  crumb7 |
 ///
-fn four_bit_sum<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, max: usize) -> T {
-    let mut sum = T::zero();
-    let two = T::from(2u64);
-    let four_bit = two.pow(4);
-    for i in (max - 3..=max).rev() {
-        sum = four_bit.clone() * sum + env.witness_next(i);
-    }
-    for i in (max - 3..=max).rev() {
-        sum = four_bit.clone() * sum + env.witness_curr(i);
-    }
-    sum
+fn quarter_sum<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, lsb: usize) -> T {
+    (0..4).fold(T::zero(), |mut sum, i| {
+        sum += env.witness_curr(lsb + 3 * i) * T::from(2u64).pow(4 * i as u64);
+        sum
+    })
 }
