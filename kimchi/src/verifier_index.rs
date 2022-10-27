@@ -440,7 +440,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
             lookup_selectors:
                 LookupSelectors {
-                    chacha_xor,
+                    xor,
                     chacha_final,
                     lookup_gate,
                     range_check_gate,
@@ -459,8 +459,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&runtime_tables_selector.unshifted);
             }
 
-            if let Some(chacha_xor) = chacha_xor {
-                fq_sponge.absorb_g(&chacha_xor.unshifted);
+            if let Some(xor) = xor {
+                fq_sponge.absorb_g(&xor.unshifted);
             }
             if let Some(chacha_final) = chacha_final {
                 fq_sponge.absorb_g(&chacha_final.unshifted);

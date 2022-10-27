@@ -30,7 +30,7 @@ pub fn init_cell<F: PrimeField>(
     offset: usize,
     row: usize,
     col: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
+    layout: &Vec<[Box<dyn WitnessCell<F>>; COLUMNS]>,
     variables: &Variables<F>,
 ) {
     witness[col][row + offset] = layout[row][col].value(witness, variables);
@@ -41,7 +41,7 @@ pub fn init_row<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     offset: usize,
     row: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
+    layout: &Vec<[Box<dyn WitnessCell<F>>; COLUMNS]>,
     variables: &Variables<F>,
 ) {
     for col in 0..COLUMNS {
@@ -53,7 +53,7 @@ pub fn init_row<F: PrimeField>(
 pub fn init<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     offset: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
+    layout: &Vec<[Box<dyn WitnessCell<F>>; COLUMNS]>,
     variables: &Variables<F>,
 ) {
     for row in 0..layout.len() {
@@ -74,7 +74,7 @@ mod tests {
 
     #[test]
     fn zero_layout() {
-        let layout: [[Box<dyn WitnessCell<PallasField>>; COLUMNS]; 1] = [[
+        let layout: Vec<[Box<dyn WitnessCell<PallasField>>; COLUMNS]> = vec![[
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn mixed_layout() {
-        let layout: [[Box<dyn WitnessCell<PallasField>>; COLUMNS]; 2] = [
+        let layout: Vec<[Box<dyn WitnessCell<PallasField>>; COLUMNS]> = vec![
             [
                 ConstantCell::create(PallasField::from(12u32)),
                 ConstantCell::create(PallasField::from(0xa5a3u32)),

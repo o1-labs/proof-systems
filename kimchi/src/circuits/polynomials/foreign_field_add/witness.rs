@@ -198,7 +198,7 @@ fn init_foreign_field_add_rows<F: PrimeField>(
 ) {
     let left_row = 8 * index;
     let right_row = 8 * index + 4;
-    let witness_shape: [[Box<dyn WitnessCell<F>>; COLUMNS]; 1] = [
+    let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
         // ForeignFieldAdd row
         [
             CopyCell::create(left_row, 0),      // left_input_lo
@@ -235,7 +235,7 @@ fn init_foreign_field_fin_rows<F: PrimeField>(
 ) {
     let out_row = 8 * num; // row where the final result is stored in RC
     let bound_row = 8 * num + 4; // row where the final bound is stored in RC
-    let witness_shape: [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] = [
+    let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
         [
             // ForeignFieldFin row
             CopyCell::create(out_row, 0),               // result_lo

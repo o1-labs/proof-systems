@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, keccak, poseidon,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
             range_check, turshi, varbasemul,
         },
         wires::*,
@@ -22,7 +22,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr};
+use super::{argument::ArgumentWitness, expr, polynomials::xor};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -326,7 +326,7 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
-            GateType::Xor16 => keccak::circuitgates::Xor16::constraint_checks(&env),
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
             GateType::ForeignFieldAdd => {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
             }
