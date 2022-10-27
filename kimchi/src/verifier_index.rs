@@ -110,15 +110,20 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    /// Range check commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
-    // Foreign field modulus
+    /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
-    // Foreign field addition gates polynomial commitments
+    /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
+
+    /// Xor commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub xor_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -254,6 +259,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
                         .commit_evaluations_non_hiding(domain, &poly.eval8, None)
                 }),
 
+            xor_comm: self.cs.xor_selector_poly.as_ref().map(|poly| {
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+            }),
+
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -386,6 +396,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             range_check_comm,
             foreign_field_add_comm,
             foreign_field_modulus: _,
+            xor_comm: _,
 
             // Lookup index; optional
             lookup_index,

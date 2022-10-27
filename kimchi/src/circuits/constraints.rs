@@ -126,6 +126,10 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
+    /// Xor gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub xor_selector_poly: Option<SelectorPolynomial<F>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -592,6 +596,15 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
+        let xor_gate = [GateType::Xor16];
+        let xor_selector_poly = {
+            if circuit_gates_used.is_disjoint(&xor_gate.into_iter().collect()) {
+                None
+            } else {
+                Some(selector_polynomial(GateType::Xor16, &gates, &domain))
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -645,6 +658,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             range_check_selector_polys,
             foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
+            xor_selector_poly,
             gates,
             shift: shifts.shifts,
             endo,

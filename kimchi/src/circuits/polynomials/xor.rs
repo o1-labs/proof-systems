@@ -2,10 +2,15 @@
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
 use crate::{
+    alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::constraints::ExprOps,
+        expr::{constraints::ExprOps, E},
         gate::{CircuitGate, Connect, GateType},
+        lookup::{
+            self,
+            tables::{GateLookupTable, LookupTable},
+        },
         polynomial::COLUMNS,
         wires::Wire,
         witness::{self, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
@@ -14,6 +19,8 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use std::{array, marker::PhantomData};
+
+pub const GATE_COUNT: usize = 1;
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a XOR gadget for `bits` length
@@ -44,6 +51,37 @@ impl<F: PrimeField> CircuitGate<F> {
 
         (zero_row + 1, gates)
     }
+}
+
+/// Get vector of range check circuit gate types
+pub fn circuit_gates() -> [GateType; GATE_COUNT] {
+    [GateType::Xor16]
+}
+
+/// Number of constraints for a given range check circuit gate type
+pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
+    match typ {
+        GateType::Xor16 => Xor16::<F>::CONSTRAINTS,
+        _ => panic!("invalid gate type"),
+    }
+}
+
+/// Get combined constraints for a given range check circuit gate type
+pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+    match typ {
+        GateType::Xor16 => Xor16::combined_constraints(alphas),
+        _ => panic!("invalid gate type"),
+    }
+}
+
+/// Get the combined constraints for all range check circuit gate types
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
+    Xor16::combined_constraints(alphas)
+}
+
+/// Get the range check lookup table
+pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
+    lookup::tables::get_table::<F>(GateLookupTable::Xor)
 }
 
 //~ ##### `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
