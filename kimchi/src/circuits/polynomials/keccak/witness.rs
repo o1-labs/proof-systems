@@ -198,15 +198,3 @@ pub fn create_xor<F: PrimeField>(input1: u64, input2: u64) -> [Vec<F>; COLUMNS] 
 
     witness
 }
-pub fn view<F: PrimeField>(witness: &[Vec<F>; COLUMNS]) {
-    for row in 0..witness[0].len() {
-        for col in 0..COLUMNS {
-            println!(
-                "{} {}: {:?}",
-                row,
-                col,
-                o1_utils::FieldHelpers::to_hex(&witness[col][row])
-            );
-        }
-    }
-}
