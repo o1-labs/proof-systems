@@ -43,7 +43,7 @@ impl<F: PrimeField> CircuitGate<F> {
         gates.push(CircuitGate {
             typ: GateType::Generic,
             wires: Wire::new(zero_row),
-            coeffs: vec![],
+            coeffs: vec![F::one(), F::one(), -F::one()],
         });
         // check fin_in1, fin_in2, fin_out are zero
         gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
@@ -156,15 +156,15 @@ where
         (0..3)
             .map(|i| {
                 env.witness_curr(i)
-                    - quarter_sum(env, 3 + i)
+                    - chunk_sum(env, 3 + i)
                     - T::from(2u64).pow(16) * env.witness_next(i)
             })
             .collect::<Vec<T>>()
     }
 }
 
-/// Computes the decomposition of a 16-bit quarter-word whose least significant 4-bit crumb
-/// is located in the `lsb` column of `witness_curr` as:
+/// Computes the decomposition of a 16-bit quarter-word chunk whose least significant
+/// 4-bit crumb is located in the `lsb` column of `witness_curr` as:
 /// sum = crumb0 + crumb1 * 2^4 + crumb2 * 2^8 + crumb3 * 2^12
 ///
 /// The layout is the following:
@@ -173,7 +173,7 @@ where
 /// | ------ | ------- | ------- | ------- | ------- |
 /// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
 ///
-fn quarter_sum<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, lsb: usize) -> T {
+fn chunk_sum<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, lsb: usize) -> T {
     (0..4).fold(T::zero(), |mut sum, i| {
         sum += env.witness_curr(lsb + 3 * i) * T::from(2u64).pow(4 * i as u64);
         sum

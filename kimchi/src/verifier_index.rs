@@ -396,7 +396,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             range_check_comm,
             foreign_field_add_comm,
             foreign_field_modulus: _,
-            xor_comm: _,
+            xor_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -439,6 +439,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         }
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
+        }
+
+        if let Some(xor_comm) = xor_comm {
+            fq_sponge.absorb_g(&xor_comm.unshifted);
         }
 
         // Lookup index; optional
