@@ -2,6 +2,8 @@
 
 use ark_ff::PrimeField;
 
+use crate::curve::KimchiCurve;
+
 use super::{
     checked_runner::{RunState, WitnessGeneration},
     cvar::CVar,
@@ -36,7 +38,7 @@ where
     /// For some definition of valid.
     /// For example, a Boolean snarky type would check that the field element representing it is either 0 or 1.
     /// The function does this by adding constraints to your constraint system.
-    fn check(&self, cs: &mut RunState<F>);
+    fn check<G: KimchiCurve<ScalarField = F>>(&self, cs: &mut RunState<G>);
 
     /// The "default" value of [Self::Auxiliary].
     /// This is passed to [Self::from_cvars_unsafe] when we are not generating a witness,
@@ -54,7 +56,11 @@ where
     // new functions that might help us with generics?
     //
 
-    fn compute<FUNC>(cs: &mut RunState<F>, loc: String, to_compute_value: FUNC) -> Self
+    fn compute<FUNC, G: KimchiCurve<ScalarField = F>>(
+        cs: &mut RunState<G>,
+        loc: String,
+        to_compute_value: FUNC,
+    ) -> Self
     where
         FUNC: Fn(&dyn WitnessGeneration<F>) -> Self::OutOfCircuit,
     {
@@ -91,7 +97,7 @@ where
 
     fn from_cvars_unsafe(_cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {}
 
-    fn check(&self, _cs: &mut RunState<F>) {}
+    fn check<G: KimchiCurve<ScalarField = F>>(&self, _cs: &mut RunState<G>) {}
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {}
 
@@ -131,7 +137,7 @@ where
         )
     }
 
-    fn check(&self, cs: &mut RunState<F>) {
+    fn check<G: KimchiCurve<ScalarField = F>>(&self, cs: &mut RunState<G>) {
         self.0.check(cs);
         self.1.check(cs);
     }
