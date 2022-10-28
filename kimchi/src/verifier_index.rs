@@ -110,19 +110,24 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
+    /// Range check commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
-    // Foreign field modulus
+    /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
     /// Keccak rotation table
     #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
     pub keccak_rotation_table: Option<[[G::ScalarField; 5]; 5]>,
 
-    // Foreign field addition gates polynomial commitments
+    /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
+
+    /// Xor commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub xor_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -258,6 +263,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
                         .commit_evaluations_non_hiding(domain, &poly.eval8, None)
                 }),
 
+            xor_comm: self.cs.xor_selector_poly.as_ref().map(|poly| {
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
+            }),
+
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -392,6 +402,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             foreign_field_add_comm,
             foreign_field_modulus: _,
             keccak_rotation_table: _,
+            xor_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -436,6 +447,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }
 
+        if let Some(xor_comm) = xor_comm {
+            fq_sponge.absorb_g(&xor_comm.unshifted);
+        }
+
         // Lookup index; optional
 
         if let Some(LookupVerifierIndex {
@@ -446,7 +461,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
             lookup_selectors:
                 LookupSelectors {
-                    chacha_xor,
+                    xor,
                     chacha_final,
                     lookup_gate,
                     range_check_gate,
@@ -465,8 +480,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&runtime_tables_selector.unshifted);
             }
 
-            if let Some(chacha_xor) = chacha_xor {
-                fq_sponge.absorb_g(&chacha_xor.unshifted);
+            if let Some(xor) = xor {
+                fq_sponge.absorb_g(&xor.unshifted);
             }
             if let Some(chacha_final) = chacha_final {
                 fq_sponge.absorb_g(&chacha_final.unshifted);

@@ -18,6 +18,7 @@ use crate::{
             poseidon::Poseidon,
             range_check,
             varbasemul::VarbaseMul,
+            xor,
         },
         wires::{COLUMNS, PERMUTS},
     },
@@ -638,6 +639,10 @@ where
                 );
             }
 
+            if let Some(selector) = index.cs.xor_selector_poly.as_ref() {
+                index_evals.insert(GateType::Xor16, &selector.eval8);
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -772,6 +777,16 @@ where
                     assert_eq!(ffadd.domain().size, t4.domain().size);
                     t4 += &ffadd;
                     check_constraint!(index, ffadd);
+                }
+            }
+
+            // xor
+            {
+                if index.cs.xor_selector_poly.is_some() {
+                    let xor = xor::combined_constraints(&all_alphas).evaluations(&env);
+                    assert_eq!(xor.domain().size, t4.domain().size);
+                    t4 += &xor;
+                    check_constraint!(index, xor);
                 }
             }
 
