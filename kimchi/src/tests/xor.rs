@@ -56,7 +56,7 @@ fn check_xor(witness: &[Vec<PallasField>; COLUMNS], bits: usize, input1: u128, i
             .collect::<Vec<u128>>();
         for crumb in 0..4 {
             assert_eq!(
-                witness[5 + 3 * crumb][xor],
+                witness[11 + crumb][xor],
                 PallasField::from(in1[crumb] ^ in2[crumb])
             );
         }
