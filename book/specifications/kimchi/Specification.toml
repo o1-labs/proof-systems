@@ -21,6 +21,8 @@ poseidon = "../../../kimchi/src/circuits/polynomials/poseidon.rs"
 varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 range_check = "../../../kimchi/src/circuits/polynomials/range_check/circuitgates.rs"
 foreign_field_add = "../../../kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs"
+xor16 = "../../../kimchi/src/circuits/polynomials/xor.rs"
+keccak = "../../../kimchi/src/circuits/polynomials/keccak/constraints.rs"
 
 # lookup
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"

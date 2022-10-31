@@ -22,7 +22,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr};
+use super::{argument::ArgumentWitness, expr, polynomials::xor};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -111,6 +111,8 @@ pub enum GateType {
     RangeCheck1 = 17,
     ForeignFieldAdd = 25,
     //ForeignFieldMul = 26,
+    // Gates for Keccak follow:
+    Xor16 = 27,
 }
 
 /// Selector polynomial
@@ -239,6 +241,9 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
+            Xor16 => self
+                .verify_xor::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
                 .verify_foreign_field_add::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
@@ -323,6 +328,7 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
             GateType::ForeignFieldAdd => {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
             }
@@ -379,6 +385,9 @@ pub trait Connect {
     ///       with self-connections.  If the two cells are transitively already part
     ///       of the same permutation then this would split it.
     fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+
+    /// Connects a generic gate cell with zeros to a given row for 64bit range check
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -386,6 +395,13 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         let wire_tmp = self[cell_pre.0].wires[cell_pre.1];
         self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
         self[cell_new.0].wires[cell_new.1] = wire_tmp;
+    }
+
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize) {
+        // Connect the 64-bit cells from previous Generic gate with zeros in first 12 bits
+        self.connect_cell_pair((start_row, 1), (start_row, 2));
+        self.connect_cell_pair((start_row, 2), (zero_row, 0));
+        self.connect_cell_pair((zero_row, 0), (start_row, 1));
     }
 }
 
