@@ -1,7 +1,6 @@
 use ark_ff::PrimeField;
 
 use crate::{
-    curve::KimchiCurve,
     loc,
     snarky::{
         checked_runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::CVar,
@@ -43,7 +42,7 @@ where
         Self(cvars[0].clone())
     }
 
-    fn check<G: KimchiCurve<ScalarField = F>>(&self, cs: &mut RunState<G>) {
+    fn check(&self, cs: &mut RunState<F>) {
         // TODO: annotation?
         cs.assert_(None, vec![BasicSnarkyConstraint::Boolean(self.0.clone())]);
     }
@@ -81,16 +80,16 @@ where
         Self(Self::true_().0 - &self.0)
     }
 
-    pub fn and<G: KimchiCurve<ScalarField = F>>(&self, other: &Self, cs: &mut RunState<G>) -> Self {
+    pub fn and(&self, other: &Self, cs: &mut RunState<F>) -> Self {
         Self(self.0.mul(&other.0, Some("bool.and"), cs))
     }
 
-    pub fn or<G: KimchiCurve<ScalarField = F>>(&self, other: &Self, cs: &mut RunState<G>) -> Self {
+    pub fn or(&self, other: &Self, cs: &mut RunState<F>) -> Self {
         let both_false = self.not().and(&other.not(), cs);
         both_false.not()
     }
 
-    pub fn any<G: KimchiCurve<ScalarField = F>>(xs: &[&Self], cs: &mut RunState<G>) -> Self {
+    pub fn any(xs: &[&Self], cs: &mut RunState<F>) -> Self {
         if xs.is_empty() {
             return Self::false_(); // TODO: shouldn't we panic instead?
         } else if xs.len() == 1 {
@@ -108,7 +107,7 @@ where
         all_zero.not()
     }
 
-    pub fn all<G: KimchiCurve<ScalarField = F>>(xs: &[Self], cs: &mut RunState<G>) -> Self {
+    pub fn all(xs: &[Self], cs: &mut RunState<F>) -> Self {
         if xs.is_empty() {
             return Self::true_(); // TODO: shouldn't we panic instead?
         } else if xs.len() == 1 {
@@ -131,11 +130,7 @@ where
         }
     }
 
-    pub fn xor<G: KimchiCurve<ScalarField = F>>(
-        &self,
-        other: &Self,
-        state: &mut RunState<G>,
-    ) -> Self {
+    pub fn xor(&self, other: &Self, state: &mut RunState<F>) -> Self {
         match (self.to_constant(), other.to_constant()) {
             (Some(true), _) => other.not(),
             (_, Some(true)) => self.not(),

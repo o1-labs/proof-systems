@@ -3,7 +3,6 @@ use std::ops::{Add, Neg, Sub};
 use ark_ff::PrimeField;
 
 use crate::{
-    curve::KimchiCurve,
     loc,
     snarky::{
         boolean::Boolean,
@@ -128,10 +127,7 @@ where
         Self::linear_combination(&terms)
     }
 
-    pub fn mul<G>(&self, other: &Self, _label: Option<&'static str>, cs: &mut RunState<G>) -> Self
-    where
-        G: KimchiCurve<ScalarField = F>,
-    {
+    pub fn mul(&self, other: &Self, _label: Option<&'static str>, cs: &mut RunState<F>) -> Self {
         match (self, other) {
             (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x * y),
 
@@ -170,10 +166,7 @@ where
        if z = 0 then r = 1, or
        if z <> 0 then r = 0 and z * z_inv = 1
     */
-    fn equal_constraints<G>(state: &mut RunState<G>, z: Self, z_inv: Self, r: Self)
-    where
-        G: KimchiCurve<ScalarField = F>,
-    {
+    fn equal_constraints(state: &mut RunState<F>, z: Self, z_inv: Self, r: Self) {
         // TODO: the ocaml code actually calls assert_all
         let one_minus_r = CVar::Constant(F::one()) - &r;
         let zero = CVar::Constant(F::zero());
@@ -195,10 +188,7 @@ where
         }
     }
 
-    pub fn equal<G>(&self, state: &mut RunState<G>, other: &CVar<F>) -> Boolean<F>
-    where
-        G: KimchiCurve<ScalarField = F>,
-    {
+    pub fn equal(&self, state: &mut RunState<F>, other: &CVar<F>) -> Boolean<F> {
         match (self, other) {
             (CVar::Constant(x), CVar::Constant(y)) => {
                 let res = if x == y { F::one() } else { F::zero() };
@@ -394,10 +384,7 @@ where
         cvars[0].clone()
     }
 
-    fn check<G>(&self, _cs: &mut super::checked_runner::RunState<G>)
-    where
-        G: KimchiCurve<ScalarField = F>,
-    {
+    fn check(&self, _cs: &mut super::checked_runner::RunState<F>) {
         // do nothing
     }
 

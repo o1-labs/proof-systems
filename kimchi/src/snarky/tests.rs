@@ -6,7 +6,7 @@ use crate::{
     snarky::{checked_runner::RunState, cvar::CVar},
 };
 
-fn main_circuit(runner: &mut RunState<Vesta>) {
+fn main_circuit(runner: &mut RunState<Fp>) {
     let x: CVar<Fp> = runner.compute(loc!(), |_| Fp::one());
     let y: CVar<Fp> = runner.compute(loc!(), |_| Fp::one());
     let z: CVar<Fp> = runner.compute(loc!(), |_| Fp::one());
@@ -18,7 +18,7 @@ fn main_circuit(runner: &mut RunState<Vesta>) {
 #[ignore] // TODO: make this work
 fn test_simple_circuit() {
     // create snarky constraint system
-    let mut runner = RunState::new(0);
+    let mut runner = RunState::new::<Vesta>(0);
 
     // run it on the circuit
     main_circuit(&mut runner);

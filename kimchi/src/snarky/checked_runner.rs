@@ -58,19 +58,19 @@ pub enum Mode {
 
 /// The state used when compiling a circuit in snarky, or used in witness generation as well.
 #[derive(Default)]
-pub struct RunState<G>
+pub struct RunState<F>
 where
-    G: KimchiCurve,
+    F: PrimeField,
 {
     /// The constraint system used to build the circuit.
     /// If not set, the constraint system is not built.
-    system: Option<SnarkyConstraintSystem<G::ScalarField>>,
+    system: Option<SnarkyConstraintSystem<F>>,
 
     /// The public input of the circuit used in witness generation.
-    public_input: Vec<G::ScalarField>,
+    public_input: Vec<F>,
 
     /// The private input of the circuit used in witness generation. Still not sure what that is, or why we care about this.
-    private_input: Vec<G::ScalarField>,
+    private_input: Vec<F>,
 
     /// If set, the witness generation will check if the constraints are satisfied.
     /// This is useful to simulate running the circuit and return an error if an assertion fails.
@@ -112,11 +112,11 @@ impl<F: PrimeField> WitnessGeneration<F> for &dyn WitnessGeneration<F> {
     }
 }
 
-impl<G> WitnessGeneration<G::ScalarField> for RunState<G>
+impl<F> WitnessGeneration<F> for RunState<F>
 where
-    G: KimchiCurve,
+    F: PrimeField,
 {
-    fn read_var(&self, var: &CVar<G::ScalarField>) -> G::ScalarField {
+    fn read_var(&self, var: &CVar<F>) -> F {
         let get_one = |var_idx| {
             if var_idx <= self.num_public_inputs {
                 // Run_state.Vector.get input (i - 1)
@@ -135,17 +135,16 @@ where
 // circuit generation
 //
 
-impl<F, G> RunState<G>
+impl<F> RunState<F>
 where
-    G: KimchiCurve<ScalarField = F>,
     F: PrimeField,
 {
     // TODO: builder pattern?
     /// Creates a new [Self].
-    pub fn new(num_public_inputs: usize) -> Self {
+    pub fn new<Curve: KimchiCurve<ScalarField = F>>(num_public_inputs: usize) -> Self {
         let next_private_input = 1 + num_public_inputs;
 
-        let constants = Constants::new::<G>();
+        let constants = Constants::new::<Curve>();
         let mut system = SnarkyConstraintSystem::create(constants);
         system.set_primary_input_size(num_public_inputs);
 
