@@ -42,7 +42,7 @@ fn test_xor(in1: u128, in2: u128, bits: usize) -> [Vec<PallasField>; COLUMNS] {
 
 // Returns a given crumb of 4 bits
 fn xor_crumb(word: u128, crumb: usize) -> u128 {
-    (word & ((2u128.pow(4) - 1) * 2u128.pow(4 * crumb as u32))) / 2u128.pow(4 * crumb as u32)
+    (word >> (4 * crumb)) % 2u128.pow(4)
 }
 
 // Manually checks the XOR of each crumb in the witness

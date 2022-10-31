@@ -407,35 +407,21 @@ where
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        // Returns the constraints:
+        let two = T::from(2u64);
         // in1 = in1_0 + in1_1 * 2^4 + in1_2 * 2^8 + in1_3 * 2^12 + next_in1 * 2^16
         // in2 = in2_0 + in2_1 * 2^4 + in2_2 * 2^8 + in2_3 * 2^12 + next_in2 * 2^16
         // out = out_0 + out_1 * 2^4 + out_2 * 2^8 + out_3 * 2^12 + next_out * 2^16
         (0..3)
             .map(|i| {
-                env.witness_curr(i)
-                    - chunk_sum(env, 3 + 4 * i)
-                    - T::from(2u64).pow(16) * env.witness_next(i)
+                env.witness_curr(3 + 4 * i)
+                    + env.witness_curr(4 + 4 * i) * two.clone().pow(4)
+                    + env.witness_curr(5 + 4 * i) * two.clone().pow(8)
+                    + env.witness_curr(6 + 4 * i) * two.clone().pow(12)
+                    + two.clone().pow(16) * env.witness_next(i)
+                    - env.witness_curr(i)
             })
             .collect::<Vec<T>>()
     }
-}
-
-/// Computes the decomposition of a 16-bit quarter-word chunk whose least significant
-/// 4-bit crumb is located in the `lsb` column of `witness_curr` as:
-/// sum = crumb0 + crumb1 * 2^4 + crumb2 * 2^8 + crumb3 * 2^12
-///
-/// The layout is the following:
-///
-/// |        | lsb     | lsb + 1 | lsb + 2 | lsb + 3 |
-/// | ------ | ------- | ------- | ------- | ------- |
-/// | `Curr` |  crumb0 |  crumb1 |  crumb2 |  crumb3 |
-///
-fn chunk_sum<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, lsb: usize) -> T {
-    (0..4).fold(T::zero(), |mut sum, i| {
-        sum += env.witness_curr(lsb + i) * T::from(2u64).pow(4 * i as u64);
-        sum
-    })
 }
 
 // Witness layout
