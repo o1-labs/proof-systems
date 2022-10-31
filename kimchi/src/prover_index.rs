@@ -84,6 +84,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .map(|lcs| &lcs.configuration),
             cs.foreign_field_add_selector_poly.is_some(),
             cs.xor_selector_poly.is_some(),
+            cs.keccak_selector_polys.is_some(),
         );
 
         // set `max_quot_size` to the degree of the quotient polynomial,

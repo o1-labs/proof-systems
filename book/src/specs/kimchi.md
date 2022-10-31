@@ -1743,6 +1743,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub xor_comm: Option<PolyComm<G>>,
 
+    /// Keccak commitments
+    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
+    pub keccak_comm: Option<[PolyComm<G>; keccak::gadget::GATE_COUNT]>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],

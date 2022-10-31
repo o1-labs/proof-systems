@@ -1,5 +1,7 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
+use super::{
+    gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg, polynomials::keccak,
+};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -126,13 +128,19 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
 
+    /// Xor gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub xor_selector_poly: Option<SelectorPolynomial<F>>,
+
     /// Keccak rotation table
     #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
     pub keccak_rotation_table: Option<[[F; 5]; 5]>,
 
-    /// Xor gate selector polynomial
-    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub xor_selector_poly: Option<SelectorPolynomial<F>>,
+    /// Keccak selector polynomials
+    #[serde(
+        bound = "[SelectorPolynomial<F>; keccak::gadget::GATE_COUNT]: Serialize + DeserializeOwned"
+    )]
+    pub keccak_selector_polys: Option<[SelectorPolynomial<F>; keccak::gadget::GATE_COUNT]>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -661,6 +669,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
+        // Keccak constraint selector polynomials
+        let keccak_gates = keccak::gadget::circuit_gates();
+        let keccak_selector_polys = {
+            if circuit_gates_used.is_disjoint(&keccak_gates.into_iter().collect()) {
+                None
+            } else {
+                Some(array::from_fn(|i| {
+                    selector_polynomial(keccak_gates[i], &gates, &domain)
+                }))
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -715,6 +735,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
             keccak_rotation_table: self.keccak_rotation_table,
+            keccak_selector_polys,
             xor_selector_poly,
             gates,
             shift: shifts.shifts,

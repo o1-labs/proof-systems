@@ -10,9 +10,8 @@ use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 use crate::circuits::polynomials::poseidon::Poseidon;
-use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
-use crate::circuits::polynomials::{permutation, xor};
+use crate::circuits::polynomials::{keccak, permutation, range_check, xor};
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
@@ -31,6 +30,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
     foreign_field_add: bool,
     xor: bool,
+    keccak: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -65,6 +65,10 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     if xor {
         expr += xor::Xor16::combined_constraints(&powers_of_alpha);
+    }
+
+    if keccak {
+        expr += keccak::gadget::combined_constraints(&powers_of_alpha);
     }
 
     // permutation
@@ -149,6 +153,7 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
     foreign_field_addition: bool,
     xor: bool,
+    keccak: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
@@ -158,6 +163,7 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
         lookup_constraint_system,
         foreign_field_addition,
         xor,
+        keccak,
     );
 
     let linearization = expr
