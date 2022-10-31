@@ -50,11 +50,11 @@ impl<F: PrimeField> CircuitGate<F> {
         gates.push(CircuitGate {
             typ: GateType::Generic,
             wires: Wire::new(zero_row),
-            coeffs: vec![F::one(), F::one(), -F::one()],
+            coeffs: vec![F::one()],
         });
         // check fin_in1, fin_in2, fin_out are zero
         gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
-        gates.connect_cell_pair((zero_row, 1), (zero_row, 2));
+        gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
 
         (zero_row + 1, gates)
     }
