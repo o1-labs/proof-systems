@@ -189,6 +189,8 @@
 <li><a href="#scalar-multiplication">Scalar Multiplication</a></li>
 <li><a href="#range-check">Range Check</a></li>
 <li><a href="#foreign-field-addition">Foreign Field Addition</a></li>
+<li><a href="#xor">Xor</a></li>
+<li><a href="#keccak">Keccak</a></li>
 </ul>
 </li>
 </ul>
@@ -1282,6 +1284,83 @@ specific parameter structure. Checking that the correct right input, overflow, a
 be done by copy constraining these values with a public input value. One could have a specific gate
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.</p>
+<h4 id="xor"><a class="header" href="#xor">Xor</a></h4>
+<h5 id="xor16---chainable-xor-constraints-for-words-of-multiples-of-16-bits"><a class="header" href="#xor16---chainable-xor-constraints-for-words-of-multiples-of-16-bits"><code>Xor16</code> - Chainable XOR constraints for words of multiples of 16 bits.</a></h5>
+<ul>
+<li>This circuit gate is used to constrain that <code>in1</code> xored with <code>in2</code> equals <code>out</code></li>
+<li>The length of <code>in1</code>, <code>in2</code> and <code>out</code> must be the same and a multiple of 16bits.</li>
+<li>This gate operates on the <code>Curr</code> and <code>Next</code> rows.</li>
+</ul>
+<p>It uses three different types of constraints</p>
+<ul>
+<li>copy          - copy to another cell (32-bits)</li>
+<li>plookup       - xor-table plookup (4-bits)</li>
+<li>decomposition - the constraints inside the gate</li>
+</ul>
+<p>The 4-bit crumbs are assumed to be laid out with <code>0</code> column being the least significant crumb.
+Given values <code>in1</code>, <code>in2</code> and <code>out</code>, the layout looks like this:</p>
+<div class="table-wrapper"><table><thead><tr><th>Column</th><th><code>Curr</code></th><th><code>Next</code></th></tr></thead><tbody>
+<tr><td>0</td><td>copy     <code>in1</code></td><td>copy     <code>in1'</code></td></tr>
+<tr><td>1</td><td>copy     <code>in2</code></td><td>copy     <code>in2'</code></td></tr>
+<tr><td>2</td><td>copy     <code>out</code></td><td>copy     <code>out'</code></td></tr>
+<tr><td>3</td><td>plookup0 <code>in1_0</code></td><td></td></tr>
+<tr><td>4</td><td>plookup1 <code>in1_1</code></td><td></td></tr>
+<tr><td>5</td><td>plookup2 <code>in1_2</code></td><td></td></tr>
+<tr><td>6</td><td>plookup3 <code>in1_3</code></td><td></td></tr>
+<tr><td>7</td><td>plookup0 <code>in2_0</code></td><td></td></tr>
+<tr><td>8</td><td>plookup1 <code>in2_1</code></td><td></td></tr>
+<tr><td>9</td><td>plookup2 <code>in2_2</code></td><td></td></tr>
+<tr><td>10</td><td>plookup3 <code>in2_3</code></td><td></td></tr>
+<tr><td>11</td><td>plookup0 <code>out_0</code></td><td></td></tr>
+<tr><td>12</td><td>plookup1 <code>out_1</code></td><td></td></tr>
+<tr><td>13</td><td>plookup2 <code>out_2</code></td><td></td></tr>
+<tr><td>14</td><td>plookup3 <code>out_3</code></td><td></td></tr>
+</tbody></table>
+</div>
+<p>One single gate with next values of <code>in1'</code>, <code>in2'</code> and <code>out'</code> being zero can be used to check
+that the original <code>in1</code>, <code>in2</code> and <code>out</code> had 16-bits. We can chain this gate 4 times as follows
+to obtain a gadget for 64-bit words XOR:</p>
+<p>| Row | <code>CircuitGate</code> | Purpose                                    |
+| — | ———–– | —————————————— |
+|   0 | <code>Xor16</code>       | Xor 2 least significant bytes of the words |
+|   1 | <code>Xor16</code>       | Xor next 2 bytes of the words              |
+|   2 | <code>Xor16</code>       | Xor next 2 bytes of the words              |
+|   3 | <code>Xor16</code>       | Xor 2 most significant bytes of the words  |
+|   4 | <code>Zero</code>        | Zero values, can be reused as generic gate |</p>
+<pre><code class="language-admonition::notice"> We could half the number of rows of the 64-bit XOR gadget by having lookups
+ for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+ Rough computations show that if we run 8 or more Keccaks in one circuit we should
+ use the 8-bit XOR table.
+</code></pre>
+<h4 id="keccak"><a class="header" href="#keccak">Keccak</a></h4>
+<p>The Keccak gadget is comprised of 3 circuit gates (Xor16, Rot64, and Zero)</p>
+<p> Keccak works with 64-bit words. The state is represented using <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.72777em;vertical-align:-0.08333em;"></span><span class="mord">5</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">×</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">5</span></span></span></span> matrix
+of 64 bit words. Each compression step of Keccak consists of 24 rounds. Let us
+denote the state matrix with A (indexing elements as A[x,y]), from which we derive
+further states as follows in each round. Each round then consists of the following 5 steps:</p>
+<p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:9.000000000000002em;vertical-align:-4.250000000000001em;"></span><span class="mtable"><span class="col-align-r"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:4.750000000000001em;"><span style="top:-6.910000000000001em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.07153em;">C</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mclose">]</span></span></span><span style="top:-5.41em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.02778em;">D</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mclose">]</span></span></span><span style="top:-3.9099999999999993em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05764em;">E</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">]</span></span></span><span style="top:-2.4099999999999993em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mopen">[</span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">2</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord">3</span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">]</span></span></span><span style="top:-0.9099999999999997em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">]</span></span></span><span style="top:0.5900000000000007em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">Fp</span><span class="mopen">[</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">0</span><span class="mclose">]</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:4.250000000000001em;"><span></span></span></span></span></span><span class="col-align-l"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:4.750000000000001em;"><span style="top:-6.910000000000001em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">0</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">1</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">2</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">3</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">4</span><span class="mclose">]</span></span></span><span style="top:-5.41em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">C</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord">1</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">ROT</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07153em;">C</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord">1</span><span class="mclose">]</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">1</span><span class="mclose">)</span></span></span><span style="top:-3.9099999999999993em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord mathnormal">A</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord mathnormal" style="margin-right:0.02778em;">D</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mclose">]</span></span></span><span style="top:-2.4099999999999993em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">ROT</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.05764em;">E</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">]</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal">ρ</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">])</span></span></span><span style="top:-0.9099999999999997em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mopen">((</span><span class="mord mathnormal" style="margin-right:0.05017em;">NOTB</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">])</span><span class="mord mathnormal">A</span><span class="mord mathnormal" style="margin-right:0.10903em;">N</span><span class="mord mathnormal" style="margin-right:0.02778em;">D</span><span class="mord mathnormal" style="margin-right:0.05017em;">B</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord">2</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">])</span></span></span><span style="top:0.5900000000000007em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord"></span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mord mathnormal" style="margin-right:0.13889em;">F</span><span class="mopen">[</span><span class="mord">0</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord">0</span><span class="mclose">]</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mbin">⊕</span><span class="mspace" style="margin-right:0.2222222222222222em;"></span><span class="mord mathnormal" style="margin-right:0.07153em;">RC</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:4.250000000000001em;"><span></span></span></span></span></span></span></span><span class="tag"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:4.750000000000001em;"><span style="top:-6.750000000000001em;"><span class="pstrut" style="height:2.84em;"></span><span class="eqn-num"></span></span><span style="top:-5.25em;"><span class="pstrut" style="height:2.84em;"></span><span class="eqn-num"></span></span><span style="top:-3.749999999999999em;"><span class="pstrut" style="height:2.84em;"></span><span class="eqn-num"></span></span><span style="top:-2.249999999999999em;"><span class="pstrut" style="height:2.84em;"></span><span class="eqn-num"></span></span><span style="top:-0.7499999999999996em;"><span class="pstrut" style="height:2.84em;"></span><span class="eqn-num"></span></span><span style="top:0.7500000000000009em;"><span class="pstrut" style="height:2.84em;"></span><span class="eqn-num"></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:4.250000000000001em;"><span></span></span></span></span></span></span></span></span></p>
+<p>FOR <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.78041em;vertical-align:-0.13597em;"></span><span class="mord">0</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">≤</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.8304100000000001em;vertical-align:-0.19444em;"></span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span><span class="mrel">≤</span><span class="mspace" style="margin-right:0.2777777777777778em;"></span></span><span class="base"><span class="strut" style="height:0.64444em;vertical-align:0em;"></span><span class="mord">4</span></span></span></span> and <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">ρ</span><span class="mopen">[</span><span class="mord mathnormal">x</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">]</span></span></span></span> is the rotation offset defined for Keccak.
+The values are in the table below extracted from the Keccak reference
+ <a href="https://keccak.team/files/Keccak-reference-3.0.pdf">https://keccak.team/files/Keccak-reference-3.0.pdf</a></p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>x = 3</th><th>x = 4</th><th>x = 0</th><th>x = 1</th><th>x = 2</th></tr></thead><tbody>
+<tr><td>y = 2</td><td>155</td><td>231</td><td>3</td><td>10</td><td>171</td></tr>
+<tr><td>y = 1</td><td>55</td><td>276</td><td>36</td><td>300</td><td>6</td></tr>
+<tr><td>y = 0</td><td>28</td><td>91</td><td>0</td><td>1</td><td>190</td></tr>
+<tr><td>y = 4</td><td>120</td><td>78</td><td>210</td><td>66</td><td>253</td></tr>
+<tr><td>y = 3</td><td>21</td><td>136</td><td>105</td><td>45</td><td>15</td></tr>
+</tbody></table>
+</div>
+<p>##### Design Approach:</p>
+<p>The atomic operations are XOR, ROT, NOT, AND. In the sections below, we will describe
+the gates for these operations. Below are some common approaches followed in their design.</p>
+<p>To fit within 15 wires, we first decompose each word into its lower and upper 32-bit
+components. A gate for an atomic operation works with those 32-bit components at a time.</p>
+<p>Before we describe the specific gate design approaches, below are some constraints in the
+Kimchi framework that dictated those approaches.</p>
+<ul>
+<li>only 4 lookups per row</li>
+<li>only first 7 columns are available to the permutation polynomial</li>
+</ul>
 <h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
 <p>In this section we specify the setup that goes into creating two indexes from a circuit:</p>
 <ul>
@@ -1540,15 +1619,20 @@ pub struct VerifierIndex&lt;G: KimchiCurve&gt; {
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub chacha_comm: Option&lt;[PolyComm&lt;G&gt;; 4]&gt;,
 
+    /// Range check commitments
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub range_check_comm: Option&lt;[PolyComm&lt;G&gt;; range_check::gadget::GATE_COUNT]&gt;,
 
-    // Foreign field modulus
+    /// Foreign field modulus
     pub foreign_field_modulus: Option&lt;BigUint&gt;,
 
-    // Foreign field addition gates polynomial commitments
+    /// Foreign field addition gates polynomial commitments
     #[serde(bound = &quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
     pub foreign_field_add_comm: Option&lt;PolyComm&lt;G&gt;&gt;,
+
+    /// Xor commitments
+    #[serde(bound = &quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
+    pub xor_comm: Option&lt;PolyComm&lt;G&gt;&gt;,
 
     /// wire coordinate shifts
     #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]
