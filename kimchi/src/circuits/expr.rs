@@ -66,8 +66,6 @@ pub struct Constants<F: 'static> {
     pub mds: &'static Vec<Vec<F>>,
     /// The modulus for foreign field operations
     pub foreign_field_modulus: Option<BigUint>,
-    /// The table of Keccak rotations for 64-bit words
-    pub keccak_rotation_table: Option<[[F; 5]; 5]>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -2539,7 +2537,6 @@ pub mod test {
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
                 foreign_field_modulus: None,
-                keccak_rotation_table: None,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,

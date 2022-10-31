@@ -7,7 +7,6 @@ use crate::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupsUsed},
         polynomials::{
-            keccak,
             permutation::{zk_polynomial, zk_w3},
             range_check,
         },
@@ -118,10 +117,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
-    /// Keccak rotation table
-    #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
-    pub keccak_rotation_table: Option<[[G::ScalarField; 5]; 5]>,
-
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
@@ -130,9 +125,9 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub xor_comm: Option<PolyComm<G>>,
 
-    /// Keccak commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub keccak_comm: Option<[PolyComm<G>; keccak::gadget::GATE_COUNT]>,
+    /// Rot commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub rot_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -273,11 +268,9 @@ impl<G: KimchiCurve> ProverIndex<G> {
                     .commit_evaluations_non_hiding(domain, &poly.eval8, None)
             }),
 
-            keccak_comm: self.cs.keccak_selector_polys.as_ref().map(|poly| {
-                array::from_fn(|i| {
-                    self.srs
-                        .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
-                })
+            rot_comm: self.cs.rot_selector_poly.as_ref().map(|poly| {
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
             }),
 
             shift: self.cs.shift,
@@ -295,7 +288,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             lookup_index,
             linearization: self.linearization.clone(),
             foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
-            keccak_rotation_table: self.cs.keccak_rotation_table,
         }
     }
 }
@@ -413,9 +405,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             range_check_comm,
             foreign_field_add_comm,
             foreign_field_modulus: _,
-            keccak_rotation_table: _,
             xor_comm,
-            keccak_comm,
+            rot_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -464,10 +455,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             fq_sponge.absorb_g(&xor_comm.unshifted);
         }
 
-        if let Some(keccak_comm) = keccak_comm {
-            for keccak_comm in keccak_comm {
-                fq_sponge.absorb_g(&keccak_comm.unshifted);
-            }
+        if let Some(rot_comm) = rot_comm {
+            fq_sponge.absorb_g(&rot_comm.unshifted);
         }
 
         // Lookup index; optional

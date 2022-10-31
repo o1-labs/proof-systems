@@ -225,7 +225,6 @@ impl<F: PrimeField> CircuitGate<F> {
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
                     foreign_field_modulus: cs.foreign_field_modulus.clone(),
-                    keccak_rotation_table: cs.keccak_rotation_table,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,
@@ -406,7 +405,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
     [GateType::ForeignFieldAdd]
 }
 
-/// Get combined constraints for a given foreign field multiplication circuit gate
+/// Get combined constraints for a given foreign field addition circuit gate
 pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::ForeignFieldAdd => ForeignFieldAdd::combined_constraints(alphas),
@@ -414,7 +413,7 @@ pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>
     }
 }
 
-/// Number of constraints for a given foreign field mul circuit gate type
+/// Number of constraints for a given foreign field add circuit gate type
 pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
         GateType::ForeignFieldAdd => ForeignFieldAdd::<F>::CONSTRAINTS,
@@ -427,7 +426,7 @@ pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     ForeignFieldAdd::combined_constraints(alphas)
 }
 
-/// Get the foreign field multiplication lookup table
+/// Get the foreign field addition lookup table
 pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }

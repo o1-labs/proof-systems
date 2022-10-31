@@ -1,8 +1,15 @@
-//! Keccak gate module
+//! Keccak gadget
+use ark_ff::PrimeField;
 
-pub mod constraints;
-pub mod gadget;
-pub mod witness;
+use crate::circuits::gate::CircuitGate;
+
+impl<F: PrimeField> CircuitGate<F> {
+    /// Create the Keccak gadget
+    /// TODO: right now it only creates a Generic gate followed by the Xor64 gates
+    pub fn create_keccak(new_row: usize) -> (usize, Vec<Self>) {
+        Self::create_xor(new_row, 64)
+    }
+}
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64
 /// | y \ x |  0 |  1 |  2 |  3 |  4 |

@@ -335,7 +335,6 @@ where
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
                 foreign_field_modulus: index.foreign_field_modulus.clone(),
-                keccak_rotation_table: index.keccak_rotation_table,
             };
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -568,7 +567,6 @@ where
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
                 foreign_field_modulus: index.foreign_field_modulus.clone(),
-                keccak_rotation_table: index.keccak_rotation_table,
             };
 
             for (col, tokens) in &index.linearization.index_terms {
@@ -658,7 +656,7 @@ where
                             }
                             RangeCheck0 => &index.range_check_comm.as_ref().unwrap()[0],
                             RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
-                            KeccakRot => &index.keccak_comm.as_ref().unwrap()[0],
+                            Rot64 => index.rot_comm.as_ref().unwrap(),
                             Xor16 => index.xor_comm.as_ref().unwrap(),
                             ForeignFieldAdd => index.foreign_field_add_comm.as_ref().unwrap(),
                         };

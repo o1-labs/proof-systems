@@ -1,7 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::{
-    gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg, polynomials::keccak,
-};
+use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -10,7 +8,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::{foreign_field_add, range_check},
+        polynomials::{foreign_field_add, range_check, rot, xor},
         wires::*,
     },
     curve::KimchiCurve,
@@ -132,15 +130,9 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub xor_selector_poly: Option<SelectorPolynomial<F>>,
 
-    /// Keccak rotation table
-    #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
-    pub keccak_rotation_table: Option<[[F; 5]; 5]>,
-
-    /// Keccak selector polynomials
-    #[serde(
-        bound = "[SelectorPolynomial<F>; keccak::gadget::GATE_COUNT]: Serialize + DeserializeOwned"
-    )]
-    pub keccak_selector_polys: Option<[SelectorPolynomial<F>; keccak::gadget::GATE_COUNT]>,
+    /// Rotation gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub rot_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -175,7 +167,6 @@ pub struct Builder<F: PrimeField> {
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     foreign_field_modulus: Option<BigUint>,
-    keccak_rotation_table: Option<[[F; 5]; 5]>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -242,7 +233,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
             runtime_tables: None,
             precomputations: None,
             foreign_field_modulus: None,
-            keccak_rotation_table: None,
         }
     }
 
@@ -414,56 +404,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         }
         self.foreign_field_modulus = foreign_field_modulus.clone();
-        self
-    }
-
-    /// Creates the 5x5 table of rotation bits for Keccak modulo 64
-    /// | y \ x |  0 |  1 |  2 |  3 |  4 |
-    /// | ----- | -- | -- | -- | -- | -- |
-    /// | 0     |  0 |  1 | 62 | 28 | 27 |
-    /// | 1     | 36 | 44 |  6 | 55 | 20 |
-    /// | 2     |  3 | 10 | 43 | 25 | 39 |
-    /// | 3     | 41 | 45 | 15 | 21 |  8 |
-    /// | 4     | 18 |  2 | 61 | 56 | 14 |
-    // TODO: NOT SURE YET IF WILL BE USEFUL HERE OR NOT
-    pub fn keccak_rotation_table(mut self) -> Self {
-        self.keccak_rotation_table = Some([
-            [
-                F::zero(),
-                F::from(36u32),
-                F::from(3u32),
-                F::from(41u32),
-                F::from(18u32),
-            ],
-            [
-                F::one(),
-                F::from(44u32),
-                F::from(10u32),
-                F::from(45u32),
-                F::from(2u32),
-            ],
-            [
-                F::from(62u32),
-                F::from(6u32),
-                F::from(43u32),
-                F::from(15u32),
-                F::from(61u32),
-            ],
-            [
-                F::from(28u32),
-                F::from(55u32),
-                F::from(25u32),
-                F::from(21u32),
-                F::from(56u32),
-            ],
-            [
-                F::from(27u32),
-                F::from(20u32),
-                F::from(39u32),
-                F::from(8u32),
-                F::from(14u32),
-            ],
-        ]);
         self
     }
 
@@ -660,7 +600,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
-        let xor_gate = [GateType::Xor16];
+        let xor_gate = xor::circuit_gates();
         let xor_selector_poly = {
             if circuit_gates_used.is_disjoint(&xor_gate.into_iter().collect()) {
                 None
@@ -669,15 +609,13 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
-        // Keccak constraint selector polynomials
-        let keccak_gates = keccak::gadget::circuit_gates();
-        let keccak_selector_polys = {
-            if circuit_gates_used.is_disjoint(&keccak_gates.into_iter().collect()) {
+        // Rotation constraint selector polynomials
+        let rot_gates = rot::circuit_gates();
+        let rot_selector_poly = {
+            if circuit_gates_used.is_disjoint(&rot_gates.into_iter().collect()) {
                 None
             } else {
-                Some(array::from_fn(|i| {
-                    selector_polynomial(keccak_gates[i], &gates, &domain)
-                }))
+                Some(selector_polynomial(GateType::Rot64, &gates, &domain))
             }
         };
 
@@ -734,8 +672,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             range_check_selector_polys,
             foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
-            keccak_rotation_table: self.keccak_rotation_table,
-            keccak_selector_polys,
+            rot_selector_poly,
             xor_selector_poly,
             gates,
             shift: shifts.shifts,

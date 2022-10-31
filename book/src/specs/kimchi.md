@@ -364,7 +364,7 @@ will translate into a scalar multiplication by 0, which is free.
 
 #### The Lookup Selectors
 
-**ChaChaSelector**. Performs 4 queries to the XOR lookup table.
+**XorSelector**. Performs 4 queries to the XOR lookup table.
 
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
@@ -1353,42 +1353,10 @@ to obtain a gadget for 64-bit words XOR:
 ```
 
 
-#### Keccak
+#### Rotation
 
-The Keccak gadget is comprised of 3 circuit gates (Xor16, Rot64, and Zero)
-
- Keccak works with 64-bit words. The state is represented using $5\times 5$ matrix
-of 64 bit words. Each compression step of Keccak consists of 24 rounds. Let us
-denote the state matrix with A (indexing elements as A[x,y]), from which we derive
-further states as follows in each round. Each round then consists of the following 5 steps:
-
-$$
-\begin{align}
-C[x] &= A[x,0] \oplus A[x,1] \oplus A[x,2] \oplus A[x,3] \oplus A[x,4] \\
-D[x] &= C[x-1] \oplus ROT(C[x+1],1) \\
-E[x,y] &= A[x,y]  \oplus D[x] \\
-B[y,2x+3y] &= ROT(E[x,y],\rho[x,y]) \\
-F[x,y] &= B[x,y] \oplus ((NOT B[x+1,y]) AND B[x+2,y]) \\
-Fp[0,0] &= F[0,0] \oplus RC
-\end{align}
-$$
-
-FOR $0\leq x, y \leq 4$ and $\rho[x,y]$ is the rotation offset defined for Keccak.
-
-##### Design Approach:
-
-The atomic operations are XOR, ROT, NOT, AND. In the sections below, we will describe
-the gates for these operations. Below are some common approaches followed in their design.
-
-To fit within 15 wires, we first decompose each word into its lower and upper 32-bit
-components. A gate for an atomic operation works with those 32-bit components at a time.
-
-Before we describe the specific gate design approaches, below are some constraints in the
-Kimchi framework that dictated those approaches.
-* only 4 lookups per row
-* only first 7 columns are available to the permutation polynomial
-
-##### `KeccakRot` - Constraints for rotation of 64-bit words
+Rotation of a 64-bit word by a known offset
+##### `Rot64` - Constraints for known-length rotation of 64-bit words
 
 * This circuit gate is used to constrain that a 64-bit word is rotated by r<64 bits to the "left".
 * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
@@ -1419,11 +1387,11 @@ $$
 The latter can be obtained with a `RangeCheck0` gate setting the two most significant limbs to zero.
 The former is equivalent to the following check:
 $$excess - 2^{rot} + 2^{64} < 2^{64}$$
-which is doable with the constraints in a `RangeCheck0` gate. Since our current row within the `KeccakRot` gate
+which is doable with the constraints in a `RangeCheck0` gate. Since our current row within the `Rot64` gate
 is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
-and assuming that the gate has a coefficient storing the value $2^{rot}$,
+and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
 
-| Gate   | `KeccakRot`         | `RangeCheck0`    |
+| Gate   | `Rot64`             | `RangeCheck0`    |
 | ------ | ------------------- | ---------------- |
 | Column | `Curr`              | `Next`           |
 | ------ | ------------------- | ---------------- |
@@ -1731,10 +1699,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
-    /// Keccak rotation table
-    #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
-    pub keccak_rotation_table: Option<[[G::ScalarField; 5]; 5]>,
-
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
@@ -1743,9 +1707,9 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub xor_comm: Option<PolyComm<G>>,
 
-    /// Keccak commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub keccak_comm: Option<[PolyComm<G>; keccak::gadget::GATE_COUNT]>,
+    /// Rot commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub rot_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]

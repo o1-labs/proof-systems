@@ -25,7 +25,7 @@ use thiserror::Error;
 use super::{
     argument::ArgumentWitness,
     expr,
-    polynomials::{keccak, xor},
+    polynomials::{rot, xor},
 };
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -117,7 +117,7 @@ pub enum GateType {
     // ForeignFieldMul = 26,
     // Gates for Keccak follow:
     Xor16 = 27,
-    KeccakRot = 28,
+    Rot64 = 28,
 }
 
 /// Selector polynomial
@@ -246,7 +246,9 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            KeccakRot => Ok(()), // TODO
+            Rot64 => self
+                .verify_rot::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
             Xor16 => self
                 .verify_xor::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
@@ -276,7 +278,6 @@ impl<F: PrimeField> CircuitGate<F> {
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
             foreign_field_modulus: cs.foreign_field_modulus.clone(),
-            keccak_rotation_table: cs.keccak_rotation_table,
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -335,7 +336,7 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
-            GateType::KeccakRot => keccak::constraints::KeccakRot::constraint_checks(&env),
+            GateType::Rot64 => rot::Rot64::constraint_checks(&env),
             GateType::Xor16 => xor::Xor16::constraint_checks(&env),
             GateType::ForeignFieldAdd => {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)

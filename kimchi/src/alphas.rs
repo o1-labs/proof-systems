@@ -333,7 +333,7 @@ mod tests {
                 .map(|lcs| &lcs.configuration),
             index.cs.foreign_field_add_selector_poly.is_some(),
             index.cs.xor_selector_poly.is_some(),
-            index.cs.keccak_selector_polys.is_some(),
+            index.cs.rot_selector_poly.is_some(),
         );
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
