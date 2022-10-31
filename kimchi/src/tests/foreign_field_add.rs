@@ -3,10 +3,7 @@ use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, CircuitGateError, GateType},
     polynomial::COLUMNS,
-    polynomials::foreign_field_add::{
-        self,
-        witness::{self, FFOps},
-    },
+    polynomials::foreign_field_add::witness::{self, FFOps},
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -291,7 +288,6 @@ fn prove_and_verify(operation_count: usize) {
     TestFramework::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![foreign_field_add::gadget::lookup_table()])
         .foreign_modulus(Some(foreign_modulus))
         .setup()
         .prove_and_verify();

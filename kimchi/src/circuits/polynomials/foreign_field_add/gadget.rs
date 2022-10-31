@@ -19,7 +19,6 @@ use crate::{
         lookup::{
             self,
             lookups::{LookupInfo, LookupsUsed},
-            tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
         wires::Wire,
@@ -424,9 +423,4 @@ pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
 /// Get the combined constraints for all foreign field addition circuit gates
 pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     ForeignFieldAdd::combined_constraints(alphas)
-}
-
-/// Get the foreign field addition lookup table
-pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
-    lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }

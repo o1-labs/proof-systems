@@ -643,6 +643,10 @@ where
                 index_evals.insert(GateType::Xor16, &selector.eval8);
             }
 
+            if let Some(selector) = index.cs.rot_selector_poly.as_ref() {
+                index_evals.insert(GateType::Rot64, &selector.eval8);
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -786,6 +790,16 @@ where
                     assert_eq!(xor.domain().size, t4.domain().size);
                     t4 += &xor;
                     check_constraint!(index, xor);
+                }
+            }
+
+            // rot
+            {
+                if index.cs.rot_selector_poly.is_some() {
+                    let rot = xor::combined_constraints(&all_alphas).evaluations(&env);
+                    assert_eq!(rot.domain().size, t4.domain().size);
+                    t4 += &rot;
+                    check_constraint!(index, rot);
                 }
             }
 
