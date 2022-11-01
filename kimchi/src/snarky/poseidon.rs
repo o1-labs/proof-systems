@@ -1,5 +1,5 @@
 use crate::{
-    circuits::polynomials::poseidon::{ROUNDS_PER_HASH, ROUNDS_PER_ROW},
+    circuits::polynomials::poseidon::{ROUNDS_PER_HASH, ROUNDS_PER_ROW, SPONGE_WIDTH},
     snarky::{
         checked_runner::Constraint,
         constraint_system::KimchiConstraint,
@@ -9,7 +9,7 @@ use crate::{
 use ark_ff::PrimeField;
 use itertools::Itertools;
 use oracle::{
-    constants::PlonkSpongeConstantsKimchi, permutation::full_round,
+    constants::PlonkSpongeConstantsKimchi, permutation::full_round2,
     poseidon::ArithmeticSpongeParams,
 };
 use std::iter::successors;
@@ -57,16 +57,13 @@ pub fn poseidon<F: PrimeField>(
 
 fn round<F: PrimeField>(
     loc: String,
-    elements: &[CVar<F>; 3],
+    elements: &[CVar<F>; SPONGE_WIDTH],
     runner: &mut RunState<F>,
     round: usize,
     params: &ArithmeticSpongeParams<F>,
-) -> [CVar<F>; 3] {
+) -> [CVar<F>; SPONGE_WIDTH] {
     runner.compute(loc, |env| {
         let state = elements.clone().map(|var| env.read_var(&var));
-        //remove
-        let mut state = state.to_vec();
-        full_round::<F, PlonkSpongeConstantsKimchi>(params, &mut state, round);
-        state.try_into().unwrap()
+        full_round2::<F, PlonkSpongeConstantsKimchi>(params, state, round)
     })
 }
