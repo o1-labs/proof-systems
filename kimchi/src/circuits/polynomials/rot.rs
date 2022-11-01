@@ -8,7 +8,7 @@ use crate::{
         expr::{
             self,
             constraints::{crumb, ExprOps},
-            l0_1, Environment, LookupEnvironment, E,
+            l0_1, Environment, LookupEnvironment,
         },
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
@@ -32,18 +32,16 @@ use rand::{rngs::StdRng, SeedableRng};
 use std::marker::PhantomData;
 use std::{array, collections::HashMap};
 
-pub const GATE_COUNT: usize = 1;
-
 impl<F: PrimeField> CircuitGate<F> {
-    /// Creates a KeccakRot gadget to rotate a word
+    /// Creates a Rot64 gadget to rotate a word
     /// It will need:
     /// - 1 Generic gate to constrain to zero some limbs
     ///
     /// It has:
-    /// - 1 KeccakRot gate to rotate the word
+    /// - 1 Rot64 gate to rotate the word
     /// - 1 RangeCheck0 to constrain the size of some parameters
-    pub fn create_rot64(new_row: usize, rot: u32) -> (usize, Vec<Self>) {
-        let gates = vec![
+    pub fn create_rot64(new_row: usize, rot: u32) -> Vec<Self> {
+        vec![
             CircuitGate {
                 typ: GateType::Rot64,
                 wires: Wire::new(new_row),
@@ -54,12 +52,11 @@ impl<F: PrimeField> CircuitGate<F> {
                 wires: Wire::new(new_row + 1),
                 coeffs: vec![],
             },
-        ];
-        (new_row + gates.len(), gates)
+        ]
     }
 
-    /// Create the Keccak rot
-    /// TODO: right now it only creates a Generic gate followed by the KeccakRot gates
+    /// Create one rotation
+    /// TODO: right now it only creates a Generic gate followed by the Rot64 gates
     pub fn create_rot(new_row: usize, rot: u32) -> (usize, Vec<Self>) {
         // Initial Generic gate to constrain the output to be zero
         let zero_row = new_row;
@@ -70,13 +67,13 @@ impl<F: PrimeField> CircuitGate<F> {
         )];
 
         let rot_row = zero_row + 1;
-        let (new_row, mut rot64_gates) = Self::create_rot64(rot_row, rot);
+        let mut rot64_gates = Self::create_rot64(rot_row, rot);
         // Append them to the full gates vector
         gates.append(&mut rot64_gates);
         // Check that 2 most significant limbs of shifted are zero
         gates.connect_64bit(zero_row, rot_row + 1);
 
-        (new_row, gates)
+        (new_row + gates.len(), gates)
     }
 
     /// Verifies the rotation gate
@@ -86,7 +83,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> CircuitGateResult<()> {
-        if !circuit_gates().contains(&self.typ) {
+        if ![GateType::Rot64].contains(&self.typ) {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 
@@ -170,13 +167,10 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Setup powers of alpha
         let mut alphas = Alphas::<F>::default();
-        alphas.register(
-            ArgumentType::Gate(self.typ),
-            circuit_gate_constraint_count::<F>(self.typ),
-        );
+        alphas.register(ArgumentType::Gate(self.typ), Rot64::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
-        let constraints = circuit_gate_constraints(self.typ, &alphas);
+        let constraints = Rot64::combined_constraints(&alphas);
 
         // Verify it against the environment
         if constraints
@@ -329,32 +323,6 @@ fn set_up_lookup_env_data<F: PrimeField>(
         sorted8,
         joint_lookup_table_d8,
     })
-}
-
-/// Get vector of rotation circuit gate types
-pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::Rot64]
-}
-
-/// Number of constraints for a given rotation gate type
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::Rot64 => Rot64::<F>::CONSTRAINTS,
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get combined constraints for a given rotation circuit gate type
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
-    match typ {
-        GateType::Rot64 => Rot64::combined_constraints(alphas),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get the combined constraints for all rotation circuit gate types
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    Rot64::combined_constraints(alphas)
 }
 
 //~ ##### `Rot64` - Constraints for known-length rotation of 64-bit words
@@ -565,8 +533,8 @@ pub fn extend_rot_rows<F: PrimeField>(
     init_rot64(witness, rot_row, word, rotated, excess, shifted, bound);
 }
 
-/// Create a Keccak rot
-/// Input: first input and second input
+/// Create a rotation
+/// Input: word to be rotated and rotation offset
 pub fn create_witness_rot<F: PrimeField>(word: u64, rot: u32) -> [Vec<F>; COLUMNS] {
     assert_ne!(rot, 0, "rot must be non-zero");
     let shifted = (word as u128 * 2u128.pow(rot) % 2u128.pow(64)) as u64;

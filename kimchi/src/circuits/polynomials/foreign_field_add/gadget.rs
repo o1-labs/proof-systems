@@ -14,7 +14,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{self, l0_1, Environment, LookupEnvironment, E},
+        expr::{self, l0_1, Environment, LookupEnvironment},
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
             self,
@@ -151,7 +151,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> CircuitGateResult<()> {
-        if !circuit_gates().contains(&self.typ) {
+        if ![GateType::ForeignFieldAdd].contains(&self.typ) {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 
@@ -240,11 +240,11 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut alphas = Alphas::<F>::default();
         alphas.register(
             ArgumentType::Gate(self.typ),
-            circuit_gate_constraint_count::<F>(self.typ),
+            ForeignFieldAdd::<F>::CONSTRAINTS,
         );
 
         // Get constraints for this circuit gate
-        let constraints = circuit_gate_constraints(self.typ, &alphas);
+        let constraints = ForeignFieldAdd::combined_constraints(&alphas);
 
         // Verify it against the environment
         if constraints
@@ -397,30 +397,4 @@ fn set_up_lookup_env_data<F: PrimeField>(
         sorted8,
         joint_lookup_table_d8,
     })
-}
-
-/// Get array of foreign field addition circuit gate types
-pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::ForeignFieldAdd]
-}
-
-/// Get combined constraints for a given foreign field addition circuit gate
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
-    match typ {
-        GateType::ForeignFieldAdd => ForeignFieldAdd::combined_constraints(alphas),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Number of constraints for a given foreign field add circuit gate type
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::ForeignFieldAdd => ForeignFieldAdd::<F>::CONSTRAINTS,
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get the combined constraints for all foreign field addition circuit gates
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    ForeignFieldAdd::combined_constraints(alphas)
 }

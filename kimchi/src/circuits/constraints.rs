@@ -8,7 +8,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::{foreign_field_add, range_check, rot, xor},
+        polynomials::range_check,
         wires::*,
     },
     curve::KimchiCurve,
@@ -591,7 +591,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         };
 
         // Foreign field addition constraint selector polynomial
-        let ffadd_gates = foreign_field_add::gadget::circuit_gates();
+        let ffadd_gates = [GateType::ForeignFieldAdd];
         let foreign_field_add_selector_poly = {
             if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
                 None
@@ -600,22 +600,22 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
-        let xor_gate = xor::circuit_gates();
+        let xor_gate = [GateType::Xor16];
         let xor_selector_poly = {
             if circuit_gates_used.is_disjoint(&xor_gate.into_iter().collect()) {
                 None
             } else {
-                Some(selector_polynomial(GateType::Xor16, &gates, &domain))
+                Some(selector_polynomial(xor_gate[0], &gates, &domain))
             }
         };
 
         // Rotation constraint selector polynomials
-        let rot_gates = rot::circuit_gates();
+        let rot_gate = [GateType::Rot64];
         let rot_selector_poly = {
-            if circuit_gates_used.is_disjoint(&rot_gates.into_iter().collect()) {
+            if circuit_gates_used.is_disjoint(&rot_gate.into_iter().collect()) {
                 None
             } else {
-                Some(selector_polynomial(GateType::Rot64, &gates, &domain))
+                Some(selector_polynomial(rot_gate[0], &gates, &domain))
             }
         };
 

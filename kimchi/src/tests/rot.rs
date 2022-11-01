@@ -1,7 +1,12 @@
+use std::array;
+
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::CircuitGate,
-    polynomials::{keccak::ROT_TAB, rot},
+    polynomials::{
+        keccak::{self, ROT_TAB},
+        rot,
+    },
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -11,8 +16,8 @@ use rand::Rng;
 use super::framework::TestFramework;
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
-fn create_test_constraint_system(rot: u32) -> ConstraintSystem<Fp> {
-    let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_rot(0, rot) };
+fn create_test_constraint_system() -> ConstraintSystem<Fp> {
+    let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_keccak_rot(0) };
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -57,31 +62,34 @@ fn test_prove_and_verify() {
 #[test]
 // Test that all of the offsets in the rotation table work fine
 fn test_rot_table() {
+    let cs = create_test_constraint_system();
+    let state = array::from_fn(|_| {
+        array::from_fn(|_| rand::thread_rng().gen_range(0..2u128.pow(64)) as u64)
+    });
+    let witness = keccak::create_witness_keccak_rot(state);
+    for row in 0..=48 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+    let mut rot = 0;
     for x in 0..5 {
         for y in 0..5 {
-            let rot = ROT_TAB[x][y];
-            if rot == 0 {
-                // skip the zero rotation
+            let bits = ROT_TAB[x][y];
+            if bits == 0 {
                 continue;
             }
-            let cs = create_test_constraint_system(rot);
-            let word = 0x0123456789ABCDEF;
-            let witness = rot::create_witness_rot(word, rot);
-            for row in 0..=2 {
-                assert_eq!(
-                    cs.gates[row].verify_witness::<Vesta>(
-                        row,
-                        &witness,
-                        &cs,
-                        &witness[0][0..cs.public].to_vec()
-                    ),
-                    Ok(())
-                );
-            }
             assert_eq!(
-                PallasField::from(word.rotate_left(ROT_TAB[x][y])),
-                witness[1][1],
+                PallasField::from(state[x][y].rotate_left(bits)),
+                witness[1][1 + 2 * rot],
             );
+            rot += 1;
         }
     }
 }

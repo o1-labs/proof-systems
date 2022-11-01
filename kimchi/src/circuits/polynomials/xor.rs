@@ -6,7 +6,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, l0_1, Environment, LookupEnvironment, E},
+        expr::{self, constraints::ExprOps, l0_1, Environment, LookupEnvironment},
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
             self,
@@ -66,7 +66,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> CircuitGateResult<()> {
-        if !circuit_gates().contains(&self.typ) {
+        if ![GateType::Xor16].contains(&self.typ) {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 
@@ -150,13 +150,10 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Setup powers of alpha
         let mut alphas = Alphas::<F>::default();
-        alphas.register(
-            ArgumentType::Gate(self.typ),
-            circuit_gate_constraint_count::<F>(self.typ),
-        );
+        alphas.register(ArgumentType::Gate(self.typ), Xor16::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
-        let constraints = circuit_gate_constraints(self.typ, &alphas);
+        let constraints = Xor16::combined_constraints(&alphas);
 
         // Verify it against the environment
         if constraints
@@ -309,32 +306,6 @@ fn set_up_lookup_env_data<F: PrimeField>(
         sorted8,
         joint_lookup_table_d8,
     })
-}
-
-/// Get vector of xor circuit gate types
-pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::Xor16]
-}
-
-/// Number of constraints for a given xor gate type
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::Xor16 => Xor16::<F>::CONSTRAINTS,
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get combined constraints for a given xor circuit gate type
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
-    match typ {
-        GateType::Xor16 => Xor16::combined_constraints(alphas),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get the combined constraints for all xor circuit gate types
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    Xor16::combined_constraints(alphas)
 }
 
 /// Get the xor lookup table
