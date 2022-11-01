@@ -7,6 +7,7 @@ pub mod checked_runner;
 pub mod constants;
 pub mod constraint_system;
 pub mod cvar;
+pub mod ec;
 pub mod errors;
 pub mod traits;
 
