@@ -471,11 +471,31 @@ pub mod caml {
                 pe.coefficients[7].iter().cloned().map(Into::into).collect(),
                 pe.coefficients[8].iter().cloned().map(Into::into).collect(),
                 pe.coefficients[9].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[10].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[11].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[12].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[13].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[14].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[10]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[11]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[12]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[13]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[14]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
             );
             let s = (
                 pe.s[0].iter().cloned().map(Into::into).collect(),
