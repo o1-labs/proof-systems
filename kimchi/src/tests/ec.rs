@@ -4,9 +4,9 @@ use crate::circuits::{
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
-use array_init::array_init;
-use mina_curves::pasta::{fp::Fp as F, pallas::Pallas as Other};
+use mina_curves::pasta::{Fp as F, Pallas as Other};
 use rand::{rngs::StdRng, SeedableRng};
+use std::array;
 
 use super::framework::TestFramework;
 
@@ -20,14 +20,14 @@ fn ec_test() {
     let mut gates = vec![];
 
     for row in 0..(num_doubles + num_additions + num_infs) {
-        gates.push(CircuitGate {
-            typ: GateType::CompleteAdd,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(
+            GateType::CompleteAdd,
+            Wire::new(row),
+            vec![],
+        ));
     }
 
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
 

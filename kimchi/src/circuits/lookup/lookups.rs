@@ -279,7 +279,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
     Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 pub enum LookupPattern {
-    ChaCha,
+    Xor,
     ChaChaFinal,
     LookupGate,
     RangeCheckGate,
@@ -289,31 +289,32 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::ChaCha => 4,
-            LookupPattern::ChaChaFinal => 4,
+            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate => 4,
             LookupPattern::LookupGate => 3,
-            LookupPattern::RangeCheckGate => 4,
         }
     }
 
     /// Returns the maximum number of values that are used in any vector lookup in this pattern.
     pub fn max_joint_size(&self) -> u32 {
         match self {
-            LookupPattern::ChaCha => 3,
-            LookupPattern::ChaChaFinal => 3,
+            LookupPattern::Xor | LookupPattern::ChaChaFinal => 3,
             LookupPattern::LookupGate => 2,
             LookupPattern::RangeCheckGate => 1,
         }
     }
 
     /// Returns the layout of the lookups used by this pattern.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `multiplicative inverse` operation fails.
     pub fn lookups<F: Field>(&self) -> Vec<JointLookupSpec<F>> {
         let curr_row = |column| LocalPosition {
             row: CurrOrNext::Curr,
             column,
         };
         match self {
-            LookupPattern::ChaCha => {
+            LookupPattern::Xor => {
                 (0..4)
                     .map(|i| {
                         // each row represents an XOR operation
@@ -395,21 +396,22 @@ impl LookupPattern {
     /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
     pub fn table(&self) -> Option<GateLookupTable> {
         match self {
-            LookupPattern::ChaCha | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
+            LookupPattern::Xor | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
             LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
         }
     }
 
-    /// Returns the lookup pattern used by a [GateType] on a given row (current or next).
+    /// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
     pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
-        use CurrOrNext::*;
+        use CurrOrNext::{Curr, Next};
         use GateType::*;
         match (gate_type, curr_or_next) {
-            (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::ChaCha),
+            (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::Xor),
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
             (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
+            (Xor16, Curr) => Some(LookupPattern::Xor),
             _ => None,
         }
     }
@@ -417,14 +419,14 @@ impl LookupPattern {
 
 impl GateType {
     /// Which lookup-patterns should be applied on which rows.
-    /// Currently there is only the lookup pattern used in the ChaCha rows, and it
-    /// is applied to each ChaCha row and its successor.
+    /// Currently there is only the lookup pattern used in the `ChaCha` rows, and it
+    /// is applied to each `ChaCha` row and its successor.
     ///
     /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
     /// how these work.
     pub fn lookup_kinds() -> Vec<LookupPattern> {
         vec![
-            LookupPattern::ChaCha,
+            LookupPattern::Xor,
             LookupPattern::ChaChaFinal,
             LookupPattern::LookupGate,
             LookupPattern::RangeCheckGate,
@@ -437,7 +439,7 @@ fn lookup_pattern_constants_correct() {
     use strum::IntoEnumIterator;
 
     for pat in LookupPattern::iter() {
-        let lookups = pat.lookups::<mina_curves::pasta::fp::Fp>();
+        let lookups = pat.lookups::<mina_curves::pasta::Fp>();
         let max_joint_size = lookups
             .iter()
             .map(|lookup| lookup.entry.len())

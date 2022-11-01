@@ -1,5 +1,4 @@
 use ark_ff::{BigInteger, FftField, PrimeField};
-use array_init::array_init;
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
     polynomials::generic::{
@@ -7,7 +6,11 @@ use kimchi::circuits::{
     },
     wires::{Wire, COLUMNS},
 };
-use oracle::{constants::*, permutation::full_round};
+use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    permutation::full_round,
+};
+use std::array;
 use std::collections::HashMap;
 
 use crate::constants::Constants;
@@ -23,7 +26,10 @@ pub struct Var<F> {
 
 impl<F: Copy> Var<F> {
     /// Returns the value inside a variable [Var].
-    /// It panics if it is `None`.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if it is `None`.
     pub fn val(&self) -> F {
         self.value.unwrap()
     }
@@ -60,7 +66,7 @@ impl<F: FftField> GateSpec<F> {
 
 /// A set of gates within the circuit.
 /// It carries the index for the next available variable,
-/// and the vector of [GateSpec] created so far.
+/// and the vector of [`GateSpec`] created so far.
 /// It also keeps track of the queue of generic gates and cached constants.
 #[derive(Default)]
 pub struct System<F> {
@@ -91,7 +97,7 @@ where
         let mut gen = Self::default();
 
         for input in public_inputs {
-            let row = array_init(|i| if i == 0 { *input } else { F::zero() });
+            let row = array::from_fn(|i| if i == 0 { *input } else { F::zero() });
             gen.rows.push(row);
         }
 
@@ -145,7 +151,7 @@ pub trait Cs<F: PrimeField> {
         })
     }
 
-    /// This function creates a [ShiftedScalar] variable from a field element that is
+    /// This function creates a [`ShiftedScalar`] variable from a field element that is
     /// returned by function `g()`, and a length that should be a multiple of 5.
     fn scalar<G, Fr: PrimeField>(&mut self, length: usize, g: G) -> ShiftedScalar<F>
     where
@@ -264,7 +270,7 @@ pub trait Cs<F: PrimeField> {
         let same_x = self.var(|| {
             let same_x = x1.val() == x2.val();
             same_x_bool = same_x;
-            F::from(same_x as u64)
+            F::from(u64::from(same_x))
         });
 
         let inf = zero;
@@ -341,7 +347,7 @@ pub trait Cs<F: PrimeField> {
         let same_x = self.var(|| {
             let same_x = x1.val() == x2.val();
             same_x_bool = same_x;
-            F::from(same_x as u64)
+            F::from(u64::from(same_x))
         });
 
         let inf = zero;
@@ -407,7 +413,7 @@ pub trait Cs<F: PrimeField> {
     /// For (1):
     /// - Creates a row with left wire `t`, right wire `f`, and output wire `delta`
     /// - Assigns `1` to the left coefficient, `-1` to the right coefficient, and `-1` to the output coefficient.
-    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0``
+    /// - That way, it creates a first gate constraining: `1 * t - 1 * f - delta = 0`
     /// For (2):
     /// - Creates a row with left wire `b`, right wire `delta`, and output wire `res1`.
     /// - Assigns `-1` to the output coefficient, and `1` to the multiplication coefficient.
@@ -455,7 +461,7 @@ pub trait Cs<F: PrimeField> {
         res
     }
 
-    /// Performs a scalar multiplication between a [ShiftedScalar] and a point `(xt, yt)`.
+    /// Performs a scalar multiplication between a [`ShiftedScalar`] and a point `(xt, yt)`.
     /// This function creates 51 rows pairs of rows.
     fn scalar_mul(
         &mut self,
@@ -465,12 +471,12 @@ pub trait Cs<F: PrimeField> {
     ) -> (Var<F>, Var<F>) {
         let num_bits = 255;
         let num_row_pairs = num_bits / 5;
-        let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
+        let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
         let acc0 = self.add_group(zero, (xt, yt), (xt, yt));
 
         let _ = self.var(|| {
-            witness = array_init(|_| vec![F::zero(); 2 * num_row_pairs]);
+            witness = array::from_fn(|_| vec![F::zero(); 2 * num_row_pairs]);
             // Creates a vector of bits from the value inside the scalar, with the most significant bit upfront
             let bits_msb: Vec<bool> = scalar
                 .0
@@ -496,8 +502,8 @@ pub trait Cs<F: PrimeField> {
         // For each of the pairs, it generates a VarBaseMul and a Zero gate.
         let mut res = None;
         for i in 0..num_row_pairs {
-            let mut row1: [_; COLUMNS] = array_init(|j| self.var(|| witness[j][2 * i]));
-            let row2: [_; COLUMNS] = array_init(|j| self.var(|| witness[j][2 * i + 1]));
+            let mut row1: [_; COLUMNS] = array::from_fn(|j| self.var(|| witness[j][2 * i]));
+            let row2: [_; COLUMNS] = array::from_fn(|j| self.var(|| witness[j][2 * i + 1]));
 
             row1[0] = xt;
             row1[1] = yt;
@@ -521,7 +527,7 @@ pub trait Cs<F: PrimeField> {
                 row: row2.into_iter().map(Some).collect(),
                 typ: GateType::Zero,
                 coeffs: vec![],
-            })
+            });
         }
 
         res.unwrap()
@@ -563,9 +569,9 @@ pub trait Cs<F: PrimeField> {
                             .take(length_in_bits)
                             .copied()
                             .rev()
-                            .collect()
+                            .collect();
                     }
-                    F::from(bits_[i] as u64)
+                    F::from(u64::from(bits_[i]))
                 })
             })
             .collect();
@@ -709,7 +715,7 @@ pub trait Cs<F: PrimeField> {
 
         // For each of the chunks, get the corresponding bits
         for (i, row_bits) in bits_msb[..].chunks(bits_per_row).enumerate() {
-            let mut row: [Var<F>; COLUMNS] = array_init(|_| self.var(|| F::zero()));
+            let mut row: [Var<F>; COLUMNS] = array::from_fn(|_| self.var(|| F::zero()));
             row[0] = n;
             row[2] = a;
             row[3] = b;
@@ -759,7 +765,7 @@ pub trait Cs<F: PrimeField> {
     /// Creates a Poseidon gadget for given constants and a given input.
     /// It generates a number of `Poseidon` gates followed by a final `Zero` gate.
     fn poseidon(&mut self, constants: &Constants<F>, input: Vec<Var<F>>) -> Vec<Var<F>> {
-        use kimchi::circuits::polynomials::poseidon::*;
+        use kimchi::circuits::polynomials::poseidon::{POS_ROWS_PER_HASH, ROUNDS_PER_ROW};
 
         let params = constants.poseidon;
         let rc = &params.round_constants;
@@ -862,8 +868,8 @@ impl<F: PrimeField> Cs<F> for WitnessGenerator<F> {
     fn gate(&mut self, g: GateSpec<F>) {
         assert!(g.row.len() <= COLUMNS);
 
-        let row: [F; COLUMNS] = array_init(|col| g.get_var_val_or(col, F::zero()));
-        self.rows.push(row)
+        let row: [F; COLUMNS] = array::from_fn(|col| g.get_var_val_or(col, F::zero()));
+        self.rows.push(row);
     }
 
     fn generic_queue(&mut self, gate: GateSpec<F>) -> Option<GateSpec<F>> {
@@ -898,7 +904,7 @@ impl<F: PrimeField> WitnessGenerator<F> {
         }
 
         // transpose
-        array_init(|col| self.rows.iter().map(|row| row[col]).collect())
+        array::from_fn(|col| self.rows.iter().map(|row| row[col]).collect())
     }
 }
 
@@ -948,6 +954,10 @@ impl<F: PrimeField> Cs<F> for System<F> {
 
 impl<F: PrimeField> System<F> {
     /// Compiles our intermediate representation into a circuit.
+    ///
+    /// # Panics
+    ///
+    /// Will not panic ever since it is permutation inside gates
     pub fn gates(&mut self) -> Vec<CircuitGate<F>> {
         let mut first_cell: HashMap<usize, Wire> = HashMap::new();
         let mut most_recent_cell: HashMap<usize, Wire> = HashMap::new();
@@ -961,7 +971,7 @@ impl<F: PrimeField> System<F> {
         // convert GateSpec into CircuitGate
         for (row, gate) in self.gates.iter().enumerate() {
             // while tracking the wiring
-            let wires = array_init(|col| {
+            let wires = array::from_fn(|col| {
                 let curr = Wire { row, col };
 
                 if let Some(index) = gate.get_var_idx(col) {
@@ -982,16 +992,12 @@ impl<F: PrimeField> System<F> {
                 }
             });
 
-            let g = CircuitGate {
-                typ: gate.typ,
-                wires,
-                coeffs: gate.coeffs.clone(),
-            };
+            let g = CircuitGate::new(gate.typ, wires, gate.coeffs.clone());
             gates.push(g);
         }
 
         // finish the permutation cycle
-        for (var, first) in first_cell.iter() {
+        for (var, first) in &first_cell {
             let last = *most_recent_cell.get(var).unwrap();
             gates[first.row].wires[first.col] = last;
         }

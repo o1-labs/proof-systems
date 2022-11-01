@@ -18,7 +18,7 @@ impl<F: Field> ChunkedPolynomial<F> {
     /// This function evaluates polynomial in chunks.
     pub fn evaluate_chunks(&self, elm: F) -> Vec<F> {
         let mut res: Vec<F> = vec![];
-        for poly in self.polys.iter() {
+        for poly in &self.polys {
             let eval = poly.evaluate(&elm);
             res.push(eval);
         }
@@ -33,7 +33,7 @@ impl<F: Field> ChunkedPolynomial<F> {
         let mut scale = F::one();
         let mut coeffs = vec![F::zero(); self.size];
 
-        for poly in self.polys.iter() {
+        for poly in &self.polys {
             for (coeff, poly_coeff) in coeffs.iter_mut().zip(&poly.coeffs) {
                 *coeff += scale * poly_coeff;
             }
@@ -56,7 +56,7 @@ mod tests {
     use super::*;
     use ark_ff::One;
     use ark_poly::{univariate::DensePolynomial, UVPolynomial};
-    use mina_curves::pasta::fp::Fp;
+    use mina_curves::pasta::Fp;
 
     #[test]
 

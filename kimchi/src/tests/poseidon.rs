@@ -9,10 +9,10 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::Zero;
-use array_init::array_init;
-use mina_curves::pasta::{fp::Fp, vesta::Vesta};
+use mina_curves::pasta::{Fp, Vesta};
 use o1_utils::math;
 use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
+use std::array;
 
 // aliases
 
@@ -58,7 +58,7 @@ fn test_poseidon() {
 
     // witness for Poseidon permutation custom constraints
     let mut witness: [Vec<Fp>; COLUMNS] =
-        array_init(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
+        array::from_fn(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
 
     // creates a random input
     let input = [Fp::from(1u32), Fp::from(2u32), Fp::from(3u32)];

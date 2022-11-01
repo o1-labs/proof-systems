@@ -9,10 +9,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
-use mina_curves::pasta::{
-    vesta::{Vesta, VestaParameters},
-    Fp,
-};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use o1_utils::ExtendedDensePolynomial as _;
 use oracle::constants::PlonkSpongeConstantsKimchi as SC;
 use oracle::sponge::DefaultFqSponge;
@@ -114,8 +111,8 @@ where
         .map(|proof| BatchEvaluationProof {
             sponge: proof.0.clone(),
             evaluation_points: proof.1.clone(),
-            xi: proof.2,
-            r: proof.3,
+            polyscale: proof.2,
+            evalscale: proof.3,
             evaluations: proof
                 .4
                 .iter()

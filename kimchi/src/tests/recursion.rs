@@ -5,18 +5,18 @@ use crate::proof::RecursionChallenge;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
-use array_init::array_init;
 use commitment_dlog::commitment::b_poly_coefficients;
-use mina_curves::pasta::fp::Fp;
+use mina_curves::pasta::Fp;
 use o1_utils::math;
 use rand::prelude::*;
+use std::array;
 
 #[test]
 fn test_recursion() {
     let gates = create_circuit(0, 0);
 
     // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![Fp::zero(); gates.len()]);
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &[]);
 
     // setup

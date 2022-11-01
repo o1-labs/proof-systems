@@ -331,6 +331,8 @@ mod tests {
                 .lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
+            index.cs.foreign_field_add_selector_poly.is_some(),
+            index.cs.xor_selector_poly.is_some(),
         );
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();

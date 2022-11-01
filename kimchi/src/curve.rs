@@ -1,6 +1,6 @@
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
 use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
-use mina_curves::pasta::{
+use mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
@@ -17,7 +17,7 @@ pub trait KimchiCurve: CommitmentCurve {
     >;
 
     /// Provides the sponge params to be used with this curve
-    /// If the params for the base field are needed, they can be obtained from [KimchiCurve::OtherCurve]
+    /// If the params for the base field are needed, they can be obtained from [`KimchiCurve::OtherCurve`]
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
 
     /// Provides the coefficients for the curve endomorphism
@@ -56,7 +56,11 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
         &PALLAS_ENDOS
     }
 }
-//legacy curves
+
+//
+// legacy curves
+//
+
 impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
     type OtherCurve = GroupAffine<LegacyPallasParameters>;
 

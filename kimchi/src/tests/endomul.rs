@@ -6,11 +6,11 @@ use crate::circuits::{
 use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-use array_init::array_init;
 use commitment_dlog::srs::endos;
-use mina_curves::pasta::{fp::Fp as F, pallas::Pallas as Other};
+use mina_curves::pasta::{Fp as F, Pallas as Other};
 use oracle::sponge::ScalarChallenge;
 use rand::{rngs::StdRng, SeedableRng};
+use std::array;
 
 #[test]
 fn endomul_test() {
@@ -29,25 +29,17 @@ fn endomul_test() {
     for s in 0..num_scalars {
         for i in 0..chunks {
             let row = rows_per_scalar * s + i;
-            gates.push(CircuitGate {
-                typ: GateType::EndoMul,
-                wires: Wire::new(row),
-                coeffs: vec![],
-            });
+            gates.push(CircuitGate::new(GateType::EndoMul, Wire::new(row), vec![]));
         }
 
         let row = rows_per_scalar * s + chunks;
-        gates.push(CircuitGate {
-            typ: GateType::Zero,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(GateType::Zero, Wire::new(row), vec![]));
     }
 
     let (endo_q, endo_r) = endos::<Other>();
 
     let mut witness: [Vec<F>; COLUMNS] =
-        array_init(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
+        array::from_fn(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
 

@@ -13,16 +13,20 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
+use num_bigint::BigUint;
+use o1_utils::{FieldHelpers, ForeignElement};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::iter::FromIterator;
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
+use std::{fmt, iter::FromIterator};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
+
+use self::constraints::ExprOps;
 
 #[derive(Debug, Error)]
 pub enum ExprError {
@@ -60,6 +64,8 @@ pub struct Constants<F: 'static> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
+    /// The modulus for foreign field operations
+    pub foreign_field_modulus: Option<BigUint>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -195,6 +201,23 @@ impl Column {
             Column::Coefficient(i) => format!("c_{{{}}}", i),
         }
     }
+
+    fn text(&self) -> String {
+        match self {
+            Column::Witness(i) => format!("w[{i}]"),
+            Column::Z => "Z".to_string(),
+            Column::LookupSorted(i) => format!("s[{}]", i),
+            Column::LookupAggreg => "a".to_string(),
+            Column::LookupTable => "t".to_string(),
+            Column::LookupKindIndex(i) => format!("k[{:?}]", i),
+            Column::LookupRuntimeSelector => "rts".to_string(),
+            Column::LookupRuntimeTable => "rt".to_string(),
+            Column::Index(gate) => {
+                format!("{:?}", gate)
+            }
+            Column::Coefficient(i) => format!("c[{}]", i),
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -219,6 +242,14 @@ impl Variable {
             Next => format!("\\tilde{{{col}}}"),
         }
     }
+
+    fn text(&self) -> String {
+        let col = self.col.text();
+        match self.row {
+            Curr => format!("Curr({col})"),
+            Next => format!("Next({col})"),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -237,6 +268,7 @@ pub enum ConstantExpr<F> {
     // separate constant expression types.
     EndoCoefficient,
     Mds { row: usize, col: usize },
+    ForeignFieldModulus(usize),
     Literal(F),
     Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -258,6 +290,7 @@ impl<F: Copy> ConstantExpr<F> {
                 row: *row,
                 col: *col,
             }),
+            ConstantExpr::ForeignFieldModulus(i) => res.push(PolishToken::ForeignFieldModulus(*i)),
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -305,6 +338,13 @@ impl<F: Field> ConstantExpr<F> {
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
+            ForeignFieldModulus(i) => {
+                if let Some(modulus) = c.foreign_field_modulus.clone() {
+                    ForeignElement::<F, 3>::from_biguint(modulus)[*i]
+                } else {
+                    F::zero()
+                }
+            }
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
             Mul(x, y) => x.value(c) * y.value(c),
@@ -355,6 +395,10 @@ impl CacheId {
     fn latex_name(&self) -> String {
         format!("x_{{{}}}", self.0)
     }
+
+    fn text_name(&self) -> String {
+        format!("x[{}]", self.0)
+    }
 }
 
 impl Cache {
@@ -364,14 +408,13 @@ impl Cache {
         CacheId(id)
     }
 
-    /// Cache the value of the given expression
-    pub fn cache<C>(&mut self, e: Expr<C>) -> Expr<C> {
-        Expr::Cache(self.next_id(), Box::new(e))
+    pub fn cache<F: Field, T: ExprOps<F>>(&mut self, e: T) -> T {
+        e.cache(self)
     }
 }
 
 /// A binary operation
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Op2 {
     Add,
     Mul,
@@ -417,7 +460,7 @@ pub enum Expr<C> {
 /// For efficiency of evaluation, we compile expressions to
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PolishToken<F> {
     Alpha,
     Beta,
@@ -425,6 +468,7 @@ pub enum PolishToken<F> {
     JointCombiner,
     EndoCoefficient,
     Mds { row: usize, col: usize },
+    ForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -485,6 +529,11 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
+                ForeignFieldModulus(i) => {
+                    if let Some(modulus) = c.foreign_field_modulus.clone() {
+                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
+                    }
+                }
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
@@ -562,6 +611,15 @@ impl<C> Expr<C> {
             Pow(e, d) => d * e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
         }
+    }
+}
+
+impl<F> fmt::Display for Expr<ConstantExpr<F>>
+where
+    F: PrimeField,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.text_str())
     }
 }
 
@@ -1826,7 +1884,7 @@ impl<F: One + Neg<Output = F>> Neg for ConstantExpr<F> {
 impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn add(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Add, Literal};
         if self.is_zero() {
             return other;
         }
@@ -1843,7 +1901,7 @@ impl<F: Field> Add<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn sub(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Sub};
         if other.is_zero() {
             return self;
         }
@@ -1857,7 +1915,7 @@ impl<F: Field> Sub<ConstantExpr<F>> for ConstantExpr<F> {
 impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     type Output = ConstantExpr<F>;
     fn mul(self, other: Self) -> Self {
-        use ConstantExpr::*;
+        use ConstantExpr::{Literal, Mul};
         if self.is_one() {
             return other;
         }
@@ -1930,7 +1988,7 @@ impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
         if self.is_zero() {
             *self = other;
         } else if !other.is_zero() {
-            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other))
+            *self = Expr::BinOp(Op2::Add, Box::new(self.clone()), Box::new(other));
         }
     }
 }
@@ -2007,7 +2065,10 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
 // Display
 //
 
-impl<F: PrimeField> ConstantExpr<F> {
+impl<F> ConstantExpr<F>
+where
+    F: PrimeField,
+{
     fn ocaml(&self) -> String {
         use ConstantExpr::*;
         match self {
@@ -2017,6 +2078,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
+            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
@@ -2037,6 +2099,7 @@ impl<F: PrimeField> ConstantExpr<F> {
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
+            ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2045,6 +2108,27 @@ impl<F: PrimeField> ConstantExpr<F> {
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} \\cdot {})", x.ocaml(), y.ocaml()),
             Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
+        }
+    }
+
+    fn text(&self) -> String {
+        use ConstantExpr::*;
+        match self {
+            Alpha => "alpha".to_string(),
+            Beta => "beta".to_string(),
+            Gamma => "gamma".to_string(),
+            JointCombiner => "joint_combiner".to_string(),
+            EndoCoefficient => "endo_coefficient".to_string(),
+            Mds { row, col } => format!("mds({row}, {col})"),
+            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            Literal(x) => format!("0x{}", x.to_hex()),
+            Pow(x, n) => match x.as_ref() {
+                Alpha => format!("alpha^{}", n),
+                x => format!("{}^{n}", x.text()),
+            },
+            Add(x, y) => format!("({} + {})", x.text(), y.text()),
+            Mul(x, y) => format!("({} * {})", x.text(), y.text()),
+            Sub(x, y) => format!("({} - {})", x.text(), y.text()),
         }
     }
 }
@@ -2064,7 +2148,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = String::new();
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let rhs = v.ocaml_str();
             let cached = format!("let {} = {rhs} in ", k.var_name());
             res.push_str(&cached);
@@ -2107,7 +2191,7 @@ where
         env.sort_by(|(x, _), (y, _)| x.cmp(y));
 
         let mut res = vec![];
-        for (k, v) in env.into_iter() {
+        for (k, v) in env {
             let mut rhs = v.latex_str();
             let last = rhs.pop().expect("returned an empty expression");
             res.push(format!("{} = {last}", k.latex_name()));
@@ -2136,6 +2220,48 @@ where
             }
         }
     }
+
+    /// Recursively print the expression,
+    /// except for the cached expression that are stored in the `cache`.
+    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+        use Expr::*;
+        match self {
+            Double(x) => format!("double({})", x.text(cache)),
+            Constant(x) => x.text(),
+            Cell(v) => v.text(),
+            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
+            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
+            BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
+            BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
+            Pow(x, d) => format!("pow({}, {d})", x.text(cache)),
+            Square(x) => format!("square({})", x.text(cache)),
+            Cache(id, e) => {
+                cache.insert(*id, e.as_ref().clone());
+                id.var_name()
+            }
+        }
+    }
+
+    /// Converts the expression to a text string
+    pub fn text_str(&self) -> String {
+        let mut env = HashMap::new();
+        let e = self.text(&mut env);
+
+        let mut env: Vec<_> = env.into_iter().collect();
+        // HashMap deliberately uses an unstable order; here we sort to ensure that the output is
+        // consistent when printing.
+        env.sort_by(|(x, _), (y, _)| x.cmp(y));
+
+        let mut res = String::new();
+        for (k, v) in env {
+            let str = format!("{} = {}", k.text_name(), v.text_str());
+            res.push_str(&str);
+        }
+
+        res.push_str(&e);
+        res
+    }
 }
 
 //
@@ -2144,51 +2270,154 @@ where
 
 /// A number of useful constraints
 pub mod constraints {
+    use std::fmt;
+
+    use crate::circuits::argument::ArgumentData;
+
     use super::*;
 
     /// This trait defines a common arithmetic operations interface
     /// that can be used by constraints.  It allows us to reuse
     /// constraint code for witness computation.
-    pub trait ArithmeticOps:
+    pub trait ExprOps<F>:
         std::ops::Add<Output = Self>
         + std::ops::Sub<Output = Self>
         + std::ops::Neg<Output = Self>
         + std::ops::Mul<Output = Self>
+        + std::ops::AddAssign<Self>
+        + std::ops::MulAssign<Self>
         + Clone
         + Zero
         + One
         + From<u64>
+        + fmt::Display
     // Add more as necessary
     where
         Self: std::marker::Sized,
     {
+        /// Double the value
+        fn double(&self) -> Self;
+
         /// Compute the square of this value
+        fn square(&self) -> Self;
+
+        /// Raise the value to the given power
+        fn pow(&self, p: u64) -> Self;
+
+        /// Constrain to boolean
+        fn boolean(&self) -> Self;
+
+        /// Create a literal
+        fn literal(x: F) -> Self;
+
+        // Witness variable
+        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Coefficient
+        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Create a constant
+        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self;
+
+        /// Cache item
+        fn cache(&self, cache: &mut Cache) -> Self;
+    }
+
+    impl<F> ExprOps<F> for Expr<ConstantExpr<F>>
+    where
+        F: PrimeField,
+    {
+        fn double(&self) -> Self {
+            Expr::double(self.clone())
+        }
+
         fn square(&self) -> Self {
-            self.clone() * self.clone()
+            Expr::square(self.clone())
+        }
+
+        fn pow(&self, p: u64) -> Self {
+            Expr::pow(self.clone(), p)
+        }
+
+        fn boolean(&self) -> Self {
+            constraints::boolean(self)
+        }
+
+        fn literal(x: F) -> Self {
+            Expr::Constant(ConstantExpr::Literal(x))
+        }
+
+        fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
+            witness(col, row)
+        }
+
+        fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
+            coeff(col)
+        }
+
+        fn constant(expr: ConstantExpr<F>, _: Option<&ArgumentData<F>>) -> Self {
+            Expr::Constant(expr)
+        }
+
+        fn cache(&self, cache: &mut Cache) -> Self {
+            Expr::Cache(cache.next_id(), Box::new(self.clone()))
         }
     }
 
-    impl<T> ArithmeticOps for T
-    where
-        T: std::ops::Add<Output = Self>
-            + std::ops::Sub<Output = Self>
-            + std::ops::Neg<Output = Self>
-            + std::ops::Mul<Output = Self>
-            + Clone
-            + Zero
-            + One
-            + From<u64>,
-    {
-        // Nothing required yet
+    impl<F: Field> ExprOps<F> for F {
+        fn double(&self) -> Self {
+            *self * F::from(2u64)
+        }
+
+        fn square(&self) -> Self {
+            *self * *self
+        }
+
+        fn pow(&self, p: u64) -> Self {
+            self.pow([p])
+        }
+
+        fn boolean(&self) -> Self {
+            constraints::boolean(self)
+        }
+
+        fn literal(x: F) -> Self {
+            x
+        }
+
+        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => data.witness[(row, col)],
+                None => panic!("Missing witness"),
+            }
+        }
+
+        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => data.coeffs[col],
+                None => panic!("Missing coefficients"),
+            }
+        }
+
+        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
+            match env {
+                Some(data) => expr.value(&data.constants),
+                None => panic!("Missing constants"),
+            }
+        }
+
+        fn cache(&self, _: &mut Cache) -> Self {
+            *self
+        }
     }
 
     /// Creates a constraint to enforce that b is either 0 or 1.
-    pub fn boolean<F: ArithmeticOps>(b: &F) -> F {
+    pub fn boolean<F: Field, T: ExprOps<F>>(b: &T) -> T {
         b.square() - b.clone()
     }
 
     /// Crumb constraint for 2-bit value x
-    pub fn crumb<F: ArithmeticOps>(x: &F) -> F {
+    pub fn crumb<F: Field, T: ExprOps<F>>(x: &T) -> T {
         // Assert x \in [0,3] i.e. assert x*(x - 1)*(x - 2)*(x - 3) == 0
         x.clone()
             * (x.clone() - 1u64.into())
@@ -2244,7 +2473,7 @@ pub mod test {
     use crate::{
         circuits::{
             constraints::ConstraintSystem,
-            expr::constraints::ArithmeticOps,
+            expr::constraints::ExprOps,
             gate::CircuitGate,
             polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
             wires::Wire,
@@ -2252,10 +2481,9 @@ pub mod test {
         curve::KimchiCurve,
     };
     use ark_ff::UniformRand;
-    use array_init::array_init;
-    use mina_curves::pasta::fp::Fp;
-    use mina_curves::pasta::vesta::Vesta;
+    use mina_curves::pasta::{Fp, Vesta};
     use rand::{prelude::StdRng, SeedableRng};
+    use std::array;
 
     #[test]
     #[should_panic]
@@ -2296,7 +2524,7 @@ pub mod test {
         ));
         let constraint_system = ConstraintSystem::fp_for_testing(gates);
 
-        let witness_cols: [_; COLUMNS] = array_init(|_| DensePolynomial::zero());
+        let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
         let permutation = DensePolynomial::zero();
         let domain_evals = constraint_system.evaluate(&witness_cols, &permutation);
 
@@ -2308,6 +2536,7 @@ pub mod test {
                 joint_combiner: None,
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
+                foreign_field_modulus: None,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,
@@ -2342,34 +2571,34 @@ pub mod test {
 
     #[test]
     fn test_arithmetic_ops() {
-        fn test_1<F: ArithmeticOps>() -> F {
-            F::zero() + F::one()
+        fn test_1<F: Field, T: ExprOps<F>>() -> T {
+            T::zero() + T::one()
         }
-        assert_eq!(test_1::<E<Fp>>(), E::zero() + E::one());
-        assert_eq!(test_1::<Fp>(), Fp::one());
+        assert_eq!(test_1::<Fp, E<Fp>>(), E::zero() + E::one());
+        assert_eq!(test_1::<Fp, Fp>(), Fp::one());
 
-        fn test_2<F: ArithmeticOps>() -> F {
-            F::one() + F::one()
+        fn test_2<F: Field, T: ExprOps<F>>() -> T {
+            T::one() + T::one()
         }
-        assert_eq!(test_2::<E<Fp>>(), E::one() + E::one());
-        assert_eq!(test_2::<Fp>(), Fp::from(2u64));
+        assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
+        assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
 
-        fn test_3<F: ArithmeticOps>(x: F) -> F {
-            F::from(2u64) * x
+        fn test_3<F: Field, T: ExprOps<F>>(x: T) -> T {
+            T::from(2u64) * x
         }
         assert_eq!(
-            test_3::<E<Fp>>(E::from(3u64)),
+            test_3::<Fp, E<Fp>>(E::from(3u64)),
             E::from(2u64) * E::from(3u64)
         );
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
-        fn test_4<F: ArithmeticOps>(x: F) -> F {
-            x.clone() * (x.square() + F::from(7u64))
+        fn test_4<F: Field, T: ExprOps<F>>(x: T) -> T {
+            x.clone() * (x.square() + T::from(7u64))
         }
         assert_eq!(
-            test_4::<E<Fp>>(E::from(5u64)),
-            E::from(5u64) * (E::from(5u64) * E::from(5u64) + E::from(7u64))
+            test_4::<Fp, E<Fp>>(E::from(5u64)),
+            E::from(5u64) * (Expr::square(E::from(5u64)) + E::from(7u64))
         );
-        assert_eq!(test_4::<Fp>(Fp::from(5u64)), Fp::from(160u64));
+        assert_eq!(test_4::<Fp, Fp>(Fp::from(5u64)), Fp::from(160u64));
     }
 }

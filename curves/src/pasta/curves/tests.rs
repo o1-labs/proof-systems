@@ -1,12 +1,13 @@
-use crate::pasta::*;
 use ark_algebra_test_templates::{curves::*, groups::*};
 use ark_ec::AffineCurve;
 use ark_std::test_rng;
 use rand::Rng;
 
+use super::pallas;
+
 #[test]
 fn test_pallas_projective_curve() {
-    curve_tests::<pallas::Projective>();
+    curve_tests::<pallas::ProjectivePallas>();
 
     sw_tests::<pallas::PallasParameters>();
 }
@@ -14,8 +15,8 @@ fn test_pallas_projective_curve() {
 #[test]
 fn test_pallas_projective_group() {
     let mut rng = test_rng();
-    let a: pallas::Projective = rng.gen();
-    let b: pallas::Projective = rng.gen();
+    let a: pallas::ProjectivePallas = rng.gen();
+    let b: pallas::ProjectivePallas = rng.gen();
     group_test(a, b);
 }
 

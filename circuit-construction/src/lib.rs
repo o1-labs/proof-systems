@@ -13,7 +13,7 @@ mod tests;
 /// This contains the Kimchi dependencies being used
 pub mod prologue {
     pub use super::constants::{fp_constants, fq_constants, Constants};
-    pub use super::prover::{generate_prover_index, prove, CoordinateCurve, FpInner};
+    pub use super::prover::{generate_prover_index, prove, CoordinateCurve};
     pub use super::writer::{Cs, Var};
     pub use ark_ec::{AffineCurve, ProjectiveCurve};
     pub use ark_ff::{FftField, PrimeField, UniformRand};
@@ -22,9 +22,7 @@ pub mod prologue {
     pub use groupmap::GroupMap;
     pub use kimchi::verifier::verify;
     pub use mina_curves::pasta::{
-        fp::Fp,
-        pallas::Pallas as PallasAffine,
-        vesta::{Vesta as VestaAffine, VestaParameters},
+        Fp, Pallas as PallasAffine, Vesta as VestaAffine, VestaParameters,
     };
     pub use oracle::{
         constants::*,

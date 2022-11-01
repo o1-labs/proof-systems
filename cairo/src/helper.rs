@@ -51,11 +51,9 @@ impl<F: Field> CairoFieldHelpers<F> for F {
 mod tests {
     use super::*;
     use ark_ec::AffineCurve;
-    use mina_curves::pasta::pallas;
+    use mina_curves::pasta::Pallas as CurvePoint;
     use o1_utils::FieldHelpers;
 
-    /// Affine curve point type
-    pub use pallas::Pallas as CurvePoint;
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
 

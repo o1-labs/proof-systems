@@ -8,21 +8,29 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::permutation;
+use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
+use crate::circuits::polynomials::{permutation, xor};
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
-    wires::*,
+    wires::COLUMNS,
 };
-use ark_ff::{FftField, SquareRootField};
+use ark_ff::{FftField, PrimeField, SquareRootField};
 
-pub fn constraints_expr<F: FftField + SquareRootField>(
+/// Get the expresion of constraints.
+///
+/// # Panics
+///
+/// Will panic if `generic_gate` is not associate with `alpha^0`.
+pub fn constraints_expr<F: PrimeField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    foreign_field_add: bool,
+    xor: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -49,6 +57,14 @@ pub fn constraints_expr<F: FftField + SquareRootField>(
 
     if range_check {
         expr += range_check::gadget::combined_constraints(&powers_of_alpha);
+    }
+
+    if foreign_field_add {
+        expr += ForeignFieldAdd::combined_constraints(&powers_of_alpha);
+    }
+
+    if xor {
+        expr += xor::Xor16::combined_constraints(&powers_of_alpha);
     }
 
     // permutation
@@ -98,7 +114,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the lookup polynomials
     if let Some(lcs) = &lookup_constraint_system {
-        for i in 0..(lcs.lookup_info.max_per_row + 1) {
+        for i in 0..=lcs.lookup_info.max_per_row {
             h.insert(LookupSorted(i));
         }
         h.insert(LookupAggreg);
@@ -122,14 +138,27 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     h
 }
 
-pub fn expr_linearization<F: FftField + SquareRootField>(
+/// Linearize the `expr`.
+///
+/// # Panics
+///
+/// Will panic if the `linearization` process fails.
+pub fn expr_linearization<F: PrimeField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    foreign_field_addition: bool,
+    xor: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system);
+    let (expr, powers_of_alpha) = constraints_expr(
+        chacha,
+        range_check,
+        lookup_constraint_system,
+        foreign_field_addition,
+        xor,
+    );
 
     let linearization = expr
         .linearize(evaluated_cols)

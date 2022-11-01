@@ -7,11 +7,11 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
-use array_init::array_init;
 use commitment_dlog::srs::endos;
-use mina_curves::pasta::{fp::Fp as F, vesta::Vesta};
+use mina_curves::pasta::{Fp as F, Vesta};
 use oracle::sponge::ScalarChallenge;
 use rand::{rngs::StdRng, SeedableRng};
+use std::array;
 
 #[test]
 fn endomul_scalar_test() {
@@ -28,17 +28,17 @@ fn endomul_scalar_test() {
     for s in 0..num_scalars {
         for i in 0..rows_per_scalar {
             let row = rows_per_scalar * s + i;
-            gates.push(CircuitGate {
-                typ: GateType::EndoMulScalar,
-                wires: Wire::new(row),
-                coeffs: vec![],
-            });
+            gates.push(CircuitGate::new(
+                GateType::EndoMulScalar,
+                Wire::new(row),
+                vec![],
+            ));
         }
     }
 
     let (_, endo_scalar_coeff) = endos::<Vesta>();
 
-    let mut witness: [Vec<F>; COLUMNS] = array_init(|_| vec![]);
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
 

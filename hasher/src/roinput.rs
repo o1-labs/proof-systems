@@ -54,7 +54,7 @@ use super::Hashable;
 /// Additionally, during signing all members of the random oracle input get serialized
 /// together in two different ways: both as *bytes* and as a vector of *field elements*.
 /// The random oracle input automates and encapsulates this complexity.
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Eq)]
 pub struct ROInput {
     fields: Vec<Fp>,
     bits: BitVec<u8>,

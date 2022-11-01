@@ -1,3 +1,5 @@
+use std::array;
+
 use crate::{
     circuits::{
         gate::CircuitGate,
@@ -9,11 +11,9 @@ use crate::{
     verifier::batch_verify,
     verifier_index::VerifierIndex,
 };
-use array_init::array_init;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
-use mina_curves::pasta::vesta::VestaParameters;
-use mina_curves::pasta::{fp::Fp, vesta::Vesta};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -73,7 +73,7 @@ impl BenchmarkCtx {
     /// Produces a proof
     pub fn create_proof(&self) -> ProverProof<Vesta> {
         // create witness
-        let witness: [Vec<Fp>; COLUMNS] = array_init(|_| vec![1u32.into(); self.num_gates]);
+        let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
         // add the proof to the batch
         ProverProof::create::<BaseSponge, ScalarSponge>(&self.group_map, witness, &[], &self.index)

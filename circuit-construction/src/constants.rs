@@ -2,7 +2,7 @@ use ark_ec::AffineCurve;
 use ark_ff::Field;
 use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
 use kimchi::curve::KimchiCurve;
-use mina_curves::pasta::{pallas::Pallas as PallasAffine, vesta::Vesta as VestaAffine, Fp, Fq};
+use mina_curves::pasta::{Fp, Fq, Pallas as PallasAffine, Vesta as VestaAffine};
 use oracle::poseidon::ArithmeticSpongeParams;
 
 /// The type of possible constants in the circuit
@@ -14,6 +14,10 @@ pub struct Constants<F: Field + 'static> {
 }
 
 /// Constants for the base field of Pallas
+/// ///
+/// # Panics
+///
+/// Will panic if `PallasAffine::prime_subgroup_generator()` returns None.
 pub fn fp_constants() -> Constants<Fp> {
     let (endo_q, _endo_r) = endos::<PallasAffine>();
     let base = PallasAffine::prime_subgroup_generator()
@@ -27,6 +31,10 @@ pub fn fp_constants() -> Constants<Fp> {
 }
 
 /// Constants for the base field of Vesta
+///
+/// # Panics
+///
+/// Will panic if `VestaAffine::prime_subgroup_generator()` returns None.
 pub fn fq_constants() -> Constants<Fq> {
     let (endo_q, _endo_r) = endos::<VestaAffine>();
     let base = VestaAffine::prime_subgroup_generator()

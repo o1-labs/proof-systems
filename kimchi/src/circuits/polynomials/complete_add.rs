@@ -14,23 +14,23 @@
 //~ - `same_x` is a boolean that is true iff `x1 == x2`.
 //~
 use crate::circuits::{
-    argument::{Argument, ArgumentType},
-    expr::{prologue::*, Cache},
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
-use ark_ff::{FftField, Field, One, PrimeField};
+use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
 
 /// This enforces that
 ///
 /// r = (z == 0) ? 1 : 0
 ///
-/// Additionally, if r == 0, then z_inv = 1 / z.
+/// Additionally, if r == 0, then `z_inv` = 1 / z.
 ///
 /// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
-fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
-    vec![z_inv * z.clone() - (E::one() - r.clone()), r * z]
+fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
+    vec![z_inv * z.clone() - (T::one() - r.clone()), r * z]
 }
 
 //~ The following constraints are generated:
@@ -70,7 +70,7 @@ fn zero_check<F: Field>(z: E<F>, z_inv: E<F>, r: E<F>) -> Vec<E<F>> {
 //~ * $x_{1} \cdot w_{9} - w_{6}$
 //~
 
-/// Implementation of the CompleteAdd gate
+/// Implementation of the `CompleteAdd` gate
 /// It uses the constraints
 ///
 ///   (x2 - x1) * s = y2 - y1
@@ -90,31 +90,31 @@ pub struct CompleteAdd<F>(PhantomData<F>);
 
 impl<F> Argument<F> for CompleteAdd<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraints() -> Vec<E<F>> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
-        let x1 = witness_curr(0);
-        let y1 = witness_curr(1);
-        let x2 = witness_curr(2);
-        let y2 = witness_curr(3);
-        let x3 = witness_curr(4);
-        let y3 = witness_curr(5);
+        let x1 = env.witness_curr(0);
+        let y1 = env.witness_curr(1);
+        let x2 = env.witness_curr(2);
+        let y2 = env.witness_curr(3);
+        let x3 = env.witness_curr(4);
+        let y3 = env.witness_curr(5);
 
-        let inf = witness_curr(6);
+        let inf = env.witness_curr(6);
         // same_x is 1 if x1 == x2, 0 otherwise
-        let same_x = witness_curr(7);
+        let same_x = env.witness_curr(7);
 
-        let s = witness_curr(8);
+        let s = env.witness_curr(8);
 
         // This variable is used to constrain inf
-        let inf_z = witness_curr(9);
+        let inf_z = env.witness_curr(9);
 
         // This variable is used to constrain same_x
-        let x21_inv = witness_curr(10);
+        let x21_inv = env.witness_curr(10);
 
         let mut cache = Cache::default();
 
@@ -131,11 +131,10 @@ where
         //   (x2 - x1) * s = y2 - y1
         {
             let x1_squared = cache.cache(x1.clone() * x1.clone());
-            let dbl_case =
-                s.clone().double() * y1.clone() - x1_squared.clone().double() - x1_squared;
+            let dbl_case = s.double() * y1.clone() - x1_squared.double() - x1_squared;
             let add_case = x21 * s.clone() - y21.clone();
 
-            res.push(same_x.clone() * dbl_case + (E::one() - same_x.clone()) * add_case);
+            res.push(same_x.clone() * dbl_case + (T::one() - same_x.clone()) * add_case);
         }
 
         // Unconditionally constrain
@@ -220,6 +219,14 @@ where
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Check the correctness of witness values for a complete-add gate.
+    ///
+    /// # Errors
+    ///
+    /// Will give error if the gate value validations are not met.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `multiplicative inverse` operation between gate values fails.
     pub fn verify_complete_add(
         &self,
         row: usize,
@@ -262,7 +269,7 @@ impl<F: PrimeField> CircuitGate<F> {
             format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3)
         );
 
-        let not_same_y = F::from((y1 != y2) as u64);
+        let not_same_y = F::from(u64::from(y1 != y2));
         ensure_eq!(inf, same_x * not_same_y, "inf wrong");
 
         if y1 == y2 {

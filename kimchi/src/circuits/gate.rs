@@ -1,7 +1,15 @@
 //! This module implements Plonk constraint gate primitive.
 
 use crate::{
-    circuits::{constraints::ConstraintSystem, wires::*},
+    circuits::{
+        argument::{Argument, ArgumentEnv},
+        constraints::ConstraintSystem,
+        polynomials::{
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
+            range_check, turshi, varbasemul,
+        },
+        wires::*,
+    },
     curve::KimchiCurve,
 };
 use ark_ff::{bytes::ToBytes, PrimeField};
@@ -13,6 +21,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
+
+use super::{argument::ArgumentWitness, expr, polynomials::xor};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -51,6 +61,7 @@ impl CurrOrNext {
     Clone,
     Copy,
     Debug,
+    Default,
     PartialEq,
     FromPrimitive,
     ToPrimitive,
@@ -68,6 +79,7 @@ impl CurrOrNext {
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
+    #[default]
     /// Zero gate
     Zero = 0,
     /// Generic arithmetic gate
@@ -97,8 +109,10 @@ pub enum GateType {
     /// Range check (16-24)
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    // ForeignFieldAdd = 25,
-    // ForeignFieldMul = 26,
+    ForeignFieldAdd = 25,
+    //ForeignFieldMul = 26,
+    // Gates for Keccak follow:
+    Xor16 = 27,
 }
 
 /// Selector polynomial
@@ -111,7 +125,7 @@ pub struct SelectorPolynomial<F: PrimeField> {
 }
 
 /// Gate error
-#[derive(Error, Debug, Clone, Copy, PartialEq)]
+#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitGateError {
     /// Invalid constraint
     #[error("Invalid circuit gate type {0:?}")]
@@ -119,6 +133,15 @@ pub enum CircuitGateError {
     /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
+    /// Invalid constraint with number
+    #[error("Invalid {0:?} constraint: {1}")]
+    Constraint(GateType, usize),
+    /// Invalid wire column
+    #[error("Invalid {0:?} wire column: {1}")]
+    WireColumn(GateType, usize),
+    /// Disconnected wires
+    #[error("Invalid {typ:?} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
+    CopyConstraint { typ: GateType, src: Wire, dst: Wire },
     /// Invalid copy constraint
     #[error("Invalid {0:?} copy constraint")]
     InvalidCopyConstraint(GateType),
@@ -131,22 +154,36 @@ pub enum CircuitGateError {
     /// Missing lookup constraint system
     #[error("Failed to get lookup constraint system for {0:?}")]
     MissingLookupConstraintSystem(GateType),
+    /// Failed to get witness for row
+    #[error("Failed to get {0:?} witness for row {1}")]
+    FailedToGetWitnessForRow(GateType, usize),
 }
 
 /// Gate result
 pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 /// A single gate in a circuit.
 pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
     pub typ: GateType,
+
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
+
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub coeffs: Vec<F>,
+}
+
+impl<F> CircuitGate<F>
+where
+    F: PrimeField,
+{
+    pub fn new(typ: GateType, wires: GateWires, coeffs: Vec<F>) -> Self {
+        Self { typ, wires, coeffs }
+    }
 }
 
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
@@ -155,11 +192,11 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
         typ.write(&mut w)?;
         for i in 0..COLUMNS {
-            self.wires[i].write(&mut w)?
+            self.wires[i].write(&mut w)?;
         }
 
         (self.coeffs.len() as u8).write(&mut w)?;
-        for x in self.coeffs.iter() {
+        for x in &self.coeffs {
             x.write(&mut w)?;
         }
         Ok(())
@@ -169,15 +206,15 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
 impl<F: PrimeField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::Zero,
-            wires,
-            coeffs: Vec::new(),
-        }
+        CircuitGate::new(GateType::Zero, wires, vec![])
     }
 
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
+    ///
+    /// # Errors
+    ///
+    /// Will give error if verify process returns error.
     pub fn verify<G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
@@ -204,19 +241,153 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
+            Xor16 => self
+                .verify_xor::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
+            ForeignFieldAdd => self
+                .verify_foreign_field_add::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
         }
+    }
+
+    /// Verify the witness against the constraints
+    pub fn verify_witness<G: KimchiCurve<ScalarField = F>>(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+        cs: &ConstraintSystem<F>,
+        _public: &[F],
+    ) -> CircuitGateResult<()> {
+        // Grab the relevant part of the witness
+        let argument_witness = self.argument_witness(row, witness)?;
+        // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
+        // are one because this function is not running the prover.
+        let constants = expr::Constants::<F> {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: Some(F::one()),
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+            foreign_field_modulus: cs.foreign_field_modulus.clone(),
+        };
+        // Create the argument environment for the constraints over field elements
+        let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
+
+        // Check the wiring (i.e. copy constraints) for this gate
+        // Note: Gates can operated on row Curr or Curr and Next.
+        //       It could be nice for gates to know this and then
+        //       this code could be adapted to check Curr or Curr
+        //       and Next depending on the gate definition
+        for col in 0..PERMUTS {
+            let wire = self.wires[col];
+
+            if wire.col >= PERMUTS {
+                return Err(CircuitGateError::WireColumn(self.typ, col));
+            }
+
+            if witness[col][row] != witness[wire.col][wire.row] {
+                // Pinpoint failed copy constraint
+                return Err(CircuitGateError::CopyConstraint {
+                    typ: self.typ,
+                    src: Wire { row, col },
+                    dst: wire,
+                });
+            }
+        }
+
+        // Perform witness verification on each constraint for this gate
+        let results = match self.typ {
+            GateType::Zero => {
+                vec![]
+            }
+            GateType::Generic => {
+                // TODO: implement the verification for the generic gate
+                vec![]
+            }
+            GateType::Poseidon => poseidon::Poseidon::constraint_checks(&env),
+            GateType::CompleteAdd => complete_add::CompleteAdd::constraint_checks(&env),
+            GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env),
+            GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env),
+            GateType::EndoMulScalar => endomul_scalar::EndomulScalar::constraint_checks(&env),
+            GateType::ChaCha0 => chacha::ChaCha0::constraint_checks(&env),
+            GateType::ChaCha1 => chacha::ChaCha1::constraint_checks(&env),
+            GateType::ChaCha2 => chacha::ChaCha2::constraint_checks(&env),
+            GateType::ChaChaFinal => chacha::ChaChaFinal::constraint_checks(&env),
+            GateType::Lookup => {
+                // TODO: implement the verification for the lookup gate
+                vec![]
+            }
+            GateType::CairoClaim => turshi::Claim::constraint_checks(&env),
+            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env),
+            GateType::CairoFlags => turshi::Flags::constraint_checks(&env),
+            GateType::CairoTransition => turshi::Transition::constraint_checks(&env),
+            GateType::RangeCheck0 => {
+                range_check::circuitgates::RangeCheck0::constraint_checks(&env)
+            }
+            GateType::RangeCheck1 => {
+                range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+            }
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
+            GateType::ForeignFieldAdd => {
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
+            }
+        };
+
+        // Check for failed constraints
+        for (i, result) in results.iter().enumerate() {
+            if !result.is_zero() {
+                // Pinpoint failed constraint
+                return Err(CircuitGateError::Constraint(self.typ, i));
+            }
+        }
+
+        // TODO: implement generic plookup witness verification
+
+        Ok(())
+    }
+
+    // Return the part of the witness relevant to this gate at the given row offset
+    fn argument_witness(
+        &self,
+        row: usize,
+        witness: &[Vec<F>; COLUMNS],
+    ) -> CircuitGateResult<ArgumentWitness<F>> {
+        // Get the part of the witness relevant to this gate
+        let witness_curr: [F; COLUMNS] = (0..witness.len())
+            .map(|col| witness[col][row])
+            .collect::<Vec<F>>()
+            .try_into()
+            .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
+        let witness_next: [F; COLUMNS] = if witness[0].len() > row + 1 {
+            (0..witness.len())
+                .map(|col| witness[col][row + 1])
+                .collect::<Vec<F>>()
+                .try_into()
+                .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?
+        } else {
+            [F::zero(); COLUMNS]
+        };
+
+        Ok(ArgumentWitness::<F> {
+            curr: witness_curr,
+            next: witness_next,
+        })
     }
 }
 
 /// Trait to connect a pair of cells in a circuit
 pub trait Connect {
     /// Connect the pair of cells specified by the cell1 and cell2 parameters
-    /// cell_pre --> cell_new && cell_new --> wire_tmp
+    /// `cell_pre` --> `cell_new` && `cell_new` --> `wire_tmp`
     ///
     /// Note: This function assumes that the targeted cells are freshly instantiated
     ///       with self-connections.  If the two cells are transitively already part
     ///       of the same permutation then this would split it.
     fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+
+    /// Connects a generic gate cell with zeros to a given row for 64bit range check
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -225,9 +396,16 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
         self[cell_new.0].wires[cell_new.1] = wire_tmp;
     }
+
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize) {
+        // Connect the 64-bit cells from previous Generic gate with zeros in first 12 bits
+        self.connect_cell_pair((start_row, 1), (start_row, 2));
+        self.connect_cell_pair((start_row, 2), (zero_row, 0));
+        self.connect_cell_pair((zero_row, 0), (start_row, 1));
+    }
 }
 
-/// A circuit is specified as a series of [CircuitGate].
+/// A circuit is specified as a series of [`CircuitGate`].
 #[derive(Serialize)]
 pub struct Circuit<'a, F: PrimeField>(
     #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
@@ -362,11 +540,11 @@ mod tests {
 
     prop_compose! {
         fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
-            CircuitGate {
+            CircuitGate::new(
                 typ,
                 wires,
                 coeffs,
-            }
+            )
         }
     }
 
