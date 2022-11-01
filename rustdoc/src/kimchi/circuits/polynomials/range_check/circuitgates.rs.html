@@ -332,6 +332,8 @@
 <span id="332">332</span>
 <span id="333">333</span>
 <span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
 </pre><pre class="rust"><code><span class="comment">//~ The range check gadget is comprised of three circuit gates (`RangeCheck0`, `RangeCheck1`
 //~ and `Zero`) and can perform range checks on three values of up to 88 bits: $v_0, v_1$ and $v_2$.
 //~
@@ -358,7 +360,7 @@
 //~    v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 //~ ```
 //
-//~ ##### Witness structure:
+//~ **Witness structure:**
 //~
 //~ | Row | Contents        |
 //~ | --- | --------------- |
@@ -379,13 +381,13 @@
 //~ some lookups of v0 and v1 to the final row.
 //~ ```
 //~
-//~ ##### Constraints:
+//~ **Constraints:**
 //~
 //~ For efficiency, the limbs are constrained differently according to their type.
 //~ * 12-bit limbs are constrained with plookups
 //~ * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 //~
-//~ ##### Layout:
+//~ **Layout:**
 //~
 //~ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and constrained.
 //~
@@ -445,7 +447,8 @@
 };
 <span class="kw">use </span>ark_ff::PrimeField;
 
-<span class="comment">//~ ##### `RangeCheck0` - Range check constraints
+<span class="comment">//~
+//~ **`RangeCheck0` - Range check constraints**
 //~
 //~ * This circuit gate is used to partially constrain values $v_0$ and $v_1$
 //~ * Optionally, it can be used on its own as a single 64-bit range check by
@@ -539,7 +542,8 @@
     }
 }
 
-<span class="comment">//~ ##### `RangeCheck1` - Range check constraints
+<span class="comment">//~
+//~ **`RangeCheck1` - Range check constraints**
 //~
 //~ * This circuit gate is used to fully constrain $v_2$
 //~ * It operates on the `Curr` and `Next` rows
@@ -667,4 +671,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (77e57db38 2022-10-30)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
