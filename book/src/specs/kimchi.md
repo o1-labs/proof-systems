@@ -1054,7 +1054,7 @@ The values are decomposed into limbs as follows.
         <2> <--4--> <---------------18---------------->
    v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 ```
-##### Witness structure:
+**Witness structure:**
 
 | Row | Contents        |
 | --- | --------------- |
@@ -1075,13 +1075,13 @@ Because we are constrained to 4 lookups per row, we are forced to postpone
 some lookups of v0 and v1 to the final row.
 ```
 
-##### Constraints:
+**Constraints:**
 
 For efficiency, the limbs are constrained differently according to their type.
 * 12-bit limbs are constrained with plookups
 * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 
-##### Layout:
+**Layout:**
 
 This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and constrained.
 
@@ -1130,7 +1130,8 @@ Different rows are constrained using different `CircuitGate` types
  Each CircuitGate type corresponds to a unique polynomial and thus is assigned
  its own unique powers of alpha
 ```
-##### `RangeCheck0` - Range check constraints
+
+**`RangeCheck0` - Range check constraints**
 
 * This circuit gate is used to partially constrain values $v_0$ and $v_1$
 * Optionally, it can be used on its own as a single 64-bit range check by
@@ -1164,7 +1165,8 @@ Given value `v` the layout looks like this
 |     14 | crumb   `vc7` |
 
 where the notation `vpi` and `vci` defined in the "Layout" section above.
-##### `RangeCheck1` - Range check constraints
+
+**`RangeCheck1` - Range check constraints**
 
 * This circuit gate is used to fully constrain $v_2$
 * It operates on the `Curr` and `Next` rows
@@ -1272,25 +1274,25 @@ but where the result is larger than the modulus (yet smaller than 2^{264}). The 
  final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
  (meaning less than the modulus).
 
-You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
+You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 
-| col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-| --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
-|   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
-|   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
-|   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
-|   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
-|   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
-|   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
-|   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
-|  10 |                         |                        |                         |                   |
-|  11 |                         |                        |                         |                   |
-|  12 |                         |                        |                         |                   |
-|  13 |                         |                        |                         |                   |
-|  14 |                         |                        |                         |                   |
+| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
+|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
+|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
+|   6 | `sign`           (copy) |                         |  1              (check) |                   |
+|   7 | `field_overflow`        |                         |  1              (check) |                   |
+|   8 | `carry_lo`              |                         | `bound_carry_lo`        |                   |
+|   9 | `carry_mi`              |                         | `bound_carry_mi`        |                   |
+|  10 |                         |                         |                         |                   |
+|  11 |                         |                         |                         |                   |
+|  12 |                         |                         |                         |                   |
+|  13 |                         |                         |                         |                   |
+|  14 |                         |                         |                         |                   |
 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
 specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
@@ -1301,7 +1303,7 @@ the savings of one row and a few constraints of difference.
 
 #### Xor
 
-##### `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+`Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
 
 * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
 * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
@@ -1337,13 +1339,13 @@ One single gate with next values of `in1'`, `in2'` and `out'` being zero can be 
 that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
 to obtain a gadget for 64-bit words XOR:
 
- | Row | `CircuitGate` | Purpose                                    |
- | --- | ------------- | ------------------------------------------ |
- |   0 | `Xor16`       | Xor 2 least significant bytes of the words |
- |   1 | `Xor16`       | Xor next 2 bytes of the words              |
- |   2 | `Xor16`       | Xor next 2 bytes of the words              |
- |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
- |   4 | `Zero`        | Zero values, can be reused as generic gate |
+| Row | `CircuitGate` | Purpose                                    |
+| --- | ------------- | ------------------------------------------ |
+|   0 | `Xor16`       | Xor 2 least significant bytes of the words |
+|   1 | `Xor16`       | Xor next 2 bytes of the words              |
+|   2 | `Xor16`       | Xor next 2 bytes of the words              |
+|   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+|   4 | `Zero`        | Zero values, can be reused as generic gate |
 
 ```admonition::notice
  We could half the number of rows of the 64-bit XOR gadget by having lookups
