@@ -1,7 +1,6 @@
 //! The circuit-generation and witness-generation logic.
 
-use ark_ff::PrimeField;
-
+use super::{api::Witness, constants::Constants};
 use crate::{
     circuits::gate::CircuitGate,
     curve::KimchiCurve,
@@ -13,10 +12,10 @@ use crate::{
         traits::SnarkyType,
     },
 };
-
-use super::constants::Constants;
+use ark_ff::PrimeField;
 
 /// A wrapper around [BasicSnarkyConstraint] and [KimchiConstraintSystem] that allows for an optional label (for debugging).
+#[derive(Debug)]
 pub struct AnnotatedConstraint<F: PrimeField> {
     annotation: Option<&'static str>,
     constraint: Constraint<F>,
@@ -37,6 +36,7 @@ where
 
 /// An enum that wraps either a [BasicSnarkyConstraint] or a [KimchiConstraintSystem].
 // TODO: we should get rid of this once basic constraint system is gone
+#[derive(Debug)]
 pub enum Constraint<F: PrimeField> {
     /// Old R1CS-like constraints.
     BasicSnarkyConstraint(BasicSnarkyConstraint<CVar<F>>),
@@ -57,7 +57,6 @@ pub enum Mode {
 }
 
 /// The state used when compiling a circuit in snarky, or used in witness generation as well.
-#[derive(Default)]
 pub struct RunState<F>
 where
     F: PrimeField,
@@ -67,7 +66,11 @@ where
     system: Option<SnarkyConstraintSystem<F>>,
 
     /// The public input of the circuit used in witness generation.
+    // TODO: can we merge public_input and private_input?
     public_input: Vec<F>,
+
+    // TODO: we could also just store `usize` here
+    pub(crate) public_output: Vec<CVar<F>>,
 
     /// The private input of the circuit used in witness generation. Still not sure what that is, or why we care about this.
     private_input: Vec<F>,
@@ -79,8 +82,8 @@ where
     /// The number of public inputs.
     num_public_inputs: usize,
 
-    /// A counter used to track private inputs as they're being created.
-    next_private_input: usize,
+    /// A counter used to track variables (this includes public inputs) as they're being created.
+    next_var: usize,
 
     /// Indication that we're running the witness generation (as opposed to the circuit creation).
     mode: Mode,
@@ -118,12 +121,10 @@ where
 {
     fn read_var(&self, var: &CVar<F>) -> F {
         let get_one = |var_idx| {
-            if var_idx <= self.num_public_inputs {
-                // Run_state.Vector.get input (i - 1)
-                self.public_input[var_idx - 1] // TODO: why -1?
+            if var_idx < self.num_public_inputs {
+                self.public_input[var_idx]
             } else {
-                //Run_state.Vector.get aux (i - num_inputs - 1)
-                self.private_input[var_idx - self.num_public_inputs - 1] // TODO: why -1?
+                self.private_input[var_idx - self.num_public_inputs]
             }
         };
 
@@ -141,37 +142,86 @@ where
 {
     // TODO: builder pattern?
     /// Creates a new [Self].
-    pub fn new<Curve: KimchiCurve<ScalarField = F>>(num_public_inputs: usize) -> Self {
-        let next_private_input = 1 + num_public_inputs;
+    pub fn new<Curve: KimchiCurve<ScalarField = F>>(
+        public_input_size: usize,
+        public_output_size: usize,
+    ) -> Self {
+        // init
+        let num_public_inputs = public_input_size + public_output_size;
 
+        // create the CS
         let constants = Constants::new::<Curve>();
         let mut system = SnarkyConstraintSystem::create(constants);
         system.set_primary_input_size(num_public_inputs);
 
-        Self {
+        // create the runner
+        let mut sys = Self {
             system: Some(system),
-            public_input: vec![],
+            public_input: Vec::with_capacity(num_public_inputs),
+            public_output: Vec::with_capacity(public_output_size),
             private_input: vec![],
             eval_constraints: false,
             num_public_inputs,
-            next_private_input,
+            next_var: 0,
             mode: Mode::CircuitGeneration,
+        };
+
+        // allocate the public inputs
+        for _ in 0..public_input_size {
+            sys.alloc_var();
         }
+
+        // allocate the public output and store it
+        for _ in 0..public_output_size {
+            let cvar = sys.alloc_var();
+            sys.public_output.push(cvar);
+        }
+
+        //
+        sys
+    }
+
+    pub fn public_input<T: SnarkyType<F>>(&self) -> T {
+        assert_eq!(
+            T::SIZE_IN_FIELD_ELEMENTS,
+            self.num_public_inputs - self.public_output.len()
+        );
+
+        let mut cvars = Vec::with_capacity(T::SIZE_IN_FIELD_ELEMENTS);
+        for i in 0..T::SIZE_IN_FIELD_ELEMENTS {
+            cvars.push(CVar::Var(i));
+        }
+        let aux = T::constraint_system_auxiliary();
+        T::from_cvars_unsafe(cvars, aux)
     }
 
     /// Allocates a new var representing a private input.
     fn alloc_var(&mut self) -> CVar<F> {
-        let v = self.next_private_input;
-        self.next_private_input += 1;
+        let v = self.next_var;
+        self.next_var += 1;
         CVar::Var(v)
     }
 
     /// Stores a field element as an unconstrained private input.
     fn store_field_elt(&mut self, x: F) -> CVar<F> {
-        let v = self.next_private_input;
-        self.next_private_input += 1;
+        let v = self.next_var;
+        self.next_var += 1;
         self.private_input.push(x);
         CVar::Var(v)
+    }
+
+    pub(crate) fn public_output_values(&self, cvars: Vec<CVar<F>>) -> Vec<F> {
+        let mut values = vec![];
+        for cvar in cvars {
+            match cvar {
+                CVar::Var(idx) => {
+                    let val = self.private_input[idx - self.num_public_inputs];
+                    values.push(val);
+                }
+                _ => panic!("public output must be a variable"),
+            }
+        }
+        values
     }
 
     /// Useful to debug. Similar to calling [Self::compute] on a unit type.
@@ -371,9 +421,23 @@ where
                 let then_ = &then_ - &else_;
                 let else_ = &res - &else_;
                 // TODO: annotation?
-                self.assert_r1cs(None, b.clone(), then_, else_);
+                self.assert_r1cs(Some("if_"), b.clone(), then_, else_);
                 res
             }
+        }
+    }
+
+    pub fn wire_public_output(&mut self, return_var: impl SnarkyType<F>) {
+        let (return_cvars, _aux) = return_var.to_cvars();
+        let public_output_cvars = self.public_output.clone();
+
+        assert_eq!(return_cvars.len(), public_output_cvars.len());
+
+        for (a, b) in return_cvars
+            .into_iter()
+            .zip(public_output_cvars.into_iter())
+        {
+            self.assert_eq(Some("wiring public output"), a, b);
         }
     }
 
@@ -385,30 +449,37 @@ where
         }
     }
 
-    pub fn generate_witness(&mut self, public_input: Vec<F>) {
+    pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
         self.mode = Mode::WitnessGeneration;
         self.public_input = public_input;
-        // TODO: this is probably really wrong
+        self.next_var = self.num_public_inputs;
     }
 
-    pub fn generate_witness_end(&mut self) -> Vec<Vec<F>> {
+    /// Returns the public output generated after running the circuit,
+    /// and the witness of the execution trace.
+    pub fn generate_witness(&mut self) -> Witness<F> {
         // TODO: asserting this is dumb.. what if there's no private input : D
         assert!(!self.private_input.is_empty());
-        if let Some(cs) = &mut self.system {
-            let get_one = |var_idx| {
-                if var_idx <= self.num_public_inputs {
-                    // Run_state.Vector.get input (i - 1)
-                    self.public_input[var_idx - 1] // TODO: why -1?
-                } else {
-                    //Run_state.Vector.get aux (i - num_inputs - 1)
-                    self.private_input[var_idx - self.num_public_inputs - 1] // TODO: why -1?
-                }
-            };
 
-            cs.compute_witness(get_one)
-        } else {
-            panic!("woot");
-        }
+        let system = self.system.as_mut().unwrap();
+
+        let get_one = |var_idx| {
+            if var_idx < self.num_public_inputs {
+                self.public_input[var_idx]
+            } else {
+                self.private_input[var_idx - self.num_public_inputs]
+            }
+        };
+
+        // compute witness
+        let witness = system.compute_witness(get_one);
+
+        // clear state (TODO: find better solution)
+        self.public_input = vec![];
+        self.next_var = self.num_public_inputs;
+
+        // return public output and witness
+        Witness(witness)
     }
 
     pub(crate) fn poseidon_params(&self) -> oracle::poseidon::ArithmeticSpongeParams<F> {

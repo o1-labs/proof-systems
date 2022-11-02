@@ -1,36 +1,59 @@
-use ark_ff::One;
-use mina_curves::pasta::{Fp, Vesta};
-
 use crate::{
     loc,
+    snarky::{api::SnarkyCircuit, boolean::Boolean},
     snarky::{checked_runner::RunState, cvar::CVar},
 };
+use ark_ff::One;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 
-fn main_circuit(runner: &mut RunState<Fp>) {
-    let x: CVar<Fp> = runner.compute(loc!(), |_| Fp::one());
-    let y: CVar<Fp> = runner.compute(loc!(), |_| Fp::one());
-    let z: CVar<Fp> = runner.compute(loc!(), |_| Fp::one());
+type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
-    runner.assert_r1cs(Some("x * y = z"), x, y, z);
+struct TestCircuit {
+    x: Fp,
+    y: Fp,
+    z: Fp,
+}
+
+impl SnarkyCircuit for TestCircuit {
+    type Curve = Vesta;
+
+    type PublicInput = Boolean<Fp>;
+    type PublicOutput = Boolean<Fp>;
+
+    fn circuit(&self, sys: &mut RunState<Fp>, public: Self::PublicInput) -> Self::PublicOutput {
+        let x: CVar<Fp> = sys.compute(loc!(), |_| self.x);
+        let y: CVar<Fp> = sys.compute(loc!(), |_| self.y);
+        let z: CVar<Fp> = sys.compute(loc!(), |_| self.z);
+
+        sys.assert_r1cs(Some("x * y = z"), x, y, z);
+
+        let other: Boolean<Fp> = sys.compute(loc!(), |_| true);
+
+        return public.and(&other, sys);
+    }
 }
 
 #[test]
-#[ignore] // TODO: make this work
 fn test_simple_circuit() {
-    // create snarky constraint system
-    let mut runner = RunState::new::<Vesta>(0);
+    let test_circuit = TestCircuit {
+        x: Fp::one(),
+        y: Fp::from(2),
+        z: Fp::from(2),
+    };
 
-    // run it on the circuit
-    main_circuit(&mut runner);
+    let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes();
 
-    // finalize and get gates
-    let gates = runner.compile();
-    println!("gates: {:#?}", gates);
+    println!("{}", prover_index.asm());
 
-    // witness
-    runner.generate_witness(vec![Fp::one(), Fp::one()]);
-    main_circuit(&mut runner);
-    let witness = runner.generate_witness_end();
+    let public_input = true;
+    let debug = true;
+    let (proof, public_output) =
+        prover_index.prove::<BaseSponge, ScalarSponge>(public_input, debug);
 
-    println!("witness: {:#?}", witness);
+    verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
 }

@@ -992,11 +992,7 @@ impl<F: PrimeField> System<F> {
                 }
             });
 
-            let g = CircuitGate {
-                typ: gate.typ,
-                wires,
-                coeffs: gate.coeffs.clone(),
-            };
+            let g = CircuitGate::new(gate.typ, wires, gate.coeffs.clone());
             gates.push(g);
         }
 

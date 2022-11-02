@@ -1,7 +1,3 @@
-use std::ops::{Add, Neg, Sub};
-
-use ark_ff::PrimeField;
-
 use crate::{
     loc,
     snarky::{
@@ -11,6 +7,8 @@ use crate::{
         traits::SnarkyType,
     },
 };
+use ark_ff::PrimeField;
+use std::ops::{Add, Neg, Sub};
 
 /// A circuit variable represents a field element in the circuit.
 #[derive(Clone, Debug)]
@@ -127,7 +125,7 @@ where
         Self::linear_combination(&terms)
     }
 
-    pub fn mul(&self, other: &Self, _label: Option<&'static str>, cs: &mut RunState<F>) -> Self {
+    pub fn mul(&self, other: &Self, label: Option<&'static str>, cs: &mut RunState<F>) -> Self {
         match (self, other) {
             (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x * y),
 
@@ -151,12 +149,10 @@ where
                     let y: F = env.read_var(&other_clone);
                     x * y
                 });
-                cs.assert_r1cs(
-                    Some("checked_mul"),
-                    self.clone(),
-                    other.clone(),
-                    res.clone(),
-                );
+
+                let label = label.or(Some("checked_mul"));
+
+                cs.assert_r1cs(label, self.clone(), other.clone(), res.clone());
                 res
             }
         }

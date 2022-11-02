@@ -46,6 +46,8 @@
 # Snarky
 
 - [Overview](./snarky/overview.md)
+- [API](./snarky/api.md)
+- [snarky wrapper](./snarky/snarky-wrapper.md)
 - [Kimchi backend](./snarky/kimchi-backend.md)
 - [Vars](./snarky/vars.md)
 - [Booleans](./snarky/booleans.md)

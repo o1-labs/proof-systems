@@ -1,16 +1,15 @@
 //! Traits.
 
-use ark_ff::PrimeField;
-
 use super::{
     checked_runner::{RunState, WitnessGeneration},
     cvar::CVar,
 };
+use ark_ff::PrimeField;
 
 /// A snarky type is a type that can be used in a circuit.
 /// It references an equivalent "out-of-circuit" type that one can use outside of the circuit.
 /// (For example, to construct private or public inputs, or a public output, to the circuit.)
-pub trait SnarkyType<F>: Sized
+pub trait SnarkyType<F>: std::fmt::Debug + Sized
 where
     F: PrimeField,
 {
@@ -69,6 +68,15 @@ where
         let values = cvars.iter().map(|cvar| g.read_var(cvar)).collect();
         Self::value_of_field_elements(values, aux)
     }
+}
+
+pub trait OutOfCircuit<F>
+where
+    F: PrimeField,
+{
+    type InCircuit: SnarkyType<F>;
+
+    fn to_in_circuit(&self) -> Self::InCircuit;
 }
 
 //

@@ -2,6 +2,8 @@
 
 //! Snarky is the front end to kimchi, allowing users to write their own programs and convert them to kimchi circuits.
 
+pub mod api;
+pub mod asm;
 pub mod boolean;
 pub mod checked_runner;
 pub mod constants;
