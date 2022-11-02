@@ -1,11 +1,10 @@
 //! Traits.
 
-use ark_ff::PrimeField;
-
 use super::{
     checked_runner::{RunState, WitnessGeneration},
     cvar::CVar,
 };
+use ark_ff::PrimeField;
 
 /// A snarky type is a type that can be used in a circuit.
 /// It references an equivalent "out-of-circuit" type that one can use outside of the circuit.
@@ -166,5 +165,33 @@ where
         let out2 = T2::value_of_field_elements(fields2.to_vec(), aux.1);
 
         (out1, out2)
+    }
+}
+
+impl<F: PrimeField, const T: usize> SnarkyType<F> for [CVar<F>; T] {
+    type Auxiliary = ();
+
+    type OutOfCircuit = [F; T];
+
+    const SIZE_IN_FIELD_ELEMENTS: usize = T;
+
+    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+        (self.to_vec(), ())
+    }
+
+    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {
+        cvars.try_into().unwrap()
+    }
+
+    fn check(&self, _cs: &mut RunState<F>) {}
+
+    fn constraint_system_auxiliary() -> Self::Auxiliary {}
+
+    fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
+        (value.to_vec(), ())
+    }
+
+    fn value_of_field_elements(fields: Vec<F>, _aux: Self::Auxiliary) -> Self::OutOfCircuit {
+        fields.try_into().unwrap()
     }
 }

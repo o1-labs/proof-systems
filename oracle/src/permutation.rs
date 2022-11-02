@@ -42,6 +42,23 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
     }
 }
 
+///same as full round but works better with arrays
+pub fn full_round2<F: Field, SC: SpongeConstants>(
+    params: &ArithmeticSpongeParams<F>,
+    state: [F; 3],
+    r: usize,
+) -> [F; 3] {
+    let state = state.map(sbox::<F, SC>);
+    let state = apply_mds_matrix::<F, SC>(params, &state);
+    state
+        .into_iter()
+        .zip(params.round_constants[r].iter())
+        .map(|(s, x)| s + x)
+        .collect::<Vec<_>>()
+        .try_into()
+        .unwrap()
+}
+
 pub fn half_rounds<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: &mut [F],
