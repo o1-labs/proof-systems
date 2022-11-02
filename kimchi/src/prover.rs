@@ -659,6 +659,7 @@ where
                     endo_coefficient: index.cs.endo,
                     mds,
                     foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
+                    keccak_rotation_table: index.cs.keccak_rotation_table,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,

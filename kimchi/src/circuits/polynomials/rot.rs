@@ -45,7 +45,7 @@ impl<F: PrimeField> CircuitGate<F> {
             CircuitGate {
                 typ: GateType::Rot64,
                 wires: Wire::new(new_row),
-                coeffs: vec![F::from(2u64.pow(rot))],
+                coeffs: vec![F::from(rot), F::from(rot)],
             },
             CircuitGate {
                 typ: GateType::RangeCheck0,
@@ -153,6 +153,7 @@ impl<F: PrimeField> CircuitGate<F> {
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
                     foreign_field_modulus: None,
+                    keccak_rotation_table: cs.keccak_rotation_table,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,
@@ -408,9 +409,10 @@ fn set_up_lookup_env_data<F: PrimeField>(
 #[derive(Default)]
 pub struct Rot64<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Rot64<F>
+impl<F, T> Argument<F> for Rot64<F, T>
 where
-    F: PrimeField,
+    T: ExprOps<F>,
+    F: PrimeField + std::convert::From<T>,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Rot64);
     const CONSTRAINTS: u32 = 11;
@@ -419,7 +421,7 @@ where
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&env.witness_curr(i)))
@@ -434,7 +436,7 @@ where
         let rotated = env.witness_curr(1);
         let excess = env.witness_curr(2);
         let shifted = env.witness_next(0);
-        let two_to_rot = env.coeff(0);
+        let two_to_rot = env.keccak_rotation_table(env.coeff(0).into(), env.coeff(1).into());
 
         // Obtains the following checks:
         // word * 2^{rot} = (excess * 2^64 + shifted)

@@ -1,5 +1,7 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
+use super::{
+    gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg, polynomials::keccak,
+};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -122,6 +124,10 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
+    /// Keccak rotation table
+    #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
+    pub keccak_rotation_table: Option<[[F; 5]; 5]>,
+
     /// Foreign field addition gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
@@ -167,6 +173,7 @@ pub struct Builder<F: PrimeField> {
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     foreign_field_modulus: Option<BigUint>,
+    keccak_rotation_table: Option<[[F; 5]; 5]>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -233,6 +240,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             runtime_tables: None,
             precomputations: None,
             foreign_field_modulus: None,
+            keccak_rotation_table: None,
         }
     }
 
@@ -404,6 +412,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         }
         self.foreign_field_modulus = foreign_field_modulus.clone();
+        self
+    }
+
+    /// Set up the rotation table feor Keccak
+    pub fn keccak_rotation_table(mut self, keccak: bool) -> Self {
+        self.keccak_rotation_table = if keccak {
+            Some(array::from_fn(|x| {
+                array::from_fn(|y| F::from(2u64.pow(keccak::ROT_TAB[x][y])))
+            }))
+        } else {
+            None
+        };
         self
     }
 
@@ -672,6 +692,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             range_check_selector_polys,
             foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
+            keccak_rotation_table: self.keccak_rotation_table,
             rot_selector_poly,
             xor_selector_poly,
             gates,

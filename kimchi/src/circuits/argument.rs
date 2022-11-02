@@ -108,6 +108,14 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
             self.data.as_ref(),
         )
     }
+
+    /// Helper to access the keccak rotation table at coordinates (x,y)
+    pub fn keccak_rotation_table(&self, x: F, y: F) -> T {
+        T::constant(
+            ConstantExpr::<F>::KeccakRotationTable(x, y),
+            self.data.as_ref(),
+        )
+    }
 }
 
 /// Argument environment data for constraints of field elements

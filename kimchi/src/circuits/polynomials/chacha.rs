@@ -571,6 +571,7 @@ mod tests {
             endo_coefficient: F::zero(),
             mds: &Vesta::sponge_params().mds,
             foreign_field_modulus: None,
+            keccak_rotation_table: None,
         };
 
         assert_eq!(

@@ -151,6 +151,9 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
+
+    #[serde_as(as = "Option<[[o1_utils::serialization::SerdeAs; 5]; 5]>")]
+    pub keccak_rotation_table: Option<[[G::ScalarField; 5]; 5]>,
 }
 //~spec:endcode
 
@@ -288,6 +291,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             lookup_index,
             linearization: self.linearization.clone(),
             foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
+            keccak_rotation_table: self.cs.keccak_rotation_table,
         }
     }
 }
@@ -418,6 +422,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
             linearization: _,
             powers_of_alpha: _,
+            keccak_rotation_table: _,
         } = &self;
 
         // Always present

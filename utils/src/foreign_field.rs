@@ -98,7 +98,7 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
     /// input big element to a big integer modulo the foreign field modulus, and then
     /// computes the negation of the result.
     pub fn neg(&self, modulus: &BigUint) -> Self {
-        let big = self.to_big();
+        let big = self.to_biguint();
         let ok = big % modulus;
         let neg = modulus - ok;
         Self::from_biguint(neg)
@@ -110,7 +110,7 @@ impl<F: Field, const N: usize> ForeignElement<F, N> {
     }
 
     /// Obtains the big integer representation of the foreign field element
-    pub fn to_big(&self) -> BigUint {
+    pub fn to_biguint(&self) -> BigUint {
         let mut bytes = vec![];
         // limbs are stored in little endian
         for limb in self.limbs {
@@ -178,21 +178,21 @@ mod tests {
         let bytes = SECP256K1_MOD;
         let big = BigUint::from_bytes_be(bytes);
         let fe = ForeignElement::<BaseField, 3>::from_be(bytes);
-        assert_eq!(fe.to_big(), big);
+        assert_eq!(fe.to_biguint(), big);
     }
 
     #[test]
     fn test_from_biguint() {
         let one = ForeignElement::<BaseField, 3>::from_be(&[0x01]);
         assert_eq!(
-            BaseField::from_biguint(one.to_big()).unwrap(),
+            BaseField::from_biguint(one.to_biguint()).unwrap(),
             BaseField::one()
         );
 
         let max_big = BaseField::modulus_biguint() - 1u32;
         let max_fe = ForeignElement::<BaseField, 3>::from_biguint(max_big.clone());
         assert_eq!(
-            BaseField::from_biguint(max_fe.to_big()).unwrap(),
+            BaseField::from_biguint(max_fe.to_biguint()).unwrap(),
             BaseField::from_bytes(&max_big.to_bytes_le()).unwrap(),
         );
     }

@@ -66,6 +66,8 @@ pub struct Constants<F: 'static> {
     pub mds: &'static Vec<Vec<F>>,
     /// The modulus for foreign field operations
     pub foreign_field_modulus: Option<BigUint>,
+    /// The powers of two of the Keccak rotation constants modulo 64
+    pub keccak_rotation_table: Option<[[F; 5]; 5]>,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -269,6 +271,7 @@ pub enum ConstantExpr<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     ForeignFieldModulus(usize),
+    KeccakRotationTable(F, F),
     Literal(F),
     Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -291,6 +294,9 @@ impl<F: Copy> ConstantExpr<F> {
                 col: *col,
             }),
             ConstantExpr::ForeignFieldModulus(i) => res.push(PolishToken::ForeignFieldModulus(*i)),
+            ConstantExpr::KeccakRotationTable(x, y) => {
+                res.push(PolishToken::KeccakRotationTable(*x, *y))
+            }
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -341,6 +347,18 @@ impl<F: Field> ConstantExpr<F> {
             ForeignFieldModulus(i) => {
                 if let Some(modulus) = c.foreign_field_modulus.clone() {
                     ForeignElement::<F, 3>::from_biguint(modulus)[*i]
+                } else {
+                    F::zero()
+                }
+            }
+            KeccakRotationTable(x, y) => {
+                if let Some(table) = c.keccak_rotation_table {
+                    table[(BigUint::from_bytes_le(&*x.to_bytes()) % BigUint::from(5u32))
+                        .to_u32_digits()[0] as usize][(BigUint::from_bytes_le(
+                        &*y.to_bytes(),
+                    ) % BigUint::from(5u32))
+                    .to_u32_digits()[0]
+                        as usize]
                 } else {
                     F::zero()
                 }
@@ -469,6 +487,7 @@ pub enum PolishToken<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     ForeignFieldModulus(usize),
+    KeccakRotationTable(F, F),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -532,6 +551,16 @@ impl<F: FftField> PolishToken<F> {
                 ForeignFieldModulus(i) => {
                     if let Some(modulus) = c.foreign_field_modulus.clone() {
                         stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
+                    }
+                }
+                KeccakRotationTable(x, y) => {
+                    if let Some(table) = c.keccak_rotation_table {
+                        stack.push(
+                            table[(BigUint::from_bytes_le(&*x.to_bytes()) % BigUint::from(5u32))
+                                .to_u32_digits()[0] as usize]
+                                [(BigUint::from_bytes_le(&*y.to_bytes()) % BigUint::from(5u32))
+                                    .to_u32_digits()[0] as usize],
+                        )
                     }
                 }
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
@@ -2079,6 +2108,7 @@ where
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            KeccakRotationTable(x, y) => format!("keccak_rotation_table({x},{y})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
@@ -2100,6 +2130,7 @@ where
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
+            KeccakRotationTable(x, y) => format!("keccak\\_rotation\\_table({x},{y})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2121,6 +2152,7 @@ where
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            KeccakRotationTable(x, y) => format!("keccak_rotation_table({x},{y})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha^{}", n),
@@ -2537,6 +2569,7 @@ pub mod test {
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
                 foreign_field_modulus: None,
+                keccak_rotation_table: None,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &constraint_system.coefficients8,
