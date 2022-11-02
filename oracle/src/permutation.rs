@@ -41,7 +41,8 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
         state[i].add_assign(x);
     }
 }
-//same as full round but works better with arrays
+
+///same as full round but works better with arrays
 pub fn full_round2<F: Field, SC: SpongeConstants>(
     params: &ArithmeticSpongeParams<F>,
     state: [F; 3],
