@@ -434,7 +434,7 @@ where
         let rotated = env.witness_curr(1);
         let excess = env.witness_curr(2);
         let shifted = env.witness_next(0);
-        let two_to_rot = env.coeff(0);
+        let two_to_rot = env.coeff(0); // TODO: linearization fails if not evaluated
 
         // Obtains the following checks:
         // word * 2^{rot} = (excess * 2^64 + shifted)
