@@ -86,6 +86,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             cs.xor_selector_poly.is_some(),
             cs.rot_selector_poly.is_some(),
         );
+        println!("expr linearization");
 
         // set `max_quot_size` to the degree of the quotient polynomial,
         // which is obtained by looking at the highest monomial in the sum
