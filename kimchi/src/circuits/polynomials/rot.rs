@@ -153,7 +153,6 @@ impl<F: PrimeField> CircuitGate<F> {
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
                     foreign_field_modulus: None,
-                    keccak_rotation_table: cs.keccak_rotation_table,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,
@@ -409,10 +408,9 @@ fn set_up_lookup_env_data<F: PrimeField>(
 #[derive(Default)]
 pub struct Rot64<F>(PhantomData<F>);
 
-impl<F, T> Argument<F> for Rot64<F, T>
+impl<F> Argument<F> for Rot64<F>
 where
-    T: ExprOps<F>,
-    F: PrimeField + std::convert::From<T>,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Rot64);
     const CONSTRAINTS: u32 = 11;
@@ -421,7 +419,7 @@ where
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    fn constraint_checks(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&env.witness_curr(i)))
