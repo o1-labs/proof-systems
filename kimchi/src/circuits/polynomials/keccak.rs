@@ -14,7 +14,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Create the Keccak gadget
     /// TODO: right now it only creates a Generic gate followed by the Xor64 gates
     pub fn create_keccak(new_row: usize) -> (usize, Vec<Self>) {
-        Self::create_xor(new_row, 64)
+        Self::create_xor_gadget(new_row, 64)
     }
 }
 

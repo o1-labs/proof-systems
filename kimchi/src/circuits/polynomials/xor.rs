@@ -24,8 +24,10 @@ use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use num_bigint::BigUint;
+use o1_utils::{big_bits, big_not, big_xor, FieldFromBig, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
-use std::{array, collections::HashMap, marker::PhantomData};
+use std::{array, cmp::max, collections::HashMap, marker::PhantomData};
 
 pub const GATE_COUNT: usize = 1;
 
@@ -37,7 +39,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
-    pub fn create_xor(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
+    pub fn create_xor_gadget(new_row: usize, bits: u32) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut gates = (0..num_xors)
             .map(|i| CircuitGate {
@@ -55,6 +57,40 @@ impl<F: PrimeField> CircuitGate<F> {
         // check fin_in1, fin_in2, fin_out are zero
         gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
         gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
+
+        (zero_row + 1, gates)
+    }
+
+    /// Creates a NOT gadget for bits length
+    /// Includes:
+    /// - num_xors Xor16 gates
+    /// - 1 Generic gate to constrain the final row to be zero with itself and all ones with input2
+    pub fn create_not_gadget(new_row: usize, bits: u32) -> (usize, Vec<Self>) {
+        let num_xors = num_xors(bits);
+        let mut gates = (0..num_xors)
+            .map(|i| CircuitGate {
+                typ: GateType::Xor16,
+                wires: Wire::new(new_row + i),
+                coeffs: vec![],
+            })
+            .collect::<Vec<_>>();
+        let zero_row = new_row + num_xors;
+        gates.push(CircuitGate {
+            typ: GateType::Generic,
+            wires: Wire::new(zero_row),
+            coeffs: vec![
+                F::one(),
+                F::zero(),
+                F::zero(),
+                F::one(),
+                F::zero(),
+                F::zero(),
+            ],
+        });
+        // check fin_in1, fin_in2, fin_out are zero
+        gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
+        gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
+        gates.connect_cell_pair((zero_row, 3), (new_row, 1)); // input 2 is all ones
 
         (zero_row + 1, gates)
     }
@@ -401,12 +437,16 @@ where
 //   * The first column of the XOR row and the first and second columns of the
 //     Zero rows must be instantiated before the rest, otherwise they copy 0.
 //
-fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
+fn layout<F: PrimeField>(
+    curr_row: usize,
+    bits: u32,
+    not: bool,
+) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
         .map(|i| xor_row(i, curr_row + i))
         .collect::<Vec<_>>();
-    layout.push(zero_row());
+    layout.push(zero_row(bits * not as u32));
     layout
 }
 
@@ -430,12 +470,12 @@ fn xor_row<F: PrimeField>(crumb: usize, curr_row: usize) -> [Box<dyn WitnessCell
     ]
 }
 
-fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+fn zero_row<F: PrimeField>(not_bits: u32) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     [
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
-        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::from(2u128).pow(&[not_bits as u64]) - F::one()), // bits all ones or zero
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
@@ -453,10 +493,11 @@ fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
 fn init_xor<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     curr_row: usize,
-    bits: usize,
+    bits: u32,
     words: (F, F, F),
+    not: bool,
 ) {
-    let xor_rows = layout(curr_row, bits);
+    let xor_rows = layout(curr_row, bits, not);
 
     witness::init(
         witness,
@@ -469,35 +510,77 @@ fn init_xor<F: PrimeField>(
 /// Extends the xor rows to the full witness
 pub fn extend_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    bits: usize,
+    bits: u32,
     words: (F, F, F),
+    not: bool,
 ) {
     let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
     let xor_row = witness[0].len();
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
     }
-    init_xor(witness, xor_row, bits, words);
+    init_xor(witness, xor_row, bits, words, not);
 }
 
-/// Create a keccak Xor for up to 128 bits
+/// Create a keccak Xor for up to the native length
 /// Input: first input and second input
-pub fn create<F: PrimeField>(input1: u128, input2: u128, bits: usize) -> [Vec<F>; COLUMNS] {
-    let output = input1 ^ input2;
+/// Panics if the input is larger than the field
+pub fn create_xor_witness<F: PrimeField>(
+    input1: &BigUint,
+    input2: &BigUint,
+    bits: u32,
+) -> [Vec<F>; COLUMNS] {
+    if *input1 >= F::modulus_biguint() || *input2 >= F::modulus_biguint() {
+        panic!("Input too large for the native field");
+    }
+
+    let output = big_xor(&input1, &input2);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+
     init_xor(
         &mut xor_witness,
         0,
         bits,
-        (F::from(input1), F::from(input2), F::from(output)),
+        (
+            F::from_biguint(input1).unwrap(),
+            F::from_biguint(&input2).unwrap(),
+            F::from_biguint(&output).unwrap(),
+        ),
+        false,
     );
 
     xor_witness
 }
 
+/// Create a keccak Not for less than 255 bits (native field)
+/// Input: first input and second input
+/// Panics if the input is too large for the field
+pub fn create_not_witness<F: PrimeField>(input: &BigUint, bits: Option<u32>) -> [Vec<F>; COLUMNS] {
+    if *input > F::modulus_biguint() {
+        panic!("This number must be split because it does not fit into the native field");
+    }
+    let output = big_not(&input, bits);
+    let bits = max(big_bits(&input) as u32, bits.unwrap_or(0));
+    let mut not_witness: [Vec<F>; COLUMNS] =
+        array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+    init_xor(
+        &mut not_witness,
+        0,
+        bits,
+        (
+            F::from_biguint(&input).unwrap(),
+            F::from(2u8).pow(&[bits as u64]) - F::one(),
+            F::from_biguint(&output).unwrap(),
+        ),
+        true,
+    );
+
+    not_witness
+}
+
 /// Returns the number of XOR rows needed for inputs of usize bits
-pub fn num_xors(bits: usize) -> usize {
+pub fn num_xors(bits: u32) -> usize {
     (bits as f64 / 16.0).ceil() as usize
 }

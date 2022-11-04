@@ -945,6 +945,7 @@ dependencies = [
  "hex",
  "mina-curves",
  "num-bigint",
+ "rand",
  "rayon",
  "serde",
  "serde_with",

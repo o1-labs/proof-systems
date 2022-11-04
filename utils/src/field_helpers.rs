@@ -107,12 +107,13 @@ impl<F: Field> FieldHelpers<F> for F {
 /// Field element wrapper for [BigUint]
 pub trait FieldFromBig<F> {
     /// Deserialize from big unsigned integer
-    fn from_biguint(big: BigUint) -> Result<F>;
+    fn from_biguint(big: &BigUint) -> Result<F>;
 }
 
 impl<F: PrimeField> FieldFromBig<F> for F {
-    fn from_biguint(big: BigUint) -> Result<F> {
-        big.try_into()
+    fn from_biguint(big: &BigUint) -> Result<F> {
+        big.clone()
+            .try_into()
             .map_err(|_| FieldHelpersError::FromBigToField)
     }
 }
@@ -252,8 +253,8 @@ mod tests {
     #[test]
     fn field_big() {
         let fe_1024 = BaseField::from(1024u32);
-        let big_1024 = fe_1024.into();
-        assert_eq!(big_1024, BigUint::new(vec![1024]));
+        let big_1024 = &fe_1024.into();
+        assert_eq!(*big_1024, BigUint::new(vec![1024]));
 
         assert_eq!(
             BaseField::from_biguint(big_1024).expect("Failed to deserialize big uint"),
@@ -272,7 +273,7 @@ mod tests {
         );
 
         assert_eq!(
-            BaseField::from_biguint(BigUint::from_bytes_be(&be_zero_32bytes))
+            BaseField::from_biguint(&BigUint::from_bytes_be(&be_zero_32bytes))
                 .expect("Failed to convert big uint"),
             field_zero
         );
@@ -280,8 +281,8 @@ mod tests {
         assert_eq!(big_zero_32, big_zero_1);
 
         assert_eq!(
-            BaseField::from_biguint(big_zero_32).expect("Failed"),
-            BaseField::from_biguint(big_zero_1).expect("Failed")
+            BaseField::from_biguint(&big_zero_32).expect("Failed"),
+            BaseField::from_biguint(&big_zero_1).expect("Failed")
         );
     }
 }
