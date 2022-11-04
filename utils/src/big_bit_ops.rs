@@ -8,12 +8,12 @@ pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
     let bytes1 = input1.to_bytes_le().len();
     let bytes2 = input2.to_bytes_le().len();
     let in2 = if bytes1 > bytes2 {
-        pad(&input2, bytes1 - bytes2)
+        pad(input2, bytes1 - bytes2)
     } else {
         input2.to_bytes_le()
     };
     let in1 = if bytes2 > bytes1 {
-        pad(&input1, bytes2 - bytes1)
+        pad(input1, bytes2 - bytes1)
     } else {
         input1.to_bytes_le()
     };
@@ -27,7 +27,7 @@ pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
 
 /// returns the minimum number of bits required to represent a BigUint
 pub fn big_bits(input: &BigUint) -> u32 {
-    if input.to_bytes_le() == &[0u8] {
+    if input.to_bytes_le() == [0u8] {
         1u32
     } else {
         input.bits() as u32
@@ -41,12 +41,12 @@ pub fn big_not(input: &BigUint, bits: Option<u32>) -> BigUint {
     // pad if needed / desired
     // first get the number of bits of the input,
     // take into account that BigUint::bits() returns 0 if the input is 0
-    let in_bits = big_bits(&input) as usize;
+    let in_bits = big_bits(input) as usize;
     let bits = max(in_bits, bits.unwrap_or(0) as usize);
     // build vector of bits in little endian (least significant bit in position 0)
     let mut bit_vec = vec![];
     // negate each of the bits of the input
-    (0..bits).for_each(|i| bit_vec.push(!bit_at(&input, i as u32)));
+    (0..bits).for_each(|i| bit_vec.push(!bit_at(input, i as u32)));
     le_bitvec_to_biguint(&bit_vec)
 }
 
@@ -62,9 +62,7 @@ fn bit_at(input: &BigUint, index: u32) -> bool {
 // Pads an input with a number of bytes
 fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
     let mut padded = input.to_bytes_le().to_vec();
-    for _ in 0..bytes {
-        padded.push(0);
-    }
+    padded.resize(bytes + padded.len(), 0u8);
     padded
 }
 
