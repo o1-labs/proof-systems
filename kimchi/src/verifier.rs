@@ -133,7 +133,7 @@ where
             .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
 
         //~ 1. If lookup is used:
-        let joint_combiner = if let Some(l) = &index.lookup_index {
+        if let Some(l) = &index.lookup_index {
             let lookup_commits = self
                 .commitments
                 .lookup
@@ -148,7 +148,9 @@ where
                     .ok_or(VerifyError::IncorrectRuntimeProof)?;
                 fq_sponge.absorb_g(&runtime_commit.unshifted);
             }
+        }
 
+        let joint_combiner = if let Some(l) = &index.lookup_index {
             //~~ - If it involves queries to a multiple-column lookup table,
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
@@ -165,15 +167,23 @@ where
             let joint_combiner_field = joint_combiner.to_field(endo_r);
             let joint_combiner = (joint_combiner, joint_combiner_field);
 
-            //~~ - absorb the commitments to the sorted polynomials.
-            for com in &lookup_commits.sorted {
-                fq_sponge.absorb_g(&com.unshifted);
-            }
-
             Some(joint_combiner)
         } else {
             None
         };
+
+        if let Some(_) = &index.lookup_index {
+            let lookup_commits = self
+                .commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)?;
+
+            //~~ - absorb the commitments to the sorted polynomials.
+            for com in &lookup_commits.sorted {
+                fq_sponge.absorb_g(&com.unshifted);
+            }
+        }
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
