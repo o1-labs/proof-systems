@@ -489,6 +489,9 @@ where
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
+        if proof.public.len() != index.public {
+            return Err(VerifyError::IncorrectPubicInputLength(index.public));
+        }
         let lgr_comm = index
             .srs()
             .lagrange_bases
@@ -503,9 +506,6 @@ where
             .take(index.public)
             .collect();
         let com_ref: Vec<_> = com.iter().collect();
-        if proof.public.len() != index.public {
-            return Err(VerifyError::IncorrectPubicInputLength(index.public));
-        }
         let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
         let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
         index
