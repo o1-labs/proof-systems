@@ -720,7 +720,9 @@ where
             let joint_combiner = oracles
                 .joint_combiner
                 .expect("joint_combiner should be present if lookups are used");
-            let table_id_combiner = joint_combiner.1.pow([u64::from(li.max_joint_size)]);
+            let table_id_combiner = joint_combiner
+                .1
+                .pow([u64::from(li.lookup_info.max_joint_size)]);
             let lookup_table: Vec<_> = li.lookup_table.iter().collect();
             let runtime = lookup_comms.runtime.as_ref();
 
