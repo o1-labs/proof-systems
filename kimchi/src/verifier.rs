@@ -23,7 +23,6 @@ use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
-use itertools::izip;
 use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
@@ -690,17 +689,19 @@ where
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
 
-        // check that the there's as many evals as commitments for sorted polynomials
-        let sorted_len = lookup_comms.sorted.len();
-        if sorted_len != lookup_eval.sorted.len() {
-            return Err(VerifyError::ProofInconsistentLookup);
-        }
-
         // add evaluations of sorted polynomials
-        for (comm, evals) in izip!(&lookup_comms.sorted, lookup_eval.sorted.clone(),) {
+        for i in 0..li.lookup_info.max_per_row + 1 {
+            let col = Column::LookupSorted(i);
+            let evals = proof
+                .evals
+                .get_column(col)
+                .ok_or(VerifyError::MissingEvaluation(col))?;
             evaluations.push(Evaluation {
-                commitment: comm.clone(),
-                evaluations: vec![evals.zeta, evals.zeta_omega],
+                commitment: context
+                    .get_column(col)
+                    .ok_or(VerifyError::MissingCommitment(col))?
+                    .clone(),
+                evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
                 degree_bound: None,
             });
         }
