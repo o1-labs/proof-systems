@@ -42,7 +42,12 @@ where
         for (row, CircuitGate { typ, coeffs, wires }) in self.gates.iter().enumerate() {
             // gate
             {
-                write!(res, "row{row}.").unwrap();
+                let is_pub = if row < self.public_input_size {
+                    "pub."
+                } else {
+                    ""
+                };
+                write!(res, "row{row}.{is_pub}").unwrap();
                 let coeffs = Self::parse_coeffs(&vars, coeffs);
                 write!(res, "{typ:?}").unwrap();
                 res.push('<');
@@ -193,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_simple_circuit_asm() {
-        let public_input_size = 0;
+        let public_input_size = 1;
         let gates: &Vec<CircuitGate<Fp>> = &vec![
             CircuitGate {
                 typ: GateType::Generic,
@@ -214,7 +219,7 @@ mod tests {
 
         let circuit = Circuit::new(public_input_size, gates);
 
-        const EXPECTED: &str = r#"row0.Generic<1,2>
+        const EXPECTED: &str = r#"row0.pub.Generic<1,2>
 
 row1.Poseidon<1,2>
 [0] -> row0.r1
