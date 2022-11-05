@@ -1,6 +1,10 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::wires::{COLUMNS, PERMUTS};
+use crate::circuits::{
+    expr::Column,
+    gate::GateType,
+    wires::{COLUMNS, PERMUTS},
+};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -366,6 +370,25 @@ impl<F: FftField> ProofEvaluations<PointEvaluations<Vec<F>>> {
             zeta: DensePolynomial::eval_polynomial(&evals.zeta, pt.zeta),
             zeta_omega: DensePolynomial::eval_polynomial(&evals.zeta_omega, pt.zeta_omega),
         })
+    }
+}
+
+impl<F> ProofEvaluations<F> {
+    pub fn get_column<'a>(&'a self, col: Column) -> Option<&'a F> {
+        match col {
+            Column::Witness(i) => Some(&self.w[i]),
+            Column::Z => Some(&self.z),
+            Column::LookupSorted(i) => Some(&self.lookup.as_ref()?.sorted[i]),
+            Column::LookupAggreg => Some(&self.lookup.as_ref()?.aggreg),
+            Column::LookupTable => Some(&self.lookup.as_ref()?.table),
+            Column::LookupKindIndex(_) => None,
+            Column::LookupRuntimeSelector => None,
+            Column::LookupRuntimeTable => Some(self.lookup.as_ref()?.runtime.as_ref()?),
+            Column::Index(GateType::Generic) => Some(&self.generic_selector),
+            Column::Index(GateType::Poseidon) => Some(&self.poseidon_selector),
+            Column::Index(_) => None,
+            Column::Coefficient(_) => None,
+        }
     }
 }
 
