@@ -17,6 +17,10 @@ use std::array;
 /// Evaluations of a polynomial at 2 points
 #[serde_as]
 #[derive(Copy, Clone, Serialize, Deserialize, Default)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 #[serde(bound(
     serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Evals>",
     deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Evals>"
@@ -421,32 +425,34 @@ pub mod caml {
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlLookupEvaluations<CamlF> {
-        pub sorted: Vec<Vec<CamlF>>,
-        pub aggreg: Vec<CamlF>,
-        pub table: Vec<CamlF>,
-        pub runtime: Option<Vec<CamlF>>,
+        pub sorted: Vec<PointEvaluations<Vec<CamlF>>>,
+        pub aggreg: PointEvaluations<Vec<CamlF>>,
+        pub table: PointEvaluations<Vec<CamlF>>,
+        pub runtime: Option<PointEvaluations<Vec<CamlF>>>,
     }
 
-    impl<F, CamlF> From<LookupEvaluations<Vec<F>>> for CamlLookupEvaluations<CamlF>
+    impl<F, CamlF> From<LookupEvaluations<PointEvaluations<Vec<F>>>> for CamlLookupEvaluations<CamlF>
     where
         F: Clone,
         CamlF: From<F>,
     {
-        fn from(le: LookupEvaluations<Vec<F>>) -> Self {
+        fn from(le: LookupEvaluations<PointEvaluations<Vec<F>>>) -> Self {
             Self {
                 sorted: le
                     .sorted
                     .into_iter()
-                    .map(|x| x.into_iter().map(Into::into).collect())
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect()))
                     .collect(),
-                aggreg: le.aggreg.into_iter().map(Into::into).collect(),
-                table: le.table.into_iter().map(Into::into).collect(),
-                runtime: le.runtime.map(|r| r.into_iter().map(Into::into).collect()),
+                aggreg: le.aggreg.map(&|x| x.into_iter().map(Into::into).collect()),
+                table: le.table.map(&|x| x.into_iter().map(Into::into).collect()),
+                runtime: le
+                    .runtime
+                    .map(|r| r.map(&|r| r.into_iter().map(Into::into).collect())),
             }
         }
     }
 
-    impl<F, CamlF> From<CamlLookupEvaluations<CamlF>> for LookupEvaluations<Vec<F>>
+    impl<F, CamlF> From<CamlLookupEvaluations<CamlF>> for LookupEvaluations<PointEvaluations<Vec<F>>>
     where
         F: From<CamlF> + Clone,
     {
@@ -455,11 +461,13 @@ pub mod caml {
                 sorted: pe
                     .sorted
                     .into_iter()
-                    .map(|x| x.into_iter().map(Into::into).collect())
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect()))
                     .collect(),
-                aggreg: pe.aggreg.into_iter().map(Into::into).collect(),
-                table: pe.table.into_iter().map(Into::into).collect(),
-                runtime: pe.runtime.map(|r| r.into_iter().map(Into::into).collect()),
+                aggreg: pe.aggreg.map(&|x| x.into_iter().map(Into::into).collect()),
+                table: pe.table.map(&|x| x.into_iter().map(Into::into).collect()),
+                runtime: pe
+                    .runtime
+                    .map(|r| r.map(&|r| r.into_iter().map(Into::into).collect())),
             }
         }
     }
@@ -472,33 +480,33 @@ pub mod caml {
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
         pub w: (
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
         ),
-        pub z: Vec<CamlF>,
+        pub z: PointEvaluations<Vec<CamlF>>,
         pub s: (
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
-            Vec<CamlF>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
         ),
-        pub generic_selector: Vec<CamlF>,
-        pub poseidon_selector: Vec<CamlF>,
+        pub generic_selector: PointEvaluations<Vec<CamlF>>,
+        pub poseidon_selector: PointEvaluations<Vec<CamlF>>,
 
         pub lookup: Option<CamlLookupEvaluations<CamlF>>,
     }
@@ -507,87 +515,137 @@ pub mod caml {
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
 
-    impl<F, CamlF> From<ProofEvaluations<Vec<F>>> for CamlProofEvaluations<CamlF>
+    impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>> for CamlProofEvaluations<CamlF>
     where
         F: Clone,
         CamlF: From<F>,
     {
-        fn from(pe: ProofEvaluations<Vec<F>>) -> Self {
+        fn from(pe: ProofEvaluations<PointEvaluations<Vec<F>>>) -> Self {
             let w = (
-                pe.w[0].iter().cloned().map(Into::into).collect(),
-                pe.w[1].iter().cloned().map(Into::into).collect(),
-                pe.w[2].iter().cloned().map(Into::into).collect(),
-                pe.w[3].iter().cloned().map(Into::into).collect(),
-                pe.w[4].iter().cloned().map(Into::into).collect(),
-                pe.w[5].iter().cloned().map(Into::into).collect(),
-                pe.w[6].iter().cloned().map(Into::into).collect(),
-                pe.w[7].iter().cloned().map(Into::into).collect(),
-                pe.w[8].iter().cloned().map(Into::into).collect(),
-                pe.w[9].iter().cloned().map(Into::into).collect(),
-                pe.w[10].iter().cloned().map(Into::into).collect(),
-                pe.w[11].iter().cloned().map(Into::into).collect(),
-                pe.w[12].iter().cloned().map(Into::into).collect(),
-                pe.w[13].iter().cloned().map(Into::into).collect(),
-                pe.w[14].iter().cloned().map(Into::into).collect(),
+                pe.w[0]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[1]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[2]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[3]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[4]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[5]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[6]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[7]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[8]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[9]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[10]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[11]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[12]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[13]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.w[14]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
             );
             let s = (
-                pe.s[0].iter().cloned().map(Into::into).collect(),
-                pe.s[1].iter().cloned().map(Into::into).collect(),
-                pe.s[2].iter().cloned().map(Into::into).collect(),
-                pe.s[3].iter().cloned().map(Into::into).collect(),
-                pe.s[4].iter().cloned().map(Into::into).collect(),
-                pe.s[5].iter().cloned().map(Into::into).collect(),
+                pe.s[0]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.s[1]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.s[2]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.s[3]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.s[4]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.s[5]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
             );
 
             Self {
                 w,
-                z: pe.z.into_iter().map(Into::into).collect(),
+                z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
                 s,
-                generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
-                poseidon_selector: pe.poseidon_selector.into_iter().map(Into::into).collect(),
+                generic_selector: pe
+                    .generic_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                poseidon_selector: pe
+                    .poseidon_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 lookup: pe.lookup.map(Into::into),
             }
         }
     }
 
-    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<Vec<F>>
+    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<PointEvaluations<Vec<F>>>
     where
         F: Clone,
         F: From<CamlF>,
     {
         fn from(cpe: CamlProofEvaluations<CamlF>) -> Self {
             let w = [
-                cpe.w.0.into_iter().map(Into::into).collect(),
-                cpe.w.1.into_iter().map(Into::into).collect(),
-                cpe.w.2.into_iter().map(Into::into).collect(),
-                cpe.w.3.into_iter().map(Into::into).collect(),
-                cpe.w.4.into_iter().map(Into::into).collect(),
-                cpe.w.5.into_iter().map(Into::into).collect(),
-                cpe.w.6.into_iter().map(Into::into).collect(),
-                cpe.w.7.into_iter().map(Into::into).collect(),
-                cpe.w.8.into_iter().map(Into::into).collect(),
-                cpe.w.9.into_iter().map(Into::into).collect(),
-                cpe.w.10.into_iter().map(Into::into).collect(),
-                cpe.w.11.into_iter().map(Into::into).collect(),
-                cpe.w.12.into_iter().map(Into::into).collect(),
-                cpe.w.13.into_iter().map(Into::into).collect(),
-                cpe.w.14.into_iter().map(Into::into).collect(),
+                cpe.w.0.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.1.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.2.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.3.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.4.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.5.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.6.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.7.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.8.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.9.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.10.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.11.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.12.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.13.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.w.14.map(&|x| x.into_iter().map(Into::into).collect()),
             ];
             let s = [
-                cpe.s.0.into_iter().map(Into::into).collect(),
-                cpe.s.1.into_iter().map(Into::into).collect(),
-                cpe.s.2.into_iter().map(Into::into).collect(),
-                cpe.s.3.into_iter().map(Into::into).collect(),
-                cpe.s.4.into_iter().map(Into::into).collect(),
-                cpe.s.5.into_iter().map(Into::into).collect(),
+                cpe.s.0.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.s.1.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.s.2.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.s.3.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.s.4.map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.s.5.map(&|x| x.into_iter().map(Into::into).collect()),
             ];
 
             Self {
                 w,
-                z: cpe.z.into_iter().map(Into::into).collect(),
+                z: cpe.z.map(&|x| x.into_iter().map(Into::into).collect()),
                 s,
-                generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
-                poseidon_selector: cpe.poseidon_selector.into_iter().map(Into::into).collect(),
+                generic_selector: cpe
+                    .generic_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                poseidon_selector: cpe
+                    .poseidon_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 lookup: cpe.lookup.map(Into::into),
             }
         }
