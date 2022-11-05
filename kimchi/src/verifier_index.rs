@@ -5,7 +5,10 @@ use crate::{
     alphas::Alphas,
     circuits::{
         expr::{Linearization, PolishToken},
-        lookup::{index::LookupSelectors, lookups::LookupsUsed},
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupInfo, LookupsUsed},
+        },
         polynomials::{
             permutation::{zk_polynomial, zk_w3},
             range_check,
@@ -52,6 +55,9 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
+
+    /// Information about the specific lookups used
+    pub lookup_info: LookupInfo,
 
     /// An optional selector polynomial for runtime tables
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -177,6 +183,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     lookup_used: cs.configuration.lookup_used,
+                    lookup_info: cs.configuration.lookup_info.clone(),
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
@@ -449,6 +456,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
         if let Some(LookupVerifierIndex {
             lookup_used: _,
+            lookup_info: _,
             lookup_table,
             table_ids,
             runtime_tables_selector,
