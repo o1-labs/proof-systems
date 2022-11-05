@@ -88,6 +88,12 @@ fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
 pub struct CompleteAdd<F>(PhantomData<F>);
 
+impl<F: PrimeField> CompleteAdd<F> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<F> Argument<F> for CompleteAdd<F>
 where
     F: PrimeField,

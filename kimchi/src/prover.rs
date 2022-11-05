@@ -681,15 +681,6 @@ where
                 t4
             };
 
-            // complete addition
-            {
-                let add_constraint = CompleteAdd::combined_constraints(&all_alphas);
-                let add4 = add_constraint.evaluations(&env);
-                t4 += &add4;
-
-                check_constraint!(index, add4);
-            }
-
             // permutation
             let (mut t8, bnd) = {
                 let alphas =
@@ -701,6 +692,23 @@ where
                 check_constraint!(index, perm);
 
                 (perm, bnd)
+            };
+
+            {
+                use crate::circuits::argument::DynArgument;
+
+                for gate in [(&CompleteAdd::new() as &dyn DynArgument<G::ScalarField>)].iter() {
+                    let constraint = gate.combined_constraints(&all_alphas);
+                    let eval = constraint.evaluations(&env);
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
+                    } else {
+                        panic!("Bad evaluation")
+                    }
+                    check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
+                }
             };
 
             // scalar multiplication
