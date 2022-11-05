@@ -357,74 +357,26 @@ where
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
             es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
-            es.push((
-                {
-                    let evals = self
-                        .evals
-                        .get_column(Column::Z)
-                        .ok_or(VerifyError::MissingEvaluation(Column::Z))?;
-                    vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                },
-                None,
-            ));
-            es.push((
-                {
-                    let evals = self
-                        .evals
-                        .get_column(Column::Index(GateType::Generic))
-                        .ok_or(VerifyError::MissingEvaluation(Column::Index(
-                            GateType::Generic,
-                        )))?;
-                    vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                },
-                None,
-            ));
-            es.push((
-                {
-                    let evals = self
-                        .evals
-                        .get_column(Column::Index(GateType::Poseidon))
-                        .ok_or(VerifyError::MissingEvaluation(Column::Index(
-                            GateType::Poseidon,
-                        )))?;
-                    vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                },
-                None,
-            ));
-            es.extend(
-                (0..COLUMNS)
-                    .map(|c| {
-                        (
-                            {
-                                let evals = self
-                                    .evals
-                                    .get_column(Column::Witness(c))
-                                    .ok_or(VerifyError::MissingEvaluation(Column::Witness(c)))
-                                    .unwrap(); /* TODO: Don't unwrap here. */
-                                vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                            },
-                            None,
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            es.extend(
-                (0..PERMUTS - 1)
-                    .map(|c| {
-                        (
-                            {
-                                let evals = self
-                                    .evals
-                                    .get_column(Column::Permutation(c))
-                                    .ok_or(VerifyError::MissingEvaluation(Column::Permutation(c)))
-                                    .unwrap(); /* TODO: Don't unwrap here. */
-                                vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                            },
-                            None,
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            );
+            for col in [
+                Column::Z,
+                Column::Index(GateType::Generic),
+                Column::Index(GateType::Poseidon),
+            ]
+            .into_iter()
+            .chain((0..COLUMNS).map(Column::Witness))
+            .chain((0..PERMUTS - 1).map(Column::Permutation))
+            {
+                es.push((
+                    {
+                        let evals = self
+                            .evals
+                            .get_column(col)
+                            .ok_or(VerifyError::MissingEvaluation(col))?;
+                        vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                    },
+                    None,
+                ))
+            }
 
             combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
         };
