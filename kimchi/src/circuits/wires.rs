@@ -48,11 +48,20 @@ pub type GateWires = [Wire; PERMUTS];
 pub trait Wirable: Sized {
     /// Creates a new set of wires for a given row.
     fn new(row: usize) -> Self;
+
+    /// Wire the cell at `col` to another cell (`to`).
+    fn wire(self, col: usize, to: Wire) -> Self;
 }
 
 impl Wirable for GateWires {
     fn new(row: usize) -> Self {
         array::from_fn(|col| Wire { row, col })
+    }
+
+    fn wire(mut self, col: usize, to: Wire) -> Self {
+        assert!(col < PERMUTS);
+        self[col] = to;
+        self
     }
 }
 
