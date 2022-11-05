@@ -412,10 +412,14 @@ where
                 (0..PERMUTS - 1)
                     .map(|c| {
                         (
-                            vec![
-                                self.evals.s[c].zeta.clone(),
-                                self.evals.s[c].zeta_omega.clone(),
-                            ],
+                            {
+                                let evals = self
+                                    .evals
+                                    .get_column(Column::Permutation(c))
+                                    .ok_or(VerifyError::MissingEvaluation(Column::Permutation(c)))
+                                    .unwrap(); /* TODO: Don't unwrap here. */
+                                vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                            },
                             None,
                         )
                     })
