@@ -477,14 +477,14 @@
 
 <span class="doccomment">/// Specifies whether a constraint system uses joint lookups. Used to make sure we
 /// squeeze the challenge `joint_combiner` when needed, and not when not needed.
-</span><span class="attribute">#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>LookupsUsed {
     Single,
     Joint,
 }
 
 <span class="doccomment">/// Describes the desired lookup configuration.
-</span><span class="attribute">#[derive(Clone, Serialize, Deserialize, Debug)]
+</span><span class="attr">#[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>LookupInfo {
     <span class="doccomment">/// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
@@ -618,7 +618,7 @@
 }
 
 <span class="doccomment">/// A position in the circuit relative to a given row.
-</span><span class="attribute">#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>LocalPosition {
     <span class="kw">pub </span>row: CurrOrNext,
     <span class="kw">pub </span>column: usize,
@@ -626,7 +626,7 @@
 
 <span class="doccomment">/// Look up a single value in a lookup table. The value may be computed as a linear
 /// combination of locally-accessible cells.
-</span><span class="attribute">#[derive(Clone, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Clone, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>SingleLookup&lt;F&gt; {
     <span class="doccomment">/// Linear combination of local-positions
     </span><span class="kw">pub </span>value: Vec&lt;(F, LocalPosition)&gt;,
@@ -646,7 +646,7 @@
 }
 
 <span class="doccomment">/// The table ID associated with a particular lookup
-</span><span class="attribute">#[derive(Clone, Serialize, Deserialize, Debug)]
+</span><span class="attr">#[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub enum </span>LookupTableID {
     <span class="doccomment">/// Look up the value from the given fixed table ID
     </span>Constant(i32),
@@ -655,7 +655,7 @@
 }
 
 <span class="doccomment">/// A spec for checking that the given vector belongs to a vector-valued lookup table.
-</span><span class="attribute">#[derive(Clone, Serialize, Deserialize, Debug)]
+</span><span class="attr">#[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>JointLookup&lt;SingleLookup, LookupTableID&gt; {
     <span class="doccomment">/// The ID for the table associated with this lookup.
     /// Positive IDs are intended to be used for the fixed tables associated with individual gates,
@@ -727,7 +727,7 @@
     }
 }
 
-<span class="attribute">#[derive(
+<span class="attr">#[derive(
     Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
 </span><span class="kw">pub enum </span>LookupPattern {
@@ -886,7 +886,7 @@
     }
 }
 
-<span class="attribute">#[test]
+<span class="attr">#[test]
 </span><span class="kw">fn </span>lookup_pattern_constants_correct() {
     <span class="kw">use </span>strum::IntoEnumIterator;
 
@@ -903,4 +903,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

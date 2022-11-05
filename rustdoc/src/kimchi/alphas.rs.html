@@ -391,7 +391,7 @@
 /// See [Self::default] to create one,
 /// and [Self::register] to register a new mapping.
 /// Once you know the alpha value, you can convert this type to a [Alphas].
-</span><span class="attribute">#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+</span><span class="attr">#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 </span><span class="kw">pub struct </span>Alphas&lt;F&gt; {
     <span class="doccomment">/// The next power of alpha to use
     /// the end result will be [1, alpha^{next_power - 1}]
@@ -549,7 +549,7 @@
 <span class="comment">// ------------------------------------------
 
 </span><span class="doccomment">/// Wrapper around an iterator that warns you if not consumed entirely.
-</span><span class="attribute">#[derive(Debug)]
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub struct </span>MustConsumeIterator&lt;I, T&gt;
 <span class="kw">where
     </span>I: Iterator&lt;Item = T&gt;,
@@ -590,7 +590,7 @@
 
 <span class="comment">// ------------------------------------------
 
-</span><span class="attribute">#[cfg(test)]
+</span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::{fs, path::Path};
 
@@ -600,7 +600,7 @@
 
     <span class="comment">// testing [Builder]
 
-    </span><span class="attribute">#[test]
+    </span><span class="attr">#[test]
     </span><span class="kw">fn </span>incorrect_alpha_powers() {
         <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
         alphas.register(ArgumentType::Gate(GateType::Poseidon), <span class="number">3</span>);
@@ -618,7 +618,7 @@
         <span class="macro">assert_eq!</span>(powers.next(), <span class="prelude-val">Some</span>(<span class="number">5</span>));
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>register_after_instantiating() {
         <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
@@ -626,7 +626,7 @@
         alphas.register(ArgumentType::Gate(GateType::Poseidon), <span class="number">3</span>);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>didnt_use_all_alpha_powers() {
         <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
@@ -635,7 +635,7 @@
         powers.next();
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>registered_alpha_powers_for_some_constraint_twice() {
         <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;Fp&gt;::default();
@@ -643,7 +643,7 @@
         alphas.register(ArgumentType::Gate(GateType::ChaCha0), <span class="number">3</span>);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>powers_of_alpha() {
         <span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::default();
         alphas.register(ArgumentType::Gate(GateType::Poseidon), <span class="number">4</span>);
@@ -672,7 +672,7 @@
         prover_index::testing::new_index_for_test,
     };
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>get_alphas_for_spec() {
         <span class="kw">let </span>gates = <span class="macro">vec!</span>[CircuitGate::&lt;Fp&gt;::zero(Wire::new(<span class="number">0</span>)); <span class="number">2</span>];
         <span class="kw">let </span>index = new_index_for_test(gates, <span class="number">0</span>);
@@ -705,4 +705,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

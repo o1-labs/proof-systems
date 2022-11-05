@@ -515,7 +515,7 @@
 
 <span class="comment">//~ spec:startcode
 </span><span class="doccomment">/// Evaluations of lookup polynomials
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
     serialize = <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
@@ -523,18 +523,18 @@
 </span>))]
 </span><span class="kw">pub struct </span>LookupEvaluations&lt;Field&gt; {
     <span class="doccomment">/// sorted lookup table polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
     </span><span class="kw">pub </span>sorted: Vec&lt;Field&gt;,
     <span class="doccomment">/// lookup aggregation polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>aggreg: Field,
     <span class="comment">// TODO: May be possible to optimize this away?
     </span><span class="doccomment">/// lookup table polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>table: Field,
 
     <span class="doccomment">/// Optionally, a runtime table polynomial.
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
     </span><span class="kw">pub </span>runtime: <span class="prelude-ty">Option</span>&lt;Field&gt;,
 }
 
@@ -542,7 +542,7 @@
 </span><span class="doccomment">/// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound(
     serialize = <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;</span>,
@@ -550,27 +550,27 @@
 </span>))]
 </span><span class="kw">pub struct </span>ProofEvaluations&lt;Field&gt; {
     <span class="doccomment">/// witness polynomials
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]
     </span><span class="kw">pub </span>w: [Field; COLUMNS],
     <span class="doccomment">/// permutation polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>z: Field,
     <span class="doccomment">/// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;</span>)]
     </span><span class="kw">pub </span>s: [Field; PERMUTS - <span class="number">1</span>],
     <span class="doccomment">/// lookup-related evaluations
     </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;LookupEvaluations&lt;Field&gt;&gt;,
     <span class="doccomment">/// evaluation of the generic selector polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>generic_selector: Field,
     <span class="doccomment">/// evaluation of the poseidon selector polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>poseidon_selector: Field,
 }
 
 <span class="doccomment">/// Commitments linked to the lookup feature
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>LookupCommitments&lt;G: AffineCurve&gt; {
@@ -583,7 +583,7 @@
 }
 
 <span class="doccomment">/// All the commitments that the prover creates as part of the proof.
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>ProverCommitments&lt;G: AffineCurve&gt; {
@@ -598,7 +598,7 @@
 }
 
 <span class="doccomment">/// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>ProverProof&lt;G: AffineCurve&gt; {
@@ -613,11 +613,11 @@
     </span><span class="kw">pub </span>evals: [ProofEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;; <span class="number">2</span>],
 
     <span class="doccomment">/// Required evaluation for [Maller&#39;s optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>ft_eval1: G::ScalarField,
 
     <span class="doccomment">/// The public input
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>public: Vec&lt;G::ScalarField&gt;,
 
     <span class="doccomment">/// The challenges underlying the optional polynomials folded into the proof
@@ -625,7 +625,7 @@
 }
 
 <span class="doccomment">/// A struct to store the challenges inside a `ProverProof`
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Deserialize, Serialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>RecursionChallenge&lt;G&gt;
@@ -633,7 +633,7 @@
     </span>G: AffineCurve,
 {
     <span class="doccomment">/// Vector of scalar field elements
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>chals: Vec&lt;G::ScalarField&gt;,
     <span class="doccomment">/// Polynomial commitment
     </span><span class="kw">pub </span>comm: PolyComm&lt;G&gt;,
@@ -774,7 +774,7 @@
 // OCaml types
 //
 
-</span><span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>commitment_dlog::commitment::caml::CamlPolyComm;
@@ -783,7 +783,7 @@
     // CamlRecursionChallenge&lt;CamlG, CamlF&gt;
     //
 
-    </span><span class="attribute">#[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="attr">#[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlRecursionChallenge&lt;CamlG, CamlF&gt; {
         <span class="kw">pub </span>chals: Vec&lt;CamlF&gt;,
         <span class="kw">pub </span>comm: CamlPolyComm&lt;CamlG&gt;,
@@ -824,7 +824,7 @@
     // CamlLookupEvaluations&lt;CamlF&gt;
     //
 
-    </span><span class="attribute">#[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="attr">#[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlLookupEvaluations&lt;CamlF&gt; {
         <span class="kw">pub </span>sorted: Vec&lt;Vec&lt;CamlF&gt;&gt;,
         <span class="kw">pub </span>aggreg: Vec&lt;CamlF&gt;,
@@ -873,7 +873,7 @@
     // CamlProofEvaluations&lt;CamlF&gt;
     //
 
-    </span><span class="attribute">#[allow(clippy::type_complexity)]
+    </span><span class="attr">#[allow(clippy::type_complexity)]
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlProofEvaluations&lt;CamlF&gt; {
         <span class="kw">pub </span>w: (
@@ -999,4 +999,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

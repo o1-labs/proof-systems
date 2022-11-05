@@ -966,7 +966,7 @@
 /// Additionally, during signing all members of the random oracle input get serialized
 /// together in two different ways: both as *bytes* and as a vector of *field elements*.
 /// The random oracle input automates and encapsulates this complexity.
-</span><span class="attribute">#[derive(Default, Debug, Clone, PartialEq, Eq)]
+</span><span class="attr">#[derive(Default, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>ROInput {
     fields: Vec&lt;Fp&gt;,
     bits: BitVec&lt;u8&gt;,
@@ -1086,27 +1086,27 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::Hashable;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_bool() {
         <span class="kw">let </span>roi = ROInput::new().append_bool(<span class="bool-val">true</span>);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">1</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x01</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_bits() {
         <span class="kw">let </span>roi = ROInput::new().append_bool(<span class="bool-val">false</span>).append_bool(<span class="bool-val">true</span>);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">2</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x02</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_five_bits() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_bool(<span class="bool-val">false</span>)
@@ -1118,28 +1118,28 @@
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x12</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_byte() {
         <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">8</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x01</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_bytes() {
         <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>]);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">16</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x10</span>, <span class="number">0xac</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_five_bytes() {
         <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">40</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_scalar() {
         <span class="kw">let </span>scalar =
             Fq::from_hex(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
@@ -1164,7 +1164,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_scalar_and_byte() {
         <span class="kw">let </span>scalar =
             Fq::from_hex(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
@@ -1183,7 +1183,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_scalars() {
         <span class="kw">let </span>scalar1 =
             Fq::from_hex(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
@@ -1205,7 +1205,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_scalars_and_byte() {
         <span class="kw">let </span>scalar1 =
             Fq::from_hex(<span class="string">&quot;60db6f4f5b8ce1c7cb747fba9e324cc3268c7a6e3f43cd82d451ae99a7b2bd1f&quot;</span>)
@@ -1230,14 +1230,14 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_u32() {
         <span class="kw">let </span>roi = ROInput::new().append_u32(<span class="number">1984u32</span>);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">32</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0xc0</span>, <span class="number">0x07</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_u32_and_bit() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_u32(<span class="number">1729u32</span>)
@@ -1247,14 +1247,14 @@
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0xc1</span>, <span class="number">0x06</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0xfe</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0xff</span>, <span class="number">0x01</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_u64() {
         <span class="kw">let </span>roi = ROInput::new().append_u64(<span class="number">6174u64</span>);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">64</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x1e</span>, <span class="number">0x18</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_u64_and_bits() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_bool(<span class="bool-val">true</span>)
@@ -1271,7 +1271,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>all_1() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_bool(<span class="bool-val">true</span>)
@@ -1304,7 +1304,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>transaction_bits() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_u64(<span class="number">1000000</span>) <span class="comment">// fee
@@ -1342,7 +1342,7 @@
         )
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_field() {
         <span class="kw">let </span>roi = ROInput::new().append_field(
             Fp::from_hex(<span class="string">&quot;2eaedae42a7461d5952d27b97ecad068b698ebb94e8a0e4c45388bb613de7e08&quot;</span>)
@@ -1359,7 +1359,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_fields() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_field(
@@ -1383,7 +1383,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_three_fields() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_field(
@@ -1413,7 +1413,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_field_and_scalar() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_field(
@@ -1437,7 +1437,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>append_field_bit_and_scalar() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_field(
@@ -1462,7 +1462,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>to_bytes() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_field(
@@ -1495,7 +1495,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>to_fields_1_scalar() {
         <span class="kw">let </span>roi = ROInput::new().append_scalar(
             Fq::from_hex(<span class="string">&quot;5d496dd8ff63f640c006887098092b16bc8c78504f84fa1ee3a0b54f85f0a625&quot;</span>)
@@ -1522,7 +1522,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>to_fields_1_scalar_2_bits() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_scalar(
@@ -1552,7 +1552,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>to_fields_2_scalars() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_scalar(
@@ -1588,7 +1588,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>to_fields_2_bits_scalar_u32() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_bool(<span class="bool-val">true</span>)
@@ -1619,7 +1619,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>to_fields_2_bits_field_scalar() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_bool(<span class="bool-val">false</span>)
@@ -1657,7 +1657,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>transaction_test_1() {
         <span class="kw">let </span>roi = ROInput::new()
             .append_field(
@@ -1725,9 +1725,9 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>nested_roinput_test() {
-        <span class="attribute">#[derive(Clone, Debug)]
+        <span class="attr">#[derive(Clone, Debug)]
         </span><span class="kw">struct </span>A {
             x: u32,
             y: bool,
@@ -1749,7 +1749,7 @@
             }
         }
 
-        <span class="attribute">#[derive(Clone, Debug)]
+        <span class="attr">#[derive(Clone, Debug)]
         </span><span class="kw">struct </span>B1 {
             a: A,
             b: u64,
@@ -1768,7 +1768,7 @@
             }
         }
 
-        <span class="attribute">#[derive(Clone, Debug)]
+        <span class="attr">#[derive(Clone, Debug)]
         </span><span class="kw">struct </span>B2 {
             a: A,
             b: u64,
@@ -1823,4 +1823,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_hasher" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

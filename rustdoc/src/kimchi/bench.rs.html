@@ -158,7 +158,7 @@
         <span class="comment">// create the circuit
         </span><span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
 
-        <span class="attribute">#[allow(clippy::explicit_counter_loop)]
+        <span class="attr">#[allow(clippy::explicit_counter_loop)]
         </span><span class="kw">for </span>row <span class="kw">in </span><span class="number">0</span>..num_gates {
             <span class="kw">let </span>wires = Wire::new(row);
             gates.push(CircuitGate::create_generic_gadget(
@@ -206,13 +206,13 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span>std::time::Instant;
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_bench() {
         <span class="comment">// context created in 21.2235 ms
         </span><span class="kw">let </span>start = Instant::now();
@@ -231,4 +231,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

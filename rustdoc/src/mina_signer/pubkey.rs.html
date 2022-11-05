@@ -236,31 +236,31 @@
 <span class="kw">use </span>o1_utils::FieldHelpers;
 
 <span class="doccomment">/// Public key errors
-</span><span class="attribute">#[derive(Error, Debug, Clone, PartialEq, Eq)]
+</span><span class="attr">#[derive(Error, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>PubKeyError {
     <span class="doccomment">/// Invalid address length
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid address length&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid address length&quot;</span>)]
     </span>AddressLength,
     <span class="doccomment">/// Invalid address base58
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid address base58&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid address base58&quot;</span>)]
     </span>AddressBase58,
     <span class="doccomment">/// Invalid raw address bytes length
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid raw address bytes length&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid raw address bytes length&quot;</span>)]
     </span>AddressRawByteLength,
     <span class="doccomment">/// Invalid address checksum
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid address checksum&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid address checksum&quot;</span>)]
     </span>AddressChecksum,
     <span class="doccomment">/// Invalid address version
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid address version&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid address version&quot;</span>)]
     </span>AddressVersion,
     <span class="doccomment">/// Invalid x-coordinate bytes
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid x-coordinate bytes&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid x-coordinate bytes&quot;</span>)]
     </span>XCoordinateBytes,
     <span class="doccomment">/// Invalid x-coordinate
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid x-coordinate&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid x-coordinate&quot;</span>)]
     </span>XCoordinate,
     <span class="doccomment">/// Point not on curve
-    </span><span class="attribute">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
     </span>NonCurvePoint,
 }
 <span class="doccomment">/// Public key Result
@@ -271,7 +271,7 @@
 <span class="kw">const </span>MINA_ADDRESS_RAW_LEN: usize = <span class="number">40</span>;
 
 <span class="doccomment">/// Public key
-</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>PubKey(CurvePoint);
 
 <span class="kw">impl </span>PubKey {
@@ -368,7 +368,7 @@
 }
 
 <span class="doccomment">/// Compressed public keys consist of x-coordinate and y-coordinate parity.
-</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>CompressedPubKey {
     <span class="doccomment">/// X-coordinate
     </span><span class="kw">pub </span>x: BaseField,
@@ -423,11 +423,11 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>from_address() {
         <span class="macro">macro_rules! </span>assert_from_address_check {
             (<span class="macro-nonterminal">$address</span>:expr) =&gt; {
@@ -445,4 +445,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

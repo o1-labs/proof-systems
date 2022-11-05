@@ -705,7 +705,7 @@
 <span class="kw">use </span>ark_ff::Field;
 
 <span class="doccomment">/// A structure to store program counter, allocation pointer and frame pointer
-</span><span class="attribute">#[derive(Clone, Copy)]
+</span><span class="attr">#[derive(Clone, Copy)]
 </span><span class="kw">pub struct </span>CairoState&lt;F&gt; {
     <span class="doccomment">/// Program counter: points to address in memory
     </span>pc: F,
@@ -748,7 +748,7 @@
     }
 }
 
-<span class="attribute">#[derive(Clone, Copy)]
+<span class="attr">#[derive(Clone, Copy)]
 </span><span class="doccomment">/// A structure to store auxiliary variables throughout computation
 </span><span class="kw">pub struct </span>CairoContext&lt;F&gt; {
     <span class="doccomment">/// Destination
@@ -785,7 +785,7 @@
     }
 }
 
-<span class="attribute">#[derive(Clone, Copy)]
+<span class="attr">#[derive(Clone, Copy)]
 </span><span class="doccomment">/// This structure stores all the needed information relative to an instruction at a given step of computation
 </span><span class="kw">pub struct </span>CairoInstruction&lt;F&gt; {
     <span class="doccomment">/// instruction word
@@ -1271,12 +1271,12 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>mina_curves::pasta::Fp <span class="kw">as </span>F;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_cairo_step() {
         <span class="comment">// This tests that CairoStep works for a 2 word instruction
         //    tempvar x = 10;
@@ -1300,7 +1300,7 @@
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, step.mem);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_cairo_program() {
         <span class="kw">let </span>instrs = <span class="macro">vec!</span>[<span class="number">0x480680017fff8000</span>, <span class="number">10</span>, <span class="number">0x208b7fff7fff7ffe</span>]
             .iter()
@@ -1315,7 +1315,7 @@
         <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, prog.mem);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_cairo_output() {
         <span class="comment">// This is a test for a longer program, involving builtins, imports and outputs
         // One can generate more tests here: https://www.cairo-lang.org/playground/
@@ -1395,4 +1395,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

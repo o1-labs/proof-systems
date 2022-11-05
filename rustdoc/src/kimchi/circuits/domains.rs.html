@@ -80,16 +80,16 @@
 
 <span class="kw">use </span><span class="kw">crate</span>::error::SetupError;
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>EvaluationDomains&lt;F: FftField&gt; {
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>d1: Domain&lt;F&gt;, <span class="comment">// size n
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>d2: Domain&lt;F&gt;, <span class="comment">// size 2n
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>d4: Domain&lt;F&gt;, <span class="comment">// size 4n
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>d8: Domain&lt;F&gt;, <span class="comment">// size 8n
 </span>}
 
@@ -128,13 +128,13 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>ark_ff::Field;
     <span class="kw">use </span>mina_curves::pasta::Fp;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     #[ignore] </span><span class="comment">// TODO(mimoo): wait for fix upstream (https://github.com/arkworks-rs/algebra/pull/307)
     </span><span class="kw">fn </span>test_create_domain() {
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(d) = EvaluationDomains::&lt;Fp&gt;::create(usize::MAX) {
@@ -149,4 +149,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

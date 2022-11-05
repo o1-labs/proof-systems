@@ -128,7 +128,7 @@
     <span class="doccomment">/// zeta^n and (zeta * omega)^n
     </span><span class="kw">pub </span>powers_of_eval_points_for_chunks: [G::ScalarField; <span class="number">2</span>],
     <span class="doccomment">/// recursion data
-    </span><span class="attribute">#[allow(clippy::type_complexity)]
+    </span><span class="attr">#[allow(clippy::type_complexity)]
     </span><span class="kw">pub </span>polys: Vec&lt;(PolyComm&lt;G&gt;, Vec&lt;Vec&lt;G::ScalarField&gt;&gt;)&gt;,
     <span class="doccomment">/// pre-computed zeta^n
     </span><span class="kw">pub </span>zeta1: G::ScalarField,
@@ -138,7 +138,7 @@
     </span><span class="kw">pub </span>combined_inner_product: G::ScalarField,
 }
 
-<span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use </span>ark_ff::PrimeField;
     <span class="kw">use </span>commitment_dlog::commitment::shift_scalar;
@@ -150,7 +150,7 @@
 
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlOracles&lt;CamlF&gt; {
         <span class="kw">pub </span>o: CamlRandomOracles&lt;CamlF&gt;,
         <span class="kw">pub </span>public_evals: (CamlF, CamlF),
@@ -205,4 +205,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

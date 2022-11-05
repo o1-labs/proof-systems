@@ -485,21 +485,21 @@
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Represents an error found when computing the lookup constraint system
-</span><span class="attribute">#[derive(Debug, Error)]
+</span><span class="attr">#[derive(Debug, Error)]
 </span><span class="kw">pub enum </span>LookupError {
-    <span class="attribute">#[error(<span class="string">&quot;One of the lookup tables has columns of different lengths&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;One of the lookup tables has columns of different lengths&quot;</span>)]
     </span>InconsistentTableLength,
-    <span class="attribute">#[error(<span class="string">&quot;The combined lookup table is larger than allowed by the domain size. Obsered: {length}, expected: {maximum_allowed}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;The combined lookup table is larger than allowed by the domain size. Obsered: {length}, expected: {maximum_allowed}&quot;</span>)]
     </span>LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
     },
-    <span class="attribute">#[error(<span class="string">&quot;The table with id 0 must have an entry of all zeros&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;The table with id 0 must have an entry of all zeros&quot;</span>)]
     </span>TableIDZeroMustHaveZeroEntry,
 }
 
 <span class="doccomment">/// Lookup selectors
-</span><span class="attribute">#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+</span><span class="attr">#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 </span><span class="kw">pub struct </span>LookupSelectors&lt;T&gt; {
     <span class="doccomment">/// Chacha pattern lookup selector
     </span><span class="kw">pub </span>xor: <span class="prelude-ty">Option</span>&lt;T&gt;,
@@ -511,16 +511,16 @@
     </span><span class="kw">pub </span>range_check_gate: <span class="prelude-ty">Option</span>&lt;T&gt;,
 }
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 </span><span class="kw">struct </span>LookupSelectorsSerdeAs&lt;F: FftField&gt; {
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>xor: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>chacha_final: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>lookup_gate: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>range_check_gate: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 }
 
@@ -597,7 +597,7 @@
         } = <span class="self">self</span>;
         <span class="comment">// This closure isn&#39;t really redundant -- it shields the parameter from a copy -- but
         // clippy isn&#39;t smart enough to figure that out..
-        </span><span class="attribute">#[allow(clippy::redundant_closure)]
+        </span><span class="attr">#[allow(clippy::redundant_closure)]
         </span><span class="kw">let </span>f = |x| f(x);
         LookupSelectors {
             xor: xor.map(f),
@@ -617,32 +617,32 @@
     }
 }
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>LookupConstraintSystem&lt;F: FftField&gt; {
     <span class="doccomment">/// Lookup tables
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>lookup_table: Vec&lt;DP&lt;F&gt;&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>lookup_table8: Vec&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 
     <span class="doccomment">/// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>table_ids: <span class="prelude-ty">Option</span>&lt;DP&lt;F&gt;&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>table_ids8: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 
     <span class="doccomment">/// Lookup selectors:
     /// For each kind of lookup-pattern, we have a selector that&#39;s
     /// 1 at the rows where that pattern should be enforced, and 0 at
     /// all other rows.
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;LookupSelectorsSerdeAs&lt;F&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;LookupSelectorsSerdeAs&lt;F&gt;&quot;</span>)]
     </span><span class="kw">pub </span>lookup_selectors: LookupSelectors&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 
     <span class="doccomment">/// An optional runtime table selector. It is 0 everywhere,
     /// except at the rows where the runtime tables apply.
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>runtime_selector: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 
     <span class="doccomment">/// Optional runtime tables, listed as tuples `(length, id)`.
@@ -652,7 +652,7 @@
     </span><span class="kw">pub </span>runtime_table_offset: <span class="prelude-ty">Option</span>&lt;usize&gt;,
 
     <span class="doccomment">/// Configuration for the lookup constraint.
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;LookupConfiguration&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;LookupConfiguration&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>configuration: LookupConfiguration&lt;F&gt;,
 }
 
@@ -925,4 +925,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

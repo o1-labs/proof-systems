@@ -766,7 +766,7 @@
 /// # Panics
 ///
 /// Will panic if `value(s)` are missing from the `table`.
-</span><span class="attribute">#[allow(clippy::too_many_arguments)]
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>sorted&lt;F: PrimeField&gt;(
     dummy_lookup_value: F,
     joint_lookup_table_d8: <span class="kw-2">&amp;</span>Evaluations&lt;F, D&lt;F&gt;&gt;,
@@ -907,7 +907,7 @@
 /// # Panics
 ///
 /// Will panic if final evaluation is not 1.
-</span><span class="attribute">#[allow(clippy::too_many_arguments)]
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>aggregation&lt;R, F&gt;(
     dummy_lookup_value: F,
     joint_lookup_table_d8: <span class="kw-2">&amp;</span>Evaluations&lt;F, D&lt;F&gt;&gt;,
@@ -1015,7 +1015,7 @@
 <span class="doccomment">/// Configuration for the lookup constraint.
 /// These values are independent of the choice of lookup values.
 </span><span class="comment">// TODO: move to lookup::index
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>LookupConfiguration&lt;F: FftField&gt; {
     <span class="doccomment">/// The kind of lookups used
@@ -1028,7 +1028,7 @@
     /// This is used to pad the lookups to `max_lookups_per_row` when fewer lookups are used in a
     /// particular row, so that we can treat each row uniformly as having the same number of
     /// lookups.
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;JointLookupValue&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;JointLookupValue&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>dummy_lookup: JointLookupValue&lt;F&gt;,
 }
 
@@ -1253,7 +1253,7 @@
 /// # Panics
 ///
 /// Will panic if `d1` and `s` domain sizes do not match.
-</span><span class="attribute">#[allow(clippy::too_many_arguments)]
+</span><span class="attr">#[allow(clippy::too_many_arguments)]
 </span><span class="kw">pub fn </span>verify&lt;F: PrimeField, I: Iterator&lt;Item = F&gt;, TABLE: Fn() -&gt; I&gt;(
     dummy_lookup_value: F,
     lookup_table: TABLE,
@@ -1361,4 +1361,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

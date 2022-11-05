@@ -1025,7 +1025,7 @@
 <span class="doccomment">/// A variable in our circuit.
 /// Variables are assigned with an index to differentiate from each other.
 /// Optionally, they can eventually take as value a field element.
-</span><span class="attribute">#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
+</span><span class="attr">#[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 </span><span class="kw">pub struct </span>Var&lt;F&gt; {
     <span class="kw">pub </span>index: usize,
     <span class="kw">pub </span>value: <span class="prelude-ty">Option</span>&lt;F&gt;,
@@ -1075,7 +1075,7 @@
 /// It carries the index for the next available variable,
 /// and the vector of [`GateSpec`] created so far.
 /// It also keeps track of the queue of generic gates and cached constants.
-</span><span class="attribute">#[derive(Default)]
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>System&lt;F&gt; {
     <span class="kw">pub </span>next_variable: usize,
     <span class="kw">pub </span>generic_gate_queue: Vec&lt;GateSpec&lt;F&gt;&gt;,
@@ -1085,7 +1085,7 @@
 }
 
 <span class="doccomment">/// Carries a vector of rows corresponding to the witness, a queue of generic gates, and stores the cached constants
-</span><span class="attribute">#[derive(Default)]
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>WitnessGenerator&lt;F&gt;
 <span class="kw">where
     </span>F: PrimeField,
@@ -2013,4 +2013,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

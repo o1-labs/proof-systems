@@ -75,7 +75,7 @@
 };
 <span class="kw">use </span>ark_ff::{field_new, Zero};
 
-<span class="attribute">#[derive(Debug, Clone, Default, PartialEq, Eq)]
+<span class="attr">#[derive(Debug, Clone, Default, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>PallasParameters;
 
 <span class="kw">impl </span>ModelParameters <span class="kw">for </span>PallasParameters {
@@ -103,7 +103,7 @@
     </span><span class="kw">const </span>AFFINE_GENERATOR_COEFFS: (<span class="self">Self</span>::BaseField, <span class="self">Self</span>::BaseField) =
         (G_GENERATOR_X, G_GENERATOR_Y);
 
-    <span class="attribute">#[inline(always)]
+    <span class="attr">#[inline(always)]
     </span><span class="kw">fn </span>mul_by_a(<span class="kw">_</span>: <span class="kw-2">&amp;</span><span class="self">Self</span>::BaseField) -&gt; <span class="self">Self</span>::BaseField {
         <span class="self">Self</span>::BaseField::zero()
     }
@@ -121,7 +121,7 @@
 </span>);
 
 <span class="doccomment">/// legacy curve, a copy of the normal curve to support legacy sponge params
-</span><span class="attribute">#[derive(Copy, Clone, Default, PartialEq, Eq)]
+</span><span class="attr">#[derive(Copy, Clone, Default, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>LegacyPallasParameters;
 
 <span class="kw">impl </span>ModelParameters <span class="kw">for </span>LegacyPallasParameters {
@@ -139,4 +139,4 @@
 
 <span class="kw">pub type </span>LegacyPallas = GroupAffine&lt;LegacyPallasParameters&gt;;
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="mina_curves" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

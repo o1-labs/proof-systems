@@ -89,82 +89,82 @@
 
 <span class="doccomment">/// Errors that can arise when creating a proof
 </span><span class="comment">// TODO(mimoo): move this out of oracle
-</span><span class="attribute">#[derive(Error, Debug, Clone, Copy)]
+</span><span class="attr">#[derive(Error, Debug, Clone, Copy)]
 </span><span class="kw">pub enum </span>ProverError {
-    <span class="attribute">#[error(<span class="string">&quot;the circuit is too large&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the circuit is too large&quot;</span>)]
     </span>NoRoomForZkInWitness,
 
-    <span class="attribute">#[error(<span class="string">&quot;the witness columns are not all the same size&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the witness columns are not all the same size&quot;</span>)]
     </span>WitnessCsInconsistent,
 
-    <span class="attribute">#[error(<span class="string">&quot;the proof could not be constructed: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the proof could not be constructed: {0}&quot;</span>)]
     </span>Prover(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
 
-    <span class="attribute">#[error(<span class="string">&quot;the permutation was not constructed correctly: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the permutation was not constructed correctly: {0}&quot;</span>)]
     </span>Permutation(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
 
-    <span class="attribute">#[error(<span class="string">&quot;the lookup failed to find a match in the table&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the lookup failed to find a match in the table&quot;</span>)]
     </span>ValueNotInTable,
 
-    <span class="attribute">#[error(<span class="string">&quot;SRS size is smaller than the domain size required by the circuit&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;SRS size is smaller than the domain size required by the circuit&quot;</span>)]
     </span>SRSTooSmall,
 
-    <span class="attribute">#[error(<span class="string">&quot;the runtime tables provided did not match the index&#39;s configuration&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the runtime tables provided did not match the index&#39;s configuration&quot;</span>)]
     </span>RuntimeTablesInconsistent,
 
-    <span class="attribute">#[error(<span class="string">&quot;wrong number of custom blinders given: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;wrong number of custom blinders given: {0}&quot;</span>)]
     </span>WrongBlinders(CommitmentError),
 }
 
 <span class="doccomment">/// Errors that can arise when verifying a proof
-</span><span class="attribute">#[derive(Error, Debug, Clone, Copy)]
+</span><span class="attr">#[derive(Error, Debug, Clone, Copy)]
 </span><span class="kw">pub enum </span>VerifyError {
-    <span class="attribute">#[error(<span class="string">&quot;the commitment to {0} is of an unexpected size&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the commitment to {0} is of an unexpected size&quot;</span>)]
     </span>IncorrectCommitmentLength(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
 
-    <span class="attribute">#[error(<span class="string">&quot;the public input is of an unexpected size (expected {0})&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the public input is of an unexpected size (expected {0})&quot;</span>)]
     </span>IncorrectPubicInputLength(usize),
 
-    <span class="attribute">#[error(<span class="string">&quot;the previous challenges have an unexpected length (expected {0}, got {1})&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the previous challenges have an unexpected length (expected {0}, got {1})&quot;</span>)]
     </span>IncorrectPrevChallengesLength(usize, usize),
 
-    <span class="attribute">#[error(<span class="string">&quot;the opening proof failed to verify&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the opening proof failed to verify&quot;</span>)]
     </span>OpenProof,
 
-    <span class="attribute">#[error(<span class="string">&quot;lookup used in circuit, but proof is missing lookup commitments&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;lookup used in circuit, but proof is missing lookup commitments&quot;</span>)]
     </span>LookupCommitmentMissing,
 
-    <span class="attribute">#[error(<span class="string">&quot;lookup used in circuit, but proof is missing lookup evaluations&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;lookup used in circuit, but proof is missing lookup evaluations&quot;</span>)]
     </span>LookupEvalsMissing,
 
-    <span class="attribute">#[error(<span class="string">&quot;lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;lookup used in circuit, but proof has inconsistent number of lookup evaluations and commitments&quot;</span>)]
     </span>ProofInconsistentLookup,
 
-    <span class="attribute">#[error(<span class="string">&quot;cannot batch proofs using different SRSes&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;cannot batch proofs using different SRSes&quot;</span>)]
     </span>DifferentSRS,
 
-    <span class="attribute">#[error(<span class="string">&quot;SRS size is smaller than the domain size required by the circuit&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;SRS size is smaller than the domain size required by the circuit&quot;</span>)]
     </span>SRSTooSmall,
 
-    <span class="attribute">#[error(<span class="string">&quot;runtime tables are used, but missing from the proof&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;runtime tables are used, but missing from the proof&quot;</span>)]
     </span>IncorrectRuntimeProof,
 }
 
 <span class="doccomment">/// Errors that can arise when preparing the setup
-</span><span class="attribute">#[derive(Error, Debug, Clone)]
+</span><span class="attr">#[derive(Error, Debug, Clone)]
 </span><span class="kw">pub enum </span>SetupError {
-    <span class="attribute">#[error(<span class="string">&quot;the domain could not be constructed: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the domain could not be constructed: {0}&quot;</span>)]
     </span>ConstraintSystem(String),
 
-    <span class="attribute">#[error(<span class="string">&quot;the domain could not be constructed: {0}&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;the domain could not be constructed: {0}&quot;</span>)]
     </span>DomainCreation(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
 }
 
 <span class="doccomment">/// Errors that can arise when creating a verifier index
-</span><span class="attribute">#[derive(Error, Debug, Clone)]
+</span><span class="attr">#[derive(Error, Debug, Clone)]
 </span><span class="kw">pub enum </span>VerifierIndexError {
-    <span class="attribute">#[error(<span class="string">&quot;srs has already been set&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;srs has already been set&quot;</span>)]
     </span>SRSHasBeenSet,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

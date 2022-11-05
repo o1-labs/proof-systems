@@ -173,23 +173,23 @@
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Keypair error
-</span><span class="attribute">#[derive(Error, Debug, Clone, PartialEq, Eq)]
+</span><span class="attr">#[derive(Error, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>KeypairError {
     <span class="doccomment">/// Invalid secret key hex
-    </span><span class="attribute">#[error(<span class="string">&quot;invalid secret key hex&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;invalid secret key hex&quot;</span>)]
     </span>SecretKeyHex,
     <span class="doccomment">/// Invalid secret key bytes
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid secret key bytes&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid secret key bytes&quot;</span>)]
     </span>SecretKeyBytes,
     <span class="doccomment">/// point not on curve
-    </span><span class="attribute">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
     </span>NonCurvePoint,
 }
 <span class="doccomment">/// Keypair result
 </span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, KeypairError&gt;;
 
 <span class="doccomment">/// Keypair structure
-</span><span class="attribute">#[derive(Clone, PartialEq, Eq)]
+</span><span class="attr">#[derive(Clone, PartialEq, Eq)]
 </span><span class="kw">pub struct </span>Keypair {
     <span class="doccomment">/// Secret key
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) secret: SecKey,
@@ -261,11 +261,11 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>from_hex() {
         <span class="macro">assert_eq!</span>(Keypair::from_hex(<span class="string">&quot;&quot;</span>), <span class="prelude-val">Err</span>(KeypairError::SecretKeyBytes));
         <span class="macro">assert_eq!</span>(
@@ -289,7 +289,7 @@
             .expect(<span class="string">&quot;failed to decode keypair secret key&quot;</span>);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>get_address() {
         <span class="macro">macro_rules! </span>assert_get_address_eq {
             (<span class="macro-nonterminal">$sec_key_hex</span>:expr, <span class="macro-nonterminal">$target_address</span>:expr) =&gt; {
@@ -325,4 +325,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="mina_signer" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

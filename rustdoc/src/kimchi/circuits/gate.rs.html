@@ -589,7 +589,7 @@
 
 <span class="doccomment">/// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
-</span><span class="attribute">#[repr(C)]
+</span><span class="attr">#[repr(C)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[cfg_attr(
     feature = <span class="string">&quot;ocaml_types&quot;</span>,
@@ -619,7 +619,7 @@
 /// they cannot be used at the same time on single row.
 /// If we were ever to support this feature, we would have to make sure
 /// not to re-use powers of alpha across constraints.
-</span><span class="attribute">#[repr(C)]
+</span><span class="attr">#[repr(C)]
 #[derive(
     Clone,
     Copy,
@@ -642,7 +642,7 @@
 #[cfg_attr(feature = <span class="string">&quot;wasm_types&quot;</span>, wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 </span><span class="kw">pub enum </span>GateType {
-    <span class="attribute">#[default]
+    <span class="attr">#[default]
     </span><span class="doccomment">/// Zero gate
     </span>Zero = <span class="number">0</span>,
     <span class="doccomment">/// Generic arithmetic gate
@@ -679,53 +679,53 @@
 }
 
 <span class="doccomment">/// Selector polynomial
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>SelectorPolynomial&lt;F: PrimeField&gt; {
     <span class="doccomment">/// Evaluation form (evaluated over domain d8)
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>eval8: Evaluations&lt;F, D&lt;F&gt;&gt;,
 }
 
 <span class="doccomment">/// Gate error
-</span><span class="attribute">#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
+</span><span class="attr">#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>CircuitGateError {
     <span class="doccomment">/// Invalid constraint
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid circuit gate type {0:?}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid circuit gate type {0:?}&quot;</span>)]
     </span>InvalidCircuitGateType(GateType),
     <span class="doccomment">/// Invalid constraint
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} constraint&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid {0:?} constraint&quot;</span>)]
     </span>InvalidConstraint(GateType),
     <span class="doccomment">/// Invalid constraint with number
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} constraint: {1}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid {0:?} constraint: {1}&quot;</span>)]
     </span>Constraint(GateType, usize),
     <span class="doccomment">/// Invalid wire column
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} wire column: {1}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid {0:?} wire column: {1}&quot;</span>)]
     </span>WireColumn(GateType, usize),
     <span class="doccomment">/// Disconnected wires
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {typ:?} copy constraint: {},{} -&gt; {},{}&quot;</span>, .src.row, .src.col, .dst.row, .dst.col)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid {typ:?} copy constraint: {},{} -&gt; {},{}&quot;</span>, .src.row, .src.col, .dst.row, .dst.col)]
     </span>CopyConstraint { typ: GateType, src: Wire, dst: Wire },
     <span class="doccomment">/// Invalid copy constraint
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} copy constraint&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid {0:?} copy constraint&quot;</span>)]
     </span>InvalidCopyConstraint(GateType),
     <span class="doccomment">/// Invalid lookup constraint - sorted evaluations
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} lookup constraint - sorted evaluations&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid {0:?} lookup constraint - sorted evaluations&quot;</span>)]
     </span>InvalidLookupConstraintSorted(GateType),
     <span class="doccomment">/// Invalid lookup constraint - sorted evaluations
-    </span><span class="attribute">#[error(<span class="string">&quot;Invalid {0:?} lookup constraint - aggregation polynomial&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Invalid {0:?} lookup constraint - aggregation polynomial&quot;</span>)]
     </span>InvalidLookupConstraintAggregation(GateType),
     <span class="doccomment">/// Missing lookup constraint system
-    </span><span class="attribute">#[error(<span class="string">&quot;Failed to get lookup constraint system for {0:?}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Failed to get lookup constraint system for {0:?}&quot;</span>)]
     </span>MissingLookupConstraintSystem(GateType),
     <span class="doccomment">/// Failed to get witness for row
-    </span><span class="attribute">#[error(<span class="string">&quot;Failed to get {0:?} witness for row {1}&quot;</span>)]
+    </span><span class="attr">#[error(<span class="string">&quot;Failed to get {0:?} witness for row {1}&quot;</span>)]
     </span>FailedToGetWitnessForRow(GateType, usize),
 }
 
 <span class="doccomment">/// Gate result
 </span><span class="kw">pub type </span>CircuitGateResult&lt;T&gt; = std::result::Result&lt;T, CircuitGateError&gt;;
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 </span><span class="doccomment">/// A single gate in a circuit.
 </span><span class="kw">pub struct </span>CircuitGate&lt;F: PrimeField&gt; {
@@ -736,7 +736,7 @@
     </span><span class="kw">pub </span>wires: GateWires,
 
     <span class="doccomment">/// public selector polynomials that can used as handy coefficients in gates
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>coeffs: Vec&lt;F&gt;,
 }
 
@@ -750,7 +750,7 @@
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; ToBytes <span class="kw">for </span>CircuitGate&lt;F&gt; {
-    <span class="attribute">#[inline]
+    <span class="attr">#[inline]
     </span><span class="kw">fn </span>write&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>w: W) -&gt; IoResult&lt;()&gt; {
         <span class="kw">let </span>typ: u8 = ToPrimitive::to_u8(<span class="kw-2">&amp;</span><span class="self">self</span>.typ).unwrap();
         typ.write(<span class="kw-2">&amp;mut </span>w)<span class="question-mark">?</span>;
@@ -969,22 +969,22 @@
 }
 
 <span class="doccomment">/// A circuit is specified as a series of [`CircuitGate`].
-</span><span class="attribute">#[derive(Serialize)]
+</span><span class="attr">#[derive(Serialize)]
 </span><span class="kw">pub struct </span>Circuit&lt;<span class="lifetime">&#39;a</span>, F: PrimeField&gt;(
-    <span class="attribute">#[serde(bound = <span class="string">&quot;CircuitGate&lt;F&gt;: Serialize&quot;</span>)] </span><span class="kw">pub </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[CircuitGate&lt;F&gt;],
+    <span class="attr">#[serde(bound = <span class="string">&quot;CircuitGate&lt;F&gt;: Serialize&quot;</span>)] </span><span class="kw">pub </span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[CircuitGate&lt;F&gt;],
 );
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: PrimeField&gt; CryptoDigest <span class="kw">for </span>Circuit&lt;<span class="lifetime">&#39;a</span>, F&gt; {
     <span class="kw">const </span>PREFIX: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>[u8; <span class="number">15</span>] = <span class="string">b&quot;kimchi-circuit0&quot;</span>;
 }
 
-<span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::caml::CamlWire;
     <span class="kw">use </span>itertools::Itertools;
 
-    <span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlCircuitGate&lt;F&gt; {
         <span class="kw">pub </span>typ: GateType,
         <span class="kw">pub </span>wires: (
@@ -1074,7 +1074,7 @@
 // Tests
 //
 
-</span><span class="attribute">#[cfg(test)]
+</span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>ark_ff::UniformRand <span class="kw">as _</span>;
@@ -1112,7 +1112,7 @@
     }
 
     <span class="macro">proptest! </span>{
-        <span class="attribute">#[test]
+        <span class="attr">#[test]
         </span><span class="kw">fn </span>test_gate_serialization(cg <span class="kw">in </span>arb_circuit_gate()) {
             <span class="kw">let </span>encoded = rmp_serde::to_vec(<span class="kw-2">&amp;</span>cg).unwrap();
             <span class="kw">let </span>decoded: CircuitGate&lt;Fp&gt; = rmp_serde::from_slice(<span class="kw-2">&amp;</span>encoded).unwrap();
@@ -1125,4 +1125,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

@@ -207,24 +207,24 @@
 <span class="kw">use </span>std::sync::Arc;
 
 <span class="doccomment">/// The index used by the prover
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 </span><span class="comment">//~spec:startcode
 </span><span class="kw">pub struct </span>ProverIndex&lt;G: KimchiCurve&gt; {
     <span class="doccomment">/// constraints system polynomials
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>cs: ConstraintSystem&lt;G::ScalarField&gt;,
 
     <span class="doccomment">/// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField&gt;&gt;&gt;,
 
     <span class="doccomment">/// The mapping between powers of alpha and constraints
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>powers_of_alpha: Alphas&lt;G::ScalarField&gt;,
 
     <span class="doccomment">/// polynomial commitment keys
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>srs: Arc&lt;SRS&lt;G&gt;&gt;,
 
     <span class="doccomment">/// maximal size of polynomial section
@@ -234,11 +234,11 @@
     </span><span class="kw">pub </span>max_quot_size: usize,
 
     <span class="doccomment">/// The verifier index corresponding to this prover index
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>verifier_index: <span class="prelude-ty">Option</span>&lt;VerifierIndex&lt;G&gt;&gt;,
 
     <span class="doccomment">/// The verifier index digest corresponding to this prover index
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>verifier_index_digest: <span class="prelude-ty">Option</span>&lt;G::BaseField&gt;,
 }
 <span class="comment">//~spec:endcode
@@ -375,4 +375,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

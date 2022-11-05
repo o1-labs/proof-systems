@@ -2632,24 +2632,24 @@
 
 <span class="kw">use </span><span class="self">self</span>::constraints::ExprOps;
 
-<span class="attribute">#[derive(Debug, Error)]
+<span class="attr">#[derive(Debug, Error)]
 </span><span class="kw">pub enum </span>ExprError {
-    <span class="attribute">#[error(<span class="string">&quot;Empty stack&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;Empty stack&quot;</span>)]
     </span>EmptyStack,
 
-    <span class="attribute">#[error(<span class="string">&quot;Lookup should not have been used&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;Lookup should not have been used&quot;</span>)]
     </span>LookupShouldNotBeUsed,
 
-    <span class="attribute">#[error(<span class="string">&quot;Linearization failed (needed {0:?} evaluated at the {1:?} row&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;Linearization failed (needed {0:?} evaluated at the {1:?} row&quot;</span>)]
     </span>MissingEvaluation(Column, CurrOrNext),
 
-    <span class="attribute">#[error(<span class="string">&quot;Cannot get index evaluation {0:?} (should have been linearized away)&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;Cannot get index evaluation {0:?} (should have been linearized away)&quot;</span>)]
     </span>MissingIndexEvaluation(Column),
 
-    <span class="attribute">#[error(<span class="string">&quot;Linearization failed&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;Linearization failed&quot;</span>)]
     </span>FailedLinearization,
 
-    <span class="attribute">#[error(<span class="string">&quot;runtime table not available&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;runtime table not available&quot;</span>)]
     </span>MissingRuntime,
 }
 
@@ -2766,7 +2766,7 @@
     domain.evaluate_vanishing_polynomial(<span class="kw-2">*</span>pt) / (<span class="kw-2">*</span>pt - omega_i)
 }
 
-<span class="attribute">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="doccomment">/// A type representing one of the polynomials involved in the PLONK IOP.
 </span><span class="kw">pub enum </span>Column {
     Witness(usize),
@@ -2824,7 +2824,7 @@
     }
 }
 
-<span class="attribute">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="doccomment">/// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
 </span><span class="kw">pub struct </span>Variable {
@@ -2856,7 +2856,7 @@
     }
 }
 
-<span class="attribute">#[derive(Clone, Debug, PartialEq)]
+<span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="doccomment">/// An arithmetic expression over
 ///
 /// - the operations *, +, -, ^
@@ -2959,11 +2959,11 @@
 }
 
 <span class="doccomment">/// A key for a cached value
-</span><span class="attribute">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 </span><span class="kw">pub struct </span>CacheId(usize);
 
 <span class="doccomment">/// A cache
-</span><span class="attribute">#[derive(Default)]
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>Cache {
     next_id: usize,
 }
@@ -3018,7 +3018,7 @@
 }
 
 <span class="doccomment">/// A binary operation
-</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>Op2 {
     Add,
     Mul,
@@ -3046,7 +3046,7 @@
 /// This represents a PLONK &quot;custom constraint&quot;, which enforces that
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
-</span><span class="attribute">#[derive(Clone, Debug, PartialEq)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq)]
 </span><span class="kw">pub enum </span>Expr&lt;C&gt; {
     Constant(C),
     Cell(Variable),
@@ -3064,7 +3064,7 @@
 <span class="doccomment">/// For efficiency of evaluation, we compile expressions to
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
-</span><span class="attribute">#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>PolishToken&lt;F&gt; {
     Alpha,
     Beta,
@@ -3227,7 +3227,7 @@
     }
 }
 
-<span class="attribute">#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+<span class="attr">#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
 </span><span class="kw">enum </span>Domain {
     D1 = <span class="number">1</span>,
     D2 = <span class="number">2</span>,
@@ -3235,7 +3235,7 @@
     D8 = <span class="number">8</span>,
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">enum </span>EvalResult&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; {
     Constant(F),
     Evals {
@@ -4145,7 +4145,7 @@
     }
 }
 
-<span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+<span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="doccomment">/// A &quot;linearization&quot;, which is linear combination with `E` coefficients of
 /// columns.
 </span><span class="kw">pub struct </span>Linearization&lt;E&gt; {
@@ -4244,7 +4244,7 @@
 
 <span class="kw">impl</span>&lt;F: One&gt; Expr&lt;F&gt; {
     <span class="doccomment">/// Exponentiate an expression
-    </span><span class="attribute">#[must_use]
+    </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>pow(<span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">if </span>p == <span class="number">0 </span>{
@@ -5071,7 +5071,7 @@
     <span class="kw">pub use super</span>::{coeff, constant, index, witness, witness_curr, witness_next, E};
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>test {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use crate</span>::{
@@ -5089,7 +5089,7 @@
     <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
     <span class="kw">use </span>std::array;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>test_failed_linearize() {
         <span class="comment">// w0 * w1
@@ -5102,7 +5102,7 @@
         expr.linearize(evaluated).unwrap();
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     #[should_panic]
     </span><span class="kw">fn </span>test_degree_tracking() {
         <span class="comment">// The selector CompleteAdd has degree n-1 (so can be tracked with n evaluations in the domain d1 of size n).
@@ -5156,7 +5156,7 @@
         </span>expr.evaluations(<span class="kw-2">&amp;</span>env);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_unnormalized_lagrange_basis() {
         <span class="kw">let </span>domain = EvaluationDomains::&lt;Fp&gt;::create(<span class="number">2usize</span>.pow(<span class="number">10</span>) + ZK_ROWS <span class="kw">as </span>usize)
             .expect(<span class="string">&quot;failed to create evaluation domain&quot;</span>);
@@ -5173,7 +5173,7 @@
         }
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_arithmetic_ops() {
         <span class="kw">fn </span>test_1&lt;F: Field, T: ExprOps&lt;F&gt;&gt;() -&gt; T {
             T::zero() + T::one()
@@ -5207,4 +5207,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

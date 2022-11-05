@@ -735,7 +735,7 @@
 // ConstraintSystem
 //
 
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>ConstraintSystem&lt;F: PrimeField&gt; {
     <span class="comment">// Basics
@@ -745,79 +745,79 @@
     <span class="doccomment">/// number of previous evaluation challenges, for recursive proving
     </span><span class="kw">pub </span>prev_challenges: usize,
     <span class="doccomment">/// evaluation domains
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;EvaluationDomains&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;EvaluationDomains&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>domain: EvaluationDomains&lt;F&gt;,
     <span class="doccomment">/// circuit gates
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;CircuitGate&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;CircuitGate&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>gates: Vec&lt;CircuitGate&lt;F&gt;&gt;,
 
     <span class="comment">// Polynomials over the monomial base
     // ----------------------------------
     </span><span class="doccomment">/// permutation polynomial array
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
     </span><span class="kw">pub </span>sigmam: [DP&lt;F&gt;; PERMUTS],
 
     <span class="comment">// Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
     </span><span class="doccomment">/// coefficients polynomials in evaluation form
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]
     </span><span class="kw">pub </span>coefficients8: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS],
 
     <span class="comment">// Generic constraint selector polynomials
     // ---------------------------------------
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>genericm: DP&lt;F&gt;,
 
     <span class="comment">// Poseidon selector polynomials
     // -----------------------------
     </span><span class="doccomment">/// poseidon constraint selector polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>psm: DP&lt;F&gt;,
 
     <span class="comment">// Generic constraint selector polynomials
     // ---------------------------------------
     </span><span class="doccomment">/// multiplication evaluations over domain.d4
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>generic4: E&lt;F, D&lt;F&gt;&gt;,
 
     <span class="comment">// permutation polynomials
     // -----------------------
     </span><span class="doccomment">/// permutation polynomial array evaluations over domain d1
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
     </span><span class="kw">pub </span>sigmal1: [E&lt;F, D&lt;F&gt;&gt;; PERMUTS],
     <span class="doccomment">/// permutation polynomial array evaluations over domain d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
     </span><span class="kw">pub </span>sigmal8: [E&lt;F, D&lt;F&gt;&gt;; PERMUTS],
     <span class="doccomment">/// SID polynomial
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>sid: Vec&lt;F&gt;,
 
     <span class="comment">// Poseidon selector polynomials
     // -----------------------------
     </span><span class="doccomment">/// poseidon selector over domain.d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>ps8: E&lt;F, D&lt;F&gt;&gt;,
 
     <span class="comment">// ECC arithmetic selector polynomials
     // -----------------------------------
     </span><span class="doccomment">/// EC point addition selector evaluations w over domain.d4
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>complete_addl4: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// scalar multiplication selector evaluations over domain.d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>mull8: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// endoscalar multiplication selector evaluations over domain.d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>emull: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// ChaCha indexes
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;[o1_utils::serialization::SerdeAs; 4]&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;[o1_utils::serialization::SerdeAs; 4]&gt;&quot;</span>)]
     </span><span class="kw">pub </span>chacha8: <span class="prelude-ty">Option</span>&lt;[E&lt;F, D&lt;F&gt;&gt;; <span class="number">4</span>]&gt;,
     <span class="doccomment">/// EC point addition selector evaluations w over domain.d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>endomul_scalar8: E&lt;F, D&lt;F&gt;&gt;,
 
     <span class="doccomment">/// Range check gate selector polynomials
-    </span><span class="attribute">#[serde(
+    </span><span class="attr">#[serde(
         bound = <span class="string">&quot;[SelectorPolynomial&lt;F&gt;; range_check::gadget::GATE_COUNT]: Serialize + DeserializeOwned&quot;
     </span>)]
     </span><span class="kw">pub </span>range_check_selector_polys:
@@ -827,29 +827,29 @@
     </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
 
     <span class="doccomment">/// Foreign field addition gate selector polynomial
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;Option&lt;SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>foreign_field_add_selector_poly: <span class="prelude-ty">Option</span>&lt;SelectorPolynomial&lt;F&gt;&gt;,
 
     <span class="doccomment">/// Xor gate selector polynomial
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;Option&lt;SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>xor_selector_poly: <span class="prelude-ty">Option</span>&lt;SelectorPolynomial&lt;F&gt;&gt;,
 
     <span class="doccomment">/// wire coordinate shifts
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
     </span><span class="kw">pub </span>shift: [F; PERMUTS],
     <span class="doccomment">/// coefficient for the group endomorphism
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>endo: F,
     <span class="doccomment">/// lookup constraint system
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;LookupConstraintSystem&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;LookupConstraintSystem&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>lookup_constraint_system: <span class="prelude-ty">Option</span>&lt;LookupConstraintSystem&lt;F&gt;&gt;,
     <span class="doccomment">/// precomputes
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span>precomputations: OnceCell&lt;Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;&gt;,
 }
 
 <span class="doccomment">/// Represents an error found when verifying a witness with a gate
-</span><span class="attribute">#[derive(Debug)]
+</span><span class="attr">#[derive(Debug)]
 </span><span class="kw">pub enum </span>GateError {
     <span class="doccomment">/// Some connected wires have different values
     </span>DisconnectedWires(Wire, Wire),
@@ -1383,7 +1383,7 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">pub mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>mina_curves::pasta::Fp;
@@ -1407,4 +1407,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

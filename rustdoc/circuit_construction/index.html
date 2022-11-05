@@ -4,90 +4,6 @@
 <p>This repository contains <strong>kimchi</strong>, a general-purpose zero-knowledge proof system for proving the correct execution of programs.</p>
 <p>You can read more about this project on the <a href="https://o1-labs.github.io/proof-systems">Kimchi book</a>.</p>
 <p><a href="https://o1-labs.github.io/proof-systems/rustdoc">See here for the rust documentation</a>.</p>
-<h2 id="kombucha"><a href="#kombucha">Kombucha</a></h2>
-<p>This repository contains <strong>kombucha</strong>, the Kimchi circuit constructor for external users.</p>
-<h3 id="guidelines"><a href="#guidelines">Guidelines</a></h3>
-<p>When using this library, make sure to include in your Cargo.toml the following dependency:</p>
-<div class="example-wrap"><pre class="language-toml"><code>[dependencies]
-circuit-construction = { git = &quot;https://github.com/o1-labs/proof-systems&quot; }</code></pre></div><h3 id="example"><a href="#example">Example</a></h3>
-<p>The following is an example to demonstrate a full cycle workflow using circuit-construction:</p>
-<ol>
-<li>Specify a circuit</li>
-<li>Create SRS</li>
-<li>Generate prover index</li>
-<li>Generate a proof</li>
-<li>Verify the proof</li>
-</ol>
-
-<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>circuit_construction::{prologue::<span class="kw-2">*</span>};
-
-<span class="kw">type </span>SpongeQ = DefaultFqSponge&lt;VestaParameters, PlonkSpongeConstantsKimchi&gt;;
-<span class="kw">type </span>SpongeR = DefaultFrSponge&lt;Fp, PlonkSpongeConstantsKimchi&gt;;
-
-<span class="comment">// a callback function to specify constraint gates for a circuit
-</span><span class="kw">pub fn </span>circuit&lt;
-    F: PrimeField + FftField,
-    Sys: Cs&lt;F&gt;,
-&gt;(
-    witness: <span class="prelude-ty">Option</span>&lt;F&gt;,
-    sys: <span class="kw-2">&amp;mut </span>Sys,
-    public_input: Vec&lt;Var&lt;F&gt;&gt;,
-) {
-    <span class="comment">// add a constant gate
-    </span><span class="kw">let </span>three = sys.constant(<span class="number">3u32</span>.into());
-    <span class="comment">// read the first public input
-    </span><span class="kw">let </span>first_public_input = public_input[<span class="number">0</span>];
-    <span class="comment">// create a free variable to hold a witness value
-    </span><span class="kw">let </span>witness = sys.var(|| witness.unwrap());
-
-    <span class="comment">// create a free variable to hold a calculation result
-    </span><span class="kw">let </span>result = sys.var(|| {
-        first_public_input.val() + witness.val()
-    });
-
-    <span class="comment">// add a gate to assert the calculation equals to a constant constraint
-    </span>sys.assert_eq(result, three);
-}
-
-<span class="comment">// create SRS
-</span><span class="kw">let </span>srs = {
-    <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::&lt;VestaAffine&gt;::create(<span class="number">1 </span>&lt;&lt; <span class="number">3</span>); <span class="comment">// 2^3 = 8
-    </span>srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
-    Arc::new(srs)
-};
-<span class="kw">let </span>public_inputs = <span class="macro">vec!</span>[<span class="number">1i32</span>.into()];
-<span class="kw">let </span>group_map = &lt;VestaAffine <span class="kw">as </span>CommitmentCurve&gt;::Map::setup();
-
-<span class="comment">// generate circuit and index
-
-</span><span class="kw">let </span>prover_index = generate_prover_index::&lt;FpInner, <span class="kw">_</span>&gt;(
-    srs,
-    <span class="comment">// to determine how many placeholders to generate for public inputs
-    </span>public_inputs.len(),
-    <span class="comment">// use the circuit callback to generate gate constraints 
-    // with placeholders for the witness and public inputs
-    </span>|sys, p| circuit::&lt;<span class="kw">_</span>, <span class="kw">_</span>&gt;(<span class="prelude-val">None</span>, sys, p),
-);
-
-<span class="comment">// create witness
-</span><span class="kw">let </span>witness = <span class="number">2i32</span>;
-
-<span class="comment">// generate proof
-</span><span class="kw">let </span>proof = prove::&lt;VestaAffine, <span class="kw">_</span>, SpongeQ, SpongeR&gt;(
-    <span class="kw-2">&amp;</span>prover_index,
-    <span class="kw-2">&amp;</span>group_map,
-    <span class="prelude-val">None</span>,
-    public_inputs,
-    <span class="comment">// use the same circuit callbacb
-    // but with values for witness and public inputs
-    </span>|sys, p| circuit::&lt;Fp, <span class="kw">_</span>&gt;(<span class="prelude-val">Some</span>(witness.into()), sys, p),
-);
-
-<span class="comment">// verify proof
-</span><span class="kw">let </span>verifier_index = prover_index.verifier_index();
-verify::&lt;<span class="kw">_</span>, SpongeQ, SpongeR&gt;(<span class="kw-2">&amp;</span>group_map, <span class="kw-2">&amp;</span>verifier_index, <span class="kw-2">&amp;</span>proof).unwrap();</code></pre></div>
-<p>For the other examples, please refer to the <a href="./circuit-construction/tests/">tests</a>.</p>
-<p>Note that kimchi is specifically designed for use in a recursion proof system, like <a href="https://medium.com/minaprotocol/meet-pickles-snark-enabling-smart-contract-on-coda-protocol-7ede3b54c250">pickles</a>, but can also be used a stand alone for normal proofs.</p>
 <h3 id="performance"><a href="#performance">Performance</a></h3>
 <p>At the time of this writing:</p>
 <p><strong>Proving time</strong></p>
@@ -121,4 +37,4 @@ verify::&lt;<span class="kw">_</span>, SpongeQ, SpongeR&gt;(<span class="kw-2">&
 </ul>
 <h3 id="contributing"><a href="#contributing">Contributing</a></h3>
 <p>Check <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> if you are interested in contributing to this project.</p>
-</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="constants/index.html" title="circuit_construction::constants mod">constants</a></div><div class="item-right docblock-short">Definition of possible constants in circuits</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="prologue/index.html" title="circuit_construction::prologue mod">prologue</a></div><div class="item-right docblock-short">This contains the Kimchi dependencies being used</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="prover/index.html" title="circuit_construction::prover mod">prover</a></div><div class="item-right docblock-short">This contains the prover functions, ranging from curves definitions to prover index and proof generation</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="writer/index.html" title="circuit_construction::writer mod">writer</a></div><div class="item-right docblock-short">This is the actual writer with all of the available functions to set up a circuit and its corresponding constraint system</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</div></details><h2 id="modules" class="small-section-header"><a href="#modules">Modules</a></h2><div class="item-table"><div class="item-row"><div class="item-left module-item"><a class="mod" href="constants/index.html" title="circuit_construction::constants mod">constants</a></div><div class="item-right docblock-short">Definition of possible constants in circuits</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="prologue/index.html" title="circuit_construction::prologue mod">prologue</a></div><div class="item-right docblock-short">This contains the Kimchi dependencies being used</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="prover/index.html" title="circuit_construction::prover mod">prover</a></div><div class="item-right docblock-short">This contains the prover functions, ranging from curves definitions to prover index and proof generation</div></div><div class="item-row"><div class="item-left module-item"><a class="mod" href="writer/index.html" title="circuit_construction::writer mod">writer</a></div><div class="item-right docblock-short">This is the actual writer with all of the available functions to set up a circuit and its corresponding constraint system</div></div></div></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="circuit_construction" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

@@ -154,14 +154,14 @@
 <span class="comment">//~ spec:endcode
 
 </span><span class="doccomment">/// Enumerates the different &#39;fixed&#39; lookup tables used by individual gates
-</span><span class="attribute">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+</span><span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 </span><span class="kw">pub enum </span>GateLookupTable {
     Xor,
     RangeCheck,
 }
 
 <span class="doccomment">/// A table of values that can be used for a lookup, along with the ID for the table.
-</span><span class="attribute">#[derive(Debug, Clone)]
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupTable&lt;F&gt; {
     <span class="kw">pub </span>id: i32,
     <span class="kw">pub </span>data: Vec&lt;Vec&lt;F&gt;&gt;,
@@ -279,4 +279,4 @@
     PolyComm::multi_scalar_mul(<span class="kw-2">&amp;</span>commitments, <span class="kw-2">&amp;</span>scalars)
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

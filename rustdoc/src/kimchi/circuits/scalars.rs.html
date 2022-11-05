@@ -114,7 +114,7 @@
 </span><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>oracle::sponge::ScalarChallenge;
 
-<span class="attribute">#[derive(Clone, Debug)]
+<span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>RandomOracles&lt;F: Field&gt; {
     <span class="kw">pub </span>joint_combiner: <span class="prelude-ty">Option</span>&lt;(ScalarChallenge&lt;F&gt;, F)&gt;,
     <span class="kw">pub </span>beta: F,
@@ -152,7 +152,7 @@
 // OCaml types
 //
 
-</span><span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>oracle::sponge::caml::CamlScalarChallenge;
@@ -161,7 +161,7 @@
     // RandomOracles&lt;F&gt; &lt;-&gt; CamlRandomOracles&lt;CamlF&gt;
     //
 
-    </span><span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlRandomOracles&lt;CamlF&gt; {
         <span class="kw">pub </span>joint_combiner: <span class="prelude-ty">Option</span>&lt;(CamlScalarChallenge&lt;CamlF&gt;, CamlF)&gt;,
         <span class="kw">pub </span>beta: CamlF,
@@ -221,4 +221,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

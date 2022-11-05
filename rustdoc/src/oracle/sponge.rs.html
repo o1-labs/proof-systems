@@ -264,7 +264,7 @@
 
 <span class="comment">// TODO: move to a different file / module
 </span><span class="doccomment">/// A challenge which is used as a scalar on a group element in the verifier
-</span><span class="attribute">#[derive(Clone, Debug)]
+</span><span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>ScalarChallenge&lt;F&gt;(<span class="kw">pub </span>F);
 
 <span class="kw">pub fn </span>endo_coefficient&lt;F: PrimeField&gt;() -&gt; F {
@@ -315,7 +315,7 @@
     }
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>DefaultFqSponge&lt;P: SWModelParameters, SC: SpongeConstants&gt; {
     <span class="kw">pub </span>sponge: ArithmeticSponge&lt;P::BaseField, SC&gt;,
     <span class="kw">pub </span>last_squeezed: Vec&lt;u64&gt;,
@@ -475,7 +475,7 @@
 // OCaml types
 //
 
-</span><span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -483,7 +483,7 @@
     // ScalarChallenge&lt;F&gt; &lt;-&gt; CamlScalarChallenge&lt;CamlF&gt;
     //
 
-    </span><span class="attribute">#[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="attr">#[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlScalarChallenge&lt;CamlF&gt;(<span class="kw">pub </span>CamlF);
 
     <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;ScalarChallenge&lt;F&gt;&gt; <span class="kw">for </span>CamlScalarChallenge&lt;CamlF&gt;
@@ -505,4 +505,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

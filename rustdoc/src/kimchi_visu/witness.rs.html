@@ -53,13 +53,13 @@
 <span class="doccomment">/// The type that represents the execution trace.
 /// It represents a table of [COLUMNS] columns, with `n` rows.
 /// `n` being the maximum size of the circuit, and the size of the domain.
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Debug, Serialize)]
 </span><span class="kw">pub struct </span>Witness&lt;F&gt;
 <span class="kw">where
     </span>F: Field,
 {
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;</span>)]
     </span>inner: [Vec&lt;F&gt;; COLUMNS],
 }
 
@@ -91,4 +91,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi_visu" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

@@ -315,7 +315,7 @@
 <span class="kw">use </span>o1_utils::field_helpers::FieldHelpers;
 
 <span class="doccomment">/// A Cairo word for the runner. Some words are instructions (which fit inside a `u64`). Others are immediate values (any `F` element).
-</span><span class="attribute">#[derive(Clone, Copy)]
+</span><span class="attr">#[derive(Clone, Copy)]
 </span><span class="kw">pub struct </span>CairoWord&lt;F&gt;(F);
 
 <span class="doccomment">/// Returns an offset of 16 bits to its biased representation in the interval `[-2^15,2^15)` as a field element
@@ -547,21 +547,21 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use </span><span class="kw">crate</span>::flags::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::word::{FlagBits, FlagSets, Offsets};
     <span class="kw">use </span>ark_ff::{One, Zero};
     <span class="kw">use </span>mina_curves::pasta::Fp <span class="kw">as </span>F;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_biased() {
         <span class="macro">assert_eq!</span>(F::one(), <span class="kw">super</span>::bias(F::from(<span class="number">0x8001</span>)));
         <span class="macro">assert_eq!</span>(F::zero(), <span class="kw">super</span>::bias(F::from(<span class="number">0x8000</span>)));
         <span class="macro">assert_eq!</span>(-F::one(), <span class="kw">super</span>::bias(F::from(<span class="number">0x7fff</span>)));
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_cairo_word() {
         <span class="comment">// Tests the structure of a Cairo word corresponding to the Cairo instruction: tempvar x = val
         // This unit test checks offsets computation, flagbits and flagsets.
@@ -609,4 +609,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

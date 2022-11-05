@@ -203,25 +203,25 @@
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::collections::HashMap;
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>SRS&lt;G: CommitmentCurve&gt; {
     <span class="doccomment">/// The vector of group elements for committing to polynomials in coefficient form
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>g: Vec&lt;G&gt;,
     <span class="doccomment">/// A group element used for blinding commitments
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>h: G,
 
     <span class="comment">// TODO: the following field should be separated, as they are optimization values
     </span><span class="doccomment">/// Commitments to Lagrange bases, per domain size
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>lagrange_bases: HashMap&lt;usize, Vec&lt;G&gt;&gt;,
     <span class="doccomment">/// Coefficient for the curve endomorphism
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>endo_r: G::ScalarField,
     <span class="doccomment">/// Coefficient for the curve endomorphism
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>endo_q: G::BaseField,
 }
 
@@ -383,4 +383,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

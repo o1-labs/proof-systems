@@ -73,7 +73,7 @@
 <span class="comment">// PLONK
 
 </span><span class="doccomment">/// Evaluations of the wires and permutation
-</span><span class="attribute">#[derive(Clone)]
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>WitnessEvals&lt;F: FftField&gt; {
     <span class="doccomment">/// wire evaluations
     </span><span class="kw">pub </span>w: [Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
@@ -81,7 +81,7 @@
     </span><span class="kw">pub </span>z: Evaluations&lt;F, D&lt;F&gt;&gt;,
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>WitnessShifts&lt;F: FftField&gt; {
     <span class="doccomment">/// this wire evaluations
     </span><span class="kw">pub </span>this: WitnessEvals&lt;F&gt;,
@@ -89,7 +89,7 @@
     </span><span class="kw">pub </span>next: WitnessEvals&lt;F&gt;,
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>WitnessOverDomains&lt;F: FftField&gt; {
     <span class="doccomment">/// evaluations over domain d4
     </span><span class="kw">pub </span>d4: WitnessShifts&lt;F&gt;,
@@ -99,7 +99,7 @@
 
 <span class="comment">// PLOOKUP
 
-</span><span class="attribute">#[derive(Clone)]
+</span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>LookupEvals&lt;F: FftField&gt; {
     <span class="doccomment">/// aggregation
     </span><span class="kw">pub </span>l: Evaluations&lt;F, D&lt;F&gt;&gt;,
@@ -111,7 +111,7 @@
     </span><span class="kw">pub </span>h2: Evaluations&lt;F, D&lt;F&gt;&gt;,
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>LookupShifts&lt;F: FftField&gt; {
     <span class="doccomment">/// this wire evaluations
     </span><span class="kw">pub </span>this: LookupEvals&lt;F&gt;,
@@ -119,7 +119,7 @@
     </span><span class="kw">pub </span>next: LookupEvals&lt;F&gt;,
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>LookupPolys&lt;F: FftField&gt; {
     <span class="doccomment">/// aggregation
     </span><span class="kw">pub </span>l: DensePolynomial&lt;F&gt;,
@@ -131,4 +131,4 @@
     </span><span class="kw">pub </span>h2: DensePolynomial&lt;F&gt;,
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

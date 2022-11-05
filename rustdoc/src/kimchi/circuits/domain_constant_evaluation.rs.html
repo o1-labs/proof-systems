@@ -78,27 +78,27 @@
 
 <span class="kw">use </span><span class="kw">super</span>::polynomials::permutation::vanishes_on_last_4_rows;
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="doccomment">/// pre-computed polynomials that depend only on the chosen field and domain
 </span><span class="kw">pub struct </span>DomainConstantEvaluations&lt;F: FftField&gt; {
     <span class="doccomment">/// 1-st Lagrange evaluated over domain.d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>poly_x_d1: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// 0-th Lagrange evaluated over domain.d4
     </span><span class="comment">// TODO(mimoo): be consistent with the paper/spec, call it L1 here or call it L0 there
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>constant_1_d4: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// 0-th Lagrange evaluated over domain.d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>constant_1_d8: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// the polynomial that vanishes on the last four rows
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>vanishes_on_last_4_rows: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// zero-knowledge polynomial over domain.d8
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>zkpl: E&lt;F, D&lt;F&gt;&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>zkpm: DP&lt;F&gt;,
 }
 
@@ -131,4 +131,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

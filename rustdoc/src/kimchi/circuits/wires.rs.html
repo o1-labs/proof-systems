@@ -120,7 +120,7 @@
 <span class="doccomment">/// Wire documents the other cell that is wired to this one.
 /// If the cell represents an internal wire, an input to the circuit,
 /// or a final output of the circuit, the cell references itself.
-</span><span class="attribute">#[derive(PartialEq, Default, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+</span><span class="attr">#[derive(PartialEq, Default, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 #[cfg_attr(feature = <span class="string">&quot;wasm_types&quot;</span>, wasm_bindgen::prelude::wasm_bindgen)]
 </span><span class="kw">pub struct </span>Wire {
@@ -142,7 +142,7 @@
 </span><span class="kw">pub type </span>GateWires = [Wire; PERMUTS];
 
 <span class="kw">impl </span>ToBytes <span class="kw">for </span>Wire {
-    <span class="attribute">#[inline]
+    <span class="attr">#[inline]
     </span><span class="kw">fn </span>write&lt;W: Write&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="kw-2">mut </span>w: W) -&gt; IoResult&lt;()&gt; {
         (<span class="self">self</span>.row <span class="kw">as </span>u32).write(<span class="kw-2">&amp;mut </span>w)<span class="question-mark">?</span>;
         (<span class="self">self</span>.col <span class="kw">as </span>u32).write(<span class="kw-2">&amp;mut </span>w)<span class="question-mark">?</span>;
@@ -151,7 +151,7 @@
 }
 
 <span class="kw">impl </span>FromBytes <span class="kw">for </span>Wire {
-    <span class="attribute">#[inline]
+    <span class="attr">#[inline]
     </span><span class="kw">fn </span>read&lt;R: Read&gt;(<span class="kw-2">mut </span>r: R) -&gt; IoResult&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>row = u32::read(<span class="kw-2">&amp;mut </span>r)<span class="question-mark">? </span><span class="kw">as </span>usize;
         <span class="kw">let </span>col = u32::read(<span class="kw-2">&amp;mut </span>r)<span class="question-mark">? </span><span class="kw">as </span>usize;
@@ -159,12 +159,12 @@
     }
 }
 
-<span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>std::convert::TryInto;
 
-    <span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlWire {
         <span class="kw">pub </span>row: ocaml::Int,
         <span class="kw">pub </span>col: ocaml::Int,
@@ -189,13 +189,13 @@
     }
 }
 
-<span class="attribute">#[cfg(feature = <span class="string">&quot;wasm_types&quot;</span>)]
+<span class="attr">#[cfg(feature = <span class="string">&quot;wasm_types&quot;</span>)]
 </span><span class="kw">pub mod </span>wasm {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="attribute">#[wasm_bindgen::prelude::wasm_bindgen]
+    <span class="attr">#[wasm_bindgen::prelude::wasm_bindgen]
     </span><span class="kw">impl </span>Wire {
-        <span class="attribute">#[wasm_bindgen::prelude::wasm_bindgen]
+        <span class="attr">#[wasm_bindgen::prelude::wasm_bindgen]
         </span><span class="kw">pub fn </span>create(row: i32, col: i32) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
                 row: row <span class="kw">as </span>usize,
@@ -205,4 +205,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

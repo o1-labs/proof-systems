@@ -528,40 +528,40 @@
 };
 
 <span class="comment">//~spec:startcode
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 </span><span class="kw">pub struct </span>LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
     <span class="kw">pub </span>lookup_used: LookupsUsed,
-    <span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    <span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>lookup_table: Vec&lt;PolyComm&lt;G&gt;&gt;,
-    <span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    <span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>lookup_selectors: LookupSelectors&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Table IDs for the lookup values.
     /// This may be `None` if all lookups originate from table 0.
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>table_ids: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     </span><span class="kw">pub </span>max_joint_size: u32,
 
     <span class="doccomment">/// An optional selector polynomial for runtime tables
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>runtime_tables_selector: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 }
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 </span><span class="kw">pub struct </span>VerifierIndex&lt;G: KimchiCurve&gt; {
     <span class="doccomment">/// evaluation domain
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>domain: D&lt;G::ScalarField&gt;,
     <span class="doccomment">/// maximal size of polynomial section
     </span><span class="kw">pub </span>max_poly_size: usize,
     <span class="doccomment">/// maximal size of the quotient polynomial according to the supported constraints
     </span><span class="kw">pub </span>max_quot_size: usize,
     <span class="doccomment">/// polynomial commitment keys
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>srs: OnceCell&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
     <span class="doccomment">/// number of public inputs
     </span><span class="kw">pub </span>public: usize,
@@ -570,74 +570,74 @@
 
     <span class="comment">// index polynomial commitments
     </span><span class="doccomment">/// permutation commitment array
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>sigma_comm: [PolyComm&lt;G&gt;; PERMUTS],
     <span class="doccomment">/// coefficient commitment array
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>coefficients_comm: [PolyComm&lt;G&gt;; COLUMNS],
     <span class="doccomment">/// coefficient commitment array
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>generic_comm: PolyComm&lt;G&gt;,
 
     <span class="comment">// poseidon polynomial commitments
     </span><span class="doccomment">/// poseidon constraint selector polynomial commitment
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>psm_comm: PolyComm&lt;G&gt;,
 
     <span class="comment">// ECC arithmetic polynomial commitments
     </span><span class="doccomment">/// EC addition selector polynomial commitment
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>complete_add_comm: PolyComm&lt;G&gt;,
     <span class="doccomment">/// EC variable base scalar multiplication selector polynomial commitment
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>mul_comm: PolyComm&lt;G&gt;,
     <span class="doccomment">/// endoscalar multiplication selector polynomial commitment
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>emul_comm: PolyComm&lt;G&gt;,
     <span class="doccomment">/// endoscalar multiplication scalar computation selector polynomial commitment
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>endomul_scalar_comm: PolyComm&lt;G&gt;,
 
     <span class="doccomment">/// Chacha polynomial commitments
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>chacha_comm: <span class="prelude-ty">Option</span>&lt;[PolyComm&lt;G&gt;; <span class="number">4</span>]&gt;,
 
     <span class="doccomment">/// Range check commitments
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>range_check_comm: <span class="prelude-ty">Option</span>&lt;[PolyComm&lt;G&gt;; range_check::gadget::GATE_COUNT]&gt;,
 
     <span class="doccomment">/// Foreign field modulus
     </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
 
     <span class="doccomment">/// Foreign field addition gates polynomial commitments
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>foreign_field_add_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// Xor commitments
-    </span><span class="attribute">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>xor_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// wire coordinate shifts
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
     </span><span class="kw">pub </span>shift: [G::ScalarField; PERMUTS],
     <span class="doccomment">/// zero-knowledge polynomial
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>zkpm: OnceCell&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
     <span class="comment">// TODO(mimoo): isn&#39;t this redundant with domain.d1.group_gen ?
     </span><span class="doccomment">/// domain offset for zero-knowledge
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>w: OnceCell&lt;G::ScalarField&gt;,
     <span class="doccomment">/// endoscalar coefficient
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>endo: G::ScalarField,
 
-    <span class="attribute">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    <span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>lookup_index: <span class="prelude-ty">Option</span>&lt;LookupVerifierIndex&lt;G&gt;&gt;,
 
-    <span class="attribute">#[serde(skip)]
+    <span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>linearization: Linearization&lt;Vec&lt;PolishToken&lt;G::ScalarField&gt;&gt;&gt;,
     <span class="doccomment">/// The mapping between powers of alpha and constraints
-    </span><span class="attribute">#[serde(skip)]
+    </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>powers_of_alpha: Alphas&lt;G::ScalarField&gt;,
 }
 <span class="comment">//~spec:endcode
@@ -983,4 +983,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kimchi" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

@@ -293,14 +293,14 @@
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Field helpers error
-</span><span class="attribute">#[allow(missing_docs)]
+</span><span class="attr">#[allow(missing_docs)]
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>FieldHelpersError {
-    <span class="attribute">#[error(<span class="string">&quot;failed to deserialize field bytes&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;failed to deserialize field bytes&quot;</span>)]
     </span>DeserializeBytes,
-    <span class="attribute">#[error(<span class="string">&quot;failed to decode hex&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;failed to decode hex&quot;</span>)]
     </span>DecodeHex,
-    <span class="attribute">#[error(<span class="string">&quot;failed to convert BigUint into field element&quot;</span>)]
+    <span class="attr">#[error(<span class="string">&quot;failed to convert BigUint into field element&quot;</span>)]
     </span>FromBigToField,
 }
 
@@ -413,7 +413,7 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -424,7 +424,7 @@
     <span class="doccomment">/// Base field element type
     </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>field_hex() {
         <span class="macro">assert_eq!</span>(
             BaseField::from_hex(<span class="string">&quot;&quot;</span>),
@@ -464,7 +464,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>field_bytes() {
         <span class="macro">assert_eq!</span>(
             BaseField::from_bytes(<span class="kw-2">&amp;</span>[
@@ -498,7 +498,7 @@
         <span class="macro">assert_eq!</span>(lifetime_test().is_ok(), <span class="bool-val">true</span>);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>field_bits() {
         <span class="kw">let </span>fe =
             BaseField::from_hex(<span class="string">&quot;2cc3342ad3cd516175b8f0d0189bc3bdcb7947a4cc96c7cfc8d5df10cc443832&quot;</span>)
@@ -536,7 +536,7 @@
         );
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>field_big() {
         <span class="kw">let </span>fe_1024 = BaseField::from(<span class="number">1024u32</span>);
         <span class="kw">let </span>big_1024 = fe_1024.into();
@@ -573,4 +573,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="o1_utils" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

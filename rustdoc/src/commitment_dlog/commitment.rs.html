@@ -1155,19 +1155,19 @@
 <span class="kw">use </span><span class="kw">super</span>::evaluation_proof::<span class="kw-2">*</span>;
 
 <span class="doccomment">/// A polynomial commitment.
-</span><span class="attribute">#[serde_as]
+</span><span class="attr">#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>PolyComm&lt;C&gt;
 <span class="kw">where
     </span>C: CanonicalDeserialize + CanonicalSerialize,
 {
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>unshifted: Vec&lt;C&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;C&gt;,
 }
 
-<span class="attribute">#[derive(Clone, Debug, Serialize, Deserialize)]
+<span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="kw">pub struct </span>BlindedCommitment&lt;G&gt;
 <span class="kw">where
     </span>G: CommitmentCurve,
@@ -1533,7 +1533,7 @@
 /// and the columns represent potential segments (if a polynomial was split in several parts).
 /// Note that if one of the polynomial comes specified with a degree bound,
 /// the evaluation for the last segment is potentially shifted to meet the proof.
-</span><span class="attribute">#[allow(clippy::type_complexity)]
+</span><span class="attr">#[allow(clippy::type_complexity)]
 </span><span class="kw">pub fn </span>combined_inner_product&lt;F: PrimeField&gt;(
     evaluation_points: <span class="kw-2">&amp;</span>[F],
     polyscale: <span class="kw-2">&amp;</span>F,
@@ -1998,7 +1998,7 @@
 // Tests
 //
 
-</span><span class="attribute">#[cfg(test)]
+</span><span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
@@ -2010,7 +2010,7 @@
     <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
     <span class="kw">use </span>std::array;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_lagrange_commitments() {
         <span class="kw">let </span>n = <span class="number">64</span>;
         <span class="kw">let </span>domain = D::&lt;Fp&gt;::new(n).unwrap();
@@ -2039,7 +2039,7 @@
         }
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_opening_proof() {
         <span class="comment">// create two polynomials
         </span><span class="kw">let </span>coeffs: [Fp; <span class="number">10</span>] = array::from_fn(|i| Fp::from(i <span class="kw">as </span>u32));
@@ -2126,13 +2126,13 @@
 // OCaml types
 //
 
-</span><span class="attribute">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
+</span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
     <span class="comment">// polynomial commitment
 
-    </span><span class="attribute">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="attr">#[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlPolyComm&lt;CamlG&gt; {
         <span class="kw">pub </span>unshifted: Vec&lt;CamlG&gt;,
         <span class="kw">pub </span>shifted: <span class="prelude-ty">Option</span>&lt;CamlG&gt;,
@@ -2192,7 +2192,7 @@
 
     <span class="comment">// opening proof
 
-    </span><span class="attribute">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     </span><span class="kw">pub struct </span>CamlOpeningProof&lt;G, F&gt; {
         <span class="doccomment">/// vector of rounds of L &amp; R commitments
         </span><span class="kw">pub </span>lr: Vec&lt;(G, G)&gt;,
@@ -2245,4 +2245,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

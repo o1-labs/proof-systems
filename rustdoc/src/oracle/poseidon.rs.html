@@ -155,22 +155,22 @@
     x.pow([SC::PERM_SBOX <span class="kw">as </span>u64])
 }
 
-<span class="attribute">#[derive(Clone, Debug)]
+<span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub enum </span>SpongeState {
     Absorbed(usize),
     Squeezed(usize),
 }
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Default, Debug)]
 </span><span class="kw">pub struct </span>ArithmeticSpongeParams&lt;F: Field&gt; {
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
     </span><span class="kw">pub </span>round_constants: Vec&lt;Vec&lt;F&gt;&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;</span>)]
     </span><span class="kw">pub </span>mds: Vec&lt;Vec&lt;F&gt;&gt;,
 }
 
-<span class="attribute">#[derive(Clone)]
+<span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ArithmeticSponge&lt;F: Field, SC: SpongeConstants&gt; {
     <span class="kw">pub </span>sponge_state: SpongeState,
     rate: usize,
@@ -257,4 +257,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="oracle" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

@@ -129,7 +129,7 @@
     }
 }
 
-<span class="attribute">#[cfg(test)]
+<span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span>ark_ec::AffineCurve;
@@ -139,21 +139,21 @@
     <span class="doccomment">/// Base field element type
     </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_field_to_bits() {
         <span class="kw">let </span>fe = BaseField::from(<span class="number">256u32</span>);
         <span class="kw">let </span>bits = fe.to_bits();
         <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="kw-2">&amp;</span>bits[<span class="number">0</span>..<span class="number">16</span>]);
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_field_to_chunks() {
         <span class="kw">let </span>fe = BaseField::from(<span class="number">0x480680017fff8000u64</span>);
         <span class="kw">let </span>chunk = fe.u16_chunk(<span class="number">1</span>);
         <span class="macro">assert_eq!</span>(chunk, BaseField::from(<span class="number">0x7fff</span>));
     }
 
-    <span class="attribute">#[test]
+    <span class="attr">#[test]
     </span><span class="kw">fn </span>test_hex_and_u64() {
         <span class="kw">let </span>fe = BaseField::from(<span class="number">0x480680017fff8000u64</span>);
         <span class="kw">let </span>change = BaseField::from_hex(<span class="kw-2">&amp;</span>fe.to_hex()).unwrap();
@@ -163,4 +163,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="cairo" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>

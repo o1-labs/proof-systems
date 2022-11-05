@@ -373,7 +373,7 @@
 <span class="comment">// A formal sum of the form
 // `s_0 * p_0 + ... s_n * p_n`
 // where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
-</span><span class="attribute">#[derive(Default)]
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">struct </span>ScaledChunkedPolynomial&lt;F, P&gt;(Vec&lt;(F, OptShiftedPolynomial&lt;P&gt;)&gt;);
 
 <span class="kw">impl</span>&lt;F, P&gt; ScaledChunkedPolynomial&lt;F, P&gt; {
@@ -427,7 +427,7 @@
     ///     evalscale: eval scaling factor for opening commitments in batch
     ///     oracle_params: parameters for the random oracle argument
     ///     RETURN: commitment opening proof
-    </span><span class="attribute">#[allow(clippy::too_many_arguments)]
+    </span><span class="attr">#[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
     </span><span class="kw">pub fn </span>open&lt;EFqSponge, RNG&gt;(
@@ -644,20 +644,20 @@
     }
 }
 
-<span class="attribute">#[serde_as]
+<span class="attr">#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(bound = <span class="string">&quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;</span>)]
 </span><span class="kw">pub struct </span>OpeningProof&lt;G: AffineCurve&gt; {
     <span class="doccomment">/// vector of rounds of L &amp; R commitments
-    </span><span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)&gt;&quot;</span>)]
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)&gt;&quot;</span>)]
     </span><span class="kw">pub </span>lr: Vec&lt;(G, G)&gt;,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>delta: G,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>z1: G::ScalarField,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>z2: G::ScalarField,
-    <span class="attribute">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>sg: G,
 }
 
@@ -707,4 +707,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (95a3a7277 2022-10-31)" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="commitment_dlog" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (09508489e 2022-11-04)" ></div></body></html>
