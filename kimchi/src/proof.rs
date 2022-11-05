@@ -388,6 +388,7 @@ impl<F> ProofEvaluations<F> {
             Column::Index(GateType::Poseidon) => Some(&self.poseidon_selector),
             Column::Index(_) => None,
             Column::Coefficient(_) => None,
+            Column::Permutation(i) => Some(&self.s[i]),
         }
     }
 }

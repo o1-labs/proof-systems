@@ -601,6 +601,10 @@ where
                         scalars.push(scalar);
                         commitments.push(&index.coefficients_comm[*i]);
                     }
+                    Permutation(i) => {
+                        scalars.push(scalar);
+                        commitments.push(&index.sigma_comm[*i]);
+                    }
                     Z => {
                         scalars.push(scalar);
                         commitments.push(&proof.commitments.z_comm);
