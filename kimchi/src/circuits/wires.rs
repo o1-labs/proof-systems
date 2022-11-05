@@ -27,9 +27,14 @@ pub struct Wire {
 }
 
 impl Wire {
+    /// Creates a new [Wire].
+    pub fn new(row: usize, col: usize) -> Self {
+        Self { row, col }
+    }
+
     /// Creates a new set of wires for a given row.
-    pub fn new(row: usize) -> [Self; PERMUTS] {
-        array::from_fn(|col| Self { row, col })
+    pub fn for_row(row: usize) -> [Self; PERMUTS] {
+        GateWires::new(row)
     }
 }
 
@@ -37,6 +42,19 @@ impl Wire {
 /// represents the same cell (row and column) or a different cell in another row.
 /// (This is to help the permutation argument.)
 pub type GateWires = [Wire; PERMUTS];
+
+/// Since we don't have a specific type for the wires of a row,
+/// we have to implement these convenience functions through a trait.
+pub trait Wirable: Sized {
+    /// Creates a new set of wires for a given row.
+    fn new(row: usize) -> Self;
+}
+
+impl Wirable for GateWires {
+    fn new(row: usize) -> Self {
+        array::from_fn(|col| Wire { row, col })
+    }
+}
 
 impl ToBytes for Wire {
     #[inline]
