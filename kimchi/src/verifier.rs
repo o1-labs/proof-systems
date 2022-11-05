@@ -653,36 +653,24 @@ where
                                 .ok_or(VerifyError::MissingCommitment(col))?,
                         );
                     }
-                    LookupKindIndex(i) => match index.lookup_index.as_ref() {
-                        None => {
-                            panic!("Attempted to use {:?}, but no lookup index was given", col)
-                        }
-                        Some(lindex) => {
-                            scalars.push(scalar);
-                            commitments.push(lindex.lookup_selectors[i].as_ref().expect(
-                                &*format!(
-                                "Attempted to use {:?}, but it was not found in the verifier index",
-                                col
-                            ),
-                            ));
-                        }
-                    },
-                    LookupTable => panic!("Lookup table is unused in the linearization"),
-                    LookupRuntimeSelector => match index.lookup_index.as_ref() {
-                        None => {
-                            panic!("Attempted to use {:?}, but no lookup index was given", col)
-                        }
-                        Some(lindex) => match &lindex.runtime_tables_selector {
-                            None => panic!("No runtime selector was given"),
-                            Some(comm) => {
-                                scalars.push(scalar);
-                                commitments.push(comm);
-                            }
-                        },
-                    },
-                    LookupRuntimeTable => {
-                        panic!("runtime lookup table is unused in the linearization")
+                    LookupKindIndex(_) => {
+                        scalars.push(scalar);
+                        commitments.push(
+                            context
+                                .get_column(col)
+                                .ok_or(VerifyError::MissingCommitment(col))?,
+                        );
                     }
+                    LookupTable => Err(VerifyError::MissingCommitment(col))?,
+                    LookupRuntimeSelector => {
+                        scalars.push(scalar);
+                        commitments.push(
+                            context
+                                .get_column(col)
+                                .ok_or(VerifyError::MissingCommitment(col))?,
+                        );
+                    }
+                    LookupRuntimeTable => Err(VerifyError::MissingCommitment(col))?,
                     Index(_) => {
                         scalars.push(scalar);
                         commitments.push(
