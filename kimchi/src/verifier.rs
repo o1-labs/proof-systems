@@ -602,84 +602,13 @@ where
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
                         .expect("should evaluate");
 
-                use Column::*;
                 let col = col.clone();
-                match col {
-                    Witness(_) => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    Coefficient(_) => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    Permutation(_) => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    Z => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    LookupSorted(_) => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    LookupAggreg => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    LookupKindIndex(_) => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    LookupTable => Err(VerifyError::MissingCommitment(col))?,
-                    LookupRuntimeSelector => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                    LookupRuntimeTable => Err(VerifyError::MissingCommitment(col))?,
-                    Index(_) => {
-                        scalars.push(scalar);
-                        commitments.push(
-                            context
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingCommitment(col))?,
-                        );
-                    }
-                }
+                scalars.push(scalar);
+                commitments.push(
+                    context
+                        .get_column(col)
+                        .ok_or(VerifyError::MissingCommitment(col))?,
+                );
             }
         }
 
