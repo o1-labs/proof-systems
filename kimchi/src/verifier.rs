@@ -540,6 +540,8 @@ where
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
     let evals = proof.evals.combine(&powers_of_eval_points_for_chunks);
 
+    let context = Context { proof, index };
+
     //~ 4. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
     //~    and optionally of the lookup.
@@ -595,8 +597,6 @@ where
                 foreign_field_modulus: index.foreign_field_modulus.clone(),
             };
 
-            let context = Context { proof, index };
-
             for (col, tokens) in &index.linearization.index_terms {
                 let scalar =
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
@@ -650,75 +650,32 @@ where
         degree_bound: None,
     });
 
-    //~~ - permutation commitment
-    evaluations.push(Evaluation {
-        commitment: proof.commitments.z_comm.clone(),
-        evaluations: vec![proof.evals.z.zeta.clone(), proof.evals.z.zeta_omega.clone()],
-        degree_bound: None,
-    });
-
-    //~~ - index commitments that use the coefficients
-    evaluations.push(Evaluation {
-        commitment: index.generic_comm.clone(),
-        evaluations: vec![
-            proof.evals.generic_selector.zeta.clone(),
-            proof.evals.generic_selector.zeta_omega.clone(),
-        ],
-        degree_bound: None,
-    });
-    evaluations.push(Evaluation {
-        commitment: index.psm_comm.clone(),
-        evaluations: vec![
-            proof.evals.poseidon_selector.zeta.clone(),
-            proof.evals.poseidon_selector.zeta_omega.clone(),
-        ],
-        degree_bound: None,
-    });
-
+    for col in [
+        //~~ - permutation commitment
+        Column::Z,
+        //~~ - index commitments that use the coefficients
+        Column::Index(GateType::Generic),
+        Column::Index(GateType::Poseidon),
+    ]
+    .into_iter()
     //~~ - witness commitments
-    evaluations.extend(
-        proof
-            .commitments
-            .w_comm
-            .iter()
-            .zip(
-                (0..COLUMNS)
-                    .map(|i| {
-                        vec![
-                            proof.evals.w[i].zeta.clone(),
-                            proof.evals.w[i].zeta_omega.clone(),
-                        ]
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .map(|(c, e)| Evaluation {
-                commitment: c.clone(),
-                evaluations: e,
-                degree_bound: None,
-            }),
-    );
-
+    .chain((0..COLUMNS).map(Column::Witness))
     //~~ - sigma commitments
-    evaluations.extend(
-        index
-            .sigma_comm
-            .iter()
-            .zip(
-                (0..PERMUTS - 1)
-                    .map(|i| {
-                        vec![
-                            proof.evals.s[i].zeta.clone(),
-                            proof.evals.s[i].zeta_omega.clone(),
-                        ]
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .map(|(c, e)| Evaluation {
-                commitment: c.clone(),
-                evaluations: e,
-                degree_bound: None,
-            }),
-    );
+    .chain((0..PERMUTS - 1).map(Column::Permutation))
+    {
+        let evals = proof
+            .evals
+            .get_column(col)
+            .ok_or(VerifyError::MissingEvaluation(col))?;
+        evaluations.push(Evaluation {
+            commitment: context
+                .get_column(col)
+                .ok_or(VerifyError::MissingCommitment(col))?
+                .clone(),
+            evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
+            degree_bound: None,
+        });
+    }
 
     //~~ - lookup commitments
     if let Some(li) = &index.lookup_index {
