@@ -358,31 +358,51 @@ where
             es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
-                vec![self.evals.z.zeta.clone(), self.evals.z.zeta_omega.clone()],
+                {
+                    let evals = self
+                        .evals
+                        .get_column(Column::Z)
+                        .ok_or(VerifyError::MissingEvaluation(Column::Z))?;
+                    vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                },
                 None,
             ));
             es.push((
-                vec![
-                    self.evals.generic_selector.zeta.clone(),
-                    self.evals.generic_selector.zeta_omega.clone(),
-                ],
+                {
+                    let evals = self
+                        .evals
+                        .get_column(Column::Index(GateType::Generic))
+                        .ok_or(VerifyError::MissingEvaluation(Column::Index(
+                            GateType::Generic,
+                        )))?;
+                    vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                },
                 None,
             ));
             es.push((
-                vec![
-                    self.evals.poseidon_selector.zeta.clone(),
-                    self.evals.poseidon_selector.zeta_omega.clone(),
-                ],
+                {
+                    let evals = self
+                        .evals
+                        .get_column(Column::Index(GateType::Poseidon))
+                        .ok_or(VerifyError::MissingEvaluation(Column::Index(
+                            GateType::Poseidon,
+                        )))?;
+                    vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                },
                 None,
             ));
             es.extend(
                 (0..COLUMNS)
                     .map(|c| {
                         (
-                            vec![
-                                self.evals.w[c].zeta.clone(),
-                                self.evals.w[c].zeta_omega.clone(),
-                            ],
+                            {
+                                let evals = self
+                                    .evals
+                                    .get_column(Column::Witness(c))
+                                    .ok_or(VerifyError::MissingEvaluation(Column::Witness(c)))
+                                    .unwrap(); /* TODO: Don't unwrap here. */
+                                vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                            },
                             None,
                         )
                     })
