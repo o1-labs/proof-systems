@@ -661,7 +661,21 @@ where
     .chain((0..COLUMNS).map(Column::Witness))
     //~~ - sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
-    {
+    //~~ - lookup commitments
+    .chain(
+        index
+            .lookup_index
+            .as_ref()
+            .map(|li| {
+                // add evaluations of sorted polynomials
+                (0..li.lookup_info.max_per_row + 1)
+                    .map(Column::LookupSorted)
+                    // add evaluations of the aggreg polynomial
+                    .chain([Column::LookupAggreg].into_iter())
+            })
+            .into_iter()
+            .flatten(),
+    ) {
         let evals = proof
             .evals
             .get_column(col)
@@ -676,7 +690,6 @@ where
         });
     }
 
-    //~~ - lookup commitments
     if let Some(li) = &index.lookup_index {
         let lookup_comms = proof
             .commitments
@@ -688,33 +701,6 @@ where
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
-
-        // add evaluations of sorted polynomials
-        for i in 0..li.lookup_info.max_per_row + 1 {
-            let col = Column::LookupSorted(i);
-            let evals = proof
-                .evals
-                .get_column(col)
-                .ok_or(VerifyError::MissingEvaluation(col))?;
-            evaluations.push(Evaluation {
-                commitment: context
-                    .get_column(col)
-                    .ok_or(VerifyError::MissingCommitment(col))?
-                    .clone(),
-                evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
-                degree_bound: None,
-            });
-        }
-
-        // add evaluations of the aggreg polynomial
-        evaluations.push(Evaluation {
-            commitment: lookup_comms.aggreg.clone(),
-            evaluations: vec![
-                lookup_eval.aggreg.zeta.clone(),
-                lookup_eval.aggreg.zeta_omega.clone(),
-            ],
-            degree_bound: None,
-        });
 
         // compute table commitment
         let table_comm = {
