@@ -67,6 +67,10 @@ where
 
             // wires
             {
+                // wiring
+                let mut wires1 = vec![];
+                let mut wires2 = vec![];
+
                 for (
                     col,
                     Wire {
@@ -75,54 +79,46 @@ where
                     },
                 ) in wires.iter().enumerate()
                 {
-                    // wiring
-                    let (wires1, wires2) = {
-                        let mut wires1 = vec![];
-                        let mut wires2 = vec![];
+                    if row != *to_row || col != *to_col {
+                        let col_str = if matches!(typ, GateType::Generic) {
+                            format!(".{}", Self::generic_cols(col))
+                        } else {
+                            format!("[{col}]")
+                        };
 
-                        if row != *to_row || col != *to_col {
-                            let col_str = if matches!(typ, GateType::Generic) {
-                                format!(".{}", Self::generic_cols(col))
-                            } else {
-                                format!("[{col}]")
-                            };
+                        let to_col = if matches!(self.gates[*to_row].typ, GateType::Generic) {
+                            format!(".{}", Self::generic_cols(*to_col))
+                        } else {
+                            format!("[{to_col}]")
+                        };
 
-                            let to_col = if matches!(self.gates[*to_row].typ, GateType::Generic) {
-                                format!(".{}", Self::generic_cols(*to_col))
-                            } else {
-                                format!("[{to_col}]")
-                            };
+                        let res = format!("{col_str} -> row{to_row}{to_col}");
 
-                            let res = format!("{col_str} -> row{to_row}{to_col}");
-
-                            if matches!(typ, GateType::Generic) && col < GENERIC_REGISTERS {
-                                wires1.push(res);
-                            } else {
-                                wires2.push(res);
-                            }
+                        if matches!(typ, GateType::Generic) && col < GENERIC_REGISTERS {
+                            wires1.push(res);
+                        } else {
+                            wires2.push(res);
                         }
-
-                        (wires1, wires2)
-                    };
-
-                    match (!wires1.is_empty(), !wires2.is_empty()) {
-                        (false, false) => (),
-                        (true, false) => {
-                            res.push_str(&wires1.join(", "));
-                            res.push('\n');
-                        }
-                        (false, true) => {
-                            res.push_str(&wires2.join(", "));
-                            res.push('\n');
-                        }
-                        (true, true) => {
-                            res.push_str(&wires1.join(", "));
-                            res.push('\n');
-                            res.push_str(&wires2.join(", "));
-                            res.push('\n');
-                        }
-                    };
+                    }
                 }
+
+                match (!wires1.is_empty(), !wires2.is_empty()) {
+                    (false, false) => (),
+                    (true, false) => {
+                        res.push_str(&wires1.join(", "));
+                        res.push('\n');
+                    }
+                    (false, true) => {
+                        res.push_str(&wires2.join(", "));
+                        res.push('\n');
+                    }
+                    (true, true) => {
+                        res.push_str(&wires1.join(", "));
+                        res.push('\n');
+                        res.push_str(&wires2.join(", "));
+                        res.push('\n');
+                    }
+                };
             }
 
             res.push('\n');
@@ -233,6 +229,7 @@ mod tests {
                 GateType::Generic,
                 Wire::for_row(2)
                     .wire(0, Wire::new(1, 2))
+                    .wire(3, Wire::new(2, 5))
                     .wire(5, Wire::new(1, 1)),
                 vec![1.into(), 2.into()],
             ),
@@ -247,7 +244,7 @@ row1.Poseidon<1,2>
 
 row2.Generic<1,2>
 .l1 -> row1[2]
-.o2 -> row1[1]"#;
+.l2 -> row2.o2, .o2 -> row1[1]"#;
 
         let asm = circuit.generate_asm();
 
