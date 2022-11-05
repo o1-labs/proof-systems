@@ -26,8 +26,8 @@ use crate::{
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
-        LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
-        RecursionChallenge,
+        LookupCommitments, LookupEvaluations, PointEvaluations, ProofEvaluations,
+        ProverCommitments, ProverProof, RecursionChallenge,
     },
     prover_index::ProverIndex,
 };
@@ -101,8 +101,7 @@ where
     aggreg8: Option<Evaluations<F, D<F>>>,
 
     /// The evaluations of the aggregation polynomial for the proof
-    eval_zeta: Option<LookupEvaluations<Vec<F>>>,
-    eval_zeta_omega: Option<LookupEvaluations<Vec<F>>>,
+    eval: Option<LookupEvaluations<PointEvaluations<Vec<F>>>>,
 
     /// Runtime table
     runtime_table: Option<DensePolynomial<F>>,
@@ -891,28 +890,29 @@ where
             let joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
             let joint_table = joint_table.to_chunked_polynomial(index.max_poly_size);
 
-            let lookup_evals = |eval_point: G::ScalarField| {
-                let table = joint_table.evaluate_chunks(eval_point);
-
-                // the runtime table polynomial
-                let runtime_table = lookup_context.runtime_table.as_ref().map(|rt| {
-                    rt.to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(eval_point)
-                });
-
-                LookupEvaluations {
-                    aggreg: aggreg.evaluate_chunks(eval_point),
-                    sorted: sorted
-                        .clone()
-                        .map(|s| s.evaluate_chunks(eval_point))
-                        .collect(),
-                    table,
-                    runtime: runtime_table,
-                }
-            };
-
-            lookup_context.eval_zeta = Some(lookup_evals(zeta));
-            lookup_context.eval_zeta_omega = Some(lookup_evals(zeta_omega));
+            lookup_context.eval = Some(LookupEvaluations {
+                aggreg: PointEvaluations {
+                    zeta: aggreg.evaluate_chunks(zeta),
+                    zeta_omega: aggreg.evaluate_chunks(zeta_omega),
+                },
+                sorted: sorted
+                    .map(|sorted| PointEvaluations {
+                        zeta: sorted.evaluate_chunks(zeta),
+                        zeta_omega: sorted.evaluate_chunks(zeta_omega),
+                    })
+                    .collect(),
+                table: PointEvaluations {
+                    zeta: joint_table.evaluate_chunks(zeta),
+                    zeta_omega: joint_table.evaluate_chunks(zeta_omega),
+                },
+                runtime: lookup_context.runtime_table.as_ref().map(|runtime_table| {
+                    let runtime_table = runtime_table.to_chunked_polynomial(index.max_poly_size);
+                    PointEvaluations {
+                        zeta: runtime_table.evaluate_chunks(zeta),
+                        zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
+                    }
+                }),
+            })
         }
 
         //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
@@ -933,70 +933,48 @@ where
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-        let chunked_evals = {
-            let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array::from_fn(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta)
-                }),
-                w: array::from_fn(|i| {
-                    witness_poly[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta)
-                }),
+        let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
+            s: array::from_fn(|i| {
+                let chunked =
+                    index.cs.sigmam[0..PERMUTS - 1][i].to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            }),
+            w: array::from_fn(|i| {
+                let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            }),
 
-                z: z_poly
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta),
+            z: {
+                let chunked = z_poly.to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            },
 
-                lookup: lookup_context.eval_zeta.take(),
+            lookup: lookup_context.eval.take(),
 
-                generic_selector: index
-                    .cs
-                    .genericm
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta),
+            generic_selector: {
+                let chunked = index.cs.genericm.to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            },
 
-                poseidon_selector: index
-                    .cs
-                    .psm
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta),
-            };
-            let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
-                s: array::from_fn(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta_omega)
-                }),
-
-                w: array::from_fn(|i| {
-                    witness_poly[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta_omega)
-                }),
-
-                z: z_poly
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta_omega),
-
-                lookup: lookup_context.eval_zeta_omega.take(),
-
-                generic_selector: index
-                    .cs
-                    .genericm
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta_omega),
-
-                poseidon_selector: index
-                    .cs
-                    .psm
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta_omega),
-            };
-
-            [chunked_evals_zeta, chunked_evals_zeta_omega]
+            poseidon_selector: {
+                let chunked = index.cs.psm.to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            },
         };
 
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
@@ -1006,31 +984,11 @@ where
         //~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
         let evals = {
-            let power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
-            &chunked_evals
-                .iter()
-                .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
-                .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
-                    s: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
-                    w: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
-                    z: DensePolynomial::eval_polynomial(&es.z, e1),
-                    lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
-                        table: DensePolynomial::eval_polynomial(&l.table, e1),
-                        aggreg: DensePolynomial::eval_polynomial(&l.aggreg, e1),
-                        sorted: l
-                            .sorted
-                            .iter()
-                            .map(|p| DensePolynomial::eval_polynomial(p, e1))
-                            .collect(),
-                        runtime: l
-                            .runtime
-                            .as_ref()
-                            .map(|p| DensePolynomial::eval_polynomial(p, e1)),
-                    }),
-                    generic_selector: DensePolynomial::eval_polynomial(&es.generic_selector, e1),
-                    poseidon_selector: DensePolynomial::eval_polynomial(&es.poseidon_selector, e1),
-                })
-                .collect::<Vec<_>>()
+            let powers_of_eval_points_for_chunks = PointEvaluations {
+                zeta: zeta_to_srs_len,
+                zeta_omega: zeta_omega_to_srs_len,
+            };
+            chunked_evals.combine(&powers_of_eval_points_for_chunks)
         };
 
         //~ 1. Compute the ft polynomial.
@@ -1046,17 +1004,18 @@ where
                     .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
                 let mut f = index
                     .cs
-                    .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
+                    .gnrc_lnrz(alphas, &evals.w, evals.generic_selector.zeta)
                     .interpolate();
 
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                f += &index.cs.perm_lnrz(&evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial
                 let f = {
-                    let (_lin_constant, lin) = index.linearization.to_polynomial(&env, zeta, evals);
+                    let (_lin_constant, lin) =
+                        index.linearization.to_polynomial(&env, zeta, &evals);
                     f + lin
                 };
 
@@ -1144,7 +1103,7 @@ where
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         fr_sponge.absorb_multiple(&public_evals[0]);
         fr_sponge.absorb_multiple(&public_evals[1]);
-        fr_sponge.absorb_evaluations([&chunked_evals[0], &chunked_evals[1]]);
+        fr_sponge.absorb_evaluations(&chunked_evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
         let v_chal = fr_sponge.challenge();

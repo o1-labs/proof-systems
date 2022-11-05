@@ -14,28 +14,36 @@ use serde_with::serde_as;
 use std::array;
 
 //~ spec:startcode
+/// Evaluations of a polynomial at 2 points
+#[serde_as]
+#[derive(Copy, Clone, Serialize, Deserialize, Default)]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Evals>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Evals>"
+))]
+pub struct PointEvaluations<Evals> {
+    /// Evaluation at the challenge point zeta.
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub zeta: Evals,
+    /// Evaluation at `zeta . omega`, the product of the challenge point and the group generator.
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub zeta_omega: Evals,
+}
+
 /// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
-))]
-pub struct LookupEvaluations<Field> {
+pub struct LookupEvaluations<Eval> {
     /// sorted lookup table polynomial
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub sorted: Vec<Field>,
+    pub sorted: Vec<Eval>,
     /// lookup aggregation polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub aggreg: Field,
+    pub aggreg: Eval,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub table: Field,
+    pub table: Eval,
 
     /// Optionally, a runtime table polynomial.
-    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub runtime: Option<Field>,
+    pub runtime: Option<Eval>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -44,29 +52,20 @@ pub struct LookupEvaluations<Field> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
-))]
-pub struct ProofEvaluations<Field> {
+pub struct ProofEvaluations<Eval> {
     /// witness polynomials
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
-    pub w: [Field; COLUMNS],
+    pub w: [Eval; COLUMNS],
     /// permutation polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub z: Field,
+    pub z: Eval,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
-    pub s: [Field; PERMUTS - 1],
+    pub s: [Eval; PERMUTS - 1],
     /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Field>>,
+    pub lookup: Option<LookupEvaluations<Eval>>,
     /// evaluation of the generic selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub generic_selector: Field,
+    pub generic_selector: Eval,
     /// evaluation of the poseidon selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub poseidon_selector: Field,
+    pub poseidon_selector: Eval,
 }
 
 /// Commitments linked to the lookup feature
@@ -109,8 +108,7 @@ pub struct ProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<G::ScalarField>>; 2],
+    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -140,6 +138,112 @@ where
 }
 
 //~ spec:endcode
+
+impl<Evals> PointEvaluations<Evals> {
+    pub fn map<Evals2, FN: Fn(Evals) -> Evals2>(self, f: &FN) -> PointEvaluations<Evals2> {
+        let PointEvaluations { zeta, zeta_omega } = self;
+        PointEvaluations {
+            zeta: f(zeta),
+            zeta_omega: f(zeta_omega),
+        }
+    }
+
+    pub fn map_ref<Evals2, FN: Fn(&Evals) -> Evals2>(&self, f: &FN) -> PointEvaluations<Evals2> {
+        let PointEvaluations { zeta, zeta_omega } = self;
+        PointEvaluations {
+            zeta: f(zeta),
+            zeta_omega: f(zeta_omega),
+        }
+    }
+}
+
+impl<Eval> LookupEvaluations<Eval> {
+    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> LookupEvaluations<Eval2> {
+        let LookupEvaluations {
+            sorted,
+            aggreg,
+            table,
+            runtime,
+        } = self;
+        LookupEvaluations {
+            sorted: sorted.into_iter().map(f).collect(),
+            aggreg: f(aggreg),
+            table: f(table),
+            runtime: runtime.map(f),
+        }
+    }
+
+    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> LookupEvaluations<Eval2> {
+        let LookupEvaluations {
+            sorted,
+            aggreg,
+            table,
+            runtime,
+        } = self;
+        LookupEvaluations {
+            sorted: sorted.iter().map(f).collect(),
+            aggreg: f(aggreg),
+            table: f(table),
+            runtime: runtime.as_ref().map(f),
+        }
+    }
+}
+
+impl<Eval> ProofEvaluations<Eval> {
+    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<Eval2> {
+        let ProofEvaluations {
+            w,
+            z,
+            s,
+            lookup,
+            generic_selector,
+            poseidon_selector,
+        } = self;
+        ProofEvaluations {
+            w: w.map(f),
+            z: f(z),
+            s: s.map(f),
+            lookup: lookup.map(|x| LookupEvaluations::map(x, f)),
+            generic_selector: f(generic_selector),
+            poseidon_selector: f(poseidon_selector),
+        }
+    }
+
+    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> ProofEvaluations<Eval2> {
+        let ProofEvaluations {
+            w: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14],
+            z,
+            s: [s0, s1, s2, s3, s4, s5],
+            lookup,
+            generic_selector,
+            poseidon_selector,
+        } = self;
+        ProofEvaluations {
+            w: [
+                f(w0),
+                f(w1),
+                f(w2),
+                f(w3),
+                f(w4),
+                f(w5),
+                f(w6),
+                f(w7),
+                f(w8),
+                f(w9),
+                f(w10),
+                f(w11),
+                f(w12),
+                f(w13),
+                f(w14),
+            ],
+            z: f(z),
+            s: [f(s0), f(s1), f(s2), f(s3), f(s4), f(s5)],
+            lookup: lookup.as_ref().map(|l| l.map_ref(f)),
+            generic_selector: f(generic_selector),
+            poseidon_selector: f(poseidon_selector),
+        }
+    }
+}
 
 impl<F> ProofEvaluations<F> {
     /// Transpose the `ProofEvaluations`.
@@ -232,41 +336,32 @@ impl<G: AffineCurve> RecursionChallenge<G> {
     }
 }
 
-impl<F: Zero> ProofEvaluations<F> {
-    pub fn dummy_with_witness_evaluations(w: [F; COLUMNS]) -> ProofEvaluations<F> {
+impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
+    pub fn dummy_with_witness_evaluations(
+        curr: [F; COLUMNS],
+        next: [F; COLUMNS],
+    ) -> ProofEvaluations<PointEvaluations<F>> {
+        let pt = |curr, next| PointEvaluations {
+            zeta: curr,
+            zeta_omega: next,
+        };
         ProofEvaluations {
-            w,
-            z: F::zero(),
-            s: array::from_fn(|_| F::zero()),
+            w: array::from_fn(|i| pt(curr[i], next[i])),
+            z: pt(F::zero(), F::zero()),
+            s: array::from_fn(|_| pt(F::zero(), F::zero())),
             lookup: None,
-            generic_selector: F::zero(),
-            poseidon_selector: F::zero(),
+            generic_selector: pt(F::zero(), F::zero()),
+            poseidon_selector: pt(F::zero(), F::zero()),
         }
     }
 }
 
-impl<F: FftField> ProofEvaluations<Vec<F>> {
-    pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
-        ProofEvaluations::<F> {
-            s: array::from_fn(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
-            w: array::from_fn(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
-            z: DensePolynomial::eval_polynomial(&self.z, pt),
-            lookup: self.lookup.as_ref().map(|l| LookupEvaluations {
-                table: DensePolynomial::eval_polynomial(&l.table, pt),
-                aggreg: DensePolynomial::eval_polynomial(&l.aggreg, pt),
-                sorted: l
-                    .sorted
-                    .iter()
-                    .map(|x| DensePolynomial::eval_polynomial(x, pt))
-                    .collect(),
-                runtime: l
-                    .runtime
-                    .as_ref()
-                    .map(|rt| DensePolynomial::eval_polynomial(rt, pt)),
-            }),
-            generic_selector: DensePolynomial::eval_polynomial(&self.generic_selector, pt),
-            poseidon_selector: DensePolynomial::eval_polynomial(&self.poseidon_selector, pt),
-        }
+impl<F: FftField> ProofEvaluations<PointEvaluations<Vec<F>>> {
+    pub fn combine(&self, pt: &PointEvaluations<F>) -> ProofEvaluations<PointEvaluations<F>> {
+        self.map_ref(&|evals| PointEvaluations {
+            zeta: DensePolynomial::eval_polynomial(&evals.zeta, pt.zeta),
+            zeta_omega: DensePolynomial::eval_polynomial(&evals.zeta_omega, pt.zeta_omega),
+        })
     }
 }
 

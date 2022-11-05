@@ -215,10 +215,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Setup proof evaluations
         let rng = &mut StdRng::from_seed([0u8; 32]);
-        let evals = vec![
-            ProofEvaluations::dummy_with_witness_evaluations(curr),
-            ProofEvaluations::dummy_with_witness_evaluations(next),
-        ];
+        let evals = ProofEvaluations::dummy_with_witness_evaluations(curr, next);
 
         // Setup circuit constants
         let constants = expr::Constants {

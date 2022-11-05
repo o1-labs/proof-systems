@@ -6,7 +6,7 @@ use crate::{
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
-    proof::ProofEvaluations,
+    proof::{PointEvaluations, ProofEvaluations},
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
@@ -483,25 +483,33 @@ pub enum PolishToken<F> {
 }
 
 impl Variable {
-    fn evaluate<F: Field>(&self, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
-        let evals = &evals[self.row.shift()];
-        use Column::*;
-        let l = evals
-            .lookup
-            .as_ref()
-            .ok_or(ExprError::LookupShouldNotBeUsed);
-        match self.col {
-            Witness(i) => Ok(evals.w[i]),
-            Z => Ok(evals.z),
-            LookupSorted(i) => l.map(|l| l.sorted[i]),
-            LookupAggreg => l.map(|l| l.aggreg),
-            LookupTable => l.map(|l| l.table),
-            LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
-            Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-            Index(GateType::Generic) => Ok(evals.generic_selector),
-            Coefficient(_) | LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                Err(ExprError::MissingIndexEvaluation(self.col))
+    fn evaluate<F: Field>(
+        &self,
+        evals: &ProofEvaluations<PointEvaluations<F>>,
+    ) -> Result<F, ExprError> {
+        let point_evaluations = {
+            use Column::*;
+            let l = evals
+                .lookup
+                .as_ref()
+                .ok_or(ExprError::LookupShouldNotBeUsed);
+            match self.col {
+                Witness(i) => Ok(evals.w[i]),
+                Z => Ok(evals.z),
+                LookupSorted(i) => l.map(|l| l.sorted[i]),
+                LookupAggreg => l.map(|l| l.aggreg),
+                LookupTable => l.map(|l| l.table),
+                LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
+                Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
+                Index(GateType::Generic) => Ok(evals.generic_selector),
+                Coefficient(_) | LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
+                    Err(ExprError::MissingIndexEvaluation(self.col))
+                }
             }
+        }?;
+        match self.row {
+            CurrOrNext::Curr => Ok(point_evaluations.zeta),
+            CurrOrNext::Next => Ok(point_evaluations.zeta_omega),
         }
     }
 }
@@ -512,7 +520,7 @@ impl<F: FftField> PolishToken<F> {
         toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         let mut stack = vec![];
@@ -1286,7 +1294,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
         env: &Environment<F>,
     ) -> Result<F, ExprError> {
         self.evaluate_(d, pt, evals, &env.constants)
@@ -1297,7 +1305,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         use Expr::*;
@@ -1346,7 +1354,12 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
+    pub fn evaluate(
+        &self,
+        d: D<F>,
+        pt: F,
+        evals: &ProofEvaluations<PointEvaluations<F>>,
+    ) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1583,7 +1596,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
@@ -1613,7 +1626,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();

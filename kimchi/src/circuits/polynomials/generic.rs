@@ -39,6 +39,7 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::GateWires,
 };
+use crate::proof::PointEvaluations;
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -243,22 +244,22 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// ```
     pub fn gnrc_scalars(
         mut alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
+        w: &[PointEvaluations<F>; COLUMNS],
         generic_zeta: F,
     ) -> Vec<F> {
         // setup
         let mut res = vec![];
 
-        let mut generic_gate = |alpha_pow, register_offset| {
+        let mut generic_gate = |alpha_pow, register_offset: usize| {
             let alpha_generic = alpha_pow * generic_zeta;
 
             // addition
-            res.push(alpha_generic * w_zeta[register_offset]);
-            res.push(alpha_generic * w_zeta[register_offset + 1]);
-            res.push(alpha_generic * w_zeta[register_offset + 2]);
+            res.push(alpha_generic * w[register_offset].zeta);
+            res.push(alpha_generic * w[register_offset + 1].zeta);
+            res.push(alpha_generic * w[register_offset + 2].zeta);
 
             // multplication
-            res.push(alpha_generic * w_zeta[register_offset] * w_zeta[register_offset + 1]);
+            res.push(alpha_generic * w[register_offset].zeta * w[register_offset + 1].zeta);
 
             // constant
             res.push(alpha_generic);
@@ -281,14 +282,14 @@ impl<F: PrimeField> ConstraintSystem<F> {
     pub fn gnrc_lnrz(
         &self,
         alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
+        w: &[PointEvaluations<F>; COLUMNS],
         generic_zeta: F,
     ) -> Evaluations<F, D<F>> {
         let d1 = self.domain.d1;
         let n = d1.size();
 
         // get scalars
-        let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
+        let scalars = Self::gnrc_scalars(alphas, w, generic_zeta);
 
         //
         let mut res = Evaluations::from_vec_and_domain(vec![F::zero(); n], d1);
@@ -566,7 +567,10 @@ mod tests {
         let t_zeta = t.evaluate(&zeta);
 
         // compute linearization f(z)
-        let w_zeta: [Fp; COLUMNS] = array::from_fn(|col| witness[col].evaluate(&zeta));
+        let w_zeta: [PointEvaluations<Fp>; COLUMNS] = array::from_fn(|col| PointEvaluations {
+            zeta: witness[col].evaluate(&zeta),
+            zeta_omega: Fp::zero(),
+        });
         let generic_zeta = cs.genericm.evaluate(&zeta);
 
         let f = cs
