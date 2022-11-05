@@ -666,16 +666,20 @@ where
 
         let quotient_poly = {
             // generic
-            let alphas =
-                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-            let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
+            let mut t4 = {
+                let alphas = all_alphas
+                    .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
+                let t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
 
-            if cfg!(debug_assertions) {
-                let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
-                let gen_minus_pub = &t4 + &p4;
+                if cfg!(debug_assertions) {
+                    let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
+                    let gen_minus_pub = &t4 + &p4;
 
-                check_constraint!(index, gen_minus_pub);
-            }
+                    check_constraint!(index, gen_minus_pub);
+                }
+
+                t4
+            };
 
             // complete addition
             {
