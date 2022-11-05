@@ -2,7 +2,7 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::ArgumentType,
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{
@@ -13,12 +13,16 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add, generic, permutation,
+            foreign_field_add::{self, circuitgates::ForeignFieldAdd},
+            generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check,
+            range_check::{
+                self,
+                circuitgates::{RangeCheck0, RangeCheck1},
+            },
             varbasemul::VarbaseMul,
-            xor,
+            xor::Xor16,
         },
         wires::{COLUMNS, PERMUTS},
     },
@@ -697,7 +701,37 @@ where
             {
                 use crate::circuits::argument::DynArgument;
 
-                for gate in [(&CompleteAdd::new() as &dyn DynArgument<G::ScalarField>)].iter() {
+                let chacha_enabled = index.cs.chacha8.is_some();
+                let range_check_enabled = index.cs.range_check_selector_polys.is_some();
+                let foreign_field_addition_enabled =
+                    index.cs.foreign_field_add_selector_poly.is_some();
+                let xor_enabled = index.cs.xor_selector_poly.is_some();
+
+                for gate in [
+                    (
+                        (&CompleteAdd::new() as &dyn DynArgument<G::ScalarField>),
+                        true,
+                    ),
+                    (&VarbaseMul::new(), true),
+                    (&EndosclMul::new(), true),
+                    (&EndomulScalar::new(), true),
+                    (&Poseidon::new(), true),
+                    // Chacha gates
+                    (&ChaCha0::new(), chacha_enabled),
+                    (&ChaCha1::new(), chacha_enabled),
+                    (&ChaCha2::new(), chacha_enabled),
+                    (&ChaChaFinal::new(), chacha_enabled),
+                    // Range check gates
+                    (&RangeCheck0::new(), range_check_enabled),
+                    (&RangeCheck1::new(), range_check_enabled),
+                    // Foreign field addition gate
+                    (&ForeignFieldAdd::new(), foreign_field_addition_enabled),
+                    // Xor gate
+                    (&Xor16::new(), xor_enabled),
+                ]
+                .into_iter()
+                .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
+                {
                     let constraint = gate.combined_constraints(&all_alphas);
                     let eval = constraint.evaluations(&env);
                     if eval.domain().size == t4.domain().size {
@@ -710,95 +744,6 @@ where
                     check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
                 }
             };
-
-            // scalar multiplication
-            {
-                let mul8 = VarbaseMul::combined_constraints(&all_alphas).evaluations(&env);
-                t8 += &mul8;
-
-                check_constraint!(index, mul8);
-            }
-
-            // endoscaling
-            {
-                let emul8 = EndosclMul::combined_constraints(&all_alphas).evaluations(&env);
-                t8 += &emul8;
-
-                check_constraint!(index, emul8);
-            }
-
-            // endoscaling scalar computation
-            {
-                let emulscalar8 =
-                    EndomulScalar::combined_constraints(&all_alphas).evaluations(&env);
-                t8 += &emulscalar8;
-
-                check_constraint!(index, emulscalar8);
-            }
-
-            // poseidon
-            {
-                let pos8 = Poseidon::combined_constraints(&all_alphas).evaluations(&env);
-                t8 += &pos8;
-
-                check_constraint!(index, pos8);
-            }
-
-            // chacha
-            {
-                if index.cs.chacha8.as_ref().is_some() {
-                    let chacha0 = ChaCha0::combined_constraints(&all_alphas).evaluations(&env);
-                    t4 += &chacha0;
-
-                    let chacha1 = ChaCha1::combined_constraints(&all_alphas).evaluations(&env);
-                    t4 += &chacha1;
-
-                    let chacha2 = ChaCha2::combined_constraints(&all_alphas).evaluations(&env);
-                    t4 += &chacha2;
-
-                    let chacha_final =
-                        ChaChaFinal::combined_constraints(&all_alphas).evaluations(&env);
-                    t4 += &chacha_final;
-
-                    check_constraint!(index, chacha0);
-                    check_constraint!(index, chacha1);
-                    check_constraint!(index, chacha2);
-                    check_constraint!(index, chacha_final);
-                }
-            }
-
-            // range check gates
-            if index.cs.range_check_selector_polys.is_some() {
-                for gate_type in range_check::gadget::circuit_gates() {
-                    let range_check_constraint =
-                        range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
-                            .evaluations(&env);
-                    assert_eq!(range_check_constraint.domain().size, t8.domain().size);
-                    t8 += &range_check_constraint;
-                    check_constraint!(index, range_check_constraint);
-                }
-            }
-
-            // foreign field addition
-            {
-                if index.cs.foreign_field_add_selector_poly.is_some() {
-                    let ffadd = foreign_field_add::gadget::combined_constraints(&all_alphas)
-                        .evaluations(&env);
-                    assert_eq!(ffadd.domain().size, t4.domain().size);
-                    t4 += &ffadd;
-                    check_constraint!(index, ffadd);
-                }
-            }
-
-            // xor
-            {
-                if index.cs.xor_selector_poly.is_some() {
-                    let xor = xor::combined_constraints(&all_alphas).evaluations(&env);
-                    assert_eq!(xor.domain().size, t4.domain().size);
-                    t4 += &xor;
-                    check_constraint!(index, xor);
-                }
-            }
 
             // lookup
             {

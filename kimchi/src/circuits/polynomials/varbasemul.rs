@@ -397,6 +397,12 @@ pub fn witness<F: FftField + std::fmt::Display>(
 /// Implementation of the `VarbaseMul` gate
 pub struct VarbaseMul<F>(PhantomData<F>);
 
+impl<F: PrimeField> VarbaseMul<F> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<F> Argument<F> for VarbaseMul<F>
 where
     F: PrimeField,

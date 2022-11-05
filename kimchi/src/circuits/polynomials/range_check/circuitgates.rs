@@ -150,6 +150,12 @@ use ark_ff::PrimeField;
 #[derive(Default)]
 pub struct RangeCheck0<F>(PhantomData<F>);
 
+impl<F: PrimeField> RangeCheck0<F> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<F> Argument<F> for RangeCheck0<F>
 where
     F: PrimeField,
@@ -240,6 +246,12 @@ where
 
 #[derive(Default)]
 pub struct RangeCheck1<F>(PhantomData<F>);
+
+impl<F: PrimeField> RangeCheck1<F> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
 
 impl<F> Argument<F> for RangeCheck1<F>
 where

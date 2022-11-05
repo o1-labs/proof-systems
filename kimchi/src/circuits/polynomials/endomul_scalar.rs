@@ -156,6 +156,12 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 
 pub struct EndomulScalar<F>(PhantomData<F>);
 
+impl<F: PrimeField> EndomulScalar<F> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<F> Argument<F> for EndomulScalar<F>
 where
     F: PrimeField,

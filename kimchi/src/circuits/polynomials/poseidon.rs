@@ -329,6 +329,12 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// constrain the values of the (r+1)th state.
 pub struct Poseidon<F>(PhantomData<F>);
 
+impl<F: PrimeField> Poseidon<F> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<F> Poseidon<F> where F: Field {}
 
 impl<F> Argument<F> for Poseidon<F>

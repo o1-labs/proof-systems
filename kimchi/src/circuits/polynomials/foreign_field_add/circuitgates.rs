@@ -113,6 +113,12 @@ use std::{array, marker::PhantomData};
 /// - Operates on Curr and Next rows.
 pub struct ForeignFieldAdd<F>(PhantomData<F>);
 
+impl<F: PrimeField> ForeignFieldAdd<F> {
+    pub fn new() -> Self {
+        Self(PhantomData)
+    }
+}
+
 impl<F> Argument<F> for ForeignFieldAdd<F>
 where
     F: PrimeField,
