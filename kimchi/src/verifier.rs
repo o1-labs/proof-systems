@@ -226,6 +226,18 @@ where
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&digest);
 
+        //~ 1. Absorb the previous recursion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            for RecursionChallenge { chals, .. } in &self.prev_challenges {
+                fr_sponge.absorb_multiple(chals);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
+
         // prepare some often used values
         let zeta1 = zeta.pow(&[n]);
         let zetaw = zeta * index.domain.group_gen;
@@ -252,18 +264,6 @@ where
                 (comm.clone(), evals)
             })
             .collect();
-
-        //~ 1. Absorb the previous recursion challenges.
-        let prev_challenge_digest = {
-            // Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(G::sponge_params());
-            for RecursionChallenge { chals, .. } in &self.prev_challenges {
-                fr_sponge.absorb_multiple(chals);
-            }
-            fr_sponge.digest()
-        };
-        fr_sponge.absorb(&prev_challenge_digest);
 
         // retrieve ranges for the powers of alphas
         let mut all_alphas = index.powers_of_alpha.clone();
