@@ -30,6 +30,59 @@ use rand::thread_rng;
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
+pub struct Context<'a, G: KimchiCurve> {
+    proof: &'a ProverProof<G>,
+    index: &'a VerifierIndex<G>,
+}
+
+impl<'a, G: KimchiCurve> Context<'a, G> {
+    pub fn get_column(&'a self, col: Column) -> Option<&'a PolyComm<G>> {
+        use Column::*;
+        match col {
+            Witness(i) => Some(&self.proof.commitments.w_comm[i]),
+            Coefficient(i) => Some(&self.index.coefficients_comm[i]),
+            Permutation(i) => Some(&self.index.sigma_comm[i]),
+            Z => Some(&self.proof.commitments.z_comm),
+            LookupSorted(i) => Some(&self.proof.commitments.lookup.as_ref()?.sorted[i]),
+            LookupAggreg => Some(&self.proof.commitments.lookup.as_ref()?.aggreg),
+            LookupKindIndex(i) => {
+                Some(self.index.lookup_index.as_ref()?.lookup_selectors[i].as_ref()?)
+            }
+            LookupTable => None,
+            LookupRuntimeSelector => Some(
+                self.index
+                    .lookup_index
+                    .as_ref()?
+                    .runtime_tables_selector
+                    .as_ref()?,
+            ),
+            LookupRuntimeTable => None,
+            Index(t) => {
+                use GateType::*;
+                match t {
+                    Zero => None,
+                    Generic => Some(&self.index.generic_comm),
+                    Lookup => None,
+                    CompleteAdd => Some(&self.index.complete_add_comm),
+                    VarBaseMul => Some(&self.index.mul_comm),
+                    EndoMul => Some(&self.index.emul_comm),
+                    EndoMulScalar => Some(&self.index.endomul_scalar_comm),
+                    Poseidon => Some(&self.index.psm_comm),
+                    ChaCha0 => Some(&self.index.chacha_comm.as_ref()?[0]),
+                    ChaCha1 => Some(&self.index.chacha_comm.as_ref()?[1]),
+                    ChaCha2 => Some(&self.index.chacha_comm.as_ref()?[2]),
+                    ChaChaFinal => Some(&self.index.chacha_comm.as_ref()?[3]),
+                    CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
+                    RangeCheck0 => Some(&self.index.range_check_comm.as_ref()?[0]),
+                    RangeCheck1 => Some(&self.index.range_check_comm.as_ref()?[1]),
+                    Xor16 => Some(self.index.xor_comm.as_ref()?),
+                    ForeignFieldAdd => Some(self.index.foreign_field_add_comm.as_ref()?),
+                }
+            }
+        }
+    }
+}
+
 impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
