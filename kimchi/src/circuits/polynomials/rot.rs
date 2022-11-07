@@ -45,7 +45,7 @@ impl<F: PrimeField> CircuitGate<F> {
             CircuitGate {
                 typ: GateType::Rot64,
                 wires: Wire::new(new_row),
-                coeffs: vec![F::from(2u32).pow(&[rot as u64])],
+                coeffs: vec![F::from(2u64.pow(rot % 64))],
             },
             CircuitGate {
                 typ: GateType::RangeCheck0,

@@ -156,7 +156,6 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
     rot: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
-
     let (expr, powers_of_alpha) = constraints_expr(
         chacha,
         range_check,
