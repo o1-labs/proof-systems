@@ -38,6 +38,18 @@ fn create_test_constraint_system(bits: u32, xor: bool) -> ConstraintSystem<Fp> {
     ConstraintSystem::create(gates).build().unwrap()
 }
 
+fn create_test_constraint_system_gnrc(double: bool) -> ConstraintSystem<Fp> {
+    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_not_gnrc(double);
+
+    // Temporary workaround for lookup-table/domain-size issue
+    for _ in 0..(1 << 13) {
+        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        next_row += 1;
+    }
+
+    ConstraintSystem::create(gates).build().unwrap()
+}
+
 // Produces a random BigUint of a given number of bits
 fn big_random(bits: u32) -> BigUint {
     if bits == 0 {
@@ -87,6 +99,25 @@ fn test_not(inp: &BigUint, bits: Option<u32>) -> [Vec<PallasField>; COLUMNS] {
     let cs = create_test_constraint_system(bits, NOT);
     let witness = xor::create_not_witness(inp, Some(bits));
     for row in 0..xor::num_xors(bits) + 1 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+    witness
+}
+
+// Tester for not gate generic
+fn test_not_gnrc(inp1: &BigUint, inp2: &Option<BigUint>, bits: u32) -> [Vec<PallasField>; COLUMNS] {
+    let cs = create_test_constraint_system_gnrc(inp2.is_some());
+    let witness = xor::create_not_gnrc_witness(inp1, inp2, bits);
+    // test public input and not generic gate
+    for row in 0..2 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -293,4 +324,22 @@ fn test_not_big_random() {
     let input = big_random(200);
     let witness = test_not(&input, None);
     check_not(&witness, &input, None);
+}
+
+#[test]
+// Tests two NOTs with the generic builder
+fn test_not_generic_double() {
+    let input1 = big_random(64);
+    let input2 = big_random(64);
+    let witness = test_not_gnrc(&input1, &Some(input2.clone()), 64);
+    assert_eq!(witness[2][1], PallasField::from(big_not(&input1, Some(64))));
+    assert_eq!(witness[5][1], PallasField::from(big_not(&input2, Some(64))));
+}
+
+#[test]
+// Tests one NOT with the generic builder
+fn test_not_generic_single() {
+    let input = big_random(64);
+    let witness = test_not_gnrc(&input, &None, 64);
+    assert_eq!(witness[2][1], PallasField::from(big_not(&input, Some(64))));
 }

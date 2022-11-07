@@ -29,6 +29,8 @@ use o1_utils::{big_bits, big_not, big_xor, FieldFromBig, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, cmp::max, collections::HashMap, marker::PhantomData};
 
+use super::generic::GenericGateSpec;
+
 pub const GATE_COUNT: usize = 1;
 
 impl<F: PrimeField> CircuitGate<F> {
@@ -61,10 +63,68 @@ impl<F: PrimeField> CircuitGate<F> {
         (zero_row + 1, gates)
     }
 
-    /// Creates a NOT gadget for bits length
+    /// Creates a NOT gadget for `bits` length previously constrained using a generic gate.
+    /// Assumes that the inputs are known to have at most `bits` only (because it is constrained somewhere else).
+    /// Includes:
+    /// - 1 Generic gate to perform the `( 2^(bits) - 1 ) - input` operation for two inputs
+    /// Input:
+    /// - new_row : row to start the NOT generic gate
+    /// - pub_row : row where the public inputs is stored (the 2^bits - 1) value (in the column 0 of that row)
+    /// - double  : whether to perform two NOTs or only one inside the generic gate
+    pub fn create_not_gnrc(double: bool) -> (usize, Vec<Self>) {
+        let mut gates = vec![CircuitGate::create_generic_gadget(
+            Wire::new(0),
+            GenericGateSpec::Pub,
+            None,
+        )];
+        let new_row = Self::not_double_gnrc(&mut gates, 1, 0, double);
+        (new_row, gates)
+    }
+
+    // Returns a double generic gate for negation
+    fn not_double_gnrc(
+        gates: &mut Vec<Self>,
+        new_row: usize,
+        pub_row: usize,
+        double: bool,
+    ) -> usize {
+        let g1 = GenericGateSpec::Add {
+            left_coeff: None,
+            right_coeff: Some(-F::one()),
+            output_coeff: None,
+        };
+        let g2 = {
+            if double {
+                Some(GenericGateSpec::Add {
+                    left_coeff: None,
+                    right_coeff: Some(-F::one()),
+                    output_coeff: None,
+                })
+            } else {
+                None
+            }
+        };
+        let mut not_gate = vec![CircuitGate::create_generic_gadget(
+            Wire::new(new_row),
+            g1,
+            g2,
+        )];
+        gates.append(&mut not_gate);
+        // check left inputs of the double generic gate correspond to the 2^bits - 1 value
+        gates.connect_cell_pair((pub_row, 0), (new_row, 0));
+        if double {
+            gates.connect_cell_pair((pub_row, 0), (new_row, 3));
+        }
+        new_row + 1
+    }
+
+    /// Creates a NOT gadget for bits length.
+    /// It implicitly constrains the length of the input to be at most 16 * num_xors bits.
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself and all ones with input2
+    /// Input:
+    /// - new_row : row to start the NOT gadget
     pub fn create_not_gadget(new_row: usize, bits: u32) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut gates = (0..num_xors)
@@ -78,19 +138,12 @@ impl<F: PrimeField> CircuitGate<F> {
         gates.push(CircuitGate {
             typ: GateType::Generic,
             wires: Wire::new(zero_row),
-            coeffs: vec![
-                F::one(),
-                F::zero(),
-                F::zero(),
-                F::one(),
-                F::zero(),
-                F::zero(),
-            ],
+            coeffs: vec![F::one(), F::zero(), F::zero(), F::zero(), F::one()],
         });
         // check fin_in1, fin_in2, fin_out are zero
         gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
         gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
-        gates.connect_cell_pair((zero_row, 3), (new_row, 1)); // input 2 is all ones
+        gates.connect_cell_pair((zero_row, 3), (new_row, 1)); // input 2 of xor is all ones
 
         (zero_row + 1, gates)
     }
@@ -522,7 +575,7 @@ pub fn extend_xor_rows<F: PrimeField>(
     init_xor(witness, xor_row, bits, words, not);
 }
 
-/// Create a keccak Xor for up to the native length
+/// Create a Xor for up to the native length starting at the row 0
 /// Input: first input and second input
 /// Panics if the input is larger than the field
 pub fn create_xor_witness<F: PrimeField>(
@@ -554,7 +607,7 @@ pub fn create_xor_witness<F: PrimeField>(
     xor_witness
 }
 
-/// Create a keccak Not for less than 255 bits (native field)
+/// Create a Not for less than 255 bits (native field) starting at the row 0
 /// Input: first input and second input
 /// Panics if the input is too large for the field
 pub fn create_not_witness<F: PrimeField>(input: &BigUint, bits: Option<u32>) -> [Vec<F>; COLUMNS] {
@@ -577,6 +630,40 @@ pub fn create_not_witness<F: PrimeField>(input: &BigUint, bits: Option<u32>) -> 
         true,
     );
 
+    not_witness
+}
+
+/// Create a Not for less than 255 bits (native field) starting at the row 0 using generic gates
+/// Input: one word, and an optional second word to be negated
+/// Panics if the bits length is too small for the inputs, or if the inputs are too large for the field
+pub fn create_not_gnrc_witness<F: PrimeField>(
+    input1: &BigUint,
+    input2: &Option<BigUint>,
+    bits: u32,
+) -> [Vec<F>; COLUMNS] {
+    let bits2 = input2.as_ref().map(|x| big_bits(x) as u32).unwrap_or(0);
+    if bits < big_bits(input1) || bits < bits2 {
+        panic!("Bits must be greater than the inputs length");
+    }
+    if *input1 > F::modulus_biguint() || *input2 > Some(F::modulus_biguint()) {
+        panic!("This number must be split because it does not fit into the native field");
+    }
+    let mut not_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 2]);
+    let all_ones = F::from(2u8).pow(&[bits as u64]) - F::one();
+    // Set public input of bits in public generic gate
+    not_witness[0][0] = all_ones.clone();
+    // fill in first NOT
+    let not1 = all_ones.clone() - F::from_biguint(input1).unwrap();
+    not_witness[0][1] = all_ones.clone();
+    not_witness[1][1] = F::from_biguint(input1).unwrap();
+    not_witness[2][1] = not1;
+    // fill in second NOT
+    if let Some(input2) = input2 {
+        let not2 = all_ones.clone() - F::from_biguint(input2).unwrap();
+        not_witness[3][1] = all_ones;
+        not_witness[4][1] = F::from_biguint(input2).unwrap();
+        not_witness[5][1] = not2;
+    }
     not_witness
 }
 
