@@ -1,10 +1,5 @@
-use std::array;
-
 use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::CircuitGate,
-    polynomials::keccak::{self, ROT_TAB},
-    wires::Wire,
+    constraints::ConstraintSystem, gate::CircuitGate, polynomials::rot, wires::Wire,
 };
 use ark_ec::AffineCurve;
 use mina_curves::pasta::{Fp, Pallas, Vesta};
@@ -13,8 +8,8 @@ use rand::Rng;
 //use super::framework::TestFramework;
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
-fn create_test_constraint_system() -> ConstraintSystem<Fp> {
-    let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_keccak_rot(0) };
+fn create_test_constraint_system(rot: u32) -> ConstraintSystem<Fp> {
+    let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_rot(0, rot) };
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -57,14 +52,13 @@ fn test_prove_and_verify() {
 }*/
 
 #[test]
-// Test that all of the offsets in the rotation table work fine
-fn test_rot_table() {
-    let cs = create_test_constraint_system();
-    let state = array::from_fn(|_| {
-        array::from_fn(|_| rand::thread_rng().gen_range(0..2u128.pow(64)) as u64)
-    });
-    let witness = keccak::create_witness_keccak_rot(state);
-    for row in 0..=48 {
+// Test that all of the offsets between 1 and 63 work as expected
+fn test_rot_random() {
+    let rot = rand::thread_rng().gen_range(1..=63);
+    let cs = create_test_constraint_system(rot);
+    let word = rand::thread_rng().gen_range(0..2u128.pow(64)) as u64;
+    let witness = rot::create_witness(word, rot);
+    for row in 0..=2 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -75,18 +69,5 @@ fn test_rot_table() {
             Ok(())
         );
     }
-    let mut rot = 0;
-    for x in 0..5 {
-        for y in 0..5 {
-            let bits = ROT_TAB[x][y];
-            if bits == 0 {
-                continue;
-            }
-            assert_eq!(
-                PallasField::from(state[x][y].rotate_left(bits)),
-                witness[1][1 + 2 * rot],
-            );
-            rot += 1;
-        }
-    }
+    assert_eq!(PallasField::from(word.rotate_left(rot)), witness[1][1],);
 }
