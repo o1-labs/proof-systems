@@ -47,9 +47,8 @@ impl<F: PrimeField> CircuitGate<F> {
         zero_row: usize,
     ) -> (usize, Vec<Self>) {
         let mut rot_row = new_row;
-        for x in 0..5 {
-            for y in 0..5 {
-                let rot = ROT_TAB[x][y];
+        for row in ROT_TAB {
+            for rot in row {
                 if rot == 0 {
                     continue;
                 }
@@ -70,9 +69,8 @@ impl<F: PrimeField> CircuitGate<F> {
 pub fn create_witness_keccak_rot<F: PrimeField>(state: [[u64; 5]; 5]) -> [Vec<F>; COLUMNS] {
     // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
-    for x in 0..5 {
-        for y in 0..5 {
-            let rot = ROT_TAB[x][y];
+    for (x, row) in ROT_TAB.iter().enumerate() {
+        for (y, &rot) in row.iter().enumerate() {
             if rot == 0 {
                 continue;
             }

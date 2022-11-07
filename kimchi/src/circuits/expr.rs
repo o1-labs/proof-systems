@@ -1831,6 +1831,36 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                         // without calling remove.
                     }
                 }
+            } else if unevaluated.len() == 2
+                && unevaluated[0].col == Column::Index(GateType::Rot64)
+                && unevaluated[1].col == Column::Coefficient(0)
+            {
+                let var = unevaluated.remove(0);
+                match var.row {
+                    Next => {
+                        return Err(ExprError::MissingEvaluation(var.col, var.row));
+                    }
+                    Curr => {
+                        let e = match res.remove(&var.col) {
+                            Some(v) => v + c.clone(),
+                            None => c.clone(),
+                        };
+                        res.insert(var.col, e);
+                    }
+                }
+                let coeff = unevaluated.remove(0);
+                match coeff.row {
+                    Next => {
+                        return Err(ExprError::MissingEvaluation(var.col, var.row));
+                    }
+                    Curr => {
+                        let e = match res.remove(&coeff.col) {
+                            Some(v) => v + c,
+                            None => c,
+                        };
+                        res.insert(coeff.col, e);
+                    }
+                }
             } else {
                 return Err(ExprError::FailedLinearization);
             }
