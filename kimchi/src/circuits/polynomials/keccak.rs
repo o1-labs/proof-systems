@@ -6,17 +6,9 @@ use ark_ff::PrimeField;
 use crate::circuits::{
     gate::{CircuitGate, Connect},
     polynomial::COLUMNS,
-    polynomials::{generic::GenericGateSpec, rot::extend_rot_rows},
+    polynomials::{generic::GenericGateSpec, rot::create_witness_rot},
     wires::Wire,
 };
-
-impl<F: PrimeField> CircuitGate<F> {
-    /// Create the Keccak gadget
-    /// TODO: right now it only creates a Generic gate followed by the Xor64 gates
-    pub fn create_keccak(new_row: usize) -> (usize, Vec<Self>) {
-        Self::create_xor(new_row, 64)
-    }
-}
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64
 /// | y \ x |  0 |  1 |  2 |  3 |  4 |
@@ -35,16 +27,26 @@ pub const ROT_TAB: [[u32; 5]; 5] = [
 ];
 
 impl<F: PrimeField> CircuitGate<F> {
-    /// Creates Keccak rotation gates for the whole table (skipping the rotation by 0)
-    pub fn create_keccak_rot(new_row: usize) -> (usize, Vec<Self>) {
-        // Initial Generic gate to constrain the output to be zero
-        let zero_row = new_row;
+    /// Creates Keccak gadget.
+    /// Right now it only creates an initial generic gate with all zeros starting on `new_row` and then
+    /// calls the Keccak rotation gadget
+    pub fn create_keccak(new_row: usize) -> (usize, Vec<Self>) {
+        // Initial Generic gate to constrain the prefix of the output to be zero
         let mut gates = vec![CircuitGate::<F>::create_generic_gadget(
             Wire::new(new_row),
             GenericGateSpec::Pub,
             None,
         )];
-        let mut rot_row = zero_row + 1;
+        Self::create_keccak_rot(&mut gates, new_row + 1, new_row)
+    }
+
+    /// Creates Keccak rotation gates for the whole table (skipping the rotation by 0)
+    pub fn create_keccak_rot(
+        gates: &mut Vec<Self>,
+        new_row: usize,
+        zero_row: usize,
+    ) -> (usize, Vec<Self>) {
+        let mut rot_row = new_row;
         for x in 0..5 {
             for y in 0..5 {
                 let rot = ROT_TAB[x][y];
@@ -59,7 +61,7 @@ impl<F: PrimeField> CircuitGate<F> {
                 gates.connect_64bit(zero_row, rot_row - 1);
             }
         }
-        (rot_row, gates)
+        (rot_row, gates.to_vec())
     }
 }
 
@@ -74,20 +76,7 @@ pub fn create_witness_keccak_rot<F: PrimeField>(state: [[u64; 5]; 5]) -> [Vec<F>
             if rot == 0 {
                 continue;
             }
-            let word = state[x][y];
-            let shifted = (word as u128 * 2u128.pow(rot) % 2u128.pow(64)) as u64;
-            let excess = word / 2u64.pow(64 - rot);
-            let rotated = shifted + excess;
-            // Value for the added value for the bound
-            let bound = 2u128.pow(64) - 2u128.pow(rot);
-            extend_rot_rows(
-                &mut witness,
-                F::from(word),
-                F::from(rotated),
-                F::from(excess),
-                F::from(shifted),
-                F::from(bound),
-            );
+            create_witness_rot(&mut witness, state[x][y], rot);
         }
     }
     witness
