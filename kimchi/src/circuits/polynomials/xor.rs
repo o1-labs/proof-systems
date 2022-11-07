@@ -534,7 +534,7 @@ pub fn create_xor_witness<F: PrimeField>(
         panic!("Input too large for the native field");
     }
 
-    let output = big_xor(&input1, &input2);
+    let output = big_xor(input1, input2);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
@@ -545,7 +545,7 @@ pub fn create_xor_witness<F: PrimeField>(
         bits,
         (
             F::from_biguint(input1).unwrap(),
-            F::from_biguint(&input2).unwrap(),
+            F::from_biguint(input2).unwrap(),
             F::from_biguint(&output).unwrap(),
         ),
         false,
@@ -561,8 +561,8 @@ pub fn create_not_witness<F: PrimeField>(input: &BigUint, bits: Option<u32>) -> 
     if *input > F::modulus_biguint() {
         panic!("This number must be split because it does not fit into the native field");
     }
-    let output = big_not(&input, bits);
-    let bits = max(big_bits(&input) as u32, bits.unwrap_or(0));
+    let output = big_not(input, bits);
+    let bits = max(big_bits(input) as u32, bits.unwrap_or(0));
     let mut not_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
     init_xor(
@@ -570,7 +570,7 @@ pub fn create_not_witness<F: PrimeField>(input: &BigUint, bits: Option<u32>) -> 
         0,
         bits,
         (
-            F::from_biguint(&input).unwrap(),
+            F::from_biguint(input).unwrap(),
             F::from(2u8).pow(&[bits as u64]) - F::one(),
             F::from_biguint(&output).unwrap(),
         ),
