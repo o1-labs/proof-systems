@@ -45,7 +45,7 @@ impl<F: PrimeField> CircuitGate<F> {
             CircuitGate {
                 typ: GateType::Rot64,
                 wires: Wire::new(new_row),
-                coeffs: vec![F::from(2u64.pow(rot % 64))],
+                coeffs: vec![F::from(2u32).pow(&[rot as u64])],
             },
             CircuitGate {
                 typ: GateType::RangeCheck0,
@@ -533,26 +533,34 @@ pub fn extend_rot_rows<F: PrimeField>(
     init_rot64(witness, rot_row, word, rotated, excess, shifted, bound);
 }
 
-/// Create a rotation
-/// Input: word to be rotated and rotation offset
-pub fn create_witness_rot<F: PrimeField>(word: u64, rot: u32) -> [Vec<F>; COLUMNS] {
-    assert_ne!(rot, 0, "rot must be non-zero");
+/// Create a rotation witness
+/// Input: word to be rotated, rotation offset.
+/// Output: witness for rotation word and initial row with all zeros
+pub fn create_witness<F: PrimeField>(word: u64, rot: u32) -> [Vec<F>; COLUMNS] {
+    // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
+    create_witness_rot(&mut witness, word, rot);
+    witness
+}
+
+/// Create a rotation witness
+/// Input: word to be rotated, rotation offset,
+pub fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: u64, rot: u32) {
+    assert_ne!(rot, 0, "Rotation value must be non-zero");
+    assert!(rot < 64, "Rotation value must be less than 64");
+
     let shifted = (word as u128 * 2u128.pow(rot) % 2u128.pow(64)) as u64;
     let excess = word / 2u64.pow(64 - rot);
     let rotated = shifted + excess;
     // Value for the added value for the bound
     let bound = 2u128.pow(64) - 2u128.pow(rot);
 
-    // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
     extend_rot_rows(
-        &mut witness,
+        witness,
         F::from(word),
         F::from(rotated),
         F::from(excess),
         F::from(shifted),
         F::from(bound),
     );
-
-    witness
 }

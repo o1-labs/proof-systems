@@ -5,6 +5,7 @@ mod endomul_scalar;
 mod foreign_field_add;
 mod framework;
 mod generic;
+mod keccak;
 mod lookup;
 mod poseidon;
 mod range_check;
