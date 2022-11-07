@@ -27,7 +27,7 @@ fn create_test_constraint_system() -> ConstraintSystem<Fp> {
 
 #[test]
 // Test that all of the offsets in the rotation table work fine
-fn test_rot_table() {
+fn test_keccak_table() {
     let cs = create_test_constraint_system();
     let state = array::from_fn(|_| {
         array::from_fn(|_| rand::thread_rng().gen_range(0..2u128.pow(64)) as u64)
@@ -45,9 +45,8 @@ fn test_rot_table() {
         );
     }
     let mut rot = 0;
-    for x in 0..5 {
-        for y in 0..5 {
-            let bits = ROT_TAB[x][y];
+    for (x, row) in ROT_TAB.iter().enumerate() {
+        for (y, &bits) in row.iter().enumerate() {
             if bits == 0 {
                 continue;
             }
