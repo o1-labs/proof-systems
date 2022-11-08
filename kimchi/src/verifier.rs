@@ -389,12 +389,12 @@ where
                     .collect::<Vec<_>>(),
             );
             es.extend(
-                (0..PERMUTS - 1)
+                (0..COLUMNS)
                     .map(|c| {
                         (
                             self.evals
                                 .iter()
-                                .map(|e| e.s[c].clone())
+                                .map(|e| e.coefficients[c].clone())
                                 .collect::<Vec<_>>(),
                             None,
                         )
@@ -402,12 +402,12 @@ where
                     .collect::<Vec<_>>(),
             );
             es.extend(
-                (0..COLUMNS)
+                (0..PERMUTS - 1)
                     .map(|c| {
                         (
                             self.evals
                                 .iter()
-                                .map(|e| e.coefficients[c].clone())
+                                .map(|e| e.s[c].clone())
                                 .collect::<Vec<_>>(),
                             None,
                         )
@@ -768,29 +768,6 @@ where
             }),
     );
 
-    //~~ - sigma commitments
-    evaluations.extend(
-        index
-            .sigma_comm
-            .iter()
-            .zip(
-                (0..PERMUTS - 1)
-                    .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.s[i].clone())
-                            .collect::<Vec<_>>()
-                    })
-                    .collect::<Vec<_>>(),
-            )
-            .map(|(c, e)| Evaluation {
-                commitment: c.clone(),
-                evaluations: e,
-                degree_bound: None,
-            }),
-    );
-
     //~~ - coefficient commitments
     evaluations.extend(
         index
@@ -803,6 +780,29 @@ where
                             .evals
                             .iter()
                             .map(|e| e.coefficients[i].clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .map(|(c, e)| Evaluation {
+                commitment: c.clone(),
+                evaluations: e,
+                degree_bound: None,
+            }),
+    );
+
+    //~~ - sigma commitments
+    evaluations.extend(
+        index
+            .sigma_comm
+            .iter()
+            .zip(
+                (0..PERMUTS - 1)
+                    .map(|i| {
+                        proof
+                            .evals
+                            .iter()
+                            .map(|e| e.s[i].clone())
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>(),

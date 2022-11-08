@@ -1211,17 +1211,17 @@ where
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.cs.sigmam[0..PERMUTS - 1]
-                .iter()
-                .map(|w| (w, None, non_hiding(1)))
-                .collect::<Vec<_>>(),
-        );
-        polynomials.extend(
             index
                 .cs
                 .coefficientsm
                 .iter()
                 .map(|coefficientm| (coefficientm, None, non_hiding(1)))
+                .collect::<Vec<_>>(),
+        );
+        polynomials.extend(
+            index.cs.sigmam[0..PERMUTS - 1]
+                .iter()
+                .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
 
