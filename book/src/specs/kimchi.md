@@ -2097,8 +2097,8 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	- permutation commitment
 	- index commitments that use the coefficients
 	- witness commitments
-	- sigma commitments
 	- coefficient commitments
+	- sigma commitments
 	- lookup commitments
 #### Batch verification of proofs
 
