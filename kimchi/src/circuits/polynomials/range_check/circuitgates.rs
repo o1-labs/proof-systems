@@ -24,7 +24,7 @@
 //~    v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 //~ ```
 //
-//~ ##### Witness structure:
+//~ **Witness structure:**
 //~
 //~ | Row | Contents        |
 //~ | --- | --------------- |
@@ -45,13 +45,13 @@
 //~ some lookups of v0 and v1 to the final row.
 //~ ```
 //~
-//~ ##### Constraints:
+//~ **Constraints:**
 //~
 //~ For efficiency, the limbs are constrained differently according to their type.
 //~ * 12-bit limbs are constrained with plookups
 //~ * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 //~
-//~ ##### Layout:
+//~ **Layout:**
 //~
 //~ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and constrained.
 //~
@@ -111,7 +111,8 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 
-//~ ##### `RangeCheck0` - Range check constraints
+//~
+//~ **`RangeCheck0` - Range check constraints**
 //~
 //~ * This circuit gate is used to partially constrain values $v_0$ and $v_1$
 //~ * Optionally, it can be used on its own as a single 64-bit range check by
@@ -205,7 +206,8 @@ where
     }
 }
 
-//~ ##### `RangeCheck1` - Range check constraints
+//~
+//~ **`RangeCheck1` - Range check constraints**
 //~
 //~ * This circuit gate is used to fully constrain $v_2$
 //~ * It operates on the `Curr` and `Next` rows

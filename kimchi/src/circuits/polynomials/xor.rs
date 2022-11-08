@@ -342,7 +342,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::Xor)
 }
 
-//~ ##### `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+//~ `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
 //~
 //~ * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
 //~ * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
@@ -378,13 +378,13 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
 //~ to obtain a gadget for 64-bit words XOR:
 //~
-//~  | Row | `CircuitGate` | Purpose                                    |
-//~  | --- | ------------- | ------------------------------------------ |
-//~  |   0 | `Xor16`       | Xor 2 least significant bytes of the words |
-//~  |   1 | `Xor16`       | Xor next 2 bytes of the words              |
-//~  |   2 | `Xor16`       | Xor next 2 bytes of the words              |
-//~  |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
-//~  |   4 | `Zero`        | Zero values, can be reused as generic gate |
+//~ | Row | `CircuitGate` | Purpose                                    |
+//~ | --- | ------------- | ------------------------------------------ |
+//~ |   0 | `Xor16`       | Xor 2 least significant bytes of the words |
+//~ |   1 | `Xor16`       | Xor next 2 bytes of the words              |
+//~ |   2 | `Xor16`       | Xor next 2 bytes of the words              |
+//~ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+//~ |   4 | `Zero`        | Zero values, can be reused as generic gate |
 //~
 //~ ```admonition::notice
 //~  We could half the number of rows of the 64-bit XOR gadget by having lookups
