@@ -13,4 +13,4 @@ ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 rand = "0.8.4"
 
 [dev-dependencies]
-mina-curves = { path = "../curves" }
+mina-curves = { path = "../curves", version = "0.1.0" }

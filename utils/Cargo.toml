@@ -20,4 +20,4 @@ thiserror = "1.0.30"
 
 [dev-dependencies]
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
-mina-curves = { path = "../curves" }
+mina-curves = { path = "../curves", version = "0.1.0" }
