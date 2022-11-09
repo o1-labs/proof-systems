@@ -8,7 +8,7 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
-oracle = { path = "../oracle", version = "0.1.0" }
+mina-poseidon = { path = "../poseidon", version = "0.1.0" }
 mina-curves = { path = "../curves", version = "0.1.0" }
 o1-utils = { path = "../utils", version = "0.1.0" }
 

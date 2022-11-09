@@ -15,5 +15,5 @@ serde = { version = "1.0", features = ["derive"] }
 serde_with = "1.10.0"
 
 mina-curves = { path = "../../curves", version = "0.1.0" }
-oracle = { path = "../../oracle", version = "0.1.0" }
+mina-poseidon = { path = "../../poseidon", version = "0.1.0" }
 

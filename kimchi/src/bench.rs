@@ -14,7 +14,7 @@ use crate::{
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };

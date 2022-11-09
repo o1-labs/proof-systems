@@ -41,8 +41,8 @@ use commitment_dlog::commitment::{
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 use itertools::Itertools;
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::{sponge::ScalarChallenge, FqSponge};
 use rayon::prelude::*;
 use std::array;
 use std::collections::HashMap;

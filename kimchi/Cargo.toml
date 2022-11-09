@@ -38,7 +38,7 @@ commitment_dlog = { path = "../poly-commitment", version = "0.1.0" }
 groupmap = { path = "../groupmap", version = "0.1.0" }
 mina-curves = { path = "../curves", version = "0.1.0" }
 o1-utils = { path = "../utils", version = "0.1.0" }
-oracle = { path = "../oracle", version = "0.1.0" }
+mina-poseidon = { path = "../poseidon", version = "0.1.0" }
 
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { version = "0.1.0", optional = true }
@@ -66,5 +66,5 @@ harness = false
 
 [features]
 default = []
-ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "oracle/ocaml_types" ]
+ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "mina-poseidon/ocaml_types" ]
 wasm_types = [ "wasm-bindgen" ]

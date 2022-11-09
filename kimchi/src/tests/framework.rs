@@ -18,11 +18,11 @@ use ark_ff::PrimeField;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use num_bigint::BigUint;
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use num_bigint::BigUint;
 use std::{mem, time::Instant};
 
 // aliases

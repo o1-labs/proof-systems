@@ -23,7 +23,7 @@ use std::array;
 use crate::{prover_index::ProverIndex, verifier::verify};
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
@@ -1040,9 +1040,10 @@ fn verify_64_bit_range_check() {
     }
 
     // Create constraint system
-    let cs = ConstraintSystem::<Fp>::create(gates /*, oracle::pasta::fp_kimchi::params()*/)
-        .build()
-        .unwrap();
+    let cs =
+        ConstraintSystem::<Fp>::create(gates /*, mina_poseidon::pasta::fp_kimchi::params()*/)
+            .build()
+            .unwrap();
 
     // Witness layout (positive test case)
     //   Row 0 1 2 3 ... 14  Gate

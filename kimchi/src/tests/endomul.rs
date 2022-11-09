@@ -8,7 +8,7 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use commitment_dlog::srs::endos;
 use mina_curves::pasta::{Fp as F, Pallas as Other};
-use oracle::sponge::ScalarChallenge;
+use mina_poseidon::sponge::ScalarChallenge;
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 

@@ -24,7 +24,7 @@ use commitment_dlog::commitment::{
     combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
-use oracle::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 /// The result of a proof verification.

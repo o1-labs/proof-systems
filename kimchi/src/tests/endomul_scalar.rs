@@ -9,7 +9,7 @@ use crate::{
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use commitment_dlog::srs::endos;
 use mina_curves::pasta::{Fp as F, Vesta};
-use oracle::sponge::ScalarChallenge;
+use mina_poseidon::sponge::ScalarChallenge;
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
