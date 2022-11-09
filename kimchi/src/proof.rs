@@ -2,12 +2,13 @@
 
 use crate::circuits::wires::{COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{FftField, Field, One, Zero};
 use ark_poly::univariate::DensePolynomial;
 use commitment_dlog::{
     commitment::{b_poly, b_poly_coefficients, PolyComm},
     evaluation_proof::OpeningProof,
 };
+use itertools::chain;
 use o1_utils::ExtendedDensePolynomial;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
