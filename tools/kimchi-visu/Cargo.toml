@@ -18,5 +18,5 @@ tinytemplate = "1.1"
 mina-curves = { path = "../../curves", version = "0.1.0" }
 kimchi = { path = "../../kimchi", version = "0.1.0" }
 o1-utils = { path = "../../utils", version = "0.1.0" }
-oracle = { path = "../../oracle", version = "0.1.0" }
+mina-poseidon = { path = "../../poseidon", version = "0.1.0" }
 commitment_dlog = { path = "../../poly-commitment", version = "0.1.0" }

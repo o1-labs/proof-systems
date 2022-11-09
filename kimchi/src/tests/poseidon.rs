@@ -10,8 +10,8 @@ use crate::{
 };
 use ark_ff::Zero;
 use mina_curves::pasta::{Fp, Vesta};
+use mina_poseidon::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use o1_utils::math;
-use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use std::array;
 
 // aliases
@@ -32,7 +32,7 @@ fn test_poseidon() {
     println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    //let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
+    //let round_constants = mina_poseidon::pasta::fp_kimchi::params().round_constants;
     let round_constants = &*Vesta::sponge_params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget

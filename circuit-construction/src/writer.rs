@@ -6,7 +6,7 @@ use kimchi::circuits::{
     },
     wires::{Wire, COLUMNS},
 };
-use oracle::{
+use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     permutation::full_round,
 };

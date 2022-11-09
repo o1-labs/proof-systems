@@ -13,7 +13,7 @@ use crate::{
 };
 use ark_poly::EvaluationDomain;
 use commitment_dlog::srs::SRS;
-use oracle::FqSponge;
+use mina_poseidon::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
