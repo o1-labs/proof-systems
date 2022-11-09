@@ -1124,13 +1124,13 @@
     proof::ProofEvaluations,
 };
 <span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
-<span class="kw">use </span>cairo::{
-    runner::{CairoInstruction, CairoProgram, Pointers},
-    word::{FlagBits, Offsets},
-};
 <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::marker::PhantomData;
+<span class="kw">use </span>turshi::{
+    runner::{CairoInstruction, CairoProgram, Pointers},
+    word::{FlagBits, Offsets},
+};
 
 <span class="kw">const </span>NUM_FLAGS: usize = <span class="number">16</span>;
 <span class="kw">pub const </span>CIRCUIT_GATE_COUNT: usize = <span class="number">4</span>;
