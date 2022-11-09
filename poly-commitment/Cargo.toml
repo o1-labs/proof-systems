@@ -20,10 +20,10 @@ serde_with = "1.10.0"
 thiserror = "1.0.31"
 once_cell = "1.10.0"
 
-groupmap = { path = "../groupmap" }
-mina-curves = { path = "../curves" }
-o1-utils = { path = "../utils" }
-oracle = { path = "../oracle" }
+groupmap = { path = "../groupmap", version = "0.1.0" }
+mina-curves = { path = "../curves", version = "0.1.0" }
+o1-utils = { path = "../utils", version = "0.1.0" }
+oracle = { path = "../oracle", version = "0.1.0" }
 
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { version = "0.1.0", optional = true }

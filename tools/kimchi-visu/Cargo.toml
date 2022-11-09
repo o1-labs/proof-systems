@@ -15,8 +15,8 @@ serde_json = "1.0.79"
 serde_with = "1.10.0"
 tinytemplate = "1.1"
 
-mina-curves = { path = "../../curves" }
-kimchi = { path = "../../kimchi" }
-o1-utils = { path = "../../utils" }
-oracle = { path = "../../oracle" }
-commitment_dlog = { path = "../../poly-commitment" }
+mina-curves = { path = "../../curves", version = "0.1.0" }
+kimchi = { path = "../../kimchi", version = "0.1.0" }
+o1-utils = { path = "../../utils", version = "0.1.0" }
+oracle = { path = "../../oracle", version = "0.1.0" }
+commitment_dlog = { path = "../../poly-commitment", version = "0.1.0" }
