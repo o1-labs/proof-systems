@@ -229,9 +229,9 @@
 <span class="kw">where
     </span>G::BaseField: PrimeField,
 {
-    <span class="kw">let </span>endo_q: G::BaseField = oracle::sponge::endo_coefficient();
+    <span class="kw">let </span>endo_q: G::BaseField = mina_poseidon::sponge::endo_coefficient();
     <span class="kw">let </span>endo_r = {
-        <span class="kw">let </span>potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
+        <span class="kw">let </span>potential_endo_r: G::ScalarField = mina_poseidon::sponge::endo_coefficient();
         <span class="kw">let </span>t = G::prime_subgroup_generator();
         <span class="kw">let </span>(x, y) = t.to_coordinates().unwrap();
         <span class="kw">let </span>phi_t = G::of_coordinates(x * endo_q, y);

@@ -1572,8 +1572,8 @@
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 <span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial <span class="kw">as _</span>;
-<span class="kw">use </span>oracle::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::collections::HashMap;

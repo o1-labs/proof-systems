@@ -1121,6 +1121,7 @@
 <span id="1121">1121</span>
 <span id="1122">1122</span>
 <span id="1123">1123</span>
+<span id="1124">1124</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The folowing functionality is implemented
 //!
@@ -1143,9 +1144,9 @@
 <span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 <span class="kw">use </span>core::ops::{Add, Sub};
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
+<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::math;
 <span class="kw">use </span>o1_utils::ExtendedDensePolynomial <span class="kw">as _</span>;
-<span class="kw">use </span>oracle::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -2005,8 +2006,8 @@
     <span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
     <span class="kw">use </span>ark_poly::{Polynomial, UVPolynomial};
     <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta <span class="kw">as </span>VestaG};
-    <span class="kw">use </span>oracle::constants::PlonkSpongeConstantsKimchi <span class="kw">as </span>SC;
-    <span class="kw">use </span>oracle::sponge::DefaultFqSponge;
+    <span class="kw">use </span>mina_poseidon::constants::PlonkSpongeConstantsKimchi <span class="kw">as </span>SC;
+    <span class="kw">use </span>mina_poseidon::sponge::DefaultFqSponge;
     <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
     <span class="kw">use </span>std::array;
 
@@ -2058,7 +2059,8 @@
         <span class="comment">// create an aggregated opening proof
         </span><span class="kw">let </span>(u, v) = (Fp::rand(rng), Fp::rand(rng));
         <span class="kw">let </span>group_map = &lt;VestaG <span class="kw">as </span>CommitmentCurve&gt;::Map::setup();
-        <span class="kw">let </span>sponge = DefaultFqSponge::&lt;<span class="kw">_</span>, SC&gt;::new(oracle::pasta::fq_kimchi::static_params());
+        <span class="kw">let </span>sponge =
+            DefaultFqSponge::&lt;<span class="kw">_</span>, SC&gt;::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
         <span class="kw">let </span>polys = <span class="macro">vec!</span>[
             (<span class="kw-2">&amp;</span>poly1, <span class="prelude-val">None</span>, commitment.blinders),

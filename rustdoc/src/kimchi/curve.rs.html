@@ -89,8 +89,8 @@
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
+<span class="kw">use </span>mina_poseidon::poseidon::ArithmeticSpongeParams;
 <span class="kw">use </span>once_cell::sync::Lazy;
-<span class="kw">use </span>oracle::poseidon::ArithmeticSpongeParams;
 
 <span class="doccomment">///Represents additional information that a curve needs in order to be used with Kimchi
 </span><span class="kw">pub trait </span>KimchiCurve: CommitmentCurve {
@@ -114,7 +114,7 @@
     <span class="kw">type </span>OtherCurve = GroupAffine&lt;PallasParameters&gt;;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
-        oracle::pasta::fp_kimchi::static_params()
+        mina_poseidon::pasta::fp_kimchi::static_params()
     }
 
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
@@ -130,7 +130,7 @@
     <span class="kw">type </span>OtherCurve = GroupAffine&lt;VestaParameters&gt;;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
-        oracle::pasta::fq_kimchi::static_params()
+        mina_poseidon::pasta::fq_kimchi::static_params()
     }
 
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
@@ -150,7 +150,7 @@
     <span class="kw">type </span>OtherCurve = GroupAffine&lt;LegacyPallasParameters&gt;;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
-        oracle::pasta::fp_legacy::static_params()
+        mina_poseidon::pasta::fp_legacy::static_params()
     }
 
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
@@ -161,7 +161,7 @@
     <span class="kw">type </span>OtherCurve = GroupAffine&lt;LegacyVestaParameters&gt;;
 
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
-        oracle::pasta::fq_legacy::static_params()
+        mina_poseidon::pasta::fq_legacy::static_params()
     }
 
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {

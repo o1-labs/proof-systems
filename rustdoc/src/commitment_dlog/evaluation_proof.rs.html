@@ -357,8 +357,8 @@
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, UVPolynomial};
+<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>o1_utils::math;
-<span class="kw">use </span>oracle::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>rand_core::{CryptoRng, RngCore};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};

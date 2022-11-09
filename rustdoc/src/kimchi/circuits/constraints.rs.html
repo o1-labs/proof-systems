@@ -1401,7 +1401,7 @@
 
     <span class="kw">impl </span>ConstraintSystem&lt;Fp&gt; {
         <span class="kw">pub fn </span>fp_for_testing(gates: Vec&lt;CircuitGate&lt;Fp&gt;&gt;) -&gt; <span class="self">Self </span>{
-            <span class="comment">//let fp_sponge_params = oracle::pasta::fp_kimchi::params();
+            <span class="comment">//let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
             </span><span class="self">Self</span>::for_testing(gates)
         }
     }

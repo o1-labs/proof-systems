@@ -105,8 +105,8 @@
 <span id="105">105</span>
 <span id="106">106</span>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, PrimeField};
-<span class="kw">use </span>oracle::sponge::{DefaultFrSponge, ScalarChallenge};
-<span class="kw">use </span>oracle::{
+<span class="kw">use </span>mina_poseidon::sponge::{DefaultFrSponge, ScalarChallenge};
+<span class="kw">use </span>mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi <span class="kw">as </span>SC,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
@@ -154,7 +154,7 @@
 
     <span class="kw">fn </span>challenge(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; ScalarChallenge&lt;Fr&gt; {
         <span class="comment">// TODO: why involve sponge_5_wires here?
-        </span>ScalarChallenge(<span class="self">self</span>.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+        </span>ScalarChallenge(<span class="self">self</span>.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     <span class="kw">fn </span>digest(<span class="kw-2">mut </span><span class="self">self</span>) -&gt; Fr {

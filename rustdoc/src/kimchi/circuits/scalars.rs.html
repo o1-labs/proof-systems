@@ -112,7 +112,7 @@
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk prover polynomial evaluations primitive.
 
 </span><span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>oracle::sponge::ScalarChallenge;
+<span class="kw">use </span>mina_poseidon::sponge::ScalarChallenge;
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>RandomOracles&lt;F: Field&gt; {
@@ -155,7 +155,7 @@
 </span><span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span>oracle::sponge::caml::CamlScalarChallenge;
+    <span class="kw">use </span>mina_poseidon::sponge::caml::CamlScalarChallenge;
 
     <span class="comment">//
     // RandomOracles&lt;F&gt; &lt;-&gt; CamlRandomOracles&lt;CamlF&gt;
