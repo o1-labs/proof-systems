@@ -237,17 +237,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
 
 [[package]]
-name = "cairo"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "hex",
- "mina-curves",
- "o1-utils",
-]
-
-[[package]]
 name = "cast"
 version = "0.2.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -753,7 +742,6 @@ dependencies = [
  "ark-poly",
  "ark-serialize",
  "blake2",
- "cairo",
  "colored",
  "commitment_dlog",
  "criterion",
@@ -783,6 +771,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror",
+ "turshi",
  "wasm-bindgen",
 ]
 
@@ -1618,6 +1607,17 @@ checksum = "be4d6b5f19ff7664e8c98d03e2139cb510db9b0a60b55f8e8709b689d939b6bc"
 dependencies = [
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "turshi"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "hex",
+ "mina-curves",
+ "o1-utils",
 ]
 
 [[package]]

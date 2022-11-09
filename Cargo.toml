@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "cairo",
+    "turshi",
     "curves",
     "groupmap",
     "hasher",

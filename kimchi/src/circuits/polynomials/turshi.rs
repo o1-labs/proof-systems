@@ -91,13 +91,13 @@ use crate::{
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, Field, PrimeField};
-use cairo::{
-    runner::{CairoInstruction, CairoProgram, Pointers},
-    word::{FlagBits, Offsets},
-};
 use rand::{prelude::StdRng, SeedableRng};
 use std::array;
 use std::marker::PhantomData;
+use turshi::{
+    runner::{CairoInstruction, CairoProgram, Pointers},
+    word::{FlagBits, Offsets},
+};
 
 const NUM_FLAGS: usize = 16;
 pub const CIRCUIT_GATE_COUNT: usize = 4;
