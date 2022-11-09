@@ -14,7 +14,10 @@ use ark_poly::{
 };
 use itertools::Itertools;
 use num_bigint::BigUint;
-use o1_utils::{FieldHelpers, ForeignElement};
+use o1_utils::{
+    foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers},
+    FieldHelpers,
+};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
@@ -49,6 +52,26 @@ pub enum ExprError {
     MissingRuntime,
 }
 
+/// Structure to contain foreign field modulus and its negation
+pub struct ForeignFieldModulus {
+    /// Foreign field modulus
+    pub value: BigUint,
+    /// Negated foreign field modulus
+    pub negated: BigUint,
+}
+
+impl ForeignFieldModulus {
+    /// Create a new foreign field modulus structure
+    pub fn new(foreign_field_modulus: BigUint) -> Self {
+        // Store the foreign field modulus f and f negated over the CRT binary field modulus
+        // f' = 2^t - f
+        ForeignFieldModulus {
+            value: foreign_field_modulus.clone(),
+            negated: foreign_field_modulus.negate(),
+        }
+    }
+}
+
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F: 'static> {
     /// The challenge alpha from the PLONK IOP.
@@ -65,7 +88,32 @@ pub struct Constants<F: 'static> {
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
     /// The modulus for foreign field operations
-    pub foreign_field_modulus: Option<BigUint>,
+    pub foreign_field_modulus: Option<ForeignFieldModulus>,
+}
+
+impl<F: 'static> Constants<F> {
+    /// Create constants require to evaluate an `Expr`
+    pub fn new(
+        alpha: F,
+        beta: F,
+        gamma: F,
+        joint_combiner: Option<F>,
+        endo_coefficient: F,
+        mds: &'static Vec<Vec<F>>,
+        foreign_field_modulus: Option<BigUint>,
+    ) -> Self {
+        let foreign_field_modulus = foreign_field_modulus.map(ForeignFieldModulus::new);
+
+        Constants {
+            alpha,
+            beta,
+            gamma,
+            joint_combiner,
+            endo_coefficient,
+            mds,
+            foreign_field_modulus,
+        }
+    }
 }
 
 /// The polynomials specific to the lookup argument.
@@ -269,6 +317,7 @@ pub enum ConstantExpr<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     ForeignFieldModulus(usize),
+    NegForeignFieldModulus(usize),
     Literal(F),
     Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -291,6 +340,9 @@ impl<F: Copy> ConstantExpr<F> {
                 col: *col,
             }),
             ConstantExpr::ForeignFieldModulus(i) => res.push(PolishToken::ForeignFieldModulus(*i)),
+            ConstantExpr::NegForeignFieldModulus(i) => {
+                res.push(PolishToken::NegForeignFieldModulus(*i))
+            }
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -339,8 +391,15 @@ impl<F: Field> ConstantExpr<F> {
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             ForeignFieldModulus(i) => {
-                if let Some(modulus) = c.foreign_field_modulus.clone() {
-                    ForeignElement::<F, 3>::from_biguint(modulus)[*i]
+                if let Some(modulus) = &c.foreign_field_modulus {
+                    modulus.value.to_field_limbs::<F>()[*i]
+                } else {
+                    F::zero()
+                }
+            }
+            NegForeignFieldModulus(i) => {
+                if let Some(modulus) = &c.foreign_field_modulus {
+                    modulus.negated.to_field_limbs()[*i]
                 } else {
                     F::zero()
                 }
@@ -469,6 +528,7 @@ pub enum PolishToken<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     ForeignFieldModulus(usize),
+    NegForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -530,8 +590,13 @@ impl<F: FftField> PolishToken<F> {
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 ForeignFieldModulus(i) => {
-                    if let Some(modulus) = c.foreign_field_modulus.clone() {
-                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
+                    if let Some(modulus) = &c.foreign_field_modulus {
+                        stack.push(modulus.value.to_field_limbs()[*i])
+                    }
+                }
+                NegForeignFieldModulus(i) => {
+                    if let Some(modulus) = &c.foreign_field_modulus {
+                        stack.push(modulus.negated.to_field_limbs()[*i])
                     }
                 }
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
@@ -2079,6 +2144,7 @@ where
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            NegForeignFieldModulus(i) => format!("neg_foreign_field_modulus({i})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2100,6 +2166,7 @@ where
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
+            NegForeignFieldModulus(i) => format!("neg\\_foreign\\_field\\_modulus({i})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2120,7 +2187,8 @@ where
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
+            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            NegForeignFieldModulus(i) => format!("neg_foreign_field_modulus({i})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha^{}", n),
@@ -2270,9 +2338,8 @@ where
 
 /// A number of useful constraints
 pub mod constraints {
-    use std::fmt;
-
     use crate::circuits::argument::ArgumentData;
+    use std::fmt;
 
     use super::*;
 
@@ -2290,11 +2357,18 @@ pub mod constraints {
         + Zero
         + One
         + From<u64>
+        + fmt::Debug
         + fmt::Display
     // Add more as necessary
     where
         Self: std::marker::Sized,
     {
+        /// 2^{LIMB_BITS}
+        fn two_to_limb() -> Self;
+
+        /// 2^{2 * LIMB_BITS}
+        fn two_to_2limb() -> Self;
+
         /// Double the value
         fn double(&self) -> Self;
 
@@ -2306,6 +2380,9 @@ pub mod constraints {
 
         /// Constrain to boolean
         fn boolean(&self) -> Self;
+
+        /// Constrain to crumb (i.e. two bits)
+        fn crumb(&self) -> Self;
 
         /// Create a literal
         fn literal(x: F) -> Self;
@@ -2327,6 +2404,14 @@ pub mod constraints {
     where
         F: PrimeField,
     {
+        fn two_to_limb() -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
+        }
+
+        fn two_to_2limb() -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
+        }
+
         fn double(&self) -> Self {
             Expr::double(self.clone())
         }
@@ -2341,6 +2426,10 @@ pub mod constraints {
 
         fn boolean(&self) -> Self {
             constraints::boolean(self)
+        }
+
+        fn crumb(&self) -> Self {
+            constraints::crumb(self)
         }
 
         fn literal(x: F) -> Self {
@@ -2365,6 +2454,14 @@ pub mod constraints {
     }
 
     impl<F: Field> ExprOps<F> for F {
+        fn two_to_limb() -> Self {
+            <F as ForeignFieldHelpers<F>>::two_to_limb()
+        }
+
+        fn two_to_2limb() -> Self {
+            <F as ForeignFieldHelpers<F>>::two_to_2limb()
+        }
+
         fn double(&self) -> Self {
             *self * F::from(2u64)
         }
@@ -2379,6 +2476,10 @@ pub mod constraints {
 
         fn boolean(&self) -> Self {
             constraints::boolean(self)
+        }
+
+        fn crumb(&self) -> Self {
+            constraints::crumb(self)
         }
 
         fn literal(x: F) -> Self {
@@ -2461,6 +2562,32 @@ pub fn index<F>(g: GateType) -> E<F> {
 pub fn coeff<F>(i: usize) -> E<F> {
     E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
 }
+
+/// Auto clone macro - Helps make constraints more readable
+/// by eliminating requirement to .clone() all the time
+#[macro_export]
+macro_rules! auto_clone {
+    ($var:ident, $expr:expr) => {
+        let $var = $expr;
+        let $var = || $var.clone();
+    };
+    ($var:ident) => {
+        let $var = || $var.clone();
+    };
+}
+#[macro_export]
+macro_rules! auto_clone_array {
+    ($var:ident, $expr:expr) => {
+        let $var = $expr;
+        let $var = |i: usize| $var[i].clone();
+    };
+    ($var:ident) => {
+        let $var = |i: usize| $var[i].clone();
+    };
+}
+
+pub use auto_clone;
+pub use auto_clone_array;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {

@@ -260,15 +260,15 @@ impl<F: PrimeField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants::<F> {
-            alpha: F::one(),
-            beta: F::one(),
-            gamma: F::one(),
-            joint_combiner: Some(F::one()),
-            endo_coefficient: cs.endo,
-            mds: &G::sponge_params().mds,
-            foreign_field_modulus: cs.foreign_field_modulus.clone(),
-        };
+        let constants = expr::Constants::new(
+            F::one(),
+            F::one(),
+            F::one(),
+            Some(F::one()),
+            cs.endo,
+            &G::sponge_params().mds,
+            cs.foreign_field_modulus.clone(),
+        );
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
 
@@ -338,7 +338,7 @@ impl<F: PrimeField> CircuitGate<F> {
         for (i, result) in results.iter().enumerate() {
             if !result.is_zero() {
                 // Pinpoint failed constraint
-                return Err(CircuitGateError::Constraint(self.typ, i));
+                return Err(CircuitGateError::Constraint(self.typ, i + 1));
             }
         }
 

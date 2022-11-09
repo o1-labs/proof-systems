@@ -262,6 +262,10 @@ TODO: for each gate describe how to create it?
 
 {sections.range_check}
 
+#### Foreign Field Addition
+
+{sections.foreign_field_add}
+
 #### Foreign Field Multiplication
 
 {sections.foreign_field_mul}

@@ -11,6 +11,8 @@ use thiserror::Error;
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
     DeserializeBytes,
+    #[error("failed to deserialize field bits")]
+    DeserializeBits,
     #[error("failed to decode hex")]
     DecodeHex,
     #[error("failed to convert BigUint into field element")]
@@ -57,6 +59,9 @@ pub trait FieldHelpers<F> {
     {
         BigUint::from_bytes_le(&self.to_bytes())
     }
+
+    /// Create a new field element from this field elements bits
+    fn bits_to_field(&self, start: usize, end: usize) -> Result<F>;
 
     /// Field size in bytes
     fn size_in_bytes() -> usize
@@ -118,6 +123,10 @@ impl<F: Field> FieldHelpers<F> for F {
             }
             bits
         })
+    }
+
+    fn bits_to_field(&self, start: usize, end: usize) -> Result<F> {
+        F::from_bits(&self.to_bits()[start..end]).map_err(|_| FieldHelpersError::DeserializeBits)
     }
 }
 
@@ -266,7 +275,7 @@ mod tests {
     }
 
     #[test]
-    fn field_big() {
+    fn field_biguit_field_helpers() {
         let fe_1024 = BaseField::from(1024u32);
         let big_1024 = fe_1024.into();
         assert_eq!(big_1024, BigUint::new(vec![1024]));

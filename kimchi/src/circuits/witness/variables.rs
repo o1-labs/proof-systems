@@ -89,10 +89,10 @@ macro_rules! variables {
 /// Macro to simplify creation of layout map
 #[macro_export]
 macro_rules! variable_map {
-    ($( $name: expr => $value: expr ),*) => {{
+    [$( $name: expr => $value: expr ),*] => {{
         let mut vars = Variables::create();
-         $( vars.insert($name, $value); )*
-         vars
+        $( vars.insert($name, $value); )*
+        vars
     }}
 }
 

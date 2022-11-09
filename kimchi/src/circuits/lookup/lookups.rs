@@ -395,10 +395,10 @@ impl LookupPattern {
                     .collect()
             }
             LookupPattern::ForeignFieldMulGate => {
-                (5..=6)
+                (7..=8)
                     .map(|column| {
                         //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                        //   - - - - - L L - - - -  -  -  -  -
+                        //   - - - - - - - L L - -  -  -  -  -
                         JointLookup {
                             table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
                             entry: vec![SingleLookup {

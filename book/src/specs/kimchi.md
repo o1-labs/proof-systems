@@ -1106,8 +1106,8 @@ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and const
 |    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
 |    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
 |    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-|    13 | crumb   `v0p6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
-| LS:14 | crumb   `v0p7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
+|    13 | crumb   `v0c6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
+| LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
 
 The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
 constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
@@ -1197,87 +1197,209 @@ Given value `v2` the layout looks like this
 where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
 
-#### Foreign Field Multiplication
+#### Foreign Field Addition
 
-This gadget are used to constrain that
-
-$\mathtt{left\_input} * \mathtt{right\_input} = \mathtt{quotient} * \mathtt{foreign\_modulus} + \mathtt{remainder}$
-
-##### Documentation:
-
-For more details please see the [FFMul RFC](../rfcs/ffadd.md)
-
-##### Mapping:
-For clarity, the following mapping between the variable names used in the code and
-those of the RFC can be helpful.
+These circuit gates are used to constrain that
 
 ```text
-left_input_hi => a2  right_input_hi => b2  quotient_hi => q2  remainder_hi => r2
-left_input_mi => a1  right_input_mi => b1  quotient_mi => q1  remainder_mi => r1
-left_input_lo => a0  right_input_lo => b0  quotient_lo => q0  remainder_lo => r0
-
-product_mi_bot => p10   product_mi_top_limb => p110   product_mi_top_over => p111
-carry_bot      => v0    carry_top_limb      => v10    carry_top_over      => v11
-
-         carry_shift => shift_v11            product_shift => shift_q2
-````
-
-##### Suffixes:
-The variable names in this code uses descriptive suffixes to convey information about the
-positions of the bits referred to.
-
-- When a variable is split into 3 limbs we use: lo, mid and hi (where hi is the most significant)
-- When a variable is split in 2 halves we use: bottom and top  (where top is the most significant)
-- When the bits of a variable are split into a limb and some over bits we use: limb and
-  over (where over is the most significant)
-
-##### Inputs:
-* $\mathtt{foreign\_modulus}$ := foreign field modulus (currently stored in constraint system)
-* $\mathtt{left\_input} ~\in F_f$  := left foreign field element multiplicand
-* $\mathtt{right\_input} ~\in F_f$ := right foreign field element multiplicand
-
-```admonition::notice
-N.b. the native field modulus is obtainable from F, the native field's trait bound below.
+left_input +/- right_input = field_overflow * foreign_modulus + result
 ```
 
-##### Witness:
-* $\mathtt{quotient} ~\in F_f$ := foreign field quotient
-* $\mathtt{remainder} ~\in F_f$ := foreign field remainder
-* $\mathtt{carry\_bot}$ := a two bit carry
-* $\mathtt{carry\_top\_limb}$ := low 88 bits of carry_top
-* $\mathtt{carry\_top\_over}$ := high 3 bits of carry_top
+##### Documentation
 
-##### Layout:
+ For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
 
-|  Row(s) | Gates             | Witness
-|---------|-------------------|------------------------------------------------------------ |
-|     0-3 | multi-range-check | `left_input` multiplicand                                   |
-|     4-7 | multi-range-check | `right_input` multiplicand                                  |
-|    8-11 | multi-range-check | `quotient`                                                  |
-|   12-15 | multi-range-check | `remainder`                                                 |
-|   16-19 | multi-range-check | `product_mi_bot`, `product_mi_top_limb`, `carry_top_limb`   |
-|      20 | `ForeignFieldMul` | (see below)                                                 |
-|      21 | `Zero`            | (see below)                                                 |
+##### Mapping
 
-The last two rows are layed out like this
+ To make things clearer, the following mapping between the variable names
+ used in the code and those of the RFC document can be helpful.
 
-| col | `ForeignFieldMul`         | `Zero`                  |
-| --- | ------------------------- | ----------------------- |
-|   0 | `left_input_lo`  (copy)   | `right_input_hi` (copy) |
-|   1 | `left_input_mi`  (copy)   | `quotient_lo`    (copy) |
-|   2 | `left_input_hi`  (copy)   | `quotient_mi`    (copy) |
-|   3 | `right_input_lo` (copy)   | `quotient_hi`    (copy) |
-|   4 | `right_input_mi` (copy)   | `remainder_lo`   (copy) |
-|   5 | `carry_shift`    (lookup) | `remainder_mi`   (copy) |
-|   6 | `product_shift`  (lookup) | `remainder_hi`   (copy) |
-|   7 | `product_mi_bot`          | `aux_lo`                |
-|   8 | `product_mi_top_limb`     | `aux_mi`                |
-|   9 | `product_mi_top_over`     | `aux_hi`                |
-|  10 | `carry_bot`               |                         |
-|  11 | `carry_top_limb`          |                         |
-|  12 | `carry_top_over`          |                         |
-|  13 |                           |                         |
-|  14 |                           |                         |
+```text
+    left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  bound_lo -> u0
+    left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
+    left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
+
+    field_overflow  -> q
+    sign            -> s
+    carry_lo        -> c0
+    carry_mi        -> c1
+    bound_carry_lo  -> k0
+    bound_carry_mi  -> k1
+```
+
+Note: Our limbs are 88-bit long. We denote with:
+ - `lo` the least significant limb (in little-endian, this is from 0 to 87)
+ - `mi` the middle limb            (in little-endian, this is from 88 to 175)
+ - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
+
+Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
+
+Let `right_input_lo`, `right_input_mi`, `right_input_hi` be 88-bit limbs of the right element
+
+Let `foreign_modulus_lo`, `foreign_modulus_mi`, `foreign_modulus_hi` be 88-bit limbs of the foreign modulus
+
+Then the limbs of the result are
+
+- `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
+- `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
+- `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
+
+`field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
+
+`result_carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
+
+Apart from the range checks of the chained inputs, we need to do an additional range check for a final bound
+to make sure that the result is less than the modulus, by adding `2^{3*88} - foreign_modulus` to it.
+ (This can be computed easily from the limbs of the modulus)
+Note that `2^{264}` as limbs represents: (0, 0, 0, 1) then:
+
+The upper-bound check can be calculated as
+- `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
+- `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+- `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
+
+Which is equivalent to another foreign field addition with right input 2^{264}, q = 1 and s = 1
+- `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
+- `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+- `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
+
+`bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
+
+The range check of `bound` can be skipped until the end of the operations
+and `result` is an intermediate value that is unused elsewhere (since the final `result`
+must have had the right amount of moduli subtracted along the way, meaning a multiple of the modulus).
+In other words, intermediate results could potentially give a valid witness that satisfies the constraints
+but where the result is larger than the modulus (yet smaller than 2^{264}). The reason that we have a
+ final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
+ (meaning less than the modulus).
+
+##### Layout
+
+You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
+
+| col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
+|   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
+|   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
+|   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
+|   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
+|   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
+|   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
+|  10 |                         |                        |                         |                   |
+|  11 |                         |                        |                         |                   |
+|  12 |                         |                        |                         |                   |
+|  13 |                         |                        |                         |                   |
+|  14 |                         |                        |                         |                   |
+
+We reuse the foreign field addition gate for the final bound check since this is an addition with a
+specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+be done by copy constraining these values with a public input value. One could have a specific gate
+for just this check requiring less constrains, but the cost of adding one more selector gate outweights
+the savings of one row and a few constraints of difference.
+
+
+#### Foreign Field Multiplication
+
+This gadget is used to constrain that
+
+```text
+left_input * right_input = quotient * foreign_field_modulus + remainder
+```
+
+##### Documentation
+
+For more details please see the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+
+##### Notations
+
+For clarity, we use more descriptive variable names in the code than in
+the RFC, which uses mathematical notations.
+
+In order to relate the two documents, the following mapping between the
+variable names used in the code and those of the RFC can be helpful.
+
+```text
+left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
+left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
+
+   product1_lo => p10   product1_hi_0 => p110   product1_hi_1 => p111
+     carry0 => v0        carry1_lo => v10          carry1_hi => v11
+
+                    scaled_carry1_hi => scaled_v11
+         quotient_bound0 => q'0       quotient_bound12 => q'12
+
+  quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
+````
+
+##### Suffixes
+
+The variable names in this code uses descriptive suffixes to convey information about the
+positions of the bits referred to.  When a word is split into up to `n` parts
+we use: `0`, `1` ... `n` (where `n` is the most significant).  For example, if we split
+word `x` into three limbs, we'd name them `x0`, `x1` and `x2` or `x[0]`, `x[1]` and `x[2]`.
+
+Continuing in this fashion, when one of those words is subsequently split in half, then we
+add the suffixes `_lo` and `_hi`, where `hi` corresponds to the most significant bits.
+For our running example, `x1` would become `x1_lo` and `x1_hi`.  If we are splitting into
+more than two things, then we pick meaningful names for each.
+
+So far we've explained our conventions for a splitting depth of up to 2.  For splitting
+deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
+would be split into `x1_lo_0` and `x1_lo_1`.
+
+##### Parameters
+
+* `foreign_field_modulus` := foreign field modulus $f$ (stored in constraint system)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (computed by prover/verifier)
+
+```admonition::notice
+NB: the native field modulus is obtainable from F, the native field's trait bound below.
+```
+
+##### Witness
+
+* `left_input` := left foreign field element multiplicand $ ~\in F_f$
+* `right_input` := right foreign field element multiplicand $ ~\in F_f$
+* `quotient` := foreign field quotient $ ~\in F_f$
+* `remainder` := foreign field remainder $ ~\in F_f$
+* `carry0` := 2 bit carry
+* `carry1_lo` := low 88 bits of `carry1`
+* `carry1_hi` := high 3 bits of `carry1`
+* `shifted_carry1_hi` : = carry1_hi shifted 9 positions to the left;
+* `product1_lo` := lowest 88 bits of middle intermediate product
+* `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
+* `product1_hi_1` := highest 2 bits of middle intermediate product
+* `quotient_bound` := quotient bound for checking `q < f`
+* `quotient_bound_carry01` := quotient bound addition 1st carry bit
+* `quotient_bound_carry2` := quotient bound addition 2nd carry bit
+
+##### Layout
+
+The foreign field multiplication gate's rows are layed out like this
+
+| col | `ForeignFieldMul`            | `Zero`                    |
+| --- | ---------------------------- | ------------------------- |
+|   0 | `left_input0`         (copy) | `remainder0`       (copy) |
+|   1 | `left_input1`         (copy) | `remainder1`       (copy) |
+|   2 | `left_input2`         (copy) | `remainder2`       (copy) |
+|   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
+|   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
+|   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
+|   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
+|   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
+|   8 | `scaled_carry1_hi` (plookup) |                           |
+|   9 | `carry0`                     |                           |
+|  10 | `quotient0`                  |                           |
+|  11 | `quotient1`                  |                           |
+|  12 | `quotient2`                  |                           |
+|  13 | `quotient_bound_carry01`     |                           |
+|  14 | `quotient_bound_carry2`      |                           |
+
 
 
 ## Setup

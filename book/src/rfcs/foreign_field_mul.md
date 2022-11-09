@@ -1,6 +1,12 @@
-# RFC: Foreign field multiplication
+# Foreign Field Multiplication RFC
 
 This document explains how we constrain foreign field multiplication in Kimchi.
+
+**Changelog**
+
+| Author(s) | Date | Details |
+|-|-|-|
+| Joseph Spadavecchia and Anais Querol | October 2022 | Design of foreign field multiplication in Kimchi |
 
 ## Overview
 
@@ -232,7 +238,9 @@ f' &= -f \mod 2^t \\
 \end{aligned}
 $$
 
-The negated modulus $f'$ becomes part of our constraint system and is not constrained.  Observe that $f' = f(2^t/f - 1)$ and recall that $t=264$ and $m_{max}=259$, so $2^t = 2^{5 + m_{max}} \ge 2^5 \cdot f$ and, thus, $f' > f$.
+The negated modulus $f'$ becomes part of our constraint system and is not constrained.
+
+Observe that $f' < 2^t$ since $f < 2^t$ and that $f' > f$ when $f < 2^{t - 1}$.
 
 Using the substitution of the negated modulus, we now must constrain $a \cdot b + q \cdot f' = r \mod 2^t$.
 
@@ -302,7 +310,7 @@ $$
 
 We face two challenges
 
-*  Since $p_0, p_1, p_2$ are at least $2^{\ell}$ bits each, the terms above do not fit in $\mathbb{F}_n$ (remember $2^t > f' > f > n$)
+*  Since $p_0, p_1, p_2$ are at least $2^{\ell}$ bits each, the right side of the equation above does not fit in $\mathbb{F}_n$
 *  The subtraction of the remainder's limbs $r_0$ and $r_1$ could require borrowing
 
 For the moment, let's not worry about the possibility of borrows and instead focus on the first problem.
@@ -446,7 +454,7 @@ Remember we only need to prove the first $3\ell$ bits of $p - r$ are zero, since
 By making the argument with $v_0$ and $v_1$ we are proving that $h_0$ is something where the $2\ell$ least significant bits are all zeros and that $h_1 + v_0$ is something where the $\ell$ are also zeros.  Any nonzero bits after $3\ell$ do not matter, since everything is $\mod 2^t$.
 
 All that remains is to range check $v_0$ and $v_1$
-> 7. Range check $v_0 \in [0, 3]$
+> 7. Range check $v_0 \in [0, 2^2)$
 > 8. Range check $v_1 =\in [0, 2^{\ell + 3})$
 
 ## Subtractions
@@ -480,17 +488,17 @@ $$
 
 which is a contradiction with $x < y$.
 
-**Costs:**
+## Costs
 
 Range checks should be the dominant cost, let's see how many we have.
 
 Range check (3) requires two range checks for $p_{11} = p_{111} \cdot 2^\ell + p_{110}$
- * a) $p_{110} \in [0..2^\ell)$
- * b) $p_{111} \in [0,3]$
+ * a) $p_{110} \in [0, 2^\ell)$
+ * b) $p_{111} \in [0, 2^2)$
 
 Range check (8) requires two range checks and a decomposition check that is merged in (6).
  * a) $v_{10} \in [0, 2^{\ell})$
- * b) $v_{11} \in [0, 7]$
+ * b) $v_{11} \in [0, 2^3)$
 
 The range checks on $p_0, p_1$ and $p_2$ follow from the range checks on $a,b$ and $q$.
 
@@ -501,7 +509,7 @@ So we have 3.a, 3.b, 4, 7, 8.a, 8.b.
 | 7           | $(v_0 - 3)(v_0 - 2)(v_0 - 1)v_0$           | $v_0$                     | < 1  |
 | 3.a         | $(p_{111} - 3)(p_{111} - 2)(p_{111} - 1)q$ | $p_{111}$                 | < 1  |
 | 8.b         | degree-8 constraint or plookup             | $v_{11}$                  | 1    |
-| 3.b, 4, 8.a | multi-range-check                          | $p_{10}, p_{110}, v_{10}$ | 4    |
+| 3.b, 4, 8.a | `multi-range-check`                        | $p_{10}, p_{110}, v_{10}$ | 4    |
 
 So we have 1 multi-range-check, 1 single-range-check and 2 low-degree range checks. This consumes just over 5 rows.
 
@@ -549,211 +557,626 @@ This requires a single constraint of the form
 
 with all of the terms expanded into the limbs according the the above equations.  The values $a', b', q', f''$ and $r'$ do not need to be in the witness.
 
-## Range check $q$ so that $q \cdot f + r < 2^t \cdot n$
+## Range check both sides of $a \cdot b = q \cdot f + r$
 
-Until now we have constrained that equation $a \cdot b = q \cdot f + r$  holds modulo $2^t$ and modulo $n$, so by the CRT it holds modulo $M = 2^t \cdot n$.  Remember that, as outlined in the "Overview" section, that we want to prove our equation over the positive integers, rather than $\mod M$.  By doing so, we assure that our solution is not equal to some $q' \cdot M + r'$ where $q', r' \in F_{M}$, in which case $q$ or $r$ would be invalid.
+Until now we have constrained that equation $a \cdot b = q \cdot f + r$  holds modulo $2^t$ and modulo $n$, so by the CRT it holds modulo $M = 2^t \cdot n$.  Remember that, as outlined in the "Overview" section, that we must prove our equation over the positive integers, rather than $\mod M$.  By doing so, we assure that our solution is not equal to some $q' \cdot M + r'$ where $q', r' \in F_{M}$, in which case $q$ or $r$ would be invalid.
 
-First, let's consider the right hand side.  We have
+First, let's consider the right hand side $q \cdot f + r$.  We have
+
+$$
+q \cdot f + r < 2^t \cdot n
+$$
+
+Recall that we have parameterized $2^t \cdot n \ge f^2$, so if we can bound $q$ and $r$ such that
+
+$$
+q \cdot f + r < f^2
+$$
+
+then we have achieved our goal.  We know that $q$ must be less than $f$, so that is our first check, leaving us with
 
 $$
 \begin{aligned}
-q \cdot f + r &< 2^t \cdot n \\
-r &< 2^t \cdot n - q \cdot f \\
+(f - 1) \cdot f + r &< f^2 \\
+r &< f^2 - (f - 1) \cdot f = f
 \end{aligned}
 $$
 
-Recall that we have parameterized that $2^t \cdot n \ge f^2$
-
-So we can check
-
-$$
-r < f^2 - q \cdot f
-$$
-
-We seem to be stuck, so let's assume that we check $q < f$.  Thus, we now have
-
-$$
-r < f^2 - (f - 1)f = f
-$$
-
-Therefore, to check $q \cdot f + r < 2^t \cdot n$, we just need to check
+Therefore, to check $q \cdot f + r < 2^t \cdot n$, we need to check
 * $q < f$
 * $r < f$
 
-which should come at no surprise, since that is how we parameterized $2^t \cdot n$.  Note that by checking $q < f$ we assure correctness, while checking $r < q$ assures our solution is unique.
+This should come at no surprise, since that is how we parameterized $2^t \cdot n$ earlier on.  Note that by checking $q < f$ we assure correctness, while checking $r < f$ assures our solution is unique.
 
-**TODO:** What about checking $a \cdot b < 2^t \cdot n$?
+Next, we must perform the same checks for the left hand side (i.e., $a \cdot b < 2^t \cdot n$).  Since $a$ and $b$ must be less than the foreign field modulus $f$, this means checking
+* $a < f$
+* $b < f$
 
-**Constraints**
+So we have
 
-To perform these checks we use the *upper bound check* from the foreign field addition gate.  The details of this check are fully described in the [Foreign Field Addition RFC](](https://github.com/o1-labs/proof-systems/blob/master/book/src/rfcs/ffadd.md#upper-bound-check)).
+$$
+\begin{aligned}
+a \cdot b &\le (f - 1) \cdot (f - 1) = f^2 - 2f + 1 \\
+\end{aligned}
+$$
 
-To check $q < f$, we must add an addition `ForeignFieldAdd` gate to the end of the foreign field multiplication gadget layout, which takes as one of its parameters $q$.  The special upper bound check addition gate checks that indeed $q < f$.  The output of this special addition gate is a *bound*.
+Since $2^t \cdot n \ge f^2$ we have
 
-To perform the $r < f$ check we perform a range check on the *bound* output by the upper bound check.
+$$
+\begin{aligned}
+&f^2 - 2f + 1 < f^2 \le 2^t \cdot n \\
+&\implies
+a \cdot b < 2^t \cdot n
+\end{aligned}
+$$
 
-**TODO:** Does the *upper bound check* gate require us to also range check $q$ and or $r$.
+### Bounds checks
+
+To perform the above range checks we use the *upper bound check* method described in the [Foreign Field Addition RFC](](https://github.com/o1-labs/proof-systems/blob/master/book/src/rfcs/ffadd.md#upper-bound-check)).
+
+The upper bound check is as follows.  We must constrain $0 \le q < f$ over the positive integers, so is
+
+$$
+\begin{aligned}
+2^t \le q &+ 2^t < f + 2^t \\
+2^t - f \le q &+ 2^t - f < 2^t \\
+\end{aligned}
+$$
+
+Remember $f' = 2^t - f$ is our negated foreign field modulus.  Thus, we have
+
+$$
+\begin{aligned}
+f' \le q &+ f' < 2^t \\
+\end{aligned}
+$$
+
+So to check $q < t$ we just need to compute $q' = q + f'$ and check $f' \le q' < 2^t$
+
+Observe that
+
+$$
+0 \le q \implies  f' \le q'
+$$
+
+and that
+
+$$
+q' < 2^t \implies q < f
+$$
+
+So we only need to check
+
+- $0 \le q$
+- $q' < 2^t$
+
+The first check is always true since we are operating over the positive integers and $q \in \mathbb{Z^+}$.  Observe that the second check also constrains that $q < 2^t$, since $f \le 2^{259} < 2^t$ and thus
+
+$$
+\begin{aligned}
+q' &\le 2^t \\
+q + f' &\le 2^t \\
+q &\le 2^t - (2^t - f) = f\\
+q &< 2^t
+\end{aligned}
+$$
+
+Therefore, to constrain $q < f$ we only need constraints for
+
+- $q' = q + f'$
+- $q' < 2^t$
+
+and we don't require an additional multi-range-check for $q < 2^t$.
+
+### Cost of bound checks
+
+Note that for addition the operands $a$ and $b$ do not need to be less than $f$.  The field overflow bit $\mathcal{o}$ for foreign field addition is at most 1.  That is, $a + b = \mathcal{o} \cdot f + r$, where $r$ is allowed to be greater than $f$.  Therefore,
+
+$$
+(f + a) + (f + b) = 1 \cdot f + (f + a + b)
+$$
+
+These can be chained along $n$ times as desired.  The final result
+
+$$
+r = (f + \cdots f + a_1 + b_1 + \cdots a_n + b_n)
+$$
+
+Thus, we must only check that the final $r$ in the chain is less than $f$ to constrain the entire chain.  **TODO:** What prevents wrapping around and being unsound?
+
+In summary, for foreign field addition it is sufficient to only bound check the last result $r'$ in a chain of additions (and subtractions)
+
+- Compute bound $r' = r + f'$ with addition gate (2 rows)
+- Range check $r' < 2^t$ (4 rows)
+
+In foreign field multiplication, the situation is unfortunately different, and we must check that each of $a, b, q$ and $r$ are less than $f$.  However, in many situations the input operands may already be checked either as inputs or as outputs of previous operations, so they may not be required for each multiplication operation.
+
+The $q'$ and $r'$ checks are the main focus because they must be done for every multiplication. **TODO:** Confirm this is true and explain why.
+
+- Compute bound $q' = q + f'$ with addition gate (2 rows)
+- Compute bound $r' = r + f'$ with addition gate (2 rows)
+- Range check $q' < 2^t$ (4 rows)
+- Range check $r' < 2^t$ (4 rows)
+
+This costs 12 rows per multiplication.  In a subsequent section, we will reduce it to 8 rows.
+
+### 2-limb decomposition
+
+Due to the limited number of permutable cells per gate, we do not have enough cells for copy constraining $q'$ and $r'$ (or $q$ and $r$) to their respective range check gadgets.  To address this issue, we must decompose $q'$ into 2 limbs instead of 3, like so
+
+$$
+q' = q'_{01} + 2^{2\ell} \cdot q'_2
+$$
+
+and
+
+$$
+q'_{01} = q'_0 + 2^{\ell} \cdot q'_1
+$$
+
+Thus, $q'$ is decomposed into two limbs $q'_{01}$ (at most $2\ell$ bits) and $q'_2$ (at most $\ell$ bits).
+
+Note that $q'$ must be range checked by a `multi-range-check` gadget.  To do this the `multi-range-check` gadget must
+
+- Store a copy of the limbs $q'_0, q'_1$ and $q'_2$ in its witness
+- Range check that they are $\ell$ bit each
+- Constrain that $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ (this is done with a special mode of the `multi-range-check` gadget)
+- Have copy constraints for $q'_{01}$ and $q'_2$ as outputs of the `ForeignFieldMul` gate and inputs to the `multi-range-check` gadget
+
+Note that since the foreign field multiplication gate computes $q'$ from $q$ which is already in the witness and $q'_{01}$ and $q'_2$ have copy constraints to a `multi-range-check` gadget that fully constrains their decomposition from $q'$, then the `ForeignFieldMul` gate does not need to store an additional copy of $q'_0$ and $q'_1$.
+
+### An optimization
+
+Since the $q < f$ and $r < f$ checks must be done for each multiplication it makes sense to integrate them into the foreign field multiplication gate. By doing this we can save 4 rows per multiplication.
+
+Doing this doesn't require adding a lot more witness data because the operands for the bound computations $q' = q + f'$ and $r' = r + f'$ are already present in the witness of the multiplication gate.  We only need to store the bounds $q'$ and $r'$ in permutable witness cells so that they may be copied to multi-range-check gates to check they are each less than $2^t$.
+
+To constrain $x + f' = x'$, the equation we use is
+
+$$
+x + 2^t = \mathcal{o} \cdot f + x',
+$$
+
+where $x$ is the original value, $\mathcal{o}=1$ is the field overflow bit and $x'$ is the remainder and our desired addition result (e.g. the bound).  Rearranging things we get
+
+$$
+x + 2^t - f = x',
+$$
+
+which is just
+
+$$
+x + f' = x',
+$$
+
+Recall from the section "Avoiding Borrows" that $f'$ is often larger than $f$.  At first this seems like it could be a problem because in multiplication each operation must be less than $f$.  However, this is because the maximum size of the multiplication was quadratic in the size of $f$ (we use the CRT, which requires the bound that $a \cdot b < 2^t \cdot n$).  However, for addition the result is much smaller and we do not require the CRT nor the assumption that the operands are smaller than $f$.  Thus, we have plenty of space in $\ell$-bit limbs to perform our addition.
+
+So, the equation we need to constrain is
+
+$$
+x + f' = x'.
+$$
+
+We can expand the left hand side into the 2 limb format in order to obtain 2 intermediate sums
+
+$$
+\begin{aligned}
+s_{01} = x_{01} + f_{01}' \\
+s_2 = x_2 + f'_2 \\
+\end{aligned}
+$$
+
+where $x_{01}$ and $f'_{01}$ are defined like this
+
+$$
+\begin{aligned}
+x_{01} = x_0 + 2^{\ell} \cdot x_1 \\
+f'_{01} = f'_0 + 2^{\ell} \cdot f'_1 \\
+\end{aligned}
+$$
+
+and $x$ and $f'$ are defined like this
+
+$$
+\begin{aligned}
+x = x_{01} + 2^{2\ell} \cdot x_2 \\
+f' = f'_{01} + 2^{2\ell} \cdot f'_2 \\
+\end{aligned}
+$$
+
+Going back to our intermediate sums, the maximum bit length of sum $s_{01}$ is computed from the maximum bit lengths of $x_{01}$ and $f'_{01}$
+
+$$
+\underbrace{(2^{\ell} - 1) + 2^{\ell} \cdot (2^{\ell} - 1)}_{x_{01}} + \underbrace{(2^{\ell} - 1) + 2^{\ell} \cdot (2^{\ell} - 1)}_{f'_{01}} = 2^{2\ell+ 1} - 2,
+$$
+
+which means $s_{01}$ is at most $2\ell + 1$ bits long.
+
+Similarly, since $x_2$ and $f'_2$ are less than $2^{\ell}$, the max value of $s_2$ is
+
+$$
+(2^{\ell} - 1) + (2^{\ell} - 1) = 2^{\ell + 1} - 2,
+$$
+
+which means $s_2$ is at most $\ell + 1$ bits long.
+
+Thus, we must constrain
+
+$$
+s_{01} + 2^{2\ell} \cdot s_2 - x'_{01} - 2^{2\ell} \cdot x'_2 = 0 \mod 2^t.
+$$
+
+The accumulation of this into parts looks like this.
+
+```text
+0             L             2L            3L=t          4L
+|-------------|-------------|-------------|-------------|-------------|
+                            :
+|------------s01------------:-| 2L + 1
+                            : ↖w01
+                            |------s2-----:-| L + 1
+                            :               ↖w2
+                            :
+|------------x'01-----------|
+                            :
+                            |------x'2----|
+                            :
+\____________________________/
+             ≈ z01           \_____________/
+                                   ≈ z2
+```
+
+The two parts are computed with
+
+$$
+\begin{aligned}
+z_{01} &= s_{01} - x'_{01} \\
+z_2 &= s_2 - x'_2.
+\end{aligned}
+$$
+
+Therefore, there are two carry bits $w_{01}$ and $w_2$ such that
+
+$$
+\begin{aligned}
+z_{01} &= 2^{2\ell} \cdot w_{01} \\
+z_2 + w_{01} &= 2^{\ell} \cdot w_2
+\end{aligned}
+$$
+
+In this scheme $x'_{01}, x'_2, w_{01}$ and $w_2$ are witness data, whereas $s_{01}$ and $s_2$ are formed from a constrained computation of witness data $x_{01}, x_2$ and constraint system public parameter $f'$.  Note that due to carrying, witness $x'_{01}$ and $x'_2$ can be different than the values $s_{01}$ and $s_2$ computed from the limbs.
+
+Thus, each bound addition $x + f'$ requires the following witness data
+
+- $x_{01}, x_2$
+- $x'_{01}, x'_2$
+- $w_{01}, w_2$
+
+where $f'$ is baked into the constraint system.  The following constraints are needed
+
+- $2^{2\ell} \cdot w_{01} = s_{01} - x'_{01}$
+- $2^{\ell} \cdot w_2 = s_2 + w_{01} - x'_2$
+- $x'_{01} \in [0, 2^{2\ell})$
+- $x'_2 \in [0, 2^{\ell})$
+- $w_{01} \in [0, 2)$
+- $w_2 \in [0, 2)$
+
+Due to the limited number of copyable witness cells per gate, we are currently only performing this optimization for $q$.
+
+The witness data is
+
+- $q_0, q_1, q_2$
+- $q'_{01}, q'_2$
+- $q'_{carry01}, q'_{carry2}$
+
+The checks are
+
+1. $q_0 \in [0, 2^{\ell})$
+2. $q_1 \in [0, 2^{\ell})$
+3. $q'_0 = q_0 + f'_0$
+4. $q'_1 = q_1 + f'_1$
+5. $s_{01} = q'_0 + 2^{\ell} \cdot q'_1$
+6. $q'_{01} \in [0, 2^{2\ell})$
+7. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$
+8. $q'_{carry01} \in [0, 2)$
+9. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
+10. $q_2 \in [0, 2^{\ell})$
+11. $s_2 = q_2 + f'_2$
+12. $q'_{carry2} \in [0, 2)$
+13. $2^{\ell} \cdot q'_{carry2} = s_2 + w_{01} - q'_2$
+
+
+Checks (1) - (5) assure that $s_{01}$ is at most $2\ell + 1$ bits.  Whereas checks (10) - (11) assure that $s_2$ is at most $\ell + 1$ bits.  Altogether they are comprise a single `multi-range-check` of $q_0, q_1$ and $q_2$.  However, as noted above, we do not have enough copyable cells to output $q_1, q_2$ and $q_3$ to the `multi-range-check` gadget.  Therefore, we adopt a strategy where the 2 limbs $q'_{01}$ and $q'_2$ are output to the `multi-range-check` gadget where the decomposition of $q'_0$ and $q'_2$ into $q'_{01} = p_0 + 2^{\ell} \cdot p_1$ is constrained and then $q'_0, q'_1$ and $q'_2$ are range checked.
+
+Although $q_1, q_2$ and $q_3$ are not range checked directly, this is safe because, as shown in the "Bounds checks" section, range-checking that $q' \in [0, 2^t)$ also constrains that $q \in [0, 2^t)$.  Therefore, the updated checks are
+
+1. $q_0 \in [0, 2^{\ell})$ `multi-range-check`
+2. $q_1 \in [0, 2^{\ell})$ `multi-range-check`
+3. $q'_0 = q_0 + f'_0$ `ForeignFieldMul`
+4. $q'_1 = q_1 + f'_1$ `ForeignFieldMul`
+5. $s_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `ForeignFieldMul`
+6. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$  `multi-range-check`
+7. $q'_{carry01} \in [0, 2)$ `ForeignFieldMul`
+8. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$ `ForeignFieldMul`
+9.  $q_2 \in [0, 2^{\ell})$  `multi-range-check`
+10. $s_2 = q_2 + f'_2$ `ForeignFieldMul`
+11. $q'_{carry2} \in [0, 2)$ `ForeignFieldMul`
+12. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$ `ForeignFieldMul`
+
+Note that we don't need to range-check $q'_{01}$ is at most $2\ell + 1$ bits because it is already implicitly constrained by the `multi-range-check` gadget constraining that $q'_0, q'_1$ and $q'_2$ are each at most $\ell$ bits and that $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.  Furthermore, since constraining the decomposition is already part of the `multi-range-check` gadget, we do not need to do it here also.
+
+To simplify things further, we can combine some of these checks.  Recall our checked computations for the intermediate sums
+
+$$
+\begin{aligned}
+s_{01} &= q_{01} + f'_{01} \\
+s_2 &= q_2 + f'_2 \\
+\end{aligned}
+$$
+
+where $q_{01} = q_0 + 2^{\ell} \cdot q_1$ and $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$.  These do not need to be separate constraints, but are instead part of existing ones.
+
+Checks (10) and (11) can be combined into a single constraint $2^{\ell} \cdot q'_{carry2} = (q_2 + f'_2) + q'_{carry01} - q'_2$.  Similarly, checks (3) - (5) and (8) can be combined into $2^{2\ell} \cdot q'_{carry01} = q_{01} + f'_{01} - q'_{01}$ with $q_{01}$ and $f'_{01}$ further expanded.  The final minimal number of constraints are
+
+1. $q_0 \in [0, 2^{\ell})$ `multi-range-check`
+2. $q_1 \in [0, 2^{\ell})$ `multi-range-check`
+3. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$  `multi-range-check`
+4. $q'_{carry01} \in [0, 2)$ `ForeignFieldMul`
+5. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$ `ForeignFieldMul`
+6. $q_2 \in [0, 2^{\ell})$  `multi-range-check`
+7. $q'_{carry2} \in [0, 2)$ `ForeignFieldMul`
+8. $2^{\ell} \cdot q'_{carry2} = s_2 + w_{01} - q'_2$ `ForeignFieldMul`
+
+Since we already needed to range-check $q$ or $q'$, the total number of new constraints added is 5: 4 added to to `ForeignFieldMul` and 1 added to `multi-range-check` gadget for constraining the decomposition of $q'_{01}$.
+
+This saves 2 rows per multiplication.
 
 ## Chaining multiplications
 
-Every independent multiplication requires checks for $q < f$ and $r < f$.
+Due to the limited number of cells accessible to gates, we are not able to chain multiplications into multiplications.  We can chain foreign field additions into foreign field multiplications, but currently do not support chaining multiplications into additions (though there is a way to do it).
 
-However, we can also have a chain of interrelated multiplications or a chain of interrelated multiplications and additions (if the gate layouts supported it).
+## Constraining the computation
 
-**TODO:** For chains of operations we need concrete rules for when we need to perform the check $q < f$ and $r < f$.
+Now we collect all of the checks that are required to constrain foreign field multiplication
 
-For now, the safest approach is to always check $q < f$ and $r < f$ after each multiplication even if they are in a chain.
+### 1. Range constrain $a \in [0, f)$
 
-## Constraints
+If the $a$ operand has not been constrained to $[0, f)$ by any previous foreign field operations, then we constrain it like this
+- Compute bound $a' = a + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
+- Range check $a' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
-Now we collect all of the constraints that the FFMul gadget will need.
+### 2. Range constrain $b \in [0, f]$
 
-### 1. Range constrain $a < 2^{264}$
+If the $b$ operand has not been constrained to $[0, f)$ by any previous foreign field operations, then we constrain it like this
+- Compute bound $b' = b + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
+- Range check $b' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
-* [x] These rows check for each of the 3 limbs of $a$ that they are $< 2^{88}$.  `multi-range-check-0`
+### 3. Range constrain $q \in [0, f)$
 
-### 2. Range constrain $b < 2^{264}$
+The quotient $q$ is constrained to $[0, f)$ for each multiplication as part of the multiplication gate
+- Compute bound $q' = q + f'$ with  `ForeignFieldMul` constraints
+- Range check $q' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
-* [x] These rows check for each of the 3 limbs of $b$ that they are $< 2^{88}$. `multi-range-check-1`
+### 4. Range constrain $r \in [0, f)$
 
-### 3. Range constrain $q < 2^{256}$
-
-We have to range constrain witness $q$ to be $<2^{264}$, but also $2^{256}$ for the correctness of the CRT. Then, for both of them, it is sufficient to check $q<2^{256}$. We can do this by using the range check gadget. In particular we can check if $q \cdot 2^8 < 2^{264}$. This will only affect the most significant limb of $q$, so the check becomes to constrain that the 8 leading bits of the 12-bit most significant sublimb of $q$ are zero or not. Nonetheless, in order to avoid field elements from overflowing, we also have to check for soundness if the original sublimb was also contained in 12 bits. Meaning:
-
-- [x] Range check $q < 2^{264}$ as usual (including MSB limb $< 2^{88}$) `multi-range-check-2`
-- [x] Additionally, check if MS sublimb $q_2$ multiplied by $2^8$ is a 12-bit number (equivalent to checking that the MSB limb is $<2^{80}$). `Zero`
-
-### 4. Range constrain $r < 2^{264}$
-
-* [x] These rows check for each of the 3 limbs of $r$ that they are $< 2^{88}$. `multi-range-check-3`
+The remainder $r$ is constrained to $[0, f)$ for each multiplication using an external addition gate.
+- Compute bound $r' = r + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
+- Range check $r' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
 ### 5. Intermediate products
 
-Compute/Constrain intermediate products $p_0$, $p_1$, and $p_2$ as:
+Compute and constrain the intermediate products $p_0, p_1$ and $p_2$ as:
 
-- [x] $p_0 = a_0 \cdot b_0 + q_0 \cdot f'_0$ `ForeignFieldMul`
-- [x] $p_1 = a_0 \cdot b_1 + a_1 \cdot b_0 + q_0 \cdot f'_1 + q_1 \cdot f'_0$ `ForeignFieldMul`
-- [x] $p_2 = a_0 \cdot b_2 + a_2 \cdot b_0 + a_1 \cdot b_1 + q_0 \cdot f'_2 + q_2 \cdot f'_0 + q_1 \cdot f'_1$ `ForeignFieldMul`
+- $p_0 = a_0 \cdot b_0 + q_0 \cdot f'_0$ `ForeignFieldMul`
+- $p_1 = a_0 \cdot b_1 + a_1 \cdot b_0 + q_0 \cdot f'_1 + q_1 \cdot f'_0$ `ForeignFieldMul`
+- $p_2 = a_0 \cdot b_2 + a_2 \cdot b_0 + a_1 \cdot b_1 + q_0 \cdot f'_2 + q_2 \cdot f'_0 + q_1 \cdot f'_1$ `ForeignFieldMul`
 
 where each of them is about $2\ell$-length elements.
 
-### 6. Decompose middle intermediate product
+### 6. Intermediate sums
 
-Check that $p_{11} | p_{10} = p_1$:
+Compute and constrain the intermediate sums $s_{01} and $s_21$ as:
 
-- [x] $p_1 = 2^\ell \cdot p_{11} + p_{10}$ `ForeignFieldMul`
-- [x] Range check $p_{10} < 2^\ell$ `multi-range-check-4`
-- [x] Range check $p_{11} < 2^{\ell+2}$
-    - [x] $p_{11} = p_{111} \cdot 2^\ell + p_{110}$  `ForeignFieldMul`
-    - [x] Range check $p_{110} < 2^\ell$ `multi-range-check-4`
-    - [x] Range check $p_{111} < 2^2$ `ForeignFieldMul`
+- $s_{01} = q_{01} + f'_{01}$
+- $s_2 = q_2 + f_2'$
+- $q_{01} = q_0 + 2^{\ell} \cdot q_1$
+- $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$
 
-Altogether, step 6 (and the second constraint of step 5) can be combined into the following 4 constraints:
+### 7. Decompose middle intermediate product
 
-- $2^\ell \cdot ( 2^\ell \cdot p_{111} + p_{110} ) + p_{10} = a_0 \cdot b_1 + a_1 \cdot b_0 + q_0 \cdot f'_1 + q_1 \cdot f'_0$
-- Range check $p_{10} < 2^\ell$
-- Range check $p_{110} < 2^\ell$
-- Range check $p_{111} \in [0, 2^2)$ with a degree-4 constraint
+Check that $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$:
 
-and $p_{11}$ does not need to be in the witness but we can define it as an expression.
+- $p_1 = 2^\ell \cdot p_{11} + p_{10}$ `ForeignFieldMul`
+- Range check $p_{10} \in [0, 2^\ell)$ `multi-range-check`
+- Range check $p_{11} \in [0, 2^{\ell+2})$
+    - $p_{11} = p_{111} \cdot 2^\ell + p_{110}$  `ForeignFieldMul`
+    - Range check $p_{110} \in [0, 2^\ell)$ `multi-range-check`
+    - Range check $p_{111} \in [0, 2^2)$ with a degree-4 constraint `ForeignFieldMul`
 
-### 7. Zero sum
+### 8. Zero sum
 
-Now we have to constrain the zero sum:
+Now we have to constrain the zero sum
 
 $$(p_0 - r_0) + 2^{88}(p_1 - r_1) + 2^{176}(p_2 - r_2) = 0$$
 
-We constrain the first and the second halves as:
+We constrain the first and the second halves as
 
-- [x] $v_0 \cdot 2^{2\ell} = p_0 + 2^\ell \cdot p_{10} - r_0 - 2^\ell \cdot r_1$ `ForeignFieldMul`
-- [x] $v_1 \cdot 2^{\ell} = (p_{111} \cdot 2^\ell + p_{110}) + p_2 - r_2 + v_0$ `ForeignFieldMul`
+- $v_0 \cdot 2^{2\ell} = p_0 + 2^\ell \cdot p_{10} - r_0 - 2^\ell \cdot r_1$ `ForeignFieldMul`
+- $v_1 \cdot 2^{\ell} = (p_{111} \cdot 2^\ell + p_{110}) + p_2 - r_2 + v_0$ `ForeignFieldMul`
 
-And some more range constraints
+And some more range checks
 
-- [x] Check that $v_0 \in [0, 3]$ with a degree-4 constraint `ForeignFieldMul`
-- [x] Check that $v_1 \in [0, 2^{\ell + 3})$
-    - [x] Check/substitute/let $v_1 = v_{11} \cdot 2^{88} + v_{10}$ `ForeignFieldMul`
-    - [x] Check $v_{11} \in [0,7]$ `ForeignFieldMul`
-    - [x] Check $v_{10} < 2^\ell$ with range constraint `multi-range-check-4`
+- Check that $v_0 \in [0, 2^2)$ with a degree-4 constraint `ForeignFieldMul`
+- Check that $v_1 \in [0, 2^{\ell + 3})$
+    - Check $v_1 = v_{11} \cdot 2^{88} + v_{10}$ `ForeignFieldMul`
+    - Check $v_{11} \in [0, 2^3]$ `ForeignFieldMul`
+    - Check $v_{10} < 2^\ell$ with range constraint `multi-range-check`
 
-# Gate layout
+To check that $v_{11} \in [0, 2^3)$ (i.e. that $v_{11}$ is at most 3 bits long) we first range-check $v_{11} \in [0, 2^{12})$ with a 12-bit plookup.  This means there can be no higher bits set beyond the 12-bits of $v_{11}$.  Next, we scale $v_{11}$ by $2^9$ in order to move the highest $12 - 3 = 9$ bits beyond the $12$th bit. Finally, we perform a 12-bit plookup on the resulting value.  That is, we have
+
+- Check $v_{11} \in [0, 2^{12})$ with a 12-bit plookup (to prevent any overflow)
+- Check $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
+- Check $\mathsf{scaled}_{v_{11}}$ is a 12-bit value with a 12-bit plookup
+
+# Layout
 
 Based on the constraints above, we need the following 12 values copied from the range check gates.
 
 ```
 a0, a1, a2, b0, b1, b2, q0, q1, q2, r0, r1, r2
 ```
-Since we need 12 copied values for the constraints the constraints must span 2 rows.  N.b. the $f$ and $g$ values are gobally accessible in the `ConstraintSystem`
+Since we need 12 copied values for the constraints, they must span 2 rows.
 
-|            | Curr                                | Next         |
-| ---------- | ----------------------------------- | ------------ |
-| **Column** | `ForeignFieldMul`                   | `Zero`       |
-| 0          | $a_0$ (copy)                        | $a_2$ (copy) |
-| 1          | $a_1$ (copy)                        | $b_0$ (copy) |
-| 2          | $\mathsf{shift}_{v_{11}}$ (plookup) | $b_1$ (copy) |
-| 3          | $\mathsf{shift}_{q_2}$ (plookup)    | $b_2$ (copy) |
-| 4          | $q_0$ (copy)                        | $r_0$ (copy) |
-| 5          | $q_1$ (copy)                        | $r_1$ (copy) |
-| 6          | $q_2$ (copy)                        | $r_2$ (copy) |
-| 7          | $p_{10}$                            |
-| 8          | $p_{110}$                           |
-| 9          | $p_{111}$                           |
-| 10         | $v_0$                               |
-| 11         | $v_{10}$                            |
-| 12         | $v_{11}$                            |
-| 13         |                                     |
-| 14         |                                     |
+The $q < f$ bound limbs $q'_0, q'_1$ and $q'_2$ must be in copyable cells so they can be range-checked.  Similarly, the limbs of the operands $a$, $b$ and the result $r$ must all be in copyable cells.  This leaves only 2 remaining copyable cells and, therefore, we cannot compute and output $r' = r + f'$.  It must be deferred to an external `ForeignFieldAdd` gate with the $r$ cells copied as an argument.
 
-where $\mathsf{shift}_{v_{11}} = 2^9v_{11}$ and $\mathsf{shift}_{q_2} = 2^8q_2$.
+NB: the $f$ and $f'$ values are publicly accessible in the constraint system.
 
+|            | Curr                                     | Next             |
+| ---------- | ---------------------------------------- | ---------------- |
+| **Column** | `ForeignFieldMul`                        | `Zero`           |
+| 0          | $a_0$ (copy)                             | $r_0$ (copy)     |
+| 1          | $a_1$ (copy)                             | $r_1$ (copy)     |
+| 2          | $a_2$ (copy)                             | $r_2$ (copy)     |
+| 3          | $b_0$ (copy)                             | $q'_{01}$ (copy) |
+| 4          | $b_1$ (copy)                             | $q'_2$ (copy)    |
+| 5          | $b_2$ (copy)                             | $p_{10}$  (copy) |
+| 6          | $v_{10}$ (copy)                          | $p_{110}$ (copy) |
+| 7          | $v_{11}$ (plookup)                       | $p_{111}$        |
+| 8          | $\mathsf{scaled}_{v_{11}}$ (plookup)     |                  |
+| 9          | $v_0$                                    |                  |
+| 10         | $q_0$                                    |                  |
+| 11         | $q_1$                                    |                  |
+| 12         | $q_2$                                    |                  |
+| 13         | $q'_{carry01}$                           |                  |
+| 14         | $q'_{carry2}$                            |                  |
 
-`ForeignFieldMul` has the following intermediate computations
-  1. $p_0 = a_0b_0 + q_0f'_0$
-  2. $p_1 = a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0$
-  3. $p_2 = a_0b_2 + a_2b_0 + a_1b_1 + q_0f'_2 + q_2f'_0 + q_1f'_1$
+where $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$.
 
-and the following constraints
+# Gate constraints
 
-1. $p_1 = 2^{\ell}p_{11} + p_{10}$
-2. $p_{11} = 2^{\ell}p_{111} + p_{110}$
-3. $v_1 = 2^{88}v_{11} + v_{10}$
-4. $2^{2\ell}v_0 = p_0 + 2^{\ell}p_{10} - r_0 - 2^{\ell}r_1$
-5. $2^{\ell}v_1 = v_0 + p_{11} + p_2 - r_2$
-6. $v_0 \in [0, 2^2)$
-7. $p_{111} \in [0, 2^2)$
-8. $v_{11} \in [0, 2^3)$
-9. $q_2 \in [0, 2^4)$
-10. $2^9v_{11} = \mathsf{shift}_{v_{11}}$
-11. $2^8 q_2 = \mathsf{shift}_{q_2}$
+As described above foreign field multiplication has the following intermediate computations
 
-As mentioned above, constraints (1), (2), and (3) can be combined inside (5) to get constraint (3) below and, thus, only 9 constraints total:
+1. $p_0 = a_0b_0 + q_0f'_0$
+2. $p_1 = a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0$
+3. $p_2 = a_0b_2 + a_2b_0 + a_1b_1 + q_0f'_2 + q_2f'_0 + q_1f'_1$.
 
-1. $p_1 = 2^{\ell}(2^{\ell}p_{111} + p_{110}) + p_{10}$
-2. $2^{2\ell}v_0 = p_0 + 2^{\ell}p_{10} - r_0 - 2^{\ell}r_1$
-3. $2^{\ell}(2^{88}v_{11} + v_{10}) = v_0 + (2^{\ell}p_{111} + p_{110}) + p_2 - r_2$
-4. $2^9v_{11} = \mathsf{shift}_{v_{11}}$
-5. $2^8 q_2 = \mathsf{shift}_{q_2}$
-6. $v_0 \in [0, 2^2)$
-7. $p_{111} \in [0, 2^2)$
-8. $v_{11} \in [0, 2^3)$
-9. $q_2 \in [0, 2^4)$
+For the $q$ bound addition we must also compute
 
-The `ForeignFieldMul` gate performs the first 7 constraints, plus the 2 plookups, corresponding to (8) and (9) above.
+1. $s_{01} = q_{01} + f'_{01}$
+2. $s_2 = q_2 + f_2'$
+3. $q_{01} = q_0 + 2^{\ell} \cdot q_1$
+4. $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$
 
-Note that $p_0, p_1$ and $p_2$ do not need to be part of the witness.
+> Note that alternatively
+>
+> $$
+> \begin{aligned}
+> s_{01} &= q_{01} + f'_{01} \\
+> &= q_0 + 2^{\ell} \cdot q_1 + f'_0 + 2^{\ell} \cdot f'_1 \\
+> &= q_0 + f'_0 + 2^{\ell} \cdot (q'_1 + f'_1) \\
+> &= q'_0 + 2^{\ell} \cdot q'_1
+> \end{aligned}
+> $$
+>
+> where $q'_0 = q_0 + f'_0$ and $q'_1 = q_1 + f'_1$ can be done with checked computations.
 
-The `Zero` gate itself has no constraints.
+In total we require the following checks
 
-These 2 gates are preceeded by 5 multi-range-check gates.
+1. $p_{111} \in [0, 2^2)$
+2. $v_{10} \in [0, 2^{\ell})$ `multi-range-check`
+3. $p_{110} \in [0, 2^{\ell})$ `multi-range-check`
+4. $p_{10} \in [0, 2^{\ell})$ `multi-range-check`
+5. $p_{11} = 2^{\ell} \cdot p_{111} + p_{110}$
+6. $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$
+7. $v_0 \in [0, 2^2)$
+8. $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
+9.  $v_{11} \in [0, 2^{12})$
+10. $\mathsf{scaled}_{v_{11}} \in [0, 2^{12})$
+11. $2^9 \cdot v_{11} = \mathsf{scaled}_{v_{11}}$
+12. $v_1 = 2^{\ell} \cdot v_{11} + v_{10}$
+13. $2^{\ell} \cdot v_1 = v_0 + p_{11} + p_2 - r_2$
+14. $q'_0 \in [0, 2^{\ell})$ `multi-range-check`
+15. $q'_1 \in [0, 2^{\ell})$ `multi-range-check`
+16. $q'_2 \in [0, 2^{\ell})$ `multi-range-check`
+17. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `multi-range-check`
+18. $q'_{carry01} \in [0, 2)$
+19. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
+20. $q'_{carry2} \in [0, 2)$
+21. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
 
-## Gadget layout
+These checks can be condensed into the minimal number of constraints as follows.
 
-| Row(s) | Gate type(s)        | Witness                   |
-| ------ | ------------------- | ------------------------- |
-| 0-3    | `multi-range-check` | $a$                       |
-| 4-7    | `multi-range-check` | $b$                       |
-| 8-11   | `multi-range-check` | $q$                       |
-| 12-15  | `multi-range-check` | $r$                       |
-| 16-19  | `multi-range-check` | $p_{10}, p_{110}, v_{10}$ |
-| 20     | `ForeignFieldMul`   |                           |
-| 21     | `Zero`              |                           |
+First, we have the range-check corresponding to (1) as a degree-4 constraint
+
+**C1:** $p_{111} \cdot (p_{111} - 1) \cdot (p_{111} - 2) \cdot (p_{111} - 3)$
+
+Checks (2) - (4) are all handled by a single `multi-range-check` gadget.
+
+**C2:** `multi-range-check` $v_{10}, p_{10}, p_{110}$
+
+Next (5) and (6) can be combined into
+
+**C3:** $2^{\ell} \cdot (2^{\ell} \cdot p_{111} + p_{110}) + p_{10} = p_1$
+
+Now we have the range-check corresponding to (7) as another degree-4 constraint
+
+**C4:** $v_0 \cdot (v_0 - 1) \cdot (v_0 - 2) \cdot (v_0 - 3)$
+
+Next we have check (8)
+
+**C5:** $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
+
+Up next, checks (9) and (10) are 12-bit range checks
+
+**C6:** Plookup $v_{11}$
+
+**C7:** Plookup $\mathsf{scaled}_{v_{11}}$
+
+Check (11) is part of bounding $v_{11}$ to 3-bits in length
+
+**C8:** $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
+
+Now checks (12) and (13) can be combined into
+
+**C9:**  $2^{\ell} \cdot (v_{11} \cdot 2^{\ell} + v_{10}) = p_2 + p_{11} + v_0 - r_2$
+
+Next we must constrain the quotient bound addition.
+
+Checks (14) - (17) are all combined into `multi-range-check` gadget
+
+**C10:** `multi-range-check` $q'_0, q'_1, q'_2$ and $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
+
+Check (18) is a carry bit boolean check
+
+**C11:** $q'_{carry01} \cdot (q'_{carry01} - 1)$
+
+Next, check (19) is
+
+**C12:** $2^{2\ell} \cdot q'_{carry10} = s_{01} - q'_{01}$
+
+Check (20) is another boolean check
+
+**C13:** $q'_{carry2} \cdot (q'_{carry2} - 1)$
+
+Finally, check (21) is
+
+**C14:** $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+
+The `Zero` gate has no constraints and is just used to hold values required by the `ForeignFieldMul` gate.
+
+# External checks
+
+The following checks must be done with other gates to assure the soundness of the foreign field multiplication
+
+- Range check input
+    - `multi-range-check` $a$
+    - `multi-range-check` $b$
+- Range check witness data
+    - `multi-range-check` $q'$ and check $q_{01}' = q'_0 + 2^{\ell} q'_1$
+    - `multi-range-check` $\ell$-bit limbs: $p_{10}, p_{110}, p_{111}$
+- Range check output
+    - `multi-range-check` either $r$ or $r'$
+- Compute and constrain $r'$ the bound on $r$
+    - `ForeignFieldAdd` $r + 2^t = 1 \cdot f + r'$
+
+Copy constraints must connect the above witness cells to their respective input cells within the corresponding external check gates witnesses.

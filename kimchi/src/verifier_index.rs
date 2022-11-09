@@ -441,8 +441,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&range_check_comm.unshifted);
             }
         }
-        if let Some(foreign_field_mul) = foreign_field_mul_comm {
-            fq_sponge.absorb_g(&foreign_field_mul.unshifted);
+        if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
+            fq_sponge.absorb_g(&foreign_field_mul_comm.unshifted);
         }
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);

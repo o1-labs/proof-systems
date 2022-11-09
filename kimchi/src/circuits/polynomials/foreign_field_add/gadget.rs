@@ -145,6 +145,37 @@ impl<F: PrimeField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
+    /// Create a single foreign field addition gate without integrated range checks
+    ///     Inputs
+    ///         starting row
+    ///         number of addition gates
+    ///     Outputs tuple (next_row, circuit_gates) where
+    ///       next_row      - next row after this gate
+    ///       circuit_gates - vector of circuit gates comprising this gate
+    pub fn create_single_foreign_field_add(start_row: usize) -> (usize, Vec<Self>) {
+        let circuit_gates = vec![
+            CircuitGate {
+                typ: GateType::ForeignFieldAdd,
+                wires: Wire::new(start_row),
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::Zero,
+                wires: Wire::new(start_row + 1),
+                coeffs: vec![],
+            },
+        ];
+
+        (start_row + circuit_gates.len(), circuit_gates)
+    }
+
+    /// Create foreign field addition gate by extending the existing gates
+    pub fn extend_single_foreign_field_add(gates: &mut Vec<Self>, curr_row: &mut usize) {
+        let (next_row, circuit_gates) = Self::create_single_foreign_field_add(*curr_row);
+        *curr_row = next_row;
+        gates.extend_from_slice(&circuit_gates);
+    }
+
     /// Verifies the foreign field addition gadget
     pub fn verify_foreign_field_add<G: KimchiCurve<ScalarField = F>>(
         &self,
@@ -217,15 +248,15 @@ impl<F: PrimeField> CircuitGate<F> {
         // Set up the environment
         let env = {
             Environment {
-                constants: expr::Constants {
-                    alpha: F::rand(rng),
-                    beta: F::rand(rng),
-                    gamma: F::rand(rng),
-                    joint_combiner: Some(F::rand(rng)),
-                    endo_coefficient: cs.endo,
-                    mds: &G::sponge_params().mds,
-                    foreign_field_modulus: cs.foreign_field_modulus.clone(),
-                },
+                constants: expr::Constants::new(
+                    F::rand(rng),
+                    F::rand(rng),
+                    F::rand(rng),
+                    Some(F::rand(rng)),
+                    cs.endo,
+                    &G::sponge_params().mds,
+                    cs.foreign_field_modulus.clone(),
+                ),
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,
                 vanishes_on_last_4_rows: &cs.precomputations().vanishes_on_last_4_rows,

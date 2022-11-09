@@ -15,7 +15,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::ConstraintSystem,
         expr::{self, l0_1, Environment, LookupEnvironment, E},
-        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, GateType},
         lookup::{
             self,
             lookups::{LookupInfo, LookupsUsed},
@@ -39,63 +39,27 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
     pub fn create_foreign_field_mul(start_row: usize) -> (usize, Vec<Self>) {
-        // Create multi-range-check gates for $a, b, q, r, p_{10}, p_{110}$ and $v_{10}$
-        let mut circuit_gates = vec![];
-        let mut next_row = start_row;
-        for _ in 0..5 {
-            let (subsequent_row, mut range_check_circuit_gates) =
-                CircuitGate::create_multi_range_check(next_row);
-            circuit_gates.append(&mut range_check_circuit_gates);
-            next_row = subsequent_row
-        }
-
-        circuit_gates.append(&mut vec![
+        let circuit_gates = vec![
             CircuitGate {
                 typ: GateType::ForeignFieldMul,
-                wires: Wire::new(next_row),
+                wires: Wire::new(start_row),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
-                wires: Wire::new(next_row + 1),
+                wires: Wire::new(start_row + 1),
                 coeffs: vec![],
             },
-        ]);
-
-        // circuit_gates = [
-        //        [0..3]   -> 4 RangeCheck gates for left_input
-        //        [4..7]   -> 4 RangeCheck gates for right_input
-        //        [8..11]  -> 4 RangeCheck gates for quotient
-        //        [12..15] -> 4 RangeCheck gates for remainder
-        //        [16..19] -> 4 RangeCheck gates for product_mid_bottom, product_mid_top_limb, carry_top_limb
-        // ]
-
-        // Copy left_input_lo -> Curr(0)
-        circuit_gates.connect_cell_pair((0, 0), (next_row, 0));
-        // Copy left_input_mid -> Curr(1)
-        circuit_gates.connect_cell_pair((1, 0), (next_row, 1));
-        // Copy left_input_hi -> Curr(2)
-        circuit_gates.connect_cell_pair((2, 0), (next_row, 2));
-        // Copy right_input_lo -> Curr(3)
-        circuit_gates.connect_cell_pair((4, 0), (next_row, 3));
-        // Copy right_input_mid -> Curr(4)
-        circuit_gates.connect_cell_pair((5, 0), (next_row, 4));
-        // Copy right_input_hi -> Next(0)
-        circuit_gates.connect_cell_pair((6, 0), (next_row + 1, 0));
-        // Copy quotient_lo -> Next(1)
-        circuit_gates.connect_cell_pair((8, 0), (next_row + 1, 1));
-        // Copy quotient_mid -> Next(2)
-        circuit_gates.connect_cell_pair((9, 0), (next_row + 1, 2));
-        // Copy quotient_hi -> Next(3)
-        circuit_gates.connect_cell_pair((10, 0), (next_row + 1, 3));
-        // Copy remainder_lo -> Next(4)
-        circuit_gates.connect_cell_pair((12, 0), (next_row + 1, 4));
-        // Copy remainder_mid -> Next(5)
-        circuit_gates.connect_cell_pair((13, 0), (next_row + 1, 5));
-        // Copy remainder_hi -> Next(6)
-        circuit_gates.connect_cell_pair((14, 0), (next_row + 1, 6));
+        ];
 
         (start_row + circuit_gates.len(), circuit_gates)
+    }
+
+    /// Create foreign field multiplication gate by extending the existing gates
+    pub fn extend_foreign_field_mul(gates: &mut Vec<Self>, curr_row: &mut usize) {
+        let (next_row, circuit_gates) = Self::create_foreign_field_mul(*curr_row);
+        *curr_row = next_row;
+        gates.extend_from_slice(&circuit_gates);
     }
 
     pub fn verify_foreign_field_mul<G: KimchiCurve<ScalarField = F>>(
@@ -168,15 +132,15 @@ impl<F: PrimeField> CircuitGate<F> {
         // Set up the environment
         let env = {
             Environment {
-                constants: expr::Constants {
-                    alpha: F::rand(rng),
-                    beta: F::rand(rng),
-                    gamma: F::rand(rng),
-                    joint_combiner: Some(F::rand(rng)),
-                    endo_coefficient: cs.endo,
-                    mds: &G::sponge_params().mds,
-                    foreign_field_modulus: cs.foreign_field_modulus.clone(),
-                },
+                constants: expr::Constants::new(
+                    F::rand(rng),
+                    F::rand(rng),
+                    F::rand(rng),
+                    Some(F::rand(rng)),
+                    cs.endo,
+                    &G::sponge_params().mds,
+                    cs.foreign_field_modulus.clone(),
+                ),
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,
                 vanishes_on_last_4_rows: &cs.precomputations().vanishes_on_last_4_rows,

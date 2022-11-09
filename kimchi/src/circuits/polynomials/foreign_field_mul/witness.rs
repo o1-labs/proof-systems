@@ -1,25 +1,24 @@
 //! Foreign field multiplication witness computation
 
 use crate::{
+    auto_clone_array,
     circuits::{
-        expr::constraints::crumb,
         polynomial::COLUMNS,
-        polynomials::range_check::{self},
-        witness::{
-            self, ConstantCell, CopyCell, CopyShiftCell, VariableBitsCell, VariableCell, Variables,
-            WitnessCell,
-        },
+        polynomials::{foreign_field_add, range_check},
+        witness::{self, ConstantCell, VariableCell, Variables, WitnessCell},
     },
     variable_map,
 };
-use ark_ff::{Field, PrimeField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
-use o1_utils::{
-    field_helpers::FieldHelpers,
-    foreign_field::{ForeignElement, LIMB_BITS},
+
+use o1_utils::foreign_field::{
+    BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
 };
 use std::array;
+
+use super::circuitgates;
 
 // Witness layout
 //   * The values and cell contents are in little-endian order, which
@@ -44,34 +43,37 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     [
         // ForeignFieldMul row
         [
-            CopyCell::create(0, 0),                               // left_input_lo
-            CopyCell::create(1, 0),                               // left_input_mi
-            CopyCell::create(2, 0),                               // left_input_hi
-            CopyCell::create(4, 0),                               // right_input_lo
-            CopyCell::create(5, 0),                               // right_input_mi
-            CopyShiftCell::create(20, 12, 8),                     // carry_shift from carry_top_over
-            CopyShiftCell::create(20, 9, 9), // product_shift from product_mi_top_over
-            VariableBitsCell::create("product_mi", 0, LIMB_BITS), // product_mi_bot
-            VariableBitsCell::create("product_mi", LIMB_BITS, 2 * LIMB_BITS), // product_mi_top_limb
-            VariableBitsCell::create("product_mi", 2 * LIMB_BITS, 2 * LIMB_BITS + 2), // product_mi_top_over
-            VariableBitsCell::create("carry_bot", 0, 2), // CarryBot, 0, 2), // carry_bot
-            VariableBitsCell::create("carry_top", 0, LIMB_BITS), // carry_top_limb
-            VariableBitsCell::create("carry_top", LIMB_BITS, LIMB_BITS + 3), // carry_top_over
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
+            // Copied for multi-range-check
+            VariableCell::create("left_input0"),
+            VariableCell::create("left_input1"),
+            VariableCell::create("left_input2"),
+            // Copied for multi-range-check
+            VariableCell::create("right_input0"),
+            VariableCell::create("right_input1"),
+            VariableCell::create("right_input2"),
+            VariableCell::create("carry1_lo"), // Copied for multi-range-check
+            VariableCell::create("carry1_hi"), // 12-bit lookup
+            VariableCell::create("scaled_carry1_hi"), // 12-bit lookup
+            VariableCell::create("carry0"),
+            VariableCell::create("quotient0"),
+            VariableCell::create("quotient1"),
+            VariableCell::create("quotient2"),
+            VariableCell::create("quotient_bound_carry01"),
+            VariableCell::create("quotient_bound_carry2"),
         ],
         // Zero row
         [
-            CopyCell::create(6, 0),         // right_input_hi
-            CopyCell::create(8, 0),         // quotient_lo
-            CopyCell::create(9, 0),         // quotient_mi
-            CopyCell::create(10, 0),        // quotient_hi
-            CopyCell::create(12, 0),        // remainder_lo
-            CopyCell::create(13, 0),        // remainder_mi
-            CopyCell::create(14, 0),        // remainder_hi
-            VariableCell::create("aux_lo"), // aux_lo
-            VariableCell::create("aux_mi"), // aux_mi
-            VariableCell::create("aux_hi"), // aux_hi
+            // Copied for multi-range-check
+            VariableCell::create("remainder0"),
+            VariableCell::create("remainder1"),
+            VariableCell::create("remainder2"),
+            VariableCell::create("quotient_bound01"),
+            VariableCell::create("quotient_bound2"),
+            VariableCell::create("product1_lo"), // Copied for multi-range-check
+            VariableCell::create("product1_hi_0"), // Copied for multi-range-check
+            VariableCell::create("product1_hi_1"),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -81,236 +83,217 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     ]
 }
 
+pub fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
+    let x_bound = x + neg_foreign_field_modulus;
+    assert!(x_bound < BigUint::binary_modulus());
+    x_bound
+}
+
+fn compute_witness_variables<F: PrimeField>(
+    products: &[BigUint; 3],
+    remainder: &[BigUint; 3],
+) -> [F; 7] {
+    // Numerically this function must work on BigUints or there is something
+    // wrong with our approach.  Specifically, BigUint will throw and exception
+    // if a subtraction would underflow.
+    //
+    // By working in BigUint for this part, we implicitly check our invariant
+    // that subtracting the remainder never underflows.
+    //
+    // See the foreign field multiplication RFC for more details.
+    auto_clone_array!(products);
+    auto_clone_array!(remainder);
+
+    // C1-C2: Compute components of product1
+    let (product1_hi, product1_lo) = products(1).div_rem(&BigUint::two_to_limb());
+    let (product1_hi_1, product1_hi_0) = product1_hi.div_rem(&BigUint::two_to_limb());
+
+    // C3-C5: Compute v0 = the top 2 bits of (p0 + 2^L * p10 - r0 - 2^L * r1) / 2^2L
+    //   N.b. To avoid an underflow error, the equation must sum the intermediate
+    //        product terms before subtracting limbs of the remainder.
+    let (carry0, _) = (products(0) + BigUint::two_to_limb() * product1_lo.clone()
+        - remainder(0)
+        - BigUint::two_to_limb() * remainder(1))
+    .div_rem(&BigUint::two_to_2limb());
+
+    // C6-C9: Compute v1 = the top L + 3 bits (p2 + p11 + v0 - r2) / 2^L
+    //   N.b. Same as above, to avoid an underflow error, the equation must
+    //        sum the intermediate product terms before subtracting the remainder.
+    let (carry1, _) = (products(2) + product1_hi + carry0.clone() - remainder(2))
+        .div_rem(&BigUint::two_to_limb());
+    // Compute v10 and v11
+    let (carry1_hi, carry1_lo) = carry1.div_rem(&BigUint::two_to_limb());
+    // Compute the scaled_carry1_hi
+    let scaled_carry1_hi = carry1_hi.clone() * BigUint::from(512u32); // carr1_hi * 2^9
+
+    [
+        product1_lo,
+        product1_hi_0,
+        product1_hi_1,
+        carry0,
+        carry1_lo,
+        carry1_hi,
+        scaled_carry1_hi,
+    ]
+    .to_fields()
+}
+
+fn compute_bound_witness_variables<F: PrimeField>(
+    sums: &[BigUint; 2],  // [sum01, sum2]
+    bound: &[BigUint; 2], // [bound01, bound2]
+) -> [F; 2] {
+    auto_clone_array!(sums);
+    auto_clone_array!(bound);
+
+    // C10: witness data is created by externally by called and multi-range-check gate
+
+    // C11-C12: Compute q'_carry01 = (s01 - q'01)/2^2L
+    let (quotient_bound_carry01, _) = (sums(0) - bound(0)).div_rem(&BigUint::two_to_2limb());
+
+    // C13-C14: Compute q'_carry2 = (s2 + q'_carry01 - q'2)/2^L
+    let (quotient_bound_carry2, _) =
+        (sums(1) + quotient_bound_carry01.clone() - bound(1)).div_rem(&BigUint::two_to_limb());
+
+    [quotient_bound_carry01, quotient_bound_carry2].to_fields()
+}
+
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
 pub fn create<F: PrimeField>(
-    left_input: ForeignElement<F, 3>,
-    right_input: ForeignElement<F, 3>,
-    foreign_modulus: ForeignElement<F, 3>,
-) -> [Vec<F>; COLUMNS] {
+    left_input: &BigUint,
+    right_input: &BigUint,
+    foreign_field_modulus: &BigUint,
+) -> ([Vec<F>; COLUMNS], ExternalChecks<F>) {
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
+    let mut external_checks = ExternalChecks::<F>::default();
 
-    // Create multi-range-check witness for left_input and right_input
-    range_check::witness::extend(&mut witness, left_input.clone());
-    range_check::witness::extend(&mut witness, right_input.clone());
+    // Compute quotient and remainder using foreign field modulus
+    let (quotient, remainder) = (left_input * right_input).div_rem(foreign_field_modulus);
 
-    // Compute quotient and remainder and add to witness
-    let (quotient, remainder) =
-        (left_input.to_biguint() * right_input.to_biguint()).div_rem(&foreign_modulus.to_biguint());
-    let quotient = ForeignElement::from_biguint(quotient);
-    let remainder = ForeignElement::from_biguint(remainder);
-    range_check::witness::extend(&mut witness, quotient.clone());
-    range_check::witness::extend(&mut witness, remainder.clone());
+    // Compute negated foreign field modulus f' = 2^t - f public parameter
+    let neg_foreign_field_modulus = foreign_field_modulus.negate();
 
-    let two = F::from(2u32);
-    let two_to_limb = two.pow(&[LIMB_BITS as u64]);
-    let power_lo_top = two; // 2^{2L+1}
-    let power_mi_top = two_to_limb * two * two; // 2^{2L+2}
-                                                //let power_hi_top = power_mi.clone() * two.clone(); // 2^{2L+3}
-
-    let (product_lo, product_mi, product_hi, aux_lo, aux_mi, aux_hi) =
-        compute_auxiliar(left_input, right_input, quotient, foreign_modulus);
-
-    // Define some helpers
-    let product_mi_big: BigUint = product_mi.into();
-
-    let two_to_88: F = F::from(2u128.pow(LIMB_BITS as u32));
-    let two_to_88_big: BigUint = two_to_88.into();
-    let two_to_176 = two_to_88_big.clone() * two_to_88_big.clone();
-    let (product_mi_top, product_mi_bot) = product_mi_big.div_rem(&two_to_88_big);
-
-    let zero_bot = product_lo - remainder[0]
-        + two_to_88 * (F::from_biguint(product_mi_bot.clone()).unwrap() - remainder[1]);
-    let zero_bot_big: BigUint = zero_bot.into();
-    let (carry_bot, _) = zero_bot_big.div_rem(&two_to_176);
-
-    let (_, product_mi_top_limb) = product_mi_top.div_rem(&two_to_88_big);
-    let zero_top: F = F::from_biguint(carry_bot.clone()).unwrap()
-        + F::from_biguint(product_mi_top).unwrap()
-        + product_hi
-        - remainder[2]
-        - aux_lo * power_lo_top
-        - aux_mi * power_mi_top;
-    let zero_top_big: BigUint = zero_top.into();
-    let (carry_top_big, _) = zero_top_big.div_rem(&two_to_88_big);
-    let carry_top: F = F::from_biguint(carry_top_big.clone()).unwrap();
-    let (_carry_top_over, carry_top_limb) = carry_top_big.div_rem(&two_to_88_big);
-
-    let product_mi_bot = F::from_biguint(product_mi_bot).expect("big_f does not fit in F");
-    let product_mi_top_limb =
-        F::from_biguint(product_mi_top_limb).expect("big_f does not fit in F");
-    let carry_top_limb = F::from_biguint(carry_top_limb).expect("big_f does not fit in F");
-
-    // Define the row for the multi-range check for the product_mi_bot, product_mi_top_limb, and carry_top_limb
-    range_check::witness::extend(
-        &mut witness,
-        ForeignElement::new([product_mi_bot, product_mi_top_limb, carry_top_limb]),
+    // Compute the intermediate products
+    let products: [F; 3] = circuitgates::compute_intermediate_products(
+        &left_input.to_field_limbs(),
+        &right_input.to_field_limbs(),
+        &quotient.to_field_limbs(),
+        &neg_foreign_field_modulus.to_field_limbs(),
     );
 
-    // Create foreign ForeignFieldMul witness rows (curr and next)
+    // Compute the intermediate sums [sum01, sum2] for quotient bound addition
+    let sums: [F; 2] = circuitgates::compute_intermediate_sums(
+        &quotient.to_field_limbs(),
+        &neg_foreign_field_modulus.to_field_limbs(),
+    );
+
+    // Compute witness variables
+    let [product1_lo, product1_hi_0, product1_hi_1, carry0, carry1_lo, carry1_hi, scaled_carry1_hi] =
+        compute_witness_variables(&products.to_limbs(), &remainder.to_limbs());
+
+    // Track witness data for external multi-range-check on certain components of intermediate product and carry
+    external_checks.add_multi_range_check(&[carry1_lo, product1_lo, product1_hi_0]);
+
+    // Compute bounds for multi-range-checks on quotient and remainder
+    let quotient_bound = compute_bound(&quotient, &neg_foreign_field_modulus);
+    let remainder_bound = compute_bound(&remainder, &neg_foreign_field_modulus);
+
+    // Track witness data for external multi-range-checks on quotient and remainder bounds
+    external_checks.add_compact_multi_range_check(&quotient_bound.to_compact_field_limbs());
+    external_checks.add_multi_range_check(&remainder_bound.to_field_limbs());
+    external_checks.add_bound_check(&remainder.to_field_limbs());
+
+    // Compute quotient bound addition witness variables
+    let [quotient_bound_carry01, quotient_bound_carry2] =
+        compute_bound_witness_variables(&sums.to_biguints(), &quotient_bound.to_compact_limbs());
+
+    // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
         w.extend(std::iter::repeat(F::zero()).take(2));
     }
 
-    let carry_bot = F::from_biguint(carry_bot).expect("big_f does not fit in F");
-
-    // ForeignFieldMul and Zero row
+    // Create the foreign field multiplication witness rows
+    let left_input = left_input.to_field_limbs();
+    let right_input = right_input.to_field_limbs();
+    let quotient = quotient.to_field_limbs();
+    let remainder = remainder.to_field_limbs();
+    let quotient_bound = quotient_bound.to_compact_field_limbs();
     witness::init(
         &mut witness,
-        20,
+        0,
         &create_layout(),
         &variable_map![
-            "product_mi" => product_mi,
-            "carry_bot" => carry_bot,
-            "carry_top" => carry_top,
-            "aux_lo" => aux_lo,
-            "aux_mi" => aux_mi,
-            "aux_hi" => aux_hi
+            "left_input0" => left_input[0],
+            "left_input1" => left_input[1],
+            "left_input2" => left_input[2],
+            "right_input0" => right_input[0],
+            "right_input1" => right_input[1],
+            "right_input2" => right_input[2],
+            "carry1_lo" => carry1_lo,
+            "carry1_hi" => carry1_hi,
+            "scaled_carry1_hi" => scaled_carry1_hi,
+            "product1_hi_1" => product1_hi_1,
+            "carry0" => carry0,
+            "quotient0" => quotient[0],
+            "quotient1" => quotient[1],
+            "quotient2" => quotient[2],
+            "quotient_bound_carry01" => quotient_bound_carry01,
+            "remainder0" => remainder[0],
+            "remainder1" => remainder[1],
+            "remainder2" => remainder[2],
+            "quotient_bound01" => quotient_bound[0],
+            "quotient_bound2" => quotient_bound[1],
+            "product1_lo" => product1_lo,
+            "product1_hi_0" => product1_hi_0,
+            "quotient_bound_carry2" => quotient_bound_carry2
         ],
     );
 
-    witness
+    (witness, external_checks)
 }
 
-pub fn check_witness<F: PrimeField>(
-    witness: &[Vec<F>; COLUMNS],
-    foreign_mod: &ForeignElement<F, 3>,
-) -> Result<(), String> {
-    let left_input_lo = witness[0][20];
-    let left_input_mi = witness[1][20];
-    let left_input_hi = witness[2][20];
-
-    let right_input_lo = witness[3][20];
-    let right_input_mi = witness[4][20];
-    let right_input_hi = witness[0][21];
-
-    let carry_shift = witness[5][20];
-    let product_shift = witness[6][20];
-
-    let quotient_lo = witness[1][21];
-    let quotient_mi = witness[2][21];
-    let quotient_hi = witness[3][21];
-
-    let remainder_lo = witness[4][21];
-    let remainder_mi = witness[5][21];
-    let remainder_hi = witness[6][21];
-
-    let aux_lo = witness[7][21];
-    let aux_mi = witness[8][21];
-    let aux_hi = witness[9][21];
-
-    let product_mi_bot = witness[7][20];
-    let product_mi_top_limb = witness[8][20];
-    let product_mi_top_over = witness[9][20];
-    let carry_bot = witness[10][20];
-    let carry_top_limb = witness[11][20];
-    let carry_top_over = witness[12][20];
-
-    let two = F::from(2u32);
-    let two_to_limb = two.pow(&[LIMB_BITS as u64]);
-    let power_lo_top = two; // 2^{2L+1}
-    let power_mi_top = two_to_limb * two * two; // 2^
-                                                //let power_hi_top = power_mi.clone() * two.clone(); // 2^{2L+3}
-
-    let left_input = ForeignElement::new([left_input_lo, left_input_mi, left_input_hi]);
-    let right_input = ForeignElement::new([right_input_lo, right_input_mi, right_input_hi]);
-    let quotient = ForeignElement::new([quotient_lo, quotient_mi, quotient_hi]);
-    let (product_lo, product_mi, product_hi, _aux_lo, _aux_mi, _aux_hi) =
-        compute_auxiliar(left_input, right_input, quotient, foreign_mod.clone());
-
-    let two_to_8 = F::from(2u32.pow(8));
-    let two_to_9 = F::from(2u32.pow(9));
-    let two_to_88 = F::from(2u128.pow(88));
-    let two_to_176 = two_to_88 * two_to_88;
-
-    assert_eq!(F::zero(), aux_lo * (aux_lo - F::one()));
-    assert_eq!(F::zero(), aux_mi * (aux_mi - F::one()));
-    assert_eq!(F::zero(), aux_hi * (aux_hi - F::one()));
-
-    let product_mi_top = two_to_88 * product_mi_top_over + product_mi_top_limb;
-    let product_mi_sum = two_to_88 * product_mi_top + product_mi_bot;
-    assert_eq!(F::zero(), product_mi - product_mi_sum);
-
-    assert_eq!(F::zero(), crumb(&carry_bot));
-
-    assert_eq!(F::zero(), crumb(&product_mi_top_over));
-
-    assert_eq!(F::zero(), carry_shift - two_to_8 * carry_top_over);
-
-    assert_eq!(F::zero(), product_shift - two_to_9 * product_mi_top_over);
-
-    let zero_bot = product_lo - remainder_lo + two_to_88 * (product_mi_bot - remainder_mi);
-    assert_eq!(F::zero(), zero_bot - two_to_176 * carry_bot);
-
-    let carry_top = two_to_88 * carry_top_over + carry_top_limb;
-    let zero_top = carry_bot + product_mi_top + product_hi
-        - remainder_hi
-        - aux_lo * power_lo_top
-        - aux_mi * power_mi_top;
-    assert_eq!(F::zero(), zero_top - two_to_88 * carry_top);
-
-    Ok(())
+/// Track external check witness data
+#[derive(Default)]
+pub struct ExternalChecks<F: PrimeField> {
+    pub multi_ranges: Vec<[F; 3]>,
+    pub compact_multi_ranges: Vec<[F; 2]>,
+    pub bounds: Vec<[F; 3]>,
 }
 
-/// Compute nonzero intermediate products with the bitstring format.
-/// It also returns the auxiliary flags for underflows.
-///
-/// For details see this section of the design document
-///
-/// <https://hackmd.io/37M7qiTaSIKaZjCC5OnM1w?view#Intermediate-products>
-///
-pub fn compute_auxiliar<F: Field>(
-    left_input: ForeignElement<F, 3>,
-    right_input: ForeignElement<F, 3>,
-    quotient: ForeignElement<F, 3>,
-    foreign_modulus: ForeignElement<F, 3>,
-) -> (F, F, F, F, F, F) {
-    let left_input_lo = left_input[0];
-    let left_input_mi = left_input[1];
-    let left_input_hi = left_input[2];
-    let right_input_lo = right_input[0];
-    let right_input_mi = right_input[1];
-    let right_input_hi = right_input[2];
-    let quotient_lo = quotient[0];
-    let quotient_mi = quotient[1];
-    let quotient_hi = quotient[2];
-    let foreign_modulus_lo = foreign_modulus[0];
-    let foreign_modulus_mi = foreign_modulus[1];
-    let foreign_modulus_hi = foreign_modulus[2];
-
-    let two = F::from(2u32);
-    let two_to_limb = two.pow(&[LIMB_BITS as u64]);
-    let power_lo = two_to_limb * two_to_limb * two; // 2^{2L+1}
-    let power_mi = power_lo * two; // 2^{2L+2}
-    let power_hi = power_mi * two; // 2^{2L+3}
-
-    let mut aux_lo = F::zero();
-    let mut aux_mi = F::zero();
-    let mut aux_hi = F::zero();
-
-    let add_lo = left_input_lo * right_input_lo;
-    let sub_lo = quotient_lo * foreign_modulus_lo;
-    if add_lo < sub_lo {
-        aux_lo = F::one();
-    }
-    let add_mi = left_input_lo * right_input_mi + left_input_mi * right_input_lo;
-    let sub_mi = quotient_lo * foreign_modulus_mi + quotient_mi * foreign_modulus_lo;
-    if add_mi < sub_mi {
-        aux_mi = F::one();
-    }
-    let add_hi = left_input_lo * right_input_hi
-        + left_input_hi * right_input_lo
-        + left_input_mi * right_input_mi;
-    let sub_hi = quotient_lo * foreign_modulus_hi
-        + quotient_hi * foreign_modulus_lo
-        + quotient_mi * foreign_modulus_mi;
-    if add_hi < sub_hi {
-        aux_hi = F::one();
+impl<F: PrimeField> ExternalChecks<F> {
+    /// Track a bound check
+    pub fn add_bound_check(&mut self, limbs: &[F; 3]) {
+        self.bounds.push(*limbs);
     }
 
-    let product_lo = add_lo - sub_lo + aux_lo * power_lo;
-    let product_mi = add_mi - sub_mi + aux_mi * power_mi;
-    let product_hi = add_hi - sub_hi + aux_hi * power_hi;
+    /// Track a multi-range-check
+    pub fn add_multi_range_check(&mut self, limbs: &[F; 3]) {
+        self.multi_ranges.push(*limbs);
+    }
 
-    (product_lo, product_mi, product_hi, aux_lo, aux_mi, aux_hi)
+    /// Track a compact-multi-range-check
+    pub fn add_compact_multi_range_check(&mut self, limbs: &[F; 2]) {
+        self.compact_multi_ranges.push(*limbs);
+    }
+
+    /// Extend the witness with external multi range_checks
+    pub fn extend_witness_multi_range_checks(&self, witness: &mut [Vec<F>; COLUMNS]) {
+        for [v0, v1, v2] in self.multi_ranges.clone() {
+            range_check::witness::extend_multi(witness, v0, v1, v2)
+        }
+    }
+
+    pub fn extend_witness_bound_addition(
+        &self,
+        witness: &mut [Vec<F>; COLUMNS],
+        foreign_field_modulus: &[F; 3],
+    ) {
+        for bound in self.bounds.clone() {
+            foreign_field_add::witness::extend_witness_bound_addition(
+                witness,
+                &bound,
+                foreign_field_modulus,
+            );
+        }
+    }
 }
