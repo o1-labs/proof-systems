@@ -1,8 +1,13 @@
 [package]
 name = "circuit-construction"
 version = "0.1.0"
+description = "A simple circuit writer for kimchi"
+repository = "https://github.com/o1-labs/proof-systems"
 edition = "2021"
 license = "Apache-2.0"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "../README.md"
 
 [lib]
 path = "src/lib.rs"
