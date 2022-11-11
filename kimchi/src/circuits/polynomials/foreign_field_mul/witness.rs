@@ -126,6 +126,8 @@ fn compute_witness_variables<F: PrimeField>(
     // Compute the scaled_carry1_hi
     let scaled_carry1_hi = carry1_hi.clone() * BigUint::from(512u32); // carr1_hi * 2^9
 
+    // C10: witness data a, b, q, and r already present
+
     [
         product1_lo,
         product1_hi_0,
@@ -145,12 +147,12 @@ fn compute_bound_witness_variables<F: PrimeField>(
     auto_clone_array!(sums);
     auto_clone_array!(bound);
 
-    // C10: witness data is created by externally by called and multi-range-check gate
+    // C11: witness data is created by externally by called and multi-range-check gate
 
-    // C11-C12: Compute q'_carry01 = (s01 - q'01)/2^2L
+    // C12-C13: Compute q'_carry01 = (s01 - q'01)/2^2L
     let (quotient_bound_carry01, _) = (sums(0) - bound(0)).div_rem(&BigUint::two_to_2limb());
 
-    // C13-C14: Compute q'_carry2 = (s2 + q'_carry01 - q'2)/2^L
+    // C14-C15: Compute q'_carry2 = (s2 + q'_carry01 - q'2)/2^L
     let (quotient_bound_carry2, _) =
         (sums(1) + quotient_bound_carry01.clone() - bound(1)).div_rem(&BigUint::two_to_limb());
 

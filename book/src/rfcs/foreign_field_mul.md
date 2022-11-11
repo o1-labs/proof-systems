@@ -513,11 +513,11 @@ So we have 3.a, 3.b, 4, 7, 8.a, 8.b.
 
 So we have 1 multi-range-check, 1 single-range-check and 2 low-degree range checks. This consumes just over 5 rows.
 
-## Use CRT to constrain $ab - qf - r \equiv 0 \mod n$
+## Use CRT to constrain $a \cdot b - q \cdot f - r \equiv 0 \mod n$
 
-While the above constrains things $\mod 2^t$, remember that our application of CRT means that we must also constrain $\mod n$.
+Until now we have constrained the equation $\mod 2^t$, but remember that our application of CRT means that we must also constrain the equation $\mod n$.  We are leveraging the fact that if the identity holds for both moduli in $M = \{n, 2^t\}$, then it holds for $\mathtt{lcm} (M)$.
 
-Thus, we must check $ab - qf - r \equiv 0 \mod n$, which is over $\mathbb{F}_n$.
+  Thus, we must check $a \cdot b - q \cdot f - r \equiv 0 \mod n$, which is over $\mathbb{F}_n$.
 
 This gives us equality $\mod 2^t \cdot n$ as long as the divisors are coprime.  That is, as long as $\mathsf{gcd}(2^t, n) = 1$.  Since the native modulus $n$ is prime, this is true.
 
@@ -525,11 +525,11 @@ Thus, to perform this check is simple.  We compute
 
 $$
 \begin{aligned}
-a' &= a \mod n \\
-b' &= b \mod n \\
-q' &= q \mod n \\
-f'' &= f \mod n \\
-r' &= r \mod n
+a_n &= a \mod n \\
+b_n &= b \mod n \\
+q_n &= q \mod n \\
+r_n &= r \mod n \\
+f_n &= f \mod n
 \end{aligned}
 $$
 
@@ -537,25 +537,27 @@ using our native field modulus with constraints like this
 
 $$
 \begin{aligned}
-a' &= 2^{2\ell} \cdot a_2 + 2^{\ell} \cdot a_1 + a_0 \\
-b' &= 2^{2\ell} \cdot b_2 + 2^{\ell} \cdot b_1 + b_0 \\
-q' &= 2^{2\ell} \cdot q_2 + 2^{\ell} \cdot q_1 + q_0 \\
-f'' &= 2^{2\ell} \cdot f_2 + 2^{\ell} \cdot f_1 + f_0 \\
-r' & = 2^{2\ell} \cdot r_2 + 2^{\ell} \cdot r_1 + r_0 \\
+a_n &= 2^{2\ell} \cdot a_2 + 2^{\ell} \cdot a_1 + a_0 \\
+b_n &= 2^{2\ell} \cdot b_2 + 2^{\ell} \cdot b_1 + b_0 \\
+q_n &= 2^{2\ell} \cdot q_2 + 2^{\ell} \cdot q_1 + q_0 \\
+r_n & = 2^{2\ell} \cdot r_2 + 2^{\ell} \cdot r_1 + r_0 \\
+f_n &= 2^{2\ell} \cdot f_2 + 2^{\ell} \cdot f_1 + f_0 \\
 \end{aligned}
 $$
 
 and then constrain
 
 $$
-a' \cdot b' - q' \cdot f'' - r' = 0 \mod n.
+a_n \cdot b_n - q_n \cdot f_n - r_n = 0 \mod n.
 $$
+
+Note that we do not use the negated foreign field modulus here.
 
 This requires a single constraint of the form
 
-> 9. $a' \cdot b' - q' \cdot f'' - r' = 0 \mod n$
+> 9. $a_n \cdot b_n - q_n \cdot f_n = r_n$
 
-with all of the terms expanded into the limbs according the the above equations.  The values $a', b', q', f''$ and $r'$ do not need to be in the witness.
+with all of the terms expanded into the limbs according the the above equations.  The values $a_n, b_n, q_n, f_n$ and $r_n$ do not need to be in the witness.
 
 ## Range check both sides of $a \cdot b = q \cdot f + r$
 
@@ -982,7 +984,17 @@ Compute and constrain the intermediate sums $s_{01} and $s_21$ as:
 - $q_{01} = q_0 + 2^{\ell} \cdot q_1$
 - $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$
 
-### 7. Decompose middle intermediate product
+### 7. Native modulus computations
+
+Compute and constrain the native modulus values, which are used to check the constraints modulo $n$ in order to apply the CRT
+
+- $a_n = 2^{2\ell} \cdot a_2 + 2^{\ell} \cdot a_1 + a_0 \mod n$
+- $b_n = 2^{2\ell} \cdot b_2 + 2^{\ell} \cdot b_1 + b_0 \mod n$
+- $q_n = 2^{2\ell} \cdot q_2 + 2^{\ell} \cdot q_1 + q_0 \mod n$
+- $r_n = 2^{2\ell} \cdot r_2 + 2^{\ell} \cdot r_1 + r_0 \mod n$
+- $f_n = 2^{2\ell} \cdot f_2 + 2^{\ell} \cdot f_1 + f_0 \mod n$
+
+### 8. Decompose middle intermediate product
 
 Check that $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$:
 
@@ -993,7 +1005,7 @@ Check that $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$:
     - Range check $p_{110} \in [0, 2^\ell)$ `multi-range-check`
     - Range check $p_{111} \in [0, 2^2)$ with a degree-4 constraint `ForeignFieldMul`
 
-### 8. Zero sum
+### 9. Zero sum
 
 Now we have to constrain the zero sum
 
@@ -1067,7 +1079,7 @@ For the $q$ bound addition we must also compute
 3. $q_{01} = q_0 + 2^{\ell} \cdot q_1$
 4. $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$
 
-> Note that alternatively
+> Note the equivalence
 >
 > $$
 > \begin{aligned}
@@ -1079,6 +1091,14 @@ For the $q$ bound addition we must also compute
 > $$
 >
 > where $q'_0 = q_0 + f'_0$ and $q'_1 = q_1 + f'_1$ can be done with checked computations.
+
+Next, for applying the CRT we compute
+
+1. $a_n = 2^{2\ell} \cdot a_2 + 2^{\ell} \cdot a_1 + a_0 \mod n$
+2. $b_n = 2^{2\ell} \cdot b_2 + 2^{\ell} \cdot b_1 + b_0 \mod n$
+3. $q_n = 2^{2\ell} \cdot q_2 + 2^{\ell} \cdot q_1 + q_0 \mod n$
+4. $r_n = 2^{2\ell} \cdot r_2 + 2^{\ell} \cdot r_1 + r_0 \mod n$
+5. $f_n = 2^{2\ell} \cdot f_2 + 2^{\ell} \cdot f_1 + f_0 \mod n$
 
 In total we require the following checks
 
@@ -1095,14 +1115,15 @@ In total we require the following checks
 11. $2^9 \cdot v_{11} = \mathsf{scaled}_{v_{11}}$
 12. $v_1 = 2^{\ell} \cdot v_{11} + v_{10}$
 13. $2^{\ell} \cdot v_1 = v_0 + p_{11} + p_2 - r_2$
-14. $q'_0 \in [0, 2^{\ell})$ `multi-range-check`
-15. $q'_1 \in [0, 2^{\ell})$ `multi-range-check`
-16. $q'_2 \in [0, 2^{\ell})$ `multi-range-check`
-17. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `multi-range-check`
-18. $q'_{carry01} \in [0, 2)$
-19. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
-20. $q'_{carry2} \in [0, 2)$
-21. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+14. $a_n \cdot b_n - q_n \cdot f_n = r_n$
+15. $q'_0 \in [0, 2^{\ell})$ `multi-range-check`
+16. $q'_1 \in [0, 2^{\ell})$ `multi-range-check`
+17. $q'_2 \in [0, 2^{\ell})$ `multi-range-check`
+18. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `multi-range-check`
+19. $q'_{carry01} \in [0, 2)$
+20. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
+21. $q'_{carry2} \in [0, 2)$
+22. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
 
 These checks can be condensed into the minimal number of constraints as follows.
 
@@ -1140,27 +1161,31 @@ Now checks (12) and (13) can be combined into
 
 **C9:**  $2^{\ell} \cdot (v_{11} \cdot 2^{\ell} + v_{10}) = p_2 + p_{11} + v_0 - r_2$
 
+Next, for our use of the CRT, we must constrain that $a \cdot b = q \cdot f + r \mod n$.  Thus, check (14) is
+
+**C10:** $a_n \cdot b_n - q_n \cdot f_n = r_n$
+
 Next we must constrain the quotient bound addition.
 
-Checks (14) - (17) are all combined into `multi-range-check` gadget
+Checks (15) - (18) are all combined into `multi-range-check` gadget
 
-**C10:** `multi-range-check` $q'_0, q'_1, q'_2$ and $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
+**C11:** `multi-range-check` $q'_0, q'_1, q'_2$ and $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
 
-Check (18) is a carry bit boolean check
+Check (19) is a carry bit boolean check
 
-**C11:** $q'_{carry01} \cdot (q'_{carry01} - 1)$
+**C12:** $q'_{carry01} \cdot (q'_{carry01} - 1)$
 
-Next, check (19) is
+Next, check (20) is
 
-**C12:** $2^{2\ell} \cdot q'_{carry10} = s_{01} - q'_{01}$
+**C13:** $2^{2\ell} \cdot q'_{carry10} = s_{01} - q'_{01}$
 
-Check (20) is another boolean check
+Check (21) is another boolean check
 
-**C13:** $q'_{carry2} \cdot (q'_{carry2} - 1)$
+**C14:** $q'_{carry2} \cdot (q'_{carry2} - 1)$
 
-Finally, check (21) is
+Finally, check (22) is
 
-**C14:** $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+**C15:** $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
 
 The `Zero` gate has no constraints and is just used to hold values required by the `ForeignFieldMul` gate.
 

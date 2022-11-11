@@ -474,17 +474,18 @@ fn test_max_foreign_multiplicands() {
     );
     assert_eq!(result, Ok(()));
     assert_eq!(
-        secp256k1_max() * pallas_max() % secp256k1_modulus(),
+        secp256k1_max() * secp256k1_max() % secp256k1_modulus(),
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 }
+
 
 #[test]
 // Test witness with invalid quotient fails verification
 fn test_zero_mul_invalid_quotient() {
     let (result, _) = run_test(
         false,
-        false,
+        true,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
@@ -497,7 +498,7 @@ fn test_zero_mul_invalid_quotient() {
 
     let (result, _) = run_test(
         false,
-        false,
+        true,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
@@ -510,7 +511,7 @@ fn test_zero_mul_invalid_quotient() {
 
     let (result, _) = run_test(
         false,
-        false,
+        true,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
@@ -523,7 +524,7 @@ fn test_zero_mul_invalid_quotient() {
 
     let (result, _) = run_test(
         false,
-        false,
+        true,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
@@ -536,7 +537,7 @@ fn test_zero_mul_invalid_quotient() {
 
     let (result, _) = run_test(
         false,
-        false,
+        true,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
@@ -549,7 +550,7 @@ fn test_zero_mul_invalid_quotient() {
 
     let (result, _) = run_test(
         false,
-        false,
+        true,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),

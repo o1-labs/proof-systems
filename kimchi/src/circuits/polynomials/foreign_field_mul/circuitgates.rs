@@ -106,7 +106,7 @@ use crate::{
     },
 };
 use ark_ff::PrimeField;
-use std::marker::PhantomData;
+use std::{array, marker::PhantomData};
 
 /// Compute non-zero intermediate products
 ///
@@ -142,7 +142,7 @@ pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
     ]
 }
 
-/// Compute nonzero intermediate sums
+/// Compute intermediate sums
 ///
 /// For more details see the "Optimizations" Section of
 /// the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
@@ -169,6 +169,36 @@ pub fn compute_intermediate_sums<F: PrimeField, T: ExprOps<F>>(
     ]
 }
 
+// Compute native modulus values
+pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
+    left_input: &[T; 3],
+    right_input: &[T; 3],
+    quotient: &[T; 3],
+    remainder: &[T; 3],
+    foreign_field_modulus: &[T; 3],
+) -> [T; 5] {
+    auto_clone_array!(left_input);
+    auto_clone_array!(right_input);
+    auto_clone_array!(quotient);
+    auto_clone_array!(remainder);
+    auto_clone_array!(foreign_field_modulus);
+
+    [
+        // an = 2^2L * a2 + 2^L * a1 + a0
+        T::two_to_2limb() * left_input(2) + T::two_to_limb() * left_input(1) + left_input(0),
+        // bn = 2^2L * b2 + 2^L * b1 + b0
+        T::two_to_2limb() * right_input(2) + T::two_to_limb() * right_input(1) + right_input(0),
+        // qn = 2^2L * q2 + 2^L * q1 + b0
+        T::two_to_2limb() * quotient(2) + T::two_to_limb() * quotient(1) + quotient(0),
+        // rn = 2^2L * r2 + 2^L * r1 + r0
+        T::two_to_2limb() * remainder(2) + T::two_to_limb() * remainder(1) + remainder(0),
+        // fn = 2^2L * f2 + 2^L * f1 + f0
+        T::two_to_2limb() * foreign_field_modulus(2)
+            + T::two_to_limb() * foreign_field_modulus(1)
+            + foreign_field_modulus(0),
+    ]
+}
+
 // ForeignFieldMul - foreign field multiplication gate
 ///    * This gate operates on the Curr and Next rows
 ///    * It uses copy, plookup, crumb and custom constraints
@@ -180,7 +210,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 10;
+    const CONSTRAINTS: u32 = 11;
     // DEGREE is 4
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
@@ -230,15 +260,12 @@ where
         let quotient_bound_carry2 = env.witness_next(14);
 
         // Remainder r (a.k.a. result)
-        auto_clone_array!(
-            remainder,
-            [
-                // Copied for multi-range-check
-                env.witness_next(0),
-                env.witness_next(1),
-                env.witness_next(2),
-            ]
-        );
+        let remainder = [
+            // Copied for multi-range-check
+            env.witness_next(0),
+            env.witness_next(1),
+            env.witness_next(2),
+        ];
 
         // Quotient bound (copied for multi-range-check)
         let quotient_bound01 = env.witness_next(3);
@@ -249,12 +276,13 @@ where
         let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
         let product1_hi_1 = env.witness_next(7);
 
+        // Foreign field modulus limbs
+        let foreign_field_modulus =
+            array::from_fn(|i| env.constant(ConstantExpr::ForeignFieldModulus(i)));
+
         // Negated foreign field modulus limbs
-        let neg_foreign_field_modulus = [
-            env.constant(ConstantExpr::NegForeignFieldModulus(0)),
-            env.constant(ConstantExpr::NegForeignFieldModulus(1)),
-            env.constant(ConstantExpr::NegForeignFieldModulus(2)),
-        ];
+        let neg_foreign_field_modulus =
+            array::from_fn(|i| env.constant(ConstantExpr::NegForeignFieldModulus(i)));
 
         // Compute intermediate products
         auto_clone_array!(
@@ -269,6 +297,16 @@ where
 
         // Compute intermediate sums
         let [sum01, sum2] = compute_intermediate_sums(&quotient, &neg_foreign_field_modulus);
+
+        // Compute native modulus values
+        let [left_input_n, right_input_n, quotient_n, remainder_n, foreign_field_modulus_n] =
+            compute_native_modulus_values(
+                &left_input,
+                &right_input,
+                &quotient,
+                &remainder,
+                &foreign_field_modulus,
+            );
 
         // Define the constraints
         //   For more the details on each constraint please see the
@@ -297,8 +335,8 @@ where
         constraints.push(
             T::two_to_2limb() * carry0.clone()
                 - (products(0) + T::two_to_limb() * product1_lo
-                    - remainder(0)
-                    - T::two_to_limb() * remainder(1)),
+                    - remainder[0].clone()
+                    - T::two_to_limb() * remainder[1].clone()),
         );
 
         // C6: Constrain v11 is 12-bits (done with plookup)
@@ -313,25 +351,30 @@ where
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         constraints.push(
             T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
-                - (products(2) + product1_hi + carry0 - remainder(2)),
+                - (products(2) + product1_hi + carry0 - remainder[2].clone()),
         );
 
-        // C10: multi-range-check q0', q1' q2'
+        // C10: Native modulus constraint a_n * b_n - q_n * f_n = r_n
+        constraints.push(
+            left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
+        );
+
+        // C11: multi-range-check q0', q1' q2'
         //      Constrain q'01 = q'0 + 2^L * q'1
         //      Must be done externally with a multi-range-check gadget
         //      configured to constrain q'12
 
-        // C11: Constrain q'_carry01 is boolean
+        // C12: Constrain q'_carry01 is boolean
         constraints.push(quotient_bound_carry01.boolean());
 
-        // C12: Constrain that  2^2L * q'_carry01 = s01 - q'01
+        // C13: Constrain that  2^2L * q'_carry01 = s01 - q'01
         constraints
             .push(T::two_to_2limb() * quotient_bound_carry01.clone() - sum01 + quotient_bound01);
 
-        // C13: Constrain q'_carry2 is boolean
+        // C14: Constrain q'_carry2 is boolean
         constraints.push(quotient_bound_carry2.boolean());
 
-        // C14: Constrain that 2^L * q'_carry2 = s2 + q'_carry01 - q'2
+        // C15: Constrain that 2^L * q'_carry2 = s2 + q'_carry01 - q'2
         constraints.push(
             T::two_to_limb() * quotient_bound_carry2 - sum2 - quotient_bound_carry01
                 + quotient_bound2,
