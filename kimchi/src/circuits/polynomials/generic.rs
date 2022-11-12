@@ -34,7 +34,9 @@
 //~
 
 use crate::circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType},
     constraints::ConstraintSystem,
+    expr::constraints::ExprOps,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::GateWires,
@@ -45,6 +47,7 @@ use ark_poly::{
 };
 use rayon::prelude::*;
 use std::array;
+use std::marker::PhantomData;
 
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: u32 = 2;
@@ -62,6 +65,53 @@ pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
 
 /// Number of generic of registers by a double generic gate.
 pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
+
+/// Implementation of the `Generic` gate
+pub struct Generic<F>(PhantomData<F>);
+
+impl<F> Argument<F> for Generic<F>
+where
+    F: PrimeField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
+    const CONSTRAINTS: u32 = 2;
+
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        // First generic gate
+        let left_coeff1 = env.coeff(0);
+        let right_coeff1 = env.coeff(1);
+        let out_coeff1 = env.coeff(2);
+        let mul_coeff1 = env.coeff(3);
+        let constant1 = env.coeff(4);
+        let left1 = env.witness_curr(0);
+        let right1 = env.witness_curr(1);
+        let out1 = env.witness_curr(2);
+
+        let constraint1 = left_coeff1 * left1.clone()
+            + right_coeff1 * right1.clone()
+            + out_coeff1 * out1
+            + mul_coeff1 * left1 * right1
+            + constant1;
+
+        // Second generic gate
+        let left_coeff2 = env.coeff(5);
+        let right_coeff2 = env.coeff(6);
+        let out_coeff2 = env.coeff(7);
+        let mul_coeff2 = env.coeff(8);
+        let constant2 = env.coeff(9);
+        let left2 = env.witness_curr(3);
+        let right2 = env.witness_curr(4);
+        let out2 = env.witness_curr(5);
+
+        let constraint2 = left_coeff2 * left2.clone()
+            + right_coeff2 * right2.clone()
+            + out_coeff2 * out2
+            + mul_coeff2 * left2 * right2
+            + constant2;
+
+        vec![constraint1, constraint2]
+    }
+}
 
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
