@@ -389,6 +389,19 @@ where
                     .collect::<Vec<_>>(),
             );
             es.extend(
+                (0..COLUMNS)
+                    .map(|c| {
+                        (
+                            self.evals
+                                .iter()
+                                .map(|e| e.coefficients[c].clone())
+                                .collect::<Vec<_>>(),
+                            None,
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            es.extend(
                 (0..PERMUTS - 1)
                     .map(|c| {
                         (
@@ -744,6 +757,29 @@ where
                             .evals
                             .iter()
                             .map(|e| e.w[i].clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .map(|(c, e)| Evaluation {
+                commitment: c.clone(),
+                evaluations: e,
+                degree_bound: None,
+            }),
+    );
+
+    //~~ - coefficient commitments
+    evaluations.extend(
+        index
+            .coefficients_comm
+            .iter()
+            .zip(
+                (0..COLUMNS)
+                    .map(|i| {
+                        proof
+                            .evals
+                            .iter()
+                            .map(|e| e.coefficients[i].clone())
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>(),
