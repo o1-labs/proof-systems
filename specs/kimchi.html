@@ -1737,6 +1737,9 @@ pub struct ProofEvaluations&lt;Field&gt; {
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     #[serde_as(as = &quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;)]
     pub s: [Field; PERMUTS - 1],
+    /// coefficient polynomials
+    #[serde_as(as = &quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;)]
+    pub coefficients: [Field; COLUMNS],
     /// lookup-related evaluations
     pub lookup: Option&lt;LookupEvaluations&lt;Field&gt;&gt;,
     /// evaluation of the generic selector polynomial
@@ -2229,6 +2232,7 @@ that are associated to the aggregated evaluation proof in the proof:
 <li>permutation commitment</li>
 <li>index commitments that use the coefficients</li>
 <li>witness commitments</li>
+<li>coefficient commitments</li>
 <li>sigma commitments</li>
 <li>lookup commitments</li>
 </ul>
