@@ -7,7 +7,7 @@ use crate::{
         expr::{Column, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupsUsed, tables::combine_table},
-        polynomials::{generic, permutation},
+        polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
