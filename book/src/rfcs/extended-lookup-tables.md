@@ -1,12 +1,10 @@
-## Summary
-[summary]: #summary
+# RFC: Extended lookup tables
 
 This RFC proposes an extension to our use of lookup tables using the PLOOKUP
 multiset inclusion argument, so that values within lookup tables can be chosen
 after the constraint system for a circuit has been fixed.
 
 ## Motivation
-[motivation]: #motivation
 
 This extension should provide us with
 * array-style lookups (`arr[i]`, where `arr` and `i` are formed of values in
@@ -36,7 +34,6 @@ These goals support 5 major use-cases:
   in-circuit commitment.
 
 ## Detailed design
-[detailed-design]: #detailed-design
 
 In order to support the desired goals, we first define 3 types of table:
 * **fixed tables** are tables declared as part of the constraint system, and
@@ -53,11 +50,11 @@ to have some fixed part of runtime or side-loaded tables, e.g. to ensure that
 indexing is reliable. For example, a table representing an array of values
 `[x, y, z]` in the proof might be laid out as
 
-|value1| value2 |
-|------|--------|
-|0     |?runtime|
-|1     |?runtime|
-|2     |?runtime|
+| value1 | value2   |
+| ------ | -------- |
+| 0      | ?runtime |
+| 1      | ?runtime |
+| 2      | ?runtime |
 
 where the `value1` entries are fixed in the constraint system. This ensure that
 a malicious prover is not free to create multiple values with the same index,
@@ -461,14 +458,12 @@ runtime table checks (and columns) can be omitted when there is no runtime
 table.
 
 ## Drawbacks
-[drawbacks]: #drawbacks
 
 This proposal increases the size of proofs, and increases the number of checks
 that the verifier must perform, and thus the cost of the recusive verifier.
 This also increases the complexity of the proof system.
 
 ## Rationale and alternatives
-[rationale-and-alternatives]: #rationale-and-alternatives
 
 ### Why is this design the best in the space of possible designs?
 
@@ -504,12 +499,10 @@ The Mina transaction model is unable to support a bytecode interpreter without
 this or similar extensions.
 
 ## Prior art
-[prior-art]: #prior-art
 
 *(Elided)*
 
 ## Unresolved questions
-[unresolved-questions]: #unresolved-questions
 
 ### What parts of the design do you expect to resolve through the RFC process before this gets merged?
 
