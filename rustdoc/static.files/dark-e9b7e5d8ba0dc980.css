@@ -72,16 +72,6 @@
 	--crate-search-hover-border: #2196f3;
 }
 
-.slider {
-	background-color: #ccc;
-}
-.slider:before {
-	background-color: white;
-}
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
 .content .item-info::before { color: #ccc; }
 
 body.source .example-wrap pre.rust a {
@@ -92,10 +82,6 @@ details.rustdoc-toggle > summary::before {
 	filter: invert(100%);
 }
 
-.search-failed a {
-	color: #0089ff;
-}
-
 .tooltip::after {
 	background-color: #000;
 	color: #fff;
@@ -104,10 +90,6 @@ details.rustdoc-toggle > summary::before {
 
 .tooltip::before {
 	border-color: transparent black transparent transparent;
-}
-
-.notable-traits-tooltiptext {
-	background-color: #111;
 }
 
 #titles > button:not(.selected) {
