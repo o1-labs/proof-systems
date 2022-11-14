@@ -101,6 +101,33 @@
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
 <a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit gate wires primitive.
 
 </span><span class="kw">use </span>ark_ff::bytes::{FromBytes, ToBytes};
@@ -130,9 +157,14 @@
 }
 
 <span class="kw">impl </span>Wire {
+    <span class="doccomment">/// Creates a new [Wire].
+    </span><span class="kw">pub fn </span>new(row: usize, col: usize) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ row, col }
+    }
+
     <span class="doccomment">/// Creates a new set of wires for a given row.
-    </span><span class="kw">pub fn </span>new(row: usize) -&gt; [<span class="self">Self</span>; PERMUTS] {
-        array::from_fn(|col| <span class="self">Self </span>{ row, col })
+    </span><span class="kw">pub fn </span>for_row(row: usize) -&gt; [<span class="self">Self</span>; PERMUTS] {
+        GateWires::new(row)
     }
 }
 
@@ -140,6 +172,28 @@
 /// represents the same cell (row and column) or a different cell in another row.
 /// (This is to help the permutation argument.)
 </span><span class="kw">pub type </span>GateWires = [Wire; PERMUTS];
+
+<span class="doccomment">/// Since we don&#39;t have a specific type for the wires of a row,
+/// we have to implement these convenience functions through a trait.
+</span><span class="kw">pub trait </span>Wirable: Sized {
+    <span class="doccomment">/// Creates a new set of wires for a given row.
+    </span><span class="kw">fn </span>new(row: usize) -&gt; <span class="self">Self</span>;
+
+    <span class="doccomment">/// Wire the cell at `col` to another cell (`to`).
+    </span><span class="kw">fn </span>wire(<span class="self">self</span>, col: usize, to: Wire) -&gt; <span class="self">Self</span>;
+}
+
+<span class="kw">impl </span>Wirable <span class="kw">for </span>GateWires {
+    <span class="kw">fn </span>new(row: usize) -&gt; <span class="self">Self </span>{
+        array::from_fn(|col| Wire { row, col })
+    }
+
+    <span class="kw">fn </span>wire(<span class="kw-2">mut </span><span class="self">self</span>, col: usize, to: Wire) -&gt; <span class="self">Self </span>{
+        <span class="macro">assert!</span>(col &lt; PERMUTS);
+        <span class="self">self</span>[col] = to;
+        <span class="self">self
+    </span>}
+}
 
 <span class="kw">impl </span>ToBytes <span class="kw">for </span>Wire {
     <span class="attr">#[inline]

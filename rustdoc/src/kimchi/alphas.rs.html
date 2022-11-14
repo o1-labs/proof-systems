@@ -674,7 +674,7 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>get_alphas_for_spec() {
-        <span class="kw">let </span>gates = <span class="macro">vec!</span>[CircuitGate::&lt;Fp&gt;::zero(Wire::new(<span class="number">0</span>)); <span class="number">2</span>];
+        <span class="kw">let </span>gates = <span class="macro">vec!</span>[CircuitGate::&lt;Fp&gt;::zero(Wire::for_row(<span class="number">0</span>)); <span class="number">2</span>];
         <span class="kw">let </span>index = new_index_for_test(gates, <span class="number">0</span>);
         <span class="kw">let </span>(_linearization, powers_of_alpha) = expr_linearization(
             index.cs.chacha8.is_some(),

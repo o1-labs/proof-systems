@@ -160,7 +160,7 @@
 
         <span class="attr">#[allow(clippy::explicit_counter_loop)]
         </span><span class="kw">for </span>row <span class="kw">in </span><span class="number">0</span>..num_gates {
-            <span class="kw">let </span>wires = Wire::new(row);
+            <span class="kw">let </span>wires = Wire::for_row(row);
             gates.push(CircuitGate::create_generic_gadget(
                 wires,
                 GenericGateSpec::Const(<span class="number">1u32</span>.into()),

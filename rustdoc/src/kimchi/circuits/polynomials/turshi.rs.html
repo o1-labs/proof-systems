@@ -1175,15 +1175,15 @@
         // 4n-2: 1 row for Auxiliary argument (no constraints)
         </span><span class="kw">let </span><span class="kw-2">mut </span>gates: Vec&lt;CircuitGate&lt;F&gt;&gt; = Vec::new();
         <span class="kw">if </span>num &gt; <span class="number">0 </span>{
-            <span class="kw">let </span>claim_gate = Wire::new(row);
+            <span class="kw">let </span>claim_gate = Wire::for_row(row);
             gates.push(CircuitGate::create_cairo_claim(claim_gate));
         }
         <span class="kw">let </span>last = num - <span class="number">1</span>;
         <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..last {
-            <span class="kw">let </span>ins_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">1</span>);
-            <span class="kw">let </span>flg_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">2</span>);
-            <span class="kw">let </span>tra_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">3</span>);
-            <span class="kw">let </span>aux_gate = Wire::new(row + <span class="number">4 </span>* i + <span class="number">4</span>);
+            <span class="kw">let </span>ins_gate = Wire::for_row(row + <span class="number">4 </span>* i + <span class="number">1</span>);
+            <span class="kw">let </span>flg_gate = Wire::for_row(row + <span class="number">4 </span>* i + <span class="number">2</span>);
+            <span class="kw">let </span>tra_gate = Wire::for_row(row + <span class="number">4 </span>* i + <span class="number">3</span>);
+            <span class="kw">let </span>aux_gate = Wire::for_row(row + <span class="number">4 </span>* i + <span class="number">4</span>);
             gates.push(CircuitGate::create_cairo_instruction(ins_gate));
             gates.push(CircuitGate::create_cairo_flags(flg_gate));
             gates.push(CircuitGate::create_cairo_transition(tra_gate));
@@ -1192,8 +1192,8 @@
         <span class="comment">// next available row after the full
         </span><span class="kw">let </span>next = row + <span class="number">4 </span>* last + <span class="number">3</span>;
         <span class="comment">// the final instruction
-        </span><span class="kw">let </span>ins_gate = Wire::new(next - <span class="number">2</span>);
-        <span class="kw">let </span>aux_gate = Wire::new(next - <span class="number">1</span>);
+        </span><span class="kw">let </span>ins_gate = Wire::for_row(next - <span class="number">2</span>);
+        <span class="kw">let </span>aux_gate = Wire::for_row(next - <span class="number">1</span>);
         gates.push(CircuitGate::create_cairo_instruction(ins_gate));
         gates.push(CircuitGate::zero(aux_gate));
 

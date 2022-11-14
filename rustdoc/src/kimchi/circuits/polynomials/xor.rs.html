@@ -574,14 +574,14 @@
         <span class="kw">let </span><span class="kw-2">mut </span>gates = (<span class="number">0</span>..num_xors)
             .map(|i| CircuitGate {
                 typ: GateType::Xor16,
-                wires: Wire::new(new_row + i),
+                wires: Wire::for_row(new_row + i),
                 coeffs: <span class="macro">vec!</span>[],
             })
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>zero_row = new_row + num_xors;
         gates.push(CircuitGate {
             typ: GateType::Generic,
-            wires: Wire::new(zero_row),
+            wires: Wire::for_row(zero_row),
             coeffs: <span class="macro">vec!</span>[F::one()],
         });
         <span class="comment">// check fin_in1, fin_in2, fin_out are zero

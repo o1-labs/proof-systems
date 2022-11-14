@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["constants","Constants used for poseidon."],["constraint_system",""]]};
+window.SIDEBAR_ITEMS = {"mod":[["asm","An ASM-like language to print a human-friendly version of a circuit."],["constants","Constants used for poseidon."],["constraint_system",""]]};

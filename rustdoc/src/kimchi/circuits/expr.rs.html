@@ -5117,12 +5117,12 @@
         </span><span class="kw">let </span>one = Fp::from(<span class="number">1u32</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
         gates.push(CircuitGate::create_generic_gadget(
-            Wire::new(<span class="number">0</span>),
+            Wire::for_row(<span class="number">0</span>),
             GenericGateSpec::Const(<span class="number">1u32</span>.into()),
             <span class="prelude-val">None</span>,
         ));
         gates.push(CircuitGate::create_generic_gadget(
-            Wire::new(<span class="number">1</span>),
+            Wire::for_row(<span class="number">1</span>),
             GenericGateSpec::Const(<span class="number">1u32</span>.into()),
             <span class="prelude-val">None</span>,
         ));

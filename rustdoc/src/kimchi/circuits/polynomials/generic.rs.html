@@ -1010,7 +1010,7 @@
         </span><span class="kw">for _ in </span><span class="number">0</span>..public {
             <span class="kw">let </span>r = gates_row.next().unwrap();
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 GenericGateSpec::Pub,
                 <span class="prelude-val">None</span>,
             ));
@@ -1029,7 +1029,7 @@
                 mul_coeff: <span class="prelude-val">Some</span>(<span class="number">2u32</span>.into()),
             };
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 g1,
                 <span class="prelude-val">Some</span>(g2),
             ));
@@ -1041,7 +1041,7 @@
             <span class="kw">let </span>g1 = GenericGateSpec::Const(<span class="number">3u32</span>.into());
             <span class="kw">let </span>g2 = GenericGateSpec::Const(<span class="number">5u32</span>.into());
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 g1,
                 <span class="prelude-val">Some</span>(g2),
             ));

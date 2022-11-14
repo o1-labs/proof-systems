@@ -1843,7 +1843,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
 
         <span class="kw">let </span>digest = {
             <span class="kw">use </span>o1_utils::hasher::CryptoDigest <span class="kw">as _</span>;
-            <span class="kw">let </span>circuit = <span class="kw">crate</span>::circuits::gate::Circuit(<span class="kw-2">&amp;</span>rust_gates);
+            <span class="kw">let </span>circuit = <span class="kw">crate</span>::circuits::gate::Circuit::new(public_input_size, <span class="kw-2">&amp;</span>rust_gates);
             circuit.digest()
         };
 
