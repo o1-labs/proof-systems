@@ -44,9 +44,9 @@ fn test_poseidon() {
     // custom constraints for Poseidon hash function permutation
     // ROUNDS_FULL full rounds constraint gates
     for _ in 0..NUM_POS {
-        let first_wire = Wire::new(abs_row);
+        let first_wire = Wire::for_row(abs_row);
         let last_row = abs_row + POS_ROWS_PER_HASH;
-        let last_wire = Wire::new(last_row);
+        let last_wire = Wire::for_row(last_row);
         let (poseidon, row) = CircuitGate::<Fp>::create_poseidon_gadget(
             abs_row,
             [first_wire, last_wire],
