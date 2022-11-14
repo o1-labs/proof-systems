@@ -1,0 +1,41 @@
+[package]
+name = "commitment_dlog"
+version = "0.1.0"
+description = "An implementation of an inner-product argument polynomial commitment scheme, as used in kimchi"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "../README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+ark-poly = { version = "0.3.0", features = [ "parallel" ] }
+ark-serialize = "0.3.0"
+
+blake2 = "0.10.0"
+rand = "0.8.0"
+rand_core = { version = "0.6.0" }
+rayon = { version = "1" }
+itertools = "0.10.3"
+serde = "1.0.130"
+serde_with = "1.10.0"
+thiserror = "1.0.31"
+once_cell = "1.10.0"
+
+groupmap = { path = "../groupmap", version = "0.1.0" }
+mina-curves = { path = "../curves", version = "0.1.0" }
+o1-utils = { path = "../utils", version = "0.1.0" }
+mina-poseidon = { path = "../poseidon", version = "0.1.0" }
+
+ocaml = { version = "0.22.2", optional = true }
+ocaml-gen = { version = "0.1.0", optional = true }
+
+[dev-dependencies]
+colored = "2.0.0"
+rand_chacha = { version = "0.3.0" }
+
+[features]
+ocaml_types = [ "ocaml", "ocaml-gen" ]

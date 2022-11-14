@@ -1,40 +1,97 @@
-name: Basic rust CI stuff
+name: CI
 
 on:
   push:
     branches:
-    - main
+      - master
   pull_request:
+
+env:
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#release
+  RUSTFLAGS: -Coverflow-checks=y -Cdebug-assertions=y
+  # https://doc.rust-lang.org/cargo/reference/profiles.html#incremental
+  CARGO_INCREMENTAL: 1
+  # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+  CARGO_TERM_COLOR: always
 
 jobs:
   run_checks:
     runs-on: ubuntu-latest
-    name: Run some basic checks
+    name: Run some basic checks and tests
     steps:
+      #
+      # Setup
+      #
 
       - name: Checkout PR
         uses: actions/checkout@v2
 
       - name: Set up cargo/rust
-        run: |
-          rustup component add rustfmt 
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: "1.63.0"
+          components: rustfmt, clippy
+
+      # https://github.com/Swatinem/rust-cache
+      - name: Cache Rust stuff
+        uses: Swatinem/rust-cache@v1
 
       - name: Setup OCaml (because of ocaml-gen)
-        run: sudo apt update && sudo apt install ocaml
-
-      - name: build
         run: |
-          cargo build
+          sudo apt update
+          sudo apt install -y ocaml
 
-      - name: build ocaml types
-        run: |
-          cargo build --features ocaml_types
+      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+      - name: Install latest nextest release
+        uses: taiki-e/install-action@nextest
 
-      - name: Run cargo fmt
-        run: |
-          cargo fmt -- --check
+      - name: Install cargo-spec for specifications
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-spec
+          version: 0.4.1
 
-      - name: Run cargo clippy
+      #
+      # Tests
+      # 
+
+      - name: Test with latest nextest release (faster than cargo test)
+        uses: actions-rs/cargo@v1
+        with:            
+          command: nextest
+          args: run --all-features --release
+
+      #
+      # Coding guidelines
+      #
+
+      - name: Enforce formating
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
+
+      - name: Lint (clippy)
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features -- -D warnings
+
+      #
+      # Doc & Spec
+      #
+
+      - name: Build the kimchi specification
         run: |
-          rustup component add clippy
-          cargo clippy
+          cd book/specifications
+          cd kimchi && make build
+
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications
+          cd poly-commitment && make build
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          git diff --exit-code

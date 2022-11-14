@@ -1,20 +1,20 @@
 [workspace]
 members = [
-    "circuits/plonk",
-    "circuits/kimchi",
+    "turshi",
     "curves",
-    "dlog",
-    "dlog/commitment",
-    "dlog/plonk",
-    "dlog/kimchi",
     "groupmap",
-    "ocaml/ocaml-gen",
-    "ocaml/ocaml-gen/derive",
-    "oracle",
+    "hasher",
+    "kimchi",
+    "circuit-construction",
+    "poseidon",
+    "poseidon/export_test_vectors",
+    "poly-commitment",
+    "signer",
+    "tools/kimchi-visu",
     "utils",
 ]
 
 [profile.release]
 lto = true
 panic = 'abort'
-codegen-units = 1
+# codegen-units = 1

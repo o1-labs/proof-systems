@@ -10,8 +10,8 @@ tmp/
 
 target
 .DS_Store
-Cargo.lock
 idea
+.idea
 *.iml
 *.ipynb_checkpoints
 *.pyc
@@ -21,3 +21,4 @@ _build
 .merlin
 *.swp
 *.swo
+.vscode

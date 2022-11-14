@@ -1,0 +1,32 @@
+[book]
+authors = ["Izaak Meckler", "Vanishree Rao", "Mathias Hall-Andersen", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Mina book"
+
+[output.html]
+site-url = "/proof-systems/"
+use-site-url-as-root = true
+curly-quotes = true
+git-repository-url = "https://www.github.com/o1-labs/proof-systems"
+additional-css = ["./assets/css/mdbook-admonish.css", "././mdbook-admonish.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+# for LaTeX
+[preprocessor.katex]
+macros = "macros.txt" # crypto related macros (as close to cryptocode as possible)
+
+# for callouts
+[preprocessor.admonish]
+command = "mdbook-admonish"
+assets_version = "2.0.0" # do not edit: managed by `mdbook-admonish install`
+
+# for protocol diagrams
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+# for table of content
+[preprocessor.toc]
+command = "mdbook-toc"
+renderer = ["html"]
