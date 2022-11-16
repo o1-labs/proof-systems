@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/generic.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>generic.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-3d4cb87af9468701.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/generic.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>generic.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-3dd8914bdd6e2ce5.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-1469fca9efc07bcb.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-e9b7e5d8ba0dc980.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-0c1cf144240c9f40.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-799a64abec831f72.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -418,167 +418,6 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-<a href="#486" id="486">486</a>
-<a href="#487" id="487">487</a>
-<a href="#488" id="488">488</a>
-<a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
-<a href="#494" id="494">494</a>
-<a href="#495" id="495">495</a>
-<a href="#496" id="496">496</a>
-<a href="#497" id="497">497</a>
-<a href="#498" id="498">498</a>
-<a href="#499" id="499">499</a>
-<a href="#500" id="500">500</a>
-<a href="#501" id="501">501</a>
-<a href="#502" id="502">502</a>
-<a href="#503" id="503">503</a>
-<a href="#504" id="504">504</a>
-<a href="#505" id="505">505</a>
-<a href="#506" id="506">506</a>
-<a href="#507" id="507">507</a>
-<a href="#508" id="508">508</a>
-<a href="#509" id="509">509</a>
-<a href="#510" id="510">510</a>
-<a href="#511" id="511">511</a>
-<a href="#512" id="512">512</a>
-<a href="#513" id="513">513</a>
-<a href="#514" id="514">514</a>
-<a href="#515" id="515">515</a>
-<a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
-<a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
-<a href="#539" id="539">539</a>
-<a href="#540" id="540">540</a>
-<a href="#541" id="541">541</a>
-<a href="#542" id="542">542</a>
-<a href="#543" id="543">543</a>
-<a href="#544" id="544">544</a>
-<a href="#545" id="545">545</a>
-<a href="#546" id="546">546</a>
-<a href="#547" id="547">547</a>
-<a href="#548" id="548">548</a>
-<a href="#549" id="549">549</a>
-<a href="#550" id="550">550</a>
-<a href="#551" id="551">551</a>
-<a href="#552" id="552">552</a>
-<a href="#553" id="553">553</a>
-<a href="#554" id="554">554</a>
-<a href="#555" id="555">555</a>
-<a href="#556" id="556">556</a>
-<a href="#557" id="557">557</a>
-<a href="#558" id="558">558</a>
-<a href="#559" id="559">559</a>
-<a href="#560" id="560">560</a>
-<a href="#561" id="561">561</a>
-<a href="#562" id="562">562</a>
-<a href="#563" id="563">563</a>
-<a href="#564" id="564">564</a>
-<a href="#565" id="565">565</a>
-<a href="#566" id="566">566</a>
-<a href="#567" id="567">567</a>
-<a href="#568" id="568">568</a>
-<a href="#569" id="569">569</a>
-<a href="#570" id="570">570</a>
-<a href="#571" id="571">571</a>
-<a href="#572" id="572">572</a>
-<a href="#573" id="573">573</a>
-<a href="#574" id="574">574</a>
-<a href="#575" id="575">575</a>
-<a href="#576" id="576">576</a>
-<a href="#577" id="577">577</a>
-<a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
 </span><span class="comment">//~ The double generic gate contains two generic gates.
@@ -615,17 +454,17 @@
 //~
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType},
     constraints::ConstraintSystem,
+    expr::constraints::ExprOps,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::GateWires,
 };
 <span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
-<span class="kw">use </span>ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
-};
-<span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
+<span class="kw">use </span>ark_poly::univariate::DensePolynomial;
 <span class="kw">use </span>std::array;
+<span class="kw">use </span>std::marker::PhantomData;
 
 <span class="doccomment">/// Number of constraints produced by the gate.
 </span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
@@ -643,6 +482,53 @@
 
 <span class="doccomment">/// Number of generic of registers by a double generic gate.
 </span><span class="kw">pub const </span>DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * <span class="number">2</span>;
+
+<span class="doccomment">/// Implementation of the `Generic` gate
+</span><span class="kw">pub struct </span>Generic&lt;F&gt;(PhantomData&lt;F&gt;);
+
+<span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Generic&lt;F&gt;
+<span class="kw">where
+    </span>F: PrimeField,
+{
+    <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">2</span>;
+
+    <span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+        <span class="comment">// First generic gate
+        </span><span class="kw">let </span>left_coeff1 = env.coeff(<span class="number">0</span>);
+        <span class="kw">let </span>right_coeff1 = env.coeff(<span class="number">1</span>);
+        <span class="kw">let </span>out_coeff1 = env.coeff(<span class="number">2</span>);
+        <span class="kw">let </span>mul_coeff1 = env.coeff(<span class="number">3</span>);
+        <span class="kw">let </span>constant1 = env.coeff(<span class="number">4</span>);
+        <span class="kw">let </span>left1 = env.witness_curr(<span class="number">0</span>);
+        <span class="kw">let </span>right1 = env.witness_curr(<span class="number">1</span>);
+        <span class="kw">let </span>out1 = env.witness_curr(<span class="number">2</span>);
+
+        <span class="kw">let </span>constraint1 = left_coeff1 * left1.clone()
+            + right_coeff1 * right1.clone()
+            + out_coeff1 * out1
+            + mul_coeff1 * left1 * right1
+            + constant1;
+
+        <span class="comment">// Second generic gate
+        </span><span class="kw">let </span>left_coeff2 = env.coeff(<span class="number">5</span>);
+        <span class="kw">let </span>right_coeff2 = env.coeff(<span class="number">6</span>);
+        <span class="kw">let </span>out_coeff2 = env.coeff(<span class="number">7</span>);
+        <span class="kw">let </span>mul_coeff2 = env.coeff(<span class="number">8</span>);
+        <span class="kw">let </span>constant2 = env.coeff(<span class="number">9</span>);
+        <span class="kw">let </span>left2 = env.witness_curr(<span class="number">3</span>);
+        <span class="kw">let </span>right2 = env.witness_curr(<span class="number">4</span>);
+        <span class="kw">let </span>out2 = env.witness_curr(<span class="number">5</span>);
+
+        <span class="kw">let </span>constraint2 = left_coeff2 * left2.clone()
+            + right_coeff2 * right2.clone()
+            + out_coeff2 * out2
+            + mul_coeff2 * left2 * right2
+            + constant2;
+
+        <span class="macro">vec!</span>[constraint1, constraint2]
+    }
+}
 
 <span class="doccomment">/// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
@@ -748,147 +634,7 @@
 //~
 //~ where the $c_i$ are the [coefficients]().
 
-</span><span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
-    <span class="doccomment">/// generic constraint quotient poly contribution computation
-    </span><span class="kw">pub fn </span>gnrc_quot(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw-2">mut </span>alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
-        witness_cols_d4: <span class="kw-2">&amp;</span>[Evaluations&lt;F, D&lt;F&gt;&gt;; COLUMNS],
-    ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
-        <span class="kw">let </span>generic_gate = |alpha_pow, coeff_offset, register_offset| {
-            <span class="kw">let </span><span class="kw-2">mut </span>res = Evaluations::from_vec_and_domain(
-                <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.domain.d4.size()],
-                <span class="self">self</span>.domain.d4,
-            );
-
-            <span class="comment">// addition
-            </span><span class="kw">for </span>(witness_d4, selector_d8) <span class="kw">in </span>witness_cols_d4
-                .iter()
-                .skip(register_offset)
-                .zip(<span class="self">self</span>.coefficients8.iter().skip(coeff_offset))
-                .take(GENERIC_REGISTERS)
-            {
-                res.evals
-                    .par_iter_mut()
-                    .enumerate()
-                    .for_each(|(i, eval)| <span class="kw-2">*</span>eval += witness_d4.evals[i] * selector_d8[<span class="number">2 </span>* i]);
-            }
-
-            <span class="comment">// multiplication
-            </span><span class="kw">let </span><span class="kw-2">mut </span>mul = <span class="kw-2">&amp;</span>witness_cols_d4[register_offset] * <span class="kw-2">&amp;</span>witness_cols_d4[register_offset + <span class="number">1</span>];
-            <span class="kw">let </span>mul_selector_d8 = <span class="kw-2">&amp;</span><span class="self">self</span>.coefficients8[coeff_offset + <span class="number">3</span>];
-            mul.evals
-                .par_iter_mut()
-                .enumerate()
-                .for_each(|(i, eval)| <span class="kw-2">*</span>eval <span class="kw-2">*</span>= mul_selector_d8[<span class="number">2 </span>* i]);
-            res += <span class="kw-2">&amp;</span>mul;
-
-            <span class="comment">// constant
-            </span><span class="kw">let </span>constant_d8 = <span class="kw-2">&amp;</span><span class="self">self</span>.coefficients8[coeff_offset + <span class="number">4</span>];
-            res.evals
-                .par_iter_mut()
-                .enumerate()
-                .for_each(|(i, e)| <span class="kw-2">*</span>e += constant_d8[<span class="number">2 </span>* i]);
-
-            <span class="comment">// alpha
-            </span><span class="kw">let </span>alpha_pow = {
-                <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="self">self</span>.precomputations().constant_1_d4.clone();
-                res.evals.par_iter_mut().for_each(|x| <span class="kw-2">*</span>x <span class="kw-2">*</span>= <span class="kw-2">&amp;</span>alpha_pow);
-                res
-            };
-
-            <span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span>alpha_pow
-        };
-
-        <span class="kw">let </span>alpha_pow1 = alphas
-            .next()
-            .expect(<span class="string">&quot;not enough powers of alpha for the generic gate&quot;</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>res = generic_gate(alpha_pow1, <span class="number">0</span>, <span class="number">0</span>);
-
-        <span class="kw">let </span>alpha_pow2 = alphas
-            .next()
-            .expect(<span class="string">&quot;not enough powers of alpha for the generic gate&quot;</span>);
-        res += <span class="kw-2">&amp;</span>generic_gate(alpha_pow2, GENERIC_COEFFS, GENERIC_REGISTERS);
-
-        <span class="comment">// generic selector
-        </span><span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span><span class="self">self</span>.generic4
-    }
-
-    <span class="doccomment">/// produces
-    ///
-    /// ```ignore
-    /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
-    /// alpha * generic(zeta) * w[0](zeta),
-    /// alpha * generic(zeta) * w[1](zeta),
-    /// alpha * generic(zeta) * w[2](zeta)
-    /// ```
-    </span><span class="kw">pub fn </span>gnrc_scalars(
-        <span class="kw-2">mut </span>alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
-        w_zeta: <span class="kw-2">&amp;</span>[F; COLUMNS],
-        generic_zeta: F,
-    ) -&gt; Vec&lt;F&gt; {
-        <span class="comment">// setup
-        </span><span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
-
-        <span class="kw">let </span><span class="kw-2">mut </span>generic_gate = |alpha_pow, register_offset| {
-            <span class="kw">let </span>alpha_generic = alpha_pow * generic_zeta;
-
-            <span class="comment">// addition
-            </span>res.push(alpha_generic * w_zeta[register_offset]);
-            res.push(alpha_generic * w_zeta[register_offset + <span class="number">1</span>]);
-            res.push(alpha_generic * w_zeta[register_offset + <span class="number">2</span>]);
-
-            <span class="comment">// multplication
-            </span>res.push(alpha_generic * w_zeta[register_offset] * w_zeta[register_offset + <span class="number">1</span>]);
-
-            <span class="comment">// constant
-            </span>res.push(alpha_generic);
-        };
-
-        <span class="kw">let </span>alpha_pow1 = alphas
-            .next()
-            .expect(<span class="string">&quot;not enough alpha powers for generic gate&quot;</span>);
-        generic_gate(alpha_pow1, <span class="number">0</span>);
-
-        <span class="kw">let </span>alpha_pow2 = alphas
-            .next()
-            .expect(<span class="string">&quot;not enough alpha powers for generic gate&quot;</span>);
-        generic_gate(alpha_pow2, GENERIC_REGISTERS);
-
-        res
-    }
-
-    <span class="doccomment">/// generic constraint linearization poly contribution computation
-    </span><span class="kw">pub fn </span>gnrc_lnrz(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        alphas: <span class="kw">impl </span>Iterator&lt;Item = F&gt;,
-        w_zeta: <span class="kw-2">&amp;</span>[F; COLUMNS],
-        generic_zeta: F,
-    ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
-        <span class="kw">let </span>d1 = <span class="self">self</span>.domain.d1;
-        <span class="kw">let </span>n = d1.size();
-
-        <span class="comment">// get scalars
-        </span><span class="kw">let </span>scalars = <span class="self">Self</span>::gnrc_scalars(alphas, w_zeta, generic_zeta);
-
-        <span class="comment">//
-        </span><span class="kw">let </span><span class="kw-2">mut </span>res = Evaluations::from_vec_and_domain(<span class="macro">vec!</span>[F::zero(); n], d1);
-
-        <span class="kw">let </span>scale = <span class="self">self</span>.coefficients8[<span class="number">0</span>].evals.len() / n;
-
-        <span class="kw">let </span>coeffs = <span class="self">self</span>.coefficients8.iter();
-        <span class="kw">for </span>(scalar, coeff) <span class="kw">in </span>scalars.into_iter().zip(coeffs) {
-            res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                <span class="kw-2">*</span>e += scalar * coeff[scale * i];
-            });
-        }
-
-        <span class="comment">// l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
-        </span>res
-    }
-}
-
-<span class="comment">// -------------------------------------------------
+// -------------------------------------------------
 
 </span><span class="kw">pub mod </span>testing {
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
@@ -1092,73 +838,5 @@
         }
     }
 }
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
-    <span class="kw">use </span><span class="kw">crate</span>::circuits::wires::COLUMNS;
-    <span class="kw">use </span>ark_ff::{UniformRand, Zero};
-    <span class="kw">use </span>ark_poly::{EvaluationDomain, Polynomial};
-    <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};
-    <span class="kw">use </span>rand::SeedableRng;
-    <span class="kw">use </span>std::array;
-
-    <span class="attr">#[test]
-    </span><span class="kw">fn </span>test_generic_polynomial() {
-        <span class="comment">// create circuit
-        </span><span class="kw">let </span>gates = testing::create_circuit::&lt;Fp&gt;(<span class="number">0</span>, <span class="number">0</span>);
-
-        <span class="comment">// create constraint system
-        </span><span class="kw">let </span>cs = ConstraintSystem::fp_for_testing(gates);
-
-        <span class="comment">// create witness
-        </span><span class="kw">let </span>n = cs.domain.d1.size();
-        <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[Fp::zero(); n]);
-        testing::fill_in_witness(<span class="number">0</span>, <span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>[]);
-
-        <span class="comment">// make sure we&#39;re done filling the witness correctly
-        </span>cs.verify::&lt;Vesta&gt;(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>[]).unwrap();
-
-        <span class="comment">// generate witness polynomials
-        </span><span class="kw">let </span>witness_evals: [Evaluations&lt;Fp, D&lt;Fp&gt;&gt;; COLUMNS] = array::from_fn(|col| {
-            Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1)
-        });
-        <span class="kw">let </span>witness: [DensePolynomial&lt;Fp&gt;; COLUMNS] =
-            array::from_fn(|col| witness_evals[col].interpolate_by_ref());
-        <span class="kw">let </span>witness_d4: [Evaluations&lt;Fp, D&lt;Fp&gt;&gt;; COLUMNS] =
-            array::from_fn(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
-
-        <span class="comment">// make sure we&#39;ve done that correctly
-        </span><span class="kw">let </span>public = DensePolynomial::zero();
-        <span class="macro">assert!</span>(cs.verify_generic(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>public));
-
-        <span class="comment">// random zeta
-        </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>rand::rngs::StdRng::from_seed([<span class="number">0</span>; <span class="number">32</span>]);
-        <span class="kw">let </span>zeta = Fp::rand(rng);
-
-        <span class="comment">// compute quotient by dividing with vanishing polynomial
-        </span><span class="kw">let </span>alphas = <span class="macro">vec!</span>[Fp::rand(rng), Fp::rand(rng)];
-        <span class="kw">let </span>t1 = cs.gnrc_quot(<span class="kw-2">&amp;mut </span>alphas.clone().into_iter(), <span class="kw-2">&amp;</span>witness_d4);
-        <span class="kw">let </span>t_before_division = <span class="kw-2">&amp;</span>t1.interpolate() + <span class="kw-2">&amp;</span>public;
-        <span class="kw">let </span>(t, rem) = t_before_division
-            .divide_by_vanishing_poly(cs.domain.d1)
-            .unwrap();
-        <span class="macro">assert!</span>(rem.is_zero());
-        <span class="kw">let </span>t_zeta = t.evaluate(<span class="kw-2">&amp;</span>zeta);
-
-        <span class="comment">// compute linearization f(z)
-        </span><span class="kw">let </span>w_zeta: [Fp; COLUMNS] = array::from_fn(|col| witness[col].evaluate(<span class="kw-2">&amp;</span>zeta));
-        <span class="kw">let </span>generic_zeta = cs.genericm.evaluate(<span class="kw-2">&amp;</span>zeta);
-
-        <span class="kw">let </span>f = cs
-            .gnrc_lnrz(<span class="kw-2">&amp;mut </span>alphas.clone().into_iter(), <span class="kw-2">&amp;</span>w_zeta, generic_zeta)
-            .interpolate();
-        <span class="kw">let </span>f_zeta = f.evaluate(<span class="kw-2">&amp;</span>zeta);
-
-        <span class="comment">// check that f(z) = t(z) * Z_H(z)
-        </span><span class="kw">let </span>z_h_zeta = cs.domain.d1.evaluate_vanishing_polynomial(zeta);
-        <span class="macro">assert!</span>(f_zeta == t_zeta * z_h_zeta);
-    }
-}
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (96ddd32c4 2022-11-14)" data-search-js="search-39ee4160c7dc16c9.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (a00f8ba7f 2022-11-15)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-7873449fa8c00e11.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
