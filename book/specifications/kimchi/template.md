@@ -270,10 +270,6 @@ TODO: for each gate describe how to create it?
 
 {sections.xor16}
 
-#### Rotation
-
-{sections.rot64}
-
 ## Setup
 
 In this section we specify the setup that goes into creating two indexes from a circuit:

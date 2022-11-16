@@ -22,11 +22,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{
-    argument::ArgumentWitness,
-    expr,
-    polynomials::{rot, xor},
-};
+use super::{argument::ArgumentWitness, expr, polynomials::xor};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -117,7 +113,6 @@ pub enum GateType {
     // ForeignFieldMul = 26,
     // Gates for Keccak follow:
     Xor16 = 27,
-    Rot64 = 28,
 }
 
 /// Selector polynomial
@@ -246,9 +241,6 @@ impl<F: PrimeField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
-            Rot64 => self
-                .verify_rot::<G>(row, witness, cs)
-                .map_err(|e| e.to_string()),
             Xor16 => self
                 .verify_xor::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
@@ -336,7 +328,6 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
-            GateType::Rot64 => rot::Rot64::constraint_checks(&env),
             GateType::Xor16 => xor::Xor16::constraint_checks(&env),
             GateType::ForeignFieldAdd => {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)

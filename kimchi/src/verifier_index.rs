@@ -125,10 +125,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub xor_comm: Option<PolyComm<G>>,
 
-    /// Rot commitments
-    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub rot_comm: Option<PolyComm<G>>,
-
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -151,9 +147,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; 63]")]
-    pub rot64_table: [G::ScalarField; 63],
 }
 //~spec:endcode
 
@@ -271,11 +264,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
                     .commit_evaluations_non_hiding(domain, &poly.eval8, None)
             }),
 
-            rot_comm: self.cs.rot_selector_poly.as_ref().map(|poly| {
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
-            }),
-
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -291,7 +279,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             lookup_index,
             linearization: self.linearization.clone(),
             foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
-            rot64_table: array::from_fn(|i| G::ScalarField::from(2u64.pow(i as u32))),
         }
     }
 }
@@ -410,7 +397,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             foreign_field_add_comm,
             foreign_field_modulus: _,
             xor_comm,
-            rot_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -422,8 +408,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
             linearization: _,
             powers_of_alpha: _,
-
-            rot64_table: _,
         } = &self;
 
         // Always present
@@ -459,10 +443,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
         if let Some(xor_comm) = xor_comm {
             fq_sponge.absorb_g(&xor_comm.unshifted);
-        }
-
-        if let Some(rot_comm) = rot_comm {
-            fq_sponge.absorb_g(&rot_comm.unshifted);
         }
 
         // Lookup index; optional
