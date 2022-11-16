@@ -46,7 +46,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut gates = (0..num_xors)
             .map(|i| CircuitGate {
                 typ: GateType::Xor16,
-                wires: Wire::new(new_row + i),
+                wires: Wire::for_row(new_row + i),
                 coeffs: vec![],
             })
             .collect::<Vec<_>>();

@@ -549,6 +549,7 @@ mod tests {
             w: array::from_fn(|_| F::rand(rng)),
             z: F::rand(rng),
             s: array::from_fn(|_| F::rand(rng)),
+            coefficients: array::from_fn(|_| F::rand(rng)),
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
             lookup: Some(LookupEvaluations {
