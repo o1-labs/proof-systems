@@ -32,6 +32,9 @@ use rand::{rngs::StdRng, SeedableRng};
 use std::marker::PhantomData;
 use std::{array, collections::HashMap};
 
+pub const LEFT: bool = true;
+pub const RIGHT: bool = false;
+
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a Rot64 gadget to rotate a word
     /// It will need:
@@ -56,8 +59,9 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     /// Create one rotation
-    /// TODO: right now it only creates a Generic gate followed by the Rot64 gates
-    pub fn create_rot(new_row: usize, rot: u32) -> (usize, Vec<Self>) {
+    /// Right now it only creates a Generic gate followed by the Rot64 gates
+    /// It allows to configure left or right rotation.
+    pub fn create_rot(new_row: usize, rot: u32, side: bool) -> (usize, Vec<Self>) {
         // Initial Generic gate to constrain the output to be zero
         let zero_row = new_row;
         let mut gates = vec![CircuitGate::<F>::create_generic_gadget(
@@ -67,7 +71,11 @@ impl<F: PrimeField> CircuitGate<F> {
         )];
 
         let rot_row = zero_row + 1;
-        let mut rot64_gates = Self::create_rot64(rot_row, rot);
+        let mut rot64_gates = if side == LEFT {
+            Self::create_rot64(rot_row, rot)
+        } else {
+            Self::create_rot64(rot_row, 64 - rot)
+        };
         // Append them to the full gates vector
         gates.append(&mut rot64_gates);
         // Check that 2 most significant limbs of shifted are zero
@@ -534,11 +542,12 @@ pub fn extend_rot_rows<F: PrimeField>(
 }
 
 /// Create a rotation witness
-/// Input: word to be rotated, rotation offset.
+/// Input: word to be rotated, rotation offset, and side of rotation.
 /// Output: witness for rotation word and initial row with all zeros
-pub fn create_witness<F: PrimeField>(word: u64, rot: u32) -> [Vec<F>; COLUMNS] {
+pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: bool) -> [Vec<F>; COLUMNS] {
     // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
+    let rot = if side == RIGHT { 64 - rot } else { rot };
     create_witness_rot(&mut witness, word, rot);
     witness
 }
