@@ -84,7 +84,7 @@ impl<F: PrimeField> CircuitGate<F> {
         for i in 0..num {
             circuit_gates.append(&mut vec![CircuitGate {
                 typ: GateType::ForeignFieldAdd,
-                wires: Wire::new(next_row + i),
+                wires: Wire::for_row(next_row + i),
                 coeffs: vec![],
             }]);
         }
@@ -92,12 +92,12 @@ impl<F: PrimeField> CircuitGate<F> {
         circuit_gates.append(&mut vec![
             CircuitGate {
                 typ: GateType::ForeignFieldAdd,
-                wires: Wire::new(next_row + num),
+                wires: Wire::for_row(next_row + num),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
-                wires: Wire::new(next_row + num + 1),
+                wires: Wire::for_row(next_row + num + 1),
                 coeffs: vec![],
             },
         ]);

@@ -12,7 +12,7 @@ use kimchi::{
     proof::ProverProof,
     prover_index::ProverIndex,
 };
-use oracle::FqSponge;
+use mina_poseidon::FqSponge;
 use std::array;
 
 /// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.

@@ -55,6 +55,9 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
+    /// coefficients polynomials in monomial form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
@@ -663,6 +666,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             sigmam,
             genericm,
             generic4,
+            coefficientsm,
             coefficients8,
             ps8,
             psm,
@@ -712,7 +716,7 @@ pub mod tests {
 
     impl ConstraintSystem<Fp> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
-            //let fp_sponge_params = oracle::pasta::fp_kimchi::params();
+            //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
             Self::for_testing(gates)
         }
     }

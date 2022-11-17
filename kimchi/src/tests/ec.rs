@@ -22,7 +22,7 @@ fn ec_test() {
     for row in 0..(num_doubles + num_additions + num_infs) {
         gates.push(CircuitGate::new(
             GateType::CompleteAdd,
-            Wire::new(row),
+            Wire::for_row(row),
             vec![],
         ));
     }

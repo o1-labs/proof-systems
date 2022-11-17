@@ -22,9 +22,9 @@ use commitment_dlog::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
+use mina_poseidon::FqSponge;
 use num_bigint::BigUint;
 use once_cell::sync::OnceCell;
-use oracle::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;

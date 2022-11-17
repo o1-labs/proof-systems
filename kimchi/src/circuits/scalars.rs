@@ -1,7 +1,7 @@
 //! This module implements Plonk prover polynomial evaluations primitive.
 
 use ark_ff::Field;
-use oracle::sponge::ScalarChallenge;
+use mina_poseidon::sponge::ScalarChallenge;
 
 #[derive(Clone, Debug)]
 pub struct RandomOracles<F: Field> {
@@ -44,7 +44,7 @@ impl<F: Field> Default for RandomOracles<F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use oracle::sponge::caml::CamlScalarChallenge;
+    use mina_poseidon::sponge::caml::CamlScalarChallenge;
 
     //
     // RandomOracles<F> <-> CamlRandomOracles<CamlF>
