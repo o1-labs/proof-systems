@@ -33,7 +33,7 @@ impl<F: PrimeField> CircuitGate<F> {
     pub fn create_keccak(new_row: usize) -> (usize, Vec<Self>) {
         // Initial Generic gate to constrain the prefix of the output to be zero
         let mut gates = vec![CircuitGate::<F>::create_generic_gadget(
-            Wire::new(new_row),
+            Wire::for_row(new_row),
             GenericGateSpec::Pub,
             None,
         )];

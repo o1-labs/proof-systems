@@ -16,7 +16,7 @@ fn create_test_constraint_system(rot: u32, side: bool) -> ConstraintSystem<Fp> {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 

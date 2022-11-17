@@ -47,12 +47,12 @@ impl<F: PrimeField> CircuitGate<F> {
         vec![
             CircuitGate {
                 typ: GateType::Rot64,
-                wires: Wire::new(new_row),
+                wires: Wire::for_row(new_row),
                 coeffs: vec![F::from(2u32).pow(&[rot as u64])],
             },
             CircuitGate {
                 typ: GateType::RangeCheck0,
-                wires: Wire::new(new_row + 1),
+                wires: Wire::for_row(new_row + 1),
                 coeffs: vec![],
             },
         ]
@@ -65,7 +65,7 @@ impl<F: PrimeField> CircuitGate<F> {
         // Initial Generic gate to constrain the output to be zero
         let zero_row = new_row;
         let mut gates = vec![CircuitGate::<F>::create_generic_gadget(
-            Wire::new(new_row),
+            Wire::for_row(new_row),
             GenericGateSpec::Pub,
             None,
         )];
