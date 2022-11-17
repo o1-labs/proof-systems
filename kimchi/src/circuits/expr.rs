@@ -2515,12 +2515,12 @@ pub mod test {
         let one = Fp::from(1u32);
         let mut gates = vec![];
         gates.push(CircuitGate::create_generic_gadget(
-            Wire::new(0),
+            Wire::for_row(0),
             GenericGateSpec::Const(1u32.into()),
             None,
         ));
         gates.push(CircuitGate::create_generic_gadget(
-            Wire::new(1),
+            Wire::for_row(1),
             GenericGateSpec::Const(1u32.into()),
             None,
         ));

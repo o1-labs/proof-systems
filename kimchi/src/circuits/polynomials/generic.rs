@@ -336,7 +336,7 @@ pub mod testing {
         for _ in 0..public {
             let r = gates_row.next().unwrap();
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 GenericGateSpec::Pub,
                 None,
             ));
@@ -355,7 +355,7 @@ pub mod testing {
                 mul_coeff: Some(2u32.into()),
             };
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 g1,
                 Some(g2),
             ));
@@ -367,7 +367,7 @@ pub mod testing {
             let g1 = GenericGateSpec::Const(3u32.into());
             let g2 = GenericGateSpec::Const(5u32.into());
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 g1,
                 Some(g2),
             ));

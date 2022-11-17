@@ -44,7 +44,7 @@ impl BenchmarkCtx {
 
         #[allow(clippy::explicit_counter_loop)]
         for row in 0..num_gates {
-            let wires = Wire::new(row);
+            let wires = Wire::for_row(row);
             gates.push(CircuitGate::create_generic_gadget(
                 wires,
                 GenericGateSpec::Const(1u32.into()),
