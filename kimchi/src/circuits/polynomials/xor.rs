@@ -52,7 +52,7 @@ impl<F: PrimeField> CircuitGate<F> {
             .collect::<Vec<_>>();
         let zero_row = new_row + num_xors;
         gates.push(CircuitGate::create_generic_gadget(
-            Wire::new(zero_row),
+            Wire::for_row(zero_row),
             GenericGateSpec::Const(F::zero()),
             None,
         ));
@@ -116,7 +116,7 @@ impl<F: PrimeField> CircuitGate<F> {
             }
         };
         let mut not_gate = vec![CircuitGate::create_generic_gadget(
-            Wire::new(new_row),
+            Wire::for_row(new_row),
             g1,
             g2,
         )];
@@ -150,13 +150,13 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut not_gates = (0..num_xors)
             .map(|i| CircuitGate {
                 typ: GateType::Xor16,
-                wires: Wire::new(new_row + i),
+                wires: Wire::for_row(new_row + i),
                 coeffs: vec![],
             })
             .collect::<Vec<_>>();
         let zero_row = new_row + num_xors;
         not_gates.push(CircuitGate::create_generic_gadget(
-            Wire::new(zero_row),
+            Wire::for_row(zero_row),
             GenericGateSpec::Const(F::zero()),
             None,
         ));
