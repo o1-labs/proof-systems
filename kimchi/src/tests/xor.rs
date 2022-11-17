@@ -40,7 +40,7 @@ fn create_test_constraint_system_xor(bits: u32) -> ConstraintSystem<Fp> {
 fn create_test_constraint_system_not_xor(bits: u32) -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
-            Wire::new(0),
+            Wire::for_row(0),
             GenericGateSpec::Pub,
             None,
         )];
@@ -50,7 +50,7 @@ fn create_test_constraint_system_not_xor(bits: u32) -> ConstraintSystem<Fp> {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -59,7 +59,7 @@ fn create_test_constraint_system_not_xor(bits: u32) -> ConstraintSystem<Fp> {
 
 fn create_test_constraint_system_not_gnrc(nots: usize) -> ConstraintSystem<Fp> {
     let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
-        Wire::new(0),
+        Wire::for_row(0),
         GenericGateSpec::Pub,
         None,
     )];
@@ -67,7 +67,7 @@ fn create_test_constraint_system_not_gnrc(nots: usize) -> ConstraintSystem<Fp> {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -283,7 +283,7 @@ fn test_prove_and_verify_not_xor() {
     // Create circuit
     let (mut next_row, mut gates) = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
-            Wire::new(0),
+            Wire::for_row(0),
             GenericGateSpec::Pub,
             None,
         )];
@@ -293,7 +293,7 @@ fn test_prove_and_verify_not_xor() {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -319,7 +319,7 @@ fn test_prove_and_verify_one_not_gnrc() {
     // Create circuit
     let (mut next_row, mut gates) = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
-            Wire::new(0),
+            Wire::for_row(0),
             GenericGateSpec::Pub,
             None,
         )];
@@ -328,7 +328,7 @@ fn test_prove_and_verify_one_not_gnrc() {
     };
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
