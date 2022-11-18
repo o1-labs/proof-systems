@@ -633,12 +633,7 @@ where
             }
 
             if let Some(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
-                index_evals.extend(
-                    [GateType::ForeignFieldAdd]
-                        .iter()
-                        .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
-                );
+                index_evals.insert(GateType::ForeignFieldAdd, &selector.eval8);
             }
 
             if let Some(selector) = index.cs.xor_selector_poly.as_ref() {
