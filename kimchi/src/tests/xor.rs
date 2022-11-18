@@ -366,7 +366,7 @@ fn test_xor64_alternating() {
     assert_eq!(witness[2][2], PallasField::from(2u64.pow(32) - 1));
     assert_eq!(witness[2][3], PallasField::from(2u32.pow(16) - 1));
     assert_eq!(witness[2][4], PallasField::from(0));
-    check_xor(&witness, 64, &input1, &input2, NOT);
+    check_xor(&witness, 64, &input1, &input2, XOR);
 }
 
 #[test]
