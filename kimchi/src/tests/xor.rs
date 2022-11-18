@@ -326,6 +326,7 @@ fn test_prove_and_verify_one_not_gnrc() {
         let next_row = CircuitGate::<Fp>::extend_not_gnrc_gadget(&mut gates, 1, 0, 1);
         (next_row, gates)
     };
+
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
         gates.push(CircuitGate::zero(Wire::for_row(next_row)));
@@ -333,7 +334,16 @@ fn test_prove_and_verify_one_not_gnrc() {
     }
 
     // Create witness and random inputs
-    let witness = xor::create_not_gnrc_witness(&vec![big_random(bits)], bits);
+    let witness: [Vec<PallasField>; 15] = not_gnrc_witness(
+        &vec![
+            big_random(bits),
+            big_random(bits),
+            big_random(bits),
+            big_random(bits),
+            big_random(bits),
+        ],
+        bits,
+    );
 
     TestFramework::default()
         .gates(gates)
