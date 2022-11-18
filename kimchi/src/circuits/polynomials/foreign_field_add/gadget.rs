@@ -151,7 +151,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> CircuitGateResult<()> {
-        if ![GateType::ForeignFieldAdd].contains(&self.typ) {
+        if GateType::ForeignFieldAdd != self.typ {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 

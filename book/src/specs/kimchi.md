@@ -1735,9 +1735,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
-
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; 63]")]
-    pub rot64_table: [G::ScalarField; 63],
 }
 ```
 

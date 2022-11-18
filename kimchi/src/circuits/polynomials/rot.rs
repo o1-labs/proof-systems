@@ -91,7 +91,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> CircuitGateResult<()> {
-        if ![GateType::Rot64].contains(&self.typ) {
+        if GateType::Rot64 != self.typ {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 

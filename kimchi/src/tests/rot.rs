@@ -8,6 +8,8 @@ use ark_ec::AffineCurve;
 use mina_curves::pasta::{Fp, Pallas, Vesta};
 use rand::Rng;
 
+use super::framework::TestFramework;
+
 //use super::framework::TestFramework;
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
@@ -22,16 +24,16 @@ fn create_test_constraint_system(rot: u32, side: bool) -> ConstraintSystem<Fp> {
 
     ConstraintSystem::create(gates).build().unwrap()
 }
-/* TODO: STILL DOES NOT WORK WITH COEFFICIENTS
+
 // Function to create a prover and verifier to test the XOR circuit
 fn prove_and_verify() {
     let rot = rand::thread_rng().gen_range(1..64);
     // Create
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_rot(0, rot);
+    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_rot(0, rot, LEFT);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -39,7 +41,7 @@ fn prove_and_verify() {
     let word = rand::thread_rng().gen_range(0..2u128.pow(64)) as u64;
 
     // Create witness
-    let witness = rot::create_witness_rot(word, rot);
+    let witness = rot::create_witness(word, rot, LEFT);
 
     TestFramework::default()
         .gates(gates)
@@ -52,7 +54,7 @@ fn prove_and_verify() {
 // End-to-end test
 fn test_prove_and_verify() {
     prove_and_verify();
-}*/
+}
 
 fn test_rot(word: u64, rot: u32, side: bool) {
     let cs = create_test_constraint_system(rot, side);

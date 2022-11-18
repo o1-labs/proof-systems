@@ -66,7 +66,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> CircuitGateResult<()> {
-        if ![GateType::Xor16].contains(&self.typ) {
+        if GateType::Xor16 != self.typ {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 
