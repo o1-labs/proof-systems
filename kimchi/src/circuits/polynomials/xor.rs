@@ -670,15 +670,15 @@ pub fn create_not_gnrc_witness<F: PrimeField>(
     for (i, input) in inputs.iter().enumerate().step_by(2) {
         let row = i / 2;
         // fill in first NOT
-        let not1 = all_ones.clone() - F::from_biguint(input).unwrap();
-        not_witness[0][row] = all_ones.clone();
+        let not1 = all_ones - F::from_biguint(input).unwrap();
+        not_witness[0][row] = all_ones;
         not_witness[1][row] = F::from_biguint(input).unwrap();
         not_witness[2][row] = not1;
         // Next element exists
         if i < inputs.len() - 1 {
             let next = &inputs[i + 1];
             // fill in second NOT
-            let not2 = all_ones.clone() - F::from_biguint(next).unwrap();
+            let not2 = all_ones - F::from_biguint(next).unwrap();
             not_witness[3][row] = all_ones;
             not_witness[4][row] = F::from_biguint(next).unwrap();
             not_witness[5][row] = not2;
