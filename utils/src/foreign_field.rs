@@ -172,6 +172,9 @@ impl<F: Field> ForeignFieldHelpers<F> for F {
 
 /// Foreign field helpers
 pub trait BigUintForeignFieldHelpers {
+    /// 2
+    fn two() -> Self;
+
     /// 2^{LIMB_SIZE}
     fn two_to_limb() -> Self;
 
@@ -198,16 +201,20 @@ pub trait BigUintForeignFieldHelpers {
 }
 
 impl BigUintForeignFieldHelpers for BigUint {
+    fn two() -> Self {
+        Self::from(2u32)
+    }
+
     fn two_to_limb() -> Self {
-        BigUint::from(2u64).pow(LIMB_BITS as u32)
+        BigUint::two().pow(LIMB_BITS as u32)
     }
 
     fn two_to_2limb() -> Self {
-        BigUint::from(2u64).pow(2 * LIMB_BITS as u32)
+        BigUint::two().pow(2 * LIMB_BITS as u32)
     }
 
     fn binary_modulus() -> Self {
-        BigUint::from(2u64).pow(3 * LIMB_BITS as u32)
+        BigUint::two().pow(3 * LIMB_BITS as u32)
     }
 
     fn to_limbs(&self) -> [Self; 3] {

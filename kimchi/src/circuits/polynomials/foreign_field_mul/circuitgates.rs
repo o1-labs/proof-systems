@@ -257,7 +257,7 @@ where
 
         // Carry bits for quotient_bound_carry01 and quotient_bound_carry2
         let quotient_bound_carry01 = env.witness_curr(13);
-        let quotient_bound_carry2 = env.witness_next(14);
+        let quotient_bound_carry2 = env.witness_curr(14);
 
         // Remainder r (a.k.a. result)
         let remainder = [

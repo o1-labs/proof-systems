@@ -4,21 +4,24 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::{foreign_field_mul, range_check},
+        polynomials::{
+            foreign_field_mul,
+            range_check,
+        },
         wires::Wire,
     },
     tests::framework::TestFramework,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::{Pallas, Vesta};
 use num_bigint::BigUint;
 use num_integer::Integer;
 use num_traits::One;
 use o1_utils::{
     foreign_field::{
-        BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose, ForeignElement,
-        ForeignFieldHelpers,
+        BigUintArrayCompose, BigUintForeignFieldHelpers,
+        FieldArrayCompose, ForeignElement, ForeignFieldHelpers,
     },
     FieldHelpers,
 };
@@ -63,10 +66,11 @@ fn pallas_sqrt() -> BigUint {
 fn run_test(
     full: bool,
     external_gates: bool,
+    target_plookups: bool,
     left_input: &BigUint,
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
-    invalidate: Option<(usize, usize)>,
+    invalidations: Vec<((usize, usize), PallasField)>,
 ) -> (CircuitGateResult<()>, [Vec<PallasField>; COLUMNS]) {
     // Create foreign field multiplication gates
     let (mut next_row, mut gates) = CircuitGate::create_foreign_field_mul(0);
@@ -181,24 +185,27 @@ fn run_test(
         runner.prove_and_verify();
     }
 
-    if let Some((row, col)) = invalidate {
-        // Invalidate witness
-        let old_value = witness[col][row];
-        witness[col][row] += PallasField::one();
+    if !invalidations.is_empty() {
+        for ((row, col), value) in invalidations {
+            // Invalidate witness
+            assert_ne!(witness[col][row], value);
+            witness[col][row] = value;
+        }
 
-        // Confirm witness is invalidated
-        assert_ne!(old_value, witness[col][row]);
-
-        // Check witness verification fails
-        for row in 0..witness[0].len() {
-            let result = gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec(),
-            );
-            if result.is_err() {
-                return (result, witness);
+        if !target_plookups {
+            // Check witness verification fails
+            // When targeting the plookup constraints the invalidated values would cause custom constraint
+            // failures, so we want to suppress these witness verification checks when doing plookup tests.
+            for row in 0..witness[0].len() {
+                let result = gates[row].verify_witness::<Vesta>(
+                    row,
+                    &witness,
+                    &cs,
+                    &witness[0][0..cs.public].to_vec(),
+                );
+                if result.is_err() {
+                    return (result, witness);
+                }
             }
         }
 
@@ -342,10 +349,11 @@ fn test_zero_mul() {
     let (result, witness) = run_test(
         true,
         true,
+        false,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        None,
+        vec![],
     );
     assert_eq!(result, Ok(()));
 
@@ -366,10 +374,11 @@ fn test_one_mul() {
     let (result, witness) = run_test(
         true,
         true,
+        false,
         &secp256k1_max(),
         &One::one(),
         &secp256k1_modulus(),
-        None,
+        vec![],
     );
     assert_eq!(result, Ok(()));
 
@@ -392,10 +401,11 @@ fn test_max_native_square() {
     let (result, witness) = run_test(
         true,
         true,
+        false,
         &pallas_sqrt(),
         &pallas_sqrt(),
         &secp256k1_modulus(),
-        None,
+        vec![],
     );
     assert_eq!(result, Ok(()));
 
@@ -420,10 +430,11 @@ fn test_max_foreign_square() {
     let (result, witness) = run_test(
         true,
         true,
+        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        None,
+        vec![],
     );
     assert_eq!(result, Ok(()));
 
@@ -448,10 +459,11 @@ fn test_max_native_multiplicands() {
     let (result, witness) = run_test(
         true,
         true,
+        false,
         &pallas_max(),
         &pallas_max(),
         &secp256k1_modulus(),
-        None,
+        vec![],
     );
     assert_eq!(result, Ok(()));
     assert_eq!(
@@ -467,10 +479,11 @@ fn test_max_foreign_multiplicands() {
     let (result, witness) = run_test(
         true,
         true,
+        false,
         &secp256k1_max(),
         &secp256k1_max(),
         &secp256k1_modulus(),
-        None,
+        vec![],
     );
     assert_eq!(result, Ok(()));
     assert_eq!(
@@ -479,6 +492,317 @@ fn test_max_foreign_multiplicands() {
     );
 }
 
+#[test]
+// Test with nonzero carry0 bits
+fn test_nonzero_carry0() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
+    for _ in 0..4 {
+        let mut a = rng.gen_biguint_below(&secp256k1_modulus()).to_limbs();
+        let mut b = rng.gen_biguint_below(&secp256k1_modulus()).to_limbs();
+
+        // Adjust lowest limb to trigger carry bits into carry0
+        a[0] = BigUint::two_to_limb() - BigUint::one();
+        let a = a.compose();
+        assert!(a < secp256k1_modulus());
+        b[0] = BigUint::two_to_limb() - BigUint::one();
+        let b = b.compose();
+        assert!(b < secp256k1_modulus());
+
+        // Valid witness test
+        let (result, witness) = run_test(false, true, false, &a, &b, &secp256k1_modulus(), vec![]);
+        assert_eq!(result, Ok(()));
+        assert_ne!(witness[9][0], PallasField::zero()); // carry0 is not zero
+        assert_eq!(
+            &a * &b % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+
+        // Invalid carry0 witness test
+        let (result, witness) = run_test(
+            false,
+            true,
+            false,
+            &a,
+            &b,
+            &secp256k1_modulus(),
+            vec![((0, 9), PallasField::zero())], // Invalidate carry0
+        );
+        // The 4th constraint (i.e. C5) should fail
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
+        );
+        assert_eq!(
+            a * b % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+    }
+}
+
+#[test]
+// Test with nonzero carry10 (this targets only carry10)
+fn test_nonzero_carry10() {
+    // Max modulus
+    let foreign_modulus = BigUint::two().pow(259u32);
+
+    // Maximum quotient
+    let q = &foreign_modulus - BigUint::one();
+
+    // Compute operands
+    let a = &foreign_modulus / BigUint::two().pow(5);
+    let b = (&q * &foreign_modulus) / &a;
+
+    // Valid witness test
+    let (result, witness) = run_test(false, true, false, &a, &b, &foreign_modulus, vec![]);
+    assert_eq!(result, Ok(()));
+    assert_ne!(witness[6][0], PallasField::zero()); // carry10 is definitely not zero
+    assert_eq!(
+        &a * &b % &foreign_modulus,
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+
+    // Invalid carry0 witness test
+    let (result, witness) = run_test(
+        false,
+        false, // Disable copy constraints so we can catch carry10 custom constraint failure
+        false,
+        &a,
+        &b,
+        &foreign_modulus,
+        vec![((0, 6), PallasField::zero())], // Invalidate carry10
+    );
+    // The 6th constraint (i.e. C9) should fail
+    assert_eq!(
+        result,
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+    );
+    assert_eq!(
+        a * b % &foreign_modulus,
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+}
+
+#[test]
+// Test with nonzero carry11
+fn test_nonzero_carry11() {
+    // Big (rubbish) modulus
+    let foreign_modulus = BigUint::two().pow(259u32) - BigUint::one();
+
+    // Maximum quotient
+    let q = &foreign_modulus - BigUint::one();
+
+    // Compute operands
+    let a = &foreign_modulus / BigUint::two().pow(4);
+    let b = (&q * &foreign_modulus) / &a;
+
+    // Valid witness test
+    let (result, witness) = run_test(false, true, false, &a, &b, &foreign_modulus, vec![]);
+    assert_eq!(result, Ok(()));
+    assert_ne!(witness[7][0], PallasField::zero()); // carry11 is definitely not zero
+    assert_eq!(
+        &a * &b % &foreign_modulus,
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+
+    // Invalid carry11 witness test
+    let (result, witness) = run_test(
+        false,
+        false, // Disable copy constraints so we can catch carry11 custom constraint failure
+        false,
+        &a,
+        &b,
+        &foreign_modulus,
+        vec![((0, 7), PallasField::zero()), ((0, 8), PallasField::zero())], // Invalidate carry11 and make scaled_carry11 match
+    );
+    // The 6th constraint (i.e. C9) should fail
+    assert_eq!(
+        result,
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+    );
+    assert_eq!(
+        a * b % &foreign_modulus,
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+}
+
+#[test]
+// Test with nonzero second bit of carry11
+fn test_nonzero_second_bit_carry11() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let a = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(64)),
+        &secp256k1_modulus(),
+    );
+    let b = secp256k1_max();
+
+    // Valid witness test
+    let (result, witness) = run_test(false, true, false, &a, &b, &secp256k1_modulus(), vec![]);
+    assert_eq!(result, Ok(()));
+    assert_eq!(witness[7][0], PallasField::from(2u32)); // carry11 is not zero
+    assert_eq!(
+        &a * &b % secp256k1_modulus(),
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+
+    // Invalid carry11 witness test
+    let (result, witness) = run_test(
+        false,
+        false, // Disable copy constraints so we can catch carry11 custom constraint failure
+        false,
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![
+            ((0, 7), PallasField::one()),
+            ((0, 8), PallasField::from(512u32)),
+        ], // Invalidate carry11 and make scaled_carry11 match
+    );
+    // The 6th constraint (i.e. C9) should fail
+    assert_eq!(
+        result,
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+    );
+    assert_eq!(
+        a * b % secp256k1_modulus(),
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+}
+
+#[test]
+// Test invalid carry11 scaling
+fn test_invalid_carry11_scaling() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let a = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(64)),
+        &secp256k1_modulus(),
+    );
+    let b = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(128)),
+        &secp256k1_modulus(),
+    );
+
+    // Valid witness test
+    let (result, witness) = run_test(false, true, false, &a, &b, &secp256k1_modulus(), vec![]);
+    assert_eq!(result, Ok(()));
+    assert_eq!(witness[7][0], PallasField::one()); // carry11 is 1
+    assert_eq!(
+        &a * &b % secp256k1_modulus(),
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+
+    // Invalid carry11 witness test
+    let (result, witness) = run_test(
+        false,
+        false, // Disable copy constraints so we can catch scaled_carry11 custom constraint failure
+        false,
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![((0, 8), PallasField::from(2u32))], // Invalidate scaled_carry11
+    );
+    // The 5th constraint (i.e. C8) should fail
+    assert_eq!(
+        result,
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
+    );
+    assert_eq!(
+        a * b % secp256k1_modulus(),
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+}
+
+#[test]
+#[should_panic]
+// Test invalid carry11 range
+fn test_invalid_carry11_plookup() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let a = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(96)),
+        &secp256k1_modulus(),
+    );
+    let b = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(96)),
+        &secp256k1_modulus(),
+    );
+
+    // Valid witness test
+    let (result, witness) = run_test(
+        false, // positive full checks done as part of negative tests below
+        false,
+        true,
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![]
+    );
+    assert_eq!(result, Ok(()));
+    assert_eq!(witness[7][0], PallasField::one()); // carry11 is 1
+    assert_eq!(
+        &a * &b % secp256k1_modulus(),
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+
+    // Invalid carry11 witness test
+    let (_, _) = run_test(
+        true,
+        false, // Disable copy constraints so we can catch carry11 plookup failure
+        true,  // Target tests at lookup constraints
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![
+            ((0, 7), PallasField::from(2u32).pow(&[12u64])),
+        ], // Make carry11 13 bits long
+    );
+    // Above should panic
+}
+
+#[test]
+#[should_panic]
+// Test invalid scaled_carry11 range
+fn test_invalid_scaled_carry11_plookup() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let a = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(96)),
+        &secp256k1_modulus(),
+    );
+    let b = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(96)),
+        &secp256k1_modulus(),
+    );
+
+    // Valid witness test
+    let (result, witness) = run_test(
+        false, // positive full checks done as part of negative tests below
+        false,
+        true,
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![]
+    );
+    assert_eq!(result, Ok(()));
+    assert_eq!(witness[8][0], PallasField::from(512u32)); // scaled_carry11 is 512
+    assert_eq!(
+        &a * &b % secp256k1_modulus(),
+        [witness[0][1], witness[1][1], witness[2][1]].compose()
+    );
+
+    // Invalid scaled_carry11 witness test
+    let (_, _) = run_test(
+        true,
+        false, // Disable copy constraints so we can catch carry11 plookup failure
+        true,  // Target tests at lookup constraints
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![
+            ((0, 8), PallasField::from(2u32).pow(&[12u64])),
+        ], // Make scaled_carry11 13 bits long
+    );
+    // Above should panic
+}
 
 #[test]
 // Test witness with invalid quotient fails verification
@@ -486,10 +810,11 @@ fn test_zero_mul_invalid_quotient() {
     let (result, _) = run_test(
         false,
         true,
+        false,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        Some((0, 10)), // Invalidate q0
+        vec![((0, 10), PallasField::one())], // Invalidate q0
     );
     assert_eq!(
         result,
@@ -499,10 +824,11 @@ fn test_zero_mul_invalid_quotient() {
     let (result, _) = run_test(
         false,
         true,
+        false,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        Some((0, 11)), // Invalidate q1
+        vec![((0, 11), PallasField::one())], // Invalidate q1
     );
     assert_eq!(
         result,
@@ -512,10 +838,11 @@ fn test_zero_mul_invalid_quotient() {
     let (result, _) = run_test(
         false,
         true,
+        false,
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        Some((0, 12)), // Invalidate q2
+        vec![((0, 12), PallasField::one())], // Invalidate q2
     );
     assert_eq!(
         result,
@@ -525,10 +852,11 @@ fn test_zero_mul_invalid_quotient() {
     let (result, _) = run_test(
         false,
         true,
+        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        Some((0, 10)), // Invalidate q0
+        vec![((0, 10), PallasField::one())], // Invalidate q0
     );
     assert_eq!(
         result,
@@ -538,10 +866,11 @@ fn test_zero_mul_invalid_quotient() {
     let (result, _) = run_test(
         false,
         true,
+        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        Some((0, 11)), // Invalidate q1
+        vec![((0, 11), PallasField::one())], // Invalidate q1
     );
     assert_eq!(
         result,
@@ -551,10 +880,11 @@ fn test_zero_mul_invalid_quotient() {
     let (result, _) = run_test(
         false,
         true,
+        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        Some((0, 12)), // Invalidate q2
+        vec![((0, 12), PallasField::one())], // Invalidate q2
     );
     assert_eq!(
         result,
@@ -564,15 +894,16 @@ fn test_zero_mul_invalid_quotient() {
 
 #[test]
 // Test witness with invalid remainder fails
-fn test_zero_mul_invalid_remainder() {
+fn test_mul_invalid_remainder() {
     for col in 0..1 {
         let (result, _) = run_test(
+            false,
             false,
             false,
             &secp256k1_sqrt(),
             &secp256k1_sqrt(),
             &secp256k1_modulus(),
-            Some((1, col)), // Invalidate ri
+            vec![((1, col), PallasField::zero())], // Invalidate ri
         );
         assert_eq!(
             result,
@@ -583,10 +914,11 @@ fn test_zero_mul_invalid_remainder() {
     let (result, _) = run_test(
         false,
         false,
+        false,
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        Some((1, 2)), // Invalidate r2
+        vec![((1, 2), PallasField::one())], // Invalidate r2
     );
     assert_eq!(
         result,
@@ -606,10 +938,11 @@ fn test_random_multiplicands_1() {
         let (result, witness) = run_test(
             false,
             false,
+            false,
             &left_input,
             &right_input,
             &secp256k1_modulus(),
-            Some((0, 4)), // Invalidate carry1_lo
+            vec![((0, 4), PallasField::one())], // Invalidate carry1_lo
         );
         assert_eq!(
             (&left_input * &right_input) % secp256k1_modulus(),
@@ -618,6 +951,209 @@ fn test_random_multiplicands_1() {
         assert_eq!(
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 2)),
+        );
+    }
+}
+
+#[test]
+// Tests targeting each custom constraint
+fn test_custom_constraints() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
+    for _ in 0..3 {
+        let left_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
+        let right_input = rng.gen_biguint_range(&BigUint::zero(), &secp256k1_max());
+
+        // Test 1st constraint (C1): invalidate product1_hi_1 is in [0, 2^2)
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((1, 7), PallasField::from(4u32))], // Invalidate product1_hi_1
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 1)),
+        );
+
+        // Test 2nd constraint (C3): invalidate middle intermediate product p1 decomposition
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((1, 5), PallasField::one())], // Invalidate product1_lo
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 2)),
+        );
+
+        // Test 3rd constraint (C4): invalidate carry0 in [0, 2^2)
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 9), PallasField::from(4u32))], // Invalidate carry0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3)),
+        );
+
+        // Test 4th constraint (C5): invalidate carry0
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 9), PallasField::from(3u32))], // Invalidate carry0
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
+        );
+
+        // Test 5th constraint (C8): invalidate scaled_carry1_hi
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 8), PallasField::one())], // Invalidate scaled_carry1_hi
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5)),
+        );
+
+        // Test 6th constraint (C9): invalidate first zero check
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 6), PallasField::one())], // Invalidate carry1_lo
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6)),
+        );
+
+        // TODO: Test 7th constraint (C10): invalid native modulus check but binary modulus checks ok
+
+        // Test 8th constraint (C12): invalidate q'_carry01 is boolean
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 13), PallasField::from(2u32))], // Make q'_carry01 non-boolean
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
+        );
+
+        // Test 9th constraint (C13): invalidate first bound addition zero check
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 13), PallasField::from(1u32))], // Make q'_carry01 invalid
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+        );
+
+        // Test 10th constraint (C14): invalidate q'_carry2 is boolean
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 14), PallasField::from(2u32))], // Make q'_carry2 non-boolean
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+        );
+
+        // Test 11th constraint (C15): invalidate second bound addition zero check
+        let (result, witness) = run_test(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            &secp256k1_modulus(),
+            vec![((0, 14), PallasField::one())], // invalidate q'_carry2
+        );
+        assert_eq!(
+            (&left_input * &right_input) % secp256k1_modulus(),
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 11)),
         );
     }
 }
