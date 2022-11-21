@@ -42,13 +42,13 @@ fn compute_subadd_values<F: PrimeField>(
     let two_to_limb = F::from(TWO_TO_LIMB);
 
     // Compute bigint version of the inputs
-    let left = left_input.to_big();
-    let right = right_input.to_big();
+    let left = left_input.to_biguint();
+    let right = right_input.to_biguint();
 
     // Clarification:
     let right_hi = right_input[3] * two_to_limb + right_input[HI]; // This allows to store 2^88 in the high limb
 
-    let modulus = foreign_modulus.to_big();
+    let modulus = foreign_modulus.to_biguint();
 
     // Addition or subtraction
     let sign = if opcode == FFOps::Add {

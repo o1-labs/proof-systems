@@ -479,7 +479,7 @@ fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     ]
 }
 
-fn init_xor<F: PrimeField>(
+pub(crate) fn init_xor<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     curr_row: usize,
     bits: usize,

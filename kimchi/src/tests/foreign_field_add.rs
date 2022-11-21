@@ -374,7 +374,7 @@ fn test_zero_minus_one() {
     let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let right_be_neg = ForeignElement::<PallasField, 3>::from_be(ONE)
         .neg(&foreign_modulus)
-        .to_big()
+        .to_biguint()
         .to_bytes_be();
     let right_for_neg: ForeignElement<PallasField, 3> = ForeignElement::from_be(&right_be_neg);
     let (witness_neg, _cs) = test_ffadd(
@@ -401,7 +401,7 @@ fn test_one_minus_one_plus_one() {
     let neg_neg_one = ForeignElement::<PallasField, 3>::from_be(ONE)
         .neg(&foreign_modulus)
         .neg(&foreign_modulus)
-        .to_big()
+        .to_biguint()
         .to_bytes_be();
     let (witness, _cs) = test_ffadd(
         SECP256K1_MOD,
@@ -424,7 +424,7 @@ fn test_one_minus_one_plus_one() {
 fn test_minus_minus() {
     let foreign_modulus = BigUint::from_bytes_be(SECP256K1_MOD);
     let neg_one_for = ForeignElement::<PallasField, 3>::from_be(ONE).neg(&foreign_modulus);
-    let neg_one = neg_one_for.to_big().to_bytes_be();
+    let neg_one = neg_one_for.to_biguint().to_bytes_be();
     let neg_two = ForeignElement::<PallasField, 3>::from_biguint(BigUint::from_u32(2).unwrap())
         .neg(&foreign_modulus);
     let (witness_neg, _cs) = test_ffadd(
