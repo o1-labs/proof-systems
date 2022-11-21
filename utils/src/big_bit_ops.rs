@@ -2,7 +2,7 @@
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
 use rand::Rng;
-use std::cmp::max;
+use std::cmp::{max, Ordering};
 
 /// Exclusive or of the bits of two BigUint inputs
 pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
@@ -85,12 +85,10 @@ fn bit_at(input: &BigUint, index: u32) -> bool {
 // Panics if bytes < input.len()
 fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
     let bytes_inp = input.to_bytes_le().len();
-    if bytes > bytes_inp {
-        pad(input, bytes - bytes_inp)
-    } else if bytes == bytes_inp {
-        input.to_bytes_le()
-    } else {
-        panic!("Desired length of the input is smaller than the length")
+    match bytes.cmp(&bytes_inp) {
+        Ordering::Greater => pad(input, bytes - bytes_inp),
+        Ordering::Equal => input.to_bytes_le(),
+        Ordering::Less => panic!("Desired length of the input is smaller than the length"),
     }
 }
 
