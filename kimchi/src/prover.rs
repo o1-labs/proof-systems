@@ -798,8 +798,7 @@ where
             {
                 if index.cs.rot_selector_poly.is_some() {
                     let rot = Rot64::combined_constraints(&all_alphas).evaluations(&env);
-                    assert_eq!(rot.domain().size, t4.domain().size);
-                    t4 += &rot;
+                    t8 += &rot;
                     check_constraint!(index, rot);
                 }
             }
