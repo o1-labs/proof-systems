@@ -11,7 +11,10 @@ use num_bigint::BigUint;
 use o1_utils::{big_bits, big_not, FieldFromBig, FieldHelpers};
 use std::{array, cmp::max};
 
-use super::{generic::GenericGateSpec, xor::init_xor};
+use super::{
+    generic::GenericGateSpec,
+    xor::{init_xor, num_xors},
+};
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a negation gadget with `nots` NOT components of some length previously constrained using a generic gate
@@ -190,9 +193,4 @@ pub fn create_not_gnrc_witness<F: PrimeField>(
         }
     }
     not_witness
-}
-
-/// Returns the number of XOR rows needed for inputs of usize bits
-pub fn num_xors(bits: u32) -> usize {
-    (bits as f64 / 16.0).ceil() as usize
 }
