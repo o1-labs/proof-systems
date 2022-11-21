@@ -69,6 +69,7 @@
 - [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
 - [RFC 4: Foreign Field Addition](./rfcs/ffadd.md)
 - [RFC 5: Keccak](./rfcs/keccak.md)
+- [RFC 6: Extended lookup tables](./rfcs/)
   
 # Specifications
 
