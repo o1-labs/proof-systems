@@ -204,7 +204,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             max_poly_size: self.max_poly_size,
             max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
-            public: self.cs.public,
+            public: self.cs.circuit.public_input_size,
             prev_challenges: self.cs.prev_challenges,
             srs: {
                 let cell = OnceCell::new();

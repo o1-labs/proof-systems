@@ -34,6 +34,7 @@ use std::{collections::HashSet, sync::Arc};
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
+    #[serde(bound = "Circuit<F>: Serialize + DeserializeOwned")]
     pub circuit: Circuit<F>,
 
     // Basics
@@ -262,7 +263,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         });
 
         // check each rows' wiring
-        for (row, gate) in self.gates.iter().enumerate() {
+        for (row, gate) in self.circuit.gates.iter().enumerate() {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
@@ -289,7 +290,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.coeffs[0] != F::one() {
+            if row < self.circuit.public_input_size && gate.coeffs[0] != F::one() {
                 return Err(GateError::IncorrectPublic(row));
             }
 
@@ -639,10 +640,10 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let domain_constant_evaluation = OnceCell::new();
 
         let constraints = ConstraintSystem {
+            circuit: Circuit::new(self.public, gates),
             chacha8,
             endomul_scalar8,
             domain,
-            public: self.public,
             prev_challenges: self.prev_challenges,
             sid,
             sigmal1,
@@ -661,7 +662,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
             xor_selector_poly,
-            gates,
             shift: shifts.shifts,
             endo,
             //fr_sponge_params: self.sponge_params,

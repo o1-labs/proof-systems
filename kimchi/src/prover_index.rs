@@ -67,7 +67,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
         srs: Arc<SRS<G>>,
     ) -> Self {
         let max_poly_size = srs.g.len();
-        if cs.public > 0 {
+        if cs.circuit.public_input_size > 0 {
             assert!(
                 max_poly_size >= cs.domain.d1.size(),
                 "polynomial segment size has to be not smaller that that of the circuit!"

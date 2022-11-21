@@ -172,7 +172,7 @@ where
 
         // double-check the witness
         if cfg!(debug_assertions) {
-            let public = witness[0][0..index.cs.public].to_vec();
+            let public = witness[0][0..index.cs.circuit.public_input_size].to_vec();
             index
                 .cs
                 .verify::<G>(&witness, &public)
@@ -224,7 +224,7 @@ where
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
         //~    and $0$ for the rest.
-        let public = witness[0][0..index.cs.public].to_vec();
+        let public = witness[0][0..index.cs.circuit.public_input_size].to_vec();
         let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
             public.clone(),
             index.cs.domain.d1,
@@ -470,7 +470,7 @@ where
                 dummy_lookup_value,
                 &joint_lookup_table_d8,
                 index.cs.domain.d1,
-                &index.cs.gates,
+                &index.cs.circuit.gates,
                 &witness,
                 joint_combiner,
                 table_id_combiner,
@@ -531,7 +531,7 @@ where
                 lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
-                &index.cs.gates,
+                &index.cs.circuit.gates,
                 &witness,
                 &lookup_context.joint_combiner.unwrap(),
                 &lookup_context.table_id_combiner.unwrap(),

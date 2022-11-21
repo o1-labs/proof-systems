@@ -1,8 +1,10 @@
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
+use crate::circuits::Circuit;
 use ark_ff::PrimeField;
 use itertools::Itertools;
+use o1_utils::hasher::CryptoDigest as _;
 use std::collections::{HashMap, HashSet};
 
 use super::constants::Constants;
@@ -192,7 +194,7 @@ enum V {
   while it is being written.
 */
 #[derive(Clone)]
-enum Circuit<F>
+enum CircuitState<F>
 where
     F: PrimeField,
 {
@@ -201,7 +203,7 @@ where
     /** Once finalized, a circuit is represented as a digest
         and a list of gates that corresponds to the circuit.
     */
-    Compiled([u8; 32], Vec<CircuitGate<F>>),
+    Compiled([u8; 32], Circuit<F>),
 }
 
 /** The constraint system. */
@@ -223,7 +225,7 @@ where
        A gate is finalized once [finalize_and_get_gates](SnarkyConstraintSystem::finalize_and_get_gates) is called.
        The finalized tag contains the digest of the circuit.
     */
-    gates: Circuit<Field>,
+    gates: CircuitState<Field>,
     /** The row to use the next time we add a constraint. */
     next_row: usize,
     /** The size of the public input (which fills the first rows of our constraint system. */
@@ -344,7 +346,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             public_input_size: None,
             next_internal_var: 0,
             internal_vars: HashMap::new(),
-            gates: Circuit::Unfinalized(Vec::new()),
+            gates: CircuitState::Unfinalized(Vec::new()),
             rows: Vec::new(),
             next_row: 0,
             equivalence_classes: HashMap::new(),
@@ -410,8 +412,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             }
         }
         match &mut self.gates {
-            Circuit::Compiled(_, _) => panic!("add_row called on finalized constraint system"),
-            Circuit::Unfinalized(gates) => {
+            CircuitState::Compiled(_, _) => panic!("add_row called on finalized constraint system"),
+            CircuitState::Unfinalized(gates) => {
                 gates.push(GateSpec {
                     kind,
                     wired_to: Vec::new(),
@@ -430,7 +432,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     /// Will panic if `circuit` is completed.
     pub fn finalize(&mut self) {
         // if it's already finalized, return early
-        if matches!(self.gates, Circuit::Compiled(..)) {
+        if matches!(self.gates, CircuitState::Compiled(..)) {
             // TODO: return an error?
             return;
         }
@@ -442,9 +444,9 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         }
 
         // get gates without holding on an immutable reference
-        let gates = match std::mem::replace(&mut self.gates, Circuit::Unfinalized(vec![])) {
-            Circuit::Unfinalized(gates) => gates,
-            Circuit::Compiled(_, _) => panic!("we expect the gates to be unfinalized"),
+        let gates = match std::mem::replace(&mut self.gates, CircuitState::Unfinalized(vec![])) {
+            CircuitState::Unfinalized(gates) => gates,
+            CircuitState::Compiled(_, _) => panic!("we expect the gates to be unfinalized"),
         };
 
         /* Create rows for public input. */
@@ -516,21 +518,19 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         add_gates(public_gates);
         add_gates(gates);
 
-        let digest = {
-            use o1_utils::hasher::CryptoDigest as _;
-            let circuit = crate::circuits::gate::Circuit::new(public_input_size, &rust_gates);
-            circuit.digest()
-        };
+        let circuit = Circuit::new(public_input_size, rust_gates.clone());
 
-        self.gates = Circuit::Compiled(digest, rust_gates);
+        let digest = circuit.digest();
+
+        self.gates = CircuitState::Compiled(digest, circuit);
     }
 
     // TODO: why does it return a mutable reference?
     pub fn finalize_and_get_gates(&mut self) -> &mut Vec<CircuitGate<Field>> {
         self.finalize();
         match &mut self.gates {
-            Circuit::Compiled(_, gates) => gates,
-            Circuit::Unfinalized(_) => unreachable!(),
+            CircuitState::Compiled(_, circuit) => &mut circuit.gates,
+            CircuitState::Unfinalized(_) => unreachable!(),
         }
     }
 }

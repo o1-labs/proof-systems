@@ -168,11 +168,11 @@ fn test_ffadd(
 
     for row in 0..all_rows {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
+            cs.circuit.gates[row].verify_witness::<Vesta>(
                 row,
                 &witness,
                 &cs,
-                &witness[0][0..cs.public].to_vec()
+                &witness[0][0..cs.circuit.public_input_size].to_vec()
             ),
             Ok(())
         );
@@ -183,7 +183,7 @@ fn test_ffadd(
 
     for row in add_row..all_rows {
         assert_eq!(
-            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            cs.circuit.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
             Ok(())
         );
     }
@@ -588,7 +588,7 @@ fn test_wrong_sum() {
     witness[0][17] = all_ones_limb.clone();
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -608,7 +608,7 @@ fn test_wrong_dif() {
     witness[0][17] = PallasField::zero();
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -858,7 +858,7 @@ fn test_random_bad_input() {
     // First modify left input only to cause an invalid copy constraint
     witness[0][16] = witness[0][16] + PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidCopyConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -866,7 +866,7 @@ fn test_random_bad_input() {
     // then modify the value in the range check to cause an invalid FFAdd constraint
     witness[0][0] = witness[0][0] + PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -887,7 +887,7 @@ fn test_random_bad_parameters() {
     // Modify low carry
     witness[8][16] = witness[8][16] + PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -896,7 +896,7 @@ fn test_random_bad_parameters() {
     // Modify high carry
     witness[9][16] = witness[9][16] - PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -905,7 +905,7 @@ fn test_random_bad_parameters() {
     // Modify overflow
     witness[7][16] = witness[7][16] + PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -914,7 +914,7 @@ fn test_random_bad_parameters() {
     // Modify sign
     witness[6][16] = PallasField::zero() - witness[6][16];
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -922,7 +922,7 @@ fn test_random_bad_parameters() {
     witness[6][16] = PallasField::zero() - witness[6][16];
     // Check back to normal
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Ok(()),
     );
 }
@@ -992,7 +992,7 @@ fn test_bad_bound() {
     // It should be constrained that sign needs to be 1
     witness[6][17] = -PallasField::one();
     assert_eq!(
-        cs.gates[17].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[17].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidCopyConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -1001,7 +1001,7 @@ fn test_bad_bound() {
     // Modify overflow
         witness[7][17] = -PallasField::one();
     assert_eq!(
-        cs.gates[17].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        cs.circuit.gates[17].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidCopyConstraint(
             GateType::ForeignFieldAdd
         )),

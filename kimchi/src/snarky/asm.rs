@@ -4,9 +4,12 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::hash::Hash;
 
-use crate::circuits::gate::{Circuit, CircuitGate, GateType};
 use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
 use crate::circuits::wires::Wire;
+use crate::circuits::{
+    gate::{CircuitGate, GateType},
+    Circuit,
+};
 use ark_ff::PrimeField;
 
 /// Print a field in a negative form if it's past the half point.
@@ -20,7 +23,7 @@ fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
     }
 }
 
-impl<'a, F> Circuit<'a, F>
+impl<F> Circuit<F>
 where
     F: PrimeField,
 {
@@ -30,7 +33,7 @@ where
         // vars
         let mut vars = OrderedHashSet::default();
 
-        for CircuitGate { coeffs, .. } in self.gates {
+        for CircuitGate { coeffs, .. } in &self.gates {
             Self::extract_vars_from_coeffs(&mut vars, coeffs);
         }
 
@@ -214,7 +217,7 @@ mod tests {
     #[test]
     fn test_simple_circuit_asm() {
         let public_input_size = 1;
-        let gates: &Vec<CircuitGate<Fp>> = &vec![
+        let gates: Vec<CircuitGate<Fp>> = vec![
             CircuitGate::new(
                 GateType::Generic,
                 Wire::for_row(0),
