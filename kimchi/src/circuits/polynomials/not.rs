@@ -16,6 +16,19 @@ use super::{
     xor::{init_xor, num_xors},
 };
 
+//~ We implement the NOT gadget making use of the XOR gadget and the Generic gate, in two different ways. A new gate type is not needed.
+//~
+//~ The first version of the NOT gadget reuses `Xor16` by making the following observation:
+//~ $$\textit{the bitwise NOT operation is equivalent to the bitwise XOR operation with the all one words of a certain length}$$
+//~ Then, if we take the XOR gadget with a second input to be the all one word of the same length, that gives us the NOT gadget.
+//~ The correct length can be imposed by having a public input containing the `2^bits - 1` value and wiring it to the second input of the XOR gate.
+//~ This approach needs as many rows as a XOR would need, for a single negation, but it comes with the advantage of making sure the input is of a certain length.
+//~
+//~ The other approach can be more efficient if we already know the length of the inputs. For example, the input may be the input of a range check gate,
+//~ or the output of a previous XOR gadget (which will be the case in our Keccak usecase).
+//~ In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
+//~ This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
+
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a negation gadget with `nots` NOT components of some length previously constrained using a generic gate
     /// (checking that a cell stores `2^bits-1` value). Assumes that the inputs are known to have at most `bits` length.
