@@ -6,6 +6,7 @@ mod foreign_field_add;
 mod framework;
 mod generic;
 mod lookup;
+mod not;
 mod poseidon;
 mod range_check;
 mod recursion;

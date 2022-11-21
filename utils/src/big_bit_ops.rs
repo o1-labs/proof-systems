@@ -1,6 +1,7 @@
 //! This module provides a set of functions to perform bit operations on big integers.
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
+use rand::Rng;
 use std::cmp::max;
 
 /// Exclusive or of the bits of two BigUint inputs
@@ -48,6 +49,22 @@ pub fn big_not(input: &BigUint, bits: Option<u32>) -> BigUint {
     // negate each of the bits of the input
     (0..bits).for_each(|i| bit_vec.push(!bit_at(input, i as u32)));
     le_bitvec_to_biguint(&bit_vec)
+}
+
+/// Produces a random BigUint of a given number of bits
+pub fn big_random(bits: u32) -> BigUint {
+    if bits == 0 {
+        panic!("Cannot generate a random number of 0 bits");
+    }
+    let bytes = bits / 8;
+    let extra = bits % 8;
+    let mut big = (0..bytes)
+        .map(|_| rand::thread_rng().gen_range(0..255))
+        .collect::<Vec<u8>>();
+    if extra > 0 {
+        big.push(rand::thread_rng().gen_range(0..2u8.pow(extra)));
+    }
+    BigUint::from_bytes_le(&big)
 }
 
 // Returns the bit value of a BigUint input at a certain position or zero
