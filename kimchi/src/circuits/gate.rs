@@ -16,7 +16,6 @@ use ark_ff::{bytes::ToBytes, PrimeField};
 use ark_poly::Evaluations;
 use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
-use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
@@ -402,42 +401,6 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self.connect_cell_pair((start_row, 1), (start_row, 2));
         self.connect_cell_pair((start_row, 2), (zero_row, 0));
         self.connect_cell_pair((zero_row, 0), (start_row, 1));
-    }
-}
-
-/// A circuit is specified as a public input size and a list of [`CircuitGate`].
-#[derive(Serialize)]
-#[serde(bound = "CircuitGate<F>: Serialize")]
-pub struct Circuit<'a, F: PrimeField> {
-    pub public_input_size: usize,
-    pub gates: &'a [CircuitGate<F>],
-}
-
-impl<'a, F> Circuit<'a, F>
-where
-    F: PrimeField,
-{
-    pub fn new(public_input_size: usize, gates: &'a [CircuitGate<F>]) -> Self {
-        Self {
-            public_input_size,
-            gates,
-        }
-    }
-}
-
-impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
-    const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
-}
-
-impl<'a, F> From<&'a ConstraintSystem<F>> for Circuit<'a, F>
-where
-    F: PrimeField,
-{
-    fn from(cs: &'a ConstraintSystem<F>) -> Self {
-        Self {
-            public_input_size: cs.public,
-            gates: &cs.gates,
-        }
     }
 }
 
