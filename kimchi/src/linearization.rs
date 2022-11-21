@@ -121,6 +121,11 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         h.insert(Witness(i));
     }
 
+    // the coefficient polynomials
+    for i in 0..COLUMNS {
+        h.insert(Coefficient(i));
+    }
+
     // the lookup polynomials
     if let Some(lcs) = &lookup_constraint_system {
         for i in 0..=lcs.lookup_info.max_per_row {
