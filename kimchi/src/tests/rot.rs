@@ -10,7 +10,6 @@ use rand::Rng;
 
 use super::framework::TestFramework;
 
-//use super::framework::TestFramework;
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
 fn create_test_constraint_system(rot: u32, side: bool) -> ConstraintSystem<Fp> {
