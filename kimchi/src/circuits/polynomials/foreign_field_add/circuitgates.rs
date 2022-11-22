@@ -83,6 +83,11 @@ use std::{array, marker::PhantomData};
 //~ final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
 //~ (meaning less than the modulus).
 //~
+//~ A more optimized version of these constraints is able to reduce by 2 the number of constraints and
+//~ by 1 the number of witness cells needed. The idea is to condense the low and middle limbs in one longer
+//~ limb of 176 bits (which fits inside our native field) and getting rid of the low carry flag.
+//~ With this idea in mind, the sole carry flag we need is the one located between the middle and the high limbs.
+//~
 //~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 //~
 //~ | col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
@@ -95,8 +100,8 @@ use std::{array, marker::PhantomData};
 //~ |   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
 //~ |   6 | `sign`           (copy) |                         |  1              (check) |                   |
 //~ |   7 | `field_overflow`        |                         |  1              (check) |                   |
-//~ |   8 | `carry_lo`              |                         | `bound_carry_lo`        |                   |
-//~ |   9 | `carry_mi`              |                         | `bound_carry_mi`        |                   |
+//~ |   8 | `carry`                 |                         | `bound_carry`           |                   |
+//~ |   9 |                         |                         |                         |                   |
 //~ |  10 |                         |                         |                         |                   |
 //~ |  11 |                         |                         |                         |                   |
 //~ |  12 |                         |                         |                         |                   |
@@ -118,7 +123,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 7;
+    const CONSTRAINTS: u32 = 5;
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
@@ -138,8 +143,7 @@ where
         let field_overflow = env.witness_curr(7);
 
         // Result carry bits for limb overflows / underflows.
-        let carry_lo = env.witness_curr(8);
-        let carry_mi = env.witness_curr(9);
+        let carry = env.witness_curr(8);
 
         let result_lo = env.witness_next(0);
         let result_mi = env.witness_next(1);
@@ -153,31 +157,30 @@ where
             (sign.clone() + T::one()) * (sign.clone() - T::one()),
         ];
 
-        // Constraints to check the carry flags are -1, 0, or 1.
-        checks.push(carry(&carry_lo));
-        checks.push(carry(&carry_mi));
+        // Constraints to check the carry flag is -1, 0, or 1.
+        checks.push(is_carry(&carry));
+        //checks.push(carry(&carry_mi));
 
         // Auxiliary inline function to obtain the constraints of a foreign field addition result
         let mut result = {
-            // r_0 = a_0 + s * b_0 - q * f_0 - 2^88 * c_0
-            let result_computed_lo = left_input_lo + sign.clone() * right_input_lo
-                - field_overflow.clone() * foreign_modulus[0].clone()
-                - carry_lo.clone() * two_to_limb.clone();
-            // r_1 = a_1 + s * b_1 - q * f_1 - 2^88 * c_1 + c_0
-            let result_computed_mi = left_input_mi + sign.clone() * right_input_mi
-                - field_overflow.clone() * foreign_modulus[1].clone()
-                - carry_mi.clone() * two_to_limb
-                + carry_lo;
-            // r_2 = a_2 + s * b_2 - q * f_2 + c_1
-            let result_computed_hi = left_input_hi + sign * right_input_hi
+            // a_bot = a_0 + a_1 * 2^88
+            // b_bot = b_0 + b_0 * 2^88
+            // f_bot = f_0 + f_1 * 2^88
+            // r_bot = a_bot + s * b_bot - q * f_bot - c * 2^176
+            let result_bot = two_limb(&left_input_lo, &left_input_mi)
+                + sign.clone() * two_limb(&right_input_lo, &right_input_mi)
+                - field_overflow.clone() * two_limb(&foreign_modulus[0], &foreign_modulus[1])
+                - carry.clone() * two_to_limb.clone() * two_to_limb.clone();
+            // r_top = a_2 + s * b_2 - q * f_2 + c
+            let result_top = left_input_hi + sign * right_input_hi
                 - field_overflow * foreign_modulus[2].clone()
-                + carry_mi;
-
+                + carry;
             // Result values match
+            // r_bot = r_0 + 2^88 * r_1
+            // r_top = r_2
             vec![
-                result_lo - result_computed_lo,
-                result_mi - result_computed_mi,
-                result_hi - result_computed_hi,
+                result_bot - two_limb(&result_lo, &result_mi),
+                result_top - result_hi,
             ]
         };
 
@@ -189,7 +192,12 @@ where
 }
 
 // Auxiliary function to obtain the constraints to check a carry flag
-fn carry<F: PrimeField, T: ExprOps<F>>(flag: &T) -> T {
+fn is_carry<F: PrimeField, T: ExprOps<F>>(flag: &T) -> T {
     // Carry bits are -1, 0, or 1.
     flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
+}
+
+// Auxiliary function to obtain the composed value of the two lowest limbs of an element
+fn two_limb<F: PrimeField, T: ExprOps<F>>(lo_limb: &T, mi_limb: &T) -> T {
+    lo_limb.clone() + mi_limb.clone() * T::literal(F::from(TWO_TO_LIMB))
 }

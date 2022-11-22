@@ -1274,6 +1274,11 @@ but where the result is larger than the modulus (yet smaller than 2^{264}). The 
  final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
  (meaning less than the modulus).
 
+A more optimized version of these constraints is able to reduce by 2 the number of constraints and
+by 1 the number of witness cells needed. The idea is to condense the low and middle limbs in one longer
+limb of 176 bits (which fits inside our native field) and getting rid of the low carry flag.
+With this idea in mind, the sole carry flag we need is the one located between the middle and the high limbs.
+
 You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 
 | col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
@@ -1286,8 +1291,8 @@ You could lay this out as a double-width gate for chained foreign additions and 
 |   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
 |   6 | `sign`           (copy) |                         |  1              (check) |                   |
 |   7 | `field_overflow`        |                         |  1              (check) |                   |
-|   8 | `carry_lo`              |                         | `bound_carry_lo`        |                   |
-|   9 | `carry_mi`              |                         | `bound_carry_mi`        |                   |
+|   8 | `carry`                 |                         | `bound_carry`           |                   |
+|   9 |                         |                         |                         |                   |
 |  10 |                         |                         |                         |                   |
 |  11 |                         |                         |                         |                   |
 |  12 |                         |                         |                         |                   |
