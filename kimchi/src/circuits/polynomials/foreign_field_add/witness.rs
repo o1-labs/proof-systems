@@ -135,7 +135,7 @@ fn compute_ffadd_values<F: PrimeField>(
 
 // Returns the bottom composition of an element from its low and middle limbs
 fn bottom<F: PrimeField>(lo: &F, mi: &F) -> F {
-    lo.clone() + mi.clone() * F::from(TWO_TO_LIMB)
+    *lo + *mi * F::from(TWO_TO_LIMB)
 }
 
 /// Creates a FFAdd witness (including optional multi range checks, `ForeignFieldAdd` rows, and one `ForeignFieldFin` row.) starting in zero row

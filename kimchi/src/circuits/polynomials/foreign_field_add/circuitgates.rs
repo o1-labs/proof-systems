@@ -170,7 +170,7 @@ where
             let result_bot = two_limb(&left_input_lo, &left_input_mi)
                 + sign.clone() * two_limb(&right_input_lo, &right_input_mi)
                 - field_overflow.clone() * two_limb(&foreign_modulus[0], &foreign_modulus[1])
-                - carry.clone() * two_to_limb.clone() * two_to_limb.clone();
+                - carry.clone() * two_to_limb.clone() * two_to_limb;
             // r_top = a_2 + s * b_2 - q * f_2 + c
             let result_top = left_input_hi + sign * right_input_hi
                 - field_overflow * foreign_modulus[2].clone()
