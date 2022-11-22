@@ -7,7 +7,6 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::PrimeField;
-use num_bigint::BigUint;
 use o1_utils::{big_bits, big_not, FieldFromBig, FieldHelpers};
 use std::{array, cmp::max};
 
@@ -140,16 +139,10 @@ impl<F: PrimeField> CircuitGate<F> {
 
 /// Create a Not for less than 255 bits (native field) starting at row 0
 /// Input: first input and second input
-/// Panics if the input is too large for the field
-pub fn create_not_xor_witness<F: PrimeField>(
-    input: &BigUint,
-    bits: Option<u32>,
-) -> [Vec<F>; COLUMNS] {
-    if *input > F::modulus_biguint() {
-        panic!("This number must be split because it does not fit into the native field");
-    }
-    let output = big_not(input, bits);
-    let bits = max(big_bits(input) as u32, bits.unwrap_or(0));
+pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<u32>) -> [Vec<F>; COLUMNS] {
+    let input = input.to_biguint();
+    let output = big_not(&input, bits);
+    let bits = max(big_bits(&input) as u32, bits.unwrap_or(0));
     let mut not_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
     init_xor(
@@ -157,7 +150,7 @@ pub fn create_not_xor_witness<F: PrimeField>(
         0,
         bits,
         (
-            F::from_biguint(input).unwrap(),
+            F::from_biguint(&input).unwrap(),
             F::from(2u8).pow(&[bits as u64]) - F::one(),
             F::from_biguint(&output).unwrap(),
         ),
@@ -169,19 +162,17 @@ pub fn create_not_xor_witness<F: PrimeField>(
 /// Creates as many negations as the number of inputs. The inputs must fit in the native field.
 /// We start at the row 0 using generic gates to perform the negations.
 /// Input: a vector of words to be negated, and the number of bits (all the same)
-/// Panics if the bits length is too small for the inputs, or if the inputs are too large for the field
+/// Panics if the bits length is too small for the inputs
 /// INTEGRATION: Set public input of bits in public generic gate
 /// TODO: `witness[0][pub] = 2^bits - 1`
-pub fn create_not_gnrc_witness<F: PrimeField>(
-    inputs: &Vec<BigUint>,
-    bits: u32,
-) -> [Vec<F>; COLUMNS] {
+pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &Vec<F>, bits: u32) -> [Vec<F>; COLUMNS] {
     // Check inputs fit in bits and in native field
-    for input in inputs {
-        if *input > F::modulus_biguint() {
-            panic!("This number must be split because it does not fit into the native field");
-        }
-        if bits < big_bits(input) {
+    let inputs = inputs
+        .iter()
+        .map(|input| input.to_biguint())
+        .collect::<Vec<_>>();
+    for input in inputs.clone() {
+        if bits < big_bits(&input) {
             panic!("Bits must be greater or equal than the inputs length");
         }
     }

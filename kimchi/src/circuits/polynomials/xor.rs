@@ -24,7 +24,6 @@ use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use num_bigint::BigUint;
 use o1_utils::{big_xor, FieldFromBig, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
@@ -481,17 +480,8 @@ pub fn extend_xor_rows<F: PrimeField>(
 
 /// Create a Xor for up to the native length starting at row 0
 /// Input: first input and second input, bits length, current row
-/// Panics if the input is larger than the field
-pub fn create_xor_witness<F: PrimeField>(
-    input1: &BigUint,
-    input2: &BigUint,
-    bits: u32,
-) -> [Vec<F>; COLUMNS] {
-    if *input1 >= F::modulus_biguint() || *input2 >= F::modulus_biguint() {
-        panic!("Input too large for the native field");
-    }
-
-    let output = big_xor(input1, input2);
+pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: u32) -> [Vec<F>; COLUMNS] {
+    let output = big_xor(&input1.to_biguint(), &input2.to_biguint());
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
@@ -500,11 +490,7 @@ pub fn create_xor_witness<F: PrimeField>(
         &mut xor_witness,
         0,
         bits,
-        (
-            F::from_biguint(input1).unwrap(),
-            F::from_biguint(input2).unwrap(),
-            F::from_biguint(&output).unwrap(),
-        ),
+        (input1, input2, F::from_biguint(&output).unwrap()),
     );
 
     xor_witness

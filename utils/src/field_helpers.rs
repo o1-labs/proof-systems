@@ -5,6 +5,8 @@ use num_bigint::BigUint;
 use std::ops::Neg;
 use thiserror::Error;
 
+use crate::big_bit_ops::big_random;
+
 /// Field helpers error
 #[allow(missing_docs)]
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
@@ -40,6 +42,14 @@ pub trait FieldHelpers<F> {
 
     /// Serialize to bits
     fn to_bits(&self) -> Vec<bool>;
+
+    /// Serialize field element to a BigUint
+    fn to_biguint(&self) -> BigUint
+    where
+        F: PrimeField,
+    {
+        BigUint::from_bytes_le(&self.to_bytes())
+    }
 
     /// Field size in bytes
     fn size_in_bytes() -> usize
@@ -108,6 +118,11 @@ impl<F: Field> FieldHelpers<F> for F {
 pub trait FieldFromBig<F> {
     /// Deserialize from big unsigned integer
     fn from_biguint(big: &BigUint) -> Result<F>;
+
+    /// Obtains a random field element of bits length
+    fn random(bits: u32) -> F {
+        Self::from_biguint(&big_random(bits)).unwrap()
+    }
 }
 
 impl<F: PrimeField> FieldFromBig<F> for F {
