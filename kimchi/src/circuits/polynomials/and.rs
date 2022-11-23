@@ -87,7 +87,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-/// Create a And for less than 255 bits (native field) starting at row 0
+/// Create a And for inputs as field elements starting at row 0
 /// Input: first input, second input, and desired byte length
 /// Panics if the input is too large for the chosen number of bytes
 pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> [Vec<F>; COLUMNS] {
