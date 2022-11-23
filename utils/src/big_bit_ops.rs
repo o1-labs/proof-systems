@@ -40,22 +40,6 @@ pub fn big_bits(input: &BigUint) -> usize {
     }
 }
 
-/// Negate the bits of a BigUint input
-/// If it provides a larger desired `bits` than the input length then it takes the padded input of `bits` length.
-/// Otherwise it only takes the bits of the input.
-pub fn big_not(input: &BigUint, bits: Option<u32>) -> BigUint {
-    // pad if needed / desired
-    // first get the number of bits of the input,
-    // take into account that BigUint::bits() returns 0 if the input is 0
-    let in_bits = big_bits(input) as usize;
-    let bits = max(in_bits, bits.unwrap_or(0) as usize);
-    // build vector of bits in little endian (least significant bit in position 0)
-    let mut bit_vec = vec![];
-    // negate each of the bits of the input
-    (0..bits).for_each(|i| bit_vec.push(!bit_at(input, i as u32)));
-    le_bitvec_to_biguint(&bit_vec)
-}
-
 /// Produces a random BigUint of a given number of bits
 pub fn big_random(bits: usize) -> BigUint {
     if bits == 0 {
@@ -178,18 +162,6 @@ mod tests {
                     BigUint::from((byte1 ^ byte2) as u8)
                 );
             }
-        }
-    }
-
-    #[test]
-    fn test_not_all_byte() {
-        for byte in 0..256 {
-            let input = BigUint::from(byte as u8);
-            let negated = BigUint::from(!byte as u8); // full 8 bits
-            assert_eq!(big_not(&input, Some(8)), negated); // full byte
-            let bits = big_bits(&input);
-            let min_negated = 2u32.pow(bits as u32) - 1 - byte;
-            assert_eq!(big_not(&input, None), BigUint::from(min_negated)); // only up to needed
         }
     }
 }

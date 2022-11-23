@@ -9,7 +9,7 @@ use crate::circuits::{
 use ark_ec::AffineCurve;
 use mina_curves::pasta::{Fp, Pallas, Vesta};
 use num_bigint::BigUint;
-use o1_utils::{big_bit_ops::big_and, big_xor, FieldFromBig, FieldHelpers};
+use o1_utils::{big_and, big_xor, FieldFromBig, FieldHelpers};
 
 use super::framework::TestFramework;
 
