@@ -86,6 +86,8 @@ fn test_and(
 
 // Function to create a prover and verifier to test the AND circuit
 fn prove_and_verify(bytes: usize) {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
     // Create
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_and(0, bytes);
 
@@ -96,8 +98,8 @@ fn prove_and_verify(bytes: usize) {
     }
 
     // Create inputs
-    let input1 = PallasField::random(8 * bytes);
-    let input2 = PallasField::random(8 * bytes);
+    let input1 = initialize(None, Some(bytes * 8), rng);
+    let input2 = initialize(None, Some(bytes * 8), rng);
 
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
