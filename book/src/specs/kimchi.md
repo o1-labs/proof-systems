@@ -364,7 +364,7 @@ will translate into a scalar multiplication by 0, which is free.
 
 #### The Lookup Selectors
 
-**ChaChaSelector**. Performs 4 queries to the XOR lookup table.
+**XorSelector**. Performs 4 queries to the XOR lookup table.
 
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
@@ -1355,40 +1355,20 @@ to obtain a gadget for 64-bit words XOR:
 ```
 
 
-##### And
+#### Not
 
-We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
-add one `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
-lookup table that would have the same size as that of the Xor.
-For now, we are willing to pay this small overhead and produce AND gadget as follows:
+We implement the NOT gadget making use of the XOR gadget and the Generic gate, in two different ways. A new gate type is not needed.
 
-We observe that we can express bitwise addition as follows:
-$$ A + B = (A \oplus B) + 2 \cdot (A \wedge B) $$
-where $\oplus$ is the bitwise XOR operation, $\wedge$ is the bitwise AND operation, and $+$ is the addition operation.
-In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
-Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
-$$ A \& B = \frac{A + B - (A \oplus B)}{2} $$
-Let us define the following operations for better readability:
-```
- a + b = sum
-a ^ b = xor
-a & b = and
-```
-Then, we can rewrite the above equation as follows:
-$$ 2 \cdot and = sum - xor $$
-which can be expressed as a double generic gate.
+ The first version of the NOT gadget reuses `Xor16` by making the following observation:
+$$\textit{the bitwise NOT operation is equivalent to the bitwise XOR operation with the all one words of a certain length}$$
+ Then, if we take the XOR gadget with a second input to be the all one word of the same length, that gives us the NOT gadget.
+ The correct length can be imposed by having a public input containing the `2^bits - 1` value and wiring it to the second input of the XOR gate.
+This approach needs as many rows as a XOR would need, for a single negation, but it comes with the advantage of making sure the input is of a certain length.
 
-Then, our AND gadget for $n$ bytes looks as follows:
-* $n/8$ Xor16 gates
-* 1 (single) Generic gate to check the constant zero
-* 1 (double) Generic gate to check sum and the conjunction equations
-
-Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
-* Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
-* Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
-Meaning,
-* the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
-* the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
+The other approach can be more efficient if we already know the length of the inputs. For example, the input may be the input of a range check gate,
+or the output of a previous XOR gadget (which will be the case in our Keccak usecase).
+In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
+This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
 
 
 ## Setup

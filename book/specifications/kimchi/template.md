@@ -211,7 +211,7 @@ Kimchi currently supports a single lookup table:
 
 #### The Lookup Selectors
 
-**ChaChaSelector**. Performs 4 queries to the XOR lookup table.
+**XorSelector**. Performs 4 queries to the XOR lookup table.
 
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
@@ -270,9 +270,9 @@ TODO: for each gate describe how to create it?
 
 {sections.xor16}
 
-##### And
+#### Not
 
-{sections.and_gadget}
+{sections.not_gadget}
 
 ## Setup
 

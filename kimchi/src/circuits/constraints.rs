@@ -8,7 +8,7 @@ use crate::{
         lookup::{index::LookupConstraintSystem, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::{foreign_field_add, range_check},
+        polynomials::range_check,
         wires::*,
     },
     curve::KimchiCurve,
@@ -590,7 +590,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         };
 
         // Foreign field addition constraint selector polynomial
-        let ffadd_gates = foreign_field_add::gadget::circuit_gates();
+        let ffadd_gates = [GateType::ForeignFieldAdd];
         let foreign_field_add_selector_poly = {
             if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
                 None
@@ -604,7 +604,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if circuit_gates_used.is_disjoint(&xor_gate.into_iter().collect()) {
                 None
             } else {
-                Some(selector_polynomial(GateType::Xor16, &gates, &domain))
+                Some(selector_polynomial(xor_gate[0], &gates, &domain))
             }
         };
 

@@ -2,6 +2,7 @@
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
 use rand::Rng;
+<<<<<<< HEAD
 use std::cmp::{max, Ordering};
 
 /// Exclusive or of the bits of two BigUint inputs
@@ -11,6 +12,24 @@ pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
     let bytes2 = input2.to_bytes_le().len();
     let in1 = vectorize(input1, bytes2);
     let in2 = vectorize(input2, bytes1);
+=======
+use std::cmp::max;
+
+/// Exclusive or of the bits of two BigUint inputs
+pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
+    let bytes1 = input1.to_bytes_le().len();
+    let bytes2 = input2.to_bytes_le().len();
+    let in2 = if bytes1 > bytes2 {
+        pad(input2, bytes1 - bytes2)
+    } else {
+        input2.to_bytes_le()
+    };
+    let in1 = if bytes2 > bytes1 {
+        pad(input1, bytes2 - bytes1)
+    } else {
+        input1.to_bytes_le()
+    };
+>>>>>>> 812baa88f807f1a3806c8b2e01367181bf842ebb
     BigUint::from_bytes_le(
         &in1.iter()
             .zip(in2.iter())
@@ -19,6 +38,7 @@ pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
     )
 }
 
+<<<<<<< HEAD
 /// Conjunction of the bits of two BigUint inputs for a given number of bytes
 pub fn big_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
     let in1 = vectorize(input1, bytes);
@@ -31,6 +51,8 @@ pub fn big_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
     )
 }
 
+=======
+>>>>>>> 812baa88f807f1a3806c8b2e01367181bf842ebb
 /// returns the minimum number of bits required to represent a BigUint
 pub fn big_bits(input: &BigUint) -> u32 {
     if input.to_bytes_le() == [0u8] {
@@ -81,6 +103,7 @@ fn bit_at(input: &BigUint, index: u32) -> bool {
     }
 }
 
+<<<<<<< HEAD
 // Returns a BigUint as a Vec<u8> padded with zeros to a certain number of bytes
 // Panics if bytes < input.len()
 fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
@@ -92,6 +115,8 @@ fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
     }
 }
 
+=======
+>>>>>>> 812baa88f807f1a3806c8b2e01367181bf842ebb
 // Pads an input with a number of bytes
 fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
     let mut padded = input.to_bytes_le().to_vec();
@@ -136,32 +161,6 @@ mod tests {
             big_xor(
                 &BigUint::from_bytes_le(&input1),
                 &BigUint::from_bytes_le(&input2)
-            ),
-            BigUint::from_bytes_le(&output)
-        );
-    }
-
-    #[test]
-    fn test_and_256bits() {
-        let input1: Vec<u8> = vec![
-            123, 18, 7, 249, 123, 134, 183, 124, 11, 37, 29, 2, 76, 29, 3, 1, 100, 101, 102, 103,
-            104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 200, 201, 202, 203, 204,
-            205, 206, 207, 208, 209, 210, 211, 212, 213, 214, 215,
-        ];
-        let input2: Vec<u8> = vec![
-            33, 76, 13, 224, 2, 0, 21, 96, 131, 137, 229, 200, 128, 255, 127, 15, 1, 2, 3, 4, 5, 6,
-            7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 80, 81, 82, 93, 94, 95, 76, 77, 78, 69, 60, 61,
-            52, 53, 54, 45,
-        ];
-        let output: Vec<u8> = vec![
-            33, 0, 5, 224, 2, 0, 21, 96, 3, 1, 5, 0, 0, 29, 3, 1, 0, 0, 2, 4, 0, 0, 2, 8, 8, 8, 10,
-            12, 0, 0, 2, 16, 64, 65, 66, 73, 76, 77, 76, 77, 64, 65, 16, 17, 20, 21, 22, 5,
-        ];
-        assert_eq!(
-            big_and(
-                &BigUint::from_bytes_le(&input1),
-                &BigUint::from_bytes_le(&input2),
-                256,
             ),
             BigUint::from_bytes_le(&output)
         );
