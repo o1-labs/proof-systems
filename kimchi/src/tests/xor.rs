@@ -27,7 +27,7 @@ const RNG_SEED: [u8; 32] = [
 ];
 
 // Returns the all ones BigUint of bits length
-pub(crate) fn all_ones(bits: u32) -> PallasField {
+pub(crate) fn all_ones(bits: usize) -> PallasField {
     PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
 }
 
