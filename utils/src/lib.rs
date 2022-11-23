@@ -18,5 +18,5 @@ pub use big_bit_ops::{big_bits, big_not, big_xor};
 pub use chunked_evaluations::ChunkedEvaluations;
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;
-pub use field_helpers::FieldHelpers;
+pub use field_helpers::{FieldFromBig, FieldHelpers};
 pub use foreign_field::{ForeignElement, LIMB_COUNT};

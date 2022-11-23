@@ -61,7 +61,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - gates     : vector of circuit gates comprising this gate
     pub fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
         let xor_row = new_row;
-        let (and_row, mut gates) = Self::create_xor(xor_row, bytes * 8);
+        let (and_row, mut gates) = Self::create_xor_gadget(xor_row, bytes * 8);
         let sum = GenericGateSpec::Add {
             left_coeff: Some(1u32.into()),
             right_coeff: Some(1u32.into()),
@@ -101,10 +101,10 @@ pub fn create_and_witness<F: PrimeField>(
     let and_output = big_and(input1, input2, bytes);
     let xor_output = big_xor(input1, input2);
     // Transform BigUint values to field elements
-    let field_in1 = F::from_biguint(input1.clone()).unwrap();
-    let field_in2 = F::from_biguint(input2.clone()).unwrap();
-    let field_xor = F::from_biguint(xor_output).unwrap();
-    let field_and = F::from_biguint(and_output).unwrap();
+    let field_in1 = F::from_biguint(&input1).unwrap();
+    let field_in2 = F::from_biguint(&input2).unwrap();
+    let field_xor = F::from_biguint(&xor_output).unwrap();
+    let field_and = F::from_biguint(&and_output).unwrap();
     let field_sum = field_in1 + field_in2;
 
     let and_row = num_xors(bytes * 8) + 1;

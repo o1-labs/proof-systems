@@ -32,11 +32,11 @@ pub fn big_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
 }
 
 /// returns the minimum number of bits required to represent a BigUint
-pub fn big_bits(input: &BigUint) -> u32 {
+pub fn big_bits(input: &BigUint) -> usize {
     if input.to_bytes_le() == [0u8] {
-        1u32
+        1
     } else {
-        input.bits() as u32
+        input.bits() as usize
     }
 }
 
@@ -57,7 +57,7 @@ pub fn big_not(input: &BigUint, bits: Option<u32>) -> BigUint {
 }
 
 /// Produces a random BigUint of a given number of bits
-pub fn big_random(bits: u32) -> BigUint {
+pub fn big_random(bits: usize) -> BigUint {
     if bits == 0 {
         panic!("Cannot generate a random number of 0 bits");
     }
@@ -67,7 +67,7 @@ pub fn big_random(bits: u32) -> BigUint {
         .map(|_| rand::thread_rng().gen_range(0..255))
         .collect::<Vec<u8>>();
     if extra > 0 {
-        big.push(rand::thread_rng().gen_range(0..2u8.pow(extra)));
+        big.push(rand::thread_rng().gen_range(0..2u8.pow(extra as u32)));
     }
     BigUint::from_bytes_le(&big)
 }
@@ -188,7 +188,7 @@ mod tests {
             let negated = BigUint::from(!byte as u8); // full 8 bits
             assert_eq!(big_not(&input, Some(8)), negated); // full byte
             let bits = big_bits(&input);
-            let min_negated = 2u32.pow(bits) - 1 - byte;
+            let min_negated = 2u32.pow(bits as u32) - 1 - byte;
             assert_eq!(big_not(&input, None), BigUint::from(min_negated)); // only up to needed
         }
     }

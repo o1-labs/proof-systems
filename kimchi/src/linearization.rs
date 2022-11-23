@@ -10,9 +10,8 @@ use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 use crate::circuits::polynomials::poseidon::Poseidon;
-use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
-use crate::circuits::polynomials::{generic, permutation, xor};
+use crate::circuits::polynomials::{generic, permutation, range_check, xor};
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
@@ -157,7 +156,6 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
-
     let (expr, powers_of_alpha) = constraints_expr(
         chacha,
         range_check,

@@ -110,7 +110,7 @@ pub enum GateType {
     RangeCheck0 = 16,
     RangeCheck1 = 17,
     ForeignFieldAdd = 25,
-    //ForeignFieldMul = 26,
+    // ForeignFieldMul = 26,
     // Gates for Keccak follow:
     Xor16 = 27,
 }

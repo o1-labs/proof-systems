@@ -13,7 +13,6 @@ use o1_utils::{
     big_bit_ops::{big_and, big_random},
     big_xor, FieldHelpers,
 };
-use rand::Rng;
 
 use super::framework::TestFramework;
 
@@ -79,8 +78,8 @@ fn prove_and_verify(bytes: usize) {
     }
 
     // Create inputs
-    let input1 = big_random(8 * bytes as u32);
-    let input2 = big_random(8 * bytes as u32);
+    let input1 = big_random(8 * bytes);
+    let input2 = big_random(8 * bytes);
 
     // Create witness
     let witness = and::create_and_witness(&input1, &input2, bytes);
