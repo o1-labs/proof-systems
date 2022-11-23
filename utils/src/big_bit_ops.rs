@@ -50,8 +50,7 @@ fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
     let bytes_inp = input.to_bytes_le().len();
     match bytes.cmp(&bytes_inp) {
         Ordering::Greater => pad(input, bytes - bytes_inp),
-        Ordering::Equal => input.to_bytes_le(),
-        Ordering::Less => panic!("Desired length of the input is smaller than the length"),
+        Ordering::Equal | Ordering::Less => input.to_bytes_le(),
     }
 }
 
