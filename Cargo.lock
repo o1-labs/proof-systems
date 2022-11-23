@@ -749,6 +749,7 @@ dependencies = [
  "mina-poseidon",
  "num-bigint",
  "num-derive",
+ "num-integer",
  "num-traits",
  "o1-utils",
  "ocaml",
@@ -895,6 +896,7 @@ dependencies = [
  "autocfg",
  "num-integer",
  "num-traits",
+ "rand",
  "serde",
 ]
 
