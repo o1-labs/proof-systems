@@ -2,15 +2,22 @@
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
 use rand::Rng;
-use std::cmp::{max, Ordering};
+use std::cmp::max;
 
 /// Exclusive or of the bits of two BigUint inputs
 pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
-    // Pad to equal size in bytes
     let bytes1 = input1.to_bytes_le().len();
     let bytes2 = input2.to_bytes_le().len();
-    let in1 = vectorize(input1, bytes2);
-    let in2 = vectorize(input2, bytes1);
+    let in2 = if bytes1 > bytes2 {
+        pad(input2, bytes1 - bytes2)
+    } else {
+        input2.to_bytes_le()
+    };
+    let in1 = if bytes2 > bytes1 {
+        pad(input1, bytes2 - bytes1)
+    } else {
+        input1.to_bytes_le()
+    };
     BigUint::from_bytes_le(
         &in1.iter()
             .zip(in2.iter())
@@ -36,7 +43,7 @@ pub fn big_not(input: &BigUint, bits: Option<usize>) -> BigUint {
     // first get the number of bits of the input,
     // take into account that BigUint::bits() returns 0 if the input is 0
     let in_bits = big_bits(input) as usize;
-    let bits = max(in_bits, bits.unwrap_or(0) as usize);
+    let bits = max(in_bits, bits.unwrap_or(0));
     // build vector of bits in little endian (least significant bit in position 0)
     let mut bit_vec = vec![];
     // negate each of the bits of the input
@@ -66,17 +73,6 @@ fn bit_at(input: &BigUint, index: u32) -> bool {
         ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
     } else {
         false
-    }
-}
-
-// Returns a BigUint as a Vec<u8> padded with zeros to a certain number of bytes
-// Panics if bytes < input.len()
-fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
-    let bytes_inp = input.to_bytes_le().len();
-    match bytes.cmp(&bytes_inp) {
-        Ordering::Greater => pad(input, bytes - bytes_inp),
-        Ordering::Equal => input.to_bytes_le(),
-        Ordering::Less => panic!("Desired length of the input is smaller than the length"),
     }
 }
 
