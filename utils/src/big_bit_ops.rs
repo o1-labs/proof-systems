@@ -2,7 +2,7 @@
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
 use rand::Rng;
-use std::cmp::{max, Ordering};
+use std::cmp::Ordering;
 
 /// Exclusive or of the bits of two BigUint inputs
 pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
@@ -56,23 +56,13 @@ pub fn big_random(bits: usize) -> BigUint {
     BigUint::from_bytes_le(&big)
 }
 
-// Returns the bit value of a BigUint input at a certain position or zero
-fn bit_at(input: &BigUint, index: u32) -> bool {
-    if input.bit(index as u64) {
-        ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
-    } else {
-        false
-    }
-}
-
 // Returns a BigUint as a Vec<u8> padded with zeros to a certain number of bytes
 // Panics if bytes < input.len()
 fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
     let bytes_inp = input.to_bytes_le().len();
     match bytes.cmp(&bytes_inp) {
         Ordering::Greater => pad(input, bytes - bytes_inp),
-        Ordering::Equal => input.to_bytes_le(),
-        Ordering::Less => panic!("Desired length of the input is smaller than the length"),
+        Ordering::Equal | Ordering::Less => input.to_bytes_le(),
     }
 }
 
@@ -81,17 +71,6 @@ fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
     let mut padded = input.to_bytes_le().to_vec();
     padded.resize(bytes + padded.len(), 0u8);
     padded
-}
-
-// Transforms a vector of bits in little endian to a BigUint
-fn le_bitvec_to_biguint(input: &[bool]) -> BigUint {
-    let mut bigvalue = BigUint::from(0u8);
-    let mut power = BigUint::from(1u8);
-    for bit in input {
-        bigvalue += power.clone() * BigUint::from(*bit as u8);
-        power *= BigUint::from(2u8);
-    }
-    bigvalue
 }
 
 #[cfg(test)]
