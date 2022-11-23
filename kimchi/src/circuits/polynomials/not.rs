@@ -165,7 +165,7 @@ pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<u32>) -> [Ve
 /// Panics if the bits length is too small for the inputs
 /// INTEGRATION: Set public input of bits in public generic gate
 /// TODO: `witness[0][pub] = 2^bits - 1`
-pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &Vec<F>, bits: u32) -> [Vec<F>; COLUMNS] {
+pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &[F], bits: u32) -> [Vec<F>; COLUMNS] {
     // Check inputs fit in bits and in native field
     let inputs = inputs
         .iter()
