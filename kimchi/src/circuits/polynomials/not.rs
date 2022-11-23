@@ -110,7 +110,7 @@ impl<F: PrimeField> CircuitGate<F> {
         gates: &mut Vec<Self>,
         pub_row: usize,
         new_row: usize,
-        bits: u32,
+        bits: usize,
     ) -> usize {
         let num_xors = num_xors(bits);
         let mut not_gates = (0..num_xors)
@@ -139,10 +139,10 @@ impl<F: PrimeField> CircuitGate<F> {
 
 /// Create a Not for less than 255 bits (native field) starting at row 0
 /// Input: first input and second input
-pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<u32>) -> [Vec<F>; COLUMNS] {
+pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<usize>) -> [Vec<F>; COLUMNS] {
     let input = input.to_biguint();
     let output = big_not(&input, bits);
-    let bits = max(big_bits(&input) as u32, bits.unwrap_or(0));
+    let bits = max(big_bits(&input), bits.unwrap_or(0));
     let mut not_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
     init_xor(
@@ -165,7 +165,7 @@ pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<u32>) -> [Ve
 /// Panics if the bits length is too small for the inputs
 /// INTEGRATION: Set public input of bits in public generic gate
 /// TODO: `witness[0][pub] = 2^bits - 1`
-pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &[F], bits: u32) -> [Vec<F>; COLUMNS] {
+pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &[F], bits: usize) -> [Vec<F>; COLUMNS] {
     // Check inputs fit in bits and in native field
     let inputs = inputs
         .iter()

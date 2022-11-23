@@ -120,7 +120,7 @@ pub trait FieldFromBig<F> {
     fn from_biguint(big: &BigUint) -> Result<F>;
 
     /// Obtains a random field element of bits length
-    fn random(bits: u32) -> F {
+    fn random(bits: usize) -> F {
         Self::from_biguint(&big_random(bits)).unwrap()
     }
 }

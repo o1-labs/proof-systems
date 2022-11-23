@@ -26,7 +26,7 @@ type PallasField = <Pallas as AffineCurve>::BaseField;
 const NOT: bool = false;
 
 // Constraint system for Not gadget using Xor16
-fn create_test_constraint_system_not_xor(bits: u32) -> ConstraintSystem<Fp> {
+fn create_test_constraint_system_not_xor(bits: usize) -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
             Wire::for_row(0),
@@ -65,7 +65,7 @@ fn create_test_constraint_system_not_gnrc(nots: usize) -> ConstraintSystem<Fp> {
 }
 
 // Creates the witness for Not gadget using Xor16
-fn not_xor_witness(inp: PallasField, bits: u32) -> [Vec<PallasField>; COLUMNS] {
+fn not_xor_witness(inp: PallasField, bits: usize) -> [Vec<PallasField>; COLUMNS] {
     // Set up the initial public input to all ones
     let mut witness = array::from_fn(|_| vec![PallasField::from(0u32); 1]);
     witness[0][0] = PallasField::from(2u32).pow(&[bits as u64]) - PallasField::one();
@@ -80,10 +80,10 @@ fn not_xor_witness(inp: PallasField, bits: u32) -> [Vec<PallasField>; COLUMNS] {
 }
 
 // Tester for not gate
-fn test_not_xor(inp: PallasField, bits: Option<u32>) -> [Vec<PallasField>; COLUMNS] {
+fn test_not_xor(inp: PallasField, bits: Option<usize>) -> [Vec<PallasField>; COLUMNS] {
     // If user specified a concrete number of bits, use that (if they are sufficient to hold the input)
     // Otherwise, use the length of the input
-    let bits = max(big_bits(&inp.to_biguint()) as u32, bits.unwrap_or(0));
+    let bits = max(big_bits(&inp.to_biguint()), bits.unwrap_or(0));
 
     let cs = create_test_constraint_system_not_xor(bits);
 
@@ -104,7 +104,7 @@ fn test_not_xor(inp: PallasField, bits: Option<u32>) -> [Vec<PallasField>; COLUM
 }
 
 // Creates the witness for Not gadget using generic gates
-fn not_gnrc_witness(inputs: &Vec<PallasField>, bits: u32) -> [Vec<PallasField>; COLUMNS] {
+fn not_gnrc_witness(inputs: &Vec<PallasField>, bits: usize) -> [Vec<PallasField>; COLUMNS] {
     // Set up the initial public input to all ones
     let mut witness = array::from_fn(|_| vec![PallasField::from(0u32); 1]);
     witness[0][0] = PallasField::from(2u32).pow(&[bits as u64]) - PallasField::one();
@@ -119,7 +119,7 @@ fn not_gnrc_witness(inputs: &Vec<PallasField>, bits: u32) -> [Vec<PallasField>; 
 }
 
 // Tester for not gate generic
-fn test_not_gnrc(inputs: &Vec<PallasField>, bits: u32) -> [Vec<PallasField>; COLUMNS] {
+fn test_not_gnrc(inputs: &Vec<PallasField>, bits: usize) -> [Vec<PallasField>; COLUMNS] {
     let cs = create_test_constraint_system_not_gnrc(inputs.len());
 
     let witness = not_gnrc_witness(inputs, bits);
@@ -140,9 +140,9 @@ fn test_not_gnrc(inputs: &Vec<PallasField>, bits: u32) -> [Vec<PallasField>; COL
 }
 
 // Manually checks the NOT of each crumb in the witness
-fn check_not_xor(witness: &[Vec<PallasField>; COLUMNS], input: PallasField, bits: Option<u32>) {
+fn check_not_xor(witness: &[Vec<PallasField>; COLUMNS], input: PallasField, bits: Option<usize>) {
     let input_big = input.to_biguint();
-    let bits = max(big_bits(&input_big) as u32, bits.unwrap_or(0));
+    let bits = max(big_bits(&input_big), bits.unwrap_or(0));
     check_xor(&witness, bits, input, all_ones(bits), NOT);
     assert_eq!(
         witness[2][1],
@@ -151,7 +151,7 @@ fn check_not_xor(witness: &[Vec<PallasField>; COLUMNS], input: PallasField, bits
 }
 
 // Manually checks the NOTs of a vector of inputs in generic gates
-fn check_not_gnrc(witness: &[Vec<PallasField>; COLUMNS], inputs: &Vec<PallasField>, bits: u32) {
+fn check_not_gnrc(witness: &[Vec<PallasField>; COLUMNS], inputs: &Vec<PallasField>, bits: usize) {
     for (i, input) in inputs.iter().enumerate() {
         let input = input.to_biguint();
         if i % 2 == 0 {
@@ -266,7 +266,7 @@ fn test_not_all_crumb() {
 // Tests NOT for bitlengths of 4, 8, 16, 32, 64, 128, for both exact output width and varying
 fn test_not_crumbs_random() {
     for i in 2..=7 {
-        let bits = Some(2u32.pow(i));
+        let bits = Some(2u32.pow(i) as usize);
         let input = PallasField::random(bits.unwrap());
         let witness_full = test_not_xor(input, bits);
         check_not_xor(&witness_full, input, bits);

@@ -7,7 +7,6 @@ mod framework;
 mod generic;
 mod lookup;
 mod not;
-mod not;
 mod poseidon;
 mod range_check;
 mod recursion;

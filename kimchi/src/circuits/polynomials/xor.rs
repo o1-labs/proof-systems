@@ -24,7 +24,7 @@ use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use o1_utils::{big_xor, FieldFromBig, FieldHelpers};
+use o1_utils::{big_bits, big_xor, FieldFromBig, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
 
@@ -40,7 +40,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
-    pub fn create_xor_gadget(new_row: usize, bits: u32) -> (usize, Vec<Self>) {
+    pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut gates = (0..num_xors)
             .map(|i| CircuitGate {
@@ -399,7 +399,7 @@ where
 }
 
 // Witness layout
-fn layout<F: PrimeField>(curr_row: usize, bits: u32) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
+fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
         .map(|i| xor_row(i, curr_row + i))
@@ -451,7 +451,7 @@ fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
 pub(crate) fn init_xor<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     curr_row: usize,
-    bits: u32,
+    bits: usize,
     words: (F, F, F),
 ) {
     let xor_rows = layout(curr_row, bits);
@@ -465,12 +465,21 @@ pub(crate) fn init_xor<F: PrimeField>(
 }
 
 /// Extends the Xor rows to the full witness
+/// Panics if the words are larger than the desired bits
 pub fn extend_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    bits: u32,
+    bits: usize,
     words: (F, F, F),
 ) {
-    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+    let input1_big = words.0.to_biguint();
+    let input2_big = words.1.to_biguint();
+    let output_big = words.2.to_biguint();
+    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) || bits < big_bits(&output_big)
+    {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let xor_witness: [Vec<F>; COLUMNS] =
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
     let xor_row = witness[0].len();
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
@@ -480,11 +489,17 @@ pub fn extend_xor_rows<F: PrimeField>(
 
 /// Create a Xor for up to the native length starting at row 0
 /// Input: first input and second input, bits length, current row
-pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: u32) -> [Vec<F>; COLUMNS] {
-    let output = big_xor(&input1.to_biguint(), &input2.to_biguint());
+/// Panics if the desired bits is smaller than the inputs length
+pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [Vec<F>; COLUMNS] {
+    let input1_big = input1.to_biguint();
+    let input2_big = input2.to_biguint();
+    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let output = big_xor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
 
     init_xor(
         &mut xor_witness,
@@ -497,6 +512,6 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: u32) -> [Ve
 }
 
 /// Returns the number of XOR rows needed for inputs of usize bits
-pub fn num_xors(bits: u32) -> usize {
+pub fn num_xors(bits: usize) -> usize {
     (bits as f64 / 16.0).ceil() as usize
 }

@@ -20,7 +20,7 @@ type PallasField = <Pallas as AffineCurve>::BaseField;
 
 const XOR: bool = true;
 
-fn create_test_constraint_system_xor(bits: u32) -> ConstraintSystem<Fp> {
+fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
 
     // Temporary workaround for lookup-table/domain-size issue
@@ -33,11 +33,15 @@ fn create_test_constraint_system_xor(bits: u32) -> ConstraintSystem<Fp> {
 }
 
 // General test for Xor
-fn test_xor(in1: PallasField, in2: PallasField, bits: Option<u32>) -> [Vec<PallasField>; COLUMNS] {
+fn test_xor(
+    in1: PallasField,
+    in2: PallasField,
+    bits: Option<usize>,
+) -> [Vec<PallasField>; COLUMNS] {
     // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
     // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
-    let bits1 = big_bits(&in1.to_biguint()) as u32;
-    let bits2 = big_bits(&in2.to_biguint()) as u32;
+    let bits1 = big_bits(&in1.to_biguint());
+    let bits2 = big_bits(&in2.to_biguint());
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
@@ -63,14 +67,14 @@ pub(crate) fn xor_crumb(word: BigUint, crumb: usize) -> BigUint {
 }
 
 // Returns the all ones BigUint of bits length
-pub(crate) fn all_ones(bits: u32) -> PallasField {
+pub(crate) fn all_ones(bits: usize) -> PallasField {
     PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
 }
 
 // Manually checks the XOR of each crumb in the witness
 pub(crate) fn check_xor(
     witness: &[Vec<PallasField>; COLUMNS],
-    bits: u32,
+    bits: usize,
     input1: PallasField,
     input2: PallasField,
     not: bool,

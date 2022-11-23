@@ -2,7 +2,6 @@
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
 use rand::Rng;
-<<<<<<< HEAD
 use std::cmp::{max, Ordering};
 
 /// Exclusive or of the bits of two BigUint inputs
@@ -12,24 +11,6 @@ pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
     let bytes2 = input2.to_bytes_le().len();
     let in1 = vectorize(input1, bytes2);
     let in2 = vectorize(input2, bytes1);
-=======
-use std::cmp::max;
-
-/// Exclusive or of the bits of two BigUint inputs
-pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
-    let bytes1 = input1.to_bytes_le().len();
-    let bytes2 = input2.to_bytes_le().len();
-    let in2 = if bytes1 > bytes2 {
-        pad(input2, bytes1 - bytes2)
-    } else {
-        input2.to_bytes_le()
-    };
-    let in1 = if bytes2 > bytes1 {
-        pad(input1, bytes2 - bytes1)
-    } else {
-        input1.to_bytes_le()
-    };
->>>>>>> 812baa88f807f1a3806c8b2e01367181bf842ebb
     BigUint::from_bytes_le(
         &in1.iter()
             .zip(in2.iter())
@@ -38,34 +19,19 @@ pub fn big_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
     )
 }
 
-<<<<<<< HEAD
-/// Conjunction of the bits of two BigUint inputs for a given number of bytes
-pub fn big_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
-    let in1 = vectorize(input1, bytes);
-    let in2 = vectorize(input2, bytes);
-    BigUint::from_bytes_le(
-        &in1.iter()
-            .zip(in2.iter())
-            .map(|(b1, b2)| b1 & b2)
-            .collect::<Vec<u8>>(),
-    )
-}
-
-=======
->>>>>>> 812baa88f807f1a3806c8b2e01367181bf842ebb
 /// returns the minimum number of bits required to represent a BigUint
-pub fn big_bits(input: &BigUint) -> u32 {
+pub fn big_bits(input: &BigUint) -> usize {
     if input.to_bytes_le() == [0u8] {
-        1u32
+        1
     } else {
-        input.bits() as u32
+        input.bits() as usize
     }
 }
 
 /// Negate the bits of a BigUint input
 /// If it provides a larger desired `bits` than the input length then it takes the padded input of `bits` length.
 /// Otherwise it only takes the bits of the input.
-pub fn big_not(input: &BigUint, bits: Option<u32>) -> BigUint {
+pub fn big_not(input: &BigUint, bits: Option<usize>) -> BigUint {
     // pad if needed / desired
     // first get the number of bits of the input,
     // take into account that BigUint::bits() returns 0 if the input is 0
@@ -79,7 +45,7 @@ pub fn big_not(input: &BigUint, bits: Option<u32>) -> BigUint {
 }
 
 /// Produces a random BigUint of a given number of bits
-pub fn big_random(bits: u32) -> BigUint {
+pub fn big_random(bits: usize) -> BigUint {
     if bits == 0 {
         panic!("Cannot generate a random number of 0 bits");
     }
@@ -89,7 +55,7 @@ pub fn big_random(bits: u32) -> BigUint {
         .map(|_| rand::thread_rng().gen_range(0..255))
         .collect::<Vec<u8>>();
     if extra > 0 {
-        big.push(rand::thread_rng().gen_range(0..2u8.pow(extra)));
+        big.push(rand::thread_rng().gen_range(0..2u8.pow(extra as u32)));
     }
     BigUint::from_bytes_le(&big)
 }
@@ -103,7 +69,6 @@ fn bit_at(input: &BigUint, index: u32) -> bool {
     }
 }
 
-<<<<<<< HEAD
 // Returns a BigUint as a Vec<u8> padded with zeros to a certain number of bytes
 // Panics if bytes < input.len()
 fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
@@ -115,8 +80,6 @@ fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
     }
 }
 
-=======
->>>>>>> 812baa88f807f1a3806c8b2e01367181bf842ebb
 // Pads an input with a number of bytes
 fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
     let mut padded = input.to_bytes_le().to_vec();
@@ -187,7 +150,7 @@ mod tests {
             let negated = BigUint::from(!byte as u8); // full 8 bits
             assert_eq!(big_not(&input, Some(8)), negated); // full byte
             let bits = big_bits(&input);
-            let min_negated = 2u32.pow(bits) - 1 - byte;
+            let min_negated = 2u32.pow(bits as u32) - 1 - byte;
             assert_eq!(big_not(&input, None), BigUint::from(min_negated)); // only up to needed
         }
     }
