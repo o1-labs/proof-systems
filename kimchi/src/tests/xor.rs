@@ -31,6 +31,23 @@ pub(crate) fn all_ones(bits: u32) -> PallasField {
     PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
 }
 
+pub(crate) fn initialize(
+    input: Option<PallasField>,
+    bits: Option<usize>,
+    rng: &mut StdRng,
+) -> PallasField {
+    if let Some(inp) = input {
+        inp
+    } else {
+        assert!(bits.is_some());
+        let bits = bits.unwrap();
+        PallasField::from_biguint(
+            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+        )
+        .unwrap()
+    }
+}
+
 fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
 
@@ -88,26 +105,8 @@ fn test_xor(
     let rng = &mut StdRng::from_seed(RNG_SEED);
     // Initalize inputs
     // If some input was given then use that one, otherwise generate a random one with the given bits
-    let input1 = if let Some(input) = in1 {
-        input
-    } else {
-        assert!(bits.is_some());
-        let bits = bits.unwrap();
-        PallasField::from_biguint(
-            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-        )
-        .unwrap()
-    };
-    let input2 = if let Some(input) = in2 {
-        input
-    } else {
-        assert!(bits.is_some());
-        let bits = bits.unwrap();
-        PallasField::from_biguint(
-            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-        )
-        .unwrap()
-    };
+    let input1 = initialize(in1, bits, rng);
+    let input2 = initialize(in2, bits, rng);
 
     // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
     // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)

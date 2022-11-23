@@ -12,9 +12,7 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::PrimeField;
-use o1_utils::{
-    big_bit_ops::big_and, big_bits, big_xor, field_helpers::FieldFromBig, FieldHelpers,
-};
+use o1_utils::{big_and, big_bits, big_xor, field_helpers::FieldFromBig, FieldHelpers};
 
 //~ We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
 //~ add one `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
