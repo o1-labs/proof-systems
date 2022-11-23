@@ -12,7 +12,7 @@ use crate::{
         },
         wires::Wire,
     },
-    tests::xor::{all_ones, check_xor},
+    tests::xor::{all_ones, check_xor, random_field},
 };
 
 use super::{framework::TestFramework, xor::initialize};
@@ -140,23 +140,16 @@ fn test_not_gnrc(
 ) -> [Vec<PallasField>; COLUMNS] {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
-    let inputs =
-        if let Some(inps) = inputs {
-            assert!(len.is_none());
-            inps
-        } else {
-            assert!(len.is_some());
-            let len = len.unwrap();
-            (0..len)
-                .map(|_| {
-                    PallasField::from_biguint(&rng.gen_biguint_range(
-                        &BigUint::from(0u8),
-                        &BigUint::from(2u8).pow(bits as u32),
-                    ))
-                    .unwrap()
-                })
-                .collect::<Vec<PallasField>>()
-        };
+    let inputs = if let Some(inps) = inputs {
+        assert!(len.is_none());
+        inps
+    } else {
+        assert!(len.is_some());
+        let len = len.unwrap();
+        (0..len)
+            .map(|_| random_field(bits, rng))
+            .collect::<Vec<PallasField>>()
+    };
 
     let cs = create_test_constraint_system_not_gnrc(inputs.len());
 
