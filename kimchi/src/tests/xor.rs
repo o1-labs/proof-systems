@@ -26,9 +26,16 @@ const RNG_SEED: [u8; 32] = [
     89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
 ];
 
-// Returns the all ones BigUint of bits length
-pub(crate) fn all_ones(bits: usize) -> PallasField {
-    PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
+fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
+    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
+
+    // Temporary workaround for lookup-table/domain-size issue
+    for _ in 0..(1 << 13) {
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
+        next_row += 1;
+    }
+
+    ConstraintSystem::create(gates).build().unwrap()
 }
 
 pub(crate) fn initialize(
@@ -48,16 +55,9 @@ pub(crate) fn initialize(
     }
 }
 
-fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
-    ConstraintSystem::create(gates).build().unwrap()
+// Returns the all ones BigUint of bits length
+pub(crate) fn all_ones(bits: usize) -> PallasField {
+    PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
 }
 
 // Returns a given crumb of 4 bits
