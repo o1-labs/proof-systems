@@ -155,14 +155,8 @@ fn test_prove_and_verify_xor() {
         next_row += 1;
     }
 
-    let input1 = PallasField::from_biguint(
-        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-    )
-    .unwrap();
-    let input2 = PallasField::from_biguint(
-        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-    )
-    .unwrap();
+    let input1 = random_field(bits, rng);
+    let input2 = random_field(bits, rng);
 
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
