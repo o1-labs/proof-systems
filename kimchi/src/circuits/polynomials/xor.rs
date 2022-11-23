@@ -24,7 +24,7 @@ use ark_ff::{PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use o1_utils::{big_xor, FieldFromBig, FieldHelpers};
+use o1_utils::{big_bits, big_xor, FieldFromBig, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
 
@@ -465,11 +465,19 @@ pub(crate) fn init_xor<F: PrimeField>(
 }
 
 /// Extends the Xor rows to the full witness
+/// Panics if the words are larger than the desired bits
 pub fn extend_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     bits: usize,
     words: (F, F, F),
 ) {
+    let input1_big = words.0.to_biguint();
+    let input2_big = words.1.to_biguint();
+    let output_big = words.2.to_biguint();
+    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) || bits < big_bits(&output_big)
+    {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
     let xor_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
     let xor_row = witness[0].len();
@@ -481,8 +489,14 @@ pub fn extend_xor_rows<F: PrimeField>(
 
 /// Create a Xor for up to the native length starting at row 0
 /// Input: first input and second input, bits length, current row
+/// Panics if the desired bits is smaller than the inputs length
 pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [Vec<F>; COLUMNS] {
-    let output = big_xor(&input1.to_biguint(), &input2.to_biguint());
+    let input1_big = input1.to_biguint();
+    let input2_big = input2.to_biguint();
+    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let output = big_xor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
