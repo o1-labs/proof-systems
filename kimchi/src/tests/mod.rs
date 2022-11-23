@@ -1,4 +1,3 @@
-mod and;
 mod chacha;
 mod ec;
 mod endomul;

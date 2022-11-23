@@ -22,7 +22,6 @@ varbasemul = "../../../kimchi/src/circuits/polynomials/varbasemul.rs"
 range_check = "../../../kimchi/src/circuits/polynomials/range_check/circuitgates.rs"
 foreign_field_add = "../../../kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs"
 xor16 = "../../../kimchi/src/circuits/polynomials/xor.rs"
-and_gadget = "../../../kimchi/src/circuits/polynomials/and.rs"
 
 # lookup
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
