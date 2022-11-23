@@ -12,8 +12,7 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::PrimeField;
-use num_bigint::BigUint;
-use o1_utils::{big_bit_ops::big_and, big_xor, field_helpers::FieldFromBig, FieldHelpers};
+use o1_utils::{big_and, big_bits, big_xor, field_helpers::FieldFromBig, FieldHelpers};
 
 //~ We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
 //~ add one `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
@@ -61,7 +60,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - gates     : vector of circuit gates comprising this gate
     pub fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
         let xor_row = new_row;
-        let (and_row, mut gates) = Self::create_xor(xor_row, bytes * 8);
+        let (and_row, mut gates) = Self::create_xor_gadget(xor_row, bytes * 8);
         let sum = GenericGateSpec::Add {
             left_coeff: Some(1u32.into()),
             right_coeff: Some(1u32.into()),
@@ -86,43 +85,35 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-/// Create a And for less than 255 bits (native field) starting at row 0
+/// Create a And for inputs as field elements starting at row 0
 /// Input: first input, second input, and desired byte length
-/// Panics if the input is too large for the field
-pub fn create_and_witness<F: PrimeField>(
-    input1: &BigUint,
-    input2: &BigUint,
-    bytes: usize,
-) -> [Vec<F>; COLUMNS] {
-    if *input1 >= F::modulus_biguint() || *input2 >= F::modulus_biguint() {
-        panic!("Input too large for the native field");
+/// Panics if the input is too large for the chosen number of bytes
+pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> [Vec<F>; COLUMNS] {
+    let input1_big = input1.to_biguint();
+    let input2_big = input2.to_biguint();
+    if bytes * 8 < big_bits(&input1_big) || bytes * 8 < big_bits(&input2_big) {
+        panic!("Bytes must be greater or equal than the inputs length");
     }
+
     // Compute BigUint output of AND, XOR
-    let and_output = big_and(input1, input2, bytes);
-    let xor_output = big_xor(input1, input2);
+    let big_and = big_and(&input1_big, &input2_big, bytes);
+    let big_xor = big_xor(&input1_big, &input2_big);
     // Transform BigUint values to field elements
-    let field_in1 = F::from_biguint(input1.clone()).unwrap();
-    let field_in2 = F::from_biguint(input2.clone()).unwrap();
-    let field_xor = F::from_biguint(xor_output).unwrap();
-    let field_and = F::from_biguint(and_output).unwrap();
-    let field_sum = field_in1 + field_in2;
+    let xor = F::from_biguint(&big_xor).unwrap();
+    let and = F::from_biguint(&big_and).unwrap();
+    let sum = input1 + input2;
 
     let and_row = num_xors(bytes * 8) + 1;
     let mut and_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); and_row + 1]);
 
-    init_xor(
-        &mut and_witness,
-        0,
-        bytes * 8,
-        (field_in1, field_in2, field_xor),
-    );
+    init_xor(&mut and_witness, 0, bytes * 8, (input1, input2, xor));
     // Fill in double generic witness
-    and_witness[0][and_row] = field_in1;
-    and_witness[1][and_row] = field_in2;
-    and_witness[2][and_row] = field_sum;
-    and_witness[3][and_row] = field_sum;
-    and_witness[4][and_row] = field_xor;
-    and_witness[5][and_row] = field_and;
+    and_witness[0][and_row] = input1;
+    and_witness[1][and_row] = input2;
+    and_witness[2][and_row] = sum;
+    and_witness[3][and_row] = sum;
+    and_witness[4][and_row] = xor;
+    and_witness[5][and_row] = and;
 
     and_witness
 }

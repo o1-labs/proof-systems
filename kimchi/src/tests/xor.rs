@@ -12,7 +12,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
 use mina_curves::pasta::{Fp, Pallas, Vesta};
 use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{big_xor, FieldFromBig, FieldHelpers};
+use o1_utils::{big_bits, big_xor, FieldFromBig, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -42,7 +42,7 @@ pub(crate) fn initialize(
         assert!(bits.is_some());
         let bits = bits.unwrap();
         PallasField::from_biguint(
-            rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
         )
         .unwrap()
     }
