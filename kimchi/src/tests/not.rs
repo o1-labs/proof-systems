@@ -15,15 +15,22 @@ use crate::{
     tests::xor::{all_ones, check_xor},
 };
 
-use super::framework::TestFramework;
+use super::{framework::TestFramework, xor::initialize};
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
 use mina_curves::pasta::{Fp, Pallas, Vesta};
+use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{big_bits, big_not, FieldFromBig, FieldHelpers};
+use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
 const NOT: bool = false;
+
+const RNG_SEED: [u8; 32] = [
+    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
+    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
+];
 
 // Constraint system for Not gadget using Xor16
 fn create_test_constraint_system_not_xor(bits: usize) -> ConstraintSystem<Fp> {
@@ -80,16 +87,20 @@ fn not_xor_witness(inp: PallasField, bits: usize) -> [Vec<PallasField>; COLUMNS]
 }
 
 // Tester for not gate
-fn test_not_xor(inp: PallasField, bits: Option<usize>) -> [Vec<PallasField>; COLUMNS] {
+fn test_not_xor(inp: Option<PallasField>, bits: Option<usize>) -> [Vec<PallasField>; COLUMNS] {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
+    let inp = initialize(inp, bits, rng);
+
     // If user specified a concrete number of bits, use that (if they are sufficient to hold the input)
     // Otherwise, use the length of the input
-    let bits = max(big_bits(&inp.to_biguint()), bits.unwrap_or(0));
+    let bits_real = max(big_bits(&inp.to_biguint()), bits.unwrap_or(0));
 
-    let cs = create_test_constraint_system_not_xor(bits);
+    let cs = create_test_constraint_system_not_xor(bits_real);
 
-    let witness = not_xor_witness(inp, bits);
+    let witness = not_xor_witness(inp, bits_real);
 
-    for row in 0..xor::num_xors(bits) + 1 {
+    for row in 0..xor::num_xors(bits_real) + 1 {
         assert_eq!(
             cs.gates[row].verify_witness::<Vesta>(
                 row,
@@ -100,6 +111,9 @@ fn test_not_xor(inp: PallasField, bits: Option<usize>) -> [Vec<PallasField>; COL
             Ok(())
         );
     }
+
+    check_not_xor(&witness, inp, bits);
+
     witness
 }
 
@@ -119,10 +133,34 @@ fn not_gnrc_witness(inputs: &Vec<PallasField>, bits: usize) -> [Vec<PallasField>
 }
 
 // Tester for not gate generic
-fn test_not_gnrc(inputs: &Vec<PallasField>, bits: usize) -> [Vec<PallasField>; COLUMNS] {
+fn test_not_gnrc(
+    inputs: Option<Vec<PallasField>>,
+    bits: usize,
+    len: Option<usize>,
+) -> [Vec<PallasField>; COLUMNS] {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
+    let inputs =
+        if let Some(inps) = inputs {
+            assert!(len.is_none());
+            inps
+        } else {
+            assert!(len.is_some());
+            let len = len.unwrap();
+            (0..len)
+                .map(|_| {
+                    PallasField::from_biguint(&rng.gen_biguint_range(
+                        &BigUint::from(0u8),
+                        &BigUint::from(2u8).pow(bits as u32),
+                    ))
+                    .unwrap()
+                })
+                .collect::<Vec<PallasField>>()
+        };
+
     let cs = create_test_constraint_system_not_gnrc(inputs.len());
 
-    let witness = not_gnrc_witness(inputs, bits);
+    let witness = not_gnrc_witness(&inputs, bits);
 
     // test public input and not generic gate
     for row in 0..2 {
@@ -136,6 +174,9 @@ fn test_not_gnrc(inputs: &Vec<PallasField>, bits: usize) -> [Vec<PallasField>; C
             Ok(())
         );
     }
+
+    check_not_gnrc(&witness, &inputs, bits);
+
     witness
 }
 
@@ -172,6 +213,8 @@ fn check_not_gnrc(witness: &[Vec<PallasField>; COLUMNS], inputs: &Vec<PallasFiel
 // End-to-end test of NOT using XOR gadget
 fn test_prove_and_verify_not_xor() {
     let bits = 64;
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
     // Create circuit
     let (mut next_row, mut gates) = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
@@ -191,7 +234,13 @@ fn test_prove_and_verify_not_xor() {
 
     // Create witness and random inputs
 
-    let witness = not_xor_witness(PallasField::random(bits), bits);
+    let witness = not_xor_witness(
+        PallasField::from_biguint(
+            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+        )
+        .unwrap(),
+        bits,
+    );
 
     TestFramework::default()
         .gates(gates)
@@ -208,6 +257,8 @@ fn test_prove_and_verify_not_xor() {
 // End-to-end test of NOT using generic gadget
 fn test_prove_and_verify_five_not_gnrc() {
     let bits = 64;
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
     // Create circuit
     let (mut next_row, mut gates) = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
@@ -226,16 +277,19 @@ fn test_prove_and_verify_five_not_gnrc() {
     }
 
     // Create witness and random inputs
-    let witness: [Vec<PallasField>; 15] = not_gnrc_witness(
-        &vec![
-            PallasField::random(bits),
-            PallasField::random(bits),
-            PallasField::random(bits),
-            PallasField::random(bits),
-            PallasField::random(bits),
-        ],
-        bits,
-    );
+    let witness: [Vec<PallasField>; 15] =
+        not_gnrc_witness(
+            &(0..5)
+                .map(|_| {
+                    PallasField::from_biguint(&rng.gen_biguint_range(
+                        &BigUint::from(0u8),
+                        &BigUint::from(2u8).pow(bits as u32),
+                    ))
+                    .unwrap()
+                })
+                .collect::<Vec<PallasField>>(),
+            bits,
+        );
 
     TestFramework::default()
         .gates(gates)
@@ -249,67 +303,67 @@ fn test_prove_and_verify_five_not_gnrc() {
 
 #[test]
 // Tests all possible 16 values for a crumb, for both full 4, 8, 12, and 16 bits, and smallest
-fn test_not_all_crumb() {
+fn test_not_xor_all_crumb() {
     for i in 0..2u8.pow(4) {
         let input = PallasField::from(i);
-        let witness = test_not_xor(input, None);
-        check_not_xor(&witness, input, None);
+        test_not_xor(Some(input), None);
         for c in (4..=16).step_by(4) {
             let bits = Some(c);
-            let witness = test_not_xor(input, bits);
-            check_not_xor(&witness, input, bits);
+            test_not_xor(Some(input), bits);
         }
     }
 }
 
 #[test]
 // Tests NOT for bitlengths of 4, 8, 16, 32, 64, 128, for both exact output width and varying
-fn test_not_crumbs_random() {
+fn test_not_xor_crumbs_random() {
     for i in 2..=7 {
-        let bits = Some(2u32.pow(i) as usize);
-        let input = PallasField::random(bits.unwrap());
-        let witness_full = test_not_xor(input, bits);
-        check_not_xor(&witness_full, input, bits);
-        let witness_partial = test_not_xor(input, None);
-        check_not_xor(&witness_partial, input, None);
+        let bits = 2u32.pow(i) as usize;
+        let rng = &mut StdRng::from_seed(RNG_SEED);
+        let input = PallasField::from_biguint(
+            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+        )
+        .unwrap();
+        test_not_xor(Some(input), Some(bits));
+        test_not_xor(Some(input), None);
     }
 }
 
 #[test]
 // Tests a NOT for a random-length big input
-fn test_not_big_random() {
-    let input = PallasField::random(200);
-    let witness = test_not_xor(input, None);
-    check_not_xor(&witness, input, None);
+fn test_not_xor_big_random() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let input = PallasField::from_biguint(
+        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(200)),
+    )
+    .unwrap();
+    test_not_xor(Some(input), None);
 }
 
 #[test]
 // Tests two NOTs with the generic builder
 fn test_not_gnrc_double() {
-    let input1 = PallasField::random(64);
-    let input2 = PallasField::random(64);
-    let witness = test_not_gnrc(&vec![input1, input2], 64);
-    check_not_gnrc(&witness, &vec![input1, input2], 64);
+    test_not_gnrc(None, 64, Some(2));
 }
 
 #[test]
 // Tests one NOT with the generic builder
 fn test_not_gnrc_single() {
-    let input = PallasField::random(64);
-    let witness = test_not_gnrc(&vec![input], 64);
-    check_not_gnrc(&witness, &vec![input], 64);
+    test_not_gnrc(None, 64, Some(1));
 }
 
 #[test]
 // Tests a chain of 5 NOTs with different lengths but padded to 254 bits with the generic builder
 fn test_not_gnrc_vector() {
-    let inputs = vec![
-        PallasField::random(16),
-        PallasField::random(32),
-        PallasField::random(64),
-        PallasField::random(128),
-        PallasField::random(254),
-    ];
-    let witness = test_not_gnrc(&inputs, 254);
-    check_not_gnrc(&witness, &inputs, 254);
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    // up to 2^16, 2^32, 2^64, 2^128, 2^254
+    let inputs = (0..5)
+        .map(|i| {
+            PallasField::from_biguint(
+                &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(4 + i)),
+            )
+            .unwrap()
+        })
+        .collect::<Vec<PallasField>>();
+    test_not_gnrc(Some(inputs), 254, None);
 }
