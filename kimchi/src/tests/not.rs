@@ -19,8 +19,7 @@ use super::{framework::TestFramework, xor::initialize};
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
 use mina_curves::pasta::{Fp, Pallas, Vesta};
-use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{big_bits, big_not, FieldFromBig, FieldHelpers};
+use o1_utils::{big_bits, big_not, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -227,13 +226,7 @@ fn test_prove_and_verify_not_xor() {
 
     // Create witness and random inputs
 
-    let witness = not_xor_witness(
-        PallasField::from_biguint(
-            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-        )
-        .unwrap(),
-        bits,
-    );
+    let witness = not_xor_witness(random_field(bits, rng), bits);
 
     TestFramework::default()
         .gates(gates)
@@ -270,19 +263,12 @@ fn test_prove_and_verify_five_not_gnrc() {
     }
 
     // Create witness and random inputs
-    let witness: [Vec<PallasField>; 15] =
-        not_gnrc_witness(
-            &(0..5)
-                .map(|_| {
-                    PallasField::from_biguint(&rng.gen_biguint_range(
-                        &BigUint::from(0u8),
-                        &BigUint::from(2u8).pow(bits as u32),
-                    ))
-                    .unwrap()
-                })
-                .collect::<Vec<PallasField>>(),
-            bits,
-        );
+    let witness: [Vec<PallasField>; 15] = not_gnrc_witness(
+        &(0..5)
+            .map(|_| random_field(bits, rng))
+            .collect::<Vec<PallasField>>(),
+        bits,
+    );
 
     TestFramework::default()
         .gates(gates)
@@ -313,10 +299,7 @@ fn test_not_xor_crumbs_random() {
     for i in 2..=7 {
         let bits = 2u32.pow(i) as usize;
         let rng = &mut StdRng::from_seed(RNG_SEED);
-        let input = PallasField::from_biguint(
-            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-        )
-        .unwrap();
+        let input = random_field(bits, rng);
         test_not_xor(Some(input), Some(bits));
         test_not_xor(Some(input), None);
     }
@@ -326,10 +309,7 @@ fn test_not_xor_crumbs_random() {
 // Tests a NOT for a random-length big input
 fn test_not_xor_big_random() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
-    let input = PallasField::from_biguint(
-        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(200)),
-    )
-    .unwrap();
+    let input = random_field(200, rng);
     test_not_xor(Some(input), None);
 }
 
@@ -351,12 +331,7 @@ fn test_not_gnrc_vector() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     // up to 2^16, 2^32, 2^64, 2^128, 2^254
     let inputs = (0..5)
-        .map(|i| {
-            PallasField::from_biguint(
-                &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(4 + i)),
-            )
-            .unwrap()
-        })
+        .map(|i| random_field(4 + i, rng))
         .collect::<Vec<PallasField>>();
     test_not_gnrc(Some(inputs), 254, None);
 }
