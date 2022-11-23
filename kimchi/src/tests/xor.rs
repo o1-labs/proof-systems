@@ -38,6 +38,15 @@ fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
     ConstraintSystem::create(gates).build().unwrap()
 }
 
+// Generates a random field element of up to a given number of bits
+pub(crate) fn random_field(bits: usize, rng: &mut StdRng) -> PallasField {
+    PallasField::from_biguint(
+        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+    )
+    .unwrap()
+}
+
+// Initialize a random input
 pub(crate) fn initialize(
     input: Option<PallasField>,
     bits: Option<usize>,
@@ -48,10 +57,7 @@ pub(crate) fn initialize(
     } else {
         assert!(bits.is_some());
         let bits = bits.unwrap();
-        PallasField::from_biguint(
-            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-        )
-        .unwrap()
+        random_field(bits, rng)
     }
 }
 
