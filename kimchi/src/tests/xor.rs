@@ -11,14 +11,25 @@ use crate::circuits::{
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
 use mina_curves::pasta::{Fp, Pallas, Vesta};
-use num_bigint::BigUint;
+use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{big_bit_ops::*, FieldFromBig, FieldHelpers};
+use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
 const XOR: bool = true;
+
+const RNG_SEED: [u8; 32] = [
+    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
+    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
+];
+
+// Returns the all ones BigUint of bits length
+pub(crate) fn all_ones(bits: u32) -> PallasField {
+    PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
+}
 
 fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
@@ -32,43 +43,9 @@ fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
     ConstraintSystem::create(gates).build().unwrap()
 }
 
-// General test for Xor
-fn test_xor(
-    in1: PallasField,
-    in2: PallasField,
-    bits: Option<usize>,
-) -> [Vec<PallasField>; COLUMNS] {
-    // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
-    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
-    let bits1 = big_bits(&in1.to_biguint());
-    let bits2 = big_bits(&in2.to_biguint());
-    let bits = bits.map_or(0, |b| b); // 0 or bits
-    let bits = max(bits, max(bits1, bits2));
-
-    let cs = create_test_constraint_system_xor(bits);
-    let witness = xor::create_xor_witness(in1, in2, bits);
-    for row in 0..xor::num_xors(bits) + 1 {
-        assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
-            Ok(())
-        );
-    }
-    witness
-}
-
 // Returns a given crumb of 4 bits
 pub(crate) fn xor_crumb(word: BigUint, crumb: usize) -> BigUint {
     (word >> (4 * crumb)) % 2u128.pow(4)
-}
-
-// Returns the all ones BigUint of bits length
-pub(crate) fn all_ones(bits: u32) -> PallasField {
-    PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
 }
 
 // Manually checks the XOR of each crumb in the witness
@@ -102,9 +79,67 @@ pub(crate) fn check_xor(
     );
 }
 
+// General test for Xor
+fn test_xor(
+    in1: Option<PallasField>,
+    in2: Option<PallasField>,
+    bits: Option<usize>,
+) -> [Vec<PallasField>; COLUMNS] {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    // Initalize inputs
+    // If some input was given then use that one, otherwise generate a random one with the given bits
+    let input1 = if let Some(input) = in1 {
+        input
+    } else {
+        assert!(bits.is_some());
+        let bits = bits.unwrap();
+        PallasField::from_biguint(
+            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+        )
+        .unwrap()
+    };
+    let input2 = if let Some(input) = in2 {
+        input
+    } else {
+        assert!(bits.is_some());
+        let bits = bits.unwrap();
+        PallasField::from_biguint(
+            &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+        )
+        .unwrap()
+    };
+
+    // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
+    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
+    let bits1 = big_bits(&input1.to_biguint());
+    let bits2 = big_bits(&input2.to_biguint());
+    let bits = bits.map_or(0, |b| b); // 0 or bits
+    let bits = max(bits, max(bits1, bits2));
+
+    let cs = create_test_constraint_system_xor(bits);
+    let witness = xor::create_xor_witness(input1, input2, bits);
+    for row in 0..xor::num_xors(bits) + 1 {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public].to_vec()
+            ),
+            Ok(())
+        );
+    }
+
+    check_xor(&witness, bits, input1, input2, XOR);
+
+    witness
+}
+
 #[test]
 // End-to-end test of XOR
 fn test_prove_and_verify_xor() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
     let bits = 64;
     // Create
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
@@ -115,12 +150,17 @@ fn test_prove_and_verify_xor() {
         next_row += 1;
     }
 
+    let input1 = PallasField::from_biguint(
+        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+    )
+    .unwrap();
+    let input2 = PallasField::from_biguint(
+        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+    )
+    .unwrap();
+
     // Create witness and random inputs
-    let witness = xor::create_xor_witness(
-        PallasField::from_biguint(&big_random(bits)).unwrap(),
-        PallasField::from_biguint(&big_random(bits)).unwrap(),
-        bits,
-    );
+    let witness = xor::create_xor_witness(input1, input2, bits);
 
     TestFramework::default()
         .gates(gates)
@@ -135,13 +175,12 @@ fn test_prove_and_verify_xor() {
 fn test_xor64_alternating() {
     let input1 = PallasField::from(6510615555426900570u64);
     let input2 = PallasField::from(11936128518282651045u64);
-    let witness = test_xor(input1, input2, Some(64));
+    let witness = test_xor(Some(input1), Some(input2), Some(64));
     assert_eq!(witness[2][0], PallasField::from(2u128.pow(64) - 1));
     assert_eq!(witness[2][1], PallasField::from(2u64.pow(48) - 1));
     assert_eq!(witness[2][2], PallasField::from(2u64.pow(32) - 1));
     assert_eq!(witness[2][3], PallasField::from(2u32.pow(16) - 1));
     assert_eq!(witness[2][4], PallasField::from(0));
-    check_xor(&witness, 64, input1, input2, XOR);
 }
 
 #[test]
@@ -149,9 +188,8 @@ fn test_xor64_alternating() {
 fn test_xor64_zeros() {
     // forces zero to fit in 64 bits even if it only needs 1 bit
     let zero = PallasField::from_biguint(&BigUint::from(0u32)).unwrap();
-    let witness = test_xor(zero, zero, Some(64));
+    let witness = test_xor(Some(zero), Some(zero), Some(64));
     assert_eq!(witness[2][0], PallasField::from(0));
-    check_xor(&witness, 64, zero, zero, XOR);
 }
 
 #[test]
@@ -159,52 +197,36 @@ fn test_xor64_zeros() {
 fn test_xor64_zero_one() {
     let zero = PallasField::from_biguint(&BigUint::from(0u32)).unwrap();
     let all_ones = all_ones(64);
-    let witness = test_xor(zero, all_ones, None);
+    let witness = test_xor(Some(zero), Some(all_ones), None);
     assert_eq!(witness[2][0], all_ones);
-    check_xor(&witness, 64, zero, all_ones, XOR);
 }
 
 #[test]
 // Tests a XOR of 8 bits for a random input
 fn test_xor8_random() {
-    let input1 = PallasField::random(8);
-    let input2 = PallasField::random(8);
-    let witness = test_xor(input1, input2, Some(8));
-    check_xor(&witness, 8, input1, input2, XOR);
+    test_xor(None, None, Some(8));
 }
 
 #[test]
 // Tests a XOR of 16 bits for a random input
 fn test_xor16_random() {
-    let input1 = PallasField::random(16);
-    let input2 = PallasField::random(16);
-    let witness = test_xor(input1, input2, Some(16));
-    check_xor(&witness, 16, input1, input2, XOR);
+    test_xor(None, None, Some(16));
 }
 
 #[test]
 // Tests a XOR of 32 bits for a random input
 fn test_xor32_random() {
-    let input1 = PallasField::random(32);
-    let input2 = PallasField::random(32);
-    let witness = test_xor(input1, input2, Some(32));
-    check_xor(&witness, 32, input1, input2, XOR);
+    test_xor(None, None, Some(32));
 }
 
 #[test]
 // Tests a XOR of 64 bits for a random input
 fn test_xor64_random() {
-    let input1 = PallasField::random(64);
-    let input2 = PallasField::random(64);
-    let witness = test_xor(input1, input2, Some(64));
-    check_xor(&witness, 64, input1, input2, XOR);
+    test_xor(None, None, Some(64));
 }
 
 #[test]
 // Test a random XOR of 128 bits
 fn test_xor128_random() {
-    let input1 = PallasField::random(128);
-    let input2 = PallasField::random(128);
-    let witness = test_xor(input1, input2, Some(128));
-    check_xor(&witness, 128, input1, input2, XOR);
+    test_xor(None, None, Some(128));
 }
