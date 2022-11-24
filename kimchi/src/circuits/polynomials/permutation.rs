@@ -441,8 +441,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
         for j in 0..n - 3 {
             z[j + 1] = witness
                 .iter()
-                .zip(self.sigmal1.iter())
-                .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
+                .zip(self.sigmal8.iter())
+                .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
                 .fold(F::one(), |x, y| x * y);
         }
 

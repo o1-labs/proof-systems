@@ -88,9 +88,6 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     // permutation polynomials
     // -----------------------
-    /// permutation polynomial array evaluations over domain d1
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmal1: [E<F, D<F>>; PERMUTS],
     /// permutation polynomial array evaluations over domain d8
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub sigmal8: [E<F, D<F>>; PERMUTS],
@@ -654,7 +651,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             public: self.public,
             prev_challenges: self.prev_challenges,
             sid,
-            sigmal1,
             sigmal8,
             generic4,
             coefficients8,
