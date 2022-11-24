@@ -3,7 +3,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        constraints::ConstraintSystem,
+        constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
         wires::PERMUTS,
     },
@@ -45,6 +45,9 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
 
+    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,
@@ -84,6 +87,8 @@ impl<G: KimchiCurve> ProverIndex<G> {
         // where the $w_i(x)$ are of degree the size of the domain.
         let max_quot_size = PERMUTS * cs.domain.d1.size();
 
+        let column_evaluations = cs.column_evaluations();
+
         ProverIndex {
             cs,
             linearization,
@@ -91,6 +96,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             srs,
             max_poly_size,
             max_quot_size,
+            column_evaluations,
             verifier_index: None,
             verifier_index_digest: None,
         }

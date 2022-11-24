@@ -64,7 +64,7 @@ mod tests {
             serde_json::to_string(&verifier_index).expect("couldn't serialize index");
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify::<Vesta>(&witness, &public).unwrap();
+        index.verify(&witness, &public).unwrap();
 
         // add the proof to the batch
         let group_map = <Vesta as CommitmentCurve>::Map::setup();

@@ -2480,11 +2480,14 @@ pub mod test {
             wires::Wire,
         },
         curve::KimchiCurve,
+        prover_index::ProverIndex,
     };
     use ark_ff::UniformRand;
-    use mina_curves::pasta::{Fp, Vesta};
+    use commitment_dlog::srs::{endos, SRS};
+    use mina_curves::pasta::{Fp, Pallas, Vesta};
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
+    use std::sync::Arc;
 
     #[test]
     #[should_panic]
@@ -2523,11 +2526,19 @@ pub mod test {
             GenericGateSpec::Const(1u32.into()),
             None,
         ));
-        let constraint_system = ConstraintSystem::fp_for_testing(gates);
+        let index = {
+            let constraint_system = ConstraintSystem::fp_for_testing(gates);
+            let mut srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
+            srs.add_lagrange_basis(constraint_system.domain.d1);
+            let srs = Arc::new(srs);
+
+            let (endo_q, _endo_r) = endos::<Pallas>();
+            ProverIndex::<Vesta>::create(constraint_system, endo_q, srs)
+        };
 
         let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
         let permutation = DensePolynomial::zero();
-        let domain_evals = constraint_system.evaluate(&witness_cols, &permutation);
+        let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
 
         let env = Environment {
             constants: Constants {
@@ -2540,11 +2551,11 @@ pub mod test {
                 foreign_field_modulus: None,
             },
             witness: &domain_evals.d8.this.w,
-            coefficient: &constraint_system.column_evaluations.coefficients8,
-            vanishes_on_last_4_rows: &constraint_system.precomputations().vanishes_on_last_4_rows,
+            coefficient: &index.column_evaluations.coefficients8,
+            vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
             z: &domain_evals.d8.this.z,
-            l0_1: l0_1(constraint_system.domain.d1),
-            domain: constraint_system.domain,
+            l0_1: l0_1(index.cs.domain.d1),
+            domain: index.cs.domain,
             index: HashMap::new(),
             lookup: None,
         };
