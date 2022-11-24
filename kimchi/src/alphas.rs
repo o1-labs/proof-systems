@@ -324,15 +324,15 @@ mod tests {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
         let index = new_index_for_test(gates, 0);
         let (_linearization, powers_of_alpha) = expr_linearization(
-            index.cs.chacha8.is_some(),
-            index.cs.range_check_selector_polys.is_some(),
+            index.cs.column_evaluations.chacha_selectors8.is_some(),
+            index.cs.column_evaluations.range_check_selectors8.is_some(),
             index
                 .cs
                 .lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
-            index.cs.foreign_field_add_selector_poly.is_some(),
-            index.cs.xor_selector_poly.is_some(),
+            index.cs.column_evaluations.foreign_field_add_selector8.is_some(),
+            index.cs.column_evaluations.xor_selector8.is_some(),
             true,
         );
         // make sure this is present in the specification

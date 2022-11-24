@@ -284,8 +284,11 @@ pub mod testing {
             witness: &[DensePolynomial<F>; COLUMNS],
             public: &DensePolynomial<F>,
         ) -> bool {
-            let coefficientsm: [_; COLUMNS] =
-                array::from_fn(|i| self.coefficients8[i].clone().interpolate());
+            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
+                self.column_evaluations.coefficients8[i]
+                    .clone()
+                    .interpolate()
+            });
 
             let generic_gate = |coeff_offset, register_offset| {
                 // addition (of left, right, output wires)
