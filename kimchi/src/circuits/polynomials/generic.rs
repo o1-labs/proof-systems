@@ -310,7 +310,7 @@ pub mod testing {
             res += public;
 
             // selector poly
-            res = &res * &self.genericm;
+            res = &res * &self.evaluated_column_coefficients.generic_selector;
 
             // verify that it is divisible by Z_H
             match res.divide_by_vanishing_poly(self.domain.d1) {

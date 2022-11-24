@@ -212,14 +212,28 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 cell
             },
 
-            sigma_comm: array::from_fn(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
+            sigma_comm: array::from_fn(|i| {
+                self.srs.commit_non_hiding(
+                    &self
+                        .cs
+                        .evaluated_column_coefficients
+                        .permutation_coefficients[i],
+                    None,
+                )
+            }),
             coefficients_comm: array::from_fn(|i| {
                 self.srs
                     .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
             }),
-            generic_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.genericm, None)),
+            generic_comm: mask_fixed(self.srs.commit_non_hiding(
+                &self.cs.evaluated_column_coefficients.generic_selector,
+                None,
+            )),
 
-            psm_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.psm, None)),
+            psm_comm: mask_fixed(self.srs.commit_non_hiding(
+                &self.cs.evaluated_column_coefficients.poseidon_selector,
+                None,
+            )),
 
             complete_add_comm: self.srs.commit_evaluations_non_hiding(
                 domain,

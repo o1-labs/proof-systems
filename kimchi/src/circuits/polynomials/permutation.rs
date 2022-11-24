@@ -331,7 +331,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~
         let zkpm_zeta = self.precomputations().zkpm.evaluate(&zeta);
         let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        self.sigmam[PERMUTS - 1].scale(scalar)
+        self.evaluated_column_coefficients.permutation_coefficients[PERMUTS - 1].scale(scalar)
     }
 
     pub fn perm_scalars(

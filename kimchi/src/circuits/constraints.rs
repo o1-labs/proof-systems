@@ -31,6 +31,27 @@ use std::{collections::HashSet, sync::Arc};
 // ConstraintSystem
 //
 
+/// The polynomials representing evaluated columns, in coefficient form.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EvaluatedColumnCoefficients<F: PrimeField> {
+    /// permutation coefficients
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub permutation_coefficients: [DP<F>; PERMUTS],
+
+    /// gate coefficients
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients: [DP<F>; COLUMNS],
+
+    /// generic gate selector
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub generic_selector: DP<F>,
+
+    /// poseidon gate selector
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub poseidon_selector: DP<F>,
+}
+
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
@@ -47,31 +68,17 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
+    #[serde(bound = "EvaluatedColumnCoefficients<F>: Serialize + DeserializeOwned")]
+    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<F>,
+
     // Polynomials over the monomial base
     // ----------------------------------
-    /// permutation polynomial array
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmam: [DP<F>; PERMUTS],
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
-    /// coefficients polynomials in monomial form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
-
-    // Generic constraint selector polynomials
-    // ---------------------------------------
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub genericm: DP<F>,
-
-    // Poseidon selector polynomials
-    // -----------------------------
-    /// poseidon constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub psm: DP<F>,
 
     // Generic constraint selector polynomials
     // ---------------------------------------
@@ -649,13 +656,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             sid,
             sigmal1,
             sigmal8,
-            sigmam,
-            genericm,
             generic4,
-            coefficientsm,
             coefficients8,
             ps8,
-            psm,
             complete_addl4,
             mull8,
             emull,
@@ -669,6 +672,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
+            evaluated_column_coefficients: EvaluatedColumnCoefficients {
+                permutation_coefficients: sigmam,
+                coefficients: coefficientsm,
+                generic_selector: genericm,
+                poseidon_selector: psm,
+            },
         };
 
         match self.precomputations {
