@@ -500,8 +500,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let sigmam: [DP<F>; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
 
-        let sigmal8 = array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
         // Gates
         // -----
         //
@@ -549,23 +547,28 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         });
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let column_evaluations = {
-            let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
+            let permutation_coefficients8 =
+                array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
+
+            let poseidon_selector8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
             // ECC gates
-            let complete_addl4 =
+            let complete_add_selector4 =
                 selector_polynomial(GateType::CompleteAdd, &gates, &domain, &domain.d4);
 
-            let mull8 = selector_polynomial(GateType::VarBaseMul, &gates, &domain, &domain.d8);
+            let mul_selector8 =
+                selector_polynomial(GateType::VarBaseMul, &gates, &domain, &domain.d8);
 
-            let emull = selector_polynomial(GateType::EndoMul, &gates, &domain, &domain.d8);
+            let emul_selector8 =
+                selector_polynomial(GateType::EndoMul, &gates, &domain, &domain.d8);
 
-            let endomul_scalar8 =
+            let endomul_scalar_selector8 =
                 selector_polynomial(GateType::EndoMulScalar, &gates, &domain, &domain.d8);
 
-            let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
+            let generic_selector4 = genericm.evaluate_over_domain_by_ref(domain.d4);
 
             // chacha gate
-            let chacha8 = {
+            let chacha_selectors8 = {
                 if !feature_flags.chacha {
                     None
                 } else {
@@ -579,7 +582,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             };
 
             // Range check constraint selector polynomials
-            let range_check_selector_polys = {
+            let range_check_selectors8 = {
                 if !feature_flags.range_check {
                     None
                 } else {
@@ -591,7 +594,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             };
 
             // Foreign field addition constraint selector polynomial
-            let foreign_field_add_selector_poly = {
+            let foreign_field_add_selector8 = {
                 if !feature_flags.foreign_field_add {
                     None
                 } else {
@@ -604,7 +607,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 }
             };
 
-            let xor_selector_poly = {
+            let xor_selector8 = {
                 if !feature_flags.xor {
                     None
                 } else {
@@ -620,18 +623,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
             ColumnEvaluations {
-                permutation_coefficients8: sigmal8,
-                coefficients8: coefficients8,
-                generic_selector4: generic4,
-                poseidon_selector8: ps8,
-                complete_add_selector4: complete_addl4,
-                mul_selector8: mull8,
-                emul_selector8: emull,
-                chacha_selectors8: chacha8,
-                endomul_scalar_selector8: endomul_scalar8,
-                range_check_selectors8: range_check_selector_polys,
-                foreign_field_add_selector8: foreign_field_add_selector_poly,
-                xor_selector8: xor_selector_poly,
+                permutation_coefficients8,
+                coefficients8,
+                generic_selector4,
+                poseidon_selector8,
+                complete_add_selector4,
+                mul_selector8,
+                emul_selector8,
+                chacha_selectors8,
+                endomul_scalar_selector8,
+                range_check_selectors8,
+                foreign_field_add_selector8,
+                xor_selector8,
             }
         };
 
