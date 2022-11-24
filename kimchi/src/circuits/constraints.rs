@@ -44,7 +44,7 @@ pub struct FeatureFlags<F> {
     /// Foreign field addition gate
     pub foreign_field_add: bool,
     /// XOR gate
-    pub xor_selector: bool,
+    pub xor: bool,
     /// Lookups
     pub lookup_configuration: Option<LookupConfiguration<F>>,
 }
@@ -139,6 +139,10 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// circuit gates
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
+
+    /// flags for optional features
+    #[serde(bound = "FeatureFlags<F>: Serialize + DeserializeOwned")]
+    pub feature_flags: FeatureFlags<F>,
 
     #[serde(bound = "EvaluatedColumnCoefficients<F>: Serialize + DeserializeOwned")]
     pub evaluated_column_coefficients: EvaluatedColumnCoefficients<F>,
@@ -658,6 +662,16 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let domain_constant_evaluation = OnceCell::new();
 
+        let feature_flags = FeatureFlags {
+            chacha: chacha8.is_some(),
+            range_check: range_check_selector_polys.is_some(),
+            lookup_configuration: lookup_constraint_system
+                .as_ref()
+                .map(|lcs| lcs.configuration.clone()),
+            foreign_field_add: foreign_field_add_selector_poly.is_some(),
+            xor: xor_selector_poly.is_some(),
+        };
+
         let constraints = ConstraintSystem {
             domain,
             public: self.public,
@@ -669,6 +683,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             endo,
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
+            feature_flags,
             precomputations: domain_constant_evaluation,
             evaluated_column_coefficients: EvaluatedColumnCoefficients {
                 permutation_coefficients: sigmam,
