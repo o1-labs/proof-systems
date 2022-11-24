@@ -1,6 +1,6 @@
 //! Range check gate
 
-use ark_ff::{FftField, PrimeField, Zero};
+use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -31,7 +31,7 @@ use super::circuitgates::{RangeCheck0, RangeCheck1};
 
 pub const GATE_COUNT: usize = 2;
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
     ///     Outputs tuple (`next_row`, `circuit_gates`) where

@@ -13,7 +13,7 @@ use crate::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use ark_ff::{bytes::ToBytes, PrimeField};
+use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -193,7 +193,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate::new(GateType::Zero, wires, vec![])

@@ -954,15 +954,12 @@ where
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array::from_fn(|i| {
-                    index
-                        .cs
-                        .evaluated_column_coefficients
-                        .permutation_coefficients[0..PERMUTS - 1][i]
+                    index.evaluated_column_coefficients.permutation_coefficients[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.evaluated_column_coefficients.coefficients[i]
+                    index.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
@@ -979,14 +976,12 @@ where
                 lookup: lookup_context.eval_zeta.take(),
 
                 generic_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
                 poseidon_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
@@ -994,15 +989,12 @@ where
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array::from_fn(|i| {
-                    index
-                        .cs
-                        .evaluated_column_coefficients
-                        .permutation_coefficients[0..PERMUTS - 1][i]
+                    index.evaluated_column_coefficients.permutation_coefficients[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.evaluated_column_coefficients.coefficients[i]
+                    index.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
@@ -1020,14 +1012,12 @@ where
                 lookup: lookup_context.eval_zeta_omega.take(),
 
                 generic_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
                 poseidon_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
@@ -1222,12 +1212,12 @@ where
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
         polynomials.extend(vec![(
-            &index.cs.evaluated_column_coefficients.generic_selector,
+            &index.evaluated_column_coefficients.generic_selector,
             None,
             fixed_hiding(1),
         )]);
         polynomials.extend(vec![(
-            &index.cs.evaluated_column_coefficients.poseidon_selector,
+            &index.evaluated_column_coefficients.poseidon_selector,
             None,
             fixed_hiding(1),
         )]);
@@ -1240,7 +1230,6 @@ where
         );
         polynomials.extend(
             index
-                .cs
                 .evaluated_column_coefficients
                 .coefficients
                 .iter()
@@ -1248,10 +1237,7 @@ where
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index
-                .cs
-                .evaluated_column_coefficients
-                .permutation_coefficients[0..PERMUTS - 1]
+            index.evaluated_column_coefficients.permutation_coefficients[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),

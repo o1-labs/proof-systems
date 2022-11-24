@@ -21,7 +21,7 @@ use crate::{
     prover_index::ProverIndex,
     variable_map,
 };
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -30,7 +30,7 @@ use std::{array, collections::HashMap, marker::PhantomData};
 
 pub const GATE_COUNT: usize = 1;
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a XOR gadget for `bits` length
     /// Includes:
     /// - num_xors Xor16 gates

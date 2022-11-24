@@ -2,7 +2,7 @@
 
 use std::collections::HashMap;
 
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -33,7 +33,7 @@ use super::circuitgates::ForeignFieldAdd;
 /// Number of gates used by the foreign field addition gadget
 pub const GATE_COUNT: usize = 1;
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Outputs next row
     fn append_multi_range_check_rows(next_row: &mut usize, gates: &mut Vec<CircuitGate<F>>) {
         let (subsequent_row, mut range_check_circuit_gates) =

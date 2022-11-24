@@ -145,9 +145,6 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "FeatureFlags<F>: Serialize + DeserializeOwned")]
     pub feature_flags: FeatureFlags<F>,
 
-    #[serde(bound = "EvaluatedColumnCoefficients<F>: Serialize + DeserializeOwned")]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<F>,
-
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
@@ -254,7 +251,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
     ///     witness: wire assignment witness
@@ -310,7 +307,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     }
 }
 
-impl<F: PrimeField> ConstraintSystem<F> {
+impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
@@ -350,14 +347,87 @@ impl<F: PrimeField> ConstraintSystem<F> {
         }
     }
 
-    pub(crate) fn column_evaluations(&self) -> ColumnEvaluations<F> {
+    pub(crate) fn evaluated_column_coefficients(&self) -> EvaluatedColumnCoefficients<F> {
+        // compute permutation polynomials
+        let shifts = Shifts::new(&self.domain.d1);
+
+        let mut sigmal1: [Vec<F>; PERMUTS] =
+            array::from_fn(|_| vec![F::zero(); self.domain.d1.size()]);
+
+        for (row, gate) in self.gates.iter().enumerate() {
+            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
+                sigma[row] = shifts.cell_to_field(cell);
+            }
+        }
+
+        let sigmal1: [_; PERMUTS] = {
+            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+            [
+                E::<F, D<F>>::from_vec_and_domain(s0, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s1, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s2, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s3, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s4, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s5, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s6, self.domain.d1),
+            ]
+        };
+
+        let permutation_coefficients: [DP<F>; PERMUTS] =
+            array::from_fn(|i| sigmal1[i].clone().interpolate());
+
+        // poseidon gate
+        let poseidon_selector = E::<F, D<F>>::from_vec_and_domain(
+            self.gates.iter().map(|gate| gate.ps()).collect(),
+            self.domain.d1,
+        )
+        .interpolate();
+
+        // double generic gate
+        let generic_selector = E::<F, D<F>>::from_vec_and_domain(
+            self.gates
+                .iter()
+                .map(|gate| {
+                    if matches!(gate.typ, GateType::Generic) {
+                        F::one()
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            self.domain.d1,
+        )
+        .interpolate();
+
+        // coefficient polynomial
+        let coefficients: [_; COLUMNS] = array::from_fn(|i| {
+            let padded = self
+                .gates
+                .iter()
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
+                .collect();
+            let eval = E::from_vec_and_domain(padded, self.domain.d1);
+            eval.interpolate()
+        });
+
+        EvaluatedColumnCoefficients {
+            permutation_coefficients,
+            coefficients,
+            generic_selector,
+            poseidon_selector,
+        }
+    }
+
+    pub(crate) fn column_evaluations(
+        &self,
+        evaluated_column_coefficients: &EvaluatedColumnCoefficients<F>,
+    ) -> ColumnEvaluations<F> {
         let permutation_coefficients8 = array::from_fn(|i| {
-            self.evaluated_column_coefficients.permutation_coefficients[i]
+            evaluated_column_coefficients.permutation_coefficients[i]
                 .evaluate_over_domain_by_ref(self.domain.d8)
         });
 
-        let poseidon_selector8 = self
-            .evaluated_column_coefficients
+        let poseidon_selector8 = evaluated_column_coefficients
             .poseidon_selector
             .evaluate_over_domain_by_ref(self.domain.d8);
 
@@ -390,8 +460,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             &self.domain.d8,
         );
 
-        let generic_selector4 = self
-            .evaluated_column_coefficients
+        let generic_selector4 = evaluated_column_coefficients
             .generic_selector
             .evaluate_over_domain_by_ref(self.domain.d4);
 
@@ -480,7 +549,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
 
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array::from_fn(|i| {
-            self.evaluated_column_coefficients.coefficients[i]
+            evaluated_column_coefficients.coefficients[i]
                 .evaluate_over_domain_by_ref(self.domain.d8)
         });
 
@@ -616,78 +685,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
-        // Precomputations
-        // ===============
-        // what follows are pre-computations.
-
-        let evaluated_column_coefficients = {
-            // compute permutation polynomials
-            let mut sigmal1: [Vec<F>; PERMUTS] =
-                array::from_fn(|_| vec![F::zero(); domain.d1.size()]);
-
-            for (row, gate) in gates.iter().enumerate() {
-                for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
-                    sigma[row] = shifts.cell_to_field(cell);
-                }
-            }
-
-            let sigmal1: [_; PERMUTS] = {
-                let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-                [
-                    E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
-                    E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
-                    E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
-                    E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
-                    E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
-                    E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
-                    E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
-                ]
-            };
-
-            let permutation_coefficients: [DP<F>; PERMUTS] =
-                array::from_fn(|i| sigmal1[i].clone().interpolate());
-
-            // poseidon gate
-            let poseidon_selector = E::<F, D<F>>::from_vec_and_domain(
-                gates.iter().map(|gate| gate.ps()).collect(),
-                domain.d1,
-            )
-            .interpolate();
-
-            // double generic gate
-            let generic_selector = E::<F, D<F>>::from_vec_and_domain(
-                gates
-                    .iter()
-                    .map(|gate| {
-                        if matches!(gate.typ, GateType::Generic) {
-                            F::one()
-                        } else {
-                            F::zero()
-                        }
-                    })
-                    .collect(),
-                domain.d1,
-            )
-            .interpolate();
-
-            // coefficient polynomial
-            let coefficients: [_; COLUMNS] = array::from_fn(|i| {
-                let padded = gates
-                    .iter()
-                    .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-                    .collect();
-                let eval = E::from_vec_and_domain(padded, domain.d1);
-                eval.interpolate()
-            });
-
-            EvaluatedColumnCoefficients {
-                permutation_coefficients,
-                coefficients,
-                generic_selector,
-                poseidon_selector,
-            }
-        };
-
         //
         // Lookup
         // ------
@@ -718,7 +715,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             lookup_constraint_system,
             feature_flags,
             precomputations: domain_constant_evaluation,
-            evaluated_column_coefficients,
         };
 
         match self.precomputations {

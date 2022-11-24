@@ -339,10 +339,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~
         let zkpm_zeta = self.cs.precomputations().zkpm.evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        self.cs
-            .evaluated_column_coefficients
-            .permutation_coefficients[PERMUTS - 1]
-            .scale(scalar)
+        self.evaluated_column_coefficients.permutation_coefficients[PERMUTS - 1].scale(scalar)
     }
 
     /// permutation aggregation polynomial computation
