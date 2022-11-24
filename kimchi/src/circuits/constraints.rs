@@ -35,7 +35,8 @@ use std::{collections::HashSet, sync::Arc};
 
 /// Flags for optional features in the constraint system
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct FeatureFlags<F: PrimeField> {
+#[serde(bound = "F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize")]
+pub struct FeatureFlags<F> {
     /// ChaCha gates
     pub chacha: bool,
     /// Range check gates
