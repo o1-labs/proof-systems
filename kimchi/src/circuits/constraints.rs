@@ -496,17 +496,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 ]
             };
 
-            let sigmam: [DP<F>; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
+            let permutation_coefficients: [DP<F>; PERMUTS] =
+                array::from_fn(|i| sigmal1[i].clone().interpolate());
 
             // poseidon gate
-            let psm = E::<F, D<F>>::from_vec_and_domain(
+            let poseidon_selector = E::<F, D<F>>::from_vec_and_domain(
                 gates.iter().map(|gate| gate.ps()).collect(),
                 domain.d1,
             )
             .interpolate();
 
             // double generic gate
-            let genericm = E::<F, D<F>>::from_vec_and_domain(
+            let generic_selector = E::<F, D<F>>::from_vec_and_domain(
                 gates
                     .iter()
                     .map(|gate| {
@@ -522,7 +523,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             .interpolate();
 
             // coefficient polynomial
-            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
+            let coefficients: [_; COLUMNS] = array::from_fn(|i| {
                 let padded = gates
                     .iter()
                     .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
@@ -532,10 +533,10 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             });
 
             EvaluatedColumnCoefficients {
-                permutation_coefficients: sigmam,
-                coefficients: coefficientsm,
-                generic_selector: genericm,
-                poseidon_selector: psm,
+                permutation_coefficients,
+                coefficients,
+                generic_selector,
+                poseidon_selector,
             }
         };
 
