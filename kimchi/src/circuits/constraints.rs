@@ -460,7 +460,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 | GateType::ChaChaFinal => feature_flags.chacha = true,
                 GateType::RangeCheck0 | GateType::RangeCheck1 => feature_flags.range_check = true,
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
-                GateType::Xor16 => feature_flags.range_check = true,
+                GateType::Xor16 => feature_flags.xor = true,
                 _ => (),
             }
         }
@@ -655,7 +655,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             },
             column_evaluations: ColumnEvaluations {
                 permutation_coefficients8: sigmal8,
-                coefficients8: coefficients8,
+                coefficients8,
                 generic_selector4: generic4,
                 poseidon_selector8: ps8,
                 complete_add_selector4: complete_addl4,
