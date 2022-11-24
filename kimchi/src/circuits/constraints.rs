@@ -5,7 +5,9 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, tables::LookupTable},
+        lookup::{
+            constraints::LookupConfiguration, index::LookupConstraintSystem, tables::LookupTable,
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
         polynomials::{foreign_field_add, range_check},
@@ -30,6 +32,21 @@ use std::{collections::HashSet, sync::Arc};
 //
 // ConstraintSystem
 //
+
+/// Flags for optional features in the constraint system
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct FeatureFlags<F: PrimeField> {
+    /// ChaCha gates
+    pub chacha: bool,
+    /// Range check gates
+    pub range_check: bool,
+    /// Foreign field addition gate
+    pub foreign_field_add: bool,
+    /// XOR gate
+    pub xor_selector: bool,
+    /// Lookups
+    pub lookup_configuration: Option<LookupConfiguration<F>>,
+}
 
 /// The polynomials representing evaluated columns, in coefficient form.
 #[serde_as]
