@@ -77,13 +77,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(
-            cs.column_evaluations.chacha_selectors8.is_some(),
-            cs.column_evaluations.range_check_selectors8.is_some(),
-            cs.lookup_constraint_system
-                .as_ref()
-                .map(|lcs| &lcs.configuration),
-            cs.column_evaluations.foreign_field_add_selector8.is_some(),
-            cs.column_evaluations.xor_selector8.is_some(),
+            &cs.feature_flags,
             true,
         );
 
