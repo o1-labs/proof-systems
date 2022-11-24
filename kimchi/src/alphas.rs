@@ -331,7 +331,11 @@ mod tests {
                 .lookup_constraint_system
                 .as_ref()
                 .map(|lcs| &lcs.configuration),
-            index.cs.column_evaluations.foreign_field_add_selector8.is_some(),
+            index
+                .cs
+                .column_evaluations
+                .foreign_field_add_selector8
+                .is_some(),
             index.cs.column_evaluations.xor_selector8.is_some(),
             true,
         );
