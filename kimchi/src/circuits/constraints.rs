@@ -617,6 +617,21 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let coefficients8 =
             array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
+        let column_evaluations = ColumnEvaluations {
+            permutation_coefficients8: sigmal8,
+            coefficients8: coefficients8,
+            generic_selector4: generic4,
+            poseidon_selector8: ps8,
+            complete_add_selector4: complete_addl4,
+            mul_selector8: mull8,
+            emul_selector8: emull,
+            chacha_selectors8: chacha8,
+            endomul_scalar_selector8: endomul_scalar8,
+            range_check_selectors8: range_check_selector_polys,
+            foreign_field_add_selector8: foreign_field_add_selector_poly,
+            xor_selector8: xor_selector_poly,
+        };
+
         //
         // Lookup
         // ------
@@ -653,20 +668,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 generic_selector: genericm,
                 poseidon_selector: psm,
             },
-            column_evaluations: ColumnEvaluations {
-                permutation_coefficients8: sigmal8,
-                coefficients8: coefficients8,
-                generic_selector4: generic4,
-                poseidon_selector8: ps8,
-                complete_add_selector4: complete_addl4,
-                mul_selector8: mull8,
-                emul_selector8: emull,
-                chacha_selectors8: chacha8,
-                endomul_scalar_selector8: endomul_scalar8,
-                range_check_selectors8: range_check_selector_polys,
-                foreign_field_add_selector8: foreign_field_add_selector_poly,
-                xor_selector8: xor_selector_poly,
-            },
+            column_evaluations,
         };
 
         match self.precomputations {
