@@ -7,10 +7,17 @@ use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use commitment_dlog::srs::endos;
-use mina_curves::pasta::{Fp as F, Pallas as Other};
-use oracle::sponge::ScalarChallenge;
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn endomul_test() {
@@ -99,9 +106,9 @@ fn endomul_test() {
         assert_eq!(x.into_repr(), res.n.into_repr());
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

@@ -11,17 +11,25 @@ use crate::circuits::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
-use mina_curves::pasta::{Pallas, Vesta};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
     foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers,
 };
+use oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 // The secp256k1 base field modulus
 fn secp256k1_modulus() -> BigUint {
@@ -278,13 +286,13 @@ fn prove_and_verify(operation_count: usize) {
     // Create witness
     let witness = witness::create(&inputs, &operations, foreign_modulus.clone());
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![foreign_field_add::gadget::lookup_table()])
         .foreign_modulus(Some(foreign_modulus))
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 #[test]

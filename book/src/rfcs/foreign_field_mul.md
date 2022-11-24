@@ -92,9 +92,9 @@ Within our overall approach, aside from the CRT, we also use a number of other s
 * Intermediate product elimination
 * Combining multiplications
 
-The rest of this document describes each part into in details.
+The rest of this document describes each part in detail.
 
-## Parameters
+## Parameter selection
 
 This section describes important parameters that we require and how they are computed.
 
@@ -751,7 +751,7 @@ $$
 x + f' = x',
 $$
 
-Recall from the section "Avoiding Borrows" that $f'$ is often larger than $f$.  At first this seems like it could be a problem because in multiplication each operation must be less than $f$.  However, this is because the maximum size of the multiplication was quadratic in the size of $f$ (we use the CRT, which requires the bound that $a \cdot b < 2^t \cdot n$).  However, for addition the result is much smaller and we do not require the CRT nor the assumption that the operands are smaller than $f$.  Thus, we have plenty of space in $\ell$-bit limbs to perform our addition.
+Recall from the section "Avoiding borrows" that $f'$ is often larger than $f$.  At first this seems like it could be a problem because in multiplication each operation must be less than $f$.  However, this is because the maximum size of the multiplication was quadratic in the size of $f$ (we use the CRT, which requires the bound that $a \cdot b < 2^t \cdot n$).  However, for addition the result is much smaller and we do not require the CRT nor the assumption that the operands are smaller than $f$.  Thus, we have plenty of space in $\ell$-bit limbs to perform our addition.
 
 So, the equation we need to constrain is
 

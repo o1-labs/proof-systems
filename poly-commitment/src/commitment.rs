@@ -323,7 +323,7 @@ pub fn squeeze_challenge<
 
 pub trait CommitmentCurve: AffineCurve<BaseField = Self::CommitmentField> {
     type CommitmentField: PrimeField;
-    type Params: SWModelParameters;
+    type Params: SWModelParameters + Clone;
     type Map: GroupMap<Self::BaseField>;
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
@@ -355,7 +355,7 @@ pub trait CommitmentCurve: AffineCurve<BaseField = Self::CommitmentField> {
     }
 }
 
-impl<P: SWModelParameters> CommitmentCurve for SWJAffine<P>
+impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P>
 where
     P::BaseField: PrimeField,
 {

@@ -9,14 +9,19 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::Zero;
-use mina_curves::pasta::{Fp, Vesta};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use o1_utils::math;
-use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
+use oracle::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use std::array;
 
 // aliases
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
 const ROUNDS_PER_HASH: usize = SpongeParams::PERM_ROUNDS_FULL;
@@ -76,9 +81,9 @@ fn test_poseidon() {
         );
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

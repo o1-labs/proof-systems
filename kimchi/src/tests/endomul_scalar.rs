@@ -8,10 +8,17 @@ use crate::{
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use commitment_dlog::srs::endos;
-use mina_curves::pasta::{Fp as F, Vesta};
-use oracle::sponge::ScalarChallenge;
+use mina_curves::pasta::{Fp as F, Vesta, VestaParameters};
+use oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn endomul_scalar_test() {
@@ -57,9 +64,9 @@ fn endomul_scalar_test() {
         );
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

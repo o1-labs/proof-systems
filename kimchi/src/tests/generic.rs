@@ -2,8 +2,14 @@ use super::framework::TestFramework;
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
 use crate::circuits::wires::COLUMNS;
 use ark_ff::Zero;
-use mina_curves::pasta::Fp;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use oracle::constants::PlonkSpongeConstantsKimchi;
+use oracle::sponge::{DefaultFqSponge, DefaultFrSponge};
 use std::array;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_generic_gate() {
@@ -14,11 +20,11 @@ fn test_generic_gate() {
     fill_in_witness(0, &mut witness, &[]);
 
     // create and verify proof based on the witness
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 #[test]
@@ -31,12 +37,12 @@ fn test_generic_gate_pub() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 #[test]
@@ -49,12 +55,12 @@ fn test_generic_gate_pub_all_zeros() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 #[test]
@@ -67,10 +73,10 @@ fn test_generic_gate_pub_empty() {
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

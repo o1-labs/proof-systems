@@ -208,12 +208,12 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         }
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 // Test lookup domain separation: if a different table ID is used, we shouldn't be able to use a

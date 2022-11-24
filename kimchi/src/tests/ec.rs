@@ -4,11 +4,19 @@ use crate::circuits::{
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
-use mina_curves::pasta::{Fp as F, Pallas as Other};
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use oracle::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
 use super::framework::TestFramework;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 // Tests add and double gates
 #[test]
@@ -140,9 +148,9 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
