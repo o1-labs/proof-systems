@@ -238,7 +238,7 @@ f' &= -f \mod 2^t \\
 \end{aligned}
 $$
 
-The negated modulus $f'$ becomes part of our constraint system and is not constrained.
+The negated modulus $f'$ becomes part of our constraint system and is not constrained because it is publicly auditable.
 
 Observe that $f' < 2^t$ since $f < 2^t$ and that $f' > f$ when $f < 2^{t - 1}$.
 
@@ -561,7 +561,7 @@ with all of the terms expanded into the limbs according the the above equations.
 
 ## Range check both sides of $a \cdot b = q \cdot f + r$
 
-Until now we have constrained that equation $a \cdot b = q \cdot f + r$  holds modulo $2^t$ and modulo $n$, so by the CRT it holds modulo $M = 2^t \cdot n$.  Remember that, as outlined in the "Overview" section, that we must prove our equation over the positive integers, rather than $\mod M$.  By doing so, we assure that our solution is not equal to some $q' \cdot M + r'$ where $q', r' \in F_{M}$, in which case $q$ or $r$ would be invalid.
+Until now we have constrained that equation $a \cdot b = q \cdot f + r$  holds modulo $2^t$ and modulo $n$, so by the CRT it holds modulo $M = 2^t \cdot n$.  Remember that, as outlined in the "Overview" section, we must prove our equation over the positive integers, rather than $\mod M$.  By doing so, we assure that our solution is not equal to some $q' \cdot M + r'$ where $q', r' \in F_{M}$, in which case $q$ or $r$ would be invalid.
 
 First, let's consider the right hand side $q \cdot f + r$.  We have
 
@@ -588,7 +588,7 @@ Therefore, to check $q \cdot f + r < 2^t \cdot n$, we need to check
 * $q < f$
 * $r < f$
 
-This should come at no surprise, since that is how we parameterized $2^t \cdot n$ earlier on.  Note that by checking $q < f$ we assure correctness, while checking $r < f$ assures our solution is unique.
+This should come at no surprise, since that is how we parameterized $2^t \cdot n$ earlier on.  Note that by checking $q < f$ we assure correctness, while checking $r < f$ assures our solution is unique (sometimes referred to as canonical).
 
 Next, we must perform the same checks for the left hand side (i.e., $a \cdot b < 2^t \cdot n$).  Since $a$ and $b$ must be less than the foreign field modulus $f$, this means checking
 * $a < f$
@@ -672,28 +672,52 @@ and we don't require an additional multi-range-check for $q < 2^t$.
 
 ### Cost of bound checks
 
-Note that for addition the operands $a$ and $b$ do not need to be less than $f$.  The field overflow bit $\mathcal{o}$ for foreign field addition is at most 1.  That is, $a + b = \mathcal{o} \cdot f + r$, where $r$ is allowed to be greater than $f$.  Therefore,
+This section analyzes the structure and costs of bounds checks for foreign field addition and foreign field multiplication.
+
+#### Addition
+
+In our foreign field addition design the operands $a$ and $b$ do not need to be less than $f$.  The field overflow bit $\mathcal{o}$ for foreign field addition is at most 1.  That is, $a + b = \mathcal{o} \cdot f + r$, where $r$ is allowed to be greater than $f$.  Therefore,
 
 $$
 (f + a) + (f + b) = 1 \cdot f + (f + a + b)
 $$
 
-These can be chained along $n$ times as desired.  The final result
+These can be chained along $k$ times as desired.  The final result
 
 $$
-r = (f + \cdots f + a_1 + b_1 + \cdots a_n + b_n)
+r = (\underbrace{f + \cdots + f}_{k} + a_1 + b_1 + \cdots a_k + b_k)
 $$
 
-Thus, we must only check that the final $r$ in the chain is less than $f$ to constrain the entire chain.  **TODO:** What prevents wrapping around and being unsound?
+Since the bit length of $r$ increases logarithmically with the number of additions, we must only check that the final $r$ in the chain is less than $f$ to constrain the entire chain.
+
+> **Security note:** In order to defer the $r < f$ check to the end of any chain of additions, it is extremely important to consider the potential impact of wraparound in $\mathbb{F_n}$.  That is, we need to consider whether the addition of a large chain of elements greater than the foreign field modulus could wrap around.  If this could happen then the $r < f$ could fail to detect violations.  Below we will show that this is not possible in Kimchi.
+>
+> Recall that our foreign field elements are comprised of 3 limbs of 88-bits each that are each represented as native field elements in our proof system.  In order to wrap around and circumvent the $r < f$ check, the highest limb would need to wrap around.  This means that an attacker would need to perform about $k \approx n/2^{\ell}$ additions of elements greater than then foreign field modulus.  Since Kimchi's native moduli (Pallas and Vesta) are 255-bits, the attacker would need to provide a witness for about $k \approx 2^{167}$ additions.  This length of witness is greater than Kimchi's maximum circuit (resp. witness) length.  Thus, it is not possible for the attacker to generate a false proof by causing wraparound with a large chain of additions.
 
 In summary, for foreign field addition it is sufficient to only bound check the last result $r'$ in a chain of additions (and subtractions)
 
 - Compute bound $r' = r + f'$ with addition gate (2 rows)
 - Range check $r' < 2^t$ (4 rows)
 
-In foreign field multiplication, the situation is unfortunately different, and we must check that each of $a, b, q$ and $r$ are less than $f$.  However, in many situations the input operands may already be checked either as inputs or as outputs of previous operations, so they may not be required for each multiplication operation.
+#### Multiplication
 
-The $q'$ and $r'$ checks are the main focus because they must be done for every multiplication. **TODO:** Confirm this is true and explain why.
+In foreign field multiplication, the situation is unfortunately different, and we must check that each of $a, b, q$ and $r$ are less than $f$.  We cannot adopt the strategy from foreign field addtion where the operands are allowed to be greater than $f$ because the bit length of $r$ would increases linearly with the number of multiplications.  That is,
+
+$$
+(a_1 + f) \cdot (a_2 + f) = 1 \cdot f + \underbrace{f^2 + (a_1 + a_2 - 1) \cdot f + a_1 \cdot a_2}_{r}
+$$
+
+and after a chain of $k$ multiplication we have
+
+$$
+r = f^k + \ldots + a_1 \cdots a_k
+$$
+
+where $r > f^k$ quickly overflows our CRT modulus $2^t \cdot n$.  For example, assuming our maximum foreign modulus of $f = 2^{259}$ and either of Kimchi's native moduli (i.e. Pallas or Vesta), $f^k > 2^t \cdot n$ for $k > 2$.  That is, an overflow is possible for a chain of greater than 1 foreign field multiplication.  Thus, we must check $a, b, q$ and $r$ are less than $f$ for each multiplication.
+
+Fortunately, in many situations the input operands may already be checked either as inputs or as outputs of previous operations, so they may not be required for each multiplication operation.
+
+Thus, the $q'$ and $r'$ checks (or equivalently $q$ and $r$) are our main focus because they must be done for every multiplication.
 
 - Compute bound $q' = q + f'$ with addition gate (2 rows)
 - Compute bound $r' = r + f'$ with addition gate (2 rows)
