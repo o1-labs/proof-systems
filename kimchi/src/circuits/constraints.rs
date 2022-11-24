@@ -516,18 +516,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             domain.d1,
         )
         .interpolate();
-        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
-
-        // ECC gates
-        let complete_addl4 =
-            selector_polynomial(GateType::CompleteAdd, &gates, &domain, &domain.d4);
-
-        let mull8 = selector_polynomial(GateType::VarBaseMul, &gates, &domain, &domain.d8);
-
-        let emull = selector_polynomial(GateType::EndoMul, &gates, &domain, &domain.d8);
-
-        let endomul_scalar8 =
-            selector_polynomial(GateType::EndoMulScalar, &gates, &domain, &domain.d8);
 
         // double generic gate
         let genericm = E::<F, D<F>>::from_vec_and_domain(
@@ -544,60 +532,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             domain.d1,
         )
         .interpolate();
-        let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
-
-        // chacha gate
-        let chacha8 = {
-            if !feature_flags.chacha {
-                None
-            } else {
-                Some([
-                    selector_polynomial(GateType::ChaCha0, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::ChaCha1, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::ChaCha2, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::ChaChaFinal, &gates, &domain, &domain.d8),
-                ])
-            }
-        };
-
-        // Range check constraint selector polynomials
-        let range_check_selector_polys = {
-            if !feature_flags.range_check {
-                None
-            } else {
-                Some([
-                    selector_polynomial(GateType::RangeCheck0, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::RangeCheck1, &gates, &domain, &domain.d8),
-                ])
-            }
-        };
-
-        // Foreign field addition constraint selector polynomial
-        let foreign_field_add_selector_poly = {
-            if !feature_flags.foreign_field_add {
-                None
-            } else {
-                Some(selector_polynomial(
-                    GateType::ForeignFieldAdd,
-                    &gates,
-                    &domain,
-                    &domain.d8,
-                ))
-            }
-        };
-
-        let xor_selector_poly = {
-            if !feature_flags.xor {
-                None
-            } else {
-                Some(selector_polynomial(
-                    GateType::Xor16,
-                    &gates,
-                    &domain,
-                    &domain.d8,
-                ))
-            }
-        };
 
         //
         // Coefficient
@@ -614,22 +548,91 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             eval.interpolate()
         });
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
-        let coefficients8 =
-            array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
+        let column_evaluations = {
+            let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
-        let column_evaluations = ColumnEvaluations {
-            permutation_coefficients8: sigmal8,
-            coefficients8: coefficients8,
-            generic_selector4: generic4,
-            poseidon_selector8: ps8,
-            complete_add_selector4: complete_addl4,
-            mul_selector8: mull8,
-            emul_selector8: emull,
-            chacha_selectors8: chacha8,
-            endomul_scalar_selector8: endomul_scalar8,
-            range_check_selectors8: range_check_selector_polys,
-            foreign_field_add_selector8: foreign_field_add_selector_poly,
-            xor_selector8: xor_selector_poly,
+            // ECC gates
+            let complete_addl4 =
+                selector_polynomial(GateType::CompleteAdd, &gates, &domain, &domain.d4);
+
+            let mull8 = selector_polynomial(GateType::VarBaseMul, &gates, &domain, &domain.d8);
+
+            let emull = selector_polynomial(GateType::EndoMul, &gates, &domain, &domain.d8);
+
+            let endomul_scalar8 =
+                selector_polynomial(GateType::EndoMulScalar, &gates, &domain, &domain.d8);
+
+            let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
+
+            // chacha gate
+            let chacha8 = {
+                if !feature_flags.chacha {
+                    None
+                } else {
+                    Some([
+                        selector_polynomial(GateType::ChaCha0, &gates, &domain, &domain.d8),
+                        selector_polynomial(GateType::ChaCha1, &gates, &domain, &domain.d8),
+                        selector_polynomial(GateType::ChaCha2, &gates, &domain, &domain.d8),
+                        selector_polynomial(GateType::ChaChaFinal, &gates, &domain, &domain.d8),
+                    ])
+                }
+            };
+
+            // Range check constraint selector polynomials
+            let range_check_selector_polys = {
+                if !feature_flags.range_check {
+                    None
+                } else {
+                    Some([
+                        selector_polynomial(GateType::RangeCheck0, &gates, &domain, &domain.d8),
+                        selector_polynomial(GateType::RangeCheck1, &gates, &domain, &domain.d8),
+                    ])
+                }
+            };
+
+            // Foreign field addition constraint selector polynomial
+            let foreign_field_add_selector_poly = {
+                if !feature_flags.foreign_field_add {
+                    None
+                } else {
+                    Some(selector_polynomial(
+                        GateType::ForeignFieldAdd,
+                        &gates,
+                        &domain,
+                        &domain.d8,
+                    ))
+                }
+            };
+
+            let xor_selector_poly = {
+                if !feature_flags.xor {
+                    None
+                } else {
+                    Some(selector_polynomial(
+                        GateType::Xor16,
+                        &gates,
+                        &domain,
+                        &domain.d8,
+                    ))
+                }
+            };
+            let coefficients8 =
+                array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
+
+            ColumnEvaluations {
+                permutation_coefficients8: sigmal8,
+                coefficients8: coefficients8,
+                generic_selector4: generic4,
+                poseidon_selector8: ps8,
+                complete_add_selector4: complete_addl4,
+                mul_selector8: mull8,
+                emul_selector8: emull,
+                chacha_selectors8: chacha8,
+                endomul_scalar_selector8: endomul_scalar8,
+                range_check_selectors8: range_check_selector_polys,
+                foreign_field_add_selector8: foreign_field_add_selector_poly,
+                xor_selector8: xor_selector_poly,
+            }
         };
 
         //
