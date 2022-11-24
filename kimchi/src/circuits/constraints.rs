@@ -660,7 +660,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             },
             column_evaluations: ColumnEvaluations {
                 permutation_coefficients8: sigmal8,
-                coefficients8: coefficients8,
+                coefficients8,
                 generic_selector4: generic4,
                 poseidon_selector8: ps8,
                 complete_add_selector4: complete_addl4,

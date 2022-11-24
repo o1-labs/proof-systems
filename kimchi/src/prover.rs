@@ -652,7 +652,7 @@ where
             }
 
             if let Some(selector) = index.cs.column_evaluations.xor_selector8.as_ref() {
-                index_evals.insert(GateType::Xor16, &selector);
+                index_evals.insert(GateType::Xor16, selector);
             }
 
             let mds = &G::sponge_params().mds;
