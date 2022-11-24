@@ -545,11 +545,23 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             let eval = E::from_vec_and_domain(padded, domain.d1);
             eval.interpolate()
         });
-        let column_evaluations = {
-            let permutation_coefficients8 =
-                array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
 
-            let poseidon_selector8 = psm.evaluate_over_domain_by_ref(domain.d8);
+        let evaluated_column_coefficients = EvaluatedColumnCoefficients {
+            permutation_coefficients: sigmam,
+            coefficients: coefficientsm,
+            generic_selector: genericm,
+            poseidon_selector: psm,
+        };
+
+        let column_evaluations = {
+            let permutation_coefficients8 = array::from_fn(|i| {
+                evaluated_column_coefficients.permutation_coefficients[i]
+                    .evaluate_over_domain_by_ref(domain.d8)
+            });
+
+            let poseidon_selector8 = evaluated_column_coefficients
+                .poseidon_selector
+                .evaluate_over_domain_by_ref(domain.d8);
 
             // ECC gates
             let complete_add_selector4 =
@@ -564,7 +576,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             let endomul_scalar_selector8 =
                 selector_polynomial(GateType::EndoMulScalar, &gates, &domain, &domain.d8);
 
-            let generic_selector4 = genericm.evaluate_over_domain_by_ref(domain.d4);
+            let generic_selector4 = evaluated_column_coefficients
+                .generic_selector
+                .evaluate_over_domain_by_ref(domain.d4);
 
             // chacha gate
             let chacha_selectors8 = {
@@ -620,8 +634,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             };
 
             // TODO: This doesn't need to be degree 8 but that would require some changes in expr
-            let coefficients8 =
-                array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
+            let coefficients8 = array::from_fn(|i| {
+                evaluated_column_coefficients.coefficients[i].evaluate_over_domain_by_ref(domain.d8)
+            });
 
             ColumnEvaluations {
                 permutation_coefficients8,
@@ -669,12 +684,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             lookup_constraint_system,
             feature_flags,
             precomputations: domain_constant_evaluation,
-            evaluated_column_coefficients: EvaluatedColumnCoefficients {
-                permutation_coefficients: sigmam,
-                coefficients: coefficientsm,
-                generic_selector: genericm,
-                poseidon_selector: psm,
-            },
+            evaluated_column_coefficients,
             column_evaluations,
         };
 
