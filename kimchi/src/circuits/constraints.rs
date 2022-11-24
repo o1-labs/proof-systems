@@ -545,7 +545,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             let eval = E::from_vec_and_domain(padded, domain.d1);
             eval.interpolate()
         });
-        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let column_evaluations = {
             let permutation_coefficients8 =
                 array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
@@ -619,6 +618,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                     ))
                 }
             };
+
+            // TODO: This doesn't need to be degree 8 but that would require some changes in expr
             let coefficients8 =
                 array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
 
