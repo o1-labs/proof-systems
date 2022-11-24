@@ -10,7 +10,7 @@ use crate::{
         },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::{foreign_field_add, range_check},
+        polynomials::range_check,
         wires::*,
     },
     curve::KimchiCurve,
