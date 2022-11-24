@@ -473,7 +473,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 | GateType::ChaChaFinal => feature_flags.chacha = true,
                 GateType::RangeCheck0 | GateType::RangeCheck1 => feature_flags.range_check = true,
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
-                GateType::Xor16 => feature_flags.range_check = true,
+                GateType::Xor16 => feature_flags.xor = true,
                 _ => (),
             }
         }
