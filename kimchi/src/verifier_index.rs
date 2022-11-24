@@ -274,13 +274,13 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, &eval8, None)),
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8, None)),
 
             xor_comm: self
                 .column_evaluations
                 .xor_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, &eval8, None)),
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8, None)),
 
             shift: self.cs.shift,
             zkpm: {
