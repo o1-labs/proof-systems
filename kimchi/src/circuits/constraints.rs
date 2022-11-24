@@ -472,85 +472,71 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // ===============
         // what follows are pre-computations.
 
-        //
-        // Permutation
-        // -----------
+        let evaluated_column_coefficients = {
+            // compute permutation polynomials
+            let mut sigmal1: [Vec<F>; PERMUTS] =
+                array::from_fn(|_| vec![F::zero(); domain.d1.size()]);
 
-        // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] = array::from_fn(|_| vec![F::zero(); domain.d1.size()]);
-
-        for (row, gate) in gates.iter().enumerate() {
-            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
-                sigma[row] = shifts.cell_to_field(cell);
+            for (row, gate) in gates.iter().enumerate() {
+                for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
+                    sigma[row] = shifts.cell_to_field(cell);
+                }
             }
-        }
 
-        let sigmal1: [_; PERMUTS] = {
-            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-            [
-                E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
-            ]
-        };
+            let sigmal1: [_; PERMUTS] = {
+                let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+                [
+                    E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
+                    E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
+                    E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
+                    E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
+                    E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
+                    E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
+                    E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
+                ]
+            };
 
-        let sigmam: [DP<F>; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
+            let sigmam: [DP<F>; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
 
-        // Gates
-        // -----
-        //
-        // Compute each gate's polynomial as
-        // the polynomial that evaluates to 1 at $g^i$
-        // where $i$ is the row where a gate is active.
-        // Note: gates must be mutually exclusive.
+            // poseidon gate
+            let psm = E::<F, D<F>>::from_vec_and_domain(
+                gates.iter().map(|gate| gate.ps()).collect(),
+                domain.d1,
+            )
+            .interpolate();
 
-        // poseidon gate
-        let psm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.ps()).collect(),
-            domain.d1,
-        )
-        .interpolate();
+            // double generic gate
+            let genericm = E::<F, D<F>>::from_vec_and_domain(
+                gates
+                    .iter()
+                    .map(|gate| {
+                        if matches!(gate.typ, GateType::Generic) {
+                            F::one()
+                        } else {
+                            F::zero()
+                        }
+                    })
+                    .collect(),
+                domain.d1,
+            )
+            .interpolate();
 
-        // double generic gate
-        let genericm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if matches!(gate.typ, GateType::Generic) {
-                        F::one()
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
+            // coefficient polynomial
+            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
+                let padded = gates
+                    .iter()
+                    .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
+                    .collect();
+                let eval = E::from_vec_and_domain(padded, domain.d1);
+                eval.interpolate()
+            });
 
-        //
-        // Coefficient
-        // -----------
-        //
-
-        // coefficient polynomial
-        let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
-            let padded = gates
-                .iter()
-                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-                .collect();
-            let eval = E::from_vec_and_domain(padded, domain.d1);
-            eval.interpolate()
-        });
-
-        let evaluated_column_coefficients = EvaluatedColumnCoefficients {
-            permutation_coefficients: sigmam,
-            coefficients: coefficientsm,
-            generic_selector: genericm,
-            poseidon_selector: psm,
+            EvaluatedColumnCoefficients {
+                permutation_coefficients: sigmam,
+                coefficients: coefficientsm,
+                generic_selector: genericm,
+                poseidon_selector: psm,
+            }
         };
 
         let column_evaluations = {
