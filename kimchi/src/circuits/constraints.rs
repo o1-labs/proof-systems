@@ -197,6 +197,7 @@ pub fn selector_polynomial<F: PrimeField>(
     gate_type: GateType,
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
+    target_domain: &D<F>,
 ) -> E<F, D<F>> {
     // Coefficient form
     let coeff = E::<F, D<F>>::from_vec_and_domain(
@@ -214,21 +215,7 @@ pub fn selector_polynomial<F: PrimeField>(
     )
     .interpolate();
 
-    // Evaluation form (evaluated over d8)
-    coeff.evaluate_over_domain_by_ref(domain.d8)
-}
-
-/// Create selector polynomials for a gate (i.e. a collection of circuit gates)
-pub fn selector_polynomials<F: PrimeField>(
-    gate_types: &[GateType],
-    gates: &[CircuitGate<F>],
-    domain: &EvaluationDomains<F>,
-) -> Vec<E<F, D<F>>> {
-    Vec::from_iter(
-        gate_types
-            .iter()
-            .map(|gate_type| selector_polynomial(*gate_type, gates, domain)),
-    )
+    coeff.evaluate_over_domain_by_ref(*target_domain)
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
@@ -532,39 +519,15 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
         // ECC gates
-        let complete_addm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
+        let complete_addl4 =
+            selector_polynomial(GateType::CompleteAdd, &gates, &domain, &domain.d4);
 
-        let mulm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.vbmul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
+        let mull8 = selector_polynomial(GateType::VarBaseMul, &gates, &domain, &domain.d8);
 
-        let emulm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.endomul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+        let emull = selector_polynomial(GateType::EndoMul, &gates, &domain, &domain.d8);
 
-        let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) as u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
+        let endomul_scalar8 =
+            selector_polynomial(GateType::EndoMulScalar, &gates, &domain, &domain.d8);
 
         // double generic gate
         let genericm = E::<F, D<F>>::from_vec_and_domain(
@@ -588,47 +551,38 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if !feature_flags.chacha {
                 None
             } else {
-                let a: [_; 4] = array::from_fn(|i| {
-                    let g = match i {
-                        0 => GateType::ChaCha0,
-                        1 => GateType::ChaCha1,
-                        2 => GateType::ChaCha2,
-                        3 => GateType::ChaChaFinal,
-                        _ => panic!("Invalid index"),
-                    };
-                    E::<F, D<F>>::from_vec_and_domain(
-                        gates
-                            .iter()
-                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                            .collect(),
-                        domain.d1,
-                    )
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-                });
-                Some(a)
+                Some([
+                    selector_polynomial(GateType::ChaCha0, &gates, &domain, &domain.d8),
+                    selector_polynomial(GateType::ChaCha1, &gates, &domain, &domain.d8),
+                    selector_polynomial(GateType::ChaCha2, &gates, &domain, &domain.d8),
+                    selector_polynomial(GateType::ChaChaFinal, &gates, &domain, &domain.d8),
+                ])
             }
         };
 
         // Range check constraint selector polynomials
-        let range_gates = range_check::gadget::circuit_gates();
         let range_check_selector_polys = {
             if !feature_flags.range_check {
                 None
             } else {
-                Some(array::from_fn(|i| {
-                    selector_polynomial(range_gates[i], &gates, &domain)
-                }))
+                Some([
+                    selector_polynomial(GateType::RangeCheck0, &gates, &domain, &domain.d8),
+                    selector_polynomial(GateType::RangeCheck1, &gates, &domain, &domain.d8),
+                ])
             }
         };
 
         // Foreign field addition constraint selector polynomial
-        let ffadd_gates = foreign_field_add::gadget::circuit_gates();
         let foreign_field_add_selector_poly = {
             if !feature_flags.foreign_field_add {
                 None
             } else {
-                Some(selector_polynomial(ffadd_gates[0], &gates, &domain))
+                Some(selector_polynomial(
+                    GateType::ForeignFieldAdd,
+                    &gates,
+                    &domain,
+                    &domain.d8,
+                ))
             }
         };
 
@@ -636,7 +590,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             if !feature_flags.xor {
                 None
             } else {
-                Some(selector_polynomial(GateType::Xor16, &gates, &domain))
+                Some(selector_polynomial(
+                    GateType::Xor16,
+                    &gates,
+                    &domain,
+                    &domain.d8,
+                ))
             }
         };
 
