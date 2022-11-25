@@ -228,7 +228,7 @@ $$
 and commit to it as above to get a commitment $c_q$. And $c_q$ will be the opening proof. It remains only to describe verification. It works like this
 
 $$
-\mathsf{verify}(c_f, (b, c_q)) := e(c_q, w - a \cdot g_2)=_? e(c_f, g_2)
+\mathsf{verify}(c_f, (b, c_q)) := e(c_q, w - a \cdot g_2)=_? e(c_f - b \cdot g_1, g_2)
 $$
 
 This amounts to checking: *"is the polynomial committed to $c_f$ equal to the polynomial committed to by $c_q$ times $x - a$"?*
@@ -236,13 +236,13 @@ This amounts to checking: *"is the polynomial committed to $c_f$ equal to the po
 To see why, remember that $w = \tau \cdot g_2$, and say $c_q = s_q\cdot g_1$ and $c_f = s_f \cdot g_1$ so we are checking
 
 $$
-e(s_q \cdot g_1, (\tau - a) \cdot g_2) =_? e(s_f \cdot g_1, g_2)
+e(s_q \cdot g_1, (\tau - a) \cdot g_2) =_? e((s_f - b) \cdot g_1, g_2)
 $$
 
 which by the bilinearity of the pairing is the same as checking
 
 $$
-s_q \cdot (\tau - a) = s_f
+s_q \cdot (\tau - a) = s_f - b
 $$
 
 ## Bootleproof inner product argument
