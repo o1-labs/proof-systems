@@ -610,41 +610,51 @@ pub mod caml {
                     .map(&|x| x.into_iter().map(Into::into).collect()),
             );
             let coefficients = (
-                pe.coefficients[0].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[1].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[2].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[3].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[4].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[5].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[6].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[7].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[8].iter().cloned().map(Into::into).collect(),
-                pe.coefficients[9].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[0]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[1]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[2]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[3]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[4]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[5]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[6]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[7]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[8]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.coefficients[9]
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 pe.coefficients[10]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 pe.coefficients[11]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 pe.coefficients[12]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 pe.coefficients[13]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 pe.coefficients[14]
-                    .iter()
-                    .cloned()
-                    .map(Into::into)
-                    .collect(),
+                    .clone()
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
             );
             let s = (
                 pe.s[0]
@@ -707,21 +717,51 @@ pub mod caml {
                 cpe.w.14.map(&|x| x.into_iter().map(Into::into).collect()),
             ];
             let coefficients = [
-                cpe.coefficients.0.into_iter().map(Into::into).collect(),
-                cpe.coefficients.1.into_iter().map(Into::into).collect(),
-                cpe.coefficients.2.into_iter().map(Into::into).collect(),
-                cpe.coefficients.3.into_iter().map(Into::into).collect(),
-                cpe.coefficients.4.into_iter().map(Into::into).collect(),
-                cpe.coefficients.5.into_iter().map(Into::into).collect(),
-                cpe.coefficients.6.into_iter().map(Into::into).collect(),
-                cpe.coefficients.7.into_iter().map(Into::into).collect(),
-                cpe.coefficients.8.into_iter().map(Into::into).collect(),
-                cpe.coefficients.9.into_iter().map(Into::into).collect(),
-                cpe.coefficients.10.into_iter().map(Into::into).collect(),
-                cpe.coefficients.11.into_iter().map(Into::into).collect(),
-                cpe.coefficients.12.into_iter().map(Into::into).collect(),
-                cpe.coefficients.13.into_iter().map(Into::into).collect(),
-                cpe.coefficients.14.into_iter().map(Into::into).collect(),
+                cpe.coefficients
+                    .0
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .1
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .2
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .3
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .4
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .5
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .6
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .7
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .8
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .9
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .10
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .11
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .12
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .13
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                cpe.coefficients
+                    .14
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
             ];
             let s = [
                 cpe.s.0.map(&|x| x.into_iter().map(Into::into).collect()),
