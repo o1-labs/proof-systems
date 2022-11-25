@@ -118,8 +118,8 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
                 table,
                 runtime,
             } = l;
-            points.push(&aggreg);
-            points.push(&table);
+            points.push(aggreg);
+            points.push(table);
             for s in sorted {
                 points.push(s);
             }
