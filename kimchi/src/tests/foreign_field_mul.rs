@@ -1299,6 +1299,22 @@ fn test_custom_constraints_pallas_on_vesta() {
 }
 
 #[test]
+// Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
+fn test_custom_constraints_vesta_on_vesta() {
+    test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        &VestaField::modulus_biguint(),
+    );
+}
+
+#[test]
+// Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
+fn test_custom_constraints_pallas_on_pallas() {
+    test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+        &PallasField::modulus_biguint(),
+    );
+}
+
+#[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native vesta)
 fn test_custom_constraints_small_foreign_modulus_on_vesta() {
     test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(

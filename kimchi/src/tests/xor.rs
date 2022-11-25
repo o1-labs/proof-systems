@@ -4,7 +4,7 @@ use crate::circuits::{
 };
 
 use ark_ec::AffineCurve;
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -16,8 +16,6 @@ use super::framework::TestFramework;
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
-type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 

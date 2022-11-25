@@ -20,7 +20,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use num_bigint::BigUint;
-use o1_utils::{ExtendedEvaluations, FieldHelpers};
+use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -401,11 +401,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// and warns if the foreign modulus being passed is smaller than the native modulus
     /// because right now we only support foreign modulus that are larger than the native modulus.
     pub fn foreign_field_modulus(mut self, foreign_field_modulus: &Option<BigUint>) -> Self {
-        if let Some(ffmod) = foreign_field_modulus.clone() {
-            if ffmod <= F::modulus_biguint() {
-                println!("Smaller foreign field modulus is still only supported by FFAdd but not yet for FFMul");
-            }
-        }
         self.foreign_field_modulus = foreign_field_modulus.clone();
         self
     }
