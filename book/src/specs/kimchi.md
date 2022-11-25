@@ -1549,8 +1549,8 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub table_ids: Option<PolyComm<G>>,
 
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
+    /// Information about the specific lookups used
+    pub lookup_info: LookupInfo,
 
     /// An optional selector polynomial for runtime tables
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -2049,8 +2049,8 @@ We run the following algorithm:
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
 1. Setup the Fr-Sponge.
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-1. Compute evaluations for the previous recursion challenges.
 1. Absorb the previous recursion challenges.
+1. Compute evaluations for the previous recursion challenges.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 
    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
