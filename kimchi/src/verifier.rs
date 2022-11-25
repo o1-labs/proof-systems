@@ -172,7 +172,7 @@ where
             None
         };
 
-        if let Some(_) = &index.lookup_index {
+        if index.lookup_index.is_some() {
             let lookup_commits = self
                 .commitments
                 .lookup
