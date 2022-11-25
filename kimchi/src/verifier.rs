@@ -172,7 +172,7 @@ where
             None
         };
 
-        if let Some(_) = &index.lookup_index {
+        if index.lookup_index.is_some() {
             let lookup_commits = self
                 .commitments
                 .lookup
@@ -593,7 +593,7 @@ where
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
                         .expect("should evaluate");
 
-                let col = col.clone();
+                let col = *col;
                 scalars.push(scalar);
                 commitments.push(
                     context
