@@ -215,7 +215,7 @@ where
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in &prev_challenges {
-            absorb_commitment(&mut fq_sponge, &comm)
+            absorb_commitment(&mut fq_sponge, comm)
         }
 
         //~ 1. Compute the negated public input polynomial as

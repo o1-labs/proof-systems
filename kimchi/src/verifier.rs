@@ -68,17 +68,17 @@ where
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in &self.prev_challenges {
-            absorb_commitment(&mut fq_sponge, &comm);
+            absorb_commitment(&mut fq_sponge, comm);
         }
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-        absorb_commitment(&mut fq_sponge, &public_comm);
+        absorb_commitment(&mut fq_sponge, public_comm);
 
         //~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         self.commitments
             .w_comm
             .iter()
-            .for_each(|c| absorb_commitment(&mut fq_sponge, &c));
+            .for_each(|c| absorb_commitment(&mut fq_sponge, c));
 
         //~ 1. If lookup is used:
         let joint_combiner = if let Some(l) = &index.lookup_index {
@@ -94,7 +94,7 @@ where
                     .runtime
                     .as_ref()
                     .ok_or(VerifyError::IncorrectRuntimeProof)?;
-                absorb_commitment(&mut fq_sponge, &runtime_commit);
+                absorb_commitment(&mut fq_sponge, runtime_commit);
             }
 
             //~~ - If it involves queries to a multiple-column lookup table,
@@ -115,7 +115,7 @@ where
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
-                absorb_commitment(&mut fq_sponge, &com);
+                absorb_commitment(&mut fq_sponge, com);
             }
 
             Some(joint_combiner)
