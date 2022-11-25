@@ -584,7 +584,7 @@ where
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
                         .expect("should evaluate");
 
-                let col = col.clone();
+                let col = *col;
                 scalars.push(scalar);
                 commitments.push(
                     context
