@@ -33,11 +33,9 @@ use super::evaluation_proof::*;
 
 /// A polynomial commitment.
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PolyComm<C>
-where
-    C: CanonicalDeserialize + CanonicalSerialize,
-{
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
+pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub unshifted: Vec<C>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
