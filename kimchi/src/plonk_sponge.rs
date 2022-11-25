@@ -5,7 +5,7 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
-use crate::proof::ProofEvaluations;
+use crate::proof::{LookupEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -112,12 +112,18 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         ];
 
         if let Some(l) = lookup.as_ref() {
-            points.push(&l.aggreg);
-            points.push(&l.table);
-            for s in &l.sorted {
+            let LookupEvaluations {
+                sorted,
+                aggreg,
+                table,
+                runtime,
+            } = l;
+            points.push(&aggreg);
+            points.push(&table);
+            for s in sorted {
                 points.push(s);
             }
-            l.runtime.iter().for_each(|x| points.push(x));
+            runtime.iter().for_each(|x| points.push(x));
         }
 
         for p in points {
