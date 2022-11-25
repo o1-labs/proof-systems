@@ -79,6 +79,6 @@ fn test_cairo_gate() {
     for gate in circuit {
         let res_ensure = ensure_cairo_gate(&gate, row, &witness);
         assert_eq!(Ok(()), res_ensure);
-        row = row + 1;
+        row += 1;
     }
 }

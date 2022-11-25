@@ -100,7 +100,7 @@ impl TestFramework {
     pub(crate) fn setup(mut self) -> TestRunner {
         let start = Instant::now();
 
-        let lookup_tables = mem::replace(&mut self.lookup_tables, vec![]);
+        let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
         let foreign_modulus_setup = mem::replace(&mut self.foreign_modulus, None);
 

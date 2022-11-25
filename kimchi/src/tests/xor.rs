@@ -32,7 +32,7 @@ fn test_xor(in1: u128, in2: u128, bits: usize) -> [Vec<PallasField>; COLUMNS] {
                 row,
                 &witness,
                 &cs,
-                &witness[0][0..cs.public].to_vec()
+                &witness[0][0..cs.public]
             ),
             Ok(())
         );

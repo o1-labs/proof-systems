@@ -45,7 +45,7 @@ mod tests {
         let de_pf: ProverProof<Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
-        ctx.batch_verification(vec![de_pf.clone()]);
+        ctx.batch_verification(vec![de_pf]);
     }
 
     #[test]
