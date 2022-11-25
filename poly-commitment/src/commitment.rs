@@ -33,7 +33,7 @@ use super::evaluation_proof::*;
 
 /// A polynomial commitment.
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
