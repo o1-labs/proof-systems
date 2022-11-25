@@ -2,7 +2,7 @@
 
 use crate::{
     circuits::{
-        argument::ArgumentType,
+        argument::{Argument, ArgumentType},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{
@@ -14,8 +14,7 @@ use crate::{
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
             foreign_field_add::{self, circuitgates::ForeignFieldAdd},
-            generic::Generic,
-            permutation,
+            generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check::{
@@ -672,11 +671,19 @@ where
 
         let quotient_poly = {
             // generic
-            let mut t4 = Evaluations::from_vec_and_domain(
-                vec![G::ScalarField::zero(); index.cs.domain.d4.size()],
-                index.cs.domain.d4,
-            );
+            let mut t4 = {
+                let generic_constraint = generic::Generic::combined_constraints(&all_alphas);
+                let generic4 = generic_constraint.evaluations(&env);
 
+                if cfg!(debug_assertions) {
+                    let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
+                    let gen_minus_pub = &generic4 + &p4;
+
+                    check_constraint!(index, gen_minus_pub);
+                }
+
+                generic4
+            };
             // permutation
             let (mut t8, bnd) = {
                 let alphas =
@@ -701,10 +708,9 @@ where
 
                 for gate in [
                     (
-                        (&Generic::default() as &dyn DynArgument<G::ScalarField>),
+                        (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
                         true,
                     ),
-                    (&CompleteAdd::default(), true),
                     (&VarbaseMul::default(), true),
                     (&EndosclMul::default(), true),
                     (&EndomulScalar::default(), true),
