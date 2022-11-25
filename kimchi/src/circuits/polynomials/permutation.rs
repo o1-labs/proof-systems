@@ -341,7 +341,52 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         self.evaluated_column_coefficients.permutation_coefficients[PERMUTS - 1].scale(scalar)
     }
+}
 
+impl<F: PrimeField> ConstraintSystem<F> {
+    pub fn perm_scalars(
+        e: &[ProofEvaluations<F>],
+        beta: F,
+        gamma: F,
+        mut alphas: impl Iterator<Item = F>,
+        zkp_zeta: F,
+    ) -> F {
+        let alpha0 = alphas
+            .next()
+            .expect("not enough powers of alpha for permutation");
+        let _alpha1 = alphas
+            .next()
+            .expect("not enough powers of alpha for permutation");
+        let _alpha2 = alphas
+            .next()
+            .expect("not enough powers of alpha for permutation");
+
+        //~ where $\text{scalar}$ is computed as:
+        //~
+        //~ $$
+        //~ \begin{align}
+        //~ z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\
+        //~ (\gamma + \beta \sigma_0(\zeta) + w_0(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_1(\zeta) + w_1(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\
+        //~ (\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\
+        //~ \end{align}
+        //~$$
+        //~
+        let init = e[1].z * beta * alpha0 * zkp_zeta;
+        let res = e[0]
+            .w
+            .iter()
+            .zip(e[0].s.iter())
+            .map(|(w, s)| gamma + (beta * s) + w)
+            .fold(init, |x, y| x * y);
+        -res
+    }
+}
+
+impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// permutation aggregation polynomial computation
     ///
     /// # Errors
@@ -437,48 +482,5 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
         Ok(res)
-    }
-}
-
-impl<F: PrimeField> ConstraintSystem<F> {
-    pub fn perm_scalars(
-        e: &[ProofEvaluations<F>],
-        beta: F,
-        gamma: F,
-        mut alphas: impl Iterator<Item = F>,
-        zkp_zeta: F,
-    ) -> F {
-        let alpha0 = alphas
-            .next()
-            .expect("not enough powers of alpha for permutation");
-        let _alpha1 = alphas
-            .next()
-            .expect("not enough powers of alpha for permutation");
-        let _alpha2 = alphas
-            .next()
-            .expect("not enough powers of alpha for permutation");
-
-        //~ where $\text{scalar}$ is computed as:
-        //~
-        //~ $$
-        //~ \begin{align}
-        //~ z(\zeta \omega) \beta \alpha^{PERM0} zkpl(\zeta) \cdot \\
-        //~ (\gamma + \beta \sigma_0(\zeta) + w_0(\zeta)) \cdot \\
-        //~ (\gamma + \beta \sigma_1(\zeta) + w_1(\zeta)) \cdot \\
-        //~ (\gamma + \beta \sigma_2(\zeta) + w_2(\zeta)) \cdot \\
-        //~ (\gamma + \beta \sigma_3(\zeta) + w_3(\zeta)) \cdot \\
-        //~ (\gamma + \beta \sigma_4(\zeta) + w_4(\zeta)) \cdot \\
-        //~ (\gamma + \beta \sigma_5(\zeta) + w_5(\zeta)) \cdot \\
-        //~ \end{align}
-        //~$$
-        //~
-        let init = e[1].z * beta * alpha0 * zkp_zeta;
-        let res = e[0]
-            .w
-            .iter()
-            .zip(e[0].s.iter())
-            .map(|(w, s)| gamma + (beta * s) + w)
-            .fold(init, |x, y| x * y);
-        -res
     }
 }
