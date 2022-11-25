@@ -23,7 +23,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::BigUint;
-use std::{mem, time::Instant};
+use std::{fmt::Write, mem, time::Instant};
 
 // aliases
 
@@ -193,7 +193,7 @@ where
         let mut line = "| ".to_string();
         for col in cols {
             let bigint: BigUint = col[row].into();
-            line.push_str(&format!("{} | ", bigint));
+            write!(line, "{} | ", bigint).unwrap();
         }
         println!("{line}");
     }

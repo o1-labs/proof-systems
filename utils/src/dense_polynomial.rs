@@ -94,8 +94,8 @@ mod tests {
         let coeffs = [one, one, one, one, one, one, one, one];
         let f = DensePolynomial::from_coefficients_slice(&coeffs);
         let evals = f.to_chunked_polynomial(2).evaluate_chunks(two);
-        for i in 0..4 {
-            assert!(evals[i] == three);
+        for eval in evals.into_iter().take(4) {
+            assert!(eval == three);
         }
     }
 }

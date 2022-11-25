@@ -275,7 +275,7 @@ fn verify_range_check0_valid_v0_in_range() {
     let cs = create_test_constraint_system();
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        (PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -353,7 +353,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        (PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
         PallasField::zero(),
     );
 
@@ -774,7 +774,7 @@ fn verify_range_check1_valid_v2_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        (PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
     );
 
     // gates[2] is RangeCheck1 and constrains v2
