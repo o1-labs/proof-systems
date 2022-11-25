@@ -3,8 +3,10 @@ use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_wit
 use crate::circuits::wires::COLUMNS;
 use ark_ff::Zero;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use oracle::constants::PlonkSpongeConstantsKimchi;
-use oracle::sponge::{DefaultFqSponge, DefaultFrSponge};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;

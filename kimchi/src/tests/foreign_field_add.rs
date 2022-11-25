@@ -12,15 +12,15 @@ use crate::circuits::{
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use num_bigint::BigUint;
 use num_traits::FromPrimitive;
 use o1_utils::{
     foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers,
-};
-use oracle::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 

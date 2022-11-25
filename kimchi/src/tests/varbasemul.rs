@@ -8,7 +8,7 @@ use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use colored::Colorize;
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };

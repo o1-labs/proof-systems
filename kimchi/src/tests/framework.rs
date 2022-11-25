@@ -19,8 +19,8 @@ use crate::{
 use ark_ff::PrimeField;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
+use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
-use oracle::sponge::FqSponge;
 use std::{mem, time::Instant};
 
 // aliases
@@ -45,6 +45,7 @@ pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>);
 
 impl<G: KimchiCurve> TestFramework<G>
 where
+    G::BaseField: PrimeField,
     G::ScalarField: PrimeField,
 {
     #[must_use]

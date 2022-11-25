@@ -9,7 +9,7 @@ use crate::{
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use commitment_dlog::srs::endos;
 use mina_curves::pasta::{Fp as F, Vesta, VestaParameters};
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };

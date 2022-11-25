@@ -168,6 +168,7 @@ pub mod testing {
         foreign_modulus: Option<BigUint>,
     ) -> ProverIndex<G>
     where
+        G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
@@ -192,6 +193,7 @@ pub mod testing {
         public: usize,
     ) -> ProverIndex<G>
     where
+        G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
         new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, None)

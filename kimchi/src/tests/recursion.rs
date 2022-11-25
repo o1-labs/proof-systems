@@ -7,9 +7,11 @@ use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
 use commitment_dlog::commitment::b_poly_coefficients;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use o1_utils::math;
-use oracle::constants::PlonkSpongeConstantsKimchi;
-use oracle::sponge::{DefaultFqSponge, DefaultFrSponge};
 use rand::prelude::*;
 use std::array;
 

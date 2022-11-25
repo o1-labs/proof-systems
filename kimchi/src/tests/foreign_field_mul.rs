@@ -25,12 +25,12 @@ use o1_utils::{
     FieldHelpers,
 };
 
-use num_bigint::RandBigInt;
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
+use num_bigint::RandBigInt;
 use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -83,6 +83,7 @@ fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
     invalidations: Vec<((usize, usize), G::ScalarField)>,
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
+    G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
@@ -153,7 +154,7 @@ where
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -360,6 +361,7 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
 // Test targeting each custom constraint (positive and negative tests for each)
 fn test_custom_constraints<G: KimchiCurve, EFqSponge, EFrSponge>(foreign_field_modulus: &BigUint)
 where
+    G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {

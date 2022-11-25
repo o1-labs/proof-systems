@@ -4,6 +4,7 @@ use ark_ff::Field;
 ///   First, you use "anchor" names for the variables when specifying
 ///   the witness layout.
 ///
+///```ignore
 ///     Ex.
 ///
 ///     let layout = [
@@ -14,20 +15,24 @@ use ark_ff::Field;
 ///             &VariableCell::create("final_value"),
 ///         ]
 ///      ;
+/// ```
 ///
 ///   Second, you use variables with the same names when performing the
 ///   witness computation.
 ///
+/// ```ignore
 ///     Ex.
 ///
 ///     let sum_of_products = carry1 * limb1 + pow1 * limb2;
 ///     ...
 ///     let final_value = middle_bits.pow(&[2u8]) * carry_flag
+///```
 ///
 ///   Third, when you're ready to generate the witness, you pass those
 ///   variables to the witness creation functions using variables!(foo, bar)
 ///   or variable_map!("foo" => 12, "bar" => blah).
 ///
+///```ignore
 ///     Ex.
 ///
 ///     init_witness(
@@ -35,6 +40,7 @@ use ark_ff::Field;
 ///         &layout,
 ///         &variables!(sum_of_products, something_else, final_value),
 ///     );
+/// ```
 ///
 use std::{
     collections::HashMap,

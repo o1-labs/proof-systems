@@ -10,11 +10,11 @@ use crate::{
 };
 use ark_ff::Zero;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use o1_utils::math;
-use oracle::{
+use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use o1_utils::math;
 use std::array;
 
 // aliases

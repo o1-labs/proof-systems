@@ -10,7 +10,7 @@ use crate::circuits::{
 };
 use ark_ff::Zero;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };

@@ -42,12 +42,12 @@ impl<F: PrimeField> CircuitGate<F> {
         let circuit_gates = vec![
             CircuitGate {
                 typ: GateType::ForeignFieldMul,
-                wires: Wire::new(start_row),
+                wires: Wire::for_row(start_row),
                 coeffs: vec![],
             },
             CircuitGate {
                 typ: GateType::Zero,
-                wires: Wire::new(start_row + 1),
+                wires: Wire::for_row(start_row + 1),
                 coeffs: vec![],
             },
         ];
