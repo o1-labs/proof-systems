@@ -395,12 +395,6 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 #[derive(Default)]
 pub struct Xor16<F>(PhantomData<F>);
 
-impl<F: PrimeField> Xor16<F> {
-    pub fn new() -> Self {
-        Self(PhantomData)
-    }
-}
-
 impl<F> Argument<F> for Xor16<F>
 where
     F: PrimeField,

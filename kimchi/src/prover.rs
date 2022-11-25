@@ -700,24 +700,27 @@ where
                 let xor_enabled = index.cs.xor_selector_poly.is_some();
 
                 for gate in [
-                    ((&Generic::new() as &dyn DynArgument<G::ScalarField>), true),
-                    (&CompleteAdd::new(), true),
-                    (&VarbaseMul::new(), true),
-                    (&EndosclMul::new(), true),
-                    (&EndomulScalar::new(), true),
-                    (&Poseidon::new(), true),
+                    (
+                        (&Generic::default() as &dyn DynArgument<G::ScalarField>),
+                        true,
+                    ),
+                    (&CompleteAdd::default(), true),
+                    (&VarbaseMul::default(), true),
+                    (&EndosclMul::default(), true),
+                    (&EndomulScalar::default(), true),
+                    (&Poseidon::default(), true),
                     // Chacha gates
-                    (&ChaCha0::new(), chacha_enabled),
-                    (&ChaCha1::new(), chacha_enabled),
-                    (&ChaCha2::new(), chacha_enabled),
-                    (&ChaChaFinal::new(), chacha_enabled),
+                    (&ChaCha0::default(), chacha_enabled),
+                    (&ChaCha1::default(), chacha_enabled),
+                    (&ChaCha2::default(), chacha_enabled),
+                    (&ChaChaFinal::default(), chacha_enabled),
                     // Range check gates
-                    (&RangeCheck0::new(), range_check_enabled),
-                    (&RangeCheck1::new(), range_check_enabled),
+                    (&RangeCheck0::default(), range_check_enabled),
+                    (&RangeCheck1::default(), range_check_enabled),
                     // Foreign field addition gate
-                    (&ForeignFieldAdd::new(), foreign_field_addition_enabled),
+                    (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
                     // Xor gate
-                    (&Xor16::new(), xor_enabled),
+                    (&Xor16::default(), xor_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })

@@ -154,13 +154,8 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~   * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`
 //~
 
+#[derive(Default)]
 pub struct EndomulScalar<F>(PhantomData<F>);
-
-impl<F: PrimeField> EndomulScalar<F> {
-    pub fn new() -> Self {
-        Self(PhantomData)
-    }
-}
 
 impl<F> Argument<F> for EndomulScalar<F>
 where
