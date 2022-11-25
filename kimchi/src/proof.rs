@@ -68,6 +68,8 @@ pub struct ProofEvaluations<Eval> {
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Eval; PERMUTS - 1],
+    /// coefficient polynomials
+    pub coefficients: [Eval; COLUMNS],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Eval>>,
     /// evaluation of the generic selector polynomial
@@ -203,6 +205,7 @@ impl<Eval> ProofEvaluations<Eval> {
             w,
             z,
             s,
+            coefficients,
             lookup,
             generic_selector,
             poseidon_selector,
@@ -211,6 +214,7 @@ impl<Eval> ProofEvaluations<Eval> {
             w: w.map(f),
             z: f(z),
             s: s.map(f),
+            coefficients: coefficients.map(f),
             lookup: lookup.map(|x| LookupEvaluations::map(x, f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
@@ -222,6 +226,7 @@ impl<Eval> ProofEvaluations<Eval> {
             w: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14],
             z,
             s: [s0, s1, s2, s3, s4, s5],
+            coefficients: [c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14],
             lookup,
             generic_selector,
             poseidon_selector,
@@ -246,6 +251,23 @@ impl<Eval> ProofEvaluations<Eval> {
             ],
             z: f(z),
             s: [f(s0), f(s1), f(s2), f(s3), f(s4), f(s5)],
+            coefficients: [
+                f(c0),
+                f(c1),
+                f(c2),
+                f(c3),
+                f(c4),
+                f(c5),
+                f(c6),
+                f(c7),
+                f(c8),
+                f(c9),
+                f(c10),
+                f(c11),
+                f(c12),
+                f(c13),
+                f(c14),
+            ],
             lookup: lookup.as_ref().map(|l| l.map_ref(f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
@@ -274,6 +296,7 @@ impl<F> ProofEvaluations<F> {
             z: array::from_fn(|i| &evals[i].z),
             w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
             s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
+            coefficients: array::from_fn(|j| array::from_fn(|i| &evals[i].coefficients[j])),
             lookup: if has_lookup {
                 let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
                 Some(LookupEvaluations {
@@ -357,6 +380,7 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             w: array::from_fn(|i| pt(curr[i], next[i])),
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
+            coefficients: array::from_fn(|_| pt(F::zero(), F::zero())),
             lookup: None,
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
@@ -520,6 +544,23 @@ pub mod caml {
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
         ),
+        pub coefficients: (
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+        ),
         pub z: PointEvaluations<Vec<CamlF>>,
         pub s: (
             PointEvaluations<Vec<CamlF>>,
@@ -592,6 +633,43 @@ pub mod caml {
                     .clone()
                     .map(&|x| x.into_iter().map(Into::into).collect()),
             );
+            let coefficients = (
+                pe.coefficients[0].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[1].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[2].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[3].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[4].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[5].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[6].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[7].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[8].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[9].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[10]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[11]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[12]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[13]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[14]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+            );
             let s = (
                 pe.s[0]
                     .clone()
@@ -615,6 +693,7 @@ pub mod caml {
 
             Self {
                 w,
+                coefficients,
                 z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
                 s,
                 generic_selector: pe
@@ -651,6 +730,23 @@ pub mod caml {
                 cpe.w.13.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.14.map(&|x| x.into_iter().map(Into::into).collect()),
             ];
+            let coefficients = [
+                cpe.coefficients.0.into_iter().map(Into::into).collect(),
+                cpe.coefficients.1.into_iter().map(Into::into).collect(),
+                cpe.coefficients.2.into_iter().map(Into::into).collect(),
+                cpe.coefficients.3.into_iter().map(Into::into).collect(),
+                cpe.coefficients.4.into_iter().map(Into::into).collect(),
+                cpe.coefficients.5.into_iter().map(Into::into).collect(),
+                cpe.coefficients.6.into_iter().map(Into::into).collect(),
+                cpe.coefficients.7.into_iter().map(Into::into).collect(),
+                cpe.coefficients.8.into_iter().map(Into::into).collect(),
+                cpe.coefficients.9.into_iter().map(Into::into).collect(),
+                cpe.coefficients.10.into_iter().map(Into::into).collect(),
+                cpe.coefficients.11.into_iter().map(Into::into).collect(),
+                cpe.coefficients.12.into_iter().map(Into::into).collect(),
+                cpe.coefficients.13.into_iter().map(Into::into).collect(),
+                cpe.coefficients.14.into_iter().map(Into::into).collect(),
+            ];
             let s = [
                 cpe.s.0.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.s.1.map(&|x| x.into_iter().map(Into::into).collect()),
@@ -662,6 +758,7 @@ pub mod caml {
 
             Self {
                 w,
+                coefficients,
                 z: cpe.z.map(&|x| x.into_iter().map(Into::into).collect()),
                 s,
                 generic_selector: cpe

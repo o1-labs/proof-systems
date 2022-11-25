@@ -553,6 +553,7 @@ mod tests {
             w: array::from_fn(|_| rand_eval()),
             z: rand_eval(),
             s: array::from_fn(|_| rand_eval()),
+            coefficients: array::from_fn(|_| rand_eval()),
             generic_selector: PointEvaluations::default(),
             poseidon_selector: PointEvaluations::default(),
             lookup: Some(LookupEvaluations {

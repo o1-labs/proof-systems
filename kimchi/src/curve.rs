@@ -4,8 +4,8 @@ use mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
+use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
-use oracle::poseidon::ArithmeticSpongeParams;
 
 ///Represents additional information that a curve needs in order to be used with Kimchi
 pub trait KimchiCurve: CommitmentCurve {
@@ -29,7 +29,7 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
     type OtherCurve = GroupAffine<PallasParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fp_kimchi::static_params()
+        mina_poseidon::pasta::fp_kimchi::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
@@ -45,7 +45,7 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
     type OtherCurve = GroupAffine<VestaParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fq_kimchi::static_params()
+        mina_poseidon::pasta::fq_kimchi::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
@@ -65,7 +65,7 @@ impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
     type OtherCurve = GroupAffine<LegacyPallasParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fp_legacy::static_params()
+        mina_poseidon::pasta::fp_legacy::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
@@ -76,7 +76,7 @@ impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
     type OtherCurve = GroupAffine<LegacyVestaParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
-        oracle::pasta::fq_legacy::static_params()
+        mina_poseidon::pasta::fq_legacy::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
