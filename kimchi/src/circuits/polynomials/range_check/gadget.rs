@@ -38,10 +38,10 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       `circuit_gates` - vector of circuit gates comprising this gate
     pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
         let mut circuit_gates = vec![
-            CircuitGate::new(GateType::RangeCheck0, Wire::new(start_row), vec![]),
-            CircuitGate::new(GateType::RangeCheck0, Wire::new(start_row + 1), vec![]),
-            CircuitGate::new(GateType::RangeCheck1, Wire::new(start_row + 2), vec![]),
-            CircuitGate::new(GateType::Zero, Wire::new(start_row + 3), vec![]),
+            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]),
+            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row + 1), vec![]),
+            CircuitGate::new(GateType::RangeCheck1, Wire::for_row(start_row + 2), vec![]),
+            CircuitGate::new(GateType::Zero, Wire::for_row(start_row + 3), vec![]),
         ];
 
         // copy v0p0
@@ -65,7 +65,7 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       `next_row`      - next row after this gate
     ///       `circuit_gates` - vector of circuit gates comprising this gate
     pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
-        let gate = CircuitGate::new(GateType::RangeCheck0, Wire::new(start_row), vec![]);
+        let gate = CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]);
         (start_row + 1, vec![gate])
     }
 

@@ -8,10 +8,10 @@ use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
+use mina_poseidon::sponge::DefaultFqSponge;
+use mina_poseidon::FqSponge as _;
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::constants::PlonkSpongeConstantsKimchi as SC;
-use oracle::sponge::DefaultFqSponge;
-use oracle::FqSponge as _;
 use rand::{CryptoRng, Rng, SeedableRng};
 use std::time::{Duration, Instant};
 
@@ -94,8 +94,9 @@ impl AggregatedEvaluationProof {
 
 fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
-    let fq_sponge =
-        DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
+    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(
+        mina_poseidon::pasta::fq_kimchi::static_params(),
+    );
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Vesta>::create(1 << 7);

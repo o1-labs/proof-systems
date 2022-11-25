@@ -1,6 +1,6 @@
 use ark_ff::{Field, PrimeField};
-use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
-use oracle::{
+use mina_poseidon::sponge::{DefaultFrSponge, ScalarChallenge};
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
@@ -48,7 +48,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
 
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
         // TODO: why involve sponge_5_wires here?
-        ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+        ScalarChallenge(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     fn digest(mut self) -> Fr {
@@ -78,6 +78,21 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             &e.w[12],
             &e.w[13],
             &e.w[14],
+            &e.coefficients[0],
+            &e.coefficients[1],
+            &e.coefficients[2],
+            &e.coefficients[3],
+            &e.coefficients[4],
+            &e.coefficients[5],
+            &e.coefficients[6],
+            &e.coefficients[7],
+            &e.coefficients[8],
+            &e.coefficients[9],
+            &e.coefficients[10],
+            &e.coefficients[11],
+            &e.coefficients[12],
+            &e.coefficients[13],
+            &e.coefficients[14],
             &e.s[0],
             &e.s[1],
             &e.s[2],

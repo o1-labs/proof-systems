@@ -1720,28 +1720,40 @@ You can find these operations under the [proof creation](#proof-creation) and [p
 A proof consists of the following data structures:
 
 ```rs
+/// Evaluations of a polynomial at 2 points
+#[serde_as]
+#[derive(Copy, Clone, Serialize, Deserialize, Default)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+#[serde(bound(
+    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Evals>",
+    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Evals>"
+))]
+pub struct PointEvaluations<Evals> {
+    /// Evaluation at the challenge point zeta.
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub zeta: Evals,
+    /// Evaluation at `zeta . omega`, the product of the challenge point and the group generator.
+    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
+    pub zeta_omega: Evals,
+}
+
 /// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
-))]
-pub struct LookupEvaluations<Field> {
+pub struct LookupEvaluations<Eval> {
     /// sorted lookup table polynomial
-    #[serde_as(as = "Vec<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub sorted: Vec<Field>,
+    pub sorted: Vec<Eval>,
     /// lookup aggregation polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub aggreg: Field,
+    pub aggreg: Eval,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub table: Field,
+    pub table: Eval,
 
     /// Optionally, a runtime table polynomial.
-    #[serde_as(as = "Option<Vec<o1_utils::serialization::SerdeAs>>")]
-    pub runtime: Option<Field>,
+    pub runtime: Option<Eval>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -1750,29 +1762,22 @@ pub struct LookupEvaluations<Field> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Field>",
-    deserialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::DeserializeAs<'de, Field>"
-))]
-pub struct ProofEvaluations<Field> {
+pub struct ProofEvaluations<Eval> {
     /// witness polynomials
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
-    pub w: [Field; COLUMNS],
+    pub w: [Eval; COLUMNS],
     /// permutation polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub z: Field,
+    pub z: Eval,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
-    pub s: [Field; PERMUTS - 1],
+    pub s: [Eval; PERMUTS - 1],
+    /// coefficient polynomials
+    pub coefficients: [Eval; COLUMNS],
     /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Field>>,
+    pub lookup: Option<LookupEvaluations<Eval>>,
     /// evaluation of the generic selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub generic_selector: Field,
+    pub generic_selector: Eval,
     /// evaluation of the poseidon selector polynomial
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub poseidon_selector: Field,
+    pub poseidon_selector: Eval,
 }
 
 /// Commitments linked to the lookup feature
@@ -1815,8 +1820,7 @@ pub struct ProverProof<G: AffineCurve> {
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations<Vec<G::ScalarField>>; 2],
+    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -2094,6 +2098,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	- permutation commitment
 	- index commitments that use the coefficients
 	- witness commitments
+	- coefficient commitments
 	- sigma commitments
 	- lookup commitments
 #### Batch verification of proofs

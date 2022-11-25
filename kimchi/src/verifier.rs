@@ -7,7 +7,7 @@ use crate::{
         expr::{Column, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupsUsed, tables::combine_table},
-        polynomials::{generic, permutation},
+        polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
@@ -24,7 +24,7 @@ use commitment_dlog::commitment::{
     combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
-use oracle::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 /// The result of a proof verification.
@@ -417,6 +417,7 @@ where
             ]
             .into_iter()
             .chain((0..COLUMNS).map(Column::Witness))
+            .chain((0..COLUMNS).map(Column::Coefficient))
             .chain((0..PERMUTS - 1).map(Column::Permutation))
             {
                 es.push((
@@ -565,25 +566,6 @@ where
             zkp,
         )];
 
-        // generic is written manually (not using the expr framework)
-        {
-            let alphas =
-                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-
-            let generic_scalars = &ConstraintSystem::<G::ScalarField>::gnrc_scalars(
-                alphas,
-                &evals.w,
-                evals.generic_selector.zeta,
-            );
-
-            let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
-
-            assert_eq!(generic_scalars.len(), generic_com.len());
-
-            scalars.extend(generic_scalars);
-            commitments.extend(generic_com);
-        }
-
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants from oracles function
@@ -660,6 +642,8 @@ where
     .into_iter()
     //~~ - witness commitments
     .chain((0..COLUMNS).map(Column::Witness))
+    //~~ - coefficient commitments
+    .chain((0..COLUMNS).map(Column::Coefficient))
     //~~ - sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
     {
