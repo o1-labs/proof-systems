@@ -14,7 +14,7 @@ use ark_ff::Zero;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
