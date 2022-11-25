@@ -5,7 +5,7 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
-use crate::proof::ProofEvaluations;
+use crate::proof::{LookupEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -59,57 +59,71 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     fn absorb_evaluations<const N: usize>(&mut self, e: [&ProofEvaluations<Vec<Fr>>; N]) {
         self.last_squeezed = vec![];
 
-        let e = ProofEvaluations::transpose(e);
+        let ProofEvaluations {
+            w,
+            z,
+            s,
+            coefficients,
+            lookup,
+            generic_selector,
+            poseidon_selector,
+        } = ProofEvaluations::transpose(e);
 
         let mut points = vec![
-            &e.z,
-            &e.generic_selector,
-            &e.poseidon_selector,
-            &e.w[0],
-            &e.w[1],
-            &e.w[2],
-            &e.w[3],
-            &e.w[4],
-            &e.w[5],
-            &e.w[6],
-            &e.w[7],
-            &e.w[8],
-            &e.w[9],
-            &e.w[10],
-            &e.w[11],
-            &e.w[12],
-            &e.w[13],
-            &e.w[14],
-            &e.coefficients[0],
-            &e.coefficients[1],
-            &e.coefficients[2],
-            &e.coefficients[3],
-            &e.coefficients[4],
-            &e.coefficients[5],
-            &e.coefficients[6],
-            &e.coefficients[7],
-            &e.coefficients[8],
-            &e.coefficients[9],
-            &e.coefficients[10],
-            &e.coefficients[11],
-            &e.coefficients[12],
-            &e.coefficients[13],
-            &e.coefficients[14],
-            &e.s[0],
-            &e.s[1],
-            &e.s[2],
-            &e.s[3],
-            &e.s[4],
-            &e.s[5],
+            &z,
+            &generic_selector,
+            &poseidon_selector,
+            &w[0],
+            &w[1],
+            &w[2],
+            &w[3],
+            &w[4],
+            &w[5],
+            &w[6],
+            &w[7],
+            &w[8],
+            &w[9],
+            &w[10],
+            &w[11],
+            &w[12],
+            &w[13],
+            &w[14],
+            &coefficients[0],
+            &coefficients[1],
+            &coefficients[2],
+            &coefficients[3],
+            &coefficients[4],
+            &coefficients[5],
+            &coefficients[6],
+            &coefficients[7],
+            &coefficients[8],
+            &coefficients[9],
+            &coefficients[10],
+            &coefficients[11],
+            &coefficients[12],
+            &coefficients[13],
+            &coefficients[14],
+            &s[0],
+            &s[1],
+            &s[2],
+            &s[3],
+            &s[4],
+            &s[5],
         ];
 
-        if let Some(l) = e.lookup.as_ref() {
-            points.push(&l.aggreg);
-            points.push(&l.table);
-            for s in &l.sorted {
+        if let Some(l) = lookup.as_ref() {
+            let LookupEvaluations {
+                sorted,
+                aggreg,
+                table,
+                runtime,
+            } = l;
+            points.push(aggreg);
+            points.push(table);
+            for s in sorted {
                 points.push(s);
             }
-            l.runtime.iter().for_each(|x| points.push(x));
+            runtime.iter().for_each(|x| points.push(x));
         }
 
         for p in points {
