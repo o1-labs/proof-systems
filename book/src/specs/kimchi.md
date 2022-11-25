@@ -1549,8 +1549,8 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub table_ids: Option<PolyComm<G>>,
 
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
+    /// Information about the specific lookups used
+    pub lookup_info: LookupInfo,
 
     /// An optional selector polynomial for runtime tables
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
