@@ -65,8 +65,8 @@ jobs:
       - name: Doc tests
         uses: actions-rs/cargo@v1
         with:
-          command: cargo
-          args: test --all-features --release --doc
+          command: test
+          args: --all-features --release --doc
 
       #
       # Coding guidelines
