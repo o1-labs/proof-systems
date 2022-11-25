@@ -1,6 +1,7 @@
 //! This module implements the Marlin structured reference string primitive
 
 use crate::commitment::CommitmentCurve;
+use crate::PolyComm;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, PrimeField};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -24,7 +25,7 @@ pub struct SRS<G: CommitmentCurve> {
     // TODO: the following field should be separated, as they are optimization values
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
-    pub lagrange_bases: HashMap<usize, Vec<G>>,
+    pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
     /// Coefficient for the curve endomorphism
     #[serde(skip)]
     pub endo_r: G::ScalarField,
@@ -155,8 +156,15 @@ where
         domain.ifft_in_place(&mut lg);
 
         <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-        self.lagrange_bases
-            .insert(n, lg.iter().map(|g| g.into_affine()).collect());
+        let unshifted = vec![lg];
+        let shifted: Option<Vec<<G as AffineCurve>::Projective>> = None;
+        let chunked_commitments: Vec<_> = (0..n)
+            .map(|i| PolyComm {
+                unshifted: unshifted.iter().map(|v| v[i].into_affine()).collect(),
+                shifted: shifted.as_ref().map(|v| v[i].into_affine()),
+            })
+            .collect();
+        self.lagrange_bases.insert(n, chunked_commitments);
     }
 
     /// This function creates SRS instance for circuits with number of rows up to `depth`.

@@ -265,15 +265,13 @@ where
                 // no blinders: blind the witness
                 None => index
                     .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, None, rng),
+                    .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
                 // blinders: blind the witness with them
                 Some(blinder) => {
                     // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index.srs.commit_evaluations_non_hiding(
-                        index.cs.domain.d1,
-                        &witness_eval,
-                        None,
-                    );
+                    let witness_com = index
+                        .srs
+                        .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
                     index
                         .srs
                         .mask_custom(witness_com, blinder)
@@ -484,11 +482,7 @@ where
             //~~ - Commit each of the sorted polynomials.
             let sorted_comms: Vec<_> = sorted
                 .iter()
-                .map(|v| {
-                    index
-                        .srs
-                        .commit_evaluations(index.cs.domain.d1, v, None, rng)
-                })
+                .map(|v| index.srs.commit_evaluations(index.cs.domain.d1, v, rng))
                 .collect();
 
             //~~ - Absorb each commitments to the sorted polynomials.
@@ -542,7 +536,7 @@ where
             //~~ - Commit to the aggregation polynomial.
             let aggreg_comm = index
                 .srs
-                .commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
+                .commit_evaluations(index.cs.domain.d1, &aggreg, rng);
 
             //~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
             fq_sponge.absorb_g(&aggreg_comm.commitment.unshifted);

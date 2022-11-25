@@ -471,6 +471,9 @@ where
             proof.prev_challenges.len(),
         ));
     }
+    if proof.public.len() != index.public {
+        return Err(VerifyError::IncorrectPubicInputLength(index.public));
+    }
 
     //~ 1. Commit to the negated public input polynomial.
     let lgr_comm = index
@@ -478,20 +481,9 @@ where
         .lagrange_bases
         .get(&index.domain.size())
         .expect("pre-computed committed lagrange bases not found");
-    let com: Vec<_> = lgr_comm
-        .iter()
-        .map(|c| PolyComm {
-            unshifted: vec![*c],
-            shifted: None,
-        })
-        .take(index.public)
-        .collect();
-    let com_ref: Vec<_> = com.iter().collect();
-    if proof.public.len() != index.public {
-        return Err(VerifyError::IncorrectPubicInputLength(index.public));
-    }
+    let com: Vec<_> = lgr_comm.iter().take(index.public).collect();
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-    let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+    let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
     let public_comm = {
         index
             .srs()
