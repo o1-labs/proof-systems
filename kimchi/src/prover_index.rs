@@ -13,7 +13,7 @@ use crate::{
 };
 use ark_poly::EvaluationDomain;
 use commitment_dlog::srs::SRS;
-use oracle::FqSponge;
+use mina_poseidon::FqSponge;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -84,6 +84,8 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .map(|lcs| &lcs.configuration),
             cs.foreign_field_add_selector_poly.is_some(),
             cs.foreign_field_mul_selector_poly.is_some(),
+            cs.xor_selector_poly.is_some(),
+            true,
         );
 
         // set `max_quot_size` to the degree of the quotient polynomial,

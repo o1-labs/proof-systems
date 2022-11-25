@@ -1055,7 +1055,7 @@ The values are decomposed into limbs as follows.
         <2> <--4--> <---------------18---------------->
    v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 ```
-##### Witness structure:
+**Witness structure:**
 
 | Row | Contents        |
 | --- | --------------- |
@@ -1076,13 +1076,13 @@ Because we are constrained to 4 lookups per row, we are forced to postpone
 some lookups of v0 and v1 to the final row.
 ```
 
-##### Constraints:
+**Constraints:**
 
 For efficiency, the limbs are constrained differently according to their type.
 * 12-bit limbs are constrained with plookups
 * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 
-##### Layout:
+**Layout:**
 
 This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and constrained.
 
@@ -1131,7 +1131,8 @@ Different rows are constrained using different `CircuitGate` types
  Each CircuitGate type corresponds to a unique polynomial and thus is assigned
  its own unique powers of alpha
 ```
-##### `RangeCheck0` - Range check constraints
+
+**`RangeCheck0` - Range check constraints**
 
 * This circuit gate is used to partially constrain values $v_0$ and $v_1$
 * Optionally, it can be used on its own as a single 64-bit range check by
@@ -1165,7 +1166,8 @@ Given value `v` the layout looks like this
 |     14 | crumb   `vc7` |
 
 where the notation `vpi` and `vci` defined in the "Layout" section above.
-##### `RangeCheck1` - Range check constraints
+
+**`RangeCheck1` - Range check constraints**
 
 * This circuit gate is used to fully constrain $v_2$
 * It operates on the `Curr` and `Next` rows
@@ -1400,6 +1402,59 @@ The foreign field multiplication gate's rows are layed out like this
 |  13 | `quotient_bound_carry01`     |                           |
 |  14 | `quotient_bound_carry2`      |                           |
 
+
+#### Xor
+
+`Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+
+* This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
+* The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+* This gate operates on the `Curr` and `Next` rows.
+
+It uses three different types of constraints
+* copy          - copy to another cell (32-bits)
+* plookup       - xor-table plookup (4-bits)
+* decomposition - the constraints inside the gate
+
+The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+Given values `in1`, `in2` and `out`, the layout looks like this:
+
+| Column |          `Curr`  |          `Next`  |
+| ------ | ---------------- | ---------------- |
+|      0 | copy     `in1`   | copy     `in1'`  |
+|      1 | copy     `in2`   | copy     `in2'`  |
+|      2 | copy     `out`   | copy     `out'`  |
+|      3 | plookup0 `in1_0` |                  |
+|      4 | plookup1 `in1_1` |                  |
+|      5 | plookup2 `in1_2` |                  |
+|      6 | plookup3 `in1_3` |                  |
+|      7 | plookup0 `in2_0` |                  |
+|      8 | plookup1 `in2_1` |                  |
+|      9 | plookup2 `in2_2` |                  |
+|     10 | plookup3 `in2_3` |                  |
+|     11 | plookup0 `out_0` |                  |
+|     12 | plookup1 `out_1` |                  |
+|     13 | plookup2 `out_2` |                  |
+|     14 | plookup3 `out_3` |                  |
+
+One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
+that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
+to obtain a gadget for 64-bit words XOR:
+
+| Row | `CircuitGate` | Purpose                                    |
+| --- | ------------- | ------------------------------------------ |
+|   0 | `Xor16`       | Xor 2 least significant bytes of the words |
+|   1 | `Xor16`       | Xor next 2 bytes of the words              |
+|   2 | `Xor16`       | Xor next 2 bytes of the words              |
+|   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+|   4 | `Zero`        | Zero values, can be reused as generic gate |
+
+```admonition::notice
+ We could half the number of rows of the 64-bit XOR gadget by having lookups
+ for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+ Rough computations show that if we run 8 or more Keccaks in one circuit we should
+ use the 8-bit XOR table.
+```
 
 
 ## Setup
@@ -1660,16 +1715,20 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
-    // Foreign field modulus
+    /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
 
-    // Foreign field addition gates polynomial commitments
+    /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
 
     /// Foreign field multiplication gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_mul_comm: Option<PolyComm<G>>,
+
+    /// Xor commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub xor_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1812,6 +1871,9 @@ pub struct ProofEvaluations<Field> {
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
+    /// coefficient polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
+    pub coefficients: [Field; COLUMNS],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
@@ -2141,6 +2203,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	- permutation commitment
 	- index commitments that use the coefficients
 	- witness commitments
+	- coefficient commitments
 	- sigma commitments
 	- lookup commitments
 #### Batch verification of proofs

@@ -7,7 +7,7 @@ use crate::{
         expr::{Column, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupsUsed, tables::combine_table},
-        polynomials::{generic, permutation},
+        polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
@@ -24,7 +24,7 @@ use commitment_dlog::commitment::{
     combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
-use oracle::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 /// The result of a proof verification.
@@ -390,6 +390,19 @@ where
                     .collect::<Vec<_>>(),
             );
             es.extend(
+                (0..COLUMNS)
+                    .map(|c| {
+                        (
+                            self.evals
+                                .iter()
+                                .map(|e| e.coefficients[c].clone())
+                                .collect::<Vec<_>>(),
+                            None,
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            es.extend(
                 (0..PERMUTS - 1)
                     .map(|c| {
                         (
@@ -538,25 +551,6 @@ where
             zkp,
         )];
 
-        // generic is written manually (not using the expr framework)
-        {
-            let alphas =
-                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-
-            let generic_scalars = &ConstraintSystem::<G::ScalarField>::gnrc_scalars(
-                alphas,
-                &evals[0].w,
-                evals[0].generic_selector,
-            );
-
-            let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
-
-            assert_eq!(generic_scalars.len(), generic_com.len());
-
-            scalars.extend(generic_scalars);
-            commitments.extend(generic_com);
-        }
-
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants from oracles function
@@ -657,6 +651,7 @@ where
                             }
                             RangeCheck0 => &index.range_check_comm.as_ref().unwrap()[0],
                             RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
+                            Xor16 => index.xor_comm.as_ref().unwrap(),
                             ForeignFieldAdd => index.foreign_field_add_comm.as_ref().unwrap(),
                             ForeignFieldMul => index.foreign_field_mul_comm.as_ref().unwrap(),
                         };
@@ -745,6 +740,29 @@ where
                             .evals
                             .iter()
                             .map(|e| e.w[i].clone())
+                            .collect::<Vec<_>>()
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .map(|(c, e)| Evaluation {
+                commitment: c.clone(),
+                evaluations: e,
+                degree_bound: None,
+            }),
+    );
+
+    //~~ - coefficient commitments
+    evaluations.extend(
+        index
+            .coefficients_comm
+            .iter()
+            .zip(
+                (0..COLUMNS)
+                    .map(|i| {
+                        proof
+                            .evals
+                            .iter()
+                            .map(|e| e.coefficients[i].clone())
                             .collect::<Vec<_>>()
                     })
                     .collect::<Vec<_>>(),

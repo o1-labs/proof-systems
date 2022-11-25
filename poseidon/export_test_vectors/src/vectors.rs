@@ -2,12 +2,12 @@ use super::{Mode, ParamType};
 use ark_ff::{fields::PrimeField as _, UniformRand as _};
 use ark_serialize::CanonicalSerialize as _;
 use mina_curves::pasta::Fp;
-use num_bigint::BigUint;
-use oracle::{
+use mina_poseidon::{
     constants::{self, SpongeConstants},
     pasta,
     poseidon::{ArithmeticSponge as Poseidon, ArithmeticSpongeParams, Sponge as _},
 };
+use num_bigint::BigUint;
 use rand::{prelude::*, Rng};
 use serde::Serialize;
 

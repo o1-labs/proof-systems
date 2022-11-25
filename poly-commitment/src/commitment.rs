@@ -20,9 +20,9 @@ use ark_poly::{
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::math;
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::{sponge::ScalarChallenge, FqSponge};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -321,9 +321,11 @@ pub fn squeeze_challenge<
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
-pub trait CommitmentCurve: AffineCurve<BaseField = Self::CommitmentField> {
-    type CommitmentField: PrimeField;
-    type Params: SWModelParameters + Clone;
+/// A useful trait extending AffineCurve for commitments.
+/// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
+/// so usage of this traits must manually bind `G::BaseField: PrimeField`.
+pub trait CommitmentCurve: AffineCurve {
+    type Params: SWModelParameters;
     type Map: GroupMap<Self::BaseField>;
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
@@ -359,7 +361,6 @@ impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P>
 where
     P::BaseField: PrimeField,
 {
-    type CommitmentField = P::BaseField;
     type Params = P;
     type Map = BWParameters<P>;
 
@@ -881,8 +882,8 @@ mod tests {
     use crate::srs::SRS;
     use ark_poly::{Polynomial, UVPolynomial};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
-    use oracle::constants::PlonkSpongeConstantsKimchi as SC;
-    use oracle::sponge::DefaultFqSponge;
+    use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
+    use mina_poseidon::sponge::DefaultFqSponge;
     use rand::{rngs::StdRng, SeedableRng};
     use std::array;
 
@@ -934,7 +935,8 @@ mod tests {
         // create an aggregated opening proof
         let (u, v) = (Fp::rand(rng), Fp::rand(rng));
         let group_map = <VestaG as CommitmentCurve>::Map::setup();
-        let sponge = DefaultFqSponge::<_, SC>::new(oracle::pasta::fq_kimchi::static_params());
+        let sponge =
+            DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
         let polys = vec![
             (&poly1, None, commitment.blinders),

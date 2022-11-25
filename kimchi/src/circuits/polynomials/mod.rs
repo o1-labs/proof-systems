@@ -10,3 +10,4 @@ pub mod poseidon;
 pub mod range_check;
 pub mod turshi;
 pub mod varbasemul;
+pub mod xor;

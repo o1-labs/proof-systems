@@ -24,8 +24,8 @@ use crate::{
 ///     For example, we can convert the `RangeCheck0` circuit gate into
 ///     a 64-bit lookup by adding two copy constraints to constrain
 ///     columns 1 and 2 to zero.
-fn layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 4] {
-    [
+fn layout<F: PrimeField>() -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
+    vec![
         /* row 1, RangeCheck0 row */
         range_check_0_row("v0", 0),
         /* row 2, RangeCheck0 row */
@@ -129,8 +129,8 @@ pub fn create_multi_limbs<F: PrimeField>(limbs: &[F; 3]) -> [Vec<F>; COLUMNS] {
 /// Create a single range check witness
 /// Input: 88-bit value v0
 pub fn create<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
-    let layout = [range_check_0_row("v0", 0)];
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
+    let layout = vec![range_check_0_row("v0", 0)];
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
 
     init_row(&mut witness, 0, 0, &layout, &variables!(v0));
 
@@ -166,5 +166,13 @@ pub fn extend<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: F) {
     let limbs_witness = create(fe);
     for col in 0..COLUMNS {
         witness[col].extend(limbs_witness[col].iter())
+    }
+}
+
+/// Extend an existing witness with a single-range-check gate for 88bits
+pub fn extend_single<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], elem: F) {
+    let single_wit = create(elem);
+    for col in 0..COLUMNS {
+        witness[col].extend(single_wit[col].iter())
     }
 }

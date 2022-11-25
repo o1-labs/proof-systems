@@ -13,3 +13,4 @@ mod recursion;
 mod serde;
 mod turshi;
 mod varbasemul;
+mod xor;

@@ -321,7 +321,7 @@ mod tests {
 
     #[test]
     fn get_alphas_for_spec() {
-        let gates = vec![CircuitGate::<Fp>::zero(Wire::new(0)); 2];
+        let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
         let index = new_index_for_test::<Vesta>(gates, 0);
         let (_linearization, powers_of_alpha) = expr_linearization(
             index.cs.chacha8.is_some(),
@@ -333,6 +333,8 @@ mod tests {
                 .map(|lcs| &lcs.configuration),
             index.cs.foreign_field_add_selector_poly.is_some(),
             index.cs.foreign_field_mul_selector_poly.is_some(),
+            index.cs.xor_selector_poly.is_some(),
+            true,
         );
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();

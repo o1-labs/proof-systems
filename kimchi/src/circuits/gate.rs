@@ -22,7 +22,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr};
+use super::{argument::ArgumentWitness, expr, polynomials::xor};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -106,11 +106,13 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    /// Range check (16-24)
+    /// Range check
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    ForeignFieldAdd = 25,
-    ForeignFieldMul = 26,
+    ForeignFieldAdd = 18,
+    ForeignFieldMul = 19,
+    // Gates for Keccak
+    Xor16 = 20,
 }
 
 /// Selector polynomial
@@ -245,6 +247,9 @@ impl<F: PrimeField> CircuitGate<F> {
             ForeignFieldMul => self
                 .verify_foreign_field_mul::<G>(row, witness, cs)
                 .map_err(|e| e.to_string()),
+            Xor16 => self
+                .verify_xor::<G>(row, witness, cs)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -332,6 +337,7 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::ForeignFieldMul => {
                 foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
             }
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
         };
 
         // Check for failed constraints
@@ -385,6 +391,9 @@ pub trait Connect {
     ///       with self-connections.  If the two cells are transitively already part
     ///       of the same permutation then this would split it.
     fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+
+    /// Connects a generic gate cell with zeros to a given row for 64bit range check
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -393,16 +402,49 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
         self[cell_new.0].wires[cell_new.1] = wire_tmp;
     }
+
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize) {
+        // Connect the 64-bit cells from previous Generic gate with zeros in first 12 bits
+        self.connect_cell_pair((start_row, 1), (start_row, 2));
+        self.connect_cell_pair((start_row, 2), (zero_row, 0));
+        self.connect_cell_pair((zero_row, 0), (start_row, 1));
+    }
 }
 
-/// A circuit is specified as a series of [`CircuitGate`].
+/// A circuit is specified as a public input size and a list of [`CircuitGate`].
 #[derive(Serialize)]
-pub struct Circuit<'a, F: PrimeField>(
-    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
-);
+#[serde(bound = "CircuitGate<F>: Serialize")]
+pub struct Circuit<'a, F: PrimeField> {
+    pub public_input_size: usize,
+    pub gates: &'a [CircuitGate<F>],
+}
+
+impl<'a, F> Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    pub fn new(public_input_size: usize, gates: &'a [CircuitGate<F>]) -> Self {
+        Self {
+            public_input_size,
+            gates,
+        }
+    }
+}
 
 impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
+}
+
+impl<'a, F> From<&'a ConstraintSystem<F>> for Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    fn from(cs: &'a ConstraintSystem<F>) -> Self {
+        Self {
+            public_input_size: cs.public,
+            gates: &cs.gates,
+        }
+    }
 }
 
 #[cfg(feature = "ocaml_types")]

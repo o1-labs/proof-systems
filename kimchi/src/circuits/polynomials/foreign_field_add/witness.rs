@@ -235,7 +235,7 @@ fn init_foreign_field_add_rows<F: PrimeField>(
 ) {
     let left_row = 8 * index;
     let right_row = 8 * index + 4;
-    let witness_shape: [[Box<dyn WitnessCell<F>>; COLUMNS]; 1] = [
+    let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
         // ForeignFieldAdd row
         [
             CopyCell::create(left_row, 0),      // left_input_lo

@@ -23,7 +23,7 @@ use std::array;
 use crate::{prover_index::ProverIndex, verifier::verify};
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
@@ -38,7 +38,7 @@ fn create_test_constraint_system() -> ConstraintSystem<Fp> {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -50,7 +50,7 @@ fn create_test_prover_index(public_size: usize) -> ProverIndex<Vesta> {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -1023,7 +1023,7 @@ fn verify_64_bit_range_check() {
     //      1 RangeCheck0 v0  0 0 ... Wire cells 1 and 2 to 1st cell 0 of GenericPub
     let mut gates = vec![];
     gates.push(CircuitGate::<Fp>::create_generic_gadget(
-        Wire::new(0),
+        Wire::for_row(0),
         GenericGateSpec::Pub,
         None,
     ));
@@ -1035,14 +1035,15 @@ fn verify_64_bit_range_check() {
     // Temporary workaround for lookup-table/domain-size issue
     let mut next_row = 2;
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
     // Create constraint system
-    let cs = ConstraintSystem::<Fp>::create(gates /*, oracle::pasta::fp_kimchi::params()*/)
-        .build()
-        .unwrap();
+    let cs =
+        ConstraintSystem::<Fp>::create(gates /*, mina_poseidon::pasta::fp_kimchi::params()*/)
+            .build()
+            .unwrap();
 
     // Witness layout (positive test case)
     //   Row 0 1 2 3 ... 14  Gate

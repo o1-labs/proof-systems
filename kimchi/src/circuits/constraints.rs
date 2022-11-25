@@ -55,6 +55,9 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     // Coefficient polynomials. These define constant that gates can use as they like.
     // ---------------------------------------
+    /// coefficients polynomials in monomial form
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficientsm: [DP<F>; COLUMNS],
     /// coefficients polynomials in evaluation form
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
     pub coefficients8: [E<F, D<F>>; COLUMNS],
@@ -129,6 +132,10 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// Foreign field multiplication gate selector polynomial
     #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
     pub foreign_field_mul_selector_poly: Option<SelectorPolynomial<F>>,
+
+    /// Xor gate selector polynomial
+    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
+    pub xor_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -614,6 +621,15 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         };
 
+        let xor_gate = [GateType::Xor16];
+        let xor_selector_poly = {
+            if circuit_gates_used.is_disjoint(&xor_gate.into_iter().collect()) {
+                None
+            } else {
+                Some(selector_polynomial(GateType::Xor16, &gates, &domain))
+            }
+        };
+
         //
         // Coefficient
         // -----------
@@ -658,6 +674,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             sigmam,
             genericm,
             generic4,
+            coefficientsm,
             coefficients8,
             ps8,
             psm,
@@ -668,6 +685,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_add_selector_poly,
             foreign_field_mul_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
+            xor_selector_poly,
             gates,
             shift: shifts.shifts,
             endo,
@@ -706,7 +724,7 @@ pub mod tests {
 
     impl ConstraintSystem<Fp> {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
-            //let fp_sponge_params = oracle::pasta::fp_kimchi::params();
+            //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
             Self::for_testing(gates)
         }
     }

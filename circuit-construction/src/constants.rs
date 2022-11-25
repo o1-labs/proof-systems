@@ -3,7 +3,7 @@ use ark_ff::Field;
 use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
 use kimchi::curve::KimchiCurve;
 use mina_curves::pasta::{Fp, Fq, Pallas as PallasAffine, Vesta as VestaAffine};
-use oracle::poseidon::ArithmeticSpongeParams;
+use mina_poseidon::poseidon::ArithmeticSpongeParams;
 
 /// The type of possible constants in the circuit
 #[derive(Clone)]

@@ -59,6 +59,9 @@ pub struct ProofEvaluations<Field> {
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
+    /// coefficient polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
+    pub coefficients: [Field; COLUMNS],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
@@ -162,6 +165,7 @@ impl<F> ProofEvaluations<F> {
             z: array::from_fn(|i| &evals[i].z),
             w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
             s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
+            coefficients: array::from_fn(|j| array::from_fn(|i| &evals[i].coefficients[j])),
             lookup: if has_lookup {
                 let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
                 Some(LookupEvaluations {
@@ -238,6 +242,7 @@ impl<F: Zero> ProofEvaluations<F> {
             w,
             z: F::zero(),
             s: array::from_fn(|_| F::zero()),
+            coefficients: array::from_fn(|_| F::zero()),
             lookup: None,
             generic_selector: F::zero(),
             poseidon_selector: F::zero(),
@@ -249,6 +254,9 @@ impl<F: FftField> ProofEvaluations<Vec<F>> {
     pub fn combine(&self, pt: F) -> ProofEvaluations<F> {
         ProofEvaluations::<F> {
             s: array::from_fn(|i| DensePolynomial::eval_polynomial(&self.s[i], pt)),
+            coefficients: array::from_fn(|i| {
+                DensePolynomial::eval_polynomial(&self.coefficients[i], pt)
+            }),
             w: array::from_fn(|i| DensePolynomial::eval_polynomial(&self.w[i], pt)),
             z: DensePolynomial::eval_polynomial(&self.z, pt),
             lookup: self.lookup.as_ref().map(|l| LookupEvaluations {
@@ -393,6 +401,23 @@ pub mod caml {
             Vec<CamlF>,
             Vec<CamlF>,
         ),
+        pub coefficients: (
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+            Vec<CamlF>,
+        ),
         pub z: Vec<CamlF>,
         pub s: (
             Vec<CamlF>,
@@ -435,6 +460,43 @@ pub mod caml {
                 pe.w[13].iter().cloned().map(Into::into).collect(),
                 pe.w[14].iter().cloned().map(Into::into).collect(),
             );
+            let coefficients = (
+                pe.coefficients[0].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[1].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[2].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[3].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[4].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[5].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[6].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[7].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[8].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[9].iter().cloned().map(Into::into).collect(),
+                pe.coefficients[10]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[11]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[12]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[13]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+                pe.coefficients[14]
+                    .iter()
+                    .cloned()
+                    .map(Into::into)
+                    .collect(),
+            );
             let s = (
                 pe.s[0].iter().cloned().map(Into::into).collect(),
                 pe.s[1].iter().cloned().map(Into::into).collect(),
@@ -446,6 +508,7 @@ pub mod caml {
 
             Self {
                 w,
+                coefficients,
                 z: pe.z.into_iter().map(Into::into).collect(),
                 s,
                 generic_selector: pe.generic_selector.into_iter().map(Into::into).collect(),
@@ -478,6 +541,23 @@ pub mod caml {
                 cpe.w.13.into_iter().map(Into::into).collect(),
                 cpe.w.14.into_iter().map(Into::into).collect(),
             ];
+            let coefficients = [
+                cpe.coefficients.0.into_iter().map(Into::into).collect(),
+                cpe.coefficients.1.into_iter().map(Into::into).collect(),
+                cpe.coefficients.2.into_iter().map(Into::into).collect(),
+                cpe.coefficients.3.into_iter().map(Into::into).collect(),
+                cpe.coefficients.4.into_iter().map(Into::into).collect(),
+                cpe.coefficients.5.into_iter().map(Into::into).collect(),
+                cpe.coefficients.6.into_iter().map(Into::into).collect(),
+                cpe.coefficients.7.into_iter().map(Into::into).collect(),
+                cpe.coefficients.8.into_iter().map(Into::into).collect(),
+                cpe.coefficients.9.into_iter().map(Into::into).collect(),
+                cpe.coefficients.10.into_iter().map(Into::into).collect(),
+                cpe.coefficients.11.into_iter().map(Into::into).collect(),
+                cpe.coefficients.12.into_iter().map(Into::into).collect(),
+                cpe.coefficients.13.into_iter().map(Into::into).collect(),
+                cpe.coefficients.14.into_iter().map(Into::into).collect(),
+            ];
             let s = [
                 cpe.s.0.into_iter().map(Into::into).collect(),
                 cpe.s.1.into_iter().map(Into::into).collect(),
@@ -489,6 +569,7 @@ pub mod caml {
 
             Self {
                 w,
+                coefficients,
                 z: cpe.z.into_iter().map(Into::into).collect(),
                 s,
                 generic_selector: cpe.generic_selector.into_iter().map(Into::into).collect(),
