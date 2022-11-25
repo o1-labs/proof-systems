@@ -911,6 +911,58 @@ mod tests {
     }
 
     #[test]
+    fn test_chunked_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n / 2);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+                srs.commit_non_hiding(&p, None)
+            })
+            .collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i],
+            );
+        }
+    }
+
+    #[test]
+    fn test_offset_chunked_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n / 2 + 1);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+                srs.commit_non_hiding(&p, Some(64))
+            })
+            .collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i],
+            );
+        }
+    }
+
+    #[test]
     fn test_opening_proof() {
         // create two polynomials
         let coeffs: [Fp; 10] = array::from_fn(|i| Fp::from(i as u32));
