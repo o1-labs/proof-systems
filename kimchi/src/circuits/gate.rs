@@ -405,14 +405,40 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
     }
 }
 
-/// A circuit is specified as a series of [`CircuitGate`].
+/// A circuit is specified as a public input size and a list of [`CircuitGate`].
 #[derive(Serialize)]
-pub struct Circuit<'a, F: PrimeField>(
-    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
-);
+#[serde(bound = "CircuitGate<F>: Serialize")]
+pub struct Circuit<'a, F: PrimeField> {
+    pub public_input_size: usize,
+    pub gates: &'a [CircuitGate<F>],
+}
+
+impl<'a, F> Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    pub fn new(public_input_size: usize, gates: &'a [CircuitGate<F>]) -> Self {
+        Self {
+            public_input_size,
+            gates,
+        }
+    }
+}
 
 impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
+}
+
+impl<'a, F> From<&'a ConstraintSystem<F>> for Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    fn from(cs: &'a ConstraintSystem<F>) -> Self {
+        Self {
+            public_input_size: cs.public,
+            gates: &cs.gates,
+        }
+    }
 }
 
 #[cfg(feature = "ocaml_types")]

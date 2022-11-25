@@ -4,7 +4,7 @@
 
 use crate::{alphas::Alphas, circuits::scalars::RandomOracles, proof::PointEvaluations};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
-use oracle::FqSponge;
+use mina_poseidon::FqSponge;
 
 /// The result of running the oracle protocol
 pub struct OraclesResult<G, EFqSponge>
