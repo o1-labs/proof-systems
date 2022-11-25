@@ -168,12 +168,7 @@ fn test_ffadd(
 
     for row in 0..all_rows {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public]
-            ),
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }

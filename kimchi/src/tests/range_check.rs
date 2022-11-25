@@ -917,24 +917,14 @@ fn verify_range_check1_test_copy_constraints() {
             // Generic witness verification test
             // RangeCheck1's current row doesn't have any copy constraints
             assert_eq!(
-                cs.gates[2].verify_witness::<Vesta>(
-                    2,
-                    &witness,
-                    &cs,
-                    &witness[0][0..cs.public]
-                ),
+                cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
                 Ok(())
             );
 
             // Generic witness verification test
             // RangeCheck1's next row has copy constraints, but it's a Zero gate
             assert_eq!(
-                cs.gates[3].verify_witness::<Vesta>(
-                    3,
-                    &witness,
-                    &cs,
-                    &witness[0][0..cs.public]
-                ),
+                cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Zero,
                     src: Wire {

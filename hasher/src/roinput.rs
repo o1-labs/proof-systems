@@ -257,9 +257,7 @@ mod tests {
         let scalar =
             Fq::from_hex("18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216")
                 .expect("failed to create scalar");
-        let roi = ROInput::new()
-            .append_scalar(scalar)
-            .append_bytes(&[0x01]);
+        let roi = ROInput::new().append_scalar(scalar).append_bytes(&[0x01]);
         assert!(roi.bits.len() == 263);
         assert!(
             roi.bits.as_raw_slice()

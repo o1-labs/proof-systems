@@ -162,10 +162,10 @@ mod tests {
             Err(FieldHelpersError::DeserializeBytes)
         );
 
-        assert!(
-            BaseField::from_hex("25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39")
-                .is_ok(),
-        );
+        assert!(BaseField::from_hex(
+            "25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39"
+        )
+        .is_ok(),);
 
         let field_hex = "f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36";
         assert_eq!(
@@ -178,13 +178,11 @@ mod tests {
 
     #[test]
     fn field_bytes() {
-        assert!(
-            BaseField::from_bytes(&[
-                46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182,
-                152, 235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8
-            ])
-            .is_ok(),
-        );
+        assert!(BaseField::from_bytes(&[
+            46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182, 152,
+            235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8
+        ])
+        .is_ok(),);
 
         assert_eq!(
             BaseField::from_bytes(&[46, 174, 218, 228, 42, 116, 97, 213]),
@@ -219,25 +217,21 @@ mod tests {
             BaseField::from_bits(&fe.to_bits()).expect("Failed to deserialize field bits");
         assert_eq!(fe, fe_check);
 
-        assert!(
-            BaseField::from_bits(
-                &BaseField::from_hex(
-                    "e9a8f3b489990ed7eddce497b7138c6a06ff802d1b58fca1997c5f2ee971cd32"
-                )
-                .expect("Failed to deserialize field hex")
-                .to_bits()
+        assert!(BaseField::from_bits(
+            &BaseField::from_hex(
+                "e9a8f3b489990ed7eddce497b7138c6a06ff802d1b58fca1997c5f2ee971cd32"
             )
-            .is_ok(),
-        );
+            .expect("Failed to deserialize field hex")
+            .to_bits()
+        )
+        .is_ok(),);
 
         assert_eq!(
             BaseField::from_bits(&vec![true; BaseField::size_in_bits()]),
             Err(FieldHelpersError::DeserializeBytes)
         );
 
-        assert!(
-            BaseField::from_bits(&[false, true, false, true]).is_ok(),
-        );
+        assert!(BaseField::from_bits(&[false, true, false, true]).is_ok(),);
 
         assert_eq!(
             BaseField::from_bits(&[true, false, false]).expect("Failed to deserialize field bytes"),
