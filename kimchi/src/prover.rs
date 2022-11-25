@@ -14,7 +14,8 @@ use crate::{
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
             foreign_field_add::{self, circuitgates::ForeignFieldAdd},
-            generic, permutation,
+            generic::Generic,
+            permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check::{
@@ -45,8 +46,8 @@ use commitment_dlog::commitment::{
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 use itertools::Itertools;
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::{sponge::ScalarChallenge, FqSponge};
 use rayon::prelude::*;
 use std::array;
 use std::collections::HashMap;
@@ -610,6 +611,7 @@ where
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
+            index_evals.insert(Generic, &index.cs.generic4);
             index_evals.insert(Poseidon, &index.cs.ps8);
             index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
             index_evals.insert(VarBaseMul, &index.cs.mull8);
@@ -670,20 +672,10 @@ where
 
         let quotient_poly = {
             // generic
-            let mut t4 = {
-                let alphas = all_alphas
-                    .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-                let t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
-
-                if cfg!(debug_assertions) {
-                    let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
-                    let gen_minus_pub = &t4 + &p4;
-
-                    check_constraint!(index, gen_minus_pub);
-                }
-
-                t4
-            };
+            let mut t4 = Evaluations::from_vec_and_domain(
+                vec![G::ScalarField::zero(); index.cs.domain.d4.size()],
+                index.cs.domain.d4,
+            );
 
             // permutation
             let (mut t8, bnd) = {
@@ -708,10 +700,8 @@ where
                 let xor_enabled = index.cs.xor_selector_poly.is_some();
 
                 for gate in [
-                    (
-                        (&CompleteAdd::new() as &dyn DynArgument<G::ScalarField>),
-                        true,
-                    ),
+                    ((&Generic::new() as &dyn DynArgument<G::ScalarField>), true),
+                    (&CompleteAdd::new(), true),
                     (&VarbaseMul::new(), true),
                     (&EndosclMul::new(), true),
                     (&EndomulScalar::new(), true),
@@ -899,6 +889,13 @@ where
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
                 }
             }),
+            coefficients: array::from_fn(|i| {
+                let chunked = index.cs.coefficientsm[i].to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            }),
             w: array::from_fn(|i| {
                 let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
                 PointEvaluations {
@@ -956,18 +953,10 @@ where
                 // that we can drop the coefficient forms of the index polynomials from
                 // the constraint system struct
 
-                // generic (not part of linearization yet)
-                let alphas = all_alphas
-                    .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-                let mut f = index
-                    .cs
-                    .gnrc_lnrz(alphas, &evals.w, evals.generic_selector.zeta)
-                    .interpolate();
-
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                f += &index.cs.perm_lnrz(&evals, zeta, beta, gamma, alphas);
+                let f = index.cs.perm_lnrz(&evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial
                 let f = {
@@ -1111,6 +1100,14 @@ where
                 .iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.blinders.clone()))
+                .collect::<Vec<_>>(),
+        );
+        polynomials.extend(
+            index
+                .cs
+                .coefficientsm
+                .iter()
+                .map(|coefficientm| (coefficientm, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(

@@ -36,7 +36,7 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{Field, PrimeField};
-use oracle::{
+use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
