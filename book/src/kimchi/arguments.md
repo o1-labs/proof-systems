@@ -3,7 +3,7 @@
 In the previous section we saw how we can prove that certain equations hold for a given set of numbers very efficiently. What's left to understand is the motivation behind these techniques. Why is it so important that we can perform these operations and what do these equations represent in the real world? 
 
 But first, let's recall the table that summarizes some important notation that will be used extensively: 
-![kimchi](../../img/kimchi.png)
+![kimchi](../img/kimchi.png)
 
 One of the first ideas that we must grasp is the notion of a **circuit**. A circuit can be thought of as a set of gates with wires connections between them. The simplest type of circuit that one could think of is a boolean circuit. Boolean circuits only have binary values: $1$ and $0$, `true` and `false`. From a very high level, boolean circuits are like an intricate network of pipes, and the values could be seen as _water_ or _no water_. Then, gates will be like stopcocks, making water flow or not between the pipes. [This video](https://twitter.com/i/status/1188749430020698112) is a cool representation of this idea. Then, each of these _behaviours_ will represent a gate (i.e. logic gates). One can have circuits that can perform more operations, for instance arithmetic circuits. Here, the type of gates available will be arithmetic operations (additions and multiplications) and wires could have numeric values and we could perform any arbitrary computation. 
 

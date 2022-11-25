@@ -7,7 +7,7 @@ use crate::{
         expr::{Column, Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupsUsed, tables::combine_table},
-        polynomials::{generic, permutation},
+        polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
@@ -24,7 +24,7 @@ use commitment_dlog::commitment::{
     combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
-use oracle::{sponge::ScalarChallenge, FqSponge};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 /// The result of a proof verification.
@@ -389,6 +389,19 @@ where
                     .collect::<Vec<_>>(),
             );
             es.extend(
+                (0..COLUMNS)
+                    .map(|c| {
+                        (
+                            vec![
+                                self.evals.coefficients[c].zeta.clone(),
+                                self.evals.coefficients[c].zeta_omega.clone(),
+                            ],
+                            None,
+                        )
+                    })
+                    .collect::<Vec<_>>(),
+            );
+            es.extend(
                 (0..PERMUTS - 1)
                     .map(|c| {
                         (
@@ -533,25 +546,6 @@ where
             alphas,
             zkp,
         )];
-
-        // generic is written manually (not using the expr framework)
-        {
-            let alphas =
-                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-
-            let generic_scalars = &ConstraintSystem::<G::ScalarField>::gnrc_scalars(
-                alphas,
-                &evals.w,
-                evals.generic_selector.zeta,
-            );
-
-            let generic_com = index.coefficients_comm.iter().take(generic_scalars.len());
-
-            assert_eq!(generic_scalars.len(), generic_com.len());
-
-            scalars.extend(generic_scalars);
-            commitments.extend(generic_com);
-        }
 
         // other gates are implemented using the expression framework
         {
@@ -738,6 +732,28 @@ where
                         vec![
                             proof.evals.w[i].zeta.clone(),
                             proof.evals.w[i].zeta_omega.clone(),
+                        ]
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .map(|(c, e)| Evaluation {
+                commitment: c.clone(),
+                evaluations: e,
+                degree_bound: None,
+            }),
+    );
+
+    //~~ - coefficient commitments
+    evaluations.extend(
+        index
+            .coefficients_comm
+            .iter()
+            .zip(
+                (0..COLUMNS)
+                    .map(|i| {
+                        vec![
+                            proof.evals.coefficients[i].zeta.clone(),
+                            proof.evals.coefficients[i].zeta_omega.clone(),
                         ]
                     })
                     .collect::<Vec<_>>(),

@@ -28,10 +28,14 @@ fn varbase_mul_test() {
         let row = 2 * i;
         gates.push(CircuitGate::new(
             GateType::VarBaseMul,
-            Wire::new(row),
+            Wire::for_row(row),
             vec![],
         ));
-        gates.push(CircuitGate::new(GateType::Zero, Wire::new(row + 1), vec![]));
+        gates.push(CircuitGate::new(
+            GateType::Zero,
+            Wire::for_row(row + 1),
+            vec![],
+        ));
     }
 
     let mut witness: [Vec<F>; COLUMNS] =

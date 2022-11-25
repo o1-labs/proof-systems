@@ -9,7 +9,7 @@ use crate::{
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use commitment_dlog::srs::endos;
 use mina_curves::pasta::{Fp as F, Vesta};
-use oracle::sponge::ScalarChallenge;
+use mina_poseidon::sponge::ScalarChallenge;
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
@@ -30,7 +30,7 @@ fn endomul_scalar_test() {
             let row = rows_per_scalar * s + i;
             gates.push(CircuitGate::new(
                 GateType::EndoMulScalar,
-                Wire::new(row),
+                Wire::for_row(row),
                 vec![],
             ));
         }
