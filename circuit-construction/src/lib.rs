@@ -24,7 +24,7 @@ pub mod prologue {
     pub use mina_curves::pasta::{
         Fp, Pallas as PallasAffine, Vesta as VestaAffine, VestaParameters,
     };
-    pub use oracle::{
+    pub use mina_poseidon::{
         constants::*,
         poseidon::{ArithmeticSponge, Sponge},
         sponge::{DefaultFqSponge, DefaultFrSponge},
