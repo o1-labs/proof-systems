@@ -321,6 +321,21 @@ pub fn squeeze_challenge<
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
+pub fn absorb_commitment<
+    Fq: Field,
+    G: Clone,
+    Fr: PrimeField + SquareRootField,
+    EFqSponge: FqSponge<Fq, G, Fr>,
+>(
+    sponge: &mut EFqSponge,
+    commitment: &PolyComm<G>,
+) {
+    sponge.absorb_g(&commitment.unshifted);
+    if let Some(shifted) = commitment.shifted.as_ref() {
+        sponge.absorb_g(&[shifted.clone()]);
+    }
+}
+
 /// A useful trait extending AffineCurve for commitments.
 /// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
