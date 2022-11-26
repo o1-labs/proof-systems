@@ -203,7 +203,7 @@ $$
 \begin{aligned}
 limbs_{max} &= \lfloor cells/4  \rfloor \\
       &= \lfloor 14/4 \rfloor \\
-      &= \lfloor 3.5 \rfloor \\
+      &= 3 \\
 \end{aligned}
 $$
 
@@ -965,31 +965,32 @@ Due to the limited number of cells accessible to gates, we are not able to chain
 
 Now we collect all of the checks that are required to constrain foreign field multiplication
 
-### 1. Range constrain $a \in [0, f)$
+### 1. Range constrain $a$
 
 If the $a$ operand has not been constrained to $[0, f)$ by any previous foreign field operations, then we constrain it like this
 - Compute bound $a' = a + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
 - Range check $a' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
-### 2. Range constrain $b \in [0, f]$
+### 2. Range constrain $b$
 
 If the $b$ operand has not been constrained to $[0, f)$ by any previous foreign field operations, then we constrain it like this
 - Compute bound $b' = b + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
 - Range check $b' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
-### 3. Range constrain $q \in [0, f)$
+### 3. Range constrain $q$
 
 The quotient $q$ is constrained to $[0, f)$ for each multiplication as part of the multiplication gate
 - Compute bound $q' = q + f'$ with  `ForeignFieldMul` constraints
 - Range check $q' \in [0, 2^t)$ (4 rows)  `multi-range-check`
+- Range check $q > 0$ `ForeignFieldMul` (implicit by storing `q` in witness)
 
-### 4. Range constrain $r \in [0, f)$
+### 4. Range constrain $r$
 
 The remainder $r$ is constrained to $[0, f)$ for each multiplication using an external addition gate.
 - Compute bound $r' = r + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
 - Range check $r' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
-### 5. Intermediate products
+### 5. Compute intermediate products
 
 Compute and constrain the intermediate products $p_0, p_1$ and $p_2$ as:
 
@@ -999,16 +1000,7 @@ Compute and constrain the intermediate products $p_0, p_1$ and $p_2$ as:
 
 where each of them is about $2\ell$-length elements.
 
-### 6. Intermediate sums
-
-Compute and constrain the intermediate sums $s_{01} and $s_21$ as:
-
-- $s_{01} = q_{01} + f'_{01}$
-- $s_2 = q_2 + f_2'$
-- $q_{01} = q_0 + 2^{\ell} \cdot q_1$
-- $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$
-
-### 7. Native modulus computations
+### 6. Native modulus checked computations
 
 Compute and constrain the native modulus values, which are used to check the constraints modulo $n$ in order to apply the CRT
 
@@ -1018,7 +1010,7 @@ Compute and constrain the native modulus values, which are used to check the con
 - $r_n = 2^{2\ell} \cdot r_2 + 2^{\ell} \cdot r_1 + r_0 \mod n$
 - $f_n = 2^{2\ell} \cdot f_2 + 2^{\ell} \cdot f_1 + f_0 \mod n$
 
-### 8. Decompose middle intermediate product
+### 7. Decompose middle intermediate product
 
 Check that $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$:
 
@@ -1029,11 +1021,13 @@ Check that $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$:
     - Range check $p_{110} \in [0, 2^\ell)$ `multi-range-check`
     - Range check $p_{111} \in [0, 2^2)$ with a degree-4 constraint `ForeignFieldMul`
 
-### 9. Zero sum
+### 8. Zero sum for multiplication
 
 Now we have to constrain the zero sum
 
-$$(p_0 - r_0) + 2^{88}(p_1 - r_1) + 2^{176}(p_2 - r_2) = 0$$
+$$
+(p_0 - r_0) + 2^{88}(p_1 - r_1) + 2^{176}(p_2 - r_2) = 0 \mod 2^t
+$$
 
 We constrain the first and the second halves as
 
@@ -1053,6 +1047,50 @@ To check that $v_{11} \in [0, 2^3)$ (i.e. that $v_{11}$ is at most 3 bits long) 
 - Check $v_{11} \in [0, 2^{12})$ with a 12-bit plookup (to prevent any overflow)
 - Check $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
 - Check $\mathsf{scaled}_{v_{11}}$ is a 12-bit value with a 12-bit plookup
+
+### 9. Native modulus constraint
+
+Using the checked native modulus computations we constrain that
+
+$$
+a_n \cdot b_n - q_n \cdot f_n - r_n = 0 \mod n.
+$$
+
+### 10. Compute intermediate sums
+
+Compute and constrain the intermediate sums $s_{01}$ and $s_2$ as:
+
+- $s_{01} = q_{01} + f'_{01}$
+- $s_2 = q_2 + f_2'$
+- $q_{01} = q_0 + 2^{\ell} \cdot q_1$
+- $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$
+
+### 11. Decompose the lower quotient bound
+
+Check that $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
+
+Done by (3) above with the  `multi-range-check` on $q'$
+- $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$
+- Range check $q'_0 \in [0, 2^\ell)$
+- Range check $q'_1 \in [0, 2^\ell)$
+
+### 12. Zero sum for quotient bound addition
+
+We constrain that
+
+$$
+s_{01} - q'_{01} + 2^{2\ell} \cdot (s_2 - q'_2) = 0 \mod 2^t
+$$
+
+by constraining the two halves
+
+* $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
+* $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+
+We also need a couple of small range checks
+
+- Check that $q'_{carry01}$ is boolean `ForeignFieldMul`
+- Check that $q'_2$ is boolean `ForeignFieldMul`
 
 # Layout
 
