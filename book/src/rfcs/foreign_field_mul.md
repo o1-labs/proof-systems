@@ -22,7 +22,7 @@ where $a, b, c \in \mathbb{F_f}$, a foreign field with modulus $f$, using the na
 
 In foreign field multiplication the foreign field modulus $f$ could be bigger or smaller than the native field modulus $n$.  When the foreign field modulus is bigger, then we need to emulate foreign field multiplication by splitting the foreign field elements up into limbs that fit into the native field element size.  When the foreign modulus is smaller everything can be constrained either in the native field or split up into limbs.
 
-Since our projected use cases are when the foreign field modulus is bigger (more on this below) we optimize our design around this scenario.  For this case, not only must we split foreign field elements up into limbs that fit within the native field, but we must also operate in a space bigger than the foreign field.  This is because we check the multiplication of two foreign field elements by constraining its quotient and remainder.  That is, we must constrain
+Since our projected use cases are when the foreign field modulus is bigger (more on this below) we optimize our design around this scenario.  For this case, not only must we split foreign field elements up into limbs that fit within the native field, but we must also operate in a space bigger than the foreign field.  This is because we check the multiplication of two foreign field elements by constraining its quotient and remainder.  That is, renaming $c$ to $r$, we must constrain
 
 $$
 a \cdot b = q \cdot f + r,
@@ -41,7 +41,7 @@ Thus, the maximum size of the multiplication is quadratic in the size of foreign
 
 **Naïve approach**
 
-Naïvely, this implies that we have elements of size $f^2 - 1$ that must split them up into limbs of size at most $n$.  For example, if the foreign field modulus is $256$ and the native field modulus is $255$ bits, then we'd need $\log_2((2^{256})^2 - 1) \approx 512$ bits and, thus, require $512/255 \approx 3$ native limbs.  However, each limb cannot consume all $255$ bits of the native field element because we need space to perform arithmetic on the limbs themselves while constraining the foreign field multiplication.  Therefore, we need to choose a limb size that leaves space for performing these computations.
+Naïvely, this implies that we have elements of size $f^2 - 1$ that must split them up into limbs of size at most $n - 1$.  For example, if the foreign field modulus is $256$ and the native field modulus is $255$ bits, then we'd need $\log_2((2^{256})^2 - 1) \approx 512$ bits and, thus, require $512/255 \approx 3$ native limbs.  However, each limb cannot consume all $255$ bits of the native field element because we need space to perform arithmetic on the limbs themselves while constraining the foreign field multiplication.  Therefore, we need to choose a limb size that leaves space for performing these computations.
 
 Later in this document (see the section entitled "Choosing the limb configuration") we determine the optimal number of limbs that reduces the number of rows and gates required to constrain foreign field multiplication.  This results in $\ell = 88$ bits as our optimal limb size.  In the section about intermediate products we place some upperbounds on the number of bits required when constraining foreign field multiplication with limbs of size $\ell$ thereby proving that the computations can fit within the native field size.
 
@@ -82,7 +82,7 @@ $$
 a \cdot b = c \mod f.
 $$
 
-That is, $a$ multiplied with $b$ is equal to $c$ where $a,b,c \in \mathbb{F_f}$.  There is a lot more to each of these steps.  That is the subject of the rest of this document.
+where $c = r$.  That is, $a$ multiplied with $b$ is equal to $c$ where $a,b,c \in \mathbb{F_f}$.  There is a lot more to each of these steps.  That is the subject of the rest of this document.
 
 **Other strategies**
 
@@ -102,6 +102,7 @@ This section describes important parameters that we require and how they are com
 * *Foreign field modulus* $f$
 * *Binary modulus* $2^t$
 * *CRT modulus* $2^t \cdot n$
+* *Limb size* in bits $\ell$
 
 #### Choosing $t$
 
@@ -200,9 +201,9 @@ It is highly advantageous for performance to constrain foreign field multiplicat
 
 $$
 \begin{aligned}
-limbs_{max} &= cells/4 \\
-      &= 14/4 \\
-      &= 3.5
+limbs_{max} &= \lfloor cells/4  \rfloor \\
+      &= \lfloor 14/4 \rfloor \\
+      &= \lfloor 3.5 \rfloor \\
 \end{aligned}
 $$
 
@@ -212,7 +213,7 @@ Using $limbs_{max}=3$ and $t=264$ that covers our use cases (see the previous se
 
 $$
 \begin{aligned}
-limb_{size} &= \frac{t}{limbs_{max}} \\
+\ell &= \frac{t}{limbs_{max}} \\
 &= 264/3 \\
 &= 88
 \end{aligned}
@@ -240,16 +241,15 @@ $$
 
 The negated modulus $f'$ becomes part of our constraint system and is not constrained because it is publicly auditable.
 
-Observe that $f' < 2^t$ since $f < 2^t$ and that $f' > f$ when $f < 2^{t - 1}$.
-
 Using the substitution of the negated modulus, we now must constrain $a \cdot b + q \cdot f' = r \mod 2^t$.
+
+> Observe that $f' < 2^t$ since $f < 2^t$ and that $f' > f$ when $f < 2^{t - 1}$.
 
 ## Intermediate products
 
 This section explains how we expand our constraints into limbs and the eliminate a number of extra terms.
 
 We must constrain $a \cdot b + q \cdot f' = r \mod 2^t$ on the limbs, rather than as a whole.  As described above, each foreign field element $x$ is split into three 88-bit limbs: $x_0, x_1, x_2$, where $x_0$ contains the least significant bits and $x_2$ contains the most significant bits and so on.
-
 
 For clarity, let $X=2^{\ell}$ and $Y=2^{2\ell}$, then expanding the right-hand side into limbs we have
 
@@ -274,7 +274,6 @@ $$
 \end{aligned}
 $$
 
-
 Notice that $X^2=Y$, so the above simplifies to
 
 $$
@@ -289,13 +288,14 @@ $$
 
 Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Therefore, the terms with $XY$ or $Y^2$ are a multiple of modulus and, thus, congruent to zero $\mod 2^t$. They can be eliminated and we don't need to compute them.  So we are left with 3 *intermediate products* that we call $p_0, p_1, p_2$:
 
-| Term  | Scale | Product                                                  |
-| ----- | ----- | -------------------------------------------------------- |
-| $p_0$ | $1$   | $a_0b_0 + q_0f'_0$                                       |
-| $p_1$ | $2^{\ell}$   | $a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0$                    |
-| $p_2$ | $2^{2\ell}$   | $a_0b_2 + a_2b_0 + q_0f'_2 + q_2f'_0 + a_1b_1 + q_1f'_1$ |
+| Term  | Scale       | Product                                                  |
+| ----- | ----------- | -------------------------------------------------------- |
+| $p_0$ | $1$         | $a_0b_0 + q_0f'_0$                                       |
+| $p_1$ | $2^{\ell}$  | $a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0$                    |
+| $p_2$ | $2^{2\ell}$ | $a_0b_2 + a_2b_0 + q_0f'_2 + q_2f'_0 + a_1b_1 + q_1f'_1$ |
 
 So far, we have introduced these checked computations to our constraints
+
 > 1. Computation of $p_0, p_1, p_2$
 
 ## Constraining $\mod 2^t$
@@ -616,7 +616,7 @@ $$
 
 To perform the above range checks we use the *upper bound check* method described in the [Foreign Field Addition RFC](](https://github.com/o1-labs/proof-systems/blob/master/book/src/rfcs/ffadd.md#upper-bound-check)).
 
-The upper bound check is as follows.  We must constrain $0 \le q < f$ over the positive integers, so is
+The upper bound check is as follows.  We must constrain $0 \le q < f$ over the positive integers, so
 
 $$
 \begin{aligned}
@@ -688,20 +688,20 @@ $$
 r = (\underbrace{f + \cdots + f}_{k} + a_1 + b_1 + \cdots a_k + b_k)
 $$
 
-Since the bit length of $r$ increases logarithmically with the number of additions, we must only check that the final $r$ in the chain is less than $f$ to constrain the entire chain.
+Since the bit length of $r$ increases logarithmically with the number of additions, in Kimchi we must only check that the final $r$ in the chain is less than $f$ to constrain the entire chain.
 
 > **Security note:** In order to defer the $r < f$ check to the end of any chain of additions, it is extremely important to consider the potential impact of wraparound in $\mathbb{F_n}$.  That is, we need to consider whether the addition of a large chain of elements greater than the foreign field modulus could wrap around.  If this could happen then the $r < f$ check could fail to detect an valid witness.  Below we will show that this is not possible in Kimchi.
 >
 > Recall that our foreign field elements are comprised of 3 limbs of 88-bits each that are each represented as native field elements in our proof system.  In order to wrap around and circumvent the $r < f$ check, the highest limb would need to wrap around.  This means that an attacker would need to perform about $k \approx n/2^{\ell}$ additions of elements greater than then foreign field modulus.  Since Kimchi's native moduli (Pallas and Vesta) are 255-bits, the attacker would need to provide a witness for about $k \approx 2^{167}$ additions.  This length of witness is greater than Kimchi's maximum circuit (resp. witness) length.  Thus, it is not possible for the attacker to generate a false proof by causing wraparound with a large chain of additions.
 
-In summary, for foreign field addition it is sufficient to only bound check the last result $r'$ in a chain of additions (and subtractions)
+In summary, for foreign field addition in Kimchi it is sufficient to only bound check the last result $r'$ in a chain of additions (and subtractions)
 
 - Compute bound $r' = r + f'$ with addition gate (2 rows)
 - Range check $r' < 2^t$ (4 rows)
 
 #### Multiplication
 
-In foreign field multiplication, the situation is unfortunately different, and we must check that each of $a, b, q$ and $r$ are less than $f$.  We cannot adopt the strategy from foreign field addtion where the operands are allowed to be greater than $f$ because the bit length of $r$ would increases linearly with the number of multiplications.  That is,
+In foreign field multiplication, the situation is unfortunately different, and we must check that each of $a, b, q$ and $r$ are less than $f$.  We cannot adopt the strategy from foreign field addition where the operands are allowed to be greater than $f$ because the bit length of $r$ would increases linearly with the number of multiplications.  That is,
 
 $$
 (a_1 + f) \cdot (a_2 + f) = 1 \cdot f + \underbrace{f^2 + (a_1 + a_2 - 1) \cdot f + a_1 \cdot a_2}_{r}
@@ -1088,7 +1088,7 @@ NB: the $f$ and $f'$ values are publicly accessible in the constraint system.
 
 where $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$.
 
-# Gate constraints
+# Checked computations
 
 As described above foreign field multiplication has the following intermediate computations
 
@@ -1124,6 +1124,8 @@ Next, for applying the CRT we compute
 4. $r_n = 2^{2\ell} \cdot r_2 + 2^{\ell} \cdot r_1 + r_0 \mod n$
 5. $f_n = 2^{2\ell} \cdot f_2 + 2^{\ell} \cdot f_1 + f_0 \mod n$
 
+# Checks
+
 In total we require the following checks
 
 1. $p_{111} \in [0, 2^2)$
@@ -1148,6 +1150,8 @@ In total we require the following checks
 20. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
 21. $q'_{carry2} \in [0, 2)$
 22. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+
+# Constraints
 
 These checks can be condensed into the minimal number of constraints as follows.
 
