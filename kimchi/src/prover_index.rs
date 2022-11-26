@@ -5,7 +5,6 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         expr::{Linearization, PolishToken},
-        wires::PERMUTS,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -41,9 +40,6 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
@@ -87,19 +83,12 @@ impl<G: KimchiCurve> ProverIndex<G> {
             true,
         );
 
-        // set `max_quot_size` to the degree of the quotient polynomial,
-        // which is obtained by looking at the highest monomial in the sum
-        // $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
-        // where the $w_i(x)$ are of degree the size of the domain.
-        let max_quot_size = PERMUTS * cs.domain.d1.size();
-
         ProverIndex {
             cs,
             linearization,
             powers_of_alpha,
             srs,
             max_poly_size,
-            max_quot_size,
             verifier_index: None,
             verifier_index_digest: None,
         }

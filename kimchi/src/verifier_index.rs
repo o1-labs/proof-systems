@@ -66,8 +66,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
@@ -202,7 +200,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
         VerifierIndex {
             domain,
             max_poly_size: self.max_poly_size,
-            max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
             public: self.cs.public,
             prev_challenges: self.cs.prev_challenges,
@@ -376,7 +373,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         let VerifierIndex {
             domain: _,
             max_poly_size: _,
-            max_quot_size: _,
             srs: _,
             public: _,
             prev_challenges: _,
