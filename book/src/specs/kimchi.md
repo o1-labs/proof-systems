@@ -1516,9 +1516,6 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
-
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,
@@ -1565,8 +1562,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
