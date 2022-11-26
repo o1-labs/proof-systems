@@ -66,7 +66,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
         if cs.public > 0 {
             assert!(
                 max_poly_size >= cs.domain.d1.size(),
-                "polynomial segment size has to be not smaller that that of the circuit!"
+                "polynomial segment size has to be not smaller than that of the circuit!"
             );
         }
         cs.endo = endo_q;
