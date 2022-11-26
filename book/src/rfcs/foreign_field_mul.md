@@ -612,7 +612,7 @@ a \cdot b < 2^t \cdot n
 \end{aligned}
 $$
 
-### Bounds checks
+### Bound checks
 
 To perform the above range checks we use the *upper bound check* method described in the [Foreign Field Addition RFC](](https://github.com/o1-labs/proof-systems/blob/master/book/src/rfcs/ffadd.md#upper-bound-check)).
 
@@ -914,7 +914,7 @@ The checks are
 
 Checks (1) - (5) assure that $s_{01}$ is at most $2\ell + 1$ bits.  Whereas checks (10) - (11) assure that $s_2$ is at most $\ell + 1$ bits.  Altogether they are comprise a single `multi-range-check` of $q_0, q_1$ and $q_2$.  However, as noted above, we do not have enough copyable cells to output $q_1, q_2$ and $q_3$ to the `multi-range-check` gadget.  Therefore, we adopt a strategy where the 2 limbs $q'_{01}$ and $q'_2$ are output to the `multi-range-check` gadget where the decomposition of $q'_0$ and $q'_2$ into $q'_{01} = p_0 + 2^{\ell} \cdot p_1$ is constrained and then $q'_0, q'_1$ and $q'_2$ are range checked.
 
-Although $q_1, q_2$ and $q_3$ are not range checked directly, this is safe because, as shown in the "Bounds checks" section, range-checking that $q' \in [0, 2^t)$ also constrains that $q \in [0, 2^t)$.  Therefore, the updated checks are
+Although $q_1, q_2$ and $q_3$ are not range checked directly, this is safe because, as shown in the "Bound checks" section, range-checking that $q' \in [0, 2^t)$ also constrains that $q \in [0, 2^t)$.  Therefore, the updated checks are
 
 1. $q_0 \in [0, 2^{\ell})$ `multi-range-check`
 2. $q_1 \in [0, 2^{\ell})$ `multi-range-check`
@@ -982,7 +982,7 @@ If the $b$ operand has not been constrained to $[0, f)$ by any previous foreign 
 The quotient $q$ is constrained to $[0, f)$ for each multiplication as part of the multiplication gate
 - Compute bound $q' = q + f'$ with  `ForeignFieldMul` constraints
 - Range check $q' \in [0, 2^t)$ (4 rows)  `multi-range-check`
-- Range check $q > 0$ `ForeignFieldMul` (implicit by storing `q` in witness)
+- Range check $q \ge 0$ `ForeignFieldMul` (implicit by storing `q` in witness)
 
 ### 4. Range constrain $r$
 
