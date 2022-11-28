@@ -2148,8 +2148,8 @@ where
             NegForeignFieldModulus(i) => format!("neg_foreign_field_modulus({i})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("\\alpha^{{{n}}}"),
-                x => format!("{}^{n}", x.ocaml()),
+                Alpha => format!("alpha_pow({n})"),
+                x => format!("pow({}, {n})", x.ocaml()),
             },
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
