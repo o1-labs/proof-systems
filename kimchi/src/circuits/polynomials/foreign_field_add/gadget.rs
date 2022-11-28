@@ -188,7 +188,10 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut index_evals = HashMap::new();
         index_evals.insert(
             self.typ,
-            &cs.foreign_field_add_selector_poly.as_ref().unwrap().eval8,
+            cs.column_evaluations
+                .foreign_field_add_selector8
+                .as_ref()
+                .unwrap(),
         );
 
         // Set up lookup environment
@@ -227,7 +230,7 @@ impl<F: PrimeField> CircuitGate<F> {
                     foreign_field_modulus: cs.foreign_field_modulus.clone(),
                 },
                 witness: &witness_evals.d8.this.w,
-                coefficient: &cs.coefficients8,
+                coefficient: &cs.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: &cs.precomputations().vanishes_on_last_4_rows,
                 z: &witness_evals.d8.this.z,
                 l0_1: l0_1(cs.domain.d1),

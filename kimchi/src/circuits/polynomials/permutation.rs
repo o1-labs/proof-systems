@@ -263,7 +263,13 @@ impl<F: PrimeField> ConstraintSystem<F> {
             // (w8[6] + gamma + sigma[6] * beta)
             // in evaluation form in d8
             let mut sigmas = lagrange.d8.next.z.clone();
-            for (witness, sigma) in lagrange.d8.this.w.iter().zip(self.sigmal8.iter()) {
+            for (witness, sigma) in lagrange
+                .d8
+                .this
+                .w
+                .iter()
+                .zip(self.column_evaluations.permutation_coefficients8.iter())
+            {
                 let term = witness + &(gamma + &sigma.scale(beta));
                 sigmas = &sigmas * &term;
             }
@@ -331,7 +337,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~
         let zkpm_zeta = self.precomputations().zkpm.evaluate(&zeta);
         let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        self.sigmam[PERMUTS - 1].scale(scalar)
+        self.evaluated_column_coefficients.permutation_coefficients[PERMUTS - 1].scale(scalar)
     }
 
     pub fn perm_scalars(
@@ -441,8 +447,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
         for j in 0..n - 3 {
             z[j + 1] = witness
                 .iter()
-                .zip(self.sigmal1.iter())
-                .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
+                .zip(self.column_evaluations.permutation_coefficients8.iter())
+                .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
                 .fold(F::one(), |x, y| x * y);
         }
 

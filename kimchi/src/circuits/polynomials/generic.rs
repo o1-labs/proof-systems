@@ -284,8 +284,11 @@ pub mod testing {
             witness: &[DensePolynomial<F>; COLUMNS],
             public: &DensePolynomial<F>,
         ) -> bool {
-            let coefficientsm: [_; COLUMNS] =
-                array::from_fn(|i| self.coefficients8[i].clone().interpolate());
+            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
+                self.column_evaluations.coefficients8[i]
+                    .clone()
+                    .interpolate()
+            });
 
             let generic_gate = |coeff_offset, register_offset| {
                 // addition (of left, right, output wires)
@@ -310,7 +313,7 @@ pub mod testing {
             res += public;
 
             // selector poly
-            res = &res * &self.genericm;
+            res = &res * &self.evaluated_column_coefficients.generic_selector;
 
             // verify that it is divisible by Z_H
             match res.divide_by_vanishing_poly(self.domain.d1) {
