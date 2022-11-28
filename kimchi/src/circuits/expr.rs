@@ -2512,17 +2512,18 @@ pub mod test {
 
         // create a dummy env
         let one = Fp::from(1u32);
-        let mut gates = vec![];
-        gates.push(CircuitGate::create_generic_gadget(
-            Wire::for_row(0),
-            GenericGateSpec::Const(1u32.into()),
-            None,
-        ));
-        gates.push(CircuitGate::create_generic_gadget(
-            Wire::for_row(1),
-            GenericGateSpec::Const(1u32.into()),
-            None,
-        ));
+        let gates = vec![
+            CircuitGate::create_generic_gadget(
+                Wire::for_row(0),
+                GenericGateSpec::Const(1u32.into()),
+                None,
+            ),
+            CircuitGate::create_generic_gadget(
+                Wire::for_row(1),
+                GenericGateSpec::Const(1u32.into()),
+                None,
+            ),
+        ];
         let constraint_system = ConstraintSystem::fp_for_testing(gates);
 
         let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());

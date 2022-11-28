@@ -208,21 +208,21 @@ mod tests {
 
     #[test]
     fn append_byte() {
-        let roi = ROInput::new().append_bytes(&vec![0x01]);
+        let roi = ROInput::new().append_bytes(&[0x01]);
         assert!(roi.bits.len() == 8);
         assert!(roi.bits.as_raw_slice() == [0x01]);
     }
 
     #[test]
     fn append_two_bytes() {
-        let roi = ROInput::new().append_bytes(&vec![0x10, 0xac]);
+        let roi = ROInput::new().append_bytes(&[0x10, 0xac]);
         assert!(roi.bits.len() == 16);
         assert!(roi.bits.as_raw_slice() == [0x10, 0xac]);
     }
 
     #[test]
     fn append_five_bytes() {
-        let roi = ROInput::new().append_bytes(&vec![0x10, 0xac, 0x01, 0xeb, 0xca]);
+        let roi = ROInput::new().append_bytes(&[0x10, 0xac, 0x01, 0xeb, 0xca]);
         assert!(roi.bits.len() == 40);
         assert!(roi.bits.as_raw_slice() == [0x10, 0xac, 0x01, 0xeb, 0xca]);
     }
@@ -257,9 +257,7 @@ mod tests {
         let scalar =
             Fq::from_hex("18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216")
                 .expect("failed to create scalar");
-        let roi = ROInput::new()
-            .append_scalar(scalar)
-            .append_bytes(&vec![0x01]);
+        let roi = ROInput::new().append_scalar(scalar).append_bytes(&[0x01]);
         assert!(roi.bits.len() == 263);
         assert!(
             roi.bits.as_raw_slice()
@@ -303,7 +301,7 @@ mod tests {
                 .expect("failed to create scalar");
         let roi = ROInput::new()
             .append_scalar(scalar1)
-            .append_bytes(&vec![0x2a])
+            .append_bytes(&[0x2a])
             .append_scalar(scalar2);
         assert!(roi.bits.len() == 518);
         assert!(
@@ -368,7 +366,7 @@ mod tests {
                     .expect("failed to create scalar"),
             )
             .append_u64(18446744073709551557)
-            .append_bytes(&vec![0xba, 0xdc, 0x0f, 0xfe])
+            .append_bytes(&[0xba, 0xdc, 0x0f, 0xfe])
             .append_scalar(
                 Fq::from_hex("e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810")
                     .expect("failed to create scalar"),
@@ -400,7 +398,7 @@ mod tests {
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
             .append_u32(u32::MAX) // valid_until
-            .append_bytes(&vec![0; 34]) // memo
+            .append_bytes(&[0; 34]) // memo
             .append_bool(false) // tags[0]
             .append_bool(false) // tags[1]
             .append_bool(false) // tags[2]
@@ -413,7 +411,7 @@ mod tests {
                 Fq::from_hex("de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d")
                     .expect("failed to create scalar"),
             )
-            .append_bytes(&vec![0x01]);
+            .append_bytes(&[0x01]);
         assert_eq!(roi.bits.len(), 862);
         assert_eq!(
             roi.bits.as_raw_slice(),
@@ -765,7 +763,7 @@ mod tests {
             .append_bool(true) // fee payer pk odd
             .append_u32(0) // nonce
             .append_u32(u32::MAX) // valid_until
-            .append_bytes(&vec![0; 34]) // memo
+            .append_bytes(&[0; 34]) // memo
             .append_bool(false) // tags[0]
             .append_bool(false) // tags[1]
             .append_bool(false) // tags[2]
@@ -833,7 +831,7 @@ mod tests {
             }
 
             fn domain_string(_: Self::D) -> Option<String> {
-                format!("A").into()
+                "A".to_string().into()
             }
         }
 
@@ -852,7 +850,7 @@ mod tests {
             }
 
             fn domain_string(_: Self::D) -> Option<String> {
-                format!("B").into()
+                "B".to_string().into()
             }
         }
 
@@ -873,7 +871,7 @@ mod tests {
             }
 
             fn domain_string(_: Self::D) -> Option<String> {
-                format!("B").into()
+                "B".to_string().into()
             }
         }
 
@@ -897,7 +895,7 @@ mod tests {
 
         let b2 = B2 {
             a: b1.a.clone(),
-            b: b1.b.clone(),
+            b: b1.b,
             c: false,
         };
         assert_ne!(b1.to_roinput(), b2.to_roinput());

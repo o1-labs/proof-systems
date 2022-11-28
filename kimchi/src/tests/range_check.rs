@@ -77,7 +77,7 @@ fn verify_range_check0_zero_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -89,7 +89,7 @@ fn verify_range_check0_zero_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -107,7 +107,7 @@ fn verify_range_check0_one_invalid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
 
@@ -119,7 +119,7 @@ fn verify_range_check0_one_invalid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
 }
@@ -145,7 +145,7 @@ fn verify_range_check0_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -157,7 +157,7 @@ fn verify_range_check0_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -178,7 +178,7 @@ fn verify_range_check0_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -190,7 +190,7 @@ fn verify_range_check0_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -250,7 +250,7 @@ fn verify_range_check0_invalid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 1))
     );
 
@@ -265,7 +265,7 @@ fn verify_range_check0_invalid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 2))
     );
 }
@@ -275,7 +275,7 @@ fn verify_range_check0_valid_v0_in_range() {
     let cs = create_test_constraint_system();
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -288,12 +288,12 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(PallasField::from(2u64).pow([64])),
+        PallasField::from(2u64).pow([64]),
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -306,7 +306,7 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -324,7 +324,7 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -342,7 +342,7 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -353,7 +353,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
         PallasField::zero(),
     );
 
@@ -365,13 +365,13 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([63])),
+        PallasField::from(2u64).pow([63]),
         PallasField::zero(),
     );
 
@@ -383,7 +383,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -401,7 +401,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -419,7 +419,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -442,7 +442,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
 
@@ -460,7 +460,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
 }
@@ -483,7 +483,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
 
@@ -501,7 +501,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
 }
@@ -531,7 +531,7 @@ fn verify_range_check0_test_copy_constraints() {
                     row,
                     &witness,
                     &cs,
-                    &witness[0][0..cs.public].to_vec()
+                    &witness[0][0..cs.public]
                 ),
                 Ok(())
             );
@@ -550,7 +550,7 @@ fn verify_range_check0_test_copy_constraints() {
                     row,
                     &witness,
                     &cs,
-                    &witness[0][0..cs.public].to_vec()
+                    &witness[0][0..cs.public]
                 ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: cs.gates[row].typ,
@@ -644,7 +644,7 @@ fn verify_range_check1_zero_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -662,7 +662,7 @@ fn verify_range_check1_one_invalid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
 }
@@ -688,7 +688,7 @@ fn verify_range_check1_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -709,7 +709,7 @@ fn verify_range_check1_valid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -738,7 +738,7 @@ fn verify_range_check1_invalid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
 
@@ -762,7 +762,7 @@ fn verify_range_check1_invalid_witness() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 8))
     );
 }
@@ -774,7 +774,7 @@ fn verify_range_check1_valid_v2_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -785,14 +785,14 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([64])),
+        PallasField::from(2u64).pow([64]),
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -803,7 +803,7 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -821,7 +821,7 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -839,7 +839,7 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -862,7 +862,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
 
@@ -880,7 +880,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
 }
@@ -917,24 +917,14 @@ fn verify_range_check1_test_copy_constraints() {
             // Generic witness verification test
             // RangeCheck1's current row doesn't have any copy constraints
             assert_eq!(
-                cs.gates[2].verify_witness::<Vesta>(
-                    2,
-                    &witness,
-                    &cs,
-                    &witness[0][0..cs.public].to_vec()
-                ),
+                cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
                 Ok(())
             );
 
             // Generic witness verification test
             // RangeCheck1's next row has copy constraints, but it's a Zero gate
             assert_eq!(
-                cs.gates[3].verify_witness::<Vesta>(
-                    3,
-                    &witness,
-                    &cs,
-                    &witness[0][0..cs.public].to_vec()
-                ),
+                cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Zero,
                     src: Wire {
@@ -1065,7 +1055,7 @@ fn verify_64_bit_range_check() {
 
     // Generic witness verification test
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 
@@ -1120,5 +1110,5 @@ fn verify_range_check_valid_proof1() {
     // Verify proof
     let res = verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof);
 
-    assert!(!res.is_err());
+    assert!(res.is_ok());
 }
