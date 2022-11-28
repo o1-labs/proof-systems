@@ -168,12 +168,7 @@ fn test_ffadd(
 
     for row in 0..all_rows {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
@@ -216,15 +211,15 @@ fn check_carry(witness: [Vec<PallasField>; COLUMNS], lo: PallasField, mi: Pallas
 
 // computes the result of an addition
 fn compute_sum(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
-    let left_big = BigUint::from_bytes_be(&left);
-    let right_big = BigUint::from_bytes_be(&right);
+    let left_big = BigUint::from_bytes_be(left);
+    let right_big = BigUint::from_bytes_be(right);
     (left_big + right_big) % modulus
 }
 
 // computes the result of a subtraction
 fn compute_dif(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
-    let left_big = BigUint::from_bytes_be(&left);
-    let right_big = BigUint::from_bytes_be(&right);
+    let left_big = BigUint::from_bytes_be(left);
+    let right_big = BigUint::from_bytes_be(right);
     if left_big < right_big {
         left_big + modulus - right_big
     } else {
@@ -323,7 +318,7 @@ fn test_zero_sum_foreign() {
 fn test_zero_sum_native() {
     let native_modulus = PallasField::modulus_biguint();
     let one = BigUint::new(vec![1u32]);
-    let mod_minus_one = native_modulus.clone() - one.clone();
+    let mod_minus_one = native_modulus.clone() - one;
     let (witness, _cs) = test_ffadd(
         SECP256K1_MOD,
         vec![ONE.to_vec(), mod_minus_one.to_bytes_be()],
@@ -584,8 +579,8 @@ fn test_wrong_sum() {
     );
     // wrong result
     let all_ones_limb = PallasField::from(2u128.pow(88) - 1);
-    witness[0][8] = all_ones_limb.clone();
-    witness[0][17] = all_ones_limb.clone();
+    witness[0][8] = all_ones_limb;
+    witness[0][17] = all_ones_limb;
 
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
@@ -758,7 +753,7 @@ fn test_foreign_is_native_add() {
         &vec![FFOps::Add],
     );
     // check result was computed correctly
-    let sum_big = compute_sum(pallas.clone(), &left_input, &right_input);
+    let sum_big = compute_sum(pallas, &left_input, &right_input);
     let result = ForeignElement::<PallasField, 3>::from_biguint(sum_big.clone());
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
@@ -786,7 +781,7 @@ fn test_foreign_is_native_sub() {
         &vec![FFOps::Sub],
     );
     // check result was computed correctly
-    let dif_big = compute_dif(pallas.clone(), &left_input, &right_input);
+    let dif_big = compute_dif(pallas, &left_input, &right_input);
     let result = ForeignElement::<PallasField, 3>::from_biguint(dif_big.clone());
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
@@ -816,7 +811,7 @@ fn test_random_small_add() {
         vec![left_input.clone(), right_input.clone()],
         &vec![FFOps::Add],
     );
-    let result = compute_sum(foreign_mod.clone(), &left_input, &right_input);
+    let result = compute_sum(foreign_mod, &left_input, &right_input);
     check_result(
         witness,
         vec![ForeignElement::<PallasField, 3>::from_biguint(result)],
@@ -837,7 +832,7 @@ fn test_random_small_sub() {
         vec![left_input.clone(), right_input.clone()],
         &vec![FFOps::Sub],
     );
-    let result = compute_dif(foreign_mod.clone(), &left_input, &right_input);
+    let result = compute_dif(foreign_mod, &left_input, &right_input);
     check_result(
         witness,
         vec![ForeignElement::<PallasField, 3>::from_biguint(result)],
@@ -847,16 +842,16 @@ fn test_random_small_sub() {
 #[test]
 // Test with bad left input
 fn test_random_bad_input() {
-    let foreign_mod = BigUint::from_bytes_be(&SECP256K1_MOD);
+    let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
     let left_input = random_input(foreign_mod.clone(), false);
-    let right_input = random_input(foreign_mod.clone(), false);
+    let right_input = random_input(foreign_mod, false);
     let (mut witness, cs) = test_ffadd(
         SECP256K1_MOD,
-        vec![left_input.clone(), right_input.clone()],
+        vec![left_input, right_input],
         &vec![FFOps::Sub],
     );
     // First modify left input only to cause an invalid copy constraint
-    witness[0][16] = witness[0][16] + PallasField::one();
+    witness[0][16] += PallasField::one();
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidCopyConstraint(
@@ -864,7 +859,7 @@ fn test_random_bad_input() {
         )),
     );
     // then modify the value in the range check to cause an invalid FFAdd constraint
-    witness[0][0] = witness[0][0] + PallasField::one();
+    witness[0][0] += PallasField::one();
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
@@ -876,41 +871,41 @@ fn test_random_bad_input() {
 #[test]
 // Test with bad parameters
 fn test_random_bad_parameters() {
-    let foreign_mod = BigUint::from_bytes_be(&SECP256K1_MOD);
+    let foreign_mod = BigUint::from_bytes_be(SECP256K1_MOD);
     let left_input = random_input(foreign_mod.clone(), false);
-    let right_input = random_input(foreign_mod.clone(), false);
+    let right_input = random_input(foreign_mod, false);
     let (mut witness, cs) = test_ffadd(
         SECP256K1_MOD,
-        vec![left_input.clone(), right_input.clone()],
+        vec![left_input, right_input],
         &vec![FFOps::Add],
     );
     // Modify low carry
-    witness[8][16] = witness[8][16] + PallasField::one();
+    witness[8][16] += PallasField::one();
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
     );
-    witness[8][16] = witness[8][16] - PallasField::one();
+    witness[8][16] -= PallasField::one();
     // Modify high carry
-    witness[9][16] = witness[9][16] - PallasField::one();
+    witness[9][16] -= PallasField::one();
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
     );
-    witness[9][16] = witness[9][16] + PallasField::one();
+    witness[9][16] += PallasField::one();
     // Modify overflow
-    witness[7][16] = witness[7][16] + PallasField::one();
+    witness[7][16] += PallasField::one();
     assert_eq!(
         cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
     );
-    witness[7][16] = witness[7][16] - PallasField::one();
+    witness[7][16] -= PallasField::one();
     // Modify sign
     witness[6][16] = PallasField::zero() - witness[6][16];
     assert_eq!(
