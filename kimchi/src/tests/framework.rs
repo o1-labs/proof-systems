@@ -21,7 +21,7 @@ use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
-use std::{mem, time::Instant};
+use std::{fmt::Write, mem, time::Instant};
 
 // aliases
 
@@ -98,7 +98,7 @@ where
     pub(crate) fn setup(mut self) -> TestRunner<G> {
         let start = Instant::now();
 
-        let lookup_tables = mem::replace(&mut self.lookup_tables, vec![]);
+        let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
         let foreign_modulus_setup = mem::replace(&mut self.foreign_modulus, None);
 
@@ -198,7 +198,7 @@ where
         let mut line = "| ".to_string();
         for col in cols {
             let bigint: BigUint = col[row].into();
-            line.push_str(&format!("{} | ", bigint));
+            write!(line, "{} | ", bigint).unwrap();
         }
         println!("{line}");
     }

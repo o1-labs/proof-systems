@@ -92,7 +92,7 @@ where
 
     // Compute multiplication witness
     let (mut witness, external_checks) =
-        foreign_field_mul::witness::create(&left_input, &right_input, &foreign_field_modulus);
+        foreign_field_mul::witness::create(left_input, right_input, foreign_field_modulus);
 
     // Optionally also add external gate checks to circuit
     if external_gates {
@@ -183,9 +183,9 @@ where
     };
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
-    for row in 0..witness[0].len() {
+    for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public].to_vec());
+            gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }
@@ -212,12 +212,12 @@ where
             // Check witness verification fails
             // When targeting the plookup constraints the invalidated values would cause custom constraint
             // failures, so we want to suppress these witness verification checks when doing plookup tests.
-            for row in 0..witness[0].len() {
-                let result = gates[row].verify_witness::<G>(
+            for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
+                let result = gate.verify_witness::<G>(
                     row,
                     &witness,
                     &cs,
-                    &witness[0][0..cs.public].to_vec(),
+                    &witness[0][0..cs.public],
                 );
                 if result.is_err() {
                     return (result, witness);
@@ -319,7 +319,7 @@ pub fn rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
         ),
     );
     let x1 = rng.gen_biguint_range(&start, &stop);
-    return Ok([x0, x1].compose());
+    Ok([x0, x1].compose())
 }
 
 fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
@@ -329,14 +329,14 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     let neg_foreign_field_modulus = foreign_field_modulus.negate();
 
     // Select a random x that would overflow on lowest limb
-    let x = rand_foreign_field_element_with_bound_overflows::<F>(rng, &foreign_field_modulus)
+    let x = rand_foreign_field_element_with_bound_overflows::<F>(rng, foreign_field_modulus)
         .expect("Failed to get element with bound overflow");
 
     // Check it obeys the modulus
     assert!(x < *foreign_field_modulus);
 
     // Compute bound directly as BigUint
-    let bound = foreign_field_mul::witness::compute_bound(&x, &neg_foreign_field_modulus.clone());
+    let bound = foreign_field_mul::witness::compute_bound(&x, &neg_foreign_field_modulus);
 
     // Compute bound separately on limbs
     let sums: [F; 2] = foreign_field_mul::circuitgates::compute_intermediate_sums(
@@ -368,8 +368,8 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     for _ in 0..3 {
-        let left_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
-        let right_input = rng.gen_biguint_range(&BigUint::zero(), &foreign_field_modulus);
+        let left_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
+        let right_input = rng.gen_biguint_range(&BigUint::zero(), foreign_field_modulus);
 
         // Test 1st constraint (C1): invalidate product1_hi_1 is in [0, 2^2)
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
@@ -378,7 +378,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((1, 7), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
         );
         assert_eq!(
@@ -397,7 +397,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((1, 5), G::ScalarField::one())], // Invalidate product1_lo
         );
         assert_eq!(
@@ -416,7 +416,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 9), G::ScalarField::from(4u32))], // Invalidate carry0
         );
         assert_eq!(
@@ -435,7 +435,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 9), G::ScalarField::from(3u32))], // Invalidate carry0
         );
         assert_eq!(
@@ -454,7 +454,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 8), G::ScalarField::one())], // Invalidate scaled_carry1_hi
         );
         assert_eq!(
@@ -473,7 +473,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 6), G::ScalarField::one())], // Invalidate carry1_lo
         );
         assert_eq!(
@@ -494,7 +494,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 13), G::ScalarField::from(2u32))], // Make q'_carry01 non-boolean
         );
         assert_eq!(
@@ -513,7 +513,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 13), G::ScalarField::from(1u32))], // Make q'_carry01 invalid
         );
         assert_eq!(
@@ -532,7 +532,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 14), G::ScalarField::from(2u32))], // Make q'_carry2 non-boolean
         );
         assert_eq!(
@@ -551,7 +551,7 @@ where
             false,
             &left_input,
             &right_input,
-            &foreign_field_modulus,
+            foreign_field_modulus,
             vec![((0, 14), G::ScalarField::one())], // invalidate q'_carry2
         );
         assert_eq!(

@@ -36,12 +36,7 @@ fn test_xor(in1: u128, in2: u128, bits: usize) -> [Vec<PallasField>; COLUMNS] {
     let witness = xor::create(in1, in2, bits);
     for row in 0..xor::num_xors(bits) + 1 {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
