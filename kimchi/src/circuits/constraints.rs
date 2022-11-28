@@ -5,7 +5,9 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, tables::LookupTable},
+        lookup::{
+            constraints::LookupConfiguration, index::LookupConstraintSystem, tables::LookupTable,
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
         polynomials::{foreign_field_add, range_check},
@@ -25,11 +27,27 @@ use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 //
 // ConstraintSystem
 //
+
+/// Flags for optional features in the constraint system
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(bound = "F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize")]
+pub struct FeatureFlags<F> {
+    /// ChaCha gates
+    pub chacha: bool,
+    /// Range check gates
+    pub range_check: bool,
+    /// Foreign field addition gate
+    pub foreign_field_add: bool,
+    /// XOR gate
+    pub xor: bool,
+    /// Lookups
+    pub lookup_configuration: Option<LookupConfiguration<F>>,
+}
 
 /// The polynomials representing evaluated columns, in coefficient form.
 #[serde_as]
@@ -121,6 +139,10 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// circuit gates
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
+
+    /// flags for optional features
+    #[serde(bound = "FeatureFlags<F>: Serialize + DeserializeOwned")]
+    pub feature_flags: FeatureFlags<F>,
 
     #[serde(bound = "EvaluatedColumnCoefficients<F>: Serialize + DeserializeOwned")]
     pub evaluated_column_coefficients: EvaluatedColumnCoefficients<F>,
@@ -435,11 +457,26 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             .collect();
         gates.append(&mut padding);
 
-        // Record which gates are used by this constraint system
-        let mut circuit_gates_used = HashSet::<GateType>::default();
-        gates.iter().for_each(|gate| {
-            circuit_gates_used.insert(gate.typ);
-        });
+        let mut feature_flags = FeatureFlags {
+            chacha: false,
+            range_check: false,
+            lookup_configuration: None,
+            foreign_field_add: false,
+            xor: false,
+        };
+
+        for gate in &gates {
+            match gate.typ {
+                GateType::ChaCha0
+                | GateType::ChaCha1
+                | GateType::ChaCha2
+                | GateType::ChaChaFinal => feature_flags.chacha = true,
+                GateType::RangeCheck0 | GateType::RangeCheck1 => feature_flags.range_check = true,
+                GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
+                GateType::Xor16 => feature_flags.xor = true,
+                _ => (),
+            }
+        }
 
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
@@ -548,19 +585,15 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         // chacha gate
         let chacha8 = {
-            use GateType::*;
-            let has_chacha_gate = gates
-                .iter()
-                .any(|gate| matches!(gate.typ, ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal));
-            if !has_chacha_gate {
+            if !feature_flags.chacha {
                 None
             } else {
                 let a: [_; 4] = array::from_fn(|i| {
                     let g = match i {
-                        0 => ChaCha0,
-                        1 => ChaCha1,
-                        2 => ChaCha2,
-                        3 => ChaChaFinal,
+                        0 => GateType::ChaCha0,
+                        1 => GateType::ChaCha1,
+                        2 => GateType::ChaCha2,
+                        3 => GateType::ChaChaFinal,
                         _ => panic!("Invalid index"),
                     };
                     E::<F, D<F>>::from_vec_and_domain(
@@ -580,7 +613,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // Range check constraint selector polynomials
         let range_gates = range_check::gadget::circuit_gates();
         let range_check_selector_polys = {
-            if circuit_gates_used.is_disjoint(&range_gates.into_iter().collect()) {
+            if !feature_flags.range_check {
                 None
             } else {
                 Some(array::from_fn(|i| {
@@ -592,16 +625,15 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // Foreign field addition constraint selector polynomial
         let ffadd_gates = foreign_field_add::gadget::circuit_gates();
         let foreign_field_add_selector_poly = {
-            if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
+            if !feature_flags.foreign_field_add {
                 None
             } else {
                 Some(selector_polynomial(ffadd_gates[0], &gates, &domain))
             }
         };
 
-        let xor_gate = [GateType::Xor16];
         let xor_selector_poly = {
-            if circuit_gates_used.is_disjoint(&xor_gate.into_iter().collect()) {
+            if !feature_flags.xor {
                 None
             } else {
                 Some(selector_polynomial(GateType::Xor16, &gates, &domain))
@@ -632,6 +664,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let lookup_constraint_system =
             LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
+        feature_flags.lookup_configuration = lookup_constraint_system
+            .as_ref()
+            .map(|lcs| lcs.configuration.clone());
 
         let sid = shifts.map[0].clone();
 
@@ -651,6 +686,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             endo,
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
+            feature_flags,
             precomputations: domain_constant_evaluation,
             evaluated_column_coefficients: EvaluatedColumnCoefficients {
                 permutation_coefficients: sigmam,

@@ -76,16 +76,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) = expr_linearization(
-            cs.column_evaluations.chacha_selectors8.is_some(),
-            cs.column_evaluations.range_check_selectors8.is_some(),
-            cs.lookup_constraint_system
-                .as_ref()
-                .map(|lcs| &lcs.configuration),
-            cs.column_evaluations.foreign_field_add_selector8.is_some(),
-            cs.column_evaluations.xor_selector8.is_some(),
-            true,
-        );
+        let (linearization, powers_of_alpha) = expr_linearization(&cs.feature_flags, true);
 
         // set `max_quot_size` to the degree of the quotient polynomial,
         // which is obtained by looking at the highest monomial in the sum

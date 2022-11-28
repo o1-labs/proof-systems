@@ -14,6 +14,7 @@ use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::polynomials::{generic, permutation, xor};
 use crate::circuits::{
+    constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
     wires::COLUMNS,
@@ -26,11 +27,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField};
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
-    chacha: bool,
-    range_check: bool,
-    lookup_constraint_system: Option<&LookupConfiguration<F>>,
-    foreign_field_add: bool,
-    xor: bool,
+    feature_flags: &FeatureFlags<F>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
@@ -49,22 +46,22 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     expr += EndosclMul::combined_constraints(&powers_of_alpha);
     expr += EndomulScalar::combined_constraints(&powers_of_alpha);
 
-    if chacha {
+    if feature_flags.chacha {
         expr += ChaCha0::combined_constraints(&powers_of_alpha);
         expr += ChaCha1::combined_constraints(&powers_of_alpha);
         expr += ChaCha2::combined_constraints(&powers_of_alpha);
         expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
     }
 
-    if range_check {
+    if feature_flags.range_check {
         expr += range_check::gadget::combined_constraints(&powers_of_alpha);
     }
 
-    if foreign_field_add {
+    if feature_flags.foreign_field_add {
         expr += ForeignFieldAdd::combined_constraints(&powers_of_alpha);
     }
 
-    if xor {
+    if feature_flags.xor {
         expr += xor::Xor16::combined_constraints(&powers_of_alpha);
     }
 
@@ -76,7 +73,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
     // lookup
-    if let Some(lcs) = lookup_constraint_system.as_ref() {
+    if let Some(lcs) = feature_flags.lookup_configuration.as_ref() {
         let constraints = lookup::constraints::constraints(lcs);
 
         // note: the number of constraints depends on the lookup configuration,
@@ -149,23 +146,12 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 ///
 /// Will panic if the `linearization` process fails.
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
-    chacha: bool,
-    range_check: bool,
-    lookup_constraint_system: Option<&LookupConfiguration<F>>,
-    foreign_field_addition: bool,
-    xor: bool,
+    feature_flags: &FeatureFlags<F>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
-    let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
+    let evaluated_cols = linearization_columns::<F>(feature_flags.lookup_configuration.as_ref());
 
-    let (expr, powers_of_alpha) = constraints_expr(
-        chacha,
-        range_check,
-        lookup_constraint_system,
-        foreign_field_addition,
-        xor,
-        generic,
-    );
+    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)
