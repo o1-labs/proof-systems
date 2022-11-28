@@ -344,7 +344,6 @@ where
         // C7: Constrain scaled_v11 is 12-bits (done with plookup)
 
         // C8: Constrain scaled_v11 comes from scaling v11 by 2^9
-        // Useful powers of two
         constraints.push(scaled_carry1_hi - T::from(512) * carry1_hi.clone());
 
         // C9: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
