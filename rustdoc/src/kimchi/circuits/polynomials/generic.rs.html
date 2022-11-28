@@ -418,6 +418,9 @@
 <a href="#418" id="418">418</a>
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
 </span><span class="comment">//~ The double generic gate contains two generic gates.
@@ -704,8 +707,11 @@
             witness: <span class="kw-2">&amp;</span>[DensePolynomial&lt;F&gt;; COLUMNS],
             public: <span class="kw-2">&amp;</span>DensePolynomial&lt;F&gt;,
         ) -&gt; bool {
-            <span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] =
-                array::from_fn(|i| <span class="self">self</span>.coefficients8[i].clone().interpolate());
+            <span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
+                <span class="self">self</span>.column_evaluations.coefficients8[i]
+                    .clone()
+                    .interpolate()
+            });
 
             <span class="kw">let </span>generic_gate = |coeff_offset, register_offset| {
                 <span class="comment">// addition (of left, right, output wires)
@@ -730,7 +736,7 @@
             </span>res += public;
 
             <span class="comment">// selector poly
-            </span>res = <span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span><span class="self">self</span>.genericm;
+            </span>res = <span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span><span class="self">self</span>.evaluated_column_coefficients.generic_selector;
 
             <span class="comment">// verify that it is divisible by Z_H
             </span><span class="kw">match </span>res.divide_by_vanishing_poly(<span class="self">self</span>.domain.d1) {

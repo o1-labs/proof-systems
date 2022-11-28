@@ -472,6 +472,12 @@
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.
 
 </span><span class="comment">//~
@@ -737,7 +743,13 @@
             // (w8[6] + gamma + sigma[6] * beta)
             // in evaluation form in d8
             </span><span class="kw">let </span><span class="kw-2">mut </span>sigmas = lagrange.d8.next.z.clone();
-            <span class="kw">for </span>(witness, sigma) <span class="kw">in </span>lagrange.d8.this.w.iter().zip(<span class="self">self</span>.sigmal8.iter()) {
+            <span class="kw">for </span>(witness, sigma) <span class="kw">in </span>lagrange
+                .d8
+                .this
+                .w
+                .iter()
+                .zip(<span class="self">self</span>.column_evaluations.permutation_coefficients8.iter())
+            {
                 <span class="kw">let </span>term = witness + <span class="kw-2">&amp;</span>(gamma + <span class="kw-2">&amp;</span>sigma.scale(beta));
                 sigmas = <span class="kw-2">&amp;</span>sigmas * <span class="kw-2">&amp;</span>term;
             }
@@ -805,7 +817,7 @@
         //~
         </span><span class="kw">let </span>zkpm_zeta = <span class="self">self</span>.precomputations().zkpm.evaluate(<span class="kw-2">&amp;</span>zeta);
         <span class="kw">let </span>scalar = <span class="self">Self</span>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        <span class="self">self</span>.sigmam[PERMUTS - <span class="number">1</span>].scale(scalar)
+        <span class="self">self</span>.evaluated_column_coefficients.permutation_coefficients[PERMUTS - <span class="number">1</span>].scale(scalar)
     }
 
     <span class="kw">pub fn </span>perm_scalars(
@@ -915,8 +927,8 @@
         </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..n - <span class="number">3 </span>{
             z[j + <span class="number">1</span>] = witness
                 .iter()
-                .zip(<span class="self">self</span>.sigmal1.iter())
-                .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
+                .zip(<span class="self">self</span>.column_evaluations.permutation_coefficients8.iter())
+                .map(|(w, s)| w[j] + (s[<span class="number">8 </span>* j] * beta) + gamma)
                 .fold(F::one(), |x, y| x * y);
         }
 

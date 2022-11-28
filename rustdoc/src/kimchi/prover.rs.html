@@ -1546,6 +1546,50 @@
 <a href="#1546" id="1546">1546</a>
 <a href="#1547" id="1547">1547</a>
 <a href="#1548" id="1548">1548</a>
+<a href="#1549" id="1549">1549</a>
+<a href="#1550" id="1550">1550</a>
+<a href="#1551" id="1551">1551</a>
+<a href="#1552" id="1552">1552</a>
+<a href="#1553" id="1553">1553</a>
+<a href="#1554" id="1554">1554</a>
+<a href="#1555" id="1555">1555</a>
+<a href="#1556" id="1556">1556</a>
+<a href="#1557" id="1557">1557</a>
+<a href="#1558" id="1558">1558</a>
+<a href="#1559" id="1559">1559</a>
+<a href="#1560" id="1560">1560</a>
+<a href="#1561" id="1561">1561</a>
+<a href="#1562" id="1562">1562</a>
+<a href="#1563" id="1563">1563</a>
+<a href="#1564" id="1564">1564</a>
+<a href="#1565" id="1565">1565</a>
+<a href="#1566" id="1566">1566</a>
+<a href="#1567" id="1567">1567</a>
+<a href="#1568" id="1568">1568</a>
+<a href="#1569" id="1569">1569</a>
+<a href="#1570" id="1570">1570</a>
+<a href="#1571" id="1571">1571</a>
+<a href="#1572" id="1572">1572</a>
+<a href="#1573" id="1573">1573</a>
+<a href="#1574" id="1574">1574</a>
+<a href="#1575" id="1575">1575</a>
+<a href="#1576" id="1576">1576</a>
+<a href="#1577" id="1577">1577</a>
+<a href="#1578" id="1578">1578</a>
+<a href="#1579" id="1579">1579</a>
+<a href="#1580" id="1580">1580</a>
+<a href="#1581" id="1581">1581</a>
+<a href="#1582" id="1582">1582</a>
+<a href="#1583" id="1583">1583</a>
+<a href="#1584" id="1584">1584</a>
+<a href="#1585" id="1585">1585</a>
+<a href="#1586" id="1586">1586</a>
+<a href="#1587" id="1587">1587</a>
+<a href="#1588" id="1588">1588</a>
+<a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -2155,41 +2199,52 @@
         <span class="kw">let </span>env = {
             <span class="kw">let </span><span class="kw-2">mut </span>index_evals = HashMap::new();
             <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
-            index_evals.insert(Generic, <span class="kw-2">&amp;</span>index.cs.generic4);
-            index_evals.insert(Poseidon, <span class="kw-2">&amp;</span>index.cs.ps8);
-            index_evals.insert(CompleteAdd, <span class="kw-2">&amp;</span>index.cs.complete_addl4);
-            index_evals.insert(VarBaseMul, <span class="kw-2">&amp;</span>index.cs.mull8);
-            index_evals.insert(EndoMul, <span class="kw-2">&amp;</span>index.cs.emull);
-            index_evals.insert(EndoMulScalar, <span class="kw-2">&amp;</span>index.cs.endomul_scalar8);
+            index_evals.insert(Generic, <span class="kw-2">&amp;</span>index.cs.column_evaluations.generic_selector4);
+            index_evals.insert(Poseidon, <span class="kw-2">&amp;</span>index.cs.column_evaluations.poseidon_selector8);
+            index_evals.insert(
+                CompleteAdd,
+                <span class="kw-2">&amp;</span>index.cs.column_evaluations.complete_add_selector4,
+            );
+            index_evals.insert(VarBaseMul, <span class="kw-2">&amp;</span>index.cs.column_evaluations.mul_selector8);
+            index_evals.insert(EndoMul, <span class="kw-2">&amp;</span>index.cs.column_evaluations.emul_selector8);
+            index_evals.insert(
+                EndoMulScalar,
+                <span class="kw-2">&amp;</span>index.cs.column_evaluations.endomul_scalar_selector8,
+            );
             [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
                 .iter()
                 .enumerate()
                 .for_each(|(i, g)| {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = <span class="kw-2">&amp;</span>index.cs.chacha8 {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = <span class="kw-2">&amp;</span>index.cs.column_evaluations.chacha_selectors8 {
                         index_evals.insert(<span class="kw-2">*</span>g, <span class="kw-2">&amp;</span>c[i]);
                     }
                 });
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(polys) = <span class="kw-2">&amp;</span>index.cs.range_check_selector_polys {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(polys) = <span class="kw-2">&amp;</span>index.cs.column_evaluations.range_check_selectors8 {
                 index_evals.extend(
                     range_check::gadget::circuit_gates()
                         .iter()
                         .enumerate()
-                        .map(|(i, gate_type)| (<span class="kw-2">*</span>gate_type, <span class="kw-2">&amp;</span>polys[i].eval8)),
+                        .map(|(i, gate_type)| (<span class="kw-2">*</span>gate_type, <span class="kw-2">&amp;</span>polys[i])),
                 );
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index
+                .cs
+                .column_evaluations
+                .foreign_field_add_selector8
+                .as_ref()
+            {
                 index_evals.extend(
                     foreign_field_add::gadget::circuit_gates()
                         .iter()
                         .enumerate()
-                        .map(|(<span class="kw">_</span>, gate_type)| (<span class="kw-2">*</span>gate_type, <span class="kw-2">&amp;</span>selector.eval8)),
+                        .map(|(<span class="kw">_</span>, gate_type)| (<span class="kw-2">*</span>gate_type, selector)),
                 );
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index.cs.xor_selector_poly.as_ref() {
-                index_evals.insert(GateType::Xor16, <span class="kw-2">&amp;</span>selector.eval8);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index.cs.column_evaluations.xor_selector8.as_ref() {
+                index_evals.insert(GateType::Xor16, selector);
             }
 
             <span class="kw">let </span>mds = <span class="kw-2">&amp;</span>G::sponge_params().mds;
@@ -2204,7 +2259,7 @@
                     foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: <span class="kw-2">&amp;</span>lagrange.d8.this.w,
-                coefficient: <span class="kw-2">&amp;</span>index.cs.coefficients8,
+                coefficient: <span class="kw-2">&amp;</span>index.cs.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>index.cs.precomputations().vanishes_on_last_4_rows,
                 z: <span class="kw-2">&amp;</span>lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
@@ -2287,7 +2342,13 @@
 
             <span class="comment">// chacha
             </span>{
-                <span class="kw">if </span>index.cs.chacha8.as_ref().is_some() {
+                <span class="kw">if </span>index
+                    .cs
+                    .column_evaluations
+                    .chacha_selectors8
+                    .as_ref()
+                    .is_some()
+                {
                     <span class="kw">let </span>chacha0 = ChaCha0::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
                     t4 += <span class="kw-2">&amp;</span>chacha0;
 
@@ -2309,7 +2370,7 @@
             }
 
             <span class="comment">// range check gates
-            </span><span class="kw">if </span>index.cs.range_check_selector_polys.is_some() {
+            </span><span class="kw">if </span>index.cs.column_evaluations.range_check_selectors8.is_some() {
                 <span class="kw">for </span>gate_type <span class="kw">in </span>range_check::gadget::circuit_gates() {
                     <span class="kw">let </span>range_check_constraint =
                         range_check::gadget::circuit_gate_constraints(gate_type, <span class="kw-2">&amp;</span>all_alphas)
@@ -2322,7 +2383,12 @@
 
             <span class="comment">// foreign field addition
             </span>{
-                <span class="kw">if </span>index.cs.foreign_field_add_selector_poly.is_some() {
+                <span class="kw">if </span>index
+                    .cs
+                    .column_evaluations
+                    .foreign_field_add_selector8
+                    .is_some()
+                {
                     <span class="kw">let </span>ffadd = foreign_field_add::gadget::combined_constraints(<span class="kw-2">&amp;</span>all_alphas)
                         .evaluations(<span class="kw-2">&amp;</span>env);
                     <span class="macro">assert_eq!</span>(ffadd.domain().size, t4.domain().size);
@@ -2333,7 +2399,7 @@
 
             <span class="comment">// xor
             </span>{
-                <span class="kw">if </span>index.cs.xor_selector_poly.is_some() {
+                <span class="kw">if </span>index.cs.column_evaluations.xor_selector8.is_some() {
                     <span class="kw">let </span>xor = xor::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
                     <span class="macro">assert_eq!</span>(xor.domain().size, t4.domain().size);
                     t4 += <span class="kw-2">&amp;</span>xor;
@@ -2488,12 +2554,15 @@
         </span><span class="kw">let </span>chunked_evals = {
             <span class="kw">let </span>chunked_evals_zeta = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
                 s: array::from_fn(|i| {
-                    index.cs.sigmam[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
+                    index
+                        .cs
+                        .evaluated_column_coefficients
+                        .permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.coefficientsm[i]
+                    index.cs.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
@@ -2511,24 +2580,29 @@
 
                 generic_selector: index
                     .cs
-                    .genericm
+                    .evaluated_column_coefficients
+                    .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
                 poseidon_selector: index
                     .cs
-                    .psm
+                    .evaluated_column_coefficients
+                    .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
             };
             <span class="kw">let </span>chunked_evals_zeta_omega = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
                 s: array::from_fn(|i| {
-                    index.cs.sigmam[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
+                    index
+                        .cs
+                        .evaluated_column_coefficients
+                        .permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.coefficientsm[i]
+                    index.cs.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
@@ -2547,13 +2621,15 @@
 
                 generic_selector: index
                     .cs
-                    .genericm
+                    .evaluated_column_coefficients
+                    .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
                 poseidon_selector: index
                     .cs
-                    .psm
+                    .evaluated_column_coefficients
+                    .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
             };
@@ -2745,8 +2821,16 @@
         </span>polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>public_poly, <span class="prelude-val">None</span>, fixed_hiding(<span class="number">1</span>))]);
         polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>ft, <span class="prelude-val">None</span>, blinding_ft)]);
         polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>z_poly, <span class="prelude-val">None</span>, z_comm.blinders)]);
-        polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>index.cs.genericm, <span class="prelude-val">None</span>, fixed_hiding(<span class="number">1</span>))]);
-        polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>index.cs.psm, <span class="prelude-val">None</span>, fixed_hiding(<span class="number">1</span>))]);
+        polynomials.extend(<span class="macro">vec!</span>[(
+            <span class="kw-2">&amp;</span>index.cs.evaluated_column_coefficients.generic_selector,
+            <span class="prelude-val">None</span>,
+            fixed_hiding(<span class="number">1</span>),
+        )]);
+        polynomials.extend(<span class="macro">vec!</span>[(
+            <span class="kw-2">&amp;</span>index.cs.evaluated_column_coefficients.poseidon_selector,
+            <span class="prelude-val">None</span>,
+            fixed_hiding(<span class="number">1</span>),
+        )]);
         polynomials.extend(
             witness_poly
                 .iter()
@@ -2757,13 +2841,17 @@
         polynomials.extend(
             index
                 .cs
-                .coefficientsm
+                .evaluated_column_coefficients
+                .coefficients
                 .iter()
                 .map(|coefficientm| (coefficientm, <span class="prelude-val">None</span>, non_hiding(<span class="number">1</span>)))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
         polynomials.extend(
-            index.cs.sigmam[<span class="number">0</span>..PERMUTS - <span class="number">1</span>]
+            index
+                .cs
+                .evaluated_column_coefficients
+                .permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>]
                 .iter()
                 .map(|w| (w, <span class="prelude-val">None</span>, non_hiding(<span class="number">1</span>)))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),

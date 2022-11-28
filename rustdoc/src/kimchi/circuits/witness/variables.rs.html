@@ -98,14 +98,18 @@
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
 <a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::Field;
 <span class="doccomment">/// Layout variable handling
 ///
 ///   First, you use &quot;anchor&quot; names for the variables when specifying
 ///   the witness layout.
 ///
-///     Ex.
-///
+///   Ex.
+///```ignore
 ///     let layout = [
 ///         [
 ///             &amp;CopyShiftCell::create(0, 2, 8),
@@ -114,20 +118,23 @@
 ///             &amp;VariableCell::create(&quot;final_value&quot;),
 ///         ]
 ///      ;
+///```
 ///
 ///   Second, you use variables with the same names when performing the
 ///   witness computation.
 ///
-///     Ex.
+///   Ex.
+///```ignore
 ///
 ///     let sum_of_products = carry1 * limb1 + pow1 * limb2;
 ///     ...
 ///     let final_value = middle_bits.pow(&amp;[2u8]) * carry_flag
+///```
 ///
 ///   Third, when you&#39;re ready to generate the witness, you pass those
 ///   variables to the witness creation functions using variables!(foo, bar)
 ///   or variable_map!(&quot;foo&quot; =&gt; 12, &quot;bar&quot; =&gt; blah).
-///
+///```ignore
 ///     Ex.
 ///
 ///     init_witness(
@@ -135,6 +142,7 @@
 ///         &amp;layout,
 ///         &amp;variables!(sum_of_products, something_else, final_value),
 ///     );
+///```
 ///
 </span><span class="kw">use </span>std::{
     collections::HashMap,

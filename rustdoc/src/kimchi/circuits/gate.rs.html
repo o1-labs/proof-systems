@@ -576,17 +576,6 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
-<a href="#579" id="579">579</a>
-<a href="#580" id="580">580</a>
-<a href="#581" id="581">581</a>
-<a href="#582" id="582">582</a>
-<a href="#583" id="583">583</a>
-<a href="#584" id="584">584</a>
-<a href="#585" id="585">585</a>
-<a href="#586" id="586">586</a>
-<a href="#587" id="587">587</a>
-<a href="#588" id="588">588</a>
-<a href="#589" id="589">589</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -602,8 +591,6 @@
     curve::KimchiCurve,
 };
 <span class="kw">use </span>ark_ff::{bytes::ToBytes, PrimeField};
-<span class="kw">use </span>ark_poly::Evaluations;
-<span class="kw">use </span>ark_poly::Radix2EvaluationDomain <span class="kw">as </span>D;
 <span class="kw">use </span>num_traits::cast::ToPrimitive;
 <span class="kw">use </span>o1_utils::hasher::CryptoDigest;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -702,15 +689,6 @@
     <span class="comment">//ForeignFieldMul = 26,
     // Gates for Keccak follow:
     </span>Xor16 = <span class="number">27</span>,
-}
-
-<span class="doccomment">/// Selector polynomial
-</span><span class="attr">#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-</span><span class="kw">pub struct </span>SelectorPolynomial&lt;F: PrimeField&gt; {
-    <span class="doccomment">/// Evaluation form (evaluated over domain d8)
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>eval8: Evaluations&lt;F, D&lt;F&gt;&gt;,
 }
 
 <span class="doccomment">/// Gate error

@@ -706,14 +706,55 @@
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
 <a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
-</span><span class="kw">use super</span>::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
+</span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, tables::LookupTable},
+        lookup::{
+            constraints::LookupConfiguration, index::LookupConstraintSystem, tables::LookupTable,
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
         polynomials::{foreign_field_add, range_check},
@@ -733,13 +774,104 @@
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::array;
-<span class="kw">use </span>std::{collections::HashSet, sync::Arc};
+<span class="kw">use </span>std::sync::Arc;
 
 <span class="comment">//
 // ConstraintSystem
 //
 
+</span><span class="doccomment">/// Flags for optional features in the constraint system
+</span><span class="attr">#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(bound = <span class="string">&quot;F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize&quot;</span>)]
+</span><span class="kw">pub struct </span>FeatureFlags&lt;F&gt; {
+    <span class="doccomment">/// ChaCha gates
+    </span><span class="kw">pub </span>chacha: bool,
+    <span class="doccomment">/// Range check gates
+    </span><span class="kw">pub </span>range_check: bool,
+    <span class="doccomment">/// Foreign field addition gate
+    </span><span class="kw">pub </span>foreign_field_add: bool,
+    <span class="doccomment">/// XOR gate
+    </span><span class="kw">pub </span>xor: bool,
+    <span class="doccomment">/// Lookups
+    </span><span class="kw">pub </span>lookup_configuration: <span class="prelude-ty">Option</span>&lt;LookupConfiguration&lt;F&gt;&gt;,
+}
+
+<span class="doccomment">/// The polynomials representing evaluated columns, in coefficient form.
 </span><span class="attr">#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>EvaluatedColumnCoefficients&lt;F: PrimeField&gt; {
+    <span class="doccomment">/// permutation coefficients
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="kw">pub </span>permutation_coefficients: [DP&lt;F&gt;; PERMUTS],
+
+    <span class="doccomment">/// gate coefficients
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]
+    </span><span class="kw">pub </span>coefficients: [DP&lt;F&gt;; COLUMNS],
+
+    <span class="doccomment">/// generic gate selector
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>generic_selector: DP&lt;F&gt;,
+
+    <span class="doccomment">/// poseidon gate selector
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>poseidon_selector: DP&lt;F&gt;,
+}
+
+<span class="doccomment">/// The polynomials representing columns, in evaluation form.
+/// The evaluations are expanded to the domain size required for their constraints.
+</span><span class="attr">#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+</span><span class="kw">pub struct </span>ColumnEvaluations&lt;F: PrimeField&gt; {
+    <span class="doccomment">/// permutation coefficients over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
+    </span><span class="kw">pub </span>permutation_coefficients8: [E&lt;F, D&lt;F&gt;&gt;; PERMUTS],
+
+    <span class="doccomment">/// coefficients over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]
+    </span><span class="kw">pub </span>coefficients8: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS],
+
+    <span class="doccomment">/// generic selector over domain d4
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>generic_selector4: E&lt;F, D&lt;F&gt;&gt;,
+
+    <span class="doccomment">/// poseidon selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>poseidon_selector8: E&lt;F, D&lt;F&gt;&gt;,
+
+    <span class="doccomment">/// EC point addition selector over domain d4
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>complete_add_selector4: E&lt;F, D&lt;F&gt;&gt;,
+
+    <span class="doccomment">/// scalar multiplication selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>mul_selector8: E&lt;F, D&lt;F&gt;&gt;,
+
+    <span class="doccomment">/// endoscalar multiplication selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>emul_selector8: E&lt;F, D&lt;F&gt;&gt;,
+
+    <span class="doccomment">/// ChaCha selectors over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;[o1_utils::serialization::SerdeAs; 4]&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>chacha_selectors8: <span class="prelude-ty">Option</span>&lt;[E&lt;F, D&lt;F&gt;&gt;; <span class="number">4</span>]&gt;,
+
+    <span class="doccomment">/// EC point addition selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
+    </span><span class="kw">pub </span>endomul_scalar_selector8: E&lt;F, D&lt;F&gt;&gt;,
+
+    <span class="doccomment">/// Range check gate selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;[o1_utils::serialization::SerdeAs; range_check::gadget::GATE_COUNT]&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>range_check_selectors8: <span class="prelude-ty">Option</span>&lt;[E&lt;F, D&lt;F&gt;&gt;; range_check::gadget::GATE_COUNT]&gt;,
+
+    <span class="doccomment">/// Foreign field addition gate selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>foreign_field_add_selector8: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
+
+    <span class="doccomment">/// Xor gate selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>xor_selector8: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
+}
+
+<span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>ConstraintSystem&lt;F: PrimeField&gt; {
     <span class="comment">// Basics
@@ -755,91 +887,22 @@
     </span><span class="attr">#[serde(bound = <span class="string">&quot;CircuitGate&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>gates: Vec&lt;CircuitGate&lt;F&gt;&gt;,
 
-    <span class="comment">// Polynomials over the monomial base
-    // ----------------------------------
-    </span><span class="doccomment">/// permutation polynomial array
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
-    </span><span class="kw">pub </span>sigmam: [DP&lt;F&gt;; PERMUTS],
+    <span class="doccomment">/// flags for optional features
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;FeatureFlags&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>feature_flags: FeatureFlags&lt;F&gt;,
 
-    <span class="comment">// Coefficient polynomials. These define constant that gates can use as they like.
-    // ---------------------------------------
-    </span><span class="doccomment">/// coefficients polynomials in monomial form
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]
-    </span><span class="kw">pub </span>coefficientsm: [DP&lt;F&gt;; COLUMNS],
-    <span class="doccomment">/// coefficients polynomials in evaluation form
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; COLUMNS]&quot;</span>)]
-    </span><span class="kw">pub </span>coefficients8: [E&lt;F, D&lt;F&gt;&gt;; COLUMNS],
+    <span class="attr">#[serde(bound = <span class="string">&quot;EvaluatedColumnCoefficients&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>evaluated_column_coefficients: EvaluatedColumnCoefficients&lt;F&gt;,
 
-    <span class="comment">// Generic constraint selector polynomials
-    // ---------------------------------------
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>genericm: DP&lt;F&gt;,
+    <span class="attr">#[serde(bound = <span class="string">&quot;ColumnEvaluations&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>column_evaluations: ColumnEvaluations&lt;F&gt;,
 
-    <span class="comment">// Poseidon selector polynomials
-    // -----------------------------
-    </span><span class="doccomment">/// poseidon constraint selector polynomial
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>psm: DP&lt;F&gt;,
-
-    <span class="comment">// Generic constraint selector polynomials
-    // ---------------------------------------
-    </span><span class="doccomment">/// multiplication evaluations over domain.d4
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>generic4: E&lt;F, D&lt;F&gt;&gt;,
-
-    <span class="comment">// permutation polynomials
-    // -----------------------
-    </span><span class="doccomment">/// permutation polynomial array evaluations over domain d1
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
-    </span><span class="kw">pub </span>sigmal1: [E&lt;F, D&lt;F&gt;&gt;; PERMUTS],
-    <span class="doccomment">/// permutation polynomial array evaluations over domain d8
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
-    </span><span class="kw">pub </span>sigmal8: [E&lt;F, D&lt;F&gt;&gt;; PERMUTS],
     <span class="doccomment">/// SID polynomial
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>sid: Vec&lt;F&gt;,
 
-    <span class="comment">// Poseidon selector polynomials
-    // -----------------------------
-    </span><span class="doccomment">/// poseidon selector over domain.d8
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>ps8: E&lt;F, D&lt;F&gt;&gt;,
-
-    <span class="comment">// ECC arithmetic selector polynomials
-    // -----------------------------------
-    </span><span class="doccomment">/// EC point addition selector evaluations w over domain.d4
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>complete_addl4: E&lt;F, D&lt;F&gt;&gt;,
-    <span class="doccomment">/// scalar multiplication selector evaluations over domain.d8
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>mull8: E&lt;F, D&lt;F&gt;&gt;,
-    <span class="doccomment">/// endoscalar multiplication selector evaluations over domain.d8
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>emull: E&lt;F, D&lt;F&gt;&gt;,
-    <span class="doccomment">/// ChaCha indexes
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;[o1_utils::serialization::SerdeAs; 4]&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>chacha8: <span class="prelude-ty">Option</span>&lt;[E&lt;F, D&lt;F&gt;&gt;; <span class="number">4</span>]&gt;,
-    <span class="doccomment">/// EC point addition selector evaluations w over domain.d8
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>endomul_scalar8: E&lt;F, D&lt;F&gt;&gt;,
-
-    <span class="doccomment">/// Range check gate selector polynomials
-    </span><span class="attr">#[serde(
-        bound = <span class="string">&quot;[SelectorPolynomial&lt;F&gt;; range_check::gadget::GATE_COUNT]: Serialize + DeserializeOwned&quot;
-    </span>)]
-    </span><span class="kw">pub </span>range_check_selector_polys:
-        <span class="prelude-ty">Option</span>&lt;[SelectorPolynomial&lt;F&gt;; range_check::gadget::GATE_COUNT]&gt;,
-
     <span class="doccomment">/// Foreign field modulus
     </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
-
-    <span class="doccomment">/// Foreign field addition gate selector polynomial
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
-    </span><span class="kw">pub </span>foreign_field_add_selector_poly: <span class="prelude-ty">Option</span>&lt;SelectorPolynomial&lt;F&gt;&gt;,
-
-    <span class="doccomment">/// Xor gate selector polynomial
-    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;SelectorPolynomial&lt;F&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
-    </span><span class="kw">pub </span>xor_selector_poly: <span class="prelude-ty">Option</span>&lt;SelectorPolynomial&lt;F&gt;&gt;,
 
     <span class="doccomment">/// wire coordinate shifts
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
@@ -881,7 +944,7 @@
     gate_type: GateType,
     gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
     domain: <span class="kw-2">&amp;</span>EvaluationDomains&lt;F&gt;,
-) -&gt; SelectorPolynomial&lt;F&gt; {
+) -&gt; E&lt;F, D&lt;F&gt;&gt; {
     <span class="comment">// Coefficient form
     </span><span class="kw">let </span>coeff = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
         gates
@@ -899,9 +962,7 @@
     .interpolate();
 
     <span class="comment">// Evaluation form (evaluated over d8)
-    </span><span class="kw">let </span>eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
-
-    SelectorPolynomial { eval8 }
+    </span>coeff.evaluate_over_domain_by_ref(domain.d8)
 }
 
 <span class="doccomment">/// Create selector polynomials for a gate (i.e. a collection of circuit gates)
@@ -909,7 +970,7 @@
     gate_types: <span class="kw-2">&amp;</span>[GateType],
     gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
     domain: <span class="kw-2">&amp;</span>EvaluationDomains&lt;F&gt;,
-) -&gt; Vec&lt;SelectorPolynomial&lt;F&gt;&gt; {
+) -&gt; Vec&lt;E&lt;F, D&lt;F&gt;&gt;&gt; {
     Vec::from_iter(
         gate_types
             .iter()
@@ -1143,11 +1204,26 @@
             .collect();
         gates.append(<span class="kw-2">&amp;mut </span>padding);
 
-        <span class="comment">// Record which gates are used by this constraint system
-        </span><span class="kw">let </span><span class="kw-2">mut </span>circuit_gates_used = HashSet::&lt;GateType&gt;::default();
-        gates.iter().for_each(|gate| {
-            circuit_gates_used.insert(gate.typ);
-        });
+        <span class="kw">let </span><span class="kw-2">mut </span>feature_flags = FeatureFlags {
+            chacha: <span class="bool-val">false</span>,
+            range_check: <span class="bool-val">false</span>,
+            lookup_configuration: <span class="prelude-val">None</span>,
+            foreign_field_add: <span class="bool-val">false</span>,
+            xor: <span class="bool-val">false</span>,
+        };
+
+        <span class="kw">for </span>gate <span class="kw">in </span><span class="kw-2">&amp;</span>gates {
+            <span class="kw">match </span>gate.typ {
+                GateType::ChaCha0
+                | GateType::ChaCha1
+                | GateType::ChaCha2
+                | GateType::ChaChaFinal =&gt; feature_flags.chacha = <span class="bool-val">true</span>,
+                GateType::RangeCheck0 | GateType::RangeCheck1 =&gt; feature_flags.range_check = <span class="bool-val">true</span>,
+                GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
+                GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
+                <span class="kw">_ </span>=&gt; (),
+            }
+        }
 
         <span class="comment">//~ 4. sample the `PERMUTS` shifts.
         </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span>domain.d1);
@@ -1256,19 +1332,15 @@
 
         <span class="comment">// chacha gate
         </span><span class="kw">let </span>chacha8 = {
-            <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
-            <span class="kw">let </span>has_chacha_gate = gates
-                .iter()
-                .any(|gate| <span class="macro">matches!</span>(gate.typ, ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal));
-            <span class="kw">if </span>!has_chacha_gate {
+            <span class="kw">if </span>!feature_flags.chacha {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
                 <span class="kw">let </span>a: [<span class="kw">_</span>; <span class="number">4</span>] = array::from_fn(|i| {
                     <span class="kw">let </span>g = <span class="kw">match </span>i {
-                        <span class="number">0 </span>=&gt; ChaCha0,
-                        <span class="number">1 </span>=&gt; ChaCha1,
-                        <span class="number">2 </span>=&gt; ChaCha2,
-                        <span class="number">3 </span>=&gt; ChaChaFinal,
+                        <span class="number">0 </span>=&gt; GateType::ChaCha0,
+                        <span class="number">1 </span>=&gt; GateType::ChaCha1,
+                        <span class="number">2 </span>=&gt; GateType::ChaCha2,
+                        <span class="number">3 </span>=&gt; GateType::ChaChaFinal,
                         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid index&quot;</span>),
                     };
                     E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
@@ -1288,7 +1360,7 @@
         <span class="comment">// Range check constraint selector polynomials
         </span><span class="kw">let </span>range_gates = range_check::gadget::circuit_gates();
         <span class="kw">let </span>range_check_selector_polys = {
-            <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>range_gates.into_iter().collect()) {
+            <span class="kw">if </span>!feature_flags.range_check {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
                 <span class="prelude-val">Some</span>(array::from_fn(|i| {
@@ -1300,16 +1372,15 @@
         <span class="comment">// Foreign field addition constraint selector polynomial
         </span><span class="kw">let </span>ffadd_gates = foreign_field_add::gadget::circuit_gates();
         <span class="kw">let </span>foreign_field_add_selector_poly = {
-            <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>ffadd_gates.into_iter().collect()) {
+            <span class="kw">if </span>!feature_flags.foreign_field_add {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
                 <span class="prelude-val">Some</span>(selector_polynomial(ffadd_gates[<span class="number">0</span>], <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain))
             }
         };
 
-        <span class="kw">let </span>xor_gate = [GateType::Xor16];
         <span class="kw">let </span>xor_selector_poly = {
-            <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>xor_gate.into_iter().collect()) {
+            <span class="kw">if </span>!feature_flags.xor {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
                 <span class="prelude-val">Some</span>(selector_polynomial(GateType::Xor16, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain))
@@ -1340,6 +1411,9 @@
         </span><span class="kw">let </span>lookup_constraint_system =
             LookupConstraintSystem::create(<span class="kw-2">&amp;</span>gates, lookup_tables, runtime_tables, <span class="kw-2">&amp;</span>domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))<span class="question-mark">?</span>;
+        feature_flags.lookup_configuration = lookup_constraint_system
+            .as_ref()
+            .map(|lcs| lcs.configuration.clone());
 
         <span class="kw">let </span>sid = shifts.map[<span class="number">0</span>].clone();
 
@@ -1349,34 +1423,38 @@
         <span class="kw">let </span>domain_constant_evaluation = OnceCell::new();
 
         <span class="kw">let </span>constraints = ConstraintSystem {
-            chacha8,
-            endomul_scalar8,
             domain,
             public: <span class="self">self</span>.public,
             prev_challenges: <span class="self">self</span>.prev_challenges,
             sid,
-            sigmal1,
-            sigmal8,
-            sigmam,
-            genericm,
-            generic4,
-            coefficientsm,
-            coefficients8,
-            ps8,
-            psm,
-            complete_addl4,
-            mull8,
-            emull,
-            range_check_selector_polys,
-            foreign_field_add_selector_poly,
             foreign_field_modulus: <span class="self">self</span>.foreign_field_modulus,
-            xor_selector_poly,
             gates,
             shift: shifts.shifts,
             endo,
             <span class="comment">//fr_sponge_params: self.sponge_params,
             </span>lookup_constraint_system,
+            feature_flags,
             precomputations: domain_constant_evaluation,
+            evaluated_column_coefficients: EvaluatedColumnCoefficients {
+                permutation_coefficients: sigmam,
+                coefficients: coefficientsm,
+                generic_selector: genericm,
+                poseidon_selector: psm,
+            },
+            column_evaluations: ColumnEvaluations {
+                permutation_coefficients8: sigmal8,
+                coefficients8,
+                generic_selector4: generic4,
+                poseidon_selector8: ps8,
+                complete_add_selector4: complete_addl4,
+                mul_selector8: mull8,
+                emul_selector8: emull,
+                chacha_selectors8: chacha8,
+                endomul_scalar_selector8: endomul_scalar8,
+                range_check_selectors8: range_check_selector_polys,
+                foreign_field_add_selector8: foreign_field_add_selector_poly,
+                xor_selector8: xor_selector_poly,
+            },
         };
 
         <span class="kw">match </span><span class="self">self</span>.precomputations {
