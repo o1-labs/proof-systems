@@ -275,16 +275,6 @@
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
-<a href="#279" id="279">279</a>
-<a href="#280" id="280">280</a>
-<a href="#281" id="281">281</a>
-<a href="#282" id="282">282</a>
-<a href="#283" id="283">283</a>
-<a href="#284" id="284">284</a>
-<a href="#285" id="285">285</a>
-<a href="#286" id="286">286</a>
-<a href="#287" id="287">287</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].
 
 </span><span class="kw">use </span>ark_ff::{BigInteger, Field, FpParameters, PrimeField};
@@ -449,11 +439,10 @@
             <span class="prelude-val">Err</span>(FieldHelpersError::DeserializeBytes)
         );
 
-        <span class="macro">assert_eq!</span>(
-            BaseField::from_hex(<span class="string">&quot;25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39&quot;</span>)
-                .is_ok(),
-            <span class="bool-val">true
-        </span>);
+        <span class="macro">assert!</span>(BaseField::from_hex(
+            <span class="string">&quot;25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39&quot;
+        </span>)
+        .is_ok(),);
 
         <span class="kw">let </span>field_hex = <span class="string">&quot;f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36&quot;</span>;
         <span class="macro">assert_eq!</span>(
@@ -466,14 +455,11 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>field_bytes() {
-        <span class="macro">assert_eq!</span>(
-            BaseField::from_bytes(<span class="kw-2">&amp;</span>[
-                <span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>, <span class="number">149</span>, <span class="number">45</span>, <span class="number">39</span>, <span class="number">185</span>, <span class="number">126</span>, <span class="number">202</span>, <span class="number">208</span>, <span class="number">104</span>, <span class="number">182</span>,
-                <span class="number">152</span>, <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8
-            </span>])
-            .is_ok(),
-            <span class="bool-val">true
-        </span>);
+        <span class="macro">assert!</span>(BaseField::from_bytes(<span class="kw-2">&amp;</span>[
+            <span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>, <span class="number">149</span>, <span class="number">45</span>, <span class="number">39</span>, <span class="number">185</span>, <span class="number">126</span>, <span class="number">202</span>, <span class="number">208</span>, <span class="number">104</span>, <span class="number">182</span>, <span class="number">152</span>,
+            <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8
+        </span>])
+        .is_ok(),);
 
         <span class="macro">assert_eq!</span>(
             BaseField::from_bytes(<span class="kw-2">&amp;</span>[<span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>]),
@@ -495,7 +481,7 @@
             <span class="kw">let </span>bytes = [<span class="number">0</span>; <span class="number">32</span>];
             BaseField::from_bytes(<span class="kw-2">&amp;</span>bytes)
         }
-        <span class="macro">assert_eq!</span>(lifetime_test().is_ok(), <span class="bool-val">true</span>);
+        <span class="macro">assert!</span>(lifetime_test().is_ok());
     }
 
     <span class="attr">#[test]
@@ -508,27 +494,21 @@
             BaseField::from_bits(<span class="kw-2">&amp;</span>fe.to_bits()).expect(<span class="string">&quot;Failed to deserialize field bits&quot;</span>);
         <span class="macro">assert_eq!</span>(fe, fe_check);
 
-        <span class="macro">assert_eq!</span>(
-            BaseField::from_bits(
-                <span class="kw-2">&amp;</span>BaseField::from_hex(
-                    <span class="string">&quot;e9a8f3b489990ed7eddce497b7138c6a06ff802d1b58fca1997c5f2ee971cd32&quot;
-                </span>)
-                .expect(<span class="string">&quot;Failed to deserialize field hex&quot;</span>)
-                .to_bits()
-            )
-            .is_ok(),
-            <span class="bool-val">true
-        </span>);
+        <span class="macro">assert!</span>(BaseField::from_bits(
+            <span class="kw-2">&amp;</span>BaseField::from_hex(
+                <span class="string">&quot;e9a8f3b489990ed7eddce497b7138c6a06ff802d1b58fca1997c5f2ee971cd32&quot;
+            </span>)
+            .expect(<span class="string">&quot;Failed to deserialize field hex&quot;</span>)
+            .to_bits()
+        )
+        .is_ok(),);
 
         <span class="macro">assert_eq!</span>(
             BaseField::from_bits(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="bool-val">true</span>; BaseField::size_in_bits()]),
             <span class="prelude-val">Err</span>(FieldHelpersError::DeserializeBytes)
         );
 
-        <span class="macro">assert_eq!</span>(
-            BaseField::from_bits(<span class="kw-2">&amp;</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>]).is_ok(),
-            <span class="bool-val">true
-        </span>);
+        <span class="macro">assert!</span>(BaseField::from_bits(<span class="kw-2">&amp;</span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">true</span>]).is_ok(),);
 
         <span class="macro">assert_eq!</span>(
             BaseField::from_bits(<span class="kw-2">&amp;</span>[<span class="bool-val">true</span>, <span class="bool-val">false</span>, <span class="bool-val">false</span>]).expect(<span class="string">&quot;Failed to deserialize field bytes&quot;</span>),

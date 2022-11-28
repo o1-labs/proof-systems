@@ -2603,6 +2603,7 @@
 <a href="#2603" id="2603">2603</a>
 <a href="#2604" id="2604">2604</a>
 <a href="#2605" id="2605">2605</a>
+<a href="#2606" id="2606">2606</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -5117,17 +5118,18 @@
 
         <span class="comment">// create a dummy env
         </span><span class="kw">let </span>one = Fp::from(<span class="number">1u32</span>);
-        <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="macro">vec!</span>[];
-        gates.push(CircuitGate::create_generic_gadget(
-            Wire::for_row(<span class="number">0</span>),
-            GenericGateSpec::Const(<span class="number">1u32</span>.into()),
-            <span class="prelude-val">None</span>,
-        ));
-        gates.push(CircuitGate::create_generic_gadget(
-            Wire::for_row(<span class="number">1</span>),
-            GenericGateSpec::Const(<span class="number">1u32</span>.into()),
-            <span class="prelude-val">None</span>,
-        ));
+        <span class="kw">let </span>gates = <span class="macro">vec!</span>[
+            CircuitGate::create_generic_gadget(
+                Wire::for_row(<span class="number">0</span>),
+                GenericGateSpec::Const(<span class="number">1u32</span>.into()),
+                <span class="prelude-val">None</span>,
+            ),
+            CircuitGate::create_generic_gadget(
+                Wire::for_row(<span class="number">1</span>),
+                GenericGateSpec::Const(<span class="number">1u32</span>.into()),
+                <span class="prelude-val">None</span>,
+            ),
+        ];
         <span class="kw">let </span>constraint_system = ConstraintSystem::fp_for_testing(gates);
 
         <span class="kw">let </span>witness_cols: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|<span class="kw">_</span>| DensePolynomial::zero());

@@ -226,7 +226,7 @@
 
         <span class="comment">// proof verified in 1.710 ms
         </span><span class="kw">let </span>start = Instant::now();
-        ctx.batch_verification(<span class="macro">vec!</span>[proof.clone()]);
+        ctx.batch_verification(<span class="macro">vec!</span>[proof]);
         <span class="macro">println!</span>(<span class="string">&quot;proof verified in {}&quot;</span>, start.elapsed().as_millis());
     }
 }

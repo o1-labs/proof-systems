@@ -908,8 +908,6 @@
 <a href="#908" id="908">908</a>
 <a href="#909" id="909">909</a>
 <a href="#910" id="910">910</a>
-<a href="#911" id="911">911</a>
-<a href="#912" id="912">912</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Random oracle input structures and algorithms
 //!
 //! Definition of random oracle input structure and
@@ -1120,21 +1118,21 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>append_byte() {
-        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
+        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">8</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x01</span>]);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>append_two_bytes() {
-        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>]);
+        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0x10</span>, <span class="number">0xac</span>]);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">16</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x10</span>, <span class="number">0xac</span>]);
     }
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>append_five_bytes() {
-        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
+        <span class="kw">let </span>roi = ROInput::new().append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">40</span>);
         <span class="macro">assert!</span>(roi.bits.as_raw_slice() == [<span class="number">0x10</span>, <span class="number">0xac</span>, <span class="number">0x01</span>, <span class="number">0xeb</span>, <span class="number">0xca</span>]);
     }
@@ -1169,9 +1167,7 @@
         <span class="kw">let </span>scalar =
             Fq::from_hex(<span class="string">&quot;18b7ef420128e69623c0c0dcfa28d47a029d462720deb769d7b5dd6f17444216&quot;</span>)
                 .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
-        <span class="kw">let </span>roi = ROInput::new()
-            .append_scalar(scalar)
-            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
+        <span class="kw">let </span>roi = ROInput::new().append_scalar(scalar).append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">263</span>);
         <span class="macro">assert!</span>(
             roi.bits.as_raw_slice()
@@ -1215,7 +1211,7 @@
                 .expect(<span class="string">&quot;failed to create scalar&quot;</span>);
         <span class="kw">let </span>roi = ROInput::new()
             .append_scalar(scalar1)
-            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x2a</span>])
+            .append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0x2a</span>])
             .append_scalar(scalar2);
         <span class="macro">assert!</span>(roi.bits.len() == <span class="number">518</span>);
         <span class="macro">assert!</span>(
@@ -1280,7 +1276,7 @@
                     .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
             .append_u64(<span class="number">18446744073709551557</span>)
-            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0xba</span>, <span class="number">0xdc</span>, <span class="number">0x0f</span>, <span class="number">0xfe</span>])
+            .append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0xba</span>, <span class="number">0xdc</span>, <span class="number">0x0f</span>, <span class="number">0xfe</span>])
             .append_scalar(
                 Fq::from_hex(<span class="string">&quot;e70187e9b125524489d0433da76fd8287fa652eaebde147b45fa0cd86f171810&quot;</span>)
                     .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
@@ -1312,7 +1308,7 @@
             </span>.append_bool(<span class="bool-val">true</span>) <span class="comment">// fee payer pk odd
             </span>.append_u32(<span class="number">0</span>) <span class="comment">// nonce
             </span>.append_u32(u32::MAX) <span class="comment">// valid_until
-            </span>.append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo
+            </span>.append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo
             </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[0]
             </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[1]
             </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[2]
@@ -1325,7 +1321,7 @@
                 Fq::from_hex(<span class="string">&quot;de217a3017ca0b7a278e75f63c09890e3894be532d8dbadd30a7d450055f6d2d&quot;</span>)
                     .expect(<span class="string">&quot;failed to create scalar&quot;</span>),
             )
-            .append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0x01</span>]);
+            .append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0x01</span>]);
         <span class="macro">assert_eq!</span>(roi.bits.len(), <span class="number">862</span>);
         <span class="macro">assert_eq!</span>(
             roi.bits.as_raw_slice(),
@@ -1677,7 +1673,7 @@
             </span>.append_bool(<span class="bool-val">true</span>) <span class="comment">// fee payer pk odd
             </span>.append_u32(<span class="number">0</span>) <span class="comment">// nonce
             </span>.append_u32(u32::MAX) <span class="comment">// valid_until
-            </span>.append_bytes(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo
+            </span>.append_bytes(<span class="kw-2">&amp;</span>[<span class="number">0</span>; <span class="number">34</span>]) <span class="comment">// memo
             </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[0]
             </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[1]
             </span>.append_bool(<span class="bool-val">false</span>) <span class="comment">// tags[2]
@@ -1745,7 +1741,7 @@
             }
 
             <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;A&quot;</span>).into()
+                <span class="string">&quot;A&quot;</span>.to_string().into()
             }
         }
 
@@ -1764,7 +1760,7 @@
             }
 
             <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).into()
+                <span class="string">&quot;B&quot;</span>.to_string().into()
             }
         }
 
@@ -1785,7 +1781,7 @@
             }
 
             <span class="kw">fn </span>domain_string(<span class="kw">_</span>: <span class="self">Self</span>::D) -&gt; <span class="prelude-ty">Option</span>&lt;String&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;B&quot;</span>).into()
+                <span class="string">&quot;B&quot;</span>.to_string().into()
             }
         }
 
@@ -1809,7 +1805,7 @@
 
         <span class="kw">let </span>b2 = B2 {
             a: b1.a.clone(),
-            b: b1.b.clone(),
+            b: b1.b,
             c: <span class="bool-val">false</span>,
         };
         <span class="macro">assert_ne!</span>(b1.to_roinput(), b2.to_roinput());

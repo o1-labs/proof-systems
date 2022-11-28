@@ -183,8 +183,8 @@
         </span><span class="kw">let </span>coeffs = [one, one, one, one, one, one, one, one];
         <span class="kw">let </span>f = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>coeffs);
         <span class="kw">let </span>evals = f.to_chunked_polynomial(<span class="number">2</span>).evaluate_chunks(two);
-        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..<span class="number">4 </span>{
-            <span class="macro">assert!</span>(evals[i] == three);
+        <span class="kw">for </span>eval <span class="kw">in </span>evals.into_iter().take(<span class="number">4</span>) {
+            <span class="macro">assert!</span>(eval == three);
         }
     }
 }
