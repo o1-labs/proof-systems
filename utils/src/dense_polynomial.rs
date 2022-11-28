@@ -1,7 +1,7 @@
 //! This adds a few utility functions for the [DensePolynomial] arkworks type.
 
 use ark_ff::Field;
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
 use rayon::prelude::*;
 
 use crate::chunked_polynomial::ChunkedPolynomial;
@@ -43,13 +43,7 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
     }
 
     fn eval_polynomial(coeffs: &[F], x: F) -> F {
-        // this uses https://en.wikipedia.org/wiki/Horner%27s_method
-        let mut res = F::zero();
-        for c in coeffs.iter().rev() {
-            res *= &x;
-            res += c;
-        }
-        res
+        DensePolynomial::from_coefficients_slice(coeffs).evaluate(&x)
     }
 
     fn to_chunked_polynomial(&self, chunk_size: usize) -> ChunkedPolynomial<F> {

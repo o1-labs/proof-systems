@@ -13,11 +13,12 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            generic, permutation,
+            foreign_field_add, generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check,
             varbasemul::VarbaseMul,
+            xor,
         },
         wires::{COLUMNS, PERMUTS},
     },
@@ -40,8 +41,8 @@ use commitment_dlog::commitment::{
     b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 use itertools::Itertools;
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::{sponge::ScalarChallenge, FqSponge};
 use rayon::prelude::*;
 use std::array;
 use std::collections::HashMap;
@@ -232,6 +233,16 @@ where
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
         let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+        let public_comm = {
+            index
+                .srs
+                .mask_custom(
+                    public_comm.clone(),
+                    &public_comm.map(|_| G::ScalarField::one()),
+                )
+                .unwrap()
+                .commitment
+        };
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
@@ -596,6 +607,7 @@ where
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
+            index_evals.insert(Generic, &index.cs.generic4);
             index_evals.insert(Poseidon, &index.cs.ps8);
             index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
             index_evals.insert(VarBaseMul, &index.cs.mull8);
@@ -619,6 +631,19 @@ where
                 );
             }
 
+            if let Some(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
+                index_evals.extend(
+                    foreign_field_add::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
+                );
+            }
+
+            if let Some(selector) = index.cs.xor_selector_poly.as_ref() {
+                index_evals.insert(GateType::Xor16, &selector.eval8);
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -628,6 +653,7 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
+                    foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.cs.coefficients8,
@@ -642,16 +668,19 @@ where
 
         let quotient_poly = {
             // generic
-            let alphas =
-                all_alphas.get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-            let mut t4 = index.cs.gnrc_quot(alphas, &lagrange.d4.this.w);
+            let mut t4 = {
+                let generic_constraint = generic::Generic::combined_constraints(&all_alphas);
+                let generic4 = generic_constraint.evaluations(&env);
 
-            if cfg!(debug_assertions) {
-                let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
-                let gen_minus_pub = &t4 + &p4;
+                if cfg!(debug_assertions) {
+                    let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
+                    let gen_minus_pub = &generic4 + &p4;
 
-                check_constraint!(index, gen_minus_pub);
-            }
+                    check_constraint!(index, gen_minus_pub);
+                }
+
+                generic4
+            };
 
             // complete addition
             {
@@ -740,6 +769,27 @@ where
                     assert_eq!(range_check_constraint.domain().size, t8.domain().size);
                     t8 += &range_check_constraint;
                     check_constraint!(index, range_check_constraint);
+                }
+            }
+
+            // foreign field addition
+            {
+                if index.cs.foreign_field_add_selector_poly.is_some() {
+                    let ffadd = foreign_field_add::gadget::combined_constraints(&all_alphas)
+                        .evaluations(&env);
+                    assert_eq!(ffadd.domain().size, t4.domain().size);
+                    t4 += &ffadd;
+                    check_constraint!(index, ffadd);
+                }
+            }
+
+            // xor
+            {
+                if index.cs.xor_selector_poly.is_some() {
+                    let xor = xor::combined_constraints(&all_alphas).evaluations(&env);
+                    assert_eq!(xor.domain().size, t4.domain().size);
+                    t4 += &xor;
+                    check_constraint!(index, xor);
                 }
             }
 
@@ -894,6 +944,11 @@ where
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
+                coefficients: array::from_fn(|i| {
+                    index.cs.coefficientsm[i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta)
+                }),
                 w: array::from_fn(|i| {
                     witness_poly[i]
                         .to_chunked_polynomial(index.max_poly_size)
@@ -921,6 +976,11 @@ where
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array::from_fn(|i| {
                     index.cs.sigmam[0..PERMUTS - 1][i]
+                        .to_chunked_polynomial(index.max_poly_size)
+                        .evaluate_chunks(zeta_omega)
+                }),
+                coefficients: array::from_fn(|i| {
+                    index.cs.coefficientsm[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
@@ -966,6 +1026,9 @@ where
                 .zip(power_of_eval_points_for_chunks.iter()) // (zeta , zeta_omega)
                 .map(|(es, &e1)| ProofEvaluations::<G::ScalarField> {
                     s: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.s[i], e1)),
+                    coefficients: array::from_fn(|i| {
+                        DensePolynomial::eval_polynomial(&es.coefficients[i], e1)
+                    }),
                     w: array::from_fn(|i| DensePolynomial::eval_polynomial(&es.w[i], e1)),
                     z: DensePolynomial::eval_polynomial(&es.z, e1),
                     lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
@@ -995,18 +1058,10 @@ where
                 // that we can drop the coefficient forms of the index polynomials from
                 // the constraint system struct
 
-                // generic (not part of linearization yet)
-                let alphas = all_alphas
-                    .get_alphas(ArgumentType::Gate(GateType::Generic), generic::CONSTRAINTS);
-                let mut f = index
-                    .cs
-                    .gnrc_lnrz(alphas, &evals[0].w, evals[0].generic_selector)
-                    .interpolate();
-
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                f += &index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                let f = index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial
                 let f = {
@@ -1139,7 +1194,7 @@ where
         //~~ - the 15 registers/witness columns
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
-        polynomials.extend(vec![(&public_poly, None, non_hiding(1))]);
+        polynomials.extend(vec![(&public_poly, None, fixed_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
         polynomials.extend(vec![(&index.cs.genericm, None, fixed_hiding(1))]);
@@ -1149,6 +1204,14 @@ where
                 .iter()
                 .zip(w_comm.iter())
                 .map(|(w, c)| (w, None, c.blinders.clone()))
+                .collect::<Vec<_>>(),
+        );
+        polynomials.extend(
+            index
+                .cs
+                .coefficientsm
+                .iter()
+                .map(|coefficientm| (coefficientm, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(

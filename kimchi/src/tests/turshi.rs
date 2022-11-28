@@ -2,8 +2,8 @@ use crate::circuits::{
     gate::CircuitGate,
     polynomials::turshi::{testing::*, witness::*},
 };
-use cairo::{CairoMemory, CairoProgram};
 use mina_curves::pasta::Fp as F;
+use turshi::{CairoMemory, CairoProgram};
 
 #[test]
 fn test_cairo_should_fail() {

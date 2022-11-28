@@ -43,6 +43,17 @@
     - [Permutation](./kimchi/permut.md)
     - [Lookup](./kimchi/lookup.md)
 
+# Snarky
+
+- [Overview](./snarky/overview.md)
+- [API](./snarky/api.md)
+- [snarky wrapper](./snarky/snarky-wrapper.md)
+- [Kimchi backend](./snarky/kimchi-backend.md)
+- [Vars](./snarky/vars.md)
+- [Booleans](./snarky/booleans.md)
+- [Circuit generation](./snarky/circuit-generation.md)
+- [Witness generation](./snarky/witness-generation.md)
+
 # Pickles & Inductive Proof Systems
 
 - [Overview](./fundamentals/zkbook_ips.md)
@@ -56,7 +67,9 @@
 - [RFC 1: Final check](./plonk/final_check.md)
 - [RFC 2: Maller's optimization for kimchi](./plonk/maller_15.md)
 - [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
-
+- [RFC 4: Foreign Field Addition](./rfcs/ffadd.md)
+- [RFC 5: Keccak](./rfcs/keccak.md)
+  
 # Specifications
 
 - [Poseidon hash](./specs/poseidon.md)

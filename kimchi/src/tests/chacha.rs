@@ -15,11 +15,11 @@ use colored::Colorize;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use o1_utils::math;
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use o1_utils::math;
 use std::array;
 use std::time::Instant;
 
@@ -59,11 +59,7 @@ fn chacha_prover() {
     let gates: Vec<CircuitGate<Fp>> = gates
         .into_iter()
         .enumerate()
-        .map(|(i, typ)| CircuitGate {
-            typ,
-            coeffs: vec![],
-            wires: Wire::new(i),
-        })
+        .map(|(i, typ)| CircuitGate::new(typ, Wire::for_row(i), vec![]))
         .collect();
 
     // create the index
@@ -108,21 +104,16 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         GateType::ChaCha0,
         GateType::Zero,
     ];
-    let gates: Vec<CircuitGate<Fp>> = gates
-        .into_iter()
-        .enumerate()
-        .map(|(i, typ)| CircuitGate {
-            typ,
-            coeffs: vec![],
-            wires: Wire::new(i),
-        })
-        // Pad with generic gates to get a sufficiently-large domain.
-        .chain((4..513).map(|i| CircuitGate {
-            typ: GateType::Generic,
-            coeffs: vec![Fp::zero(); 10],
-            wires: Wire::new(i),
-        }))
-        .collect();
+    let gates: Vec<CircuitGate<Fp>> =
+        gates
+            .into_iter()
+            .enumerate()
+            .map(|(i, typ)| CircuitGate::new(typ, Wire::for_row(i), vec![]))
+            // Pad with generic gates to get a sufficiently-large domain.
+            .chain((4..513).map(|i| {
+                CircuitGate::new(GateType::Generic, Wire::for_row(i), vec![Fp::zero(); 10])
+            }))
+            .collect();
 
     let mut rows = vec![];
 

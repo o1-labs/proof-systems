@@ -38,26 +38,10 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       `circuit_gates` - vector of circuit gates comprising this gate
     pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
         let mut circuit_gates = vec![
-            CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: Wire::new(start_row),
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: Wire::new(start_row + 1),
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::RangeCheck1,
-                wires: Wire::new(start_row + 2),
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::Zero,
-                wires: Wire::new(start_row + 3),
-                coeffs: vec![],
-            },
+            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]),
+            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row + 1), vec![]),
+            CircuitGate::new(GateType::RangeCheck1, Wire::for_row(start_row + 2), vec![]),
+            CircuitGate::new(GateType::Zero, Wire::for_row(start_row + 3), vec![]),
         ];
 
         // copy v0p0
@@ -81,14 +65,8 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       `next_row`      - next row after this gate
     ///       `circuit_gates` - vector of circuit gates comprising this gate
     pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
-        (
-            start_row + 1,
-            vec![CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: Wire::new(start_row),
-                coeffs: vec![],
-            }],
-        )
+        let gate = CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]);
+        (start_row + 1, vec![gate])
     }
 
     /// Verify the witness against a range check (related) circuit gate
@@ -185,6 +163,7 @@ impl<F: PrimeField> CircuitGate<F> {
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: cs.endo,
                     mds: &G::sponge_params().mds,
+                    foreign_field_modulus: None,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &cs.coefficients8,

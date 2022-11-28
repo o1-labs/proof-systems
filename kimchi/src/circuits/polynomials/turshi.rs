@@ -91,13 +91,13 @@ use crate::{
     proof::ProofEvaluations,
 };
 use ark_ff::{FftField, Field, PrimeField};
-use cairo::{
-    runner::{CairoInstruction, CairoProgram, Pointers},
-    word::{FlagBits, Offsets},
-};
 use rand::{prelude::StdRng, SeedableRng};
 use std::array;
 use std::marker::PhantomData;
+use turshi::{
+    runner::{CairoInstruction, CairoProgram, Pointers},
+    word::{FlagBits, Offsets},
+};
 
 const NUM_FLAGS: usize = 16;
 pub const CIRCUIT_GATE_COUNT: usize = 4;
@@ -107,37 +107,21 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 impl<F: PrimeField> CircuitGate<F> {
     /// This function creates a `CairoClaim` gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoClaim,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoClaim, wires, vec![])
     }
     /// This function creates a `CairoInstruction` gate
     pub fn create_cairo_instruction(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoInstruction,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoInstruction, wires, vec![])
     }
 
     /// This function creates a `CairoFlags` gate
     pub fn create_cairo_flags(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoFlags,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoFlags, wires, vec![])
     }
 
     /// This function creates a `CairoTransition` gate
     pub fn create_cairo_transition(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::CairoTransition,
-            wires,
-            coeffs: vec![],
-        }
+        CircuitGate::new(GateType::CairoTransition, wires, vec![])
     }
 
     /// Gadget generator of the whole cairo circuits from an absolute row and number of instructions
@@ -158,15 +142,15 @@ impl<F: PrimeField> CircuitGate<F> {
         // 4n-2: 1 row for Auxiliary argument (no constraints)
         let mut gates: Vec<CircuitGate<F>> = Vec::new();
         if num > 0 {
-            let claim_gate = Wire::new(row);
+            let claim_gate = Wire::for_row(row);
             gates.push(CircuitGate::create_cairo_claim(claim_gate));
         }
         let last = num - 1;
         for i in 0..last {
-            let ins_gate = Wire::new(row + 4 * i + 1);
-            let flg_gate = Wire::new(row + 4 * i + 2);
-            let tra_gate = Wire::new(row + 4 * i + 3);
-            let aux_gate = Wire::new(row + 4 * i + 4);
+            let ins_gate = Wire::for_row(row + 4 * i + 1);
+            let flg_gate = Wire::for_row(row + 4 * i + 2);
+            let tra_gate = Wire::for_row(row + 4 * i + 3);
+            let aux_gate = Wire::for_row(row + 4 * i + 4);
             gates.push(CircuitGate::create_cairo_instruction(ins_gate));
             gates.push(CircuitGate::create_cairo_flags(flg_gate));
             gates.push(CircuitGate::create_cairo_transition(tra_gate));
@@ -175,8 +159,8 @@ impl<F: PrimeField> CircuitGate<F> {
         // next available row after the full
         let next = row + 4 * last + 3;
         // the final instruction
-        let ins_gate = Wire::new(next - 2);
-        let aux_gate = Wire::new(next - 1);
+        let ins_gate = Wire::for_row(next - 2);
+        let aux_gate = Wire::for_row(next - 1);
         gates.push(CircuitGate::create_cairo_instruction(ins_gate));
         gates.push(CircuitGate::zero(aux_gate));
 
@@ -244,6 +228,7 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            foreign_field_modulus: None,
         };
 
         let pt = F::rand(rng);

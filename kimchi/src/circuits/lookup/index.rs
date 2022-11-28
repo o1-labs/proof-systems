@@ -39,7 +39,7 @@ pub enum LookupError {
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct LookupSelectors<T> {
     /// Chacha pattern lookup selector
-    pub chacha: Option<T>,
+    pub xor: Option<T>,
     /// ChachaFinal pattern lookup selector
     pub chacha_final: Option<T>,
     /// LookupGate pattern lookup selector
@@ -52,7 +52,7 @@ pub struct LookupSelectors<T> {
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 struct LookupSelectorsSerdeAs<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub chacha: Option<E<F, D<F>>>,
+    pub xor: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub chacha_final: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -69,7 +69,7 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
         S: serde::Serializer,
     {
         let repr = LookupSelectorsSerdeAs {
-            chacha: val.chacha.clone(),
+            xor: val.xor.clone(),
             chacha_final: val.chacha_final.clone(),
             lookup_gate: val.lookup_gate.clone(),
             range_check_gate: val.range_check_gate.clone(),
@@ -86,13 +86,13 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
         Dz: serde::Deserializer<'de>,
     {
         let LookupSelectorsSerdeAs {
-            chacha,
+            xor,
             chacha_final,
             lookup_gate,
             range_check_gate,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
-            chacha,
+            xor,
             chacha_final,
             lookup_gate,
             range_check_gate,
@@ -105,7 +105,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
 
     fn index(&self, index: LookupPattern) -> &Self::Output {
         match index {
-            LookupPattern::ChaCha => &self.chacha,
+            LookupPattern::Xor => &self.xor,
             LookupPattern::ChaChaFinal => &self.chacha_final,
             LookupPattern::LookupGate => &self.lookup_gate,
             LookupPattern::RangeCheckGate => &self.range_check_gate,
@@ -116,7 +116,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
 impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
-            LookupPattern::ChaCha => &mut self.chacha,
+            LookupPattern::Xor => &mut self.xor,
             LookupPattern::ChaChaFinal => &mut self.chacha_final,
             LookupPattern::LookupGate => &mut self.lookup_gate,
             LookupPattern::RangeCheckGate => &mut self.range_check_gate,
@@ -127,7 +127,7 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
 impl<T> LookupSelectors<T> {
     pub fn map<U, F: Fn(T) -> U>(self, f: F) -> LookupSelectors<U> {
         let LookupSelectors {
-            chacha,
+            xor,
             chacha_final,
             lookup_gate,
             range_check_gate,
@@ -137,7 +137,7 @@ impl<T> LookupSelectors<T> {
         #[allow(clippy::redundant_closure)]
         let f = |x| f(x);
         LookupSelectors {
-            chacha: chacha.map(f),
+            xor: xor.map(f),
             chacha_final: chacha_final.map(f),
             lookup_gate: lookup_gate.map(f),
             range_check_gate: range_check_gate.map(f),
@@ -146,7 +146,7 @@ impl<T> LookupSelectors<T> {
 
     pub fn as_ref(&self) -> LookupSelectors<&T> {
         LookupSelectors {
-            chacha: self.chacha.as_ref(),
+            xor: self.xor.as_ref(),
             chacha_final: self.chacha_final.as_ref(),
             lookup_gate: self.lookup_gate.as_ref(),
             range_check_gate: self.range_check_gate.as_ref(),

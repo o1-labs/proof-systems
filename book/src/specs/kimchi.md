@@ -1054,7 +1054,7 @@ The values are decomposed into limbs as follows.
         <2> <--4--> <---------------18---------------->
    v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 ```
-##### Witness structure:
+**Witness structure:**
 
 | Row | Contents        |
 | --- | --------------- |
@@ -1075,13 +1075,13 @@ Because we are constrained to 4 lookups per row, we are forced to postpone
 some lookups of v0 and v1 to the final row.
 ```
 
-##### Constraints:
+**Constraints:**
 
 For efficiency, the limbs are constrained differently according to their type.
 * 12-bit limbs are constrained with plookups
 * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 
-##### Layout:
+**Layout:**
 
 This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and constrained.
 
@@ -1130,7 +1130,8 @@ Different rows are constrained using different `CircuitGate` types
  Each CircuitGate type corresponds to a unique polynomial and thus is assigned
  its own unique powers of alpha
 ```
-##### `RangeCheck0` - Range check constraints
+
+**`RangeCheck0` - Range check constraints**
 
 * This circuit gate is used to partially constrain values $v_0$ and $v_1$
 * Optionally, it can be used on its own as a single 64-bit range check by
@@ -1164,7 +1165,8 @@ Given value `v` the layout looks like this
 |     14 | crumb   `vc7` |
 
 where the notation `vpi` and `vci` defined in the "Layout" section above.
-##### `RangeCheck1` - Range check constraints
+
+**`RangeCheck1` - Range check constraints**
 
 * This circuit gate is used to fully constrain $v_2$
 * It operates on the `Curr` and `Next` rows
@@ -1194,6 +1196,163 @@ Given value `v2` the layout looks like this
 |     14 | crumb   `v2c9` | crumb `v2c19` |
 
 where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
+
+
+#### Foreign Field Addition
+
+These circuit gates are used to constrain that
+
+```text
+left_input +/- right_input = field_overflow * foreign_modulus + result
+```
+
+Documentation:
+
+ For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+
+Mapping:
+ To make things clearer, the following mapping between the variable names
+ used in the code and those of the RFC document can be helpful.
+
+```text
+    left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  bound_lo -> u0
+    left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
+    left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
+
+    field_overflow  -> q
+    sign            -> s
+    carry_lo        -> c0
+    carry_mi        -> c1
+    bound_carry_lo  -> k0
+    bound_carry_mi  -> k1
+```
+
+Note:
+ Our limbs are 88-bit long. We denote with:
+ - `lo` the least significant limb (in little-endian, this is from 0 to 87)
+ - `mi` the middle limb            (in little-endian, this is from 88 to 175)
+ - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
+
+Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
+
+Let `right_input_lo`, `right_input_mi`, `right_input_hi` be 88-bit limbs of the right element
+
+Let `foreign_modulus_lo`, `foreign_modulus_mi`, `foreign_modulus_hi` be 88-bit limbs of the foreign modulus
+
+Then the limbs of the result are
+
+- `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
+- `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
+- `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
+
+`field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
+
+`result_carry_i` $= -1, 0, 1$ are auxiliary variables that handle carries between limbs
+
+Apart from the range checks of the chained inputs, we need to do an additional range check for a final bound
+to make sure that the result is less than the modulus, by adding `2^{3*88} - foreign_modulus` to it.
+ (This can be computed easily from the limbs of the modulus)
+Note that `2^{264}` as limbs represents: (0, 0, 0, 1) then:
+
+The upper-bound check can be calculated as
+- `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
+- `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+- `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
+
+Which is equivalent to another foreign field addition with right input 2^{264}, q = 1 and s = 1
+- `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
+- `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+- `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
+
+`bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
+
+The range check of `bound` can be skipped until the end of the operations
+and `result` is an intermediate value that is unused elsewhere (since the final `result`
+must have had the right amount of moduli subtracted along the way, meaning a multiple of the modulus).
+In other words, intermediate results could potentially give a valid witness that satisfies the constraints
+but where the result is larger than the modulus (yet smaller than 2^{264}). The reason that we have a
+ final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
+ (meaning less than the modulus).
+
+You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+
+| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
+|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
+|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
+|   6 | `sign`           (copy) |                         |  1              (check) |                   |
+|   7 | `field_overflow`        |                         |  1              (check) |                   |
+|   8 | `carry_lo`              |                         | `bound_carry_lo`        |                   |
+|   9 | `carry_mi`              |                         | `bound_carry_mi`        |                   |
+|  10 |                         |                         |                         |                   |
+|  11 |                         |                         |                         |                   |
+|  12 |                         |                         |                         |                   |
+|  13 |                         |                         |                         |                   |
+|  14 |                         |                         |                         |                   |
+
+We reuse the foreign field addition gate for the final bound check since this is an addition with a
+specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+be done by copy constraining these values with a public input value. One could have a specific gate
+for just this check requiring less constrains, but the cost of adding one more selector gate outweights
+the savings of one row and a few constraints of difference.
+
+
+#### Xor
+
+`Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+
+* This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
+* The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+* This gate operates on the `Curr` and `Next` rows.
+
+It uses three different types of constraints
+* copy          - copy to another cell (32-bits)
+* plookup       - xor-table plookup (4-bits)
+* decomposition - the constraints inside the gate
+
+The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+Given values `in1`, `in2` and `out`, the layout looks like this:
+
+| Column |          `Curr`  |          `Next`  |
+| ------ | ---------------- | ---------------- |
+|      0 | copy     `in1`   | copy     `in1'`  |
+|      1 | copy     `in2`   | copy     `in2'`  |
+|      2 | copy     `out`   | copy     `out'`  |
+|      3 | plookup0 `in1_0` |                  |
+|      4 | plookup1 `in1_1` |                  |
+|      5 | plookup2 `in1_2` |                  |
+|      6 | plookup3 `in1_3` |                  |
+|      7 | plookup0 `in2_0` |                  |
+|      8 | plookup1 `in2_1` |                  |
+|      9 | plookup2 `in2_2` |                  |
+|     10 | plookup3 `in2_3` |                  |
+|     11 | plookup0 `out_0` |                  |
+|     12 | plookup1 `out_1` |                  |
+|     13 | plookup2 `out_2` |                  |
+|     14 | plookup3 `out_3` |                  |
+
+One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
+that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
+to obtain a gadget for 64-bit words XOR:
+
+| Row | `CircuitGate` | Purpose                                    |
+| --- | ------------- | ------------------------------------------ |
+|   0 | `Xor16`       | Xor 2 least significant bytes of the words |
+|   1 | `Xor16`       | Xor next 2 bytes of the words              |
+|   2 | `Xor16`       | Xor next 2 bytes of the words              |
+|   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+|   4 | `Zero`        | Zero values, can be reused as generic gate |
+
+```admonition::notice
+ We could half the number of rows of the 64-bit XOR gadget by having lookups
+ for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+ Rough computations show that if we run 8 or more Keccaks in one circuit we should
+ use the 8-bit XOR table.
+```
 
 
 ## Setup
@@ -1450,9 +1609,20 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    // Range check gates polynomial commitments
+    /// Range check commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
+
+    /// Foreign field modulus
+    pub foreign_field_modulus: Option<BigUint>,
+
+    /// Foreign field addition gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_add_comm: Option<PolyComm<G>>,
+
+    /// Xor commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub xor_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -1595,6 +1765,9 @@ pub struct ProofEvaluations<Field> {
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
+    /// coefficient polynomials
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
+    pub coefficients: [Field; COLUMNS],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial
@@ -1924,6 +2097,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	- permutation commitment
 	- index commitments that use the coefficients
 	- witness commitments
+	- coefficient commitments
 	- sigma commitments
 	- lookup commitments
 #### Batch verification of proofs

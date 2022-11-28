@@ -1,11 +1,11 @@
 use ark_ff::{Field, PrimeField};
-use oracle::sponge::{DefaultFrSponge, ScalarChallenge};
-use oracle::{
+use mina_poseidon::sponge::{DefaultFrSponge, ScalarChallenge};
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi as SC,
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
-use crate::proof::ProofEvaluations;
+use crate::proof::{LookupEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -48,7 +48,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
 
     fn challenge(&mut self) -> ScalarChallenge<Fr> {
         // TODO: why involve sponge_5_wires here?
-        ScalarChallenge(self.squeeze(oracle::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+        ScalarChallenge(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
     }
 
     fn digest(mut self) -> Fr {
@@ -63,27 +63,67 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             w,
             z,
             s,
+            coefficients,
             lookup,
             generic_selector,
             poseidon_selector,
         } = ProofEvaluations::transpose(e);
 
-        let mut points = vec![&z, &generic_selector, &poseidon_selector];
-
-        for w in w.iter() {
-            points.push(w);
-        }
-        for s in s.iter() {
-            points.push(s);
-        }
+        let mut points = vec![
+            &z,
+            &generic_selector,
+            &poseidon_selector,
+            &w[0],
+            &w[1],
+            &w[2],
+            &w[3],
+            &w[4],
+            &w[5],
+            &w[6],
+            &w[7],
+            &w[8],
+            &w[9],
+            &w[10],
+            &w[11],
+            &w[12],
+            &w[13],
+            &w[14],
+            &coefficients[0],
+            &coefficients[1],
+            &coefficients[2],
+            &coefficients[3],
+            &coefficients[4],
+            &coefficients[5],
+            &coefficients[6],
+            &coefficients[7],
+            &coefficients[8],
+            &coefficients[9],
+            &coefficients[10],
+            &coefficients[11],
+            &coefficients[12],
+            &coefficients[13],
+            &coefficients[14],
+            &s[0],
+            &s[1],
+            &s[2],
+            &s[3],
+            &s[4],
+            &s[5],
+        ];
 
         if let Some(l) = lookup.as_ref() {
-            points.push(&l.aggreg);
-            points.push(&l.table);
-            for s in &l.sorted {
+            let LookupEvaluations {
+                sorted,
+                aggreg,
+                table,
+                runtime,
+            } = l;
+            points.push(aggreg);
+            points.push(table);
+            for s in sorted {
                 points.push(s);
             }
-            l.runtime.iter().for_each(|x| points.push(x));
+            runtime.iter().for_each(|x| points.push(x));
         }
 
         for p in points {

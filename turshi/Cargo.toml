@@ -1,0 +1,24 @@
+[package]
+name = "turshi"
+version = "0.1.0"
+description = "An experimental implement of Cairo for kimchi"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[lib]
+path = "src/lib.rs"
+
+[dependencies]
+ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+hex = "0.4"
+
+o1-utils = { path = "../utils", version = "0.1.0" }
+
+[dev-dependencies]
+ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+
+mina-curves = { path = "../curves", version = "0.1.0" }

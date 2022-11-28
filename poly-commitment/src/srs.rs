@@ -37,9 +37,9 @@ pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
 where
     G::BaseField: PrimeField,
 {
-    let endo_q: G::BaseField = oracle::sponge::endo_coefficient();
+    let endo_q: G::BaseField = mina_poseidon::sponge::endo_coefficient();
     let endo_r = {
-        let potential_endo_r: G::ScalarField = oracle::sponge::endo_coefficient();
+        let potential_endo_r: G::ScalarField = mina_poseidon::sponge::endo_coefficient();
         let t = G::prime_subgroup_generator();
         let (x, y) = t.to_coordinates().unwrap();
         let phi_t = G::of_coordinates(x * endo_q, y);

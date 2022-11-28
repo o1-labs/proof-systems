@@ -8,10 +8,11 @@ use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFina
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::permutation;
+use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
+use crate::circuits::polynomials::{generic, permutation, xor};
 use crate::circuits::{
     expr::{Column, ConstantExpr, Expr, Linearization, PolishToken},
     gate::GateType,
@@ -28,6 +29,9 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    foreign_field_add: bool,
+    xor: bool,
+    generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -54,6 +58,18 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     if range_check {
         expr += range_check::gadget::combined_constraints(&powers_of_alpha);
+    }
+
+    if foreign_field_add {
+        expr += ForeignFieldAdd::combined_constraints(&powers_of_alpha);
+    }
+
+    if xor {
+        expr += xor::Xor16::combined_constraints(&powers_of_alpha);
+    }
+
+    if generic {
+        expr += generic::Generic::combined_constraints(&powers_of_alpha);
     }
 
     // permutation
@@ -136,10 +152,20 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
     chacha: bool,
     range_check: bool,
     lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    foreign_field_addition: bool,
+    xor: bool,
+    generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(lookup_constraint_system);
 
-    let (expr, powers_of_alpha) = constraints_expr(chacha, range_check, lookup_constraint_system);
+    let (expr, powers_of_alpha) = constraints_expr(
+        chacha,
+        range_check,
+        lookup_constraint_system,
+        foreign_field_addition,
+        xor,
+        generic,
+    );
 
     let linearization = expr
         .linearize(evaluated_cols)

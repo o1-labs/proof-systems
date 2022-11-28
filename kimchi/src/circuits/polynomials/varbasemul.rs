@@ -130,16 +130,8 @@ use CurrOrNext::{Curr, Next};
 impl<F: PrimeField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
-            CircuitGate {
-                typ: GateType::VarBaseMul,
-                wires: wires[0],
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::Zero,
-                wires: wires[1],
-                coeffs: vec![],
-            },
+            CircuitGate::new(GateType::VarBaseMul, wires[0], vec![]),
+            CircuitGate::new(GateType::Zero, wires[1], vec![]),
         ]
     }
 

@@ -34,17 +34,17 @@
 //~
 
 use crate::circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType},
     constraints::ConstraintSystem,
+    expr::constraints::ExprOps,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::GateWires,
 };
 use ark_ff::{FftField, PrimeField, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-};
-use rayon::prelude::*;
+use ark_poly::univariate::DensePolynomial;
 use std::array;
+use std::marker::PhantomData;
 
 /// Number of constraints produced by the gate.
 pub const CONSTRAINTS: u32 = 2;
@@ -62,6 +62,53 @@ pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
 
 /// Number of generic of registers by a double generic gate.
 pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
+
+/// Implementation of the `Generic` gate
+pub struct Generic<F>(PhantomData<F>);
+
+impl<F> Argument<F> for Generic<F>
+where
+    F: PrimeField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
+    const CONSTRAINTS: u32 = 2;
+
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+        // First generic gate
+        let left_coeff1 = env.coeff(0);
+        let right_coeff1 = env.coeff(1);
+        let out_coeff1 = env.coeff(2);
+        let mul_coeff1 = env.coeff(3);
+        let constant1 = env.coeff(4);
+        let left1 = env.witness_curr(0);
+        let right1 = env.witness_curr(1);
+        let out1 = env.witness_curr(2);
+
+        let constraint1 = left_coeff1 * left1.clone()
+            + right_coeff1 * right1.clone()
+            + out_coeff1 * out1
+            + mul_coeff1 * left1 * right1
+            + constant1;
+
+        // Second generic gate
+        let left_coeff2 = env.coeff(5);
+        let right_coeff2 = env.coeff(6);
+        let out_coeff2 = env.coeff(7);
+        let mul_coeff2 = env.coeff(8);
+        let constant2 = env.coeff(9);
+        let left2 = env.witness_curr(3);
+        let right2 = env.witness_curr(4);
+        let out2 = env.witness_curr(5);
+
+        let constraint2 = left_coeff2 * left2.clone()
+            + right_coeff2 * right2.clone()
+            + out_coeff2 * out2
+            + mul_coeff2 * left2 * right2
+            + constant2;
+
+        vec![constraint1, constraint2]
+    }
+}
 
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
@@ -91,11 +138,7 @@ pub enum GenericGateSpec<F> {
 impl<F: PrimeField> CircuitGate<F> {
     /// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
-        CircuitGate {
-            typ: GateType::Generic,
-            wires,
-            coeffs: c.to_vec(),
-        }
+        CircuitGate::new(GateType::Generic, wires, c.to_vec())
     }
 
     /// This allows you to create two generic gates by passing the desired
@@ -170,146 +213,6 @@ impl<F: PrimeField> CircuitGate<F> {
 //~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
 //~
 //~ where the $c_i$ are the [coefficients]().
-
-impl<F: PrimeField> ConstraintSystem<F> {
-    /// generic constraint quotient poly contribution computation
-    pub fn gnrc_quot(
-        &self,
-        mut alphas: impl Iterator<Item = F>,
-        witness_cols_d4: &[Evaluations<F, D<F>>; COLUMNS],
-    ) -> Evaluations<F, D<F>> {
-        let generic_gate = |alpha_pow, coeff_offset, register_offset| {
-            let mut res = Evaluations::from_vec_and_domain(
-                vec![F::zero(); self.domain.d4.size()],
-                self.domain.d4,
-            );
-
-            // addition
-            for (witness_d4, selector_d8) in witness_cols_d4
-                .iter()
-                .skip(register_offset)
-                .zip(self.coefficients8.iter().skip(coeff_offset))
-                .take(GENERIC_REGISTERS)
-            {
-                res.evals
-                    .par_iter_mut()
-                    .enumerate()
-                    .for_each(|(i, eval)| *eval += witness_d4.evals[i] * selector_d8[2 * i]);
-            }
-
-            // multiplication
-            let mut mul = &witness_cols_d4[register_offset] * &witness_cols_d4[register_offset + 1];
-            let mul_selector_d8 = &self.coefficients8[coeff_offset + 3];
-            mul.evals
-                .par_iter_mut()
-                .enumerate()
-                .for_each(|(i, eval)| *eval *= mul_selector_d8[2 * i]);
-            res += &mul;
-
-            // constant
-            let constant_d8 = &self.coefficients8[coeff_offset + 4];
-            res.evals
-                .par_iter_mut()
-                .enumerate()
-                .for_each(|(i, e)| *e += constant_d8[2 * i]);
-
-            // alpha
-            let alpha_pow = {
-                let mut res = self.precomputations().constant_1_d4.clone();
-                res.evals.par_iter_mut().for_each(|x| *x *= &alpha_pow);
-                res
-            };
-
-            &res * &alpha_pow
-        };
-
-        let alpha_pow1 = alphas
-            .next()
-            .expect("not enough powers of alpha for the generic gate");
-        let mut res = generic_gate(alpha_pow1, 0, 0);
-
-        let alpha_pow2 = alphas
-            .next()
-            .expect("not enough powers of alpha for the generic gate");
-        res += &generic_gate(alpha_pow2, GENERIC_COEFFS, GENERIC_REGISTERS);
-
-        // generic selector
-        &res * &self.generic4
-    }
-
-    /// produces
-    ///
-    /// ```ignore
-    /// alpha * generic(zeta) * w[0](zeta) * w[1](zeta),
-    /// alpha * generic(zeta) * w[0](zeta),
-    /// alpha * generic(zeta) * w[1](zeta),
-    /// alpha * generic(zeta) * w[2](zeta)
-    /// ```
-    pub fn gnrc_scalars(
-        mut alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
-        generic_zeta: F,
-    ) -> Vec<F> {
-        // setup
-        let mut res = vec![];
-
-        let mut generic_gate = |alpha_pow, register_offset| {
-            let alpha_generic = alpha_pow * generic_zeta;
-
-            // addition
-            res.push(alpha_generic * w_zeta[register_offset]);
-            res.push(alpha_generic * w_zeta[register_offset + 1]);
-            res.push(alpha_generic * w_zeta[register_offset + 2]);
-
-            // multplication
-            res.push(alpha_generic * w_zeta[register_offset] * w_zeta[register_offset + 1]);
-
-            // constant
-            res.push(alpha_generic);
-        };
-
-        let alpha_pow1 = alphas
-            .next()
-            .expect("not enough alpha powers for generic gate");
-        generic_gate(alpha_pow1, 0);
-
-        let alpha_pow2 = alphas
-            .next()
-            .expect("not enough alpha powers for generic gate");
-        generic_gate(alpha_pow2, GENERIC_REGISTERS);
-
-        res
-    }
-
-    /// generic constraint linearization poly contribution computation
-    pub fn gnrc_lnrz(
-        &self,
-        alphas: impl Iterator<Item = F>,
-        w_zeta: &[F; COLUMNS],
-        generic_zeta: F,
-    ) -> Evaluations<F, D<F>> {
-        let d1 = self.domain.d1;
-        let n = d1.size();
-
-        // get scalars
-        let scalars = Self::gnrc_scalars(alphas, w_zeta, generic_zeta);
-
-        //
-        let mut res = Evaluations::from_vec_and_domain(vec![F::zero(); n], d1);
-
-        let scale = self.coefficients8[0].evals.len() / n;
-
-        let coeffs = self.coefficients8.iter();
-        for (scalar, coeff) in scalars.into_iter().zip(coeffs) {
-            res.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                *e += scalar * coeff[scale * i];
-            });
-        }
-
-        // l * qwm[0] + r * qwm[1] + o * qwm[2] + l * r * qmm + qc
-        res
-    }
-}
 
 // -------------------------------------------------
 
@@ -433,7 +336,7 @@ pub mod testing {
         for _ in 0..public {
             let r = gates_row.next().unwrap();
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 GenericGateSpec::Pub,
                 None,
             ));
@@ -452,7 +355,7 @@ pub mod testing {
                 mul_coeff: Some(2u32.into()),
             };
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 g1,
                 Some(g2),
             ));
@@ -464,7 +367,7 @@ pub mod testing {
             let g1 = GenericGateSpec::Const(3u32.into());
             let g2 = GenericGateSpec::Const(5u32.into());
             gates.push(CircuitGate::create_generic_gadget(
-                Wire::new(r),
+                Wire::for_row(r),
                 g1,
                 Some(g2),
             ));
@@ -513,73 +416,5 @@ pub mod testing {
 
             witness[3][r] = 5u32.into();
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::circuits::wires::COLUMNS;
-    use ark_ff::{UniformRand, Zero};
-    use ark_poly::{EvaluationDomain, Polynomial};
-    use mina_curves::pasta::{Fp, Vesta};
-    use rand::SeedableRng;
-    use std::array;
-
-    #[test]
-    fn test_generic_polynomial() {
-        // create circuit
-        let gates = testing::create_circuit::<Fp>(0, 0);
-
-        // create constraint system
-        let cs = ConstraintSystem::fp_for_testing(gates);
-
-        // create witness
-        let n = cs.domain.d1.size();
-        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); n]);
-        testing::fill_in_witness(0, &mut witness, &[]);
-
-        // make sure we're done filling the witness correctly
-        cs.verify::<Vesta>(&witness, &[]).unwrap();
-
-        // generate witness polynomials
-        let witness_evals: [Evaluations<Fp, D<Fp>>; COLUMNS] = array::from_fn(|col| {
-            Evaluations::from_vec_and_domain(witness[col].clone(), cs.domain.d1)
-        });
-        let witness: [DensePolynomial<Fp>; COLUMNS] =
-            array::from_fn(|col| witness_evals[col].interpolate_by_ref());
-        let witness_d4: [Evaluations<Fp, D<Fp>>; COLUMNS] =
-            array::from_fn(|col| witness[col].evaluate_over_domain_by_ref(cs.domain.d4));
-
-        // make sure we've done that correctly
-        let public = DensePolynomial::zero();
-        assert!(cs.verify_generic(&witness, &public));
-
-        // random zeta
-        let rng = &mut rand::rngs::StdRng::from_seed([0; 32]);
-        let zeta = Fp::rand(rng);
-
-        // compute quotient by dividing with vanishing polynomial
-        let alphas = vec![Fp::rand(rng), Fp::rand(rng)];
-        let t1 = cs.gnrc_quot(&mut alphas.clone().into_iter(), &witness_d4);
-        let t_before_division = &t1.interpolate() + &public;
-        let (t, rem) = t_before_division
-            .divide_by_vanishing_poly(cs.domain.d1)
-            .unwrap();
-        assert!(rem.is_zero());
-        let t_zeta = t.evaluate(&zeta);
-
-        // compute linearization f(z)
-        let w_zeta: [Fp; COLUMNS] = array::from_fn(|col| witness[col].evaluate(&zeta));
-        let generic_zeta = cs.genericm.evaluate(&zeta);
-
-        let f = cs
-            .gnrc_lnrz(&mut alphas.clone().into_iter(), &w_zeta, generic_zeta)
-            .interpolate();
-        let f_zeta = f.evaluate(&zeta);
-
-        // check that f(z) = t(z) * Z_H(z)
-        let z_h_zeta = cs.domain.d1.evaluate_vanishing_polynomial(zeta);
-        assert!(f_zeta == t_zeta * z_h_zeta);
     }
 }
