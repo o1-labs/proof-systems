@@ -433,6 +433,15 @@ impl Op2 {
     }
 }
 
+/// The feature flags that can be used to enable or disable parts of constraints.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FeatureFlag {
+    ChaCha,
+    RangeCheck,
+    ForeignFieldAdd,
+    Xor,
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -456,6 +465,7 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
+    EnabledIf(FeatureFlag, Box<Expr<C>>),
 }
 
 /// For efficiency of evaluation, we compile expressions to
@@ -468,7 +478,10 @@ pub enum PolishToken<F> {
     Gamma,
     JointCombiner,
     EndoCoefficient,
-    Mds { row: usize, col: usize },
+    Mds {
+        row: usize,
+        col: usize,
+    },
     ForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
@@ -481,6 +494,8 @@ pub enum PolishToken<F> {
     UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
+    /// Skip the given number of tokens if the feature is disabled, and emit a zero instead.
+    SkipIf(FeatureFlag, usize),
 }
 
 impl Variable {
@@ -519,56 +534,67 @@ impl<F: FftField> PolishToken<F> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
 
+        let mut skip_count = 0;
+
         for t in toks.iter() {
-            use PolishToken::*;
-            match t {
-                Alpha => stack.push(c.alpha),
-                Beta => stack.push(c.beta),
-                Gamma => stack.push(c.gamma),
-                JointCombiner => {
-                    stack.push(c.joint_combiner.expect("no joint lookup was expected"))
-                }
-                EndoCoefficient => stack.push(c.endo_coefficient),
-                Mds { row, col } => stack.push(c.mds[*row][*col]),
-                ForeignFieldModulus(i) => {
-                    if let Some(modulus) = c.foreign_field_modulus.clone() {
-                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
+            if skip_count > 0 {
+                skip_count -= 1;
+            } else {
+                use PolishToken::*;
+                match t {
+                    Alpha => stack.push(c.alpha),
+                    Beta => stack.push(c.beta),
+                    Gamma => stack.push(c.gamma),
+                    JointCombiner => {
+                        stack.push(c.joint_combiner.expect("no joint lookup was expected"))
+                    }
+                    EndoCoefficient => stack.push(c.endo_coefficient),
+                    Mds { row, col } => stack.push(c.mds[*row][*col]),
+                    ForeignFieldModulus(i) => {
+                        if let Some(modulus) = c.foreign_field_modulus.clone() {
+                            stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
+                        }
+                    }
+                    VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
+                    UnnormalizedLagrangeBasis(i) => {
+                        stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
+                    }
+                    Literal(x) => stack.push(*x),
+                    Dup => stack.push(stack[stack.len() - 1]),
+                    Cell(v) => match v.evaluate(evals) {
+                        Ok(x) => stack.push(x),
+                        Err(e) => return Err(e),
+                    },
+                    Pow(n) => {
+                        let i = stack.len() - 1;
+                        stack[i] = stack[i].pow(&[*n as u64]);
+                    }
+                    Add => {
+                        let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                        let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                        stack.push(x + y);
+                    }
+                    Mul => {
+                        let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                        let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                        stack.push(x * y);
+                    }
+                    Sub => {
+                        let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                        let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                        stack.push(x - y);
+                    }
+                    Store => {
+                        let x = stack[stack.len() - 1];
+                        cache.push(x);
+                    }
+                    Load(i) => stack.push(cache[*i]),
+                    SkipIf(_feature, count) => {
+                        todo!("Handle features");
+                        skip_count = *count;
+                        stack.push(F::zero());
                     }
                 }
-                VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
-                UnnormalizedLagrangeBasis(i) => {
-                    stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
-                }
-                Literal(x) => stack.push(*x),
-                Dup => stack.push(stack[stack.len() - 1]),
-                Cell(v) => match v.evaluate(evals) {
-                    Ok(x) => stack.push(x),
-                    Err(e) => return Err(e),
-                },
-                Pow(n) => {
-                    let i = stack.len() - 1;
-                    stack[i] = stack[i].pow(&[*n as u64]);
-                }
-                Add => {
-                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
-                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
-                    stack.push(x + y);
-                }
-                Mul => {
-                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
-                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
-                    stack.push(x * y);
-                }
-                Sub => {
-                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
-                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
-                    stack.push(x - y);
-                }
-                Store => {
-                    let x = stack[stack.len() - 1];
-                    cache.push(x);
-                }
-                Load(i) => stack.push(cache[*i]),
             }
         }
 
@@ -611,6 +637,7 @@ impl<C> Expr<C> {
             }
             Pow(e, d) => d * e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
+            EnabledIf(_, e) => e.degree(d1_size),
         }
     }
 }
@@ -1256,6 +1283,17 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                     }
                 }
             }
+            Expr::EnabledIf(feature, e) => {
+                let tok = PolishToken::SkipIf(*feature, 0);
+                res.push(tok);
+                let len_before = res.len();
+                /* Clone the cache, to make sure we don't try to access cached statements later
+                when the feature flag is off. */
+                let mut cache = cache.clone();
+                e.to_polish_(&mut cache, res);
+                let len_after = res.len();
+                res[len_before - 1] = PolishToken::SkipIf(*feature, len_after - len_before);
+            }
         }
     }
 
@@ -1279,6 +1317,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
+            EnabledIf(feature, e) => EnabledIf(*feature, Box::new(e.evaluate_constants_(c))),
         }
     }
 
@@ -1326,6 +1365,10 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
+            EnabledIf(_feature, _e) => {
+                todo!("Handle features");
+                Ok(F::zero())
+            }
         }
     }
 
@@ -1373,6 +1416,10 @@ impl<F: FftField> Expr<F> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
+            EnabledIf(_feature, _e) => {
+                todo!("Handle features");
+                Ok(F::zero())
+            }
         }
     }
 
@@ -1537,6 +1584,10 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
+            Expr::EnabledIf(_feature, _e) => {
+                todo!("Handle features");
+                EvalResult::Constant(F::zero())
+            }
         };
         Either::Left(res)
     }
@@ -1688,6 +1739,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             VanishesOnLast4Rows => true,
             UnnormalizedLagrangeBasis(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
+            EnabledIf(_, x) => x.is_constant(evaluated),
         }
     }
 
@@ -1763,6 +1815,10 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             Square(x) => {
                 let x = x.monomials(ev);
                 mul_monomials(&x, &x)
+            }
+            EnabledIf(_feature, _x) => {
+                todo!("Handle features");
+                HashMap::default()
             }
         }
     }
@@ -2178,6 +2234,9 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            EnabledIf(feature, e) => {
+                format!("enabled_if({:?}, (fun () -> {})", feature, e.ocaml(cache))
+            }
         }
     }
 
@@ -2219,6 +2278,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.latex_name()
             }
+            EnabledIf(feature, _) => format!("{:?}", feature),
         }
     }
 
@@ -2241,6 +2301,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            EnabledIf(feature, _) => format!("{:?}", feature),
         }
     }
 
