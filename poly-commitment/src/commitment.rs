@@ -606,11 +606,10 @@ impl<G: CommitmentCurve> SRS<G> {
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
     ) -> PolyComm<G> {
-        let lagrange_basis = self.lagrange_bases.get(&domain.size());
-        let basis = match lagrange_basis.as_ref() {
-            None => panic!("lagrange bases for size {} not found", domain.size()),
-            Some(v) => v,
-        };
+        let basis = self
+            .lagrange_bases
+            .get(&domain.size())
+            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
         let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
             PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
         };
