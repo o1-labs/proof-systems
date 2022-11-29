@@ -74,7 +74,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         }
 
         // Pad the witness to domain d1 size
-        let padding_length = index.cs
+        let padding_length = index
+            .cs
             .domain
             .d1
             .size
@@ -104,14 +105,16 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let mut index_evals = HashMap::new();
         index_evals.insert(
             self.typ,
-            index.column_evaluations
+            index
+                .column_evaluations
                 .foreign_field_mul_selector8
                 .as_ref()
                 .unwrap(),
         );
 
         // Set up lookup environment
-        let lcs = index.cs
+        let lcs = index
+            .cs
             .lookup_constraint_system
             .as_ref()
             .ok_or(CircuitGateError::MissingLookupConstraintSystem(self.typ))?;
