@@ -214,82 +214,69 @@ impl<G: KimchiCurve> ProverIndex<G> {
 
             sigma_comm: array::from_fn(|i| {
                 self.srs.commit_non_hiding(
-                    &self
-                        .cs
-                        .evaluated_column_coefficients
-                        .permutation_coefficients[i],
+                    &self.evaluated_column_coefficients.permutation_coefficients[i],
                     None,
                 )
             }),
             coefficients_comm: array::from_fn(|i| {
                 self.srs.commit_evaluations_non_hiding(
                     domain,
-                    &self.cs.column_evaluations.coefficients8[i],
+                    &self.column_evaluations.coefficients8[i],
                     None,
                 )
             }),
-            generic_comm: mask_fixed(self.srs.commit_non_hiding(
-                &self.cs.evaluated_column_coefficients.generic_selector,
-                None,
-            )),
+            generic_comm: mask_fixed(
+                self.srs
+                    .commit_non_hiding(&self.evaluated_column_coefficients.generic_selector, None),
+            ),
 
-            psm_comm: mask_fixed(self.srs.commit_non_hiding(
-                &self.cs.evaluated_column_coefficients.poseidon_selector,
-                None,
-            )),
+            psm_comm: mask_fixed(
+                self.srs
+                    .commit_non_hiding(&self.evaluated_column_coefficients.poseidon_selector, None),
+            ),
 
             complete_add_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.column_evaluations.complete_add_selector4,
+                &self.column_evaluations.complete_add_selector4,
                 None,
             ),
             mul_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.column_evaluations.mul_selector8,
+                &self.column_evaluations.mul_selector8,
                 None,
             ),
             emul_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.column_evaluations.emul_selector8,
+                &self.column_evaluations.emul_selector8,
                 None,
             ),
 
             endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.column_evaluations.endomul_scalar_selector8,
+                &self.column_evaluations.endomul_scalar_selector8,
                 None,
             ),
 
-            chacha_comm: self
-                .cs
-                .column_evaluations
-                .chacha_selectors8
-                .as_ref()
-                .map(|c| {
-                    array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
-                }),
+            chacha_comm: self.column_evaluations.chacha_selectors8.as_ref().map(|c| {
+                array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
+            }),
 
-            range_check_comm: self
-                .cs
-                .column_evaluations
-                .range_check_selectors8
-                .as_ref()
-                .map(|evals8| {
+            range_check_comm: self.column_evaluations.range_check_selectors8.as_ref().map(
+                |evals8| {
                     array::from_fn(|i| {
                         self.srs
                             .commit_evaluations_non_hiding(domain, &evals8[i], None)
                     })
-                }),
+                },
+            ),
 
             foreign_field_add_comm: self
-                .cs
                 .column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8, None)),
 
             xor_comm: self
-                .cs
                 .column_evaluations
                 .xor_selector8
                 .as_ref()

@@ -15,6 +15,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::SetupError,
+    prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
@@ -144,12 +145,6 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "FeatureFlags<F>: Serialize + DeserializeOwned")]
     pub feature_flags: FeatureFlags<F>,
 
-    #[serde(bound = "EvaluatedColumnCoefficients<F>: Serialize + DeserializeOwned")]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<F>,
-
-    #[serde(bound = "ColumnEvaluations<F>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<F>,
-
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
@@ -254,18 +249,16 @@ impl<F: PrimeField> ConstraintSystem<F> {
             .set(precomputations)
             .expect("Precomputation has been set before");
     }
+}
 
+impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
     ///     witness: wire assignment witness
     ///     RETURN: verification status
-    pub fn verify<G: KimchiCurve<ScalarField = F>>(
-        &self,
-        witness: &[Vec<F>; COLUMNS],
-        public: &[F],
-    ) -> Result<(), GateError> {
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
+        let pad = vec![F::zero(); self.cs.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array::from_fn(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
@@ -273,7 +266,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         });
 
         // check each rows' wiring
-        for (row, gate) in self.gates.iter().enumerate() {
+        for (row, gate) in self.cs.gates.iter().enumerate() {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
@@ -300,7 +293,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.coeffs[0] != F::one() {
+            if row < self.cs.public && gate.coeffs[0] != F::one() {
                 return Err(GateError::IncorrectPublic(row));
             }
 
@@ -312,7 +305,9 @@ impl<F: PrimeField> ConstraintSystem<F> {
         // all good!
         Ok(())
     }
+}
 
+impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
@@ -349,6 +344,228 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 },
                 this: WitnessEvals { w: w8, z: z8 },
             },
+        }
+    }
+
+    pub(crate) fn evaluated_column_coefficients(&self) -> EvaluatedColumnCoefficients<F> {
+        // compute permutation polynomials
+        let shifts = Shifts::new(&self.domain.d1);
+
+        let mut sigmal1: [Vec<F>; PERMUTS] =
+            array::from_fn(|_| vec![F::zero(); self.domain.d1.size()]);
+
+        for (row, gate) in self.gates.iter().enumerate() {
+            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
+                sigma[row] = shifts.cell_to_field(cell);
+            }
+        }
+
+        let sigmal1: [_; PERMUTS] = {
+            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+            [
+                E::<F, D<F>>::from_vec_and_domain(s0, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s1, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s2, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s3, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s4, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s5, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s6, self.domain.d1),
+            ]
+        };
+
+        let permutation_coefficients: [DP<F>; PERMUTS] =
+            array::from_fn(|i| sigmal1[i].clone().interpolate());
+
+        // poseidon gate
+        let poseidon_selector = E::<F, D<F>>::from_vec_and_domain(
+            self.gates.iter().map(|gate| gate.ps()).collect(),
+            self.domain.d1,
+        )
+        .interpolate();
+
+        // double generic gate
+        let generic_selector = E::<F, D<F>>::from_vec_and_domain(
+            self.gates
+                .iter()
+                .map(|gate| {
+                    if matches!(gate.typ, GateType::Generic) {
+                        F::one()
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            self.domain.d1,
+        )
+        .interpolate();
+
+        // coefficient polynomial
+        let coefficients: [_; COLUMNS] = array::from_fn(|i| {
+            let padded = self
+                .gates
+                .iter()
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
+                .collect();
+            let eval = E::from_vec_and_domain(padded, self.domain.d1);
+            eval.interpolate()
+        });
+
+        EvaluatedColumnCoefficients {
+            permutation_coefficients,
+            coefficients,
+            generic_selector,
+            poseidon_selector,
+        }
+    }
+
+    pub(crate) fn column_evaluations(
+        &self,
+        evaluated_column_coefficients: &EvaluatedColumnCoefficients<F>,
+    ) -> ColumnEvaluations<F> {
+        let permutation_coefficients8 = array::from_fn(|i| {
+            evaluated_column_coefficients.permutation_coefficients[i]
+                .evaluate_over_domain_by_ref(self.domain.d8)
+        });
+
+        let poseidon_selector8 = evaluated_column_coefficients
+            .poseidon_selector
+            .evaluate_over_domain_by_ref(self.domain.d8);
+
+        // ECC gates
+        let complete_add_selector4 = selector_polynomial(
+            GateType::CompleteAdd,
+            &self.gates,
+            &self.domain,
+            &self.domain.d4,
+        );
+
+        let mul_selector8 = selector_polynomial(
+            GateType::VarBaseMul,
+            &self.gates,
+            &self.domain,
+            &self.domain.d8,
+        );
+
+        let emul_selector8 = selector_polynomial(
+            GateType::EndoMul,
+            &self.gates,
+            &self.domain,
+            &self.domain.d8,
+        );
+
+        let endomul_scalar_selector8 = selector_polynomial(
+            GateType::EndoMulScalar,
+            &self.gates,
+            &self.domain,
+            &self.domain.d8,
+        );
+
+        let generic_selector4 = evaluated_column_coefficients
+            .generic_selector
+            .evaluate_over_domain_by_ref(self.domain.d4);
+
+        // chacha gate
+        let chacha_selectors8 = {
+            if !self.feature_flags.chacha {
+                None
+            } else {
+                Some([
+                    selector_polynomial(
+                        GateType::ChaCha0,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaCha1,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaCha2,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaChaFinal,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                ])
+            }
+        };
+
+        // Range check constraint selector polynomials
+        let range_check_selectors8 = {
+            if !self.feature_flags.range_check {
+                None
+            } else {
+                Some([
+                    selector_polynomial(
+                        GateType::RangeCheck0,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::RangeCheck1,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                ])
+            }
+        };
+
+        // Foreign field addition constraint selector polynomial
+        let foreign_field_add_selector8 = {
+            if !self.feature_flags.foreign_field_add {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::ForeignFieldAdd,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
+        let xor_selector8 = {
+            if !self.feature_flags.xor {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::Xor16,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
+        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
+        let coefficients8 = array::from_fn(|i| {
+            evaluated_column_coefficients.coefficients[i]
+                .evaluate_over_domain_by_ref(self.domain.d8)
+        });
+
+        ColumnEvaluations {
+            permutation_coefficients8,
+            coefficients8,
+            generic_selector4,
+            poseidon_selector8,
+            complete_add_selector4,
+            mul_selector8,
+            emul_selector8,
+            chacha_selectors8,
+            endomul_scalar_selector8,
+            range_check_selectors8,
+            foreign_field_add_selector8,
+            xor_selector8,
         }
     }
 }
@@ -468,155 +685,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~ 4. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
-        // Precomputations
-        // ===============
-        // what follows are pre-computations.
-
-        //
-        // Permutation
-        // -----------
-
-        // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] = array::from_fn(|_| vec![F::zero(); domain.d1.size()]);
-
-        for (row, gate) in gates.iter().enumerate() {
-            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
-                sigma[row] = shifts.cell_to_field(cell);
-            }
-        }
-
-        let sigmal1: [_; PERMUTS] = {
-            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-            [
-                E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
-            ]
-        };
-
-        let sigmam: [DP<F>; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
-
-        let sigmal8 = array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
-        // Gates
-        // -----
-        //
-        // Compute each gate's polynomial as
-        // the polynomial that evaluates to 1 at $g^i$
-        // where $i$ is the row where a gate is active.
-        // Note: gates must be mutually exclusive.
-
-        // poseidon gate
-        let psm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.ps()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
-
-        // ECC gates
-        let complete_addl4 =
-            selector_polynomial(GateType::CompleteAdd, &gates, &domain, &domain.d4);
-
-        let mull8 = selector_polynomial(GateType::VarBaseMul, &gates, &domain, &domain.d8);
-
-        let emull = selector_polynomial(GateType::EndoMul, &gates, &domain, &domain.d8);
-
-        let endomul_scalar8 =
-            selector_polynomial(GateType::EndoMulScalar, &gates, &domain, &domain.d8);
-
-        // double generic gate
-        let genericm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if matches!(gate.typ, GateType::Generic) {
-                        F::one()
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
-
-        // chacha gate
-        let chacha8 = {
-            if !feature_flags.chacha {
-                None
-            } else {
-                Some([
-                    selector_polynomial(GateType::ChaCha0, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::ChaCha1, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::ChaCha2, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::ChaChaFinal, &gates, &domain, &domain.d8),
-                ])
-            }
-        };
-
-        // Range check constraint selector polynomials
-        let range_check_selector_polys = {
-            if !feature_flags.range_check {
-                None
-            } else {
-                Some([
-                    selector_polynomial(GateType::RangeCheck0, &gates, &domain, &domain.d8),
-                    selector_polynomial(GateType::RangeCheck1, &gates, &domain, &domain.d8),
-                ])
-            }
-        };
-
-        // Foreign field addition constraint selector polynomial
-        let foreign_field_add_selector_poly = {
-            if !feature_flags.foreign_field_add {
-                None
-            } else {
-                Some(selector_polynomial(
-                    GateType::ForeignFieldAdd,
-                    &gates,
-                    &domain,
-                    &domain.d8,
-                ))
-            }
-        };
-
-        let xor_selector_poly = {
-            if !feature_flags.xor {
-                None
-            } else {
-                Some(selector_polynomial(
-                    GateType::Xor16,
-                    &gates,
-                    &domain,
-                    &domain.d8,
-                ))
-            }
-        };
-
-        //
-        // Coefficient
-        // -----------
-        //
-
-        // coefficient polynomial
-        let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
-            let padded = gates
-                .iter()
-                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-                .collect();
-            let eval = E::from_vec_and_domain(padded, domain.d1);
-            eval.interpolate()
-        });
-        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
-        let coefficients8 =
-            array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
-
         //
         // Lookup
         // ------
@@ -647,26 +715,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             lookup_constraint_system,
             feature_flags,
             precomputations: domain_constant_evaluation,
-            evaluated_column_coefficients: EvaluatedColumnCoefficients {
-                permutation_coefficients: sigmam,
-                coefficients: coefficientsm,
-                generic_selector: genericm,
-                poseidon_selector: psm,
-            },
-            column_evaluations: ColumnEvaluations {
-                permutation_coefficients8: sigmal8,
-                coefficients8,
-                generic_selector4: generic4,
-                poseidon_selector8: ps8,
-                complete_add_selector4: complete_addl4,
-                mul_selector8: mull8,
-                emul_selector8: emull,
-                chacha_selectors8: chacha8,
-                endomul_scalar_selector8: endomul_scalar8,
-                range_check_selectors8: range_check_selector_polys,
-                foreign_field_add_selector8: foreign_field_add_selector_poly,
-                xor_selector8: xor_selector_poly,
-            },
         };
 
         match self.precomputations {

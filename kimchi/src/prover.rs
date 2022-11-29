@@ -173,10 +173,7 @@ where
         // double-check the witness
         if cfg!(debug_assertions) {
             let public = witness[0][0..index.cs.public].to_vec();
-            index
-                .cs
-                .verify::<G>(&witness, &public)
-                .expect("incorrect witness");
+            index.verify(&witness, &public).expect("incorrect witness");
         }
 
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
@@ -562,7 +559,7 @@ where
         }
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
-        let z_poly = index.cs.perm_aggreg(&witness, &beta, &gamma, rng)?;
+        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, None, rng);
@@ -607,28 +604,28 @@ where
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
-            index_evals.insert(Generic, &index.cs.column_evaluations.generic_selector4);
-            index_evals.insert(Poseidon, &index.cs.column_evaluations.poseidon_selector8);
+            index_evals.insert(Generic, &index.column_evaluations.generic_selector4);
+            index_evals.insert(Poseidon, &index.column_evaluations.poseidon_selector8);
             index_evals.insert(
                 CompleteAdd,
-                &index.cs.column_evaluations.complete_add_selector4,
+                &index.column_evaluations.complete_add_selector4,
             );
-            index_evals.insert(VarBaseMul, &index.cs.column_evaluations.mul_selector8);
-            index_evals.insert(EndoMul, &index.cs.column_evaluations.emul_selector8);
+            index_evals.insert(VarBaseMul, &index.column_evaluations.mul_selector8);
+            index_evals.insert(EndoMul, &index.column_evaluations.emul_selector8);
             index_evals.insert(
                 EndoMulScalar,
-                &index.cs.column_evaluations.endomul_scalar_selector8,
+                &index.column_evaluations.endomul_scalar_selector8,
             );
             [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
                 .iter()
                 .enumerate()
                 .for_each(|(i, g)| {
-                    if let Some(c) = &index.cs.column_evaluations.chacha_selectors8 {
+                    if let Some(c) = &index.column_evaluations.chacha_selectors8 {
                         index_evals.insert(*g, &c[i]);
                     }
                 });
 
-            if let Some(polys) = &index.cs.column_evaluations.range_check_selectors8 {
+            if let Some(polys) = &index.column_evaluations.range_check_selectors8 {
                 index_evals.extend(
                     range_check::gadget::circuit_gates()
                         .iter()
@@ -638,7 +635,6 @@ where
             }
 
             if let Some(selector) = index
-                .cs
                 .column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
@@ -651,7 +647,7 @@ where
                 );
             }
 
-            if let Some(selector) = index.cs.column_evaluations.xor_selector8.as_ref() {
+            if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
                 index_evals.insert(GateType::Xor16, selector);
             }
 
@@ -667,7 +663,7 @@ where
                     foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: &lagrange.d8.this.w,
-                coefficient: &index.cs.column_evaluations.coefficients8,
+                coefficient: &index.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
@@ -706,9 +702,7 @@ where
             let (mut t8, bnd) = {
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let (perm, bnd) = index
-                    .cs
-                    .perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
+                let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
 
                 check_constraint!(index, perm);
 
@@ -751,7 +745,6 @@ where
             // chacha
             {
                 if index
-                    .cs
                     .column_evaluations
                     .chacha_selectors8
                     .as_ref()
@@ -778,7 +771,7 @@ where
             }
 
             // range check gates
-            if index.cs.column_evaluations.range_check_selectors8.is_some() {
+            if index.column_evaluations.range_check_selectors8.is_some() {
                 for gate_type in range_check::gadget::circuit_gates() {
                     let range_check_constraint =
                         range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
@@ -792,7 +785,6 @@ where
             // foreign field addition
             {
                 if index
-                    .cs
                     .column_evaluations
                     .foreign_field_add_selector8
                     .is_some()
@@ -807,7 +799,7 @@ where
 
             // xor
             {
-                if index.cs.column_evaluations.xor_selector8.is_some() {
+                if index.column_evaluations.xor_selector8.is_some() {
                     let xor = xor::combined_constraints(&all_alphas).evaluations(&env);
                     assert_eq!(xor.domain().size, t4.domain().size);
                     t4 += &xor;
@@ -962,15 +954,12 @@ where
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array::from_fn(|i| {
-                    index
-                        .cs
-                        .evaluated_column_coefficients
-                        .permutation_coefficients[0..PERMUTS - 1][i]
+                    index.evaluated_column_coefficients.permutation_coefficients[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.evaluated_column_coefficients.coefficients[i]
+                    index.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
@@ -987,14 +976,12 @@ where
                 lookup: lookup_context.eval_zeta.take(),
 
                 generic_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
                 poseidon_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
@@ -1002,15 +989,12 @@ where
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array::from_fn(|i| {
-                    index
-                        .cs
-                        .evaluated_column_coefficients
-                        .permutation_coefficients[0..PERMUTS - 1][i]
+                    index.evaluated_column_coefficients.permutation_coefficients[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.evaluated_column_coefficients.coefficients[i]
+                    index.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
@@ -1028,14 +1012,12 @@ where
                 lookup: lookup_context.eval_zeta_omega.take(),
 
                 generic_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
                 poseidon_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
@@ -1093,7 +1075,7 @@ where
                 // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let f = index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                let f = index.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial
                 let f = {
@@ -1230,12 +1212,12 @@ where
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
         polynomials.extend(vec![(
-            &index.cs.evaluated_column_coefficients.generic_selector,
+            &index.evaluated_column_coefficients.generic_selector,
             None,
             fixed_hiding(1),
         )]);
         polynomials.extend(vec![(
-            &index.cs.evaluated_column_coefficients.poseidon_selector,
+            &index.evaluated_column_coefficients.poseidon_selector,
             None,
             fixed_hiding(1),
         )]);
@@ -1248,7 +1230,6 @@ where
         );
         polynomials.extend(
             index
-                .cs
                 .evaluated_column_coefficients
                 .coefficients
                 .iter()
@@ -1256,10 +1237,7 @@ where
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index
-                .cs
-                .evaluated_column_coefficients
-                .permutation_coefficients[0..PERMUTS - 1]
+            index.evaluated_column_coefficients.permutation_coefficients[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
