@@ -11,10 +11,9 @@ use crate::{
         wires::*,
     },
     curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-use ark_ff::{bytes::ToBytes, PrimeField};
-use ark_poly::Evaluations;
-use ark_poly::Radix2EvaluationDomain as D;
+use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -115,15 +114,6 @@ pub enum GateType {
     Xor16 = 27,
 }
 
-/// Selector polynomial
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SelectorPolynomial<F: PrimeField> {
-    /// Evaluation form (evaluated over domain d8)
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub eval8: Evaluations<F, D<F>>,
-}
-
 /// Gate error
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitGateError {
@@ -203,7 +193,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate::new(GateType::Zero, wires, vec![])
@@ -219,7 +209,7 @@ impl<F: PrimeField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        index: &ProverIndex<G>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -229,23 +219,23 @@ impl<F: PrimeField> CircuitGate<F> {
             Poseidon => self.verify_poseidon::<G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<G>(row, witness, cs),
-            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, cs),
+            EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
+            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<G>(row, witness, cs)
+                self.verify_cairo_gate::<G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check::<G>(row, witness, cs)
+                .verify_range_check::<G>(row, witness, index)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_xor::<G>(row, witness, cs)
+                .verify_xor::<G>(row, witness, index)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_foreign_field_add::<G>(row, witness, cs)
+                .verify_foreign_field_add::<G>(row, witness, index)
                 .map_err(|e| e.to_string()),
         }
     }

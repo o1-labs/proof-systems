@@ -1516,6 +1516,12 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
+    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
+
+    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,

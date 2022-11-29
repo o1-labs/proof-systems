@@ -3,7 +3,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        constraints::ConstraintSystem,
+        constraints::{ColumnEvaluations, ConstraintSystem, EvaluatedColumnCoefficients},
         expr::{Linearization, PolishToken},
     },
     curve::KimchiCurve,
@@ -41,6 +41,12 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
+    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
+
+    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,
@@ -72,16 +78,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) = expr_linearization(
-            cs.chacha8.is_some(),
-            cs.range_check_selector_polys.is_some(),
-            cs.lookup_constraint_system
-                .as_ref()
-                .map(|lcs| &lcs.configuration),
-            cs.foreign_field_add_selector_poly.is_some(),
-            cs.xor_selector_poly.is_some(),
-            true,
-        );
+        let (linearization, powers_of_alpha) = expr_linearization(&cs.feature_flags, true);
+
+        let evaluated_column_coefficients = cs.evaluated_column_coefficients();
+
+        let column_evaluations = cs.column_evaluations(&evaluated_column_coefficients);
 
         ProverIndex {
             cs,
@@ -89,6 +90,8 @@ impl<G: KimchiCurve> ProverIndex<G> {
             powers_of_alpha,
             srs,
             max_poly_size,
+            evaluated_column_coefficients,
+            column_evaluations,
             verifier_index: None,
             verifier_index_digest: None,
         }
