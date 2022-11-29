@@ -1836,11 +1836,11 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 mul_monomials(&x, &x)
             }
             EnabledIf(feature, x) => {
-                if feature.is_enabled() {
-                    x.monomials(ev)
-                } else {
-                    HashMap::default()
-                }
+                let e = x.monomials(ev);
+                HashMap::from_iter(
+                    e.into_iter()
+                        .map(|(m, c)| (m, Expr::EnabledIf(*feature, Box::new(c)))),
+                )
             }
         }
     }
