@@ -584,6 +584,17 @@ impl<G: CommitmentCurve> SRS<G> {
         };
         let p = scalars.len();
 
+        // padding the last segment for the chunked coefficients to have the same lengths
+        let mut padded_scalars = vec![];
+        padded_scalars.extend_from_slice(scalars);
+        if p % n != 0 {
+            let length_padding = n - p % n;
+            padded_scalars
+                .extend_from_slice(vec![G::ScalarField::zero(); length_padding].as_slice());
+        }
+        let scalars = padded_scalars.as_slice();
+        let p = scalars.len();
+
         // committing all the segments without shifting
         let unshifted = if is_zero {
             vec![G::zero()]
