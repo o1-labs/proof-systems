@@ -435,6 +435,10 @@ impl Op2 {
 
 /// The feature flags that can be used to enable or disable parts of constraints.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum FeatureFlag {
     ChaCha,
     RangeCheck,
