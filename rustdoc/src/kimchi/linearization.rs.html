@@ -160,6 +160,11 @@
 <a href="#160" id="160">160</a>
 <a href="#161" id="161">161</a>
 <a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::alphas::Alphas;
@@ -274,6 +279,11 @@
     <span class="comment">// the witness polynomials
     </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..COLUMNS {
         h.insert(Witness(i));
+    }
+
+    <span class="comment">// the coefficient polynomials
+    </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+        h.insert(Coefficient(i));
     }
 
     <span class="comment">// the lookup polynomials

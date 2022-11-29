@@ -2615,6 +2615,7 @@
 <a href="#2615" id="2615">2615</a>
 <a href="#2616" id="2616">2616</a>
 <a href="#2617" id="2617">2617</a>
+<a href="#2618" id="2618">2618</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -3117,7 +3118,8 @@
             LookupRuntimeTable =&gt; l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
             Index(GateType::Poseidon) =&gt; <span class="prelude-val">Ok</span>(evals.poseidon_selector),
             Index(GateType::Generic) =&gt; <span class="prelude-val">Ok</span>(evals.generic_selector),
-            Coefficient(<span class="kw">_</span>) | LookupKindIndex(<span class="kw">_</span>) | LookupRuntimeSelector | Index(<span class="kw">_</span>) =&gt; {
+            Coefficient(i) =&gt; <span class="prelude-val">Ok</span>(evals.coefficients[i]),
+            LookupKindIndex(<span class="kw">_</span>) | LookupRuntimeSelector | Index(<span class="kw">_</span>) =&gt; {
                 <span class="prelude-val">Err</span>(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col))
             }
         }
