@@ -9,8 +9,11 @@ use crate::circuits::{
     },
     wires::Wire,
 };
+use crate::prover_index::ProverIndex;
 use ark_ec::AffineCurve;
 use ark_ff::{One, Zero};
+use ark_poly::EvaluationDomain;
+use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -23,6 +26,7 @@ use o1_utils::{
     FieldHelpers,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
+use std::sync::Arc;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
@@ -129,10 +133,7 @@ static NULL_CARRY_BOTH: &[u8] = &[
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD2,
 ];
 
-fn create_test_constraint_system_ffadd(
-    num: usize,
-    modulus: BigUint,
-) -> ConstraintSystem<PallasField> {
+fn create_test_constraint_system_ffadd(num: usize, modulus: BigUint) -> ProverIndex<Vesta> {
     let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_foreign_field_add(0, num);
 
     // Temporary workaround for lookup-table/domain-size issue
@@ -141,10 +142,16 @@ fn create_test_constraint_system_ffadd(
         next_row += 1;
     }
 
-    ConstraintSystem::create(gates)
+    let cs = ConstraintSystem::create(gates)
         .foreign_field_modulus(&Some(modulus))
         .build()
-        .unwrap()
+        .unwrap();
+    let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+    srs.add_lagrange_basis(cs.domain.d1);
+    let srs = Arc::new(srs);
+
+    let (endo_q, _endo_r) = endos::<Pallas>();
+    ProverIndex::<Vesta>::create(cs, endo_q, srs)
 }
 
 // returns the maximum value for a field of modulus size
@@ -157,16 +164,21 @@ fn test_ffadd(
     foreign_modulus: BigUint,
     inputs: Vec<BigUint>,
     ops: &Vec<FFOps>,
-) -> ([Vec<PallasField>; COLUMNS], ConstraintSystem<PallasField>) {
+) -> ([Vec<PallasField>; COLUMNS], ProverIndex<Vesta>) {
     let nops = ops.len();
-    let cs = create_test_constraint_system_ffadd(nops, foreign_modulus.clone());
+    let index = create_test_constraint_system_ffadd(nops, foreign_modulus.clone());
     let witness = witness::create(&inputs, ops, foreign_modulus);
 
     let all_rows = witness[0].len();
 
     for row in 0..all_rows {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
+            index.cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &index.cs,
+                &witness[0][0..index.cs.public]
+            ),
             Ok(())
         );
     }
@@ -176,12 +188,12 @@ fn test_ffadd(
 
     for row in add_row..all_rows {
         assert_eq!(
-            cs.gates[row].verify::<Vesta>(row, &witness, &cs, &[]),
+            index.cs.gates[row].verify::<Vesta>(row, &witness, &index, &[]),
             Ok(())
         );
     }
 
-    (witness, cs)
+    (witness, index)
 }
 
 // checks that the result cells of the witness are computed as expected
@@ -303,7 +315,7 @@ fn test_zero_add() {
 #[test]
 // Adding terms that are zero modulo the foreign field
 fn test_zero_sum_foreign() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![secp256k1_modulus_bottom(), secp256k1_modulus_top()],
         &vec![FFOps::Add],
@@ -317,7 +329,7 @@ fn test_zero_sum_native() {
     let native_modulus = PallasField::modulus_biguint();
     let one = BigUint::new(vec![1u32]);
     let mod_minus_one = native_modulus.clone() - one;
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![One::one(), mod_minus_one],
         &vec![FFOps::Add],
@@ -330,7 +342,7 @@ fn test_zero_sum_native() {
 
 #[test]
 fn test_one_plus_one() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![One::one(), One::one()],
         &vec![FFOps::Add],
@@ -343,7 +355,7 @@ fn test_one_plus_one() {
 #[test]
 // Adds two terms that are the maximum value in the foreign field
 fn test_max_number() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![secp256k1_max(), secp256k1_max()],
         &vec![FFOps::Add],
@@ -369,7 +381,7 @@ fn test_zero_minus_one() {
         .to_biguint();
     let right_for_neg: ForeignElement<PallasField, 3> =
         ForeignElement::from_biguint(right_be_neg.clone());
-    let (witness_neg, _cs) = test_ffadd(
+    let (witness_neg, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::zero(), right_be_neg],
         &vec![FFOps::Add],
@@ -377,7 +389,7 @@ fn test_zero_minus_one() {
     check_result(witness_neg, vec![right_for_neg.clone()]);
 
     // NEXT AS SUB
-    let (witness_sub, _cs) = test_ffadd(
+    let (witness_sub, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::zero(), One::one()],
         &vec![FFOps::Sub],
@@ -393,7 +405,7 @@ fn test_one_minus_one_plus_one() {
         .neg(&secp256k1_modulus())
         .neg(&secp256k1_modulus())
         .to_biguint();
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![One::one(), One::one(), neg_neg_one],
         &vec![FFOps::Sub, FFOps::Add],
@@ -421,14 +433,14 @@ fn test_minus_minus() {
     let neg_one = neg_one_for.to_biguint();
     let neg_two = ForeignElement::<PallasField, 3>::from_biguint(BigUint::from_u32(2).unwrap())
         .neg(&secp256k1_modulus());
-    let (witness_neg, _cs) = test_ffadd(
+    let (witness_neg, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![neg_one.clone(), neg_one],
         &vec![FFOps::Add],
     );
     check_result(witness_neg, vec![neg_two.clone()]);
 
-    let (witness_sub, _cs) = test_ffadd(
+    let (witness_sub, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::zero(), One::one(), One::one()],
         &vec![FFOps::Sub, FFOps::Sub],
@@ -439,7 +451,7 @@ fn test_minus_minus() {
 #[test]
 // test when the low carry is minus one
 fn test_neg_carry_lo() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![
             BigUint::from_bytes_be(OVF_NEG_LO),
@@ -453,7 +465,7 @@ fn test_neg_carry_lo() {
 #[test]
 // test when the middle carry is minus one
 fn test_neg_carry_mi() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![
             BigUint::from_bytes_be(OVF_NEG_MI),
@@ -467,7 +479,7 @@ fn test_neg_carry_mi() {
 #[test]
 // test when there is negative low carry and 0 middle limb (carry bit propagates)
 fn test_propagate_carry() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![
             BigUint::from_bytes_be(OVF_ZERO_MI_NEG_LO),
@@ -481,7 +493,7 @@ fn test_propagate_carry() {
 #[test]
 // test when the both carries are minus one
 fn test_neg_carries() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![
             BigUint::from_bytes_be(OVF_NEG_BOTH),
@@ -508,7 +520,7 @@ fn test_upperbound() {
 #[test]
 // test a carry that nullifies in the low limb
 fn test_null_lo_carry() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![secp256k1_max(), BigUint::from_bytes_be(NULL_CARRY_LO)],
         &vec![FFOps::Add],
@@ -519,7 +531,7 @@ fn test_null_lo_carry() {
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_mi_carry() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![secp256k1_max(), BigUint::from_bytes_be(NULL_CARRY_MI)],
         &vec![FFOps::Add],
@@ -530,7 +542,7 @@ fn test_null_mi_carry() {
 #[test]
 // test a carry that nullifies in the mid limb
 fn test_null_both_carry() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![secp256k1_max(), BigUint::from_bytes_be(NULL_CARRY_BOTH)],
         &vec![FFOps::Add],
@@ -541,7 +553,7 @@ fn test_null_both_carry() {
 #[test]
 // test sums without carry bits in any limb
 fn test_no_carry_limbs() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::from_bytes_be(TIC), BigUint::from_bytes_be(TOC)],
         &vec![FFOps::Add],
@@ -555,7 +567,7 @@ fn test_no_carry_limbs() {
 #[test]
 // test sum with carry only in low part
 fn test_pos_carry_limb_lo() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::from_bytes_be(TIC), BigUint::from_bytes_be(TOC_LO)],
         &vec![FFOps::Add],
@@ -565,7 +577,7 @@ fn test_pos_carry_limb_lo() {
 
 #[test]
 fn test_pos_carry_limb_mid() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::from_bytes_be(TIC), BigUint::from_bytes_be(TOC_MI)],
         &vec![FFOps::Add],
@@ -575,7 +587,7 @@ fn test_pos_carry_limb_mid() {
 
 #[test]
 fn test_pos_carry_limb_lo_mid() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::from_bytes_be(TIC), BigUint::from_bytes_be(TOC_TWO)],
         &vec![FFOps::Add],
@@ -586,7 +598,7 @@ fn test_pos_carry_limb_lo_mid() {
 #[test]
 // Check it fails if given a wrong result (sum)
 fn test_wrong_sum() {
-    let (mut witness, cs) = test_ffadd(
+    let (mut witness, index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::from_bytes_be(TIC), BigUint::from_bytes_be(TOC)],
         &vec![FFOps::Add],
@@ -597,7 +609,7 @@ fn test_wrong_sum() {
     witness[0][17] = all_ones_limb;
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -607,7 +619,7 @@ fn test_wrong_sum() {
 #[test]
 // Check it fails if given a wrong result (difference)
 fn test_wrong_dif() {
-    let (mut witness, cs) = test_ffadd(
+    let (mut witness, index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::from_bytes_be(TIC), BigUint::from_bytes_be(TOC)],
         &vec![FFOps::Sub],
@@ -617,7 +629,7 @@ fn test_wrong_dif() {
     witness[0][17] = PallasField::zero();
 
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -627,7 +639,7 @@ fn test_wrong_dif() {
 #[test]
 // Test subtraction of the foreign field
 fn test_zero_sub_fmod() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::zero(), secp256k1_modulus()],
         &vec![FFOps::Sub],
@@ -639,7 +651,7 @@ fn test_zero_sub_fmod() {
 #[test]
 // Test subtraction of the foreign field maximum value
 fn test_zero_sub_fmax() {
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![BigUint::zero(), secp256k1_max()],
         &vec![FFOps::Sub],
@@ -658,7 +670,7 @@ fn test_zero_sub_fmax() {
 fn test_pasta_add_max_vesta() {
     let vesta_modulus = VestaField::modulus_biguint();
     let right_input = field_max(vesta_modulus.clone());
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         vesta_modulus.clone(),
         vec![BigUint::zero(), right_input.clone()],
         &vec![FFOps::Add],
@@ -673,7 +685,7 @@ fn test_pasta_add_max_vesta() {
 fn test_pasta_sub_max_vesta() {
     let vesta_modulus = VestaField::modulus_biguint();
     let right_input = field_max(vesta_modulus.clone());
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         vesta_modulus.clone(),
         vec![BigUint::zero(), right_input.clone()],
         &vec![FFOps::Sub],
@@ -688,7 +700,7 @@ fn test_pasta_sub_max_vesta() {
 fn test_pasta_add_max_pallas() {
     let vesta_modulus = VestaField::modulus_biguint();
     let right_input = field_max(PallasField::modulus_biguint());
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         vesta_modulus.clone(),
         vec![BigUint::zero(), right_input.clone()],
         &vec![FFOps::Add],
@@ -703,7 +715,7 @@ fn test_pasta_add_max_pallas() {
 fn test_pasta_sub_max_pallas() {
     let vesta_modulus = VestaField::modulus_biguint();
     let right_input = field_max(PallasField::modulus_biguint());
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         vesta_modulus.clone(),
         vec![BigUint::zero(), right_input.clone()],
         &vec![FFOps::Sub],
@@ -721,7 +733,7 @@ fn test_random_add() {
     let right_input = random_input(foreign_mod.clone(), true);
     let left_big = BigUint::from_bytes_be(&left_input);
     let right_big = BigUint::from_bytes_be(&right_input);
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![left_big.clone(), right_big.clone()],
         &vec![FFOps::Add],
@@ -739,7 +751,7 @@ fn test_random_sub() {
     let right_input = random_input(foreign_mod.clone(), true);
     let left_big = BigUint::from_bytes_be(&left_input);
     let right_big = BigUint::from_bytes_be(&right_input);
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         secp256k1_modulus(),
         vec![left_big.clone(), right_big.clone()],
         &vec![FFOps::Sub],
@@ -758,7 +770,7 @@ fn test_foreign_is_native_add() {
     let pallas = PallasField::modulus_biguint();
     let left_input = random_input(pallas.clone(), true);
     let right_input = random_input(pallas.clone(), true);
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         pallas.clone(),
         vec![
             BigUint::from_bytes_be(&left_input),
@@ -789,7 +801,7 @@ fn test_foreign_is_native_sub() {
     let pallas = PallasField::modulus_biguint();
     let left_input = random_input(pallas.clone(), true);
     let right_input = random_input(pallas.clone(), true);
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         pallas.clone(),
         vec![
             BigUint::from_bytes_be(&left_input),
@@ -822,7 +834,7 @@ fn test_random_small_add() {
     let foreign_mod = prime.clone();
     let left_input = random_input(foreign_mod.clone(), false);
     let right_input = random_input(foreign_mod.clone(), false);
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         prime,
         vec![
             BigUint::from_bytes_be(&left_input),
@@ -845,7 +857,7 @@ fn test_random_small_sub() {
     let foreign_mod = prime.clone();
     let left_input = random_input(foreign_mod.clone(), false);
     let right_input = random_input(foreign_mod.clone(), false);
-    let (witness, _cs) = test_ffadd(
+    let (witness, _index) = test_ffadd(
         prime,
         vec![
             BigUint::from_bytes_be(&left_input),
@@ -866,7 +878,7 @@ fn test_random_bad_input() {
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(foreign_mod.clone(), false);
     let right_input = random_input(foreign_mod, false);
-    let (mut witness, cs) = test_ffadd(
+    let (mut witness, index) = test_ffadd(
         secp256k1_modulus(),
         vec![
             BigUint::from_bytes_be(&left_input),
@@ -877,7 +889,7 @@ fn test_random_bad_input() {
     // First modify left input only to cause an invalid copy constraint
     witness[0][16] += PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidCopyConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -885,7 +897,7 @@ fn test_random_bad_input() {
     // then modify the value in the range check to cause an invalid FFAdd constraint
     witness[0][0] += PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -898,7 +910,7 @@ fn test_random_bad_parameters() {
     let foreign_mod = secp256k1_modulus();
     let left_input = random_input(foreign_mod.clone(), false);
     let right_input = random_input(foreign_mod, false);
-    let (mut witness, cs) = test_ffadd(
+    let (mut witness, index) = test_ffadd(
         secp256k1_modulus(),
         vec![
             BigUint::from_bytes_be(&left_input),
@@ -909,7 +921,7 @@ fn test_random_bad_parameters() {
     // Modify low carry
     witness[8][16] += PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -918,7 +930,7 @@ fn test_random_bad_parameters() {
     // Modify high carry
     witness[9][16] -= PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -927,7 +939,7 @@ fn test_random_bad_parameters() {
     // Modify overflow
     witness[7][16] += PallasField::one();
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -936,7 +948,7 @@ fn test_random_bad_parameters() {
     // Modify sign
     witness[6][16] = PallasField::zero() - witness[6][16];
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Err(CircuitGateError::InvalidConstraint(
             GateType::ForeignFieldAdd
         )),
@@ -944,7 +956,7 @@ fn test_random_bad_parameters() {
     witness[6][16] = PallasField::zero() - witness[6][16];
     // Check back to normal
     assert_eq!(
-        cs.gates[16].verify_foreign_field_add::<Vesta>(0, &witness, &cs),
+        index.cs.gates[16].verify_foreign_field_add(0, &witness, &index),
         Ok(()),
     );
 }
@@ -972,7 +984,7 @@ fn test_random_chain() {
         .into_iter()
         .map(|_| random_operation(rng))
         .collect::<Vec<_>>();
-    let (witness, _cs) = test_ffadd(secp256k1_modulus(), big_inputs, &operations);
+    let (witness, _index) = test_ffadd(secp256k1_modulus(), big_inputs, &operations);
     let mut left = vec![inputs[0].clone()];
     let results: Vec<ForeignElement<PallasField, 3>> = operations
         .iter()
