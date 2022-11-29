@@ -1505,6 +1505,12 @@ These pre-computations are optimizations, in the context of normal proofs, but t
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
 
+    #[serde(bound = &quot;EvaluatedColumnCoefficients&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
+    pub evaluated_column_coefficients: EvaluatedColumnCoefficients&lt;G::ScalarField&gt;,
+
+    #[serde(bound = &quot;ColumnEvaluations&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
+    pub column_evaluations: ColumnEvaluations&lt;G::ScalarField&gt;,
+
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option&lt;VerifierIndex&lt;G&gt;&gt;,

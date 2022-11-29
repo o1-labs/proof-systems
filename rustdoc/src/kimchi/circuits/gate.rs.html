@@ -576,6 +576,7 @@
 <a href="#576" id="576">576</a>
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
+<a href="#579" id="579">579</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -589,8 +590,9 @@
         wires::<span class="kw-2">*</span>,
     },
     curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-<span class="kw">use </span>ark_ff::{bytes::ToBytes, PrimeField};
+<span class="kw">use </span>ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 <span class="kw">use </span>num_traits::cast::ToPrimitive;
 <span class="kw">use </span>o1_utils::hasher::CryptoDigest;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -770,7 +772,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// this function creates &quot;empty&quot; circuit gate
     </span><span class="kw">pub fn </span>zero(wires: GateWires) -&gt; <span class="self">Self </span>{
         CircuitGate::new(GateType::Zero, wires, <span class="macro">vec!</span>[])
@@ -786,7 +788,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         row: usize,
         witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
-        cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;F&gt;,
+        index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;,
         public: <span class="kw-2">&amp;</span>[F],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
@@ -796,23 +798,23 @@
             Poseidon =&gt; <span class="self">self</span>.verify_poseidon::&lt;G&gt;(row, witness),
             CompleteAdd =&gt; <span class="self">self</span>.verify_complete_add(row, witness),
             VarBaseMul =&gt; <span class="self">self</span>.verify_vbmul(row, witness),
-            EndoMul =&gt; <span class="self">self</span>.verify_endomul::&lt;G&gt;(row, witness, cs),
-            EndoMulScalar =&gt; <span class="self">self</span>.verify_endomul_scalar::&lt;G&gt;(row, witness, cs),
+            EndoMul =&gt; <span class="self">self</span>.verify_endomul::&lt;G&gt;(row, witness, <span class="kw-2">&amp;</span>index.cs),
+            EndoMulScalar =&gt; <span class="self">self</span>.verify_endomul_scalar::&lt;G&gt;(row, witness, <span class="kw-2">&amp;</span>index.cs),
             <span class="comment">// TODO: implement the verification for chacha
             </span>ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal =&gt; <span class="prelude-val">Ok</span>(()),
             <span class="comment">// TODO: implement the verification for the lookup gate
             </span>Lookup =&gt; <span class="prelude-val">Ok</span>(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition =&gt; {
-                <span class="self">self</span>.verify_cairo_gate::&lt;G&gt;(row, witness, cs)
+                <span class="self">self</span>.verify_cairo_gate::&lt;G&gt;(row, witness, <span class="kw-2">&amp;</span>index.cs)
             }
             RangeCheck0 | RangeCheck1 =&gt; <span class="self">self
-                </span>.verify_range_check::&lt;G&gt;(row, witness, cs)
+                </span>.verify_range_check::&lt;G&gt;(row, witness, index)
                 .map_err(|e| e.to_string()),
             Xor16 =&gt; <span class="self">self
-                </span>.verify_xor::&lt;G&gt;(row, witness, cs)
+                </span>.verify_xor::&lt;G&gt;(row, witness, index)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd =&gt; <span class="self">self
-                </span>.verify_foreign_field_add::&lt;G&gt;(row, witness, cs)
+                </span>.verify_foreign_field_add::&lt;G&gt;(row, witness, index)
                 .map_err(|e| e.to_string()),
         }
     }

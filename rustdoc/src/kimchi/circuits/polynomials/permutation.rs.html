@@ -478,6 +478,12 @@
 <a href="#478" id="478">478</a>
 <a href="#479" id="479">479</a>
 <a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+<a href="#484" id="484">484</a>
+<a href="#485" id="485">485</a>
+<a href="#486" id="486">486</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.
 
 </span><span class="comment">//~
@@ -526,8 +532,10 @@
         polynomial::WitnessOverDomains,
         wires::{Wire, COLUMNS, PERMUTS},
     },
+    curve::KimchiCurve,
     error::ProverError,
     proof::ProofEvaluations,
+    prover_index::ProverIndex,
 };
 <span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 <span class="kw">use </span>ark_poly::{
@@ -670,7 +678,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;&gt; ProverIndex&lt;G&gt; {
     <span class="doccomment">/// permutation quotient poly contribution computation
     ///
     /// # Errors
@@ -694,7 +702,7 @@
         <span class="kw">let </span>alpha2 = alphas.next().expect(<span class="string">&quot;missing power of alpha&quot;</span>);
 
         <span class="comment">// constant gamma in evaluation form (in domain d8)
-        </span><span class="kw">let </span>gamma = <span class="kw-2">&amp;</span><span class="self">self</span>.precomputations().constant_1_d8.scale(gamma);
+        </span><span class="kw">let </span>gamma = <span class="kw-2">&amp;</span><span class="self">self</span>.cs.precomputations().constant_1_d8.scale(gamma);
 
         <span class="comment">//~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -731,9 +739,9 @@
             // (w[6](x) + gamma + x * beta * shift[6])
             // in evaluation form in d8
             </span><span class="kw">let </span><span class="kw-2">mut </span>shifts = lagrange.d8.this.z.clone();
-            <span class="kw">for </span>(witness, shift) <span class="kw">in </span>lagrange.d8.this.w.iter().zip(<span class="self">self</span>.shift.iter()) {
+            <span class="kw">for </span>(witness, shift) <span class="kw">in </span>lagrange.d8.this.w.iter().zip(<span class="self">self</span>.cs.shift.iter()) {
                 <span class="kw">let </span>term =
-                    <span class="kw-2">&amp;</span>(witness + gamma) + <span class="kw-2">&amp;</span><span class="self">self</span>.precomputations().poly_x_d1.scale(beta * shift);
+                    <span class="kw-2">&amp;</span>(witness + gamma) + <span class="kw-2">&amp;</span><span class="self">self</span>.cs.precomputations().poly_x_d1.scale(beta * shift);
                 shifts = <span class="kw-2">&amp;</span>shifts * <span class="kw-2">&amp;</span>term;
             }
 
@@ -754,7 +762,7 @@
                 sigmas = <span class="kw-2">&amp;</span>sigmas * <span class="kw-2">&amp;</span>term;
             }
 
-            <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>shifts - <span class="kw-2">&amp;</span>sigmas).scale(alpha0) * <span class="kw-2">&amp;</span><span class="self">self</span>.precomputations().zkpl
+            <span class="kw-2">&amp;</span>(<span class="kw-2">&amp;</span>shifts - <span class="kw-2">&amp;</span>sigmas).scale(alpha0) * <span class="kw-2">&amp;</span><span class="self">self</span>.cs.precomputations().zkpl
         };
 
         <span class="comment">//~ and `bnd`:
@@ -782,7 +790,7 @@
 
             <span class="comment">// accumulator end := (z(x) - 1) / (x - sid[n-3])
             </span><span class="kw">let </span>denominator = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[
-                -<span class="self">self</span>.sid[<span class="self">self</span>.domain.d1.size() - <span class="number">3</span>],
+                -<span class="self">self</span>.cs.sid[<span class="self">self</span>.cs.domain.d1.size() - <span class="number">3</span>],
                 F::one(),
             ]);
             <span class="kw">let </span>(bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
@@ -815,11 +823,13 @@
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
         //~
-        </span><span class="kw">let </span>zkpm_zeta = <span class="self">self</span>.precomputations().zkpm.evaluate(<span class="kw-2">&amp;</span>zeta);
-        <span class="kw">let </span>scalar = <span class="self">Self</span>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
+        </span><span class="kw">let </span>zkpm_zeta = <span class="self">self</span>.cs.precomputations().zkpm.evaluate(<span class="kw-2">&amp;</span>zeta);
+        <span class="kw">let </span>scalar = ConstraintSystem::&lt;F&gt;::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         <span class="self">self</span>.evaluated_column_coefficients.permutation_coefficients[PERMUTS - <span class="number">1</span>].scale(scalar)
     }
+}
 
+<span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
     <span class="kw">pub fn </span>perm_scalars(
         e: <span class="kw-2">&amp;</span>[ProofEvaluations&lt;F&gt;],
         beta: F,
@@ -860,7 +870,9 @@
             .fold(init, |x, y| x * y);
         -res
     }
+}
 
+<span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;&gt; ProverIndex&lt;G&gt; {
     <span class="doccomment">/// permutation aggregation polynomial computation
     ///
     /// # Errors
@@ -877,10 +889,10 @@
         gamma: <span class="kw-2">&amp;</span>F,
         rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng),
     ) -&gt; <span class="prelude-ty">Result</span>&lt;DensePolynomial&lt;F&gt;, ProverError&gt; {
-        <span class="kw">let </span>n = <span class="self">self</span>.domain.d1.size();
+        <span class="kw">let </span>n = <span class="self">self</span>.cs.domain.d1.size();
 
         <span class="comment">// only works if first element is 1
-        </span><span class="macro">assert_eq!</span>(<span class="self">self</span>.domain.d1.elements().next(), <span class="prelude-val">Some</span>(F::one()));
+        </span><span class="macro">assert_eq!</span>(<span class="self">self</span>.cs.domain.d1.elements().next(), <span class="prelude-val">Some</span>(F::one()));
 
         <span class="comment">//~ To compute the permutation aggregation polynomial,
         //~ the prover interpolates the polynomial that has the following evaluations.
@@ -938,8 +950,8 @@
             <span class="kw">let </span>x = z[j];
             z[j + <span class="number">1</span>] <span class="kw-2">*</span>= witness
                 .iter()
-                .zip(<span class="self">self</span>.shift.iter())
-                .map(|(w, s)| w[j] + (<span class="self">self</span>.sid[j] * beta * s) + gamma)
+                .zip(<span class="self">self</span>.cs.shift.iter())
+                .map(|(w, s)| w[j] + (<span class="self">self</span>.cs.sid[j] * beta * s) + gamma)
                 .fold(x, |z, y| z * y);
         }
 
@@ -954,7 +966,7 @@
         </span>z[n - <span class="number">2</span>] = F::rand(rng);
         z[n - <span class="number">1</span>] = F::rand(rng);
 
-        <span class="kw">let </span>res = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(z, <span class="self">self</span>.domain.d1).interpolate();
+        <span class="kw">let </span>res = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(z, <span class="self">self</span>.cs.domain.d1).interpolate();
         <span class="prelude-val">Ok</span>(res)
     }
 }

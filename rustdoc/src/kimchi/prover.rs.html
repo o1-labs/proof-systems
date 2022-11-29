@@ -1568,28 +1568,6 @@
 <a href="#1568" id="1568">1568</a>
 <a href="#1569" id="1569">1569</a>
 <a href="#1570" id="1570">1570</a>
-<a href="#1571" id="1571">1571</a>
-<a href="#1572" id="1572">1572</a>
-<a href="#1573" id="1573">1573</a>
-<a href="#1574" id="1574">1574</a>
-<a href="#1575" id="1575">1575</a>
-<a href="#1576" id="1576">1576</a>
-<a href="#1577" id="1577">1577</a>
-<a href="#1578" id="1578">1578</a>
-<a href="#1579" id="1579">1579</a>
-<a href="#1580" id="1580">1580</a>
-<a href="#1581" id="1581">1581</a>
-<a href="#1582" id="1582">1582</a>
-<a href="#1583" id="1583">1583</a>
-<a href="#1584" id="1584">1584</a>
-<a href="#1585" id="1585">1585</a>
-<a href="#1586" id="1586">1586</a>
-<a href="#1587" id="1587">1587</a>
-<a href="#1588" id="1588">1588</a>
-<a href="#1589" id="1589">1589</a>
-<a href="#1590" id="1590">1590</a>
-<a href="#1591" id="1591">1591</a>
-<a href="#1592" id="1592">1592</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1765,10 +1743,7 @@
         <span class="comment">// double-check the witness
         </span><span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) {
             <span class="kw">let </span>public = witness[<span class="number">0</span>][<span class="number">0</span>..index.cs.public].to_vec();
-            index
-                .cs
-                .verify::&lt;G&gt;(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>public)
-                .expect(<span class="string">&quot;incorrect witness&quot;</span>);
+            index.verify(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>public).expect(<span class="string">&quot;incorrect witness&quot;</span>);
         }
 
         <span class="comment">//~ 1. Ensure we have room in the witness for the zero-knowledge rows.
@@ -2154,7 +2129,7 @@
         }
 
         <span class="comment">//~ 1. Compute the permutation aggregation polynomial $z$.
-        </span><span class="kw">let </span>z_poly = index.cs.perm_aggreg(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>beta, <span class="kw-2">&amp;</span>gamma, rng)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>z_poly = index.perm_aggreg(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>beta, <span class="kw-2">&amp;</span>gamma, rng)<span class="question-mark">?</span>;
 
         <span class="comment">//~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
         </span><span class="kw">let </span>z_comm = index.srs.commit(<span class="kw-2">&amp;</span>z_poly, <span class="prelude-val">None</span>, rng);
@@ -2199,28 +2174,28 @@
         <span class="kw">let </span>env = {
             <span class="kw">let </span><span class="kw-2">mut </span>index_evals = HashMap::new();
             <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
-            index_evals.insert(Generic, <span class="kw-2">&amp;</span>index.cs.column_evaluations.generic_selector4);
-            index_evals.insert(Poseidon, <span class="kw-2">&amp;</span>index.cs.column_evaluations.poseidon_selector8);
+            index_evals.insert(Generic, <span class="kw-2">&amp;</span>index.column_evaluations.generic_selector4);
+            index_evals.insert(Poseidon, <span class="kw-2">&amp;</span>index.column_evaluations.poseidon_selector8);
             index_evals.insert(
                 CompleteAdd,
-                <span class="kw-2">&amp;</span>index.cs.column_evaluations.complete_add_selector4,
+                <span class="kw-2">&amp;</span>index.column_evaluations.complete_add_selector4,
             );
-            index_evals.insert(VarBaseMul, <span class="kw-2">&amp;</span>index.cs.column_evaluations.mul_selector8);
-            index_evals.insert(EndoMul, <span class="kw-2">&amp;</span>index.cs.column_evaluations.emul_selector8);
+            index_evals.insert(VarBaseMul, <span class="kw-2">&amp;</span>index.column_evaluations.mul_selector8);
+            index_evals.insert(EndoMul, <span class="kw-2">&amp;</span>index.column_evaluations.emul_selector8);
             index_evals.insert(
                 EndoMulScalar,
-                <span class="kw-2">&amp;</span>index.cs.column_evaluations.endomul_scalar_selector8,
+                <span class="kw-2">&amp;</span>index.column_evaluations.endomul_scalar_selector8,
             );
             [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
                 .iter()
                 .enumerate()
                 .for_each(|(i, g)| {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = <span class="kw-2">&amp;</span>index.cs.column_evaluations.chacha_selectors8 {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = <span class="kw-2">&amp;</span>index.column_evaluations.chacha_selectors8 {
                         index_evals.insert(<span class="kw-2">*</span>g, <span class="kw-2">&amp;</span>c[i]);
                     }
                 });
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(polys) = <span class="kw-2">&amp;</span>index.cs.column_evaluations.range_check_selectors8 {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(polys) = <span class="kw-2">&amp;</span>index.column_evaluations.range_check_selectors8 {
                 index_evals.extend(
                     range_check::gadget::circuit_gates()
                         .iter()
@@ -2230,7 +2205,6 @@
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index
-                .cs
                 .column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
@@ -2243,7 +2217,7 @@
                 );
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index.cs.column_evaluations.xor_selector8.as_ref() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index.column_evaluations.xor_selector8.as_ref() {
                 index_evals.insert(GateType::Xor16, selector);
             }
 
@@ -2259,7 +2233,7 @@
                     foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
                 },
                 witness: <span class="kw-2">&amp;</span>lagrange.d8.this.w,
-                coefficient: <span class="kw-2">&amp;</span>index.cs.column_evaluations.coefficients8,
+                coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>index.cs.precomputations().vanishes_on_last_4_rows,
                 z: <span class="kw-2">&amp;</span>lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
@@ -2298,9 +2272,7 @@
             </span><span class="kw">let </span>(<span class="kw-2">mut </span>t8, bnd) = {
                 <span class="kw">let </span>alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                <span class="kw">let </span>(perm, bnd) = index
-                    .cs
-                    .perm_quot(<span class="kw-2">&amp;</span>lagrange, beta, gamma, <span class="kw-2">&amp;</span>z_poly, alphas)<span class="question-mark">?</span>;
+                <span class="kw">let </span>(perm, bnd) = index.perm_quot(<span class="kw-2">&amp;</span>lagrange, beta, gamma, <span class="kw-2">&amp;</span>z_poly, alphas)<span class="question-mark">?</span>;
 
                 <span class="macro">check_constraint!</span>(index, perm);
 
@@ -2343,7 +2315,6 @@
             <span class="comment">// chacha
             </span>{
                 <span class="kw">if </span>index
-                    .cs
                     .column_evaluations
                     .chacha_selectors8
                     .as_ref()
@@ -2370,7 +2341,7 @@
             }
 
             <span class="comment">// range check gates
-            </span><span class="kw">if </span>index.cs.column_evaluations.range_check_selectors8.is_some() {
+            </span><span class="kw">if </span>index.column_evaluations.range_check_selectors8.is_some() {
                 <span class="kw">for </span>gate_type <span class="kw">in </span>range_check::gadget::circuit_gates() {
                     <span class="kw">let </span>range_check_constraint =
                         range_check::gadget::circuit_gate_constraints(gate_type, <span class="kw-2">&amp;</span>all_alphas)
@@ -2384,7 +2355,6 @@
             <span class="comment">// foreign field addition
             </span>{
                 <span class="kw">if </span>index
-                    .cs
                     .column_evaluations
                     .foreign_field_add_selector8
                     .is_some()
@@ -2399,7 +2369,7 @@
 
             <span class="comment">// xor
             </span>{
-                <span class="kw">if </span>index.cs.column_evaluations.xor_selector8.is_some() {
+                <span class="kw">if </span>index.column_evaluations.xor_selector8.is_some() {
                     <span class="kw">let </span>xor = xor::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
                     <span class="macro">assert_eq!</span>(xor.domain().size, t4.domain().size);
                     t4 += <span class="kw-2">&amp;</span>xor;
@@ -2554,15 +2524,12 @@
         </span><span class="kw">let </span>chunked_evals = {
             <span class="kw">let </span>chunked_evals_zeta = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
                 s: array::from_fn(|i| {
-                    index
-                        .cs
-                        .evaluated_column_coefficients
-                        .permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
+                    index.evaluated_column_coefficients.permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.evaluated_column_coefficients.coefficients[i]
+                    index.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
@@ -2579,14 +2546,12 @@
                 lookup: lookup_context.eval_zeta.take(),
 
                 generic_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
                 poseidon_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
@@ -2594,15 +2559,12 @@
             };
             <span class="kw">let </span>chunked_evals_zeta_omega = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
                 s: array::from_fn(|i| {
-                    index
-                        .cs
-                        .evaluated_column_coefficients
-                        .permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
+                    index.evaluated_column_coefficients.permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.evaluated_column_coefficients.coefficients[i]
+                    index.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
@@ -2620,14 +2582,12 @@
                 lookup: lookup_context.eval_zeta_omega.take(),
 
                 generic_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
                 poseidon_selector: index
-                    .cs
                     .evaluated_column_coefficients
                     .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
@@ -2685,7 +2645,7 @@
                 // permutation (not part of linearization yet)
                 </span><span class="kw">let </span>alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                <span class="kw">let </span>f = index.cs.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                <span class="kw">let </span>f = index.perm_lnrz(evals, zeta, beta, gamma, alphas);
 
                 <span class="comment">// the circuit polynomial
                 </span><span class="kw">let </span>f = {
@@ -2822,12 +2782,12 @@
         polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>ft, <span class="prelude-val">None</span>, blinding_ft)]);
         polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>z_poly, <span class="prelude-val">None</span>, z_comm.blinders)]);
         polynomials.extend(<span class="macro">vec!</span>[(
-            <span class="kw-2">&amp;</span>index.cs.evaluated_column_coefficients.generic_selector,
+            <span class="kw-2">&amp;</span>index.evaluated_column_coefficients.generic_selector,
             <span class="prelude-val">None</span>,
             fixed_hiding(<span class="number">1</span>),
         )]);
         polynomials.extend(<span class="macro">vec!</span>[(
-            <span class="kw-2">&amp;</span>index.cs.evaluated_column_coefficients.poseidon_selector,
+            <span class="kw-2">&amp;</span>index.evaluated_column_coefficients.poseidon_selector,
             <span class="prelude-val">None</span>,
             fixed_hiding(<span class="number">1</span>),
         )]);
@@ -2840,7 +2800,6 @@
         );
         polynomials.extend(
             index
-                .cs
                 .evaluated_column_coefficients
                 .coefficients
                 .iter()
@@ -2848,10 +2807,7 @@
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
         polynomials.extend(
-            index
-                .cs
-                .evaluated_column_coefficients
-                .permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>]
+            index.evaluated_column_coefficients.permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>]
                 .iter()
                 .map(|w| (w, <span class="prelude-val">None</span>, non_hiding(<span class="number">1</span>)))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),

@@ -533,6 +533,9 @@
 <a href="#533" id="533">533</a>
 <a href="#534" id="534">534</a>
 <a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
@@ -553,9 +556,10 @@
         witness::{<span class="self">self</span>, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
+    prover_index::ProverIndex,
     variable_map,
 };
-<span class="kw">use </span>ark_ff::{PrimeField, Zero};
+<span class="kw">use </span>ark_ff::{PrimeField, SquareRootField, Zero};
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
@@ -564,7 +568,7 @@
 
 <span class="kw">pub const </span>GATE_COUNT: usize = <span class="number">1</span>;
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Creates a XOR gadget for `bits` length
     /// Includes:
     /// - num_xors Xor16 gates
@@ -599,14 +603,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="kw">_</span>: usize,
         witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
-        cs: <span class="kw-2">&amp;</span>ConstraintSystem&lt;F&gt;,
+        index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;,
     ) -&gt; CircuitGateResult&lt;()&gt; {
         <span class="kw">if </span>!circuit_gates().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.typ) {
             <span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::InvalidCircuitGateType(<span class="self">self</span>.typ));
         }
 
         <span class="comment">// Pad the witness to domain d1 size
-        </span><span class="kw">let </span>padding_length = cs
+        </span><span class="kw">let </span>padding_length = index
+            .cs
             .domain
             .d1
             .size
@@ -619,7 +624,7 @@
 
         <span class="comment">// Compute witness polynomial
         </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;F&gt;; COLUMNS] = array::from_fn(|i| {
-            Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
+            Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1)
                 .interpolate()
         });
 
@@ -627,28 +632,29 @@
         </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
         <span class="kw">let </span>beta = F::rand(rng);
         <span class="kw">let </span>gamma = F::rand(rng);
-        <span class="kw">let </span>z_poly = cs
+        <span class="kw">let </span>z_poly = index
             .perm_aggreg(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>beta, <span class="kw-2">&amp;</span>gamma, rng)
             .map_err(|<span class="kw">_</span>| CircuitGateError::InvalidCopyConstraint(<span class="self">self</span>.typ))<span class="question-mark">?</span>;
 
         <span class="comment">// Compute witness polynomial evaluations
-        </span><span class="kw">let </span>witness_evals = cs.evaluate(<span class="kw-2">&amp;</span>witness_poly, <span class="kw-2">&amp;</span>z_poly);
+        </span><span class="kw">let </span>witness_evals = index.cs.evaluate(<span class="kw-2">&amp;</span>witness_poly, <span class="kw-2">&amp;</span>z_poly);
 
         <span class="kw">let </span><span class="kw-2">mut </span>index_evals = HashMap::new();
         index_evals.insert(
             <span class="self">self</span>.typ,
-            cs.column_evaluations.xor_selector8.as_ref().unwrap(),
+            index.column_evaluations.xor_selector8.as_ref().unwrap(),
         );
 
         <span class="comment">// Set up lookup environment
-        </span><span class="kw">let </span>lcs = cs
+        </span><span class="kw">let </span>lcs = index
+            .cs
             .lookup_constraint_system
             .as_ref()
             .ok_or(CircuitGateError::MissingLookupConstraintSystem(<span class="self">self</span>.typ))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>lookup_env_data = set_up_lookup_env_data(
             <span class="self">self</span>.typ,
-            cs,
+            <span class="kw-2">&amp;</span>index.cs,
             <span class="kw-2">&amp;</span>witness,
             <span class="kw-2">&amp;</span>beta,
             <span class="kw-2">&amp;</span>gamma,
@@ -671,16 +677,16 @@
                     beta: F::rand(rng),
                     gamma: F::rand(rng),
                     joint_combiner: <span class="prelude-val">Some</span>(F::rand(rng)),
-                    endo_coefficient: cs.endo,
+                    endo_coefficient: index.cs.endo,
                     mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
                     foreign_field_modulus: <span class="prelude-val">None</span>,
                 },
                 witness: <span class="kw-2">&amp;</span>witness_evals.d8.this.w,
-                coefficient: <span class="kw-2">&amp;</span>cs.column_evaluations.coefficients8,
-                vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>cs.precomputations().vanishes_on_last_4_rows,
+                coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,
+                vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>index.cs.precomputations().vanishes_on_last_4_rows,
                 z: <span class="kw-2">&amp;</span>witness_evals.d8.this.z,
-                l0_1: l0_1(cs.domain.d1),
-                domain: cs.domain,
+                l0_1: l0_1(index.cs.domain.d1),
+                domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
             }
@@ -700,7 +706,7 @@
         </span><span class="kw">if </span>constraints
             .evaluations(<span class="kw-2">&amp;</span>env)
             .interpolate()
-            .divide_by_vanishing_poly(cs.domain.d1)
+            .divide_by_vanishing_poly(index.cs.domain.d1)
             .unwrap()
             .<span class="number">1
             </span>.is_zero()

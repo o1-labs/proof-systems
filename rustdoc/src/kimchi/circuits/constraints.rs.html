@@ -704,6 +704,54 @@
 <a href="#704" id="704">704</a>
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -721,6 +769,7 @@
     },
     curve::KimchiCurve,
     error::SetupError,
+    prover_index::ProverIndex,
 };
 <span class="kw">use </span>ark_ff::{PrimeField, SquareRootField, Zero};
 <span class="kw">use </span>ark_poly::{
@@ -850,12 +899,6 @@
     </span><span class="attr">#[serde(bound = <span class="string">&quot;FeatureFlags&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>feature_flags: FeatureFlags&lt;F&gt;,
 
-    <span class="attr">#[serde(bound = <span class="string">&quot;EvaluatedColumnCoefficients&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
-    </span><span class="kw">pub </span>evaluated_column_coefficients: EvaluatedColumnCoefficients&lt;F&gt;,
-
-    <span class="attr">#[serde(bound = <span class="string">&quot;ColumnEvaluations&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
-    </span><span class="kw">pub </span>column_evaluations: ColumnEvaluations&lt;F&gt;,
-
     <span class="doccomment">/// SID polynomial
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>sid: Vec&lt;F&gt;,
@@ -960,18 +1003,16 @@
             .set(precomputations)
             .expect(<span class="string">&quot;Precomputation has been set before&quot;</span>);
     }
+}
 
+<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField, G: KimchiCurve&lt;ScalarField = F&gt;&gt; ProverIndex&lt;G&gt; {
     <span class="doccomment">/// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
     ///     witness: wire assignment witness
     ///     RETURN: verification status
-    </span><span class="kw">pub fn </span>verify&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
-        public: <span class="kw-2">&amp;</span>[F],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;(), GateError&gt; {
+    </span><span class="kw">pub fn </span>verify(<span class="kw-2">&amp;</span><span class="self">self</span>, witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS], public: <span class="kw-2">&amp;</span>[F]) -&gt; <span class="prelude-ty">Result</span>&lt;(), GateError&gt; {
         <span class="comment">// pad the witness
-        </span><span class="kw">let </span>pad = <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.domain.d1.size() - witness[<span class="number">0</span>].len()];
+        </span><span class="kw">let </span>pad = <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.cs.domain.d1.size() - witness[<span class="number">0</span>].len()];
         <span class="kw">let </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|i| {
             <span class="kw">let </span><span class="kw-2">mut </span>w = witness[i].to_vec();
             w.extend_from_slice(<span class="kw-2">&amp;</span>pad);
@@ -979,7 +1020,7 @@
         });
 
         <span class="comment">// check each rows&#39; wiring
-        </span><span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.gates.iter().enumerate() {
+        </span><span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.cs.gates.iter().enumerate() {
             <span class="comment">// check if wires are connected
             </span><span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..PERMUTS {
                 <span class="kw">let </span>wire = gate.wires[col];
@@ -1006,7 +1047,7 @@
             }
 
             <span class="comment">// for public gates, only the left wire is toggled
-            </span><span class="kw">if </span>row &lt; <span class="self">self</span>.public &amp;&amp; gate.coeffs[<span class="number">0</span>] != F::one() {
+            </span><span class="kw">if </span>row &lt; <span class="self">self</span>.cs.public &amp;&amp; gate.coeffs[<span class="number">0</span>] != F::one() {
                 <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::IncorrectPublic(row));
             }
 
@@ -1018,7 +1059,9 @@
         <span class="comment">// all good!
         </span><span class="prelude-val">Ok</span>(())
     }
+}
 
+<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; ConstraintSystem&lt;F&gt; {
     <span class="doccomment">/// evaluate witness polynomials over domains
     </span><span class="kw">pub fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, w: <span class="kw-2">&amp;</span>[DP&lt;F&gt;; COLUMNS], z: <span class="kw-2">&amp;</span>DP&lt;F&gt;) -&gt; WitnessOverDomains&lt;F&gt; {
         <span class="comment">// compute shifted witness polynomials
@@ -1055,6 +1098,228 @@
                 },
                 this: WitnessEvals { w: w8, z: z8 },
             },
+        }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>evaluated_column_coefficients(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; EvaluatedColumnCoefficients&lt;F&gt; {
+        <span class="comment">// compute permutation polynomials
+        </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span><span class="self">self</span>.domain.d1);
+
+        <span class="kw">let </span><span class="kw-2">mut </span>sigmal1: [Vec&lt;F&gt;; PERMUTS] =
+            array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="self">self</span>.domain.d1.size()]);
+
+        <span class="kw">for </span>(row, gate) <span class="kw">in </span><span class="self">self</span>.gates.iter().enumerate() {
+            <span class="kw">for </span>(cell, sigma) <span class="kw">in </span>gate.wires.iter().zip(sigmal1.iter_mut()) {
+                sigma[row] = shifts.cell_to_field(cell);
+            }
+        }
+
+        <span class="kw">let </span>sigmal1: [<span class="kw">_</span>; PERMUTS] = {
+            <span class="kw">let </span>[s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+            [
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s0, <span class="self">self</span>.domain.d1),
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s1, <span class="self">self</span>.domain.d1),
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s2, <span class="self">self</span>.domain.d1),
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s3, <span class="self">self</span>.domain.d1),
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s4, <span class="self">self</span>.domain.d1),
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s5, <span class="self">self</span>.domain.d1),
+                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s6, <span class="self">self</span>.domain.d1),
+            ]
+        };
+
+        <span class="kw">let </span>permutation_coefficients: [DP&lt;F&gt;; PERMUTS] =
+            array::from_fn(|i| sigmal1[i].clone().interpolate());
+
+        <span class="comment">// poseidon gate
+        </span><span class="kw">let </span>poseidon_selector = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
+            <span class="self">self</span>.gates.iter().map(|gate| gate.ps()).collect(),
+            <span class="self">self</span>.domain.d1,
+        )
+        .interpolate();
+
+        <span class="comment">// double generic gate
+        </span><span class="kw">let </span>generic_selector = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
+            <span class="self">self</span>.gates
+                .iter()
+                .map(|gate| {
+                    <span class="kw">if </span><span class="macro">matches!</span>(gate.typ, GateType::Generic) {
+                        F::one()
+                    } <span class="kw">else </span>{
+                        F::zero()
+                    }
+                })
+                .collect(),
+            <span class="self">self</span>.domain.d1,
+        )
+        .interpolate();
+
+        <span class="comment">// coefficient polynomial
+        </span><span class="kw">let </span>coefficients: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
+            <span class="kw">let </span>padded = <span class="self">self
+                </span>.gates
+                .iter()
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
+                .collect();
+            <span class="kw">let </span>eval = E::from_vec_and_domain(padded, <span class="self">self</span>.domain.d1);
+            eval.interpolate()
+        });
+
+        EvaluatedColumnCoefficients {
+            permutation_coefficients,
+            coefficients,
+            generic_selector,
+            poseidon_selector,
+        }
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>column_evaluations(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        evaluated_column_coefficients: <span class="kw-2">&amp;</span>EvaluatedColumnCoefficients&lt;F&gt;,
+    ) -&gt; ColumnEvaluations&lt;F&gt; {
+        <span class="kw">let </span>permutation_coefficients8 = array::from_fn(|i| {
+            evaluated_column_coefficients.permutation_coefficients[i]
+                .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8)
+        });
+
+        <span class="kw">let </span>poseidon_selector8 = evaluated_column_coefficients
+            .poseidon_selector
+            .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8);
+
+        <span class="comment">// ECC gates
+        </span><span class="kw">let </span>complete_add_selector4 = selector_polynomial(
+            GateType::CompleteAdd,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d4,
+        );
+
+        <span class="kw">let </span>mul_selector8 = selector_polynomial(
+            GateType::VarBaseMul,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+        );
+
+        <span class="kw">let </span>emul_selector8 = selector_polynomial(
+            GateType::EndoMul,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+        );
+
+        <span class="kw">let </span>endomul_scalar_selector8 = selector_polynomial(
+            GateType::EndoMulScalar,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+        );
+
+        <span class="kw">let </span>generic_selector4 = evaluated_column_coefficients
+            .generic_selector
+            .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d4);
+
+        <span class="comment">// chacha gate
+        </span><span class="kw">let </span>chacha_selectors8 = {
+            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.chacha {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>([
+                    selector_polynomial(
+                        GateType::ChaCha0,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaCha1,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaCha2,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaChaFinal,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    ),
+                ])
+            }
+        };
+
+        <span class="comment">// Range check constraint selector polynomials
+        </span><span class="kw">let </span>range_check_selectors8 = {
+            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>([
+                    selector_polynomial(
+                        GateType::RangeCheck0,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::RangeCheck1,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    ),
+                ])
+            }
+        };
+
+        <span class="comment">// Foreign field addition constraint selector polynomial
+        </span><span class="kw">let </span>foreign_field_add_selector8 = {
+            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.foreign_field_add {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(selector_polynomial(
+                    GateType::ForeignFieldAdd,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                ))
+            }
+        };
+
+        <span class="kw">let </span>xor_selector8 = {
+            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.xor {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(selector_polynomial(
+                    GateType::Xor16,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                ))
+            }
+        };
+
+        <span class="comment">// TODO: This doesn&#39;t need to be degree 8 but that would require some changes in expr
+        </span><span class="kw">let </span>coefficients8 = array::from_fn(|i| {
+            evaluated_column_coefficients.coefficients[i]
+                .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d8)
+        });
+
+        ColumnEvaluations {
+            permutation_coefficients8,
+            coefficients8,
+            generic_selector4,
+            poseidon_selector8,
+            complete_add_selector4,
+            mul_selector8,
+            emul_selector8,
+            chacha_selectors8,
+            endomul_scalar_selector8,
+            range_check_selectors8,
+            foreign_field_add_selector8,
+            xor_selector8,
         }
     }
 }
@@ -1174,155 +1439,6 @@
         <span class="comment">//~ 4. sample the `PERMUTS` shifts.
         </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span>domain.d1);
 
-        <span class="comment">// Precomputations
-        // ===============
-        // what follows are pre-computations.
-
-        //
-        // Permutation
-        // -----------
-
-        // compute permutation polynomials
-        </span><span class="kw">let </span><span class="kw-2">mut </span>sigmal1: [Vec&lt;F&gt;; PERMUTS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); domain.d1.size()]);
-
-        <span class="kw">for </span>(row, gate) <span class="kw">in </span>gates.iter().enumerate() {
-            <span class="kw">for </span>(cell, sigma) <span class="kw">in </span>gate.wires.iter().zip(sigmal1.iter_mut()) {
-                sigma[row] = shifts.cell_to_field(cell);
-            }
-        }
-
-        <span class="kw">let </span>sigmal1: [<span class="kw">_</span>; PERMUTS] = {
-            <span class="kw">let </span>[s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-            [
-                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s0, domain.d1),
-                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s1, domain.d1),
-                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s2, domain.d1),
-                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s3, domain.d1),
-                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s4, domain.d1),
-                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s5, domain.d1),
-                E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(s6, domain.d1),
-            ]
-        };
-
-        <span class="kw">let </span>sigmam: [DP&lt;F&gt;; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
-
-        <span class="kw">let </span>sigmal8 = array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
-        <span class="comment">// Gates
-        // -----
-        //
-        // Compute each gate&#39;s polynomial as
-        // the polynomial that evaluates to 1 at $g^i$
-        // where $i$ is the row where a gate is active.
-        // Note: gates must be mutually exclusive.
-
-        // poseidon gate
-        </span><span class="kw">let </span>psm = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-            gates.iter().map(|gate| gate.ps()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        <span class="kw">let </span>ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
-
-        <span class="comment">// ECC gates
-        </span><span class="kw">let </span>complete_addl4 =
-            selector_polynomial(GateType::CompleteAdd, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d4);
-
-        <span class="kw">let </span>mull8 = selector_polynomial(GateType::VarBaseMul, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8);
-
-        <span class="kw">let </span>emull = selector_polynomial(GateType::EndoMul, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8);
-
-        <span class="kw">let </span>endomul_scalar8 =
-            selector_polynomial(GateType::EndoMulScalar, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8);
-
-        <span class="comment">// double generic gate
-        </span><span class="kw">let </span>genericm = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    <span class="kw">if </span><span class="macro">matches!</span>(gate.typ, GateType::Generic) {
-                        F::one()
-                    } <span class="kw">else </span>{
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        <span class="kw">let </span>generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
-
-        <span class="comment">// chacha gate
-        </span><span class="kw">let </span>chacha8 = {
-            <span class="kw">if </span>!feature_flags.chacha {
-                <span class="prelude-val">None
-            </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>([
-                    selector_polynomial(GateType::ChaCha0, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
-                    selector_polynomial(GateType::ChaCha1, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
-                    selector_polynomial(GateType::ChaCha2, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
-                    selector_polynomial(GateType::ChaChaFinal, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
-                ])
-            }
-        };
-
-        <span class="comment">// Range check constraint selector polynomials
-        </span><span class="kw">let </span>range_check_selector_polys = {
-            <span class="kw">if </span>!feature_flags.range_check {
-                <span class="prelude-val">None
-            </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>([
-                    selector_polynomial(GateType::RangeCheck0, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
-                    selector_polynomial(GateType::RangeCheck1, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
-                ])
-            }
-        };
-
-        <span class="comment">// Foreign field addition constraint selector polynomial
-        </span><span class="kw">let </span>foreign_field_add_selector_poly = {
-            <span class="kw">if </span>!feature_flags.foreign_field_add {
-                <span class="prelude-val">None
-            </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(selector_polynomial(
-                    GateType::ForeignFieldAdd,
-                    <span class="kw-2">&amp;</span>gates,
-                    <span class="kw-2">&amp;</span>domain,
-                    <span class="kw-2">&amp;</span>domain.d8,
-                ))
-            }
-        };
-
-        <span class="kw">let </span>xor_selector_poly = {
-            <span class="kw">if </span>!feature_flags.xor {
-                <span class="prelude-val">None
-            </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(selector_polynomial(
-                    GateType::Xor16,
-                    <span class="kw-2">&amp;</span>gates,
-                    <span class="kw-2">&amp;</span>domain,
-                    <span class="kw-2">&amp;</span>domain.d8,
-                ))
-            }
-        };
-
-        <span class="comment">//
-        // Coefficient
-        // -----------
-        //
-
-        // coefficient polynomial
-        </span><span class="kw">let </span>coefficientsm: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|i| {
-            <span class="kw">let </span>padded = gates
-                .iter()
-                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-                .collect();
-            <span class="kw">let </span>eval = E::from_vec_and_domain(padded, domain.d1);
-            eval.interpolate()
-        });
-        <span class="comment">// TODO: This doesn&#39;t need to be degree 8 but that would require some changes in expr
-        </span><span class="kw">let </span>coefficients8 =
-            array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
-
         <span class="comment">//
         // Lookup
         // ------
@@ -1353,26 +1469,6 @@
             </span>lookup_constraint_system,
             feature_flags,
             precomputations: domain_constant_evaluation,
-            evaluated_column_coefficients: EvaluatedColumnCoefficients {
-                permutation_coefficients: sigmam,
-                coefficients: coefficientsm,
-                generic_selector: genericm,
-                poseidon_selector: psm,
-            },
-            column_evaluations: ColumnEvaluations {
-                permutation_coefficients8: sigmal8,
-                coefficients8,
-                generic_selector4: generic4,
-                poseidon_selector8: ps8,
-                complete_add_selector4: complete_addl4,
-                mul_selector8: mull8,
-                emul_selector8: emull,
-                chacha_selectors8: chacha8,
-                endomul_scalar_selector8: endomul_scalar8,
-                range_check_selectors8: range_check_selector_polys,
-                foreign_field_add_selector8: foreign_field_add_selector_poly,
-                xor_selector8: xor_selector_poly,
-            },
         };
 
         <span class="kw">match </span><span class="self">self</span>.precomputations {

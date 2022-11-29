@@ -2604,6 +2604,17 @@
 <a href="#2604" id="2604">2604</a>
 <a href="#2605" id="2605">2605</a>
 <a href="#2606" id="2606">2606</a>
+<a href="#2607" id="2607">2607</a>
+<a href="#2608" id="2608">2608</a>
+<a href="#2609" id="2609">2609</a>
+<a href="#2610" id="2610">2610</a>
+<a href="#2611" id="2611">2611</a>
+<a href="#2612" id="2612">2612</a>
+<a href="#2613" id="2613">2613</a>
+<a href="#2614" id="2614">2614</a>
+<a href="#2615" id="2615">2615</a>
+<a href="#2616" id="2616">2616</a>
+<a href="#2617" id="2617">2617</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -5086,11 +5097,14 @@
             wires::Wire,
         },
         curve::KimchiCurve,
+        prover_index::ProverIndex,
     };
     <span class="kw">use </span>ark_ff::UniformRand;
-    <span class="kw">use </span>mina_curves::pasta::{Fp, Vesta};
+    <span class="kw">use </span>commitment_dlog::srs::{endos, SRS};
+    <span class="kw">use </span>mina_curves::pasta::{Fp, Pallas, Vesta};
     <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
     <span class="kw">use </span>std::array;
+    <span class="kw">use </span>std::sync::Arc;
 
     <span class="attr">#[test]
     #[should_panic]
@@ -5130,11 +5144,19 @@
                 <span class="prelude-val">None</span>,
             ),
         ];
-        <span class="kw">let </span>constraint_system = ConstraintSystem::fp_for_testing(gates);
+        <span class="kw">let </span>index = {
+            <span class="kw">let </span>constraint_system = ConstraintSystem::fp_for_testing(gates);
+            <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::&lt;Vesta&gt;::create(constraint_system.domain.d1.size());
+            srs.add_lagrange_basis(constraint_system.domain.d1);
+            <span class="kw">let </span>srs = Arc::new(srs);
+
+            <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;Pallas&gt;();
+            ProverIndex::&lt;Vesta&gt;::create(constraint_system, endo_q, srs)
+        };
 
         <span class="kw">let </span>witness_cols: [<span class="kw">_</span>; COLUMNS] = array::from_fn(|<span class="kw">_</span>| DensePolynomial::zero());
         <span class="kw">let </span>permutation = DensePolynomial::zero();
-        <span class="kw">let </span>domain_evals = constraint_system.evaluate(<span class="kw-2">&amp;</span>witness_cols, <span class="kw-2">&amp;</span>permutation);
+        <span class="kw">let </span>domain_evals = index.cs.evaluate(<span class="kw-2">&amp;</span>witness_cols, <span class="kw-2">&amp;</span>permutation);
 
         <span class="kw">let </span>env = Environment {
             constants: Constants {
@@ -5147,11 +5169,11 @@
                 foreign_field_modulus: <span class="prelude-val">None</span>,
             },
             witness: <span class="kw-2">&amp;</span>domain_evals.d8.this.w,
-            coefficient: <span class="kw-2">&amp;</span>constraint_system.column_evaluations.coefficients8,
-            vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>constraint_system.precomputations().vanishes_on_last_4_rows,
+            coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,
+            vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>index.cs.precomputations().vanishes_on_last_4_rows,
             z: <span class="kw-2">&amp;</span>domain_evals.d8.this.z,
-            l0_1: l0_1(constraint_system.domain.d1),
-            domain: constraint_system.domain,
+            l0_1: l0_1(index.cs.domain.d1),
+            domain: index.cs.domain,
             index: HashMap::new(),
             lookup: <span class="prelude-val">None</span>,
         };

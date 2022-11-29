@@ -1123,7 +1123,7 @@
     curve::KimchiCurve,
     proof::ProofEvaluations,
 };
-<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField};
+<span class="kw">use </span>ark_ff::{FftField, Field, PrimeField, SquareRootField};
 <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::marker::PhantomData;
@@ -1137,7 +1137,7 @@
 
 <span class="comment">// GATE-RELATED
 
-</span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+</span><span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// This function creates a `CairoClaim` gate
     </span><span class="kw">pub fn </span>create_cairo_claim(wires: GateWires) -&gt; <span class="self">Self </span>{
         CircuitGate::new(GateType::CairoClaim, wires, <span class="macro">vec!</span>[])

@@ -458,12 +458,12 @@
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    constraints::ConstraintSystem,
     expr::constraints::ExprOps,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::GateWires,
 };
+<span class="kw">use crate</span>::{curve::KimchiCurve, prover_index::ProverIndex};
 <span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
 <span class="kw">use </span>std::array;
@@ -700,7 +700,7 @@
         }
     }
 
-    <span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
+    <span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;&gt; ProverIndex&lt;G&gt; {
         <span class="doccomment">/// Function to verify the generic polynomials with a witness.
         </span><span class="kw">pub fn </span>verify_generic(
             <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -739,7 +739,7 @@
             </span>res = <span class="kw-2">&amp;</span>res * <span class="kw-2">&amp;</span><span class="self">self</span>.evaluated_column_coefficients.generic_selector;
 
             <span class="comment">// verify that it is divisible by Z_H
-            </span><span class="kw">match </span>res.divide_by_vanishing_poly(<span class="self">self</span>.domain.d1) {
+            </span><span class="kw">match </span>res.divide_by_vanishing_poly(<span class="self">self</span>.cs.domain.d1) {
                 <span class="prelude-val">Some</span>((_quotient, rest)) =&gt; rest.is_zero(),
                 <span class="prelude-val">None </span>=&gt; <span class="bool-val">false</span>,
             }

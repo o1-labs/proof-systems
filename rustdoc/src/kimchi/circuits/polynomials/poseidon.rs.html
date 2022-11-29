@@ -456,7 +456,7 @@
     },
     curve::KimchiCurve,
 };
-<span class="kw">use </span>ark_ff::{Field, PrimeField};
+<span class="kw">use </span>ark_ff::{Field, PrimeField, SquareRootField};
 <span class="kw">use </span>mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
@@ -498,7 +498,7 @@
     start..(start + SPONGE_WIDTH)
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="kw">pub fn </span>create_poseidon(
         wires: GateWires,
         <span class="comment">// Coefficients are passed in in the logical order
