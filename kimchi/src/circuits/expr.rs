@@ -442,6 +442,12 @@ pub enum FeatureFlag {
     Xor,
 }
 
+impl FeatureFlag {
+    pub fn is_enabled(&self) -> bool {
+        todo!("Handle features")
+    }
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -589,10 +595,11 @@ impl<F: FftField> PolishToken<F> {
                         cache.push(x);
                     }
                     Load(i) => stack.push(cache[*i]),
-                    SkipIf(_feature, count) => {
-                        todo!("Handle features");
-                        skip_count = *count;
-                        stack.push(F::zero());
+                    SkipIf(feature, count) => {
+                        if !feature.is_enabled() {
+                            skip_count = *count;
+                            stack.push(F::zero());
+                        }
                     }
                 }
             }
@@ -1365,9 +1372,12 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
-            EnabledIf(_feature, _e) => {
-                todo!("Handle features");
-                Ok(F::zero())
+            EnabledIf(feature, e) => {
+                if feature.is_enabled() {
+                    e.evaluate_(d, pt, evals, c)
+                } else {
+                    Ok(F::zero())
+                }
             }
         }
     }
@@ -1416,9 +1426,12 @@ impl<F: FftField> Expr<F> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
-            EnabledIf(_feature, _e) => {
-                todo!("Handle features");
-                Ok(F::zero())
+            EnabledIf(feature, e) => {
+                if feature.is_enabled() {
+                    e.evaluate(d, pt, evals)
+                } else {
+                    Ok(F::zero())
+                }
             }
         }
     }
@@ -1584,9 +1597,15 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
-            Expr::EnabledIf(_feature, _e) => {
-                todo!("Handle features");
-                EvalResult::Constant(F::zero())
+            Expr::EnabledIf(feature, e) => {
+                if feature.is_enabled() {
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is off. */
+                    let mut cache = cache.clone();
+                    return e.evaluations_helper(&mut cache, d, env);
+                } else {
+                    EvalResult::Constant(F::zero())
+                }
             }
         };
         Either::Left(res)
@@ -1816,9 +1835,12 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let x = x.monomials(ev);
                 mul_monomials(&x, &x)
             }
-            EnabledIf(_feature, _x) => {
-                todo!("Handle features");
-                HashMap::default()
+            EnabledIf(feature, x) => {
+                if feature.is_enabled() {
+                    x.monomials(ev)
+                } else {
+                    HashMap::default()
+                }
             }
         }
     }
