@@ -184,8 +184,7 @@ where
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
-        let result =
-            gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        let result = gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }
@@ -213,12 +212,8 @@ where
             // When targeting the plookup constraints the invalidated values would cause custom constraint
             // failures, so we want to suppress these witness verification checks when doing plookup tests.
             for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
-                let result = gate.verify_witness::<G>(
-                    row,
-                    &witness,
-                    &cs,
-                    &witness[0][0..cs.public],
-                );
+                let result =
+                    gate.verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]);
                 if result.is_err() {
                     return (result, witness);
                 }
