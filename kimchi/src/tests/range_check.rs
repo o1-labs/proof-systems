@@ -74,7 +74,7 @@ fn verify_range_check0_zero_valid_witness() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -91,7 +91,7 @@ fn verify_range_check0_zero_valid_witness() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -114,7 +114,7 @@ fn verify_range_check0_one_invalid_witness() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
@@ -131,7 +131,7 @@ fn verify_range_check0_one_invalid_witness() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
@@ -162,7 +162,7 @@ fn verify_range_check0_valid_witness() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -179,7 +179,7 @@ fn verify_range_check0_valid_witness() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -205,7 +205,7 @@ fn verify_range_check0_valid_witness() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -222,7 +222,7 @@ fn verify_range_check0_valid_witness() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -287,7 +287,7 @@ fn verify_range_check0_invalid_witness() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 1))
     );
@@ -307,7 +307,7 @@ fn verify_range_check0_invalid_witness() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 2))
     );
@@ -318,7 +318,7 @@ fn verify_range_check0_valid_v0_in_range() {
     let index = create_test_prover_index(0);
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -335,13 +335,13 @@ fn verify_range_check0_valid_v0_in_range() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(PallasField::from(2u64).pow([64])),
+        PallasField::from(2u64).pow([64]),
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -358,7 +358,7 @@ fn verify_range_check0_valid_v0_in_range() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -381,7 +381,7 @@ fn verify_range_check0_valid_v0_in_range() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -404,7 +404,7 @@ fn verify_range_check0_valid_v0_in_range() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -416,7 +416,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
         PallasField::zero(),
     );
 
@@ -432,14 +432,14 @@ fn verify_range_check0_valid_v1_in_range() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([63])),
+        PallasField::from(2u64).pow([63]),
         PallasField::zero(),
     );
 
@@ -455,7 +455,7 @@ fn verify_range_check0_valid_v1_in_range() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -478,7 +478,7 @@ fn verify_range_check0_valid_v1_in_range() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -501,7 +501,7 @@ fn verify_range_check0_valid_v1_in_range() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -529,7 +529,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
@@ -552,7 +552,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
@@ -580,7 +580,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
@@ -603,7 +603,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 8))
     );
@@ -634,7 +634,7 @@ fn verify_range_check0_test_copy_constraints() {
                     row,
                     &witness,
                     &index.cs,
-                    &witness[0][0..index.cs.public].to_vec()
+                    &witness[0][0..index.cs.public]
                 ),
                 Ok(())
             );
@@ -655,7 +655,7 @@ fn verify_range_check0_test_copy_constraints() {
                     row,
                     &witness,
                     &index.cs,
-                    &witness[0][0..index.cs.public].to_vec()
+                    &witness[0][0..index.cs.public]
                 ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: index.cs.gates[row].typ,
@@ -753,7 +753,7 @@ fn verify_range_check1_zero_valid_witness() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -776,7 +776,7 @@ fn verify_range_check1_one_invalid_witness() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
@@ -807,7 +807,7 @@ fn verify_range_check1_valid_witness() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -833,7 +833,7 @@ fn verify_range_check1_valid_witness() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -867,7 +867,7 @@ fn verify_range_check1_invalid_witness() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
@@ -896,7 +896,7 @@ fn verify_range_check1_invalid_witness() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 8))
     );
@@ -909,7 +909,7 @@ fn verify_range_check1_valid_v2_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([88]) - PallasField::one()),
+        PallasField::from(2u64).pow([88]) - PallasField::one(),
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -924,7 +924,7 @@ fn verify_range_check1_valid_v2_in_range() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -932,7 +932,7 @@ fn verify_range_check1_valid_v2_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(PallasField::from(2u64).pow([64])),
+        PallasField::from(2u64).pow([64]),
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -947,7 +947,7 @@ fn verify_range_check1_valid_v2_in_range() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -970,7 +970,7 @@ fn verify_range_check1_valid_v2_in_range() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -993,7 +993,7 @@ fn verify_range_check1_valid_v2_in_range() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -1021,7 +1021,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
@@ -1044,7 +1044,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
             2,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::RangeCheck1, 20))
     );
@@ -1086,7 +1086,7 @@ fn verify_range_check1_test_copy_constraints() {
                     2,
                     &witness,
                     &index.cs,
-                    &witness[0][0..index.cs.public].to_vec()
+                    &witness[0][0..index.cs.public]
                 ),
                 Ok(())
             );
@@ -1098,7 +1098,7 @@ fn verify_range_check1_test_copy_constraints() {
                     3,
                     &witness,
                     &index.cs,
-                    &witness[0][0..index.cs.public].to_vec()
+                    &witness[0][0..index.cs.public]
                 ),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Zero,
@@ -1243,7 +1243,7 @@ fn verify_64_bit_range_check() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(())
     );
@@ -1299,5 +1299,5 @@ fn verify_range_check_valid_proof1() {
     // Verify proof
     let res = verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof);
 
-    assert!(!res.is_err());
+    assert!(res.is_ok());
 }
