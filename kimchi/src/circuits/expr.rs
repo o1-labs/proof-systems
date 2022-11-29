@@ -2257,7 +2257,7 @@ where
                 id.var_name()
             }
             EnabledIf(feature, e) => {
-                format!("enabled_if({:?}, (fun () -> {})", feature, e.ocaml(cache))
+                format!("enabled_if({:?}, (fun () -> {}))", feature, e.ocaml(cache))
             }
         }
     }
