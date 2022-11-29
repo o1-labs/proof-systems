@@ -323,27 +323,7 @@ mod tests {
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
         let index = new_index_for_test::<Vesta>(gates, 0);
-        let (_linearization, powers_of_alpha) = expr_linearization(
-            index.cs.column_evaluations.chacha_selectors8.is_some(),
-            index.cs.column_evaluations.range_check_selectors8.is_some(),
-            index
-                .cs
-                .lookup_constraint_system
-                .as_ref()
-                .map(|lcs| &lcs.configuration),
-            index
-                .cs
-                .column_evaluations
-                .foreign_field_add_selector8
-                .is_some(),
-            index
-                .cs
-                .column_evaluations
-                .foreign_field_mul_selector8
-                .is_some(),
-            index.cs.column_evaluations.xor_selector8.is_some(),
-            true,
-        );
+        let (_linearization, powers_of_alpha) = expr_linearization(&index.cs.feature_flags, true);
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let spec_path = Path::new(&manifest_dir)
