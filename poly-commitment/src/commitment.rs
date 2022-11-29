@@ -247,17 +247,17 @@ impl<C: AffineCurve> PolyComm<C> {
             unshifted.push(chunk_msm.into_affine());
         }
 
-        let shifted_pairs: Vec<_> = com
+        let mut shifted_pairs = com
             .iter()
             .zip(all_scalars)
             // get rid of commitments without a `shifted` part
             .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
-            .collect();
+            .peekable();
 
-        let shifted = if shifted_pairs.is_empty() {
+        let shifted = if shifted_pairs.peek().is_none() {
             None
         } else {
-            let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.into_iter().unzip();
+            let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
             Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
         };
 
