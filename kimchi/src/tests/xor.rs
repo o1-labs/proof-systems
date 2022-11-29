@@ -16,7 +16,7 @@ fn create_test_constraint_system(bits: usize) -> ConstraintSystem<Fp> {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
@@ -28,12 +28,7 @@ fn test_xor(in1: u128, in2: u128, bits: usize) -> [Vec<PallasField>; COLUMNS] {
     let witness = xor::create(in1, in2, bits);
     for row in 0..xor::num_xors(bits) + 1 {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
@@ -70,7 +65,7 @@ fn prove_and_verify(bits: usize) {
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::new(next_row)));
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 

@@ -22,7 +22,7 @@ fn ec_test() {
     for row in 0..(num_doubles + num_additions + num_infs) {
         gates.push(CircuitGate::new(
             GateType::CompleteAdd,
-            Wire::new(row),
+            Wire::for_row(row),
             vec![],
         ));
     }
@@ -59,9 +59,7 @@ fn ec_test() {
         res
     };
 
-    for i in 0..num_doubles {
-        let p = ps[i];
-
+    for &p in ps.iter().take(num_doubles) {
         let p2 = p + p;
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
@@ -113,8 +111,7 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    for i in 0..num_infs {
-        let p = ps[i];
+    for &p in ps.iter().take(num_infs) {
         let q = -p;
 
         let p2 = p + p;
