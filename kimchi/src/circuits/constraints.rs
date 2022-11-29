@@ -1,18 +1,21 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
+use super::lookup::runtime_tables::RuntimeTableCfg;
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, tables::LookupTable},
+        lookup::{
+            constraints::LookupConfiguration, index::LookupConstraintSystem, tables::LookupTable,
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::{foreign_field_add, range_check},
+        polynomials::range_check,
         wires::*,
     },
     curve::KimchiCurve,
     error::SetupError,
+    prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
@@ -25,11 +28,102 @@ use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
-use std::{collections::HashSet, sync::Arc};
+use std::sync::Arc;
 
 //
 // ConstraintSystem
 //
+
+/// Flags for optional features in the constraint system
+#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(bound = "F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize")]
+pub struct FeatureFlags<F> {
+    /// ChaCha gates
+    pub chacha: bool,
+    /// Range check gates
+    pub range_check: bool,
+    /// Foreign field addition gate
+    pub foreign_field_add: bool,
+    /// XOR gate
+    pub xor: bool,
+    /// Lookups
+    pub lookup_configuration: Option<LookupConfiguration<F>>,
+}
+
+/// The polynomials representing evaluated columns, in coefficient form.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EvaluatedColumnCoefficients<F: PrimeField> {
+    /// permutation coefficients
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub permutation_coefficients: [DP<F>; PERMUTS],
+
+    /// gate coefficients
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients: [DP<F>; COLUMNS],
+
+    /// generic gate selector
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub generic_selector: DP<F>,
+
+    /// poseidon gate selector
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub poseidon_selector: DP<F>,
+}
+
+/// The polynomials representing columns, in evaluation form.
+/// The evaluations are expanded to the domain size required for their constraints.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ColumnEvaluations<F: PrimeField> {
+    /// permutation coefficients over domain d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub permutation_coefficients8: [E<F, D<F>>; PERMUTS],
+
+    /// coefficients over domain d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients8: [E<F, D<F>>; COLUMNS],
+
+    /// generic selector over domain d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub generic_selector4: E<F, D<F>>,
+
+    /// poseidon selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub poseidon_selector8: E<F, D<F>>,
+
+    /// EC point addition selector over domain d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub complete_add_selector4: E<F, D<F>>,
+
+    /// scalar multiplication selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub mul_selector8: E<F, D<F>>,
+
+    /// endoscalar multiplication selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub emul_selector8: E<F, D<F>>,
+
+    /// ChaCha selectors over domain d8
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
+    pub chacha_selectors8: Option<[E<F, D<F>>; 4]>,
+
+    /// EC point addition selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub endomul_scalar_selector8: E<F, D<F>>,
+
+    /// Range check gate selector over domain d8
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; range_check::gadget::GATE_COUNT]>")]
+    pub range_check_selectors8: Option<[E<F, D<F>>; range_check::gadget::GATE_COUNT]>,
+
+    /// Foreign field addition gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub foreign_field_add_selector8: Option<E<F, D<F>>>,
+
+    /// Xor gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub xor_selector8: Option<E<F, D<F>>>,
+}
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -47,91 +141,16 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
-    // Polynomials over the monomial base
-    // ----------------------------------
-    /// permutation polynomial array
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmam: [DP<F>; PERMUTS],
+    /// flags for optional features
+    #[serde(bound = "FeatureFlags<F>: Serialize + DeserializeOwned")]
+    pub feature_flags: FeatureFlags<F>,
 
-    // Coefficient polynomials. These define constant that gates can use as they like.
-    // ---------------------------------------
-    /// coefficients polynomials in monomial form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficientsm: [DP<F>; COLUMNS],
-    /// coefficients polynomials in evaluation form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficients8: [E<F, D<F>>; COLUMNS],
-
-    // Generic constraint selector polynomials
-    // ---------------------------------------
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub genericm: DP<F>,
-
-    // Poseidon selector polynomials
-    // -----------------------------
-    /// poseidon constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub psm: DP<F>,
-
-    // Generic constraint selector polynomials
-    // ---------------------------------------
-    /// multiplication evaluations over domain.d4
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub generic4: E<F, D<F>>,
-
-    // permutation polynomials
-    // -----------------------
-    /// permutation polynomial array evaluations over domain d1
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmal1: [E<F, D<F>>; PERMUTS],
-    /// permutation polynomial array evaluations over domain d8
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
 
-    // Poseidon selector polynomials
-    // -----------------------------
-    /// poseidon selector over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub ps8: E<F, D<F>>,
-
-    // ECC arithmetic selector polynomials
-    // -----------------------------------
-    /// EC point addition selector evaluations w over domain.d4
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub complete_addl4: E<F, D<F>>,
-    /// scalar multiplication selector evaluations over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub mull8: E<F, D<F>>,
-    /// endoscalar multiplication selector evaluations over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub emull: E<F, D<F>>,
-    /// ChaCha indexes
-    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
-    pub chacha8: Option<[E<F, D<F>>; 4]>,
-    /// EC point addition selector evaluations w over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub endomul_scalar8: E<F, D<F>>,
-
-    /// Range check gate selector polynomials
-    #[serde(
-        bound = "[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]: Serialize + DeserializeOwned"
-    )]
-    pub range_check_selector_polys:
-        Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
-
     /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
-
-    /// Foreign field addition gate selector polynomial
-    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
-
-    /// Xor gate selector polynomial
-    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub xor_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -173,7 +192,8 @@ pub fn selector_polynomial<F: PrimeField>(
     gate_type: GateType,
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
-) -> SelectorPolynomial<F> {
+    target_domain: &D<F>,
+) -> E<F, D<F>> {
     // Coefficient form
     let coeff = E::<F, D<F>>::from_vec_and_domain(
         gates
@@ -190,23 +210,7 @@ pub fn selector_polynomial<F: PrimeField>(
     )
     .interpolate();
 
-    // Evaluation form (evaluated over d8)
-    let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
-
-    SelectorPolynomial { eval8 }
-}
-
-/// Create selector polynomials for a gate (i.e. a collection of circuit gates)
-pub fn selector_polynomials<F: PrimeField>(
-    gate_types: &[GateType],
-    gates: &[CircuitGate<F>],
-    domain: &EvaluationDomains<F>,
-) -> Vec<SelectorPolynomial<F>> {
-    Vec::from_iter(
-        gate_types
-            .iter()
-            .map(|gate_type| selector_polynomial(*gate_type, gates, domain)),
-    )
+    coeff.evaluate_over_domain_by_ref(*target_domain)
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
@@ -245,18 +249,16 @@ impl<F: PrimeField> ConstraintSystem<F> {
             .set(precomputations)
             .expect("Precomputation has been set before");
     }
+}
 
+impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
     ///     witness: wire assignment witness
     ///     RETURN: verification status
-    pub fn verify<G: KimchiCurve<ScalarField = F>>(
-        &self,
-        witness: &[Vec<F>; COLUMNS],
-        public: &[F],
-    ) -> Result<(), GateError> {
+    pub fn verify(&self, witness: &[Vec<F>; COLUMNS], public: &[F]) -> Result<(), GateError> {
         // pad the witness
-        let pad = vec![F::zero(); self.domain.d1.size() - witness[0].len()];
+        let pad = vec![F::zero(); self.cs.domain.d1.size() - witness[0].len()];
         let witness: [Vec<F>; COLUMNS] = array::from_fn(|i| {
             let mut w = witness[i].to_vec();
             w.extend_from_slice(&pad);
@@ -264,7 +266,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         });
 
         // check each rows' wiring
-        for (row, gate) in self.gates.iter().enumerate() {
+        for (row, gate) in self.cs.gates.iter().enumerate() {
             // check if wires are connected
             for col in 0..PERMUTS {
                 let wire = gate.wires[col];
@@ -291,7 +293,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             }
 
             // for public gates, only the left wire is toggled
-            if row < self.public && gate.coeffs[0] != F::one() {
+            if row < self.cs.public && gate.coeffs[0] != F::one() {
                 return Err(GateError::IncorrectPublic(row));
             }
 
@@ -303,7 +305,9 @@ impl<F: PrimeField> ConstraintSystem<F> {
         // all good!
         Ok(())
     }
+}
 
+impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
     pub fn evaluate(&self, w: &[DP<F>; COLUMNS], z: &DP<F>) -> WitnessOverDomains<F> {
         // compute shifted witness polynomials
@@ -340,6 +344,228 @@ impl<F: PrimeField> ConstraintSystem<F> {
                 },
                 this: WitnessEvals { w: w8, z: z8 },
             },
+        }
+    }
+
+    pub(crate) fn evaluated_column_coefficients(&self) -> EvaluatedColumnCoefficients<F> {
+        // compute permutation polynomials
+        let shifts = Shifts::new(&self.domain.d1);
+
+        let mut sigmal1: [Vec<F>; PERMUTS] =
+            array::from_fn(|_| vec![F::zero(); self.domain.d1.size()]);
+
+        for (row, gate) in self.gates.iter().enumerate() {
+            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
+                sigma[row] = shifts.cell_to_field(cell);
+            }
+        }
+
+        let sigmal1: [_; PERMUTS] = {
+            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
+            [
+                E::<F, D<F>>::from_vec_and_domain(s0, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s1, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s2, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s3, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s4, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s5, self.domain.d1),
+                E::<F, D<F>>::from_vec_and_domain(s6, self.domain.d1),
+            ]
+        };
+
+        let permutation_coefficients: [DP<F>; PERMUTS] =
+            array::from_fn(|i| sigmal1[i].clone().interpolate());
+
+        // poseidon gate
+        let poseidon_selector = E::<F, D<F>>::from_vec_and_domain(
+            self.gates.iter().map(|gate| gate.ps()).collect(),
+            self.domain.d1,
+        )
+        .interpolate();
+
+        // double generic gate
+        let generic_selector = E::<F, D<F>>::from_vec_and_domain(
+            self.gates
+                .iter()
+                .map(|gate| {
+                    if matches!(gate.typ, GateType::Generic) {
+                        F::one()
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            self.domain.d1,
+        )
+        .interpolate();
+
+        // coefficient polynomial
+        let coefficients: [_; COLUMNS] = array::from_fn(|i| {
+            let padded = self
+                .gates
+                .iter()
+                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
+                .collect();
+            let eval = E::from_vec_and_domain(padded, self.domain.d1);
+            eval.interpolate()
+        });
+
+        EvaluatedColumnCoefficients {
+            permutation_coefficients,
+            coefficients,
+            generic_selector,
+            poseidon_selector,
+        }
+    }
+
+    pub(crate) fn column_evaluations(
+        &self,
+        evaluated_column_coefficients: &EvaluatedColumnCoefficients<F>,
+    ) -> ColumnEvaluations<F> {
+        let permutation_coefficients8 = array::from_fn(|i| {
+            evaluated_column_coefficients.permutation_coefficients[i]
+                .evaluate_over_domain_by_ref(self.domain.d8)
+        });
+
+        let poseidon_selector8 = evaluated_column_coefficients
+            .poseidon_selector
+            .evaluate_over_domain_by_ref(self.domain.d8);
+
+        // ECC gates
+        let complete_add_selector4 = selector_polynomial(
+            GateType::CompleteAdd,
+            &self.gates,
+            &self.domain,
+            &self.domain.d4,
+        );
+
+        let mul_selector8 = selector_polynomial(
+            GateType::VarBaseMul,
+            &self.gates,
+            &self.domain,
+            &self.domain.d8,
+        );
+
+        let emul_selector8 = selector_polynomial(
+            GateType::EndoMul,
+            &self.gates,
+            &self.domain,
+            &self.domain.d8,
+        );
+
+        let endomul_scalar_selector8 = selector_polynomial(
+            GateType::EndoMulScalar,
+            &self.gates,
+            &self.domain,
+            &self.domain.d8,
+        );
+
+        let generic_selector4 = evaluated_column_coefficients
+            .generic_selector
+            .evaluate_over_domain_by_ref(self.domain.d4);
+
+        // chacha gate
+        let chacha_selectors8 = {
+            if !self.feature_flags.chacha {
+                None
+            } else {
+                Some([
+                    selector_polynomial(
+                        GateType::ChaCha0,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaCha1,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaCha2,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::ChaChaFinal,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                ])
+            }
+        };
+
+        // Range check constraint selector polynomials
+        let range_check_selectors8 = {
+            if !self.feature_flags.range_check {
+                None
+            } else {
+                Some([
+                    selector_polynomial(
+                        GateType::RangeCheck0,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                    selector_polynomial(
+                        GateType::RangeCheck1,
+                        &self.gates,
+                        &self.domain,
+                        &self.domain.d8,
+                    ),
+                ])
+            }
+        };
+
+        // Foreign field addition constraint selector polynomial
+        let foreign_field_add_selector8 = {
+            if !self.feature_flags.foreign_field_add {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::ForeignFieldAdd,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
+        let xor_selector8 = {
+            if !self.feature_flags.xor {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::Xor16,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
+        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
+        let coefficients8 = array::from_fn(|i| {
+            evaluated_column_coefficients.coefficients[i]
+                .evaluate_over_domain_by_ref(self.domain.d8)
+        });
+
+        ColumnEvaluations {
+            permutation_coefficients8,
+            coefficients8,
+            generic_selector4,
+            poseidon_selector8,
+            complete_add_selector4,
+            mul_selector8,
+            emul_selector8,
+            chacha_selectors8,
+            endomul_scalar_selector8,
+            range_check_selectors8,
+            foreign_field_add_selector8,
+            xor_selector8,
         }
     }
 }
@@ -435,196 +661,29 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             .collect();
         gates.append(&mut padding);
 
-        // Record which gates are used by this constraint system
-        let mut circuit_gates_used = HashSet::<GateType>::default();
-        gates.iter().for_each(|gate| {
-            circuit_gates_used.insert(gate.typ);
-        });
+        let mut feature_flags = FeatureFlags {
+            chacha: false,
+            range_check: false,
+            lookup_configuration: None,
+            foreign_field_add: false,
+            xor: false,
+        };
 
-        //~ 4. sample the `PERMUTS` shifts.
-        let shifts = Shifts::new(&domain.d1);
-
-        // Precomputations
-        // ===============
-        // what follows are pre-computations.
-
-        //
-        // Permutation
-        // -----------
-
-        // compute permutation polynomials
-        let mut sigmal1: [Vec<F>; PERMUTS] = array::from_fn(|_| vec![F::zero(); domain.d1.size()]);
-
-        for (row, gate) in gates.iter().enumerate() {
-            for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
-                sigma[row] = shifts.cell_to_field(cell);
+        for gate in &gates {
+            match gate.typ {
+                GateType::ChaCha0
+                | GateType::ChaCha1
+                | GateType::ChaCha2
+                | GateType::ChaChaFinal => feature_flags.chacha = true,
+                GateType::RangeCheck0 | GateType::RangeCheck1 => feature_flags.range_check = true,
+                GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
+                GateType::Xor16 => feature_flags.xor = true,
+                _ => (),
             }
         }
 
-        let sigmal1: [_; PERMUTS] = {
-            let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
-            [
-                E::<F, D<F>>::from_vec_and_domain(s0, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s1, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s2, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s3, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s4, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s5, domain.d1),
-                E::<F, D<F>>::from_vec_and_domain(s6, domain.d1),
-            ]
-        };
-
-        let sigmam: [DP<F>; PERMUTS] = array::from_fn(|i| sigmal1[i].clone().interpolate());
-
-        let sigmal8 = array::from_fn(|i| sigmam[i].evaluate_over_domain_by_ref(domain.d8));
-
-        // Gates
-        // -----
-        //
-        // Compute each gate's polynomial as
-        // the polynomial that evaluates to 1 at $g^i$
-        // where $i$ is the row where a gate is active.
-        // Note: gates must be mutually exclusive.
-
-        // poseidon gate
-        let psm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.ps()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
-
-        // ECC gates
-        let complete_addm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::CompleteAdd) as u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
-
-        let mulm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.vbmul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
-
-        let emulm = E::<F, D<F>>::from_vec_and_domain(
-            gates.iter().map(|gate| gate.endomul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let emull = emulm.evaluate_over_domain_by_ref(domain.d8);
-
-        let endomul_scalarm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) as u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
-
-        // double generic gate
-        let genericm = E::<F, D<F>>::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| {
-                    if matches!(gate.typ, GateType::Generic) {
-                        F::one()
-                    } else {
-                        F::zero()
-                    }
-                })
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        let generic4 = genericm.evaluate_over_domain_by_ref(domain.d4);
-
-        // chacha gate
-        let chacha8 = {
-            use GateType::*;
-            let has_chacha_gate = gates
-                .iter()
-                .any(|gate| matches!(gate.typ, ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal));
-            if !has_chacha_gate {
-                None
-            } else {
-                let a: [_; 4] = array::from_fn(|i| {
-                    let g = match i {
-                        0 => ChaCha0,
-                        1 => ChaCha1,
-                        2 => ChaCha2,
-                        3 => ChaChaFinal,
-                        _ => panic!("Invalid index"),
-                    };
-                    E::<F, D<F>>::from_vec_and_domain(
-                        gates
-                            .iter()
-                            .map(|gate| if gate.typ == g { F::one() } else { F::zero() })
-                            .collect(),
-                        domain.d1,
-                    )
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-                });
-                Some(a)
-            }
-        };
-
-        // Range check constraint selector polynomials
-        let range_gates = range_check::gadget::circuit_gates();
-        let range_check_selector_polys = {
-            if circuit_gates_used.is_disjoint(&range_gates.into_iter().collect()) {
-                None
-            } else {
-                Some(array::from_fn(|i| {
-                    selector_polynomial(range_gates[i], &gates, &domain)
-                }))
-            }
-        };
-
-        // Foreign field addition constraint selector polynomial
-        let ffadd_gates = foreign_field_add::gadget::circuit_gates();
-        let foreign_field_add_selector_poly = {
-            if circuit_gates_used.is_disjoint(&ffadd_gates.into_iter().collect()) {
-                None
-            } else {
-                Some(selector_polynomial(ffadd_gates[0], &gates, &domain))
-            }
-        };
-
-        let xor_gate = [GateType::Xor16];
-        let xor_selector_poly = {
-            if circuit_gates_used.is_disjoint(&xor_gate.into_iter().collect()) {
-                None
-            } else {
-                Some(selector_polynomial(GateType::Xor16, &gates, &domain))
-            }
-        };
-
-        //
-        // Coefficient
-        // -----------
-        //
-
-        // coefficient polynomial
-        let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
-            let padded = gates
-                .iter()
-                .map(|gate| gate.coeffs.get(i).cloned().unwrap_or_else(F::zero))
-                .collect();
-            let eval = E::from_vec_and_domain(padded, domain.d1);
-            eval.interpolate()
-        });
-        // TODO: This doesn't need to be degree 8 but that would require some changes in expr
-        let coefficients8 =
-            array::from_fn(|i| coefficientsm[i].evaluate_over_domain_by_ref(domain.d8));
+        //~ 4. sample the `PERMUTS` shifts.
+        let shifts = Shifts::new(&domain.d1);
 
         //
         // Lookup
@@ -632,6 +691,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let lookup_constraint_system =
             LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
+        feature_flags.lookup_configuration = lookup_constraint_system
+            .as_ref()
+            .map(|lcs| lcs.configuration.clone());
 
         let sid = shifts.map[0].clone();
 
@@ -641,33 +703,17 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let domain_constant_evaluation = OnceCell::new();
 
         let constraints = ConstraintSystem {
-            chacha8,
-            endomul_scalar8,
             domain,
             public: self.public,
             prev_challenges: self.prev_challenges,
             sid,
-            sigmal1,
-            sigmal8,
-            sigmam,
-            genericm,
-            generic4,
-            coefficientsm,
-            coefficients8,
-            ps8,
-            psm,
-            complete_addl4,
-            mull8,
-            emull,
-            range_check_selector_polys,
-            foreign_field_add_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
-            xor_selector_poly,
             gates,
             shift: shifts.shifts,
             endo,
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
+            feature_flags,
             precomputations: domain_constant_evaluation,
         };
 

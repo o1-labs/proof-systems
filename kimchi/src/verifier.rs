@@ -21,7 +21,7 @@ use crate::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use itertools::izip;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -68,17 +68,17 @@ where
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in &self.prev_challenges {
-            fq_sponge.absorb_g(&comm.unshifted);
+            absorb_commitment(&mut fq_sponge, comm);
         }
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-        fq_sponge.absorb_g(&public_comm.unshifted);
+        absorb_commitment(&mut fq_sponge, public_comm);
 
         //~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         self.commitments
             .w_comm
             .iter()
-            .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+            .for_each(|c| absorb_commitment(&mut fq_sponge, c));
 
         //~ 1. If lookup is used:
         let joint_combiner = if let Some(l) = &index.lookup_index {
@@ -94,7 +94,7 @@ where
                     .runtime
                     .as_ref()
                     .ok_or(VerifyError::IncorrectRuntimeProof)?;
-                fq_sponge.absorb_g(&runtime_commit.unshifted);
+                absorb_commitment(&mut fq_sponge, runtime_commit);
             }
 
             //~~ - If it involves queries to a multiple-column lookup table,
@@ -115,7 +115,7 @@ where
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
-                fq_sponge.absorb_g(&com.unshifted);
+                absorb_commitment(&mut fq_sponge, com);
             }
 
             Some(joint_combiner)
@@ -131,11 +131,11 @@ where
 
         //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         self.commitments.lookup.iter().for_each(|l| {
-            fq_sponge.absorb_g(&l.aggreg.unshifted);
+            absorb_commitment(&mut fq_sponge, &l.aggreg);
         });
 
         //~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
-        fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
+        absorb_commitment(&mut fq_sponge, &self.commitments.z_comm);
 
         //~ 1. Sample $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -149,7 +149,7 @@ where
         }
 
         //~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
-        fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
+        absorb_commitment(&mut fq_sponge, &self.commitments.t_comm);
 
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
