@@ -13,8 +13,6 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{bytes::ToBytes, PrimeField};
-use ark_poly::Evaluations;
-use ark_poly::Radix2EvaluationDomain as D;
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -113,15 +111,6 @@ pub enum GateType {
     ForeignFieldMul = 19,
     // Gates for Keccak
     Xor16 = 20,
-}
-
-/// Selector polynomial
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SelectorPolynomial<F: PrimeField> {
-    /// Evaluation form (evaluated over domain d8)
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub eval8: Evaluations<F, D<F>>,
 }
 
 /// Gate error

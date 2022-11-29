@@ -1,5 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::{gate::SelectorPolynomial, lookup::runtime_tables::RuntimeTableCfg};
+use super::lookup::runtime_tables::RuntimeTableCfg;
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -31,6 +31,85 @@ use std::{collections::HashSet, sync::Arc};
 // ConstraintSystem
 //
 
+/// The polynomials representing evaluated columns, in coefficient form.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct EvaluatedColumnCoefficients<F: PrimeField> {
+    /// permutation coefficients
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub permutation_coefficients: [DP<F>; PERMUTS],
+
+    /// gate coefficients
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients: [DP<F>; COLUMNS],
+
+    /// generic gate selector
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub generic_selector: DP<F>,
+
+    /// poseidon gate selector
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub poseidon_selector: DP<F>,
+}
+
+/// The polynomials representing columns, in evaluation form.
+/// The evaluations are expanded to the domain size required for their constraints.
+#[serde_as]
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct ColumnEvaluations<F: PrimeField> {
+    /// permutation coefficients over domain d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
+    pub permutation_coefficients8: [E<F, D<F>>; PERMUTS],
+
+    /// coefficients over domain d8
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
+    pub coefficients8: [E<F, D<F>>; COLUMNS],
+
+    /// generic selector over domain d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub generic_selector4: E<F, D<F>>,
+
+    /// poseidon selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub poseidon_selector8: E<F, D<F>>,
+
+    /// EC point addition selector over domain d4
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub complete_add_selector4: E<F, D<F>>,
+
+    /// scalar multiplication selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub mul_selector8: E<F, D<F>>,
+
+    /// endoscalar multiplication selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub emul_selector8: E<F, D<F>>,
+
+    /// ChaCha selectors over domain d8
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
+    pub chacha_selectors8: Option<[E<F, D<F>>; 4]>,
+
+    /// EC point addition selector over domain d8
+    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
+    pub endomul_scalar_selector8: E<F, D<F>>,
+
+    /// Range check gate selector over domain d8
+    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; range_check::gadget::GATE_COUNT]>")]
+    pub range_check_selectors8: Option<[E<F, D<F>>; range_check::gadget::GATE_COUNT]>,
+
+    /// Foreign field addition gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub foreign_field_add_selector8: Option<E<F, D<F>>>,
+
+    /// Foreign field multiplication gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub foreign_field_mul_selector8: Option<E<F, D<F>>>,
+
+    /// Xor gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub xor_selector8: Option<E<F, D<F>>>,
+}
+
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct ConstraintSystem<F: PrimeField> {
@@ -47,95 +126,18 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
-    // Polynomials over the monomial base
-    // ----------------------------------
-    /// permutation polynomial array
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmam: [DP<F>; PERMUTS],
+    #[serde(bound = "EvaluatedColumnCoefficients<F>: Serialize + DeserializeOwned")]
+    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<F>,
 
-    // Coefficient polynomials. These define constant that gates can use as they like.
-    // ---------------------------------------
-    /// coefficients polynomials in monomial form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficientsm: [DP<F>; COLUMNS],
-    /// coefficients polynomials in evaluation form
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficients8: [E<F, D<F>>; COLUMNS],
+    #[serde(bound = "ColumnEvaluations<F>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<F>,
 
-    // Generic constraint selector polynomials
-    // ---------------------------------------
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub genericm: DP<F>,
-
-    // Poseidon selector polynomials
-    // -----------------------------
-    /// poseidon constraint selector polynomial
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub psm: DP<F>,
-
-    // Generic constraint selector polynomials
-    // ---------------------------------------
-    /// multiplication evaluations over domain.d4
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub generic4: E<F, D<F>>,
-
-    // permutation polynomials
-    // -----------------------
-    /// permutation polynomial array evaluations over domain d1
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmal1: [E<F, D<F>>; PERMUTS],
-    /// permutation polynomial array evaluations over domain d8
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
-    pub sigmal8: [E<F, D<F>>; PERMUTS],
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
 
-    // Poseidon selector polynomials
-    // -----------------------------
-    /// poseidon selector over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub ps8: E<F, D<F>>,
-
-    // ECC arithmetic selector polynomials
-    // -----------------------------------
-    /// EC point addition selector evaluations w over domain.d4
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub complete_addl4: E<F, D<F>>,
-    /// scalar multiplication selector evaluations over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub mull8: E<F, D<F>>,
-    /// endoscalar multiplication selector evaluations over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub emull: E<F, D<F>>,
-    /// ChaCha indexes
-    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
-    pub chacha8: Option<[E<F, D<F>>; 4]>,
-    /// EC point addition selector evaluations w over domain.d8
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub endomul_scalar8: E<F, D<F>>,
-
-    /// Range check gate selector polynomials
-    #[serde(
-        bound = "[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]: Serialize + DeserializeOwned"
-    )]
-    pub range_check_selector_polys:
-        Option<[SelectorPolynomial<F>; range_check::gadget::GATE_COUNT]>,
-
     /// Foreign field modulus
     pub foreign_field_modulus: Option<BigUint>,
-
-    /// Foreign field addition gate selector polynomial
-    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub foreign_field_add_selector_poly: Option<SelectorPolynomial<F>>,
-
-    /// Foreign field multiplication gate selector polynomial
-    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub foreign_field_mul_selector_poly: Option<SelectorPolynomial<F>>,
-
-    /// Xor gate selector polynomial
-    #[serde(bound = "Option<SelectorPolynomial<F>>: Serialize + DeserializeOwned")]
-    pub xor_selector_poly: Option<SelectorPolynomial<F>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -177,7 +179,7 @@ pub fn selector_polynomial<F: PrimeField>(
     gate_type: GateType,
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
-) -> SelectorPolynomial<F> {
+) -> E<F, D<F>> {
     // Coefficient form
     let coeff = E::<F, D<F>>::from_vec_and_domain(
         gates
@@ -195,9 +197,7 @@ pub fn selector_polynomial<F: PrimeField>(
     .interpolate();
 
     // Evaluation form (evaluated over d8)
-    let eval8 = coeff.evaluate_over_domain_by_ref(domain.d8);
-
-    SelectorPolynomial { eval8 }
+    coeff.evaluate_over_domain_by_ref(domain.d8)
 }
 
 /// Create selector polynomials for a gate (i.e. a collection of circuit gates)
@@ -205,7 +205,7 @@ pub fn selector_polynomials<F: PrimeField>(
     gate_types: &[GateType],
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
-) -> Vec<SelectorPolynomial<F>> {
+) -> Vec<E<F, D<F>>> {
     Vec::from_iter(
         gate_types
             .iter()
@@ -658,35 +658,38 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let domain_constant_evaluation = OnceCell::new();
 
         let constraints = ConstraintSystem {
-            chacha8,
-            endomul_scalar8,
             domain,
             public: self.public,
             prev_challenges: self.prev_challenges,
             sid,
-            sigmal1,
-            sigmal8,
-            sigmam,
-            genericm,
-            generic4,
-            coefficientsm,
-            coefficients8,
-            ps8,
-            psm,
-            complete_addl4,
-            mull8,
-            emull,
-            range_check_selector_polys,
-            foreign_field_add_selector_poly,
-            foreign_field_mul_selector_poly,
             foreign_field_modulus: self.foreign_field_modulus,
-            xor_selector_poly,
             gates,
             shift: shifts.shifts,
             endo,
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             precomputations: domain_constant_evaluation,
+            evaluated_column_coefficients: EvaluatedColumnCoefficients {
+                permutation_coefficients: sigmam,
+                coefficients: coefficientsm,
+                generic_selector: genericm,
+                poseidon_selector: psm,
+            },
+            column_evaluations: ColumnEvaluations {
+                permutation_coefficients8: sigmal8,
+                coefficients8,
+                generic_selector4: generic4,
+                poseidon_selector8: ps8,
+                complete_add_selector4: complete_addl4,
+                mul_selector8: mull8,
+                emul_selector8: emull,
+                chacha_selectors8: chacha8,
+                endomul_scalar_selector8: endomul_scalar8,
+                range_check_selectors8: range_check_selector_polys,
+                foreign_field_add_selector8: foreign_field_add_selector_poly,
+                foreign_field_mul_selector8: foreign_field_mul_selector_poly,
+                xor_selector8: xor_selector_poly,
+            },
         };
 
         match self.precomputations {

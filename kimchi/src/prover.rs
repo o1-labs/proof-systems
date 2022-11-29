@@ -607,48 +607,65 @@ where
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
-            index_evals.insert(Generic, &index.cs.generic4);
-            index_evals.insert(Poseidon, &index.cs.ps8);
-            index_evals.insert(CompleteAdd, &index.cs.complete_addl4);
-            index_evals.insert(VarBaseMul, &index.cs.mull8);
-            index_evals.insert(EndoMul, &index.cs.emull);
-            index_evals.insert(EndoMulScalar, &index.cs.endomul_scalar8);
+            index_evals.insert(Generic, &index.cs.column_evaluations.generic_selector4);
+            index_evals.insert(Poseidon, &index.cs.column_evaluations.poseidon_selector8);
+            index_evals.insert(
+                CompleteAdd,
+                &index.cs.column_evaluations.complete_add_selector4,
+            );
+            index_evals.insert(VarBaseMul, &index.cs.column_evaluations.mul_selector8);
+            index_evals.insert(EndoMul, &index.cs.column_evaluations.emul_selector8);
+            index_evals.insert(
+                EndoMulScalar,
+                &index.cs.column_evaluations.endomul_scalar_selector8,
+            );
             [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
                 .iter()
                 .enumerate()
                 .for_each(|(i, g)| {
-                    if let Some(c) = &index.cs.chacha8 {
+                    if let Some(c) = &index.cs.column_evaluations.chacha_selectors8 {
                         index_evals.insert(*g, &c[i]);
                     }
                 });
 
-            if let Some(polys) = &index.cs.range_check_selector_polys {
+            if let Some(polys) = &index.cs.column_evaluations.range_check_selectors8 {
                 index_evals.extend(
                     range_check::gadget::circuit_gates()
                         .iter()
                         .enumerate()
-                        .map(|(i, gate_type)| (*gate_type, &polys[i].eval8)),
+                        .map(|(i, gate_type)| (*gate_type, &polys[i])),
                 );
             }
-            if let Some(selector) = index.cs.foreign_field_add_selector_poly.as_ref() {
+
+            if let Some(selector) = index
+                .cs
+                .column_evaluations
+                .foreign_field_add_selector8
+                .as_ref()
+            {
                 index_evals.extend(
                     foreign_field_add::gadget::circuit_gates()
                         .iter()
                         .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
+                        .map(|(_, gate_type)| (*gate_type, selector)),
                 );
             }
-            if let Some(selector) = index.cs.foreign_field_mul_selector_poly.as_ref() {
+            if let Some(selector) = index
+                .cs
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+            {
                 index_evals.extend(
                     foreign_field_mul::gadget::circuit_gates()
                         .iter()
                         .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, &selector.eval8)),
+                        .map(|(_, gate_type)| (*gate_type, selector)),
                 );
             }
 
-            if let Some(selector) = index.cs.xor_selector_poly.as_ref() {
-                index_evals.insert(GateType::Xor16, &selector.eval8);
+            if let Some(selector) = index.cs.column_evaluations.xor_selector8.as_ref() {
+                index_evals.insert(GateType::Xor16, selector);
             }
 
             let mds = &G::sponge_params().mds;
@@ -663,7 +680,7 @@ where
                     index.cs.foreign_field_modulus.clone(),
                 ),
                 witness: &lagrange.d8.this.w,
-                coefficient: &index.cs.coefficients8,
+                coefficient: &index.cs.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
@@ -746,7 +763,13 @@ where
 
             // chacha
             {
-                if index.cs.chacha8.as_ref().is_some() {
+                if index
+                    .cs
+                    .column_evaluations
+                    .chacha_selectors8
+                    .as_ref()
+                    .is_some()
+                {
                     let chacha0 = ChaCha0::combined_constraints(&all_alphas).evaluations(&env);
                     t4 += &chacha0;
 
@@ -768,7 +791,7 @@ where
             }
 
             // range check gates
-            if index.cs.range_check_selector_polys.is_some() {
+            if index.cs.column_evaluations.range_check_selectors8.is_some() {
                 for gate_type in range_check::gadget::circuit_gates() {
                     let range_check_constraint =
                         range_check::gadget::circuit_gate_constraints(gate_type, &all_alphas)
@@ -780,7 +803,12 @@ where
             }
 
             // foreign field addition
-            if index.cs.foreign_field_add_selector_poly.is_some() {
+            if index
+                .cs
+                .column_evaluations
+                .foreign_field_add_selector8
+                .is_some()
+            {
                 let foreign_field_add_constraint =
                     foreign_field_add::gadget::combined_constraints(&all_alphas).evaluations(&env);
                 assert_eq!(foreign_field_add_constraint.domain().size, t4.domain().size);
@@ -789,7 +817,12 @@ where
             }
 
             // foreign field multiplication
-            if index.cs.foreign_field_mul_selector_poly.is_some() {
+            if index
+                .cs
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .is_some()
+            {
                 let foreign_field_mul_constraint =
                     foreign_field_mul::gadget::combined_constraints(&all_alphas).evaluations(&env);
                 assert_eq!(foreign_field_mul_constraint.domain().size, t8.domain().size);
@@ -799,7 +832,7 @@ where
 
             // xor
             {
-                if index.cs.xor_selector_poly.is_some() {
+                if index.cs.column_evaluations.xor_selector8.is_some() {
                     let xor = xor::combined_constraints(&all_alphas).evaluations(&env);
                     assert_eq!(xor.domain().size, t4.domain().size);
                     t4 += &xor;
@@ -954,12 +987,15 @@ where
         let chunked_evals = {
             let chunked_evals_zeta = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array::from_fn(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i]
+                    index
+                        .cs
+                        .evaluated_column_coefficients
+                        .permutation_coefficients[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.coefficientsm[i]
+                    index.cs.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta)
                 }),
@@ -977,24 +1013,29 @@ where
 
                 generic_selector: index
                     .cs
-                    .genericm
+                    .evaluated_column_coefficients
+                    .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
 
                 poseidon_selector: index
                     .cs
-                    .psm
+                    .evaluated_column_coefficients
+                    .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta),
             };
             let chunked_evals_zeta_omega = ProofEvaluations::<Vec<G::ScalarField>> {
                 s: array::from_fn(|i| {
-                    index.cs.sigmam[0..PERMUTS - 1][i]
+                    index
+                        .cs
+                        .evaluated_column_coefficients
+                        .permutation_coefficients[0..PERMUTS - 1][i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
                 coefficients: array::from_fn(|i| {
-                    index.cs.coefficientsm[i]
+                    index.cs.evaluated_column_coefficients.coefficients[i]
                         .to_chunked_polynomial(index.max_poly_size)
                         .evaluate_chunks(zeta_omega)
                 }),
@@ -1013,13 +1054,15 @@ where
 
                 generic_selector: index
                     .cs
-                    .genericm
+                    .evaluated_column_coefficients
+                    .generic_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
 
                 poseidon_selector: index
                     .cs
-                    .psm
+                    .evaluated_column_coefficients
+                    .poseidon_selector
                     .to_chunked_polynomial(index.max_poly_size)
                     .evaluate_chunks(zeta_omega),
             };
@@ -1211,8 +1254,16 @@ where
         polynomials.extend(vec![(&public_poly, None, fixed_hiding(1))]);
         polynomials.extend(vec![(&ft, None, blinding_ft)]);
         polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
-        polynomials.extend(vec![(&index.cs.genericm, None, fixed_hiding(1))]);
-        polynomials.extend(vec![(&index.cs.psm, None, fixed_hiding(1))]);
+        polynomials.extend(vec![(
+            &index.cs.evaluated_column_coefficients.generic_selector,
+            None,
+            fixed_hiding(1),
+        )]);
+        polynomials.extend(vec![(
+            &index.cs.evaluated_column_coefficients.poseidon_selector,
+            None,
+            fixed_hiding(1),
+        )]);
         polynomials.extend(
             witness_poly
                 .iter()
@@ -1223,13 +1274,17 @@ where
         polynomials.extend(
             index
                 .cs
-                .coefficientsm
+                .evaluated_column_coefficients
+                .coefficients
                 .iter()
                 .map(|coefficientm| (coefficientm, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.cs.sigmam[0..PERMUTS - 1]
+            index
+                .cs
+                .evaluated_column_coefficients
+                .permutation_coefficients[0..PERMUTS - 1]
                 .iter()
                 .map(|w| (w, None, non_hiding(1)))
                 .collect::<Vec<_>>(),
