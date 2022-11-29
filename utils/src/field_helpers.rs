@@ -131,13 +131,13 @@ impl<F: Field> FieldHelpers<F> for F {
 }
 
 /// Field element wrapper for [BigUint]
-pub trait BigUintFieldHelpers<F: PrimeField> {
+pub trait BigUintFieldHelpers {
     /// Convert BigUint into PrimeField element
-    fn to_field(self) -> Result<F>;
+    fn to_field<F: PrimeField>(self) -> Result<F>;
 }
 
-impl<F: PrimeField> BigUintFieldHelpers<F> for BigUint {
-    fn to_field(self) -> Result<F> {
+impl BigUintFieldHelpers for BigUint {
+    fn to_field<F: PrimeField>(self) -> Result<F> {
         F::from_biguint(self)
     }
 }
@@ -158,6 +158,7 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::One;
     use mina_curves::pasta::Pallas as CurvePoint;
+    use BigUintFieldHelpers;
 
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
@@ -309,5 +310,14 @@ mod tests {
                 .expect("Failed to convert big uint"),
             BaseField::from(0u32)
         );
+
+        let bytes = [
+            46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182, 152,
+            235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8,
+        ];
+        let fe = BaseField::from_bytes(&bytes).expect("failed to create field element from bytes");
+        let bi = BigUint::from_bytes_le(&bytes);
+        assert_eq!(fe.to_biguint(), bi);
+        assert_eq!(bi.to_field::<BaseField>().unwrap(), fe);
     }
 }

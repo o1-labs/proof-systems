@@ -66,7 +66,7 @@
 //~ * `carry0` := 2 bit carry
 //~ * `carry1_lo` := low 88 bits of `carry1`
 //~ * `carry1_hi` := high 3 bits of `carry1`
-//~ * `shifted_carry1_hi` : = carry1_hi shifted 9 positions to the left;
+//~ * `scaled_carry1_hi` : = `carry1_hi` scaled by 2^9
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product

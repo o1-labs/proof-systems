@@ -149,7 +149,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Create a single foreign field addition gate without integrated range checks
     ///     Inputs
     ///         starting row
-    ///         number of addition gates
     ///     Outputs tuple (next_row, circuit_gates) where
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
