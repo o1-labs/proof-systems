@@ -341,21 +341,6 @@
 <a href="#341" id="341">341</a>
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
-<a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements an abstraction to keep track of the powers of alphas.
 //! As a recap, alpha is a challenge sent by the verifier in PLONK,
 //! and is used to aggregate multiple constraints into a single polynomial.
@@ -681,22 +666,7 @@
     </span><span class="kw">fn </span>get_alphas_for_spec() {
         <span class="kw">let </span>gates = <span class="macro">vec!</span>[CircuitGate::&lt;Fp&gt;::zero(Wire::for_row(<span class="number">0</span>)); <span class="number">2</span>];
         <span class="kw">let </span>index = new_index_for_test(gates, <span class="number">0</span>);
-        <span class="kw">let </span>(_linearization, powers_of_alpha) = expr_linearization(
-            index.cs.column_evaluations.chacha_selectors8.is_some(),
-            index.cs.column_evaluations.range_check_selectors8.is_some(),
-            index
-                .cs
-                .lookup_constraint_system
-                .as_ref()
-                .map(|lcs| <span class="kw-2">&amp;</span>lcs.configuration),
-            index
-                .cs
-                .column_evaluations
-                .foreign_field_add_selector8
-                .is_some(),
-            index.cs.column_evaluations.xor_selector8.is_some(),
-            <span class="bool-val">true</span>,
-        );
+        <span class="kw">let </span>(_linearization, powers_of_alpha) = expr_linearization(<span class="kw-2">&amp;</span>index.cs.feature_flags, <span class="bool-val">true</span>);
         <span class="comment">// make sure this is present in the specification
         </span><span class="kw">let </span>manifest_dir = std::env::var(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>).unwrap();
         <span class="kw">let </span>spec_path = Path::new(<span class="kw-2">&amp;</span>manifest_dir)

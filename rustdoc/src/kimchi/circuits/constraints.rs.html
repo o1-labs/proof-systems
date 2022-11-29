@@ -704,11 +704,6 @@
 <a href="#704" id="704">704</a>
 <a href="#705" id="705">705</a>
 <a href="#706" id="706">706</a>
-<a href="#707" id="707">707</a>
-<a href="#708" id="708">708</a>
-<a href="#709" id="709">709</a>
-<a href="#710" id="710">710</a>
-<a href="#711" id="711">711</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -716,10 +711,12 @@
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, tables::LookupTable},
+        lookup::{
+            constraints::LookupConfiguration, index::LookupConstraintSystem, tables::LookupTable,
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::{foreign_field_add, range_check},
+        polynomials::range_check,
         wires::<span class="kw-2">*</span>,
     },
     curve::KimchiCurve,
@@ -736,13 +733,29 @@
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::array;
-<span class="kw">use </span>std::{collections::HashSet, sync::Arc};
+<span class="kw">use </span>std::sync::Arc;
 
 <span class="comment">//
 // ConstraintSystem
 //
 
-</span><span class="doccomment">/// The polynomials representing evaluated columns, in coefficient form.
+</span><span class="doccomment">/// Flags for optional features in the constraint system
+</span><span class="attr">#[derive(Clone, Serialize, Deserialize, Debug)]
+#[serde(bound = <span class="string">&quot;F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize&quot;</span>)]
+</span><span class="kw">pub struct </span>FeatureFlags&lt;F&gt; {
+    <span class="doccomment">/// ChaCha gates
+    </span><span class="kw">pub </span>chacha: bool,
+    <span class="doccomment">/// Range check gates
+    </span><span class="kw">pub </span>range_check: bool,
+    <span class="doccomment">/// Foreign field addition gate
+    </span><span class="kw">pub </span>foreign_field_add: bool,
+    <span class="doccomment">/// XOR gate
+    </span><span class="kw">pub </span>xor: bool,
+    <span class="doccomment">/// Lookups
+    </span><span class="kw">pub </span>lookup_configuration: <span class="prelude-ty">Option</span>&lt;LookupConfiguration&lt;F&gt;&gt;,
+}
+
+<span class="doccomment">/// The polynomials representing evaluated columns, in coefficient form.
 </span><span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>EvaluatedColumnCoefficients&lt;F: PrimeField&gt; {
@@ -833,6 +846,10 @@
     </span><span class="attr">#[serde(bound = <span class="string">&quot;CircuitGate&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>gates: Vec&lt;CircuitGate&lt;F&gt;&gt;,
 
+    <span class="doccomment">/// flags for optional features
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;FeatureFlags&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>feature_flags: FeatureFlags&lt;F&gt;,
+
     <span class="attr">#[serde(bound = <span class="string">&quot;EvaluatedColumnCoefficients&lt;F&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>evaluated_column_coefficients: EvaluatedColumnCoefficients&lt;F&gt;,
 
@@ -886,6 +903,7 @@
     gate_type: GateType,
     gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
     domain: <span class="kw-2">&amp;</span>EvaluationDomains&lt;F&gt;,
+    target_domain: <span class="kw-2">&amp;</span>D&lt;F&gt;,
 ) -&gt; E&lt;F, D&lt;F&gt;&gt; {
     <span class="comment">// Coefficient form
     </span><span class="kw">let </span>coeff = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
@@ -903,21 +921,7 @@
     )
     .interpolate();
 
-    <span class="comment">// Evaluation form (evaluated over d8)
-    </span>coeff.evaluate_over_domain_by_ref(domain.d8)
-}
-
-<span class="doccomment">/// Create selector polynomials for a gate (i.e. a collection of circuit gates)
-</span><span class="kw">pub fn </span>selector_polynomials&lt;F: PrimeField&gt;(
-    gate_types: <span class="kw-2">&amp;</span>[GateType],
-    gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
-    domain: <span class="kw-2">&amp;</span>EvaluationDomains&lt;F&gt;,
-) -&gt; Vec&lt;E&lt;F, D&lt;F&gt;&gt;&gt; {
-    Vec::from_iter(
-        gate_types
-            .iter()
-            .map(|gate_type| selector_polynomial(<span class="kw-2">*</span>gate_type, gates, domain)),
-    )
+    coeff.evaluate_over_domain_by_ref(<span class="kw-2">*</span>target_domain)
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
@@ -1146,11 +1150,26 @@
             .collect();
         gates.append(<span class="kw-2">&amp;mut </span>padding);
 
-        <span class="comment">// Record which gates are used by this constraint system
-        </span><span class="kw">let </span><span class="kw-2">mut </span>circuit_gates_used = HashSet::&lt;GateType&gt;::default();
-        gates.iter().for_each(|gate| {
-            circuit_gates_used.insert(gate.typ);
-        });
+        <span class="kw">let </span><span class="kw-2">mut </span>feature_flags = FeatureFlags {
+            chacha: <span class="bool-val">false</span>,
+            range_check: <span class="bool-val">false</span>,
+            lookup_configuration: <span class="prelude-val">None</span>,
+            foreign_field_add: <span class="bool-val">false</span>,
+            xor: <span class="bool-val">false</span>,
+        };
+
+        <span class="kw">for </span>gate <span class="kw">in </span><span class="kw-2">&amp;</span>gates {
+            <span class="kw">match </span>gate.typ {
+                GateType::ChaCha0
+                | GateType::ChaCha1
+                | GateType::ChaCha2
+                | GateType::ChaChaFinal =&gt; feature_flags.chacha = <span class="bool-val">true</span>,
+                GateType::RangeCheck0 | GateType::RangeCheck1 =&gt; feature_flags.range_check = <span class="bool-val">true</span>,
+                GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
+                GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
+                <span class="kw">_ </span>=&gt; (),
+            }
+        }
 
         <span class="comment">//~ 4. sample the `PERMUTS` shifts.
         </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span>domain.d1);
@@ -1206,39 +1225,15 @@
         <span class="kw">let </span>ps8 = psm.evaluate_over_domain_by_ref(domain.d8);
 
         <span class="comment">// ECC gates
-        </span><span class="kw">let </span>complete_addm = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::CompleteAdd) <span class="kw">as </span>u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        <span class="kw">let </span>complete_addl4 = complete_addm.evaluate_over_domain_by_ref(domain.d4);
+        </span><span class="kw">let </span>complete_addl4 =
+            selector_polynomial(GateType::CompleteAdd, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d4);
 
-        <span class="kw">let </span>mulm = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-            gates.iter().map(|gate| gate.vbmul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        <span class="kw">let </span>mull8 = mulm.evaluate_over_domain_by_ref(domain.d8);
+        <span class="kw">let </span>mull8 = selector_polynomial(GateType::VarBaseMul, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8);
 
-        <span class="kw">let </span>emulm = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-            gates.iter().map(|gate| gate.endomul()).collect(),
-            domain.d1,
-        )
-        .interpolate();
-        <span class="kw">let </span>emull = emulm.evaluate_over_domain_by_ref(domain.d8);
+        <span class="kw">let </span>emull = selector_polynomial(GateType::EndoMul, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8);
 
-        <span class="kw">let </span>endomul_scalarm = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-            gates
-                .iter()
-                .map(|gate| F::from((gate.typ == GateType::EndoMulScalar) <span class="kw">as </span>u64))
-                .collect(),
-            domain.d1,
-        )
-        .interpolate();
-        <span class="kw">let </span>endomul_scalar8 = endomul_scalarm.evaluate_over_domain_by_ref(domain.d8);
+        <span class="kw">let </span>endomul_scalar8 =
+            selector_polynomial(GateType::EndoMulScalar, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8);
 
         <span class="comment">// double generic gate
         </span><span class="kw">let </span>genericm = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
@@ -1259,63 +1254,54 @@
 
         <span class="comment">// chacha gate
         </span><span class="kw">let </span>chacha8 = {
-            <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
-            <span class="kw">let </span>has_chacha_gate = gates
-                .iter()
-                .any(|gate| <span class="macro">matches!</span>(gate.typ, ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal));
-            <span class="kw">if </span>!has_chacha_gate {
+            <span class="kw">if </span>!feature_flags.chacha {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="kw">let </span>a: [<span class="kw">_</span>; <span class="number">4</span>] = array::from_fn(|i| {
-                    <span class="kw">let </span>g = <span class="kw">match </span>i {
-                        <span class="number">0 </span>=&gt; ChaCha0,
-                        <span class="number">1 </span>=&gt; ChaCha1,
-                        <span class="number">2 </span>=&gt; ChaCha2,
-                        <span class="number">3 </span>=&gt; ChaChaFinal,
-                        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Invalid index&quot;</span>),
-                    };
-                    E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-                        gates
-                            .iter()
-                            .map(|gate| <span class="kw">if </span>gate.typ == g { F::one() } <span class="kw">else </span>{ F::zero() })
-                            .collect(),
-                        domain.d1,
-                    )
-                    .interpolate()
-                    .evaluate_over_domain(domain.d8)
-                });
-                <span class="prelude-val">Some</span>(a)
+                <span class="prelude-val">Some</span>([
+                    selector_polynomial(GateType::ChaCha0, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
+                    selector_polynomial(GateType::ChaCha1, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
+                    selector_polynomial(GateType::ChaCha2, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
+                    selector_polynomial(GateType::ChaChaFinal, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
+                ])
             }
         };
 
         <span class="comment">// Range check constraint selector polynomials
-        </span><span class="kw">let </span>range_gates = range_check::gadget::circuit_gates();
-        <span class="kw">let </span>range_check_selector_polys = {
-            <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>range_gates.into_iter().collect()) {
+        </span><span class="kw">let </span>range_check_selector_polys = {
+            <span class="kw">if </span>!feature_flags.range_check {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(array::from_fn(|i| {
-                    selector_polynomial(range_gates[i], <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain)
-                }))
+                <span class="prelude-val">Some</span>([
+                    selector_polynomial(GateType::RangeCheck0, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
+                    selector_polynomial(GateType::RangeCheck1, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain, <span class="kw-2">&amp;</span>domain.d8),
+                ])
             }
         };
 
         <span class="comment">// Foreign field addition constraint selector polynomial
-        </span><span class="kw">let </span>ffadd_gates = foreign_field_add::gadget::circuit_gates();
-        <span class="kw">let </span>foreign_field_add_selector_poly = {
-            <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>ffadd_gates.into_iter().collect()) {
+        </span><span class="kw">let </span>foreign_field_add_selector_poly = {
+            <span class="kw">if </span>!feature_flags.foreign_field_add {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(selector_polynomial(ffadd_gates[<span class="number">0</span>], <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain))
+                <span class="prelude-val">Some</span>(selector_polynomial(
+                    GateType::ForeignFieldAdd,
+                    <span class="kw-2">&amp;</span>gates,
+                    <span class="kw-2">&amp;</span>domain,
+                    <span class="kw-2">&amp;</span>domain.d8,
+                ))
             }
         };
 
-        <span class="kw">let </span>xor_gate = [GateType::Xor16];
         <span class="kw">let </span>xor_selector_poly = {
-            <span class="kw">if </span>circuit_gates_used.is_disjoint(<span class="kw-2">&amp;</span>xor_gate.into_iter().collect()) {
+            <span class="kw">if </span>!feature_flags.xor {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>(selector_polynomial(GateType::Xor16, <span class="kw-2">&amp;</span>gates, <span class="kw-2">&amp;</span>domain))
+                <span class="prelude-val">Some</span>(selector_polynomial(
+                    GateType::Xor16,
+                    <span class="kw-2">&amp;</span>gates,
+                    <span class="kw-2">&amp;</span>domain,
+                    <span class="kw-2">&amp;</span>domain.d8,
+                ))
             }
         };
 
@@ -1343,6 +1329,9 @@
         </span><span class="kw">let </span>lookup_constraint_system =
             LookupConstraintSystem::create(<span class="kw-2">&amp;</span>gates, lookup_tables, runtime_tables, <span class="kw-2">&amp;</span>domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))<span class="question-mark">?</span>;
+        feature_flags.lookup_configuration = lookup_constraint_system
+            .as_ref()
+            .map(|lcs| lcs.configuration.clone());
 
         <span class="kw">let </span>sid = shifts.map[<span class="number">0</span>].clone();
 
@@ -1362,6 +1351,7 @@
             endo,
             <span class="comment">//fr_sponge_params: self.sponge_params,
             </span>lookup_constraint_system,
+            feature_flags,
             precomputations: domain_constant_evaluation,
             evaluated_column_coefficients: EvaluatedColumnCoefficients {
                 permutation_coefficients: sigmam,
