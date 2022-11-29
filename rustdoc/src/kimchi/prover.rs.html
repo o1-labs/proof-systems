@@ -1608,7 +1608,7 @@
     Radix2EvaluationDomain <span class="kw">as </span>D, UVPolynomial,
 };
 <span class="kw">use </span>commitment_dlog::commitment::{
-    b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
+    absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -1785,7 +1785,7 @@
 
         <span class="comment">//~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         </span><span class="kw">for </span>RecursionChallenge { comm, .. } <span class="kw">in </span><span class="kw-2">&amp;</span>prev_challenges {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted);
+            absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm)
         }
 
         <span class="comment">//~ 1. Compute the negated public input polynomial as
@@ -1816,7 +1816,7 @@
         //~    Note: unlike the original PLONK protocol,
         //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
-        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>public_comm.unshifted);
+        </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>public_comm);
 
         <span class="comment">//~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~
@@ -1861,7 +1861,7 @@
         <span class="comment">//~ 1. Absorb the witness commitments with the Fq-Sponge.
         </span>w_comm
             .iter()
-            .for_each(|c| fq_sponge.absorb_g(<span class="kw-2">&amp;</span>c.commitment.unshifted));
+            .for_each(|c| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>c.commitment));
 
         <span class="comment">//~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
@@ -1927,7 +1927,7 @@
                 </span><span class="kw">let </span>runtime_table_comm = index.srs.commit(<span class="kw-2">&amp;</span>runtime_table_contribution, <span class="prelude-val">None</span>, rng);
 
                 <span class="comment">// absorb the commitment
-                </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>runtime_table_comm.commitment.unshifted);
+                </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>runtime_table_comm.commitment);
 
                 <span class="comment">// pre-compute the updated second column of the lookup table
                 </span><span class="kw">let </span><span class="kw-2">mut </span>second_column_d8 = runtime_table_contribution_d8.clone();
@@ -2064,7 +2064,7 @@
             <span class="comment">//~~ - Absorb each commitments to the sorted polynomials.
             </span>sorted_comms
                 .iter()
-                .for_each(|c| fq_sponge.absorb_g(<span class="kw-2">&amp;</span>c.commitment.unshifted));
+                .for_each(|c| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>c.commitment));
 
             <span class="comment">// precompute different forms of the sorted polynomials for later
             // TODO: We can avoid storing these coefficients.
@@ -2115,7 +2115,7 @@
                 .commit_evaluations(index.cs.domain.d1, <span class="kw-2">&amp;</span>aggreg, <span class="prelude-val">None</span>, rng);
 
             <span class="comment">//~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
-            </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>aggreg_comm.commitment.unshifted);
+            </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>aggreg_comm.commitment);
 
             <span class="comment">// precompute different forms of the aggregation polynomial for later
             </span><span class="kw">let </span>aggreg_coeffs = aggreg.interpolate();
@@ -2135,7 +2135,7 @@
         </span><span class="kw">let </span>z_comm = index.srs.commit(<span class="kw-2">&amp;</span>z_poly, <span class="prelude-val">None</span>, rng);
 
         <span class="comment">//~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
-        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>z_comm.commitment.unshifted);
+        </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>z_comm.commitment);
 
         <span class="comment">//~ 1. Sample $\alpha&#39;$ with the Fq-Sponge.
         </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -2447,7 +2447,7 @@
         };
 
         <span class="comment">//~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
-        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>t_comm.commitment.unshifted);
+        </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>t_comm.commitment);
 
         <span class="comment">//~ 1. Sample $\zeta&#39;$ with the Fq-Sponge.
         </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -3139,4 +3139,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (1eb62b123 2022-11-27)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (2585bcea0 2022-11-28)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

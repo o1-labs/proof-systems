@@ -999,7 +999,7 @@
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Polynomial};
 <span class="kw">use </span>commitment_dlog::commitment::{
-    combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 <span class="kw">use </span>itertools::izip;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -1046,17 +1046,17 @@
 
         <span class="comment">//~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         </span><span class="kw">for </span>RecursionChallenge { comm, .. } <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.prev_challenges {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>comm.unshifted);
+            absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, comm);
         }
 
         <span class="comment">//~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span>public_comm.unshifted);
+        </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, public_comm);
 
         <span class="comment">//~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         </span><span class="self">self</span>.commitments
             .w_comm
             .iter()
-            .for_each(|c| fq_sponge.absorb_g(<span class="kw-2">&amp;</span>c.unshifted));
+            .for_each(|c| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, c));
 
         <span class="comment">//~ 1. If lookup is used:
         </span><span class="kw">let </span>joint_combiner = <span class="kw">if let </span><span class="prelude-val">Some</span>(l) = <span class="kw-2">&amp;</span>index.lookup_index {
@@ -1072,7 +1072,7 @@
                     .runtime
                     .as_ref()
                     .ok_or(VerifyError::IncorrectRuntimeProof)<span class="question-mark">?</span>;
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>runtime_commit.unshifted);
+                absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, runtime_commit);
             }
 
             <span class="comment">//~~ - If it involves queries to a multiple-column lookup table,
@@ -1093,7 +1093,7 @@
 
             <span class="comment">//~~ - absorb the commitments to the sorted polynomials.
             </span><span class="kw">for </span>com <span class="kw">in </span><span class="kw-2">&amp;</span>lookup_commits.sorted {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>com.unshifted);
+                absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, com);
             }
 
             <span class="prelude-val">Some</span>(joint_combiner)
@@ -1109,11 +1109,11 @@
 
         <span class="comment">//~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         </span><span class="self">self</span>.commitments.lookup.iter().for_each(|l| {
-            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>l.aggreg.unshifted);
+            absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>l.aggreg);
         });
 
         <span class="comment">//~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
-        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span><span class="self">self</span>.commitments.z_comm.unshifted);
+        </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span><span class="self">self</span>.commitments.z_comm);
 
         <span class="comment">//~ 1. Sample $\alpha&#39;$ with the Fq-Sponge.
         </span><span class="kw">let </span>alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -1127,7 +1127,7 @@
         }
 
         <span class="comment">//~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
-        </span>fq_sponge.absorb_g(<span class="kw-2">&amp;</span><span class="self">self</span>.commitments.t_comm.unshifted);
+        </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span><span class="self">self</span>.commitments.t_comm);
 
         <span class="comment">//~ 1. Sample $\zeta&#39;$ with the Fq-Sponge.
         </span><span class="kw">let </span>zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -1955,4 +1955,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (1eb62b123 2022-11-27)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (2585bcea0 2022-11-28)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

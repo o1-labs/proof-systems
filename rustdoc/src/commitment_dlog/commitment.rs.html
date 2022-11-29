@@ -1122,6 +1122,32 @@
 <a href="#1122" id="1122">1122</a>
 <a href="#1123" id="1123">1123</a>
 <a href="#1124" id="1124">1124</a>
+<a href="#1125" id="1125">1125</a>
+<a href="#1126" id="1126">1126</a>
+<a href="#1127" id="1127">1127</a>
+<a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
+<a href="#1143" id="1143">1143</a>
+<a href="#1144" id="1144">1144</a>
+<a href="#1145" id="1145">1145</a>
+<a href="#1146" id="1146">1146</a>
+<a href="#1147" id="1147">1147</a>
+<a href="#1148" id="1148">1148</a>
+<a href="#1149" id="1149">1149</a>
+<a href="#1150" id="1150">1150</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The folowing functionality is implemented
 //!
@@ -1158,10 +1184,8 @@
 <span class="doccomment">/// A polynomial commitment.
 </span><span class="attr">#[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
-</span><span class="kw">pub struct </span>PolyComm&lt;C&gt;
-<span class="kw">where
-    </span>C: CanonicalDeserialize + CanonicalSerialize,
-{
+#[serde(bound = <span class="string">&quot;C: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>PolyComm&lt;C&gt; {
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>unshifted: Vec&lt;C&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
@@ -1175,6 +1199,12 @@
 {
     <span class="kw">pub </span>commitment: PolyComm&lt;G&gt;,
     <span class="kw">pub </span>blinders: PolyComm&lt;G::ScalarField&gt;,
+}
+
+<span class="kw">impl</span>&lt;T&gt; PolyComm&lt;T&gt; {
+    <span class="kw">pub fn </span>new(unshifted: Vec&lt;T&gt;, shifted: <span class="prelude-ty">Option</span>&lt;T&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{ unshifted, shifted }
+    }
 }
 
 <span class="kw">impl</span>&lt;A: Copy&gt; PolyComm&lt;A&gt;
@@ -1337,44 +1367,51 @@
         }
     }
 
-    <span class="kw">pub fn </span>multi_scalar_mul(com: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>PolyComm&lt;C&gt;], elm: <span class="kw-2">&amp;</span>[C::ScalarField]) -&gt; <span class="self">Self </span>{
+    <span class="doccomment">/// Performs a multi-scalar multiplication between scalars `elm` and commitments `com`.
+    /// If both are empty, returns a commitment of length 1 containing the point at infinity.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `com` and `elm` are not of the same size.
+    </span><span class="kw">pub fn </span>multi_scalar_mul(com: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span>PolyComm&lt;C&gt;], elm: <span class="kw-2">&amp;</span>[C::ScalarField]) -&gt; <span class="self">Self </span>{
         <span class="macro">assert_eq!</span>(com.len(), elm.len());
-        PolyComm::&lt;C&gt; {
-            shifted: {
-                <span class="kw">let </span>pairs = com
-                    .iter()
-                    .zip(elm.iter())
-                    .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                <span class="kw">if </span>pairs.is_empty() {
-                    <span class="prelude-val">None
-                </span>} <span class="kw">else </span>{
-                    <span class="kw">let </span>points = pairs.iter().map(|(c, <span class="kw">_</span>)| <span class="kw-2">*</span>c).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                    <span class="kw">let </span>scalars = pairs.iter().map(|(<span class="kw">_</span>, s)| s.into_repr()).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-                    <span class="prelude-val">Some</span>(VariableBaseMSM::multi_scalar_mul(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars).into_affine())
-                }
-            },
-            unshifted: {
-                <span class="kw">if </span>com.is_empty() || elm.is_empty() {
-                    <span class="macro">vec!</span>[C::zero()]
-                } <span class="kw">else </span>{
-                    <span class="kw">let </span>n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
-                    (<span class="number">0</span>..n)
-                        .map(|i| {
-                            <span class="kw">let </span><span class="kw-2">mut </span>points = Vec::new();
-                            <span class="kw">let </span><span class="kw-2">mut </span>scalars = Vec::new();
-                            com.iter().zip(elm.iter()).for_each(|(p, s)| {
-                                <span class="kw">if </span>i &lt; p.unshifted.len() {
-                                    points.push(p.unshifted[i]);
-                                    scalars.push(s.into_repr())
-                                }
-                            });
-                            VariableBaseMSM::multi_scalar_mul(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars).into_affine()
-                        })
-                        .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
-                }
-            },
+
+        <span class="kw">if </span>com.is_empty() || elm.is_empty() {
+            <span class="kw">return </span><span class="self">Self</span>::new(<span class="macro">vec!</span>[C::zero()], <span class="prelude-val">None</span>);
         }
+
+        <span class="kw">let </span>all_scalars: Vec&lt;<span class="kw">_</span>&gt; = elm.iter().map(|s| s.into_repr()).collect();
+
+        <span class="kw">let </span>unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
+        <span class="kw">let </span><span class="kw-2">mut </span>unshifted = Vec::with_capacity(unshifted_size);
+
+        <span class="kw">for </span>chunk <span class="kw">in </span><span class="number">0</span>..unshifted_size {
+            <span class="kw">let </span>(points, scalars): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = com
+                .iter()
+                .zip(<span class="kw-2">&amp;</span>all_scalars)
+                <span class="comment">// get rid of scalars that don&#39;t have an associated chunk
+                </span>.filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
+                .unzip();
+
+            <span class="kw">let </span>chunk_msm = VariableBaseMSM::multi_scalar_mul::&lt;C&gt;(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars);
+            unshifted.push(chunk_msm.into_affine());
+        }
+
+        <span class="kw">let </span><span class="kw-2">mut </span>shifted_pairs = com
+            .iter()
+            .zip(all_scalars)
+            <span class="comment">// get rid of commitments without a `shifted` part
+            </span>.filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
+            .peekable();
+
+        <span class="kw">let </span>shifted = <span class="kw">if </span>shifted_pairs.peek().is_none() {
+            <span class="prelude-val">None
+        </span>} <span class="kw">else </span>{
+            <span class="kw">let </span>(points, scalars): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = shifted_pairs.unzip();
+            <span class="prelude-val">Some</span>(VariableBaseMSM::multi_scalar_mul(<span class="kw-2">&amp;</span>points, <span class="kw-2">&amp;</span>scalars).into_affine())
+        };
+
+        <span class="self">Self</span>::new(unshifted, shifted)
     }
 }
 
@@ -1443,6 +1480,21 @@
     sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
 ) -&gt; Fr {
     squeeze_prechallenge(sponge).to_field(endo_r)
+}
+
+<span class="kw">pub fn </span>absorb_commitment&lt;
+    Fq: Field,
+    G: Clone,
+    Fr: PrimeField + SquareRootField,
+    EFqSponge: FqSponge&lt;Fq, G, Fr&gt;,
+&gt;(
+    sponge: <span class="kw-2">&amp;mut </span>EFqSponge,
+    commitment: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
+) {
+    sponge.absorb_g(<span class="kw-2">&amp;</span>commitment.unshifted);
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(shifted) = commitment.shifted.as_ref() {
+        sponge.absorb_g(<span class="kw-2">&amp;</span>[shifted.clone()]);
+    }
 }
 
 <span class="doccomment">/// A useful trait extending AffineCurve for commitments.
@@ -2247,4 +2299,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="commitment_dlog" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (1eb62b123 2022-11-27)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="commitment_dlog" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (2585bcea0 2022-11-28)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
