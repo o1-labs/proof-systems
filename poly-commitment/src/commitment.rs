@@ -230,7 +230,7 @@ impl<C: AffineCurve> PolyComm<C> {
             return Self::new(vec![C::zero()], None);
         }
 
-        let all_scalars: Vec<_> = elm.into_iter().map(|s| s.into_repr()).collect();
+        let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
 
         let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
         let mut unshifted = Vec::with_capacity(unshifted_size);
