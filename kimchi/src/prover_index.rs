@@ -82,7 +82,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) = expr_linearization(&cs.feature_flags, true);
+        let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
 
         // set `max_quot_size` to the degree of the quotient polynomial,
         // which is obtained by looking at the highest monomial in the sum
