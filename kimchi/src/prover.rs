@@ -38,7 +38,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D, UVPolynomial,
 };
 use commitment_dlog::commitment::{
-    b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
+    absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
 };
 use itertools::Itertools;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -215,7 +215,7 @@ where
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in &prev_challenges {
-            fq_sponge.absorb_g(&comm.unshifted);
+            absorb_commitment(&mut fq_sponge, comm)
         }
 
         //~ 1. Compute the negated public input polynomial as
@@ -246,7 +246,7 @@ where
         //~    Note: unlike the original PLONK protocol,
         //~    the prover also provides evaluations of the public polynomial to help the verifier circuit.
         //~    This is why we need to absorb the commitment to the public polynomial at this point.
-        fq_sponge.absorb_g(&public_comm.unshifted);
+        absorb_commitment(&mut fq_sponge, &public_comm);
 
         //~ 1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
         //~
@@ -291,7 +291,7 @@ where
         //~ 1. Absorb the witness commitments with the Fq-Sponge.
         w_comm
             .iter()
-            .for_each(|c| fq_sponge.absorb_g(&c.commitment.unshifted));
+            .for_each(|c| absorb_commitment(&mut fq_sponge, &c.commitment));
 
         //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
         //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
@@ -357,7 +357,7 @@ where
                 let runtime_table_comm = index.srs.commit(&runtime_table_contribution, None, rng);
 
                 // absorb the commitment
-                fq_sponge.absorb_g(&runtime_table_comm.commitment.unshifted);
+                absorb_commitment(&mut fq_sponge, &runtime_table_comm.commitment);
 
                 // pre-compute the updated second column of the lookup table
                 let mut second_column_d8 = runtime_table_contribution_d8.clone();
@@ -494,7 +494,7 @@ where
             //~~ - Absorb each commitments to the sorted polynomials.
             sorted_comms
                 .iter()
-                .for_each(|c| fq_sponge.absorb_g(&c.commitment.unshifted));
+                .for_each(|c| absorb_commitment(&mut fq_sponge, &c.commitment));
 
             // precompute different forms of the sorted polynomials for later
             // TODO: We can avoid storing these coefficients.
@@ -545,7 +545,7 @@ where
                 .commit_evaluations(index.cs.domain.d1, &aggreg, None, rng);
 
             //~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
-            fq_sponge.absorb_g(&aggreg_comm.commitment.unshifted);
+            absorb_commitment(&mut fq_sponge, &aggreg_comm.commitment);
 
             // precompute different forms of the aggregation polynomial for later
             let aggreg_coeffs = aggreg.interpolate();
@@ -565,7 +565,7 @@ where
         let z_comm = index.srs.commit(&z_poly, None, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
-        fq_sponge.absorb_g(&z_comm.commitment.unshifted);
+        absorb_commitment(&mut fq_sponge, &z_comm.commitment);
 
         //~ 1. Sample $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -900,7 +900,7 @@ where
         };
 
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
-        fq_sponge.absorb_g(&t_comm.commitment.unshifted);
+        absorb_commitment(&mut fq_sponge, &t_comm.commitment);
 
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
