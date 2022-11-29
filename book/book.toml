@@ -14,6 +14,7 @@ additional-css = ["./assets/css/mdbook-admonish.css", "././mdbook-admonish.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 # for LaTeX
+[output.katex]
 [preprocessor.katex]
 macros = "macros.txt" # crypto related macros (as close to cryptocode as possible)
 
@@ -30,6 +31,3 @@ command = "mdbook-mermaid"
 [preprocessor.toc]
 command = "mdbook-toc"
 renderer = ["html"]
-
-# for mdbook-katex compatibility
-[output.katex]
