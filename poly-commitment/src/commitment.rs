@@ -540,60 +540,42 @@ impl<G: CommitmentCurve> SRS<G> {
         plnm: &DensePolynomial<G::ScalarField>,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        Self::commit_helper(&plnm.coeffs[..], &self.g[..], None, plnm.is_zero(), max)
-    }
+        let is_zero = plnm.is_zero();
 
-    pub fn commit_helper(
-        scalars: &[G::ScalarField],
-        basis: &[G],
-        n: Option<usize>,
-        is_zero: bool,
-        max: Option<usize>,
-    ) -> PolyComm<G> {
-        let n = match n {
-            Some(n) => n,
-            None => basis.len(),
-        };
-        let p = scalars.len();
+        let basis_len = self.g.len();
+        let coeffs_len = plnm.coeffs.len();
 
-        // committing all the segments without shifting
-        let unshifted = if is_zero {
-            vec![G::zero()]
+        let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
+
+        // chunk while commiting
+        let mut unshifted = vec![];
+        if is_zero {
+            unshifted.push(G::zero());
         } else {
-            (0..p / n + if p % n != 0 { 1 } else { 0 })
-                .map(|i| {
-                    VariableBaseMSM::multi_scalar_mul(
-                        basis,
-                        &scalars[i * n..p]
-                            .iter()
-                            .map(|s| s.into_repr())
-                            .collect::<Vec<_>>(),
-                    )
-                    .into_affine()
-                })
-                .collect()
-        };
+            coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
+                let chunk = VariableBaseMSM::multi_scalar_mul(&self.g, coeffs_chunk);
+                unshifted.push(chunk.into_affine());
+            });
+        }
 
-        // committing only last segment shifted to the right edge of SRS
+        // committing only last chunk shifted to the right edge of SRS
         let shifted = match max {
             None => None,
             Some(max) => {
-                let start = max - (max % n);
-                if is_zero || start >= p {
+                let start = max - (max % basis_len);
+                if is_zero || start >= coeffs_len {
+                    // polynomial is small, nothing was shifted
                     Some(G::zero())
-                } else if max % n == 0 {
+                } else if max % basis_len == 0 {
+                    // the number of chunks should tell the verifier everything they need to know
                     None
                 } else {
-                    Some(
-                        VariableBaseMSM::multi_scalar_mul(
-                            &basis[n - (max % n)..],
-                            &scalars[start..p]
-                                .iter()
-                                .map(|s| s.into_repr())
-                                .collect::<Vec<_>>(),
-                        )
-                        .into_affine(),
-                    )
+                    // we shift the last chunk to the right as proof of the degree bound
+                    let shifted = VariableBaseMSM::multi_scalar_mul(
+                        &self.g[basis_len - (max % basis_len)..],
+                        &coeffs[start..],
+                    );
+                    Some(shifted.into_affine())
                 }
             }
         };
