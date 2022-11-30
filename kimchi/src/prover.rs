@@ -13,10 +13,10 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add, generic, permutation,
+            foreign_field_add, foreign_field_mul, generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check,
+            range_check::{self},
             varbasemul::VarbaseMul,
             xor,
         },
@@ -646,6 +646,18 @@ where
                         .map(|(_, gate_type)| (*gate_type, selector)),
                 );
             }
+            if let Some(selector) = index
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+            {
+                index_evals.extend(
+                    foreign_field_mul::gadget::circuit_gates()
+                        .iter()
+                        .enumerate()
+                        .map(|(_, gate_type)| (*gate_type, selector)),
+                );
+            }
 
             if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
                 index_evals.insert(GateType::Xor16, selector);
@@ -653,15 +665,15 @@ where
 
             let mds = &G::sponge_params().mds;
             Environment {
-                constants: Constants {
+                constants: Constants::new(
                     alpha,
                     beta,
                     gamma,
-                    joint_combiner: lookup_context.joint_combiner,
-                    endo_coefficient: index.cs.endo,
+                    lookup_context.joint_combiner,
+                    index.cs.endo,
                     mds,
-                    foreign_field_modulus: index.cs.foreign_field_modulus.clone(),
-                },
+                    index.cs.foreign_field_modulus.clone(),
+                ),
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
@@ -783,18 +795,29 @@ where
             }
 
             // foreign field addition
+            if index
+                .column_evaluations
+                .foreign_field_add_selector8
+                .is_some()
             {
-                if index
-                    .column_evaluations
-                    .foreign_field_add_selector8
-                    .is_some()
-                {
-                    let ffadd = foreign_field_add::gadget::combined_constraints(&all_alphas)
-                        .evaluations(&env);
-                    assert_eq!(ffadd.domain().size, t4.domain().size);
-                    t4 += &ffadd;
-                    check_constraint!(index, ffadd);
-                }
+                let foreign_field_add_constraint =
+                    foreign_field_add::gadget::combined_constraints(&all_alphas).evaluations(&env);
+                assert_eq!(foreign_field_add_constraint.domain().size, t4.domain().size);
+                t4 += &foreign_field_add_constraint;
+                check_constraint!(index, foreign_field_add_constraint);
+            }
+
+            // foreign field multiplication
+            if index
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .is_some()
+            {
+                let foreign_field_mul_constraint =
+                    foreign_field_mul::gadget::combined_constraints(&all_alphas).evaluations(&env);
+                assert_eq!(foreign_field_mul_constraint.domain().size, t8.domain().size);
+                t8 += &foreign_field_mul_constraint;
+                check_constraint!(index, foreign_field_mul_constraint);
             }
 
             // xor

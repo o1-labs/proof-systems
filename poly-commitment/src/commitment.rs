@@ -383,7 +383,7 @@ pub trait CommitmentCurve: AffineCurve {
     }
 }
 
-impl<P: SWModelParameters> CommitmentCurve for SWJAffine<P>
+impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P>
 where
     P::BaseField: PrimeField,
 {

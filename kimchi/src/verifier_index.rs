@@ -110,7 +110,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    /// Range check commitments
+    /// Range check polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
@@ -120,6 +120,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
+
+    /// Foreign field multiplication gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_mul_comm: Option<PolyComm<G>>,
 
     /// Xor commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -276,6 +280,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8, None)),
 
+            foreign_field_mul_comm: self
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8, None)),
             xor_comm: self
                 .column_evaluations
                 .xor_selector8
@@ -413,6 +422,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             chacha_comm,
             range_check_comm,
             foreign_field_add_comm,
+            foreign_field_mul_comm,
             foreign_field_modulus: _,
             xor_comm,
 
@@ -455,6 +465,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&range_check_comm.unshifted);
             }
         }
+        if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
+            fq_sponge.absorb_g(&foreign_field_mul_comm.unshifted);
+        }
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }
@@ -477,6 +490,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     chacha_final,
                     lookup_gate,
                     range_check_gate,
+                    ffmul_gate,
                 },
 
             max_joint_size: _,
@@ -503,6 +517,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
             if let Some(range_check_gate) = range_check_gate {
                 fq_sponge.absorb_g(&range_check_gate.unshifted);
+            }
+            if let Some(ffmul_gate) = ffmul_gate {
+                fq_sponge.absorb_g(&ffmul_gate.unshifted);
             }
         }
         fq_sponge.digest_fq()

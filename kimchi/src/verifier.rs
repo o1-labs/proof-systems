@@ -327,21 +327,22 @@ where
 
             ft_eval0 += numerator * denominator;
 
-            let cs = Constants {
+            let constants = Constants::new(
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                foreign_field_modulus: index.foreign_field_modulus.clone(),
-            };
+                joint_combiner.as_ref().map(|j| j.1),
+                index.endo,
+                &G::sponge_params().mds,
+                index.foreign_field_modulus.clone(),
+            );
+
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
                 index.domain,
                 zeta,
                 &evals,
-                &cs,
+                &constants,
             )
             .unwrap();
 
@@ -553,15 +554,15 @@ where
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants from oracles function
-            let constants = Constants {
-                alpha: oracles.alpha,
-                beta: oracles.beta,
-                gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                foreign_field_modulus: index.foreign_field_modulus.clone(),
-            };
+            let constants = Constants::new(
+                oracles.alpha,
+                oracles.beta,
+                oracles.gamma,
+                oracles.joint_combiner.as_ref().map(|j| j.1),
+                index.endo,
+                &G::sponge_params().mds,
+                index.foreign_field_modulus.clone(),
+            );
 
             for (col, tokens) in &index.linearization.index_terms {
                 let scalar =
@@ -652,6 +653,7 @@ where
                             RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
                             Xor16 => index.xor_comm.as_ref().unwrap(),
                             ForeignFieldAdd => index.foreign_field_add_comm.as_ref().unwrap(),
+                            ForeignFieldMul => index.foreign_field_mul_comm.as_ref().unwrap(),
                         };
                         scalars.push(scalar);
                         commitments.push(c);

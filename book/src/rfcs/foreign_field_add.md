@@ -1,4 +1,4 @@
-# RFC: Foreign Field Addition
+# Foreign Field Addition RFC
 
 This document is meant to explain the foreign field addition gate in Kimchi.
 
@@ -97,7 +97,7 @@ Our witness computation is currently using the `BigUint` library, which takes ca
 
 ### Upper bound check
 
-Last but not least, we should perform some range checks to make sure that the result $r$ is contained in $\mathbb{F}_f$. This is important because there could be other values of the result which still fit in $<2^{264}$ but are larger than $f$, and we must make sure that the final result is the minimum one (that we will be referring to as $r_{min}$ in the following). 
+Last but not least, we should perform some range checks to make sure that the result $r$ is contained in $\mathbb{F}_f$. This is important because there could be other values of the result which still fit in $<2^{264}$ but are larger than $f$, and we must make sure that the final result is the minimum one (that we will be referring to as $r_{min}$ in the following).
 
 Ideally, we would like to reuse some gates that we already have. In particular, we can perform range checks for $0\leq X <2^{3\ell}=2^{3\cdot 88}$. But we want to check that $0 \leq r_{min} < f$. The way we can tweak this gate to behave as we want, is the following. First, the above inequality is equivalent to saying that $-f \leq r_{min} - f < 0$. Then we add $2^{264}$ on both sides to obtain $2^{264} - f \leq r_{min} - f + 2^{264} < 2^{264}$. Thus, all there is left to check is that a given bound value is indeed computed correctly. Meaning, that an upperbound term $u$ is correctly obtained as $r_{min} + 2^{264} - f$. Even if we could apply this check for all intermediate results of foreign field additions, it is sufficient to apply it only once at the end of the computations.
 
@@ -146,7 +146,7 @@ But now we also have to check that $0\leq r$. But this is implicitly covered by 
 
 Mathematically speaking, a subtraction within a field is no more than an addition over that field. Negative elements are not different from "positive" elements in finite fields (or in any modular arithmetic). Our witness computation code computes negative sums by adding the modulus to the result. To give a general example, the element $-e$ within a field $\mathbb{F}_m$ of order $m$ and $e < m$ is nothing but $m - e$. Nonetheless, for arbitrarily sized elements (not just those smaller than the modulus), the actual field element could be any $c \cdot m - e$, for any multiple $c \cdot m$ of the modulus. Thus, representing negative elements directly as "absolute" field elements may incur in additional computations involving multiplications and thus would result in a less efficient mechanism.
 
-Instead, our gate encodes subtractions and additions directly within the sign term that is multiplying the right input. This way, there is no need to check that the negated value is performed correctly (which would require an additional row for a potential `FFNeg` gate). 
+Instead, our gate encodes subtractions and additions directly within the sign term that is multiplying the right input. This way, there is no need to check that the negated value is performed correctly (which would require an additional row for a potential `FFNeg` gate).
 
 ## Gadget
 

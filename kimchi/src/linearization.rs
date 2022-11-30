@@ -4,11 +4,13 @@ use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::lookup;
 use crate::circuits::lookup::constraints::LookupConfiguration;
+// TODO JES: CLEAN UP
 use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
 use crate::circuits::polynomials::complete_add::CompleteAdd;
 use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
 use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
+use crate::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
@@ -59,6 +61,10 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     if feature_flags.foreign_field_add {
         expr += ForeignFieldAdd::combined_constraints(&powers_of_alpha);
+    }
+
+    if feature_flags.foreign_field_mul {
+        expr += ForeignFieldMul::combined_constraints(&powers_of_alpha);
     }
 
     if feature_flags.xor {
