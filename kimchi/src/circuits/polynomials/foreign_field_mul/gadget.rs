@@ -1,12 +1,13 @@
-//! Range check gate
+//! This module obtains the gates of a foreign field addition circuit.
 
-use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+use std::collections::HashMap;
+
+use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use rand::{prelude::StdRng, SeedableRng};
 use std::array;
-use std::collections::HashMap;
 
 use crate::{
     alphas::Alphas,
@@ -14,7 +15,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         constraints::ConstraintSystem,
         expr::{self, l0_1, Environment, LookupEnvironment, E},
-        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, GateType},
         lookup::{
             self,
             lookups::{LookupInfo, LookupsUsed},
@@ -27,79 +28,42 @@ use crate::{
     prover_index::ProverIndex,
 };
 
-use super::circuitgates::{RangeCheck0, RangeCheck1};
+use super::circuitgates::ForeignFieldMul;
 
-pub const GATE_COUNT: usize = 2;
+/// Number of gates in this gadget
+pub const GATE_COUNT: usize = 1;
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
-    /// Create range check gate for constraining three 88-bit values.
+    /// Create foreign field multiplication gate
     ///     Inputs the starting row
-    ///     Outputs tuple (`next_row`, `circuit_gates`) where
-    ///       `next_row`      - next row after this gate
-    ///       `circuit_gates` - vector of circuit gates comprising this gate
-    pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
-        let mut circuit_gates = vec![
-            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]),
-            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row + 1), vec![]),
-            CircuitGate::new(GateType::RangeCheck1, Wire::for_row(start_row + 2), vec![]),
-            CircuitGate::new(GateType::Zero, Wire::for_row(start_row + 3), vec![]),
+    ///     Outputs tuple (next_row, circuit_gates) where
+    ///       next_row      - next row after this gate
+    ///       circuit_gates - vector of circuit gates comprising this gate
+    pub fn create_foreign_field_mul(start_row: usize) -> (usize, Vec<Self>) {
+        let circuit_gates = vec![
+            CircuitGate {
+                typ: GateType::ForeignFieldMul,
+                wires: Wire::for_row(start_row),
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::Zero,
+                wires: Wire::for_row(start_row + 1),
+                coeffs: vec![],
+            },
         ];
-
-        // copy v0p0
-        circuit_gates.connect_cell_pair((0, 1), (3, 3));
-
-        // copy v0p1
-        circuit_gates.connect_cell_pair((0, 2), (3, 4));
-
-        // copy v1p0
-        circuit_gates.connect_cell_pair((1, 1), (3, 5));
-
-        // copy v1p1
-        circuit_gates.connect_cell_pair((1, 2), (3, 6));
 
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    /// Create foreign field muti-range-check gadget by extending the existing gates
-    pub fn extend_multi_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
-        let (next_row, circuit_gates) = Self::create_multi_range_check(*curr_row);
+    /// Create foreign field multiplication gate by extending the existing gates
+    pub fn extend_foreign_field_mul(gates: &mut Vec<Self>, curr_row: &mut usize) {
+        let (next_row, circuit_gates) = Self::create_foreign_field_mul(*curr_row);
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
     }
 
-    /// Create single range check gate
-    ///     Inputs the starting row
-    ///     Outputs tuple (`next_row`, `circuit_gates`) where
-    ///       `next_row`      - next row after this gate
-    ///       `circuit_gates` - vector of circuit gates comprising this gate
-    pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
-        let gate = CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]);
-        (start_row + 1, vec![gate])
-    }
-
-    /// Create foreign field range-check gate by extending the existing gates
-    pub fn extend_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
-        let (next_row, circuit_gates) = Self::create_range_check(*curr_row);
-        *curr_row = next_row;
-        gates.extend_from_slice(&circuit_gates);
-    }
-
-    /// Verify the witness against a range check (related) circuit gate
-    ///
-    /// The following verification checks are performed
-    ///   * Constraint checks for circuit gates matching the self.typ kind
-    ///     Circuit gates used by the range check gate are: `RangeChange0` and `RangeCheck1`
-    ///   * Permutation argument checks for copied cells / wiring
-    ///   * Plookup checks for any lookups defined
-    ///
-    /// # Errors
-    ///
-    /// Will give error if `self.typ` is invalid `GateType`.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `padding_length` is None.
-    pub fn verify_range_check<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_foreign_field_mul<G: KimchiCurve<ScalarField = F>>(
         &self,
         _: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -127,7 +91,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1)
                 .interpolate()
         });
-
         // Compute permutation polynomial
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let beta = F::rand(rng);
@@ -142,11 +105,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let mut index_evals = HashMap::new();
         index_evals.insert(
             self.typ,
-            &index
+            index
                 .column_evaluations
-                .range_check_selectors8
+                .foreign_field_mul_selector8
                 .as_ref()
-                .unwrap()[circuit_gate_selector_index(self.typ)],
+                .unwrap(),
         );
 
         // Set up lookup environment
@@ -176,15 +139,15 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Set up the environment
         let env = {
             Environment {
-                constants: expr::Constants {
-                    alpha: F::rand(rng),
-                    beta: F::rand(rng),
-                    gamma: F::rand(rng),
-                    joint_combiner: Some(F::rand(rng)),
-                    endo_coefficient: index.cs.endo,
-                    mds: &G::sponge_params().mds,
-                    foreign_field_modulus: None,
-                },
+                constants: expr::Constants::new(
+                    F::rand(rng),
+                    F::rand(rng),
+                    F::rand(rng),
+                    Some(F::rand(rng)),
+                    index.cs.endo,
+                    &G::sponge_params().mds,
+                    index.cs.foreign_field_modulus.clone(),
+                ),
                 witness: &witness_evals.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
@@ -223,7 +186,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 }
 
 // Data required by the lookup environment
-struct LookupEnvironmentData<F: FftField> {
+struct LookupEnvironmentData<F: PrimeField> {
     // Aggregation evaluations
     aggreg8: Evaluations<F, D<F>>,
     // Sorted evaluations
@@ -259,7 +222,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
         F::zero()
     };
     let table_id_combiner: F = if lcs.table_ids8.as_ref().is_some() {
-        joint_combiner.pow([u64::from(lcs.configuration.lookup_info.max_joint_size)])
+        joint_combiner.pow([lcs.configuration.lookup_info.max_joint_size as u64])
     } else {
         // TODO: just set this to None in case multiple tables are not used
         F::zero()
@@ -359,51 +322,52 @@ fn set_up_lookup_env_data<F: PrimeField>(
     })
 }
 
-fn circuit_gate_selector_index(typ: GateType) -> usize {
+// TODO: Check do we use this anywhere
+pub fn circuit_gate_selector_index(typ: GateType) -> usize {
     match typ {
-        GateType::RangeCheck0 => 0,
-        GateType::RangeCheck1 => 1,
+        GateType::ForeignFieldMul => 0,
         _ => panic!("invalid gate type"),
     }
 }
 
-/// Get vector of range check circuit gate types
+/// Get vector of foreign field multiplication circuit gate types
 pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::RangeCheck0, GateType::RangeCheck1]
+    [GateType::ForeignFieldMul]
 }
 
-/// Number of constraints for a given range check circuit gate type
-///
-/// # Panics
-///
-/// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::RangeCheck0 => RangeCheck0::<F>::CONSTRAINTS,
-        GateType::RangeCheck1 => RangeCheck1::<F>::CONSTRAINTS,
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get combined constraints for a given range check circuit gate type
-///
-/// # Panics
-///
-/// Will panic if `typ` is not `RangeCheck`-related gate type.
+/// Get combined constraints for a given foreign field multiplication circuit gate
 pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
-        GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas),
-        GateType::RangeCheck1 => RangeCheck1::combined_constraints(alphas),
+        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas),
         _ => panic!("invalid gate type"),
     }
 }
 
-/// Get the combined constraints for all range check circuit gate types
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    RangeCheck0::combined_constraints(alphas) + RangeCheck1::combined_constraints(alphas)
+/// Number of constraints for a given foreign field mul circuit gate type
+pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
+    match typ {
+        GateType::ForeignFieldMul => ForeignFieldMul::<F>::CONSTRAINTS,
+        _ => panic!("invalid gate type"),
+    }
 }
 
-/// Get the range check lookup table
-pub fn lookup_table<F: FftField>() -> LookupTable<F> {
+/// Get the combined constraints for all foreign field multiplication circuit gates
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
+    ForeignFieldMul::combined_constraints(alphas)
+}
+
+/// Get the foreign field multiplication lookup table
+pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
+}
+
+#[cfg(test)]
+mod tests {
+    use num_bigint::BigUint;
+
+    fn _biguint_from_hex_le(hex: &str) -> BigUint {
+        let mut bytes = hex::decode(hex).expect("invalid hex");
+        bytes.reverse();
+        BigUint::from_bytes_le(&bytes)
+    }
 }

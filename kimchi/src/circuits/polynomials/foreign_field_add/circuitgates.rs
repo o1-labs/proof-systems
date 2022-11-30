@@ -15,11 +15,12 @@ use std::{array, marker::PhantomData};
 //~ left_input +/- right_input = field_overflow * foreign_modulus + result
 //~```
 //~
-//~ Documentation:
+//~ ##### Documentation
 //~
-//~  For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+//~  For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
 //~
-//~ Mapping:
+//~ ##### Mapping
+//~
 //~  To make things clearer, the following mapping between the variable names
 //~  used in the code and those of the RFC document can be helpful.
 //~
@@ -36,8 +37,7 @@ use std::{array, marker::PhantomData};
 //~     bound_carry_mi  -> k1
 //~```
 //~
-//~ Note:
-//~  Our limbs are 88-bit long. We denote with:
+//~ Note: Our limbs are 88-bit long. We denote with:
 //~  - `lo` the least significant limb (in little-endian, this is from 0 to 87)
 //~  - `mi` the middle limb            (in little-endian, this is from 88 to 175)
 //~  - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
@@ -87,6 +87,8 @@ use std::{array, marker::PhantomData};
 //~ by 1 the number of witness cells needed. The idea is to condense the low and middle limbs in one longer
 //~ limb of 176 bits (which fits inside our native field) and getting rid of the low carry flag.
 //~ With this idea in mind, the sole carry flag we need is the one located between the middle and the high limbs.
+//~
+//~ ##### Layout
 //~
 //~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 //~

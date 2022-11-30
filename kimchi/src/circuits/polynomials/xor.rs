@@ -18,9 +18,10 @@ use crate::{
         witness::{self, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
+    prover_index::ProverIndex,
     variable_map,
 };
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -29,7 +30,7 @@ use std::{array, collections::HashMap, marker::PhantomData};
 
 pub const GATE_COUNT: usize = 1;
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a XOR gadget for `bits` length
     /// Includes:
     /// - num_xors Xor16 gates
@@ -64,14 +65,15 @@ impl<F: PrimeField> CircuitGate<F> {
         &self,
         _: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        index: &ProverIndex<G>,
     ) -> CircuitGateResult<()> {
         if !circuit_gates().contains(&self.typ) {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 
         // Pad the witness to domain d1 size
-        let padding_length = cs
+        let padding_length = index
+            .cs
             .domain
             .d1
             .size
@@ -84,7 +86,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Compute witness polynomial
         let witness_poly: [DensePolynomial<F>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
+            Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1)
                 .interpolate()
         });
 
@@ -92,25 +94,29 @@ impl<F: PrimeField> CircuitGate<F> {
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let beta = F::rand(rng);
         let gamma = F::rand(rng);
-        let z_poly = cs
+        let z_poly = index
             .perm_aggreg(&witness, &beta, &gamma, rng)
             .map_err(|_| CircuitGateError::InvalidCopyConstraint(self.typ))?;
 
         // Compute witness polynomial evaluations
-        let witness_evals = cs.evaluate(&witness_poly, &z_poly);
+        let witness_evals = index.cs.evaluate(&witness_poly, &z_poly);
 
         let mut index_evals = HashMap::new();
-        index_evals.insert(self.typ, &cs.xor_selector_poly.as_ref().unwrap().eval8);
+        index_evals.insert(
+            self.typ,
+            index.column_evaluations.xor_selector8.as_ref().unwrap(),
+        );
 
         // Set up lookup environment
-        let lcs = cs
+        let lcs = index
+            .cs
             .lookup_constraint_system
             .as_ref()
             .ok_or(CircuitGateError::MissingLookupConstraintSystem(self.typ))?;
 
         let lookup_env_data = set_up_lookup_env_data(
             self.typ,
-            cs,
+            &index.cs,
             &witness,
             &beta,
             &gamma,
@@ -133,16 +139,16 @@ impl<F: PrimeField> CircuitGate<F> {
                     beta: F::rand(rng),
                     gamma: F::rand(rng),
                     joint_combiner: Some(F::rand(rng)),
-                    endo_coefficient: cs.endo,
+                    endo_coefficient: index.cs.endo,
                     mds: &G::sponge_params().mds,
                     foreign_field_modulus: None,
                 },
                 witness: &witness_evals.d8.this.w,
-                coefficient: &cs.coefficients8,
-                vanishes_on_last_4_rows: &cs.precomputations().vanishes_on_last_4_rows,
+                coefficient: &index.column_evaluations.coefficients8,
+                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &witness_evals.d8.this.z,
-                l0_1: l0_1(cs.domain.d1),
-                domain: cs.domain,
+                l0_1: l0_1(index.cs.domain.d1),
+                domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
             }
@@ -162,7 +168,7 @@ impl<F: PrimeField> CircuitGate<F> {
         if constraints
             .evaluations(&env)
             .interpolate()
-            .divide_by_vanishing_poly(cs.domain.d1)
+            .divide_by_vanishing_poly(index.cs.domain.d1)
             .unwrap()
             .1
             .is_zero()

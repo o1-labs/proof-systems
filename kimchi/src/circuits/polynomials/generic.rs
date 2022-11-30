@@ -35,12 +35,12 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    constraints::ConstraintSystem,
     expr::constraints::ExprOps,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::GateWires,
 };
+use crate::{curve::KimchiCurve, prover_index::ProverIndex};
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use std::array;
@@ -277,15 +277,18 @@ pub mod testing {
         }
     }
 
-    impl<F: PrimeField> ConstraintSystem<F> {
+    impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,
             witness: &[DensePolynomial<F>; COLUMNS],
             public: &DensePolynomial<F>,
         ) -> bool {
-            let coefficientsm: [_; COLUMNS] =
-                array::from_fn(|i| self.coefficients8[i].clone().interpolate());
+            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
+                self.column_evaluations.coefficients8[i]
+                    .clone()
+                    .interpolate()
+            });
 
             let generic_gate = |coeff_offset, register_offset| {
                 // addition (of left, right, output wires)
@@ -310,10 +313,10 @@ pub mod testing {
             res += public;
 
             // selector poly
-            res = &res * &self.genericm;
+            res = &res * &self.evaluated_column_coefficients.generic_selector;
 
             // verify that it is divisible by Z_H
-            match res.divide_by_vanishing_poly(self.domain.d1) {
+            match res.divide_by_vanishing_poly(self.cs.domain.d1) {
                 Some((_quotient, rest)) => rest.is_zero(),
                 None => false,
             }
