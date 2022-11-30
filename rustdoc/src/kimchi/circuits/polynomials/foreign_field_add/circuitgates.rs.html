@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-75894291877b32c0.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-d2f7777684990013.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ee9f86babca44bc2.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -193,6 +193,8 @@
 <a href="#193" id="193">193</a>
 <a href="#194" id="194">194</a>
 <a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Foreign field addition gate.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
@@ -210,11 +212,12 @@
 //~ left_input +/- right_input = field_overflow * foreign_modulus + result
 //~```
 //~
-//~ Documentation:
+//~ ##### Documentation
 //~
-//~  For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+//~  For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
 //~
-//~ Mapping:
+//~ ##### Mapping
+//~
 //~  To make things clearer, the following mapping between the variable names
 //~  used in the code and those of the RFC document can be helpful.
 //~
@@ -231,8 +234,7 @@
 //~     bound_carry_mi  -&gt; k1
 //~```
 //~
-//~ Note:
-//~  Our limbs are 88-bit long. We denote with:
+//~ Note: Our limbs are 88-bit long. We denote with:
 //~  - `lo` the least significant limb (in little-endian, this is from 0 to 87)
 //~  - `mi` the middle limb            (in little-endian, this is from 88 to 175)
 //~  - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
@@ -278,25 +280,27 @@
 //~ final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
 //~ (meaning less than the modulus).
 //~
-//~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+//~ ##### Layout
 //~
-//~ | col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-//~ | --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
-//~ |   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
-//~ |   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
-//~ |   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
-//~ |   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
-//~ |   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
-//~ |   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
-//~ |   6 | `sign`           (copy) |                         |  1              (check) |                   |
-//~ |   7 | `field_overflow`        |                         |  1              (check) |                   |
-//~ |   8 | `carry_lo`              |                         | `bound_carry_lo`        |                   |
-//~ |   9 | `carry_mi`              |                         | `bound_carry_mi`        |                   |
-//~ |  10 |                         |                         |                         |                   |
-//~ |  11 |                         |                         |                         |                   |
-//~ |  12 |                         |                         |                         |                   |
-//~ |  13 |                         |                         |                         |                   |
-//~ |  14 |                         |                         |                         |                   |
+//~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
+//~
+//~ | col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+//~ | --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
+//~ |   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
+//~ |   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
+//~ |   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
+//~ |   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
+//~ |   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
+//~ |   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
+//~ |   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
+//~ |   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
+//~ |   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
+//~ |   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
+//~ |  10 |                         |                        |                         |                   |
+//~ |  11 |                         |                        |                         |                   |
+//~ |  12 |                         |                        |                         |                   |
+//~ |  13 |                         |                        |                         |                   |
+//~ |  14 |                         |                        |                         |                   |
 //~
 //~ We reuse the foreign field addition gate for the final bound check since this is an addition with a
 //~ specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
@@ -389,4 +393,4 @@
     </span>flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (2585bcea0 2022-11-28)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e0098a5cc 2022-11-29)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

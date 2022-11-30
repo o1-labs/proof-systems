@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/gate.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>gate.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-75894291877b32c0.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-d2f7777684990013.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/gate.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>gate.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ee9f86babca44bc2.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -577,6 +577,12 @@
 <a href="#577" id="577">577</a>
 <a href="#578" id="578">578</a>
 <a href="#579" id="579">579</a>
+<a href="#580" id="580">580</a>
+<a href="#581" id="581">581</a>
+<a href="#582" id="582">582</a>
+<a href="#583" id="583">583</a>
+<a href="#584" id="584">584</a>
+<a href="#585" id="585">585</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -584,8 +590,8 @@
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
-            range_check, turshi, varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
+            poseidon, range_check, turshi, varbasemul,
         },
         wires::<span class="kw-2">*</span>,
     },
@@ -684,13 +690,13 @@
     CairoInstruction = <span class="number">13</span>,
     CairoFlags = <span class="number">14</span>,
     CairoTransition = <span class="number">15</span>,
-    <span class="doccomment">/// Range check (16-24)
+    <span class="doccomment">/// Range check
     </span>RangeCheck0 = <span class="number">16</span>,
     RangeCheck1 = <span class="number">17</span>,
-    ForeignFieldAdd = <span class="number">25</span>,
-    <span class="comment">//ForeignFieldMul = 26,
-    // Gates for Keccak follow:
-    </span>Xor16 = <span class="number">27</span>,
+    ForeignFieldAdd = <span class="number">18</span>,
+    ForeignFieldMul = <span class="number">19</span>,
+    <span class="comment">// Gates for Keccak
+    </span>Xor16 = <span class="number">20</span>,
 }
 
 <span class="doccomment">/// Gate error
@@ -810,11 +816,14 @@
             RangeCheck0 | RangeCheck1 =&gt; <span class="self">self
                 </span>.verify_range_check::&lt;G&gt;(row, witness, index)
                 .map_err(|e| e.to_string()),
-            Xor16 =&gt; <span class="self">self
-                </span>.verify_xor::&lt;G&gt;(row, witness, index)
-                .map_err(|e| e.to_string()),
             ForeignFieldAdd =&gt; <span class="self">self
                 </span>.verify_foreign_field_add::&lt;G&gt;(row, witness, index)
+                .map_err(|e| e.to_string()),
+            ForeignFieldMul =&gt; <span class="self">self
+                </span>.verify_foreign_field_mul::&lt;G&gt;(row, witness, index)
+                .map_err(|e| e.to_string()),
+            Xor16 =&gt; <span class="self">self
+                </span>.verify_xor::&lt;G&gt;(row, witness, index)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -831,15 +840,15 @@
         </span><span class="kw">let </span>argument_witness = <span class="self">self</span>.argument_witness(row, witness)<span class="question-mark">?</span>;
         <span class="comment">// Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        </span><span class="kw">let </span>constants = expr::Constants::&lt;F&gt; {
-            alpha: F::one(),
-            beta: F::one(),
-            gamma: F::one(),
-            joint_combiner: <span class="prelude-val">Some</span>(F::one()),
-            endo_coefficient: cs.endo,
-            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-            foreign_field_modulus: cs.foreign_field_modulus.clone(),
-        };
+        </span><span class="kw">let </span>constants = expr::Constants::new(
+            F::one(),
+            F::one(),
+            F::one(),
+            <span class="prelude-val">Some</span>(F::one()),
+            cs.endo,
+            <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            cs.foreign_field_modulus.clone(),
+        );
         <span class="comment">// Create the argument environment for the constraints over field elements
         </span><span class="kw">let </span>env = ArgumentEnv::&lt;F, F&gt;::create(argument_witness, <span class="self">self</span>.coeffs.clone(), constants);
 
@@ -897,17 +906,20 @@
             GateType::RangeCheck1 =&gt; {
                 range_check::circuitgates::RangeCheck1::constraint_checks(<span class="kw-2">&amp;</span>env)
             }
-            GateType::Xor16 =&gt; xor::Xor16::constraint_checks(<span class="kw-2">&amp;</span>env),
             GateType::ForeignFieldAdd =&gt; {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(<span class="kw-2">&amp;</span>env)
             }
+            GateType::ForeignFieldMul =&gt; {
+                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(<span class="kw-2">&amp;</span>env)
+            }
+            GateType::Xor16 =&gt; xor::Xor16::constraint_checks(<span class="kw-2">&amp;</span>env),
         };
 
         <span class="comment">// Check for failed constraints
         </span><span class="kw">for </span>(i, result) <span class="kw">in </span>results.iter().enumerate() {
             <span class="kw">if </span>!result.is_zero() {
                 <span class="comment">// Pinpoint failed constraint
-                </span><span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::Constraint(<span class="self">self</span>.typ, i));
+                </span><span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::Constraint(<span class="self">self</span>.typ, i + <span class="number">1</span>));
             }
         }
 
@@ -1157,4 +1169,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (2585bcea0 2022-11-28)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e0098a5cc 2022-11-29)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

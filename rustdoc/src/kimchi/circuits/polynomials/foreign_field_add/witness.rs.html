@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-75894291877b32c0.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-d2f7777684990013.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-ee9f86babca44bc2.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -281,6 +281,101 @@
 <a href="#281" id="281">281</a>
 <a href="#282" id="282">282</a>
 <a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module computes the witness of a foreign field addition circuit.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::witness::Variables;
@@ -294,7 +389,9 @@
 };
 <span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>o1_utils::foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB};
+<span class="kw">use </span>o1_utils::foreign_field::{
+    BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB,
+};
 <span class="kw">use </span>std::array;
 
 <span class="doccomment">/// All foreign field operations allowed
@@ -308,13 +405,13 @@
     </span>Mul,
 }
 
-<span class="comment">// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
-// all necessary values needed for the witness layout. Meaning:
-// - the result of the addition/subtraction as a ForeignElement
-// - the sign of the operation
-// - the overflow flag
-// - the carry_lo and carry_mi values
-</span><span class="kw">fn </span>compute_subadd_values&lt;F: PrimeField&gt;(
+<span class="doccomment">/// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
+/// all necessary values needed for the witness layout. Meaning:
+/// - the result of the addition/subtraction as a ForeignElement
+/// - the sign of the operation
+/// - the overflow flag
+/// - the carry_lo and carry_mi values
+</span><span class="kw">pub fn </span>compute_subadd_values&lt;F: PrimeField&gt;(
     left_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">3</span>&gt;,
     right_input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">4</span>&gt;,
     opcode: FFOps,
@@ -325,13 +422,13 @@
     <span class="kw">let </span>two_to_limb = F::from(TWO_TO_LIMB);
 
     <span class="comment">// Compute bigint version of the inputs
-    </span><span class="kw">let </span>left = left_input.to_big();
-    <span class="kw">let </span>right = right_input.to_big();
+    </span><span class="kw">let </span>left = left_input.to_biguint();
+    <span class="kw">let </span>right = right_input.to_biguint();
 
     <span class="comment">// Clarification:
     </span><span class="kw">let </span>right_hi = right_input[<span class="number">3</span>] * two_to_limb + right_input[HI]; <span class="comment">// This allows to store 2^88 in the high limb
 
-    </span><span class="kw">let </span>modulus = foreign_modulus.to_big();
+    </span><span class="kw">let </span>modulus = foreign_modulus.to_biguint();
 
     <span class="comment">// Addition or subtraction
     </span><span class="kw">let </span>sign = <span class="kw">if </span>opcode == FFOps::Add {
@@ -386,6 +483,7 @@
     </span><span class="kw">let </span>carry_lo = result[MI] - left_input[MI] - sign * right_input[MI]
         + field_overflow * foreign_modulus[MI]
         + two_to_limb * carry_mi;
+
     (result, sign, field_overflow, carry_lo, carry_mi)
 }
 
@@ -412,7 +510,7 @@
 
     <span class="comment">// Create multi-range-check witness for first left input
     </span><span class="kw">let </span><span class="kw-2">mut </span>left = ForeignElement::from_biguint(inputs[LO].clone());
-    range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, left.clone());
+    range_check::witness::extend_multi_from_fe(<span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>left);
     <span class="kw">let </span><span class="kw-2">mut </span>add_values: Vec&lt;(F, F, F, F)&gt; = <span class="macro">vec!</span>[];
     <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num {
         <span class="kw">let </span>right = ForeignElement::from_biguint(inputs[i + <span class="number">1</span>].clone());
@@ -421,15 +519,15 @@
         <span class="comment">// Create multi-range-check witness for right_input (left_input was done in previous iteration) and output
         // We only obtain the 3 lower limbs of right because the range check takes only 264 bits now
         </span><span class="kw">let </span>right_3_limb = ForeignElement::new([right[LO], right[MI], right[HI]]);
-        range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, right_3_limb);
-        range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, output.clone());
+        range_check::witness::extend_multi_from_fe(<span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>right_3_limb);
+        range_check::witness::extend_multi_from_fe(<span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>output);
 
         add_values.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[(sign, overflow, carry_lo, carry_mi)]);
         left = output; <span class="comment">// output
     </span>}
 
     <span class="comment">// Compute values for final bound check, needs a 4 limb right input
-    </span><span class="kw">let </span>right = ForeignElement::&lt;F, <span class="number">4</span>&gt;::from_biguint(BigUint::from(TWO_TO_LIMB).pow(<span class="number">3</span>));
+    </span><span class="kw">let </span>right = ForeignElement::&lt;F, <span class="number">4</span>&gt;::from_biguint(BigUint::binary_modulus());
 
     <span class="kw">let </span>(bound, sign, overflow, bound_carry_lo, bound_carry_mi) =
         compute_subadd_values(<span class="kw-2">&amp;</span>left, <span class="kw-2">&amp;</span>right, FFOps::Add, <span class="kw-2">&amp;</span>foreign_modulus);
@@ -438,7 +536,7 @@
     <span class="macro">assert_eq!</span>(overflow, F::one());
 
     <span class="comment">// Final RangeCheck for bound
-    </span>range_check::witness::extend(<span class="kw-2">&amp;mut </span>witness, bound);
+    </span>range_check::witness::extend_multi_from_fe(<span class="kw-2">&amp;mut </span>witness, <span class="kw-2">&amp;</span>bound);
     <span class="kw">let </span><span class="kw-2">mut </span>offset = witness[LO].len(); <span class="comment">// number of witness rows of the gadget before the first row of the addition gate
 
     // Include FFAdds gates for operations and final bound check
@@ -466,9 +564,43 @@
     <span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;mut </span>witness {
         w.extend(std::iter::repeat(F::zero()).take(<span class="number">2</span>));
     }
-    init_foreign_field_fin_rows(<span class="kw-2">&amp;mut </span>witness, offset, num, [bound_carry_lo, bound_carry_mi]);
+    init_foreign_field_fin_rows_from_multi_range_check(
+        <span class="kw-2">&amp;mut </span>witness,
+        offset,
+        num,
+        [bound_carry_lo, bound_carry_mi],
+    );
 
     witness
+}
+
+<span class="doccomment">/// Create witness for bound computation addition gate
+</span><span class="kw">pub fn </span>extend_witness_bound_addition&lt;F: PrimeField&gt;(
+    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+    limbs: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
+    foreign_field_modulus: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>],
+) {
+    <span class="comment">// Convert to types used by this module
+    </span><span class="kw">let </span>fe = ForeignElement::&lt;F, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>limbs);
+    <span class="kw">let </span>foreign_field_modulus = ForeignElement::&lt;F, <span class="number">3</span>&gt;::new(<span class="kw-2">*</span>foreign_field_modulus);
+
+    <span class="comment">// Compute values for final bound check, needs a 4 limb right input
+    </span><span class="kw">let </span>right_input = ForeignElement::&lt;F, <span class="number">4</span>&gt;::from_biguint(BigUint::binary_modulus());
+
+    <span class="comment">// Compute the bound and related witness data
+    </span><span class="kw">let </span>(bound, sign, overflow, bound_carry0, bound_carry1) =
+        compute_subadd_values(<span class="kw-2">&amp;</span>fe, <span class="kw-2">&amp;</span>right_input, FFOps::Add, <span class="kw-2">&amp;</span>foreign_field_modulus);
+    <span class="comment">// Make sure they have the right value
+    </span><span class="macro">assert_eq!</span>(sign, F::one());
+    <span class="macro">assert_eq!</span>(overflow, F::one());
+
+    <span class="comment">// Extend the witness for the add gate
+    </span><span class="kw">let </span>offset = witness[<span class="number">0</span>].len();
+    <span class="kw">for </span>col <span class="kw">in </span>witness.iter_mut().take(COLUMNS) {
+        col.extend(std::iter::repeat(F::zero()).take(<span class="number">2</span>))
+    }
+
+    init_foreign_field_fin_rows(witness, offset, <span class="kw-2">&amp;</span>fe, <span class="kw-2">&amp;</span>bound, [bound_carry0, bound_carry1]);
 }
 
 <span class="kw">fn </span>init_foreign_field_add_rows&lt;F: PrimeField&gt;(
@@ -511,6 +643,64 @@
 }
 
 <span class="kw">fn </span>init_foreign_field_fin_rows&lt;F: PrimeField&gt;(
+    witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+    offset: usize,
+    input: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">3</span>&gt;,  <span class="comment">// left_input
+    </span>output: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">3</span>&gt;, <span class="comment">// Bound addition output
+    </span>carry: [F; <span class="number">2</span>],
+) {
+    <span class="kw">let </span>witness_shape: [[Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;; COLUMNS]; <span class="number">2</span>] = [
+        [
+            <span class="comment">// ForeignFieldFin row
+            </span>VariableCell::create(<span class="string">&quot;input0&quot;</span>),
+            VariableCell::create(<span class="string">&quot;input1&quot;</span>),
+            VariableCell::create(<span class="string">&quot;input2&quot;</span>),
+            ConstantCell::create(F::zero()),            <span class="comment">// 0
+            </span>ConstantCell::create(F::zero()),            <span class="comment">// 0
+            </span>ConstantCell::create(F::from(TWO_TO_LIMB)), <span class="comment">// 2^88
+            </span>ConstantCell::create(F::one()),             <span class="comment">// sign
+            </span>ConstantCell::create(F::one()),             <span class="comment">// field_overflow
+            </span>VariableCell::create(<span class="string">&quot;carry_lo&quot;</span>),
+            VariableCell::create(<span class="string">&quot;carry_mi&quot;</span>),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+        ],
+        [
+            <span class="comment">// Zero Row
+            </span>VariableCell::create(<span class="string">&quot;output0&quot;</span>),
+            VariableCell::create(<span class="string">&quot;output1&quot;</span>),
+            VariableCell::create(<span class="string">&quot;output2&quot;</span>),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+        ],
+    ];
+
+    witness::init(
+        witness,
+        offset,
+        <span class="kw-2">&amp;</span>witness_shape,
+        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[
+            <span class="string">&quot;input0&quot; </span>=&gt; input[<span class="number">0</span>], <span class="string">&quot;input1&quot; </span>=&gt; input[<span class="number">1</span>], <span class="string">&quot;input2&quot; </span>=&gt; input[<span class="number">2</span>],
+            <span class="string">&quot;output0&quot; </span>=&gt; output[<span class="number">0</span>], <span class="string">&quot;output1&quot; </span>=&gt; output[<span class="number">1</span>], <span class="string">&quot;output2&quot; </span>=&gt; output[<span class="number">2</span>],
+            <span class="string">&quot;carry_lo&quot; </span>=&gt; carry[<span class="number">0</span>], <span class="string">&quot;carry_mi&quot; </span>=&gt; carry[<span class="number">1</span>]
+        ],
+    );
+}
+
+<span class="kw">fn </span>init_foreign_field_fin_rows_from_multi_range_check&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     offset: usize,
     num: usize,
@@ -565,4 +755,4 @@
     );
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (2585bcea0 2022-11-28)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e0098a5cc 2022-11-29)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

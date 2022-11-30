@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `utils/src/field_helpers.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>field_helpers.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-75894291877b32c0.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-d2f7777684990013.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../o1_utils/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `utils/src/field_helpers.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>field_helpers.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ee9f86babca44bc2.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../o1_utils/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -275,6 +275,52 @@
 <a href="#275" id="275">275</a>
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
+<a href="#304" id="304">304</a>
+<a href="#305" id="305">305</a>
+<a href="#306" id="306">306</a>
+<a href="#307" id="307">307</a>
+<a href="#308" id="308">308</a>
+<a href="#309" id="309">309</a>
+<a href="#310" id="310">310</a>
+<a href="#311" id="311">311</a>
+<a href="#312" id="312">312</a>
+<a href="#313" id="313">313</a>
+<a href="#314" id="314">314</a>
+<a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].
 
 </span><span class="kw">use </span>ark_ff::{BigInteger, Field, FpParameters, PrimeField};
@@ -288,6 +334,8 @@
 </span><span class="kw">pub enum </span>FieldHelpersError {
     <span class="attr">#[error(<span class="string">&quot;failed to deserialize field bytes&quot;</span>)]
     </span>DeserializeBytes,
+    <span class="attr">#[error(<span class="string">&quot;failed to deserialize field bits&quot;</span>)]
+    </span>DeserializeBits,
     <span class="attr">#[error(<span class="string">&quot;failed to decode hex&quot;</span>)]
     </span>DecodeHex,
     <span class="attr">#[error(<span class="string">&quot;failed to convert BigUint into field element&quot;</span>)]
@@ -309,6 +357,15 @@
     <span class="doccomment">/// Deserialize from bits
     </span><span class="kw">fn </span>from_bits(bits: <span class="kw-2">&amp;</span>[bool]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 
+    <span class="doccomment">/// Deserialize from BigUint
+    </span><span class="kw">fn </span>from_biguint(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;
+    <span class="kw">where
+        </span>F: PrimeField,
+    {
+        big.try_into()
+            .map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
+    }
+
     <span class="doccomment">/// Serialize to bytes
     </span><span class="kw">fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt;;
 
@@ -317,6 +374,17 @@
 
     <span class="doccomment">/// Serialize to bits
     </span><span class="kw">fn </span>to_bits(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;bool&gt;;
+
+    <span class="doccomment">/// Serialize field element to a BigUint
+    </span><span class="kw">fn </span>to_biguint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BigUint
+    <span class="kw">where
+        </span>F: PrimeField,
+    {
+        BigUint::from_bytes_le(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bytes())
+    }
+
+    <span class="doccomment">/// Create a new field element from this field elements bits
+    </span><span class="kw">fn </span>bits_to_field(<span class="kw-2">&amp;</span><span class="self">self</span>, start: usize, end: usize) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 
     <span class="doccomment">/// Field size in bytes
     </span><span class="kw">fn </span>size_in_bytes() -&gt; usize
@@ -379,18 +447,21 @@
             bits
         })
     }
+
+    <span class="kw">fn </span>bits_to_field(<span class="kw-2">&amp;</span><span class="self">self</span>, start: usize, end: usize) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+        F::from_bits(<span class="kw-2">&amp;</span><span class="self">self</span>.to_bits()[start..end]).map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBits)
+    }
 }
 
 <span class="doccomment">/// Field element wrapper for [BigUint]
-</span><span class="kw">pub trait </span>FieldFromBig&lt;F&gt; {
-    <span class="doccomment">/// Deserialize from big unsigned integer
-    </span><span class="kw">fn </span>from_biguint(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
+</span><span class="kw">pub trait </span>BigUintFieldHelpers {
+    <span class="doccomment">/// Convert BigUint into PrimeField element
+    </span><span class="kw">fn </span>to_field&lt;F: PrimeField&gt;(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 }
 
-<span class="kw">impl</span>&lt;F: PrimeField&gt; FieldFromBig&lt;F&gt; <span class="kw">for </span>F {
-    <span class="kw">fn </span>from_biguint(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
-        big.try_into()
-            .map_err(|<span class="kw">_</span>| FieldHelpersError::FromBigToField)
+<span class="kw">impl </span>BigUintFieldHelpers <span class="kw">for </span>BigUint {
+    <span class="kw">fn </span>to_field&lt;F: PrimeField&gt;(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
+        F::from_biguint(<span class="self">self</span>)
     }
 }
 
@@ -410,6 +481,7 @@
     <span class="kw">use </span>ark_ec::AffineCurve;
     <span class="kw">use </span>ark_ff::One;
     <span class="kw">use </span>mina_curves::pasta::Pallas <span class="kw">as </span>CurvePoint;
+    <span class="kw">use </span>BigUintFieldHelpers;
 
     <span class="doccomment">/// Base field element type
     </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
@@ -517,7 +589,7 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>field_big() {
+    </span><span class="kw">fn </span>field_biguit_field_helpers() {
         <span class="kw">let </span>fe_1024 = BaseField::from(<span class="number">1024u32</span>);
         <span class="kw">let </span>big_1024 = fe_1024.into();
         <span class="macro">assert_eq!</span>(big_1024, BigUint::new(<span class="macro">vec!</span>[<span class="number">1024</span>]));
@@ -550,7 +622,27 @@
             BaseField::from_biguint(big_zero_32).expect(<span class="string">&quot;Failed&quot;</span>),
             BaseField::from_biguint(big_zero_1).expect(<span class="string">&quot;Failed&quot;</span>)
         );
+
+        <span class="macro">assert_eq!</span>(
+            BigUint::from_bytes_be(<span class="kw-2">&amp;</span>BaseField::from(<span class="number">0u32</span>).into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(<span class="kw-2">&amp;</span>[<span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>])
+        );
+
+        <span class="macro">assert_eq!</span>(
+            BaseField::from_biguint(BigUint::from_bytes_be(<span class="kw-2">&amp;</span>[<span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]))
+                .expect(<span class="string">&quot;Failed to convert big uint&quot;</span>),
+            BaseField::from(<span class="number">0u32</span>)
+        );
+
+        <span class="kw">let </span>bytes = [
+            <span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>, <span class="number">149</span>, <span class="number">45</span>, <span class="number">39</span>, <span class="number">185</span>, <span class="number">126</span>, <span class="number">202</span>, <span class="number">208</span>, <span class="number">104</span>, <span class="number">182</span>, <span class="number">152</span>,
+            <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8</span>,
+        ];
+        <span class="kw">let </span>fe = BaseField::from_bytes(<span class="kw-2">&amp;</span>bytes).expect(<span class="string">&quot;failed to create field element from bytes&quot;</span>);
+        <span class="kw">let </span>bi = BigUint::from_bytes_le(<span class="kw-2">&amp;</span>bytes);
+        <span class="macro">assert_eq!</span>(fe.to_biguint(), bi);
+        <span class="macro">assert_eq!</span>(bi.to_field::&lt;BaseField&gt;().unwrap(), fe);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (2585bcea0 2022-11-28)" data-search-js="search-df80cc3cb87b6482.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e0098a5cc 2022-11-29)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
