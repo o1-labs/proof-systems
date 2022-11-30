@@ -247,7 +247,7 @@ Using the substitution of the negated modulus, we now must constrain $a \cdot b 
 
 ## Intermediate products
 
-This section explains how we expand our constraints into limbs and the eliminate a number of extra terms.
+This section explains how we expand our constraints into limbs and then eliminate a number of extra terms.
 
 We must constrain $a \cdot b + q \cdot f' = r \mod 2^t$ on the limbs, rather than as a whole.  As described above, each foreign field element $x$ is split into three 88-bit limbs: $x_0, x_1, x_2$, where $x_0$ contains the least significant bits and $x_2$ contains the most significant bits and so on.
 
@@ -469,7 +469,7 @@ Let
 * $y = r_0 + 2^{\ell} \cdot r_1$
 * the $2\ell$ least significant bits of $x - y$ be `0`
 
-Suppose that borrowing occurs, that is, that $x < y$.  Recall that the length of $x$ is $2\ell + 2$ bits.  Therefore, since $x < y$ the top two bits of $x$ must be zero and so we have
+Suppose that borrowing occurs, that is, that $x < y$.  Recall that the length of $x$ is at most $2\ell + 2$ bits.  Therefore, since $x < y$ the top two bits of $x$ must be zero and so we have
 
 $$
 x - y = x_{2\ell} - y,
@@ -477,7 +477,7 @@ $$
 
 where $x_{2\ell}$ denotes the $2\ell$ least significant bits of $x$.
 
-Recall also that the length of $y$ is $2\ell$ bits.  So the result of this subtraction is $2\ell$ bits.   Since the $2\ell$ least significant bits of the subtraction are `0` this means that
+Recall also that the length of $y$ is $2\ell$ bits.  We know this because limbs of the result are each constrained to be in $[0, 2^{\ell})$.  So the result of this subtraction is $2\ell$ bits.   Since the $2\ell$ least significant bits of the subtraction are `0` this means that
 
 $$
 \begin{aligned}
@@ -504,20 +504,20 @@ The range checks on $p_0, p_1$ and $p_2$ follow from the range checks on $a,b$ a
 
 So we have 3.a, 3.b, 4, 7, 8.a, 8.b.
 
-| Range check | Gate type(s)                               | Witness                   | Rows |
-| ----------- | ------------------------------------------ | ------------------------- | ---- |
-| 7           | $(v_0 - 3)(v_0 - 2)(v_0 - 1)v_0$           | $v_0$                     | < 1  |
-| 3.a         | $(p_{111} - 3)(p_{111} - 2)(p_{111} - 1)q$ | $p_{111}$                 | < 1  |
-| 8.b         | degree-8 constraint or plookup             | $v_{11}$                  | 1    |
-| 3.b, 4, 8.a | `multi-range-check`                        | $p_{10}, p_{110}, v_{10}$ | 4    |
+| Range check | Gate type(s)                                     | Witness                   | Rows |
+| ----------- | ------------------------------------------------ | ------------------------- | ---- |
+| 7           | $(v_0 - 3)(v_0 - 2)(v_0 - 1)v_0$                 | $v_0$                     | < 1  |
+| 3.a         | $(p_{111} - 3)(p_{111} - 2)(p_{111} - 1)p_{111}$ | $p_{111}$                 | < 1  |
+| 8.b         | degree-8 constraint or plookup                   | $v_{11}$                  | 1    |
+| 3.b, 4, 8.a | `multi-range-check`                              | $p_{10}, p_{110}, v_{10}$ | 4    |
 
 So we have 1 multi-range-check, 1 single-range-check and 2 low-degree range checks. This consumes just over 5 rows.
 
 ## Use CRT to constrain $a \cdot b - q \cdot f - r \equiv 0 \mod n$
 
-Until now we have constrained the equation $\mod 2^t$, but remember that our application of CRT means that we must also constrain the equation $\mod n$.  We are leveraging the fact that if the identity holds for both moduli in $M = \{n, 2^t\}$, then it holds for $\mathtt{lcm} (M)$.
+Until now we have constrained the equation $\mod 2^t$, but remember that our application of the CRT means that we must also constrain the equation $\mod n$.  We are leveraging the fact that if the identity holds for all moduli in $\mathcal{M} = \{n, 2^t\}$, then it holds for $\mathtt{lcm} (\mathcal{M}) = 2^t \cdot n = M$.
 
-  Thus, we must check $a \cdot b - q \cdot f - r \equiv 0 \mod n$, which is over $\mathbb{F}_n$.
+Thus, we must check $a \cdot b - q \cdot f - r \equiv 0 \mod n$, which is over $\mathbb{F}_n$.
 
 This gives us equality $\mod 2^t \cdot n$ as long as the divisors are coprime.  That is, as long as $\mathsf{gcd}(2^t, n) = 1$.  Since the native modulus $n$ is prime, this is true.
 
@@ -690,7 +690,7 @@ $$
 
 Since the bit length of $r$ increases logarithmically with the number of additions, in Kimchi we must only check that the final $r$ in the chain is less than $f$ to constrain the entire chain.
 
-> **Security note:** In order to defer the $r < f$ check to the end of any chain of additions, it is extremely important to consider the potential impact of wraparound in $\mathbb{F_n}$.  That is, we need to consider whether the addition of a large chain of elements greater than the foreign field modulus could wrap around.  If this could happen then the $r < f$ check could fail to detect an valid witness.  Below we will show that this is not possible in Kimchi.
+> **Security note:** In order to defer the $r < f$ check to the end of any chain of additions, it is extremely important to consider the potential impact of wraparound in $\mathbb{F_n}$.  That is, we need to consider whether the addition of a large chain of elements greater than the foreign field modulus could wrap around.  If this could happen then the $r < f$ check could fail to detect an invalid witness.  Below we will show that this is not possible in Kimchi.
 >
 > Recall that our foreign field elements are comprised of 3 limbs of 88-bits each that are each represented as native field elements in our proof system.  In order to wrap around and circumvent the $r < f$ check, the highest limb would need to wrap around.  This means that an attacker would need to perform about $k \approx n/2^{\ell}$ additions of elements greater than then foreign field modulus.  Since Kimchi's native moduli (Pallas and Vesta) are 255-bits, the attacker would need to provide a witness for about $k \approx 2^{167}$ additions.  This length of witness is greater than Kimchi's maximum circuit (resp. witness) length.  Thus, it is not possible for the attacker to generate a false proof by causing wraparound with a large chain of additions.
 
