@@ -1379,7 +1379,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
             EnabledIf(feature, e) if feature.is_enabled() => e.evaluate_(d, pt, evals, c),
-            EnabledIf(feature, e) => Ok(F::zero()),
+            EnabledIf(_, _) => Ok(F::zero()),
         }
     }
 
