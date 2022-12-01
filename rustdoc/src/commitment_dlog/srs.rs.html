@@ -436,7 +436,7 @@
 
         <span class="comment">// If the srs size does not exactly divide the domain size
         </span><span class="kw">let </span>shifted: <span class="prelude-ty">Option</span>&lt;Vec&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective&gt;&gt; =
-            <span class="kw">if </span>num_unshifteds * <span class="self">self</span>.g.len() == n {
+            <span class="kw">if </span>n &lt; srs_size || num_unshifteds * srs_size == n {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
                 <span class="comment">// Initialize the vector to zero
