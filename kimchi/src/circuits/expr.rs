@@ -551,61 +551,61 @@ impl<F: FftField> PolishToken<F> {
         for t in toks.iter() {
             if skip_count > 0 {
                 skip_count -= 1;
-            } else {
-                use PolishToken::*;
-                match t {
-                    Alpha => stack.push(c.alpha),
-                    Beta => stack.push(c.beta),
-                    Gamma => stack.push(c.gamma),
-                    JointCombiner => {
-                        stack.push(c.joint_combiner.expect("no joint lookup was expected"))
+                continue;
+            }
+            use PolishToken::*;
+            match t {
+                Alpha => stack.push(c.alpha),
+                Beta => stack.push(c.beta),
+                Gamma => stack.push(c.gamma),
+                JointCombiner => {
+                    stack.push(c.joint_combiner.expect("no joint lookup was expected"))
+                }
+                EndoCoefficient => stack.push(c.endo_coefficient),
+                Mds { row, col } => stack.push(c.mds[*row][*col]),
+                ForeignFieldModulus(i) => {
+                    if let Some(modulus) = c.foreign_field_modulus.clone() {
+                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
                     }
-                    EndoCoefficient => stack.push(c.endo_coefficient),
-                    Mds { row, col } => stack.push(c.mds[*row][*col]),
-                    ForeignFieldModulus(i) => {
-                        if let Some(modulus) = c.foreign_field_modulus.clone() {
-                            stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
-                        }
-                    }
-                    VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
-                    UnnormalizedLagrangeBasis(i) => {
-                        stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
-                    }
-                    Literal(x) => stack.push(*x),
-                    Dup => stack.push(stack[stack.len() - 1]),
-                    Cell(v) => match v.evaluate(evals) {
-                        Ok(x) => stack.push(x),
-                        Err(e) => return Err(e),
-                    },
-                    Pow(n) => {
-                        let i = stack.len() - 1;
-                        stack[i] = stack[i].pow(&[*n as u64]);
-                    }
-                    Add => {
-                        let y = stack.pop().ok_or(ExprError::EmptyStack)?;
-                        let x = stack.pop().ok_or(ExprError::EmptyStack)?;
-                        stack.push(x + y);
-                    }
-                    Mul => {
-                        let y = stack.pop().ok_or(ExprError::EmptyStack)?;
-                        let x = stack.pop().ok_or(ExprError::EmptyStack)?;
-                        stack.push(x * y);
-                    }
-                    Sub => {
-                        let y = stack.pop().ok_or(ExprError::EmptyStack)?;
-                        let x = stack.pop().ok_or(ExprError::EmptyStack)?;
-                        stack.push(x - y);
-                    }
-                    Store => {
-                        let x = stack[stack.len() - 1];
-                        cache.push(x);
-                    }
-                    Load(i) => stack.push(cache[*i]),
-                    SkipIf(feature, count) => {
-                        if !feature.is_enabled() {
-                            skip_count = *count;
-                            stack.push(F::zero());
-                        }
+                }
+                VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
+                UnnormalizedLagrangeBasis(i) => {
+                    stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
+                }
+                Literal(x) => stack.push(*x),
+                Dup => stack.push(stack[stack.len() - 1]),
+                Cell(v) => match v.evaluate(evals) {
+                    Ok(x) => stack.push(x),
+                    Err(e) => return Err(e),
+                },
+                Pow(n) => {
+                    let i = stack.len() - 1;
+                    stack[i] = stack[i].pow(&[*n as u64]);
+                }
+                Add => {
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    stack.push(x + y);
+                }
+                Mul => {
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    stack.push(x * y);
+                }
+                Sub => {
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    stack.push(x - y);
+                }
+                Store => {
+                    let x = stack[stack.len() - 1];
+                    cache.push(x);
+                }
+                Load(i) => stack.push(cache[*i]),
+                SkipIf(feature, count) => {
+                    if !feature.is_enabled() {
+                        skip_count = *count;
+                        stack.push(F::zero());
                     }
                 }
             }
