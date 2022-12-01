@@ -33,7 +33,7 @@ use super::evaluation_proof::*;
 
 /// A polynomial commitment.
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -57,7 +57,7 @@ impl<T> PolyComm<T> {
     }
 }
 
-impl<A: Copy> PolyComm<A>
+impl<A: Clone> PolyComm<A>
 where
     A: CanonicalDeserialize + CanonicalSerialize,
 {
@@ -66,8 +66,8 @@ where
         F: FnMut(A) -> B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
-        let shifted = self.shifted.map(f);
+        let unshifted = self.unshifted.iter().map(|x| f(x.clone())).collect();
+        let shifted = self.shifted.as_ref().map(|x| f(x.clone()));
         PolyComm { unshifted, shifted }
     }
 
@@ -633,22 +633,21 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
-        max: Option<usize>,
     ) -> PolyComm<G> {
-        let is_zero = plnm.evals.par_iter().all(|x| x.is_zero());
-        let basis = match self.lagrange_bases.get(&domain.size()) {
-            None => panic!("lagrange bases for size {} not found", domain.size()),
-            Some(v) => &v[..],
+        let basis = self
+            .lagrange_bases
+            .get(&domain.size())
+            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
+        let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
+            PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
         };
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
                 let s = (plnm.domain().size / domain.size) as usize;
                 let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
-                Self::commit_helper(&v[..], basis, None, is_zero, max)
+                commit_evaluations(&v, basis)
             }
-            std::cmp::Ordering::Equal => {
-                Self::commit_helper(&plnm.evals[..], basis, None, is_zero, max)
-            }
+            std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
             std::cmp::Ordering::Greater => {
                 panic!("desired commitment domain size greater than evaluations' domain size")
             }
@@ -659,10 +658,9 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
-        max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
+        self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
     }
 
     /// This function verifies batch of batched polynomial commitment opening proofs
@@ -926,10 +924,7 @@ mod tests {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                let c = srs.commit_non_hiding(&p, None);
-                assert!(c.shifted.is_none());
-                assert_eq!(c.unshifted.len(), 1);
-                c.unshifted[0]
+                srs.commit_non_hiding(&p, None)
             })
             .collect();
 
@@ -937,7 +932,59 @@ mod tests {
         for i in 0..n {
             assert_eq!(
                 computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i]
+                expected_lagrange_commitments[i],
+            );
+        }
+    }
+
+    #[test]
+    fn test_chunked_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n / 2);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+                srs.commit_non_hiding(&p, None)
+            })
+            .collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i],
+            );
+        }
+    }
+
+    #[test]
+    fn test_offset_chunked_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n / 2 + 1);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+                srs.commit_non_hiding(&p, Some(64))
+            })
+            .collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i],
             );
         }
     }
