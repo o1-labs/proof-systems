@@ -5,8 +5,8 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
-            range_check, turshi, varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
+            poseidon, range_check, turshi, varbasemul,
         },
         wires::*,
     },
@@ -105,13 +105,13 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    /// Range check (16-24)
+    /// Range check
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    ForeignFieldAdd = 25,
-    //ForeignFieldMul = 26,
-    // Gates for Keccak follow:
-    Xor16 = 27,
+    ForeignFieldAdd = 18,
+    ForeignFieldMul = 19,
+    // Gates for Keccak
+    Xor16 = 20,
 }
 
 /// Gate error
@@ -231,11 +231,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             RangeCheck0 | RangeCheck1 => self
                 .verify_range_check::<G>(row, witness, index)
                 .map_err(|e| e.to_string()),
-            Xor16 => self
-                .verify_xor::<G>(row, witness, index)
-                .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
                 .verify_foreign_field_add::<G>(row, witness, index)
+                .map_err(|e| e.to_string()),
+            ForeignFieldMul => self
+                .verify_foreign_field_mul::<G>(row, witness, index)
+                .map_err(|e| e.to_string()),
+            Xor16 => self
+                .verify_xor::<G>(row, witness, index)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -252,15 +255,15 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants::<F> {
-            alpha: F::one(),
-            beta: F::one(),
-            gamma: F::one(),
-            joint_combiner: Some(F::one()),
-            endo_coefficient: cs.endo,
-            mds: &G::sponge_params().mds,
-            foreign_field_modulus: cs.foreign_field_modulus.clone(),
-        };
+        let constants = expr::Constants::new(
+            F::one(),
+            F::one(),
+            F::one(),
+            Some(F::one()),
+            cs.endo,
+            &G::sponge_params().mds,
+            cs.foreign_field_modulus.clone(),
+        );
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
 
@@ -318,17 +321,20 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
-            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
             GateType::ForeignFieldAdd => {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
             }
+            GateType::ForeignFieldMul => {
+                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
+            }
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
         };
 
         // Check for failed constraints
         for (i, result) in results.iter().enumerate() {
             if !result.is_zero() {
                 // Pinpoint failed constraint
-                return Err(CircuitGateError::Constraint(self.typ, i));
+                return Err(CircuitGateError::Constraint(self.typ, i + 1));
             }
         }
 

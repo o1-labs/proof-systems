@@ -11,6 +11,8 @@ use thiserror::Error;
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
     DeserializeBytes,
+    #[error("failed to deserialize field bits")]
+    DeserializeBits,
     #[error("failed to decode hex")]
     DecodeHex,
     #[error("failed to convert BigUint into field element")]
@@ -32,6 +34,15 @@ pub trait FieldHelpers<F> {
     /// Deserialize from bits
     fn from_bits(bits: &[bool]) -> Result<F>;
 
+    /// Deserialize from BigUint
+    fn from_biguint(big: BigUint) -> Result<F>
+    where
+        F: PrimeField,
+    {
+        big.try_into()
+            .map_err(|_| FieldHelpersError::DeserializeBytes)
+    }
+
     /// Serialize to bytes
     fn to_bytes(&self) -> Vec<u8>;
 
@@ -40,6 +51,17 @@ pub trait FieldHelpers<F> {
 
     /// Serialize to bits
     fn to_bits(&self) -> Vec<bool>;
+
+    /// Serialize field element to a BigUint
+    fn to_biguint(&self) -> BigUint
+    where
+        F: PrimeField,
+    {
+        BigUint::from_bytes_le(&self.to_bytes())
+    }
+
+    /// Create a new field element from this field elements bits
+    fn bits_to_field(&self, start: usize, end: usize) -> Result<F>;
 
     /// Field size in bytes
     fn size_in_bytes() -> usize
@@ -102,18 +124,21 @@ impl<F: Field> FieldHelpers<F> for F {
             bits
         })
     }
+
+    fn bits_to_field(&self, start: usize, end: usize) -> Result<F> {
+        F::from_bits(&self.to_bits()[start..end]).map_err(|_| FieldHelpersError::DeserializeBits)
+    }
 }
 
 /// Field element wrapper for [BigUint]
-pub trait FieldFromBig<F> {
-    /// Deserialize from big unsigned integer
-    fn from_biguint(big: BigUint) -> Result<F>;
+pub trait BigUintFieldHelpers {
+    /// Convert BigUint into PrimeField element
+    fn to_field<F: PrimeField>(self) -> Result<F>;
 }
 
-impl<F: PrimeField> FieldFromBig<F> for F {
-    fn from_biguint(big: BigUint) -> Result<F> {
-        big.try_into()
-            .map_err(|_| FieldHelpersError::FromBigToField)
+impl BigUintFieldHelpers for BigUint {
+    fn to_field<F: PrimeField>(self) -> Result<F> {
+        F::from_biguint(self)
     }
 }
 
@@ -133,6 +158,7 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::One;
     use mina_curves::pasta::Pallas as CurvePoint;
+    use BigUintFieldHelpers;
 
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
@@ -240,7 +266,7 @@ mod tests {
     }
 
     #[test]
-    fn field_big() {
+    fn field_biguit_field_helpers() {
         let fe_1024 = BaseField::from(1024u32);
         let big_1024 = fe_1024.into();
         assert_eq!(big_1024, BigUint::new(vec![1024]));
@@ -273,5 +299,25 @@ mod tests {
             BaseField::from_biguint(big_zero_32).expect("Failed"),
             BaseField::from_biguint(big_zero_1).expect("Failed")
         );
+
+        assert_eq!(
+            BigUint::from_bytes_be(&BaseField::from(0u32).into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(&[0x00, 0x00, 0x00, 0x00, 0x00])
+        );
+
+        assert_eq!(
+            BaseField::from_biguint(BigUint::from_bytes_be(&[0x00, 0x00, 0x00, 0x00, 0x00]))
+                .expect("Failed to convert big uint"),
+            BaseField::from(0u32)
+        );
+
+        let bytes = [
+            46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182, 152,
+            235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8,
+        ];
+        let fe = BaseField::from_bytes(&bytes).expect("failed to create field element from bytes");
+        let bi = BigUint::from_bytes_le(&bytes);
+        assert_eq!(fe.to_biguint(), bi);
+        assert_eq!(bi.to_field::<BaseField>().unwrap(), fe);
     }
 }

@@ -327,21 +327,22 @@ where
 
             ft_eval0 += numerator * denominator;
 
-            let cs = Constants {
+            let constants = Constants::new(
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                foreign_field_modulus: index.foreign_field_modulus.clone(),
-            };
+                joint_combiner.as_ref().map(|j| j.1),
+                index.endo,
+                &G::sponge_params().mds,
+                index.foreign_field_modulus.clone(),
+            );
+
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
                 index.domain,
                 zeta,
                 &evals,
-                &cs,
+                &constants,
             )
             .unwrap();
 
@@ -471,6 +472,9 @@ where
             proof.prev_challenges.len(),
         ));
     }
+    if proof.public.len() != index.public {
+        return Err(VerifyError::IncorrectPubicInputLength(index.public));
+    }
 
     //~ 1. Commit to the negated public input polynomial.
     let lgr_comm = index
@@ -478,20 +482,9 @@ where
         .lagrange_bases
         .get(&index.domain.size())
         .expect("pre-computed committed lagrange bases not found");
-    let com: Vec<_> = lgr_comm
-        .iter()
-        .map(|c| PolyComm {
-            unshifted: vec![*c],
-            shifted: None,
-        })
-        .take(index.public)
-        .collect();
-    let com_ref: Vec<_> = com.iter().collect();
-    if proof.public.len() != index.public {
-        return Err(VerifyError::IncorrectPubicInputLength(index.public));
-    }
+    let com: Vec<_> = lgr_comm.iter().take(index.public).collect();
     let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-    let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+    let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
     let public_comm = {
         index
             .srs()
@@ -553,15 +546,15 @@ where
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants from oracles function
-            let constants = Constants {
-                alpha: oracles.alpha,
-                beta: oracles.beta,
-                gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                foreign_field_modulus: index.foreign_field_modulus.clone(),
-            };
+            let constants = Constants::new(
+                oracles.alpha,
+                oracles.beta,
+                oracles.gamma,
+                oracles.joint_combiner.as_ref().map(|j| j.1),
+                index.endo,
+                &G::sponge_params().mds,
+                index.foreign_field_modulus.clone(),
+            );
 
             for (col, tokens) in &index.linearization.index_terms {
                 let scalar =
@@ -652,6 +645,7 @@ where
                             RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
                             Xor16 => index.xor_comm.as_ref().unwrap(),
                             ForeignFieldAdd => index.foreign_field_add_comm.as_ref().unwrap(),
+                            ForeignFieldMul => index.foreign_field_mul_comm.as_ref().unwrap(),
                         };
                         scalars.push(scalar);
                         commitments.push(c);
