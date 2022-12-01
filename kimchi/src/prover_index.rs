@@ -82,7 +82,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) = expr_linearization(&cs.feature_flags, true);
+        let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
 
         // set `max_quot_size` to the degree of the quotient polynomial,
         // which is obtained by looking at the highest monomial in the sum
@@ -152,8 +152,8 @@ pub mod testing {
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
+    use ark_ff::{PrimeField, SquareRootField};
     use commitment_dlog::srs::endos;
-    use mina_curves::pasta::{Fp, Pallas, Vesta};
     use num_bigint::BigUint;
 
     /// Create new index for lookups.
@@ -161,16 +161,20 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
-    pub fn new_index_for_test_with_lookups(
-        gates: Vec<CircuitGate<Fp>>,
+    pub fn new_index_for_test_with_lookups<G: KimchiCurve>(
+        gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
-        lookup_tables: Vec<LookupTable<Fp>>,
-        runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
+        lookup_tables: Vec<LookupTable<G::ScalarField>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         foreign_modulus: Option<BigUint>,
-    ) -> ProverIndex<Vesta> {
+    ) -> ProverIndex<G>
+    where
+        G::BaseField: PrimeField,
+        G::ScalarField: PrimeField + SquareRootField,
+    {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Fp>::create(gates)
+        let cs = ConstraintSystem::<G::ScalarField>::create(gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)
@@ -178,15 +182,22 @@ pub mod testing {
             .foreign_field_modulus(&foreign_modulus)
             .build()
             .unwrap();
-        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        let mut srs = SRS::<G>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
-        let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+        let (endo_q, _endo_r) = endos::<G::OtherCurve>();
+        ProverIndex::<G>::create(cs, endo_q, srs)
     }
 
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
-        new_index_for_test_with_lookups(gates, public, 0, vec![], None, None)
+    pub fn new_index_for_test<G: KimchiCurve>(
+        gates: Vec<CircuitGate<G::ScalarField>>,
+        public: usize,
+    ) -> ProverIndex<G>
+    where
+        G::BaseField: PrimeField,
+        G::ScalarField: PrimeField + SquareRootField,
+    {
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, None)
     }
 }
