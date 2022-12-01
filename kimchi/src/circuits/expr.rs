@@ -475,6 +475,7 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
+    /// Expression is conditional on the given feature flag, returns 0 if disabled.
     EnabledIf(FeatureFlag, Box<Expr<C>>),
 }
 
