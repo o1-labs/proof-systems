@@ -3,7 +3,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        constraints::ConstraintSystem,
+        constraints::{ColumnEvaluations, ConstraintSystem, EvaluatedColumnCoefficients},
         expr::{Linearization, PolishToken},
         wires::PERMUTS,
     },
@@ -45,6 +45,12 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
 
+    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
+
+    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,
@@ -76,22 +82,17 @@ impl<G: KimchiCurve> ProverIndex<G> {
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) = expr_linearization(
-            cs.chacha8.is_some(),
-            cs.range_check_selector_polys.is_some(),
-            cs.lookup_constraint_system
-                .as_ref()
-                .map(|lcs| &lcs.configuration),
-            cs.foreign_field_add_selector_poly.is_some(),
-            cs.xor_selector_poly.is_some(),
-            true,
-        );
+        let (linearization, powers_of_alpha) = expr_linearization(&cs.feature_flags, true);
 
         // set `max_quot_size` to the degree of the quotient polynomial,
         // which is obtained by looking at the highest monomial in the sum
         // $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
         // where the $w_i(x)$ are of degree the size of the domain.
         let max_quot_size = PERMUTS * cs.domain.d1.size();
+
+        let evaluated_column_coefficients = cs.evaluated_column_coefficients();
+
+        let column_evaluations = cs.column_evaluations(&evaluated_column_coefficients);
 
         ProverIndex {
             cs,
@@ -100,6 +101,8 @@ impl<G: KimchiCurve> ProverIndex<G> {
             srs,
             max_poly_size,
             max_quot_size,
+            evaluated_column_coefficients,
+            column_evaluations,
             verifier_index: None,
             verifier_index_digest: None,
         }
@@ -149,8 +152,8 @@ pub mod testing {
         gate::CircuitGate,
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
+    use ark_ff::{PrimeField, SquareRootField};
     use commitment_dlog::srs::endos;
-    use mina_curves::pasta::{Fp, Pallas, Vesta};
     use num_bigint::BigUint;
 
     /// Create new index for lookups.
@@ -158,16 +161,20 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
-    pub fn new_index_for_test_with_lookups(
-        gates: Vec<CircuitGate<Fp>>,
+    pub fn new_index_for_test_with_lookups<G: KimchiCurve>(
+        gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
-        lookup_tables: Vec<LookupTable<Fp>>,
-        runtime_tables: Option<Vec<RuntimeTableCfg<Fp>>>,
+        lookup_tables: Vec<LookupTable<G::ScalarField>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         foreign_modulus: Option<BigUint>,
-    ) -> ProverIndex<Vesta> {
+    ) -> ProverIndex<G>
+    where
+        G::BaseField: PrimeField,
+        G::ScalarField: PrimeField + SquareRootField,
+    {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<Fp>::create(gates)
+        let cs = ConstraintSystem::<G::ScalarField>::create(gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)
@@ -175,15 +182,22 @@ pub mod testing {
             .foreign_field_modulus(&foreign_modulus)
             .build()
             .unwrap();
-        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        let mut srs = SRS::<G>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
-        let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+        let (endo_q, _endo_r) = endos::<G::OtherCurve>();
+        ProverIndex::<G>::create(cs, endo_q, srs)
     }
 
-    pub fn new_index_for_test(gates: Vec<CircuitGate<Fp>>, public: usize) -> ProverIndex<Vesta> {
-        new_index_for_test_with_lookups(gates, public, 0, vec![], None, None)
+    pub fn new_index_for_test<G: KimchiCurve>(
+        gates: Vec<CircuitGate<G::ScalarField>>,
+        public: usize,
+    ) -> ProverIndex<G>
+    where
+        G::BaseField: PrimeField,
+        G::ScalarField: PrimeField + SquareRootField,
+    {
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, None)
     }
 }

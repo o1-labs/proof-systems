@@ -33,11 +33,9 @@ use super::evaluation_proof::*;
 
 /// A polynomial commitment.
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct PolyComm<C>
-where
-    C: CanonicalDeserialize + CanonicalSerialize,
-{
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
+pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub unshifted: Vec<C>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -53,7 +51,13 @@ where
     pub blinders: PolyComm<G::ScalarField>,
 }
 
-impl<A: Copy> PolyComm<A>
+impl<T> PolyComm<T> {
+    pub fn new(unshifted: Vec<T>, shifted: Option<T>) -> Self {
+        Self { unshifted, shifted }
+    }
+}
+
+impl<A: Clone> PolyComm<A>
 where
     A: CanonicalDeserialize + CanonicalSerialize,
 {
@@ -62,8 +66,8 @@ where
         F: FnMut(A) -> B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        let unshifted = self.unshifted.iter().map(|x| f(*x)).collect();
-        let shifted = self.shifted.map(f);
+        let unshifted = self.unshifted.iter().map(|x| f(x.clone())).collect();
+        let shifted = self.shifted.as_ref().map(|x| f(x.clone()));
         PolyComm { unshifted, shifted }
     }
 
@@ -213,44 +217,51 @@ impl<C: AffineCurve> PolyComm<C> {
         }
     }
 
+    /// Performs a multi-scalar multiplication between scalars `elm` and commitments `com`.
+    /// If both are empty, returns a commitment of length 1 containing the point at infinity.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `com` and `elm` are not of the same size.
     pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[C::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
-        PolyComm::<C> {
-            shifted: {
-                let pairs = com
-                    .iter()
-                    .zip(elm.iter())
-                    .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
-                    .collect::<Vec<_>>();
-                if pairs.is_empty() {
-                    None
-                } else {
-                    let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
-                    let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
-                    Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
-                }
-            },
-            unshifted: {
-                if com.is_empty() || elm.is_empty() {
-                    vec![C::zero()]
-                } else {
-                    let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
-                    (0..n)
-                        .map(|i| {
-                            let mut points = Vec::new();
-                            let mut scalars = Vec::new();
-                            com.iter().zip(elm.iter()).for_each(|(p, s)| {
-                                if i < p.unshifted.len() {
-                                    points.push(p.unshifted[i]);
-                                    scalars.push(s.into_repr())
-                                }
-                            });
-                            VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
-                        })
-                        .collect::<Vec<_>>()
-                }
-            },
+
+        if com.is_empty() || elm.is_empty() {
+            return Self::new(vec![C::zero()], None);
         }
+
+        let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
+
+        let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
+        let mut unshifted = Vec::with_capacity(unshifted_size);
+
+        for chunk in 0..unshifted_size {
+            let (points, scalars): (Vec<_>, Vec<_>) = com
+                .iter()
+                .zip(&all_scalars)
+                // get rid of scalars that don't have an associated chunk
+                .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
+                .unzip();
+
+            let chunk_msm = VariableBaseMSM::multi_scalar_mul::<C>(&points, &scalars);
+            unshifted.push(chunk_msm.into_affine());
+        }
+
+        let mut shifted_pairs = com
+            .iter()
+            .zip(all_scalars)
+            // get rid of commitments without a `shifted` part
+            .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
+            .peekable();
+
+        let shifted = if shifted_pairs.peek().is_none() {
+            None
+        } else {
+            let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
+            Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+        };
+
+        Self::new(unshifted, shifted)
     }
 }
 
@@ -321,6 +332,21 @@ pub fn squeeze_challenge<
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
+pub fn absorb_commitment<
+    Fq: Field,
+    G: Clone,
+    Fr: PrimeField + SquareRootField,
+    EFqSponge: FqSponge<Fq, G, Fr>,
+>(
+    sponge: &mut EFqSponge,
+    commitment: &PolyComm<G>,
+) {
+    sponge.absorb_g(&commitment.unshifted);
+    if let Some(shifted) = commitment.shifted.as_ref() {
+        sponge.absorb_g(&[shifted.clone()]);
+    }
+}
+
 /// A useful trait extending AffineCurve for commitments.
 /// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
@@ -357,7 +383,7 @@ pub trait CommitmentCurve: AffineCurve {
     }
 }
 
-impl<P: SWModelParameters> CommitmentCurve for SWJAffine<P>
+impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P>
 where
     P::BaseField: PrimeField,
 {
@@ -607,22 +633,21 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
-        max: Option<usize>,
     ) -> PolyComm<G> {
-        let is_zero = plnm.evals.par_iter().all(|x| x.is_zero());
-        let basis = match self.lagrange_bases.get(&domain.size()) {
-            None => panic!("lagrange bases for size {} not found", domain.size()),
-            Some(v) => &v[..],
+        let basis = self
+            .lagrange_bases
+            .get(&domain.size())
+            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
+        let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
+            PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
         };
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
                 let s = (plnm.domain().size / domain.size) as usize;
                 let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
-                Self::commit_helper(&v[..], basis, None, is_zero, max)
+                commit_evaluations(&v, basis)
             }
-            std::cmp::Ordering::Equal => {
-                Self::commit_helper(&plnm.evals[..], basis, None, is_zero, max)
-            }
+            std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
             std::cmp::Ordering::Greater => {
                 panic!("desired commitment domain size greater than evaluations' domain size")
             }
@@ -633,10 +658,9 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
-        max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        self.mask(self.commit_evaluations_non_hiding(domain, plnm, max), rng)
+        self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
     }
 
     /// This function verifies batch of batched polynomial commitment opening proofs
@@ -900,10 +924,7 @@ mod tests {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                let c = srs.commit_non_hiding(&p, None);
-                assert!(c.shifted.is_none());
-                assert_eq!(c.unshifted.len(), 1);
-                c.unshifted[0]
+                srs.commit_non_hiding(&p, None)
             })
             .collect();
 
@@ -911,7 +932,59 @@ mod tests {
         for i in 0..n {
             assert_eq!(
                 computed_lagrange_commitments[i],
-                expected_lagrange_commitments[i]
+                expected_lagrange_commitments[i],
+            );
+        }
+    }
+
+    #[test]
+    fn test_chunked_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n / 2);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+                srs.commit_non_hiding(&p, None)
+            })
+            .collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i],
+            );
+        }
+    }
+
+    #[test]
+    fn test_offset_chunked_lagrange_commitments() {
+        let n = 64;
+        let domain = D::<Fp>::new(n).unwrap();
+
+        let mut srs = SRS::<VestaG>::create(n / 2 + 1);
+        srs.add_lagrange_basis(domain);
+
+        let expected_lagrange_commitments: Vec<_> = (0..n)
+            .map(|i| {
+                let mut e = vec![Fp::zero(); n];
+                e[i] = Fp::one();
+                let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
+                srs.commit_non_hiding(&p, Some(64))
+            })
+            .collect();
+
+        let computed_lagrange_commitments = srs.lagrange_bases.get(&domain.size()).unwrap();
+        for i in 0..n {
+            assert_eq!(
+                computed_lagrange_commitments[i],
+                expected_lagrange_commitments[i],
             );
         }
     }
