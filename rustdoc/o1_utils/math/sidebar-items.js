@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["ceil_log2","Returns ceil(log2(d)) but panics if d = 0."]]};
+window.SIDEBAR_ITEMS = {"fn":[["ceil_log2","Returns ceil(log2(d)) but panics if d = 0."],["div_ceil","This function is bound to be stable soon. See https://github.com/rust-lang/rust/issues/88581"]]};

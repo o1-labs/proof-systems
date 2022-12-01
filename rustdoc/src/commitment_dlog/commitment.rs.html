@@ -1177,24 +1177,6 @@
 <a href="#1177" id="1177">1177</a>
 <a href="#1178" id="1178">1178</a>
 <a href="#1179" id="1179">1179</a>
-<a href="#1180" id="1180">1180</a>
-<a href="#1181" id="1181">1181</a>
-<a href="#1182" id="1182">1182</a>
-<a href="#1183" id="1183">1183</a>
-<a href="#1184" id="1184">1184</a>
-<a href="#1185" id="1185">1185</a>
-<a href="#1186" id="1186">1186</a>
-<a href="#1187" id="1187">1187</a>
-<a href="#1188" id="1188">1188</a>
-<a href="#1189" id="1189">1189</a>
-<a href="#1190" id="1190">1190</a>
-<a href="#1191" id="1191">1191</a>
-<a href="#1192" id="1192">1192</a>
-<a href="#1193" id="1193">1193</a>
-<a href="#1194" id="1194">1194</a>
-<a href="#1195" id="1195">1195</a>
-<a href="#1196" id="1196">1196</a>
-<a href="#1197" id="1197">1197</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The folowing functionality is implemented
 //!
@@ -1765,60 +1747,42 @@
         plnm: <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt;,
         max: <span class="prelude-ty">Option</span>&lt;usize&gt;,
     ) -&gt; PolyComm&lt;G&gt; {
-        <span class="self">Self</span>::commit_helper(<span class="kw-2">&amp;</span>plnm.coeffs[..], <span class="kw-2">&amp;</span><span class="self">self</span>.g[..], <span class="prelude-val">None</span>, plnm.is_zero(), max)
-    }
+        <span class="kw">let </span>is_zero = plnm.is_zero();
 
-    <span class="kw">pub fn </span>commit_helper(
-        scalars: <span class="kw-2">&amp;</span>[G::ScalarField],
-        basis: <span class="kw-2">&amp;</span>[G],
-        n: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-        is_zero: bool,
-        max: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-    ) -&gt; PolyComm&lt;G&gt; {
-        <span class="kw">let </span>n = <span class="kw">match </span>n {
-            <span class="prelude-val">Some</span>(n) =&gt; n,
-            <span class="prelude-val">None </span>=&gt; basis.len(),
-        };
-        <span class="kw">let </span>p = scalars.len();
+        <span class="kw">let </span>basis_len = <span class="self">self</span>.g.len();
+        <span class="kw">let </span>coeffs_len = plnm.coeffs.len();
 
-        <span class="comment">// committing all the segments without shifting
-        </span><span class="kw">let </span>unshifted = <span class="kw">if </span>is_zero {
-            <span class="macro">vec!</span>[G::zero()]
+        <span class="kw">let </span>coeffs: Vec&lt;<span class="kw">_</span>&gt; = plnm.iter().map(|c| c.into_repr()).collect();
+
+        <span class="comment">// chunk while commiting
+        </span><span class="kw">let </span><span class="kw-2">mut </span>unshifted = <span class="macro">vec!</span>[];
+        <span class="kw">if </span>is_zero {
+            unshifted.push(G::zero());
         } <span class="kw">else </span>{
-            (<span class="number">0</span>..p / n + <span class="kw">if </span>p % n != <span class="number">0 </span>{ <span class="number">1 </span>} <span class="kw">else </span>{ <span class="number">0 </span>})
-                .map(|i| {
-                    VariableBaseMSM::multi_scalar_mul(
-                        basis,
-                        <span class="kw-2">&amp;</span>scalars[i * n..p]
-                            .iter()
-                            .map(|s| s.into_repr())
-                            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                    )
-                    .into_affine()
-                })
-                .collect()
-        };
+            coeffs.chunks(<span class="self">self</span>.g.len()).for_each(|coeffs_chunk| {
+                <span class="kw">let </span>chunk = VariableBaseMSM::multi_scalar_mul(<span class="kw-2">&amp;</span><span class="self">self</span>.g, coeffs_chunk);
+                unshifted.push(chunk.into_affine());
+            });
+        }
 
-        <span class="comment">// committing only last segment shifted to the right edge of SRS
+        <span class="comment">// committing only last chunk shifted to the right edge of SRS
         </span><span class="kw">let </span>shifted = <span class="kw">match </span>max {
             <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
             <span class="prelude-val">Some</span>(max) =&gt; {
-                <span class="kw">let </span>start = max - (max % n);
-                <span class="kw">if </span>is_zero || start &gt;= p {
-                    <span class="prelude-val">Some</span>(G::zero())
-                } <span class="kw">else if </span>max % n == <span class="number">0 </span>{
-                    <span class="prelude-val">None
+                <span class="kw">let </span>start = max - (max % basis_len);
+                <span class="kw">if </span>is_zero || start &gt;= coeffs_len {
+                    <span class="comment">// polynomial is small, nothing was shifted
+                    </span><span class="prelude-val">Some</span>(G::zero())
+                } <span class="kw">else if </span>max % basis_len == <span class="number">0 </span>{
+                    <span class="comment">// the number of chunks should tell the verifier everything they need to know
+                    </span><span class="prelude-val">None
                 </span>} <span class="kw">else </span>{
-                    <span class="prelude-val">Some</span>(
-                        VariableBaseMSM::multi_scalar_mul(
-                            <span class="kw-2">&amp;</span>basis[n - (max % n)..],
-                            <span class="kw-2">&amp;</span>scalars[start..p]
-                                .iter()
-                                .map(|s| s.into_repr())
-                                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
-                        )
-                        .into_affine(),
-                    )
+                    <span class="comment">// we shift the last chunk to the right as proof of the degree bound
+                    </span><span class="kw">let </span>shifted = VariableBaseMSM::multi_scalar_mul(
+                        <span class="kw-2">&amp;</span><span class="self">self</span>.g[basis_len - (max % basis_len)..],
+                        <span class="kw-2">&amp;</span>coeffs[start..],
+                    );
+                    <span class="prelude-val">Some</span>(shifted.into_affine())
                 }
             }
         };
