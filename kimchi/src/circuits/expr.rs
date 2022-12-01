@@ -1378,13 +1378,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
-            EnabledIf(feature, e) => {
-                if feature.is_enabled() {
-                    e.evaluate_(d, pt, evals, c)
-                } else {
-                    Ok(F::zero())
-                }
-            }
+            EnabledIf(feature, e) if feature.is_enabled() => e.evaluate_(d, pt, evals, c),
+            EnabledIf(feature, e) => Ok(F::zero()),
         }
     }
 
