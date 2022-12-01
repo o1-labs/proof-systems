@@ -4,10 +4,18 @@ use crate::circuits::{
 };
 
 use ark_ec::AffineCurve;
-use mina_curves::pasta::{Fp, Pallas, Vesta};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use rand::Rng;
 
 use super::framework::TestFramework;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
@@ -76,12 +84,12 @@ fn prove_and_verify(bits: usize) {
     // Create witness
     let witness = xor::create(input1, input2, bits);
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
 }
 
 #[test]

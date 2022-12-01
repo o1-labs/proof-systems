@@ -14,7 +14,10 @@ use ark_poly::{
 };
 use itertools::Itertools;
 use num_bigint::BigUint;
-use o1_utils::{FieldHelpers, ForeignElement};
+use o1_utils::{
+    foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers},
+    FieldHelpers,
+};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
@@ -49,6 +52,26 @@ pub enum ExprError {
     MissingRuntime,
 }
 
+/// Structure to contain foreign field modulus and its negation
+pub struct ForeignFieldModulus {
+    /// Foreign field modulus
+    pub value: BigUint,
+    /// Negated foreign field modulus
+    pub negated: BigUint,
+}
+
+impl ForeignFieldModulus {
+    /// Create a new foreign field modulus structure
+    pub fn new(foreign_field_modulus: BigUint) -> Self {
+        // Store the foreign field modulus f and f negated over the CRT binary field modulus
+        // f' = 2^t - f
+        ForeignFieldModulus {
+            value: foreign_field_modulus.clone(),
+            negated: foreign_field_modulus.negate(),
+        }
+    }
+}
+
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F: 'static> {
     /// The challenge alpha from the PLONK IOP.
@@ -65,7 +88,32 @@ pub struct Constants<F: 'static> {
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
     /// The modulus for foreign field operations
-    pub foreign_field_modulus: Option<BigUint>,
+    pub foreign_field_modulus: Option<ForeignFieldModulus>,
+}
+
+impl<F: 'static> Constants<F> {
+    /// Create constants require to evaluate an `Expr`
+    pub fn new(
+        alpha: F,
+        beta: F,
+        gamma: F,
+        joint_combiner: Option<F>,
+        endo_coefficient: F,
+        mds: &'static Vec<Vec<F>>,
+        foreign_field_modulus: Option<BigUint>,
+    ) -> Self {
+        let foreign_field_modulus = foreign_field_modulus.map(ForeignFieldModulus::new);
+
+        Constants {
+            alpha,
+            beta,
+            gamma,
+            joint_combiner,
+            endo_coefficient,
+            mds,
+            foreign_field_modulus,
+        }
+    }
 }
 
 /// The polynomials specific to the lookup argument.
@@ -270,6 +318,7 @@ pub enum ConstantExpr<F> {
     EndoCoefficient,
     Mds { row: usize, col: usize },
     ForeignFieldModulus(usize),
+    NegForeignFieldModulus(usize),
     Literal(F),
     Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -292,6 +341,9 @@ impl<F: Copy> ConstantExpr<F> {
                 col: *col,
             }),
             ConstantExpr::ForeignFieldModulus(i) => res.push(PolishToken::ForeignFieldModulus(*i)),
+            ConstantExpr::NegForeignFieldModulus(i) => {
+                res.push(PolishToken::NegForeignFieldModulus(*i))
+            }
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -340,8 +392,15 @@ impl<F: Field> ConstantExpr<F> {
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             ForeignFieldModulus(i) => {
-                if let Some(modulus) = c.foreign_field_modulus.clone() {
-                    ForeignElement::<F, 3>::from_biguint(modulus)[*i]
+                if let Some(modulus) = &c.foreign_field_modulus {
+                    modulus.value.to_field_limbs::<F>()[*i]
+                } else {
+                    F::zero()
+                }
+            }
+            NegForeignFieldModulus(i) => {
+                if let Some(modulus) = &c.foreign_field_modulus {
+                    modulus.negated.to_field_limbs()[*i]
                 } else {
                     F::zero()
                 }
@@ -433,6 +492,26 @@ impl Op2 {
     }
 }
 
+/// The feature flags that can be used to enable or disable parts of constraints.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
+pub enum FeatureFlag {
+    ChaCha,
+    RangeCheck,
+    ForeignFieldAdd,
+    ForeignFieldMul,
+    Xor,
+}
+
+impl FeatureFlag {
+    fn is_enabled(&self) -> bool {
+        todo!("Handle features")
+    }
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -456,6 +535,8 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
+    /// Expression is conditional on the given feature flag, returns 0 if disabled.
+    EnabledIf(FeatureFlag, Box<Expr<C>>),
 }
 
 /// For efficiency of evaluation, we compile expressions to
@@ -468,8 +549,12 @@ pub enum PolishToken<F> {
     Gamma,
     JointCombiner,
     EndoCoefficient,
-    Mds { row: usize, col: usize },
+    Mds {
+        row: usize,
+        col: usize,
+    },
     ForeignFieldModulus(usize),
+    NegForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -481,6 +566,8 @@ pub enum PolishToken<F> {
     UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
+    /// Skip the given number of tokens if the feature is disabled, and emit a zero instead.
+    SkipIfNot(FeatureFlag, usize),
 }
 
 impl Variable {
@@ -520,7 +607,13 @@ impl<F: FftField> PolishToken<F> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
 
+        let mut skip_count = 0;
+
         for t in toks.iter() {
+            if skip_count > 0 {
+                skip_count -= 1;
+                continue;
+            }
             use PolishToken::*;
             match t {
                 Alpha => stack.push(c.alpha),
@@ -532,8 +625,13 @@ impl<F: FftField> PolishToken<F> {
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 ForeignFieldModulus(i) => {
-                    if let Some(modulus) = c.foreign_field_modulus.clone() {
-                        stack.push(ForeignElement::<F, 3>::from_biguint(modulus.clone())[*i])
+                    if let Some(modulus) = &c.foreign_field_modulus {
+                        stack.push(modulus.value.to_field_limbs()[*i])
+                    }
+                }
+                NegForeignFieldModulus(i) => {
+                    if let Some(modulus) = &c.foreign_field_modulus {
+                        stack.push(modulus.negated.to_field_limbs()[*i])
                     }
                 }
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
@@ -570,6 +668,12 @@ impl<F: FftField> PolishToken<F> {
                     cache.push(x);
                 }
                 Load(i) => stack.push(cache[*i]),
+                SkipIfNot(feature, count) => {
+                    if !feature.is_enabled() {
+                        skip_count = *count;
+                        stack.push(F::zero());
+                    }
+                }
             }
         }
 
@@ -612,6 +716,7 @@ impl<C> Expr<C> {
             }
             Pow(e, d) => d * e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
+            EnabledIf(_, e) => e.degree(d1_size),
         }
     }
 }
@@ -1257,6 +1362,17 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                     }
                 }
             }
+            Expr::EnabledIf(feature, e) => {
+                let tok = PolishToken::SkipIfNot(*feature, 0);
+                res.push(tok);
+                let len_before = res.len();
+                /* Clone the cache, to make sure we don't try to access cached statements later
+                when the feature flag is off. */
+                let mut cache = cache.clone();
+                e.to_polish_(&mut cache, res);
+                let len_after = res.len();
+                res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+            }
         }
     }
 
@@ -1280,6 +1396,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
+            EnabledIf(feature, e) => EnabledIf(*feature, Box::new(e.evaluate_constants_(c))),
         }
     }
 
@@ -1327,6 +1444,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
+            EnabledIf(feature, e) if feature.is_enabled() => e.evaluate_(d, pt, evals, c),
+            EnabledIf(_, _) => Ok(F::zero()),
         }
     }
 
@@ -1374,6 +1493,13 @@ impl<F: FftField> Expr<F> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
+            EnabledIf(feature, e) => {
+                if feature.is_enabled() {
+                    e.evaluate(d, pt, evals)
+                } else {
+                    Ok(F::zero())
+                }
+            }
         }
     }
 
@@ -1538,6 +1664,16 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
+            Expr::EnabledIf(feature, e) => {
+                if feature.is_enabled() {
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is off. */
+                    let mut cache = cache.clone();
+                    return e.evaluations_helper(&mut cache, d, env);
+                } else {
+                    EvalResult::Constant(F::zero())
+                }
+            }
         };
         Either::Left(res)
     }
@@ -1689,6 +1825,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             VanishesOnLast4Rows => true,
             UnnormalizedLagrangeBasis(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
+            EnabledIf(_, x) => x.is_constant(evaluated),
         }
     }
 
@@ -1764,6 +1901,15 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             Square(x) => {
                 let x = x.monomials(ev);
                 mul_monomials(&x, &x)
+            }
+            EnabledIf(feature, x) => {
+                let mut monomials = x.monomials(ev);
+                for expr in monomials.values_mut() {
+                    let mut unflagged = Expr::zero();
+                    std::mem::swap(expr, &mut unflagged);
+                    *expr = Expr::EnabledIf(*feature, Box::new(unflagged))
+                }
+                monomials
             }
         }
     }
@@ -2081,6 +2227,7 @@ where
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            NegForeignFieldModulus(i) => format!("neg_foreign_field_modulus({i})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
@@ -2102,6 +2249,7 @@ where
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
+            NegForeignFieldModulus(i) => format!("neg\\_foreign\\_field\\_modulus({i})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2123,6 +2271,7 @@ where
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
+            NegForeignFieldModulus(i) => format!("neg_foreign_field_modulus({i})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha^{}", n),
@@ -2179,6 +2328,9 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            EnabledIf(feature, e) => {
+                format!("enabled_if({:?}, (fun () -> {}))", feature, e.ocaml(cache))
+            }
         }
     }
 
@@ -2220,6 +2372,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.latex_name()
             }
+            EnabledIf(feature, _) => format!("{:?}", feature),
         }
     }
 
@@ -2242,6 +2395,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            EnabledIf(feature, _) => format!("{:?}", feature),
         }
     }
 
@@ -2272,9 +2426,8 @@ where
 
 /// A number of useful constraints
 pub mod constraints {
-    use std::fmt;
-
     use crate::circuits::argument::ArgumentData;
+    use std::fmt;
 
     use super::*;
 
@@ -2292,11 +2445,18 @@ pub mod constraints {
         + Zero
         + One
         + From<u64>
+        + fmt::Debug
         + fmt::Display
     // Add more as necessary
     where
         Self: std::marker::Sized,
     {
+        /// 2^{LIMB_BITS}
+        fn two_to_limb() -> Self;
+
+        /// 2^{2 * LIMB_BITS}
+        fn two_to_2limb() -> Self;
+
         /// Double the value
         fn double(&self) -> Self;
 
@@ -2308,6 +2468,9 @@ pub mod constraints {
 
         /// Constrain to boolean
         fn boolean(&self) -> Self;
+
+        /// Constrain to crumb (i.e. two bits)
+        fn crumb(&self) -> Self;
 
         /// Create a literal
         fn literal(x: F) -> Self;
@@ -2329,6 +2492,14 @@ pub mod constraints {
     where
         F: PrimeField,
     {
+        fn two_to_limb() -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
+        }
+
+        fn two_to_2limb() -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
+        }
+
         fn double(&self) -> Self {
             Expr::double(self.clone())
         }
@@ -2343,6 +2514,10 @@ pub mod constraints {
 
         fn boolean(&self) -> Self {
             constraints::boolean(self)
+        }
+
+        fn crumb(&self) -> Self {
+            constraints::crumb(self)
         }
 
         fn literal(x: F) -> Self {
@@ -2367,6 +2542,14 @@ pub mod constraints {
     }
 
     impl<F: Field> ExprOps<F> for F {
+        fn two_to_limb() -> Self {
+            <F as ForeignFieldHelpers<F>>::two_to_limb()
+        }
+
+        fn two_to_2limb() -> Self {
+            <F as ForeignFieldHelpers<F>>::two_to_2limb()
+        }
+
         fn double(&self) -> Self {
             *self * F::from(2u64)
         }
@@ -2381,6 +2564,10 @@ pub mod constraints {
 
         fn boolean(&self) -> Self {
             constraints::boolean(self)
+        }
+
+        fn crumb(&self) -> Self {
+            constraints::crumb(self)
         }
 
         fn literal(x: F) -> Self {
@@ -2463,6 +2650,32 @@ pub fn index<F>(g: GateType) -> E<F> {
 pub fn coeff<F>(i: usize) -> E<F> {
     E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
 }
+
+/// Auto clone macro - Helps make constraints more readable
+/// by eliminating requirement to .clone() all the time
+#[macro_export]
+macro_rules! auto_clone {
+    ($var:ident, $expr:expr) => {
+        let $var = $expr;
+        let $var = || $var.clone();
+    };
+    ($var:ident) => {
+        let $var = || $var.clone();
+    };
+}
+#[macro_export]
+macro_rules! auto_clone_array {
+    ($var:ident, $expr:expr) => {
+        let $var = $expr;
+        let $var = |i: usize| $var[i].clone();
+    };
+    ($var:ident) => {
+        let $var = |i: usize| $var[i].clone();
+    };
+}
+
+pub use auto_clone;
+pub use auto_clone_array;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {

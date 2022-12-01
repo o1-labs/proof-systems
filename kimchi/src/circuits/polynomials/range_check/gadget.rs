@@ -60,6 +60,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
+    /// Create foreign field muti-range-check gadget by extending the existing gates
+    pub fn extend_multi_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
+        let (next_row, circuit_gates) = Self::create_multi_range_check(*curr_row);
+        *curr_row = next_row;
+        gates.extend_from_slice(&circuit_gates);
+    }
+
     /// Create single range check gate
     ///     Inputs the starting row
     ///     Outputs tuple (`next_row`, `circuit_gates`) where
@@ -68,6 +75,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
         let gate = CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]);
         (start_row + 1, vec![gate])
+    }
+
+    /// Create foreign field range-check gate by extending the existing gates
+    pub fn extend_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
+        let (next_row, circuit_gates) = Self::create_range_check(*curr_row);
+        *curr_row = next_row;
+        gates.extend_from_slice(&circuit_gates);
     }
 
     /// Verify the witness against a range check (related) circuit gate

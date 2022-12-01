@@ -266,6 +266,9 @@ TODO: for each gate describe how to create it?
 
 {sections.foreign_field_add}
 
+#### Foreign Field Multiplication
+
+{sections.foreign_field_mul}
 #### Xor
 
 {sections.xor16}
