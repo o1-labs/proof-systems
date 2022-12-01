@@ -506,7 +506,7 @@ pub enum PolishToken<F> {
     Store,
     Load(usize),
     /// Skip the given number of tokens if the feature is disabled, and emit a zero instead.
-    SkipIf(FeatureFlag, usize),
+    SkipIfNot(FeatureFlag, usize),
 }
 
 impl Variable {
@@ -602,7 +602,7 @@ impl<F: FftField> PolishToken<F> {
                     cache.push(x);
                 }
                 Load(i) => stack.push(cache[*i]),
-                SkipIf(feature, count) => {
+                SkipIfNot(feature, count) => {
                     if !feature.is_enabled() {
                         skip_count = *count;
                         stack.push(F::zero());
@@ -1297,7 +1297,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 }
             }
             Expr::EnabledIf(feature, e) => {
-                let tok = PolishToken::SkipIf(*feature, 0);
+                let tok = PolishToken::SkipIfNot(*feature, 0);
                 res.push(tok);
                 let len_before = res.len();
                 /* Clone the cache, to make sure we don't try to access cached statements later
@@ -1305,7 +1305,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let mut cache = cache.clone();
                 e.to_polish_(&mut cache, res);
                 let len_after = res.len();
-                res[len_before - 1] = PolishToken::SkipIf(*feature, len_after - len_before);
+                res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
             }
         }
     }
