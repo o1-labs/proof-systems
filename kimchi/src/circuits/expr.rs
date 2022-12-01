@@ -447,7 +447,7 @@ pub enum FeatureFlag {
 }
 
 impl FeatureFlag {
-    pub fn is_enabled(&self) -> bool {
+    fn is_enabled(&self) -> bool {
         todo!("Handle features")
     }
 }
