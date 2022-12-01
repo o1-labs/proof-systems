@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/srs.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>srs.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ee9f86babca44bc2.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../commitment_dlog/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `poly-commitment/src/srs.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>srs.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-59deea3733ac6c09.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-3bcdcab5f4113412.css"><link rel="stylesheet" disabled href="../../static.files/dark-091ecdca18d5df85.css"><link rel="stylesheet" disabled href="../../static.files/ayu-45445754dcd01ab2.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../commitment_dlog/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -190,17 +190,76 @@
 <a href="#190" id="190">190</a>
 <a href="#191" id="191">191</a>
 <a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
 
 </span><span class="kw">use </span><span class="kw">crate</span>::commitment::CommitmentCurve;
+<span class="kw">use </span><span class="kw">crate</span>::PolyComm;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
-<span class="kw">use </span>ark_ff::{BigInteger, PrimeField};
+<span class="kw">use </span>ark_ff::{BigInteger, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
 <span class="kw">use </span>blake2::{Blake2b512, Digest};
 <span class="kw">use </span>groupmap::GroupMap;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::array;
+<span class="kw">use </span>std::cmp::min;
 <span class="kw">use </span>std::collections::HashMap;
 
 <span class="attr">#[serde_as]
@@ -216,7 +275,7 @@
     <span class="comment">// TODO: the following field should be separated, as they are optimization values
     </span><span class="doccomment">/// Commitments to Lagrange bases, per domain size
     </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>lagrange_bases: HashMap&lt;usize, Vec&lt;G&gt;&gt;,
+    </span><span class="kw">pub </span>lagrange_bases: HashMap&lt;usize, Vec&lt;PolyComm&lt;G&gt;&gt;&gt;,
     <span class="doccomment">/// Coefficient for the curve endomorphism
     </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>endo_r: G::ScalarField,
@@ -275,13 +334,6 @@
     /// cache them in the SRS
     </span><span class="kw">pub fn </span>add_lagrange_basis(<span class="kw-2">&amp;mut </span><span class="self">self</span>, domain: D&lt;G::ScalarField&gt;) {
         <span class="kw">let </span>n = domain.size();
-        <span class="kw">if </span>n &gt; <span class="self">self</span>.g.len() {
-            <span class="macro">panic!</span>(
-                <span class="string">&quot;add_lagrange_basis: Domain size {} larger than SRS size {}&quot;</span>,
-                n,
-                <span class="self">self</span>.g.len()
-            );
-        }
 
         <span class="kw">if </span><span class="self">self</span>.lagrange_bases.contains_key(<span class="kw-2">&amp;</span>n) {
             <span class="kw">return</span>;
@@ -342,13 +394,75 @@
         // because the commitment to the polynomial x^i is just self.g[i], we can obtain
         // commitments to the normalized Lagrange polynomials by applying IFFT to the
         // vector self.g[0..n].
-        </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective&gt; =
-            <span class="self">self</span>.g[<span class="number">0</span>..n].iter().map(|g| g.into_projective()).collect();
-        domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
+        //
+        //
+        // Further still, we can do the same trick for &#39;chunked&#39; polynomials.
+        //
+        // Recall that a chunked polynomial is some f of degree k*n - 1 with
+        // f(x) = f_0(x) + x^n f_1(x) + ... + x^{(k-1) n} f_{k-1}(x)
+        // where each f_i has degree n-1.
+        //
+        // In the above, if we set u = [ 1, x^2, ... x^{n-1}, 0, 0, .., 0 ]
+        // then we effectively &#39;zero out&#39; any polynomial terms higher than x^{n-1}, leaving
+        // us with the &#39;partial Lagrange polynomials&#39; that contribute to f_0.
+        //
+        // Similarly, u = [ 0, 0, ..., 0, 1, x^2, ..., x^{n-1}, 0, 0, ..., 0] with n leading
+        // zeros &#39;zeroes out&#39; all terms except the &#39;partial Lagrange polynomials&#39; that
+        // contribute to f_1, and likewise for each f_i.
+        //
+        // By computing each of these, and recollecting the terms as a vector of polynomial
+        // commitments, we obtain a chunked commitment to the L_i polynomials.
+        </span><span class="kw">let </span>srs_size = <span class="self">self</span>.g.len();
+        <span class="kw">let </span>num_unshifteds = (n + srs_size - <span class="number">1</span>) / srs_size;
+        <span class="kw">let </span><span class="kw-2">mut </span>unshifted = Vec::with_capacity(num_unshifteds);
 
-        &lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::batch_normalization(lg.as_mut_slice());
-        <span class="self">self</span>.lagrange_bases
-            .insert(n, lg.iter().map(|g| g.into_affine()).collect());
+        <span class="comment">// For each chunk
+        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num_unshifteds {
+            <span class="comment">// Initialize the vector with zero curve points
+            </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective&gt; =
+                <span class="macro">vec!</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::zero(); n];
+            <span class="comment">// Overwrite the terms corresponding to that chunk with the SRS curve points
+            </span><span class="kw">let </span>start_offset = i * srs_size;
+            <span class="kw">let </span>num_terms = min((i + <span class="number">1</span>) * srs_size, n) - start_offset;
+            <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..num_terms {
+                lg[start_offset + j] = <span class="self">self</span>.g[j].into_projective()
+            }
+            <span class="comment">// Apply the IFFT
+            </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
+            &lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::batch_normalization(lg.as_mut_slice());
+            <span class="comment">// Append the &#39;partial Langrange polynomials&#39; to the vector of unshifted chunks
+            </span>unshifted.push(lg)
+        }
+
+        <span class="comment">// If the srs size does not exactly divide the domain size
+        </span><span class="kw">let </span>shifted: <span class="prelude-ty">Option</span>&lt;Vec&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective&gt;&gt; =
+            <span class="kw">if </span>num_unshifteds * <span class="self">self</span>.g.len() == n {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="comment">// Initialize the vector to zero
+                </span><span class="kw">let </span><span class="kw-2">mut </span>lg: Vec&lt;&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective&gt; =
+                    <span class="macro">vec!</span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::zero(); n];
+                <span class="comment">// Overwrite the terms corresponding to the final chunk with the SRS curve points
+                // shifted to the right
+                </span><span class="kw">let </span>start_offset = (num_unshifteds - <span class="number">1</span>) * srs_size;
+                <span class="kw">let </span>num_terms = n - start_offset;
+                <span class="kw">let </span>srs_start_offset = srs_size - num_terms;
+                <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..num_terms {
+                    lg[start_offset + j] = <span class="self">self</span>.g[srs_start_offset + j].into_projective()
+                }
+                <span class="comment">// Apply the IFFT
+                </span>domain.ifft_in_place(<span class="kw-2">&amp;mut </span>lg);
+                &lt;G <span class="kw">as </span>AffineCurve&gt;::Projective::batch_normalization(lg.as_mut_slice());
+                <span class="prelude-val">Some</span>(lg)
+            };
+
+        <span class="kw">let </span>chunked_commitments: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..n)
+            .map(|i| PolyComm {
+                unshifted: unshifted.iter().map(|v| v[i].into_affine()).collect(),
+                shifted: shifted.as_ref().map(|v| v[i].into_affine()),
+            })
+            .collect();
+        <span class="self">self</span>.lagrange_bases.insert(n, chunked_commitments);
     }
 
     <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up to `depth`.
@@ -383,4 +497,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="commitment_dlog" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e0098a5cc 2022-11-29)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="commitment_dlog" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (c97b539e4 2022-11-30)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
