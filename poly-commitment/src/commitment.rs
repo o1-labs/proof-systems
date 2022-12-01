@@ -51,6 +51,12 @@ where
     pub blinders: PolyComm<G::ScalarField>,
 }
 
+impl<T> PolyComm<T> {
+    pub fn new(unshifted: Vec<T>, shifted: Option<T>) -> Self {
+        Self { unshifted, shifted }
+    }
+}
+
 impl<A: Clone> PolyComm<A>
 where
     A: CanonicalDeserialize + CanonicalSerialize,
@@ -211,44 +217,51 @@ impl<C: AffineCurve> PolyComm<C> {
         }
     }
 
+    /// Performs a multi-scalar multiplication between scalars `elm` and commitments `com`.
+    /// If both are empty, returns a commitment of length 1 containing the point at infinity.
+    ///
+    /// ## Panics
+    ///
+    /// Panics if `com` and `elm` are not of the same size.
     pub fn multi_scalar_mul(com: &[&PolyComm<C>], elm: &[C::ScalarField]) -> Self {
         assert_eq!(com.len(), elm.len());
-        PolyComm::<C> {
-            shifted: {
-                let pairs = com
-                    .iter()
-                    .zip(elm.iter())
-                    .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
-                    .collect::<Vec<_>>();
-                if pairs.is_empty() {
-                    None
-                } else {
-                    let points = pairs.iter().map(|(c, _)| *c).collect::<Vec<_>>();
-                    let scalars = pairs.iter().map(|(_, s)| s.into_repr()).collect::<Vec<_>>();
-                    Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
-                }
-            },
-            unshifted: {
-                if com.is_empty() || elm.is_empty() {
-                    vec![C::zero()]
-                } else {
-                    let n = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
-                    (0..n)
-                        .map(|i| {
-                            let mut points = Vec::new();
-                            let mut scalars = Vec::new();
-                            com.iter().zip(elm.iter()).for_each(|(p, s)| {
-                                if i < p.unshifted.len() {
-                                    points.push(p.unshifted[i]);
-                                    scalars.push(s.into_repr())
-                                }
-                            });
-                            VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine()
-                        })
-                        .collect::<Vec<_>>()
-                }
-            },
+
+        if com.is_empty() || elm.is_empty() {
+            return Self::new(vec![C::zero()], None);
         }
+
+        let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
+
+        let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
+        let mut unshifted = Vec::with_capacity(unshifted_size);
+
+        for chunk in 0..unshifted_size {
+            let (points, scalars): (Vec<_>, Vec<_>) = com
+                .iter()
+                .zip(&all_scalars)
+                // get rid of scalars that don't have an associated chunk
+                .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
+                .unzip();
+
+            let chunk_msm = VariableBaseMSM::multi_scalar_mul::<C>(&points, &scalars);
+            unshifted.push(chunk_msm.into_affine());
+        }
+
+        let mut shifted_pairs = com
+            .iter()
+            .zip(all_scalars)
+            // get rid of commitments without a `shifted` part
+            .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
+            .peekable();
+
+        let shifted = if shifted_pairs.peek().is_none() {
+            None
+        } else {
+            let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
+            Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+        };
+
+        Self::new(unshifted, shifted)
     }
 }
 
@@ -319,6 +332,21 @@ pub fn squeeze_challenge<
     squeeze_prechallenge(sponge).to_field(endo_r)
 }
 
+pub fn absorb_commitment<
+    Fq: Field,
+    G: Clone,
+    Fr: PrimeField + SquareRootField,
+    EFqSponge: FqSponge<Fq, G, Fr>,
+>(
+    sponge: &mut EFqSponge,
+    commitment: &PolyComm<G>,
+) {
+    sponge.absorb_g(&commitment.unshifted);
+    if let Some(shifted) = commitment.shifted.as_ref() {
+        sponge.absorb_g(&[shifted.clone()]);
+    }
+}
+
 /// A useful trait extending AffineCurve for commitments.
 /// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
@@ -355,7 +383,7 @@ pub trait CommitmentCurve: AffineCurve {
     }
 }
 
-impl<P: SWModelParameters> CommitmentCurve for SWJAffine<P>
+impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P>
 where
     P::BaseField: PrimeField,
 {
@@ -588,11 +616,10 @@ impl<G: CommitmentCurve> SRS<G> {
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
     ) -> PolyComm<G> {
-        let lagrange_basis = self.lagrange_bases.get(&domain.size());
-        let basis = match lagrange_basis.as_ref() {
-            None => panic!("lagrange bases for size {} not found", domain.size()),
-            Some(v) => v,
-        };
+        let basis = self
+            .lagrange_bases
+            .get(&domain.size())
+            .unwrap_or_else(|| panic!("lagrange bases for size {} not found", domain.size()));
         let commit_evaluations = |evals: &Vec<G::ScalarField>, basis: &Vec<PolyComm<G>>| {
             PolyComm::<G>::multi_scalar_mul(&basis.iter().collect::<Vec<_>>()[..], &evals[..])
         };

@@ -23,7 +23,7 @@ use ark_poly::{
     Radix2EvaluationDomain as D,
 };
 use num_bigint::BigUint;
-use o1_utils::{ExtendedEvaluations, FieldHelpers};
+use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -44,6 +44,8 @@ pub struct FeatureFlags<F> {
     pub range_check: bool,
     /// Foreign field addition gate
     pub foreign_field_add: bool,
+    /// Foreign field multiplication gate
+    pub foreign_field_mul: bool,
     /// XOR gate
     pub xor: bool,
     /// Lookups
@@ -119,6 +121,10 @@ pub struct ColumnEvaluations<F: PrimeField> {
     /// Foreign field addition gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub foreign_field_add_selector8: Option<E<F, D<F>>>,
+
+    /// Foreign field multiplication gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub foreign_field_mul_selector8: Option<E<F, D<F>>>,
 
     /// Xor gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -534,6 +540,20 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        // Foreign field multiplication constraint selector polynomial
+        let foreign_field_mul_selector8 = {
+            if !self.feature_flags.foreign_field_mul {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::ForeignFieldMul,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
         let xor_selector8 = {
             if !self.feature_flags.xor {
                 None
@@ -565,6 +585,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             endomul_scalar_selector8,
             range_check_selectors8,
             foreign_field_add_selector8,
+            foreign_field_mul_selector8,
             xor_selector8,
         }
     }
@@ -623,11 +644,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// and warns if the foreign modulus being passed is smaller than the native modulus
     /// because right now we only support foreign modulus that are larger than the native modulus.
     pub fn foreign_field_modulus(mut self, foreign_field_modulus: &Option<BigUint>) -> Self {
-        if let Some(ffmod) = foreign_field_modulus.clone() {
-            if ffmod <= F::modulus_biguint() {
-                println!("Smaller foreign field modulus is still only supported by FFAdd but not yet for FFMul");
-            }
-        }
         self.foreign_field_modulus = foreign_field_modulus.clone();
         self
     }
@@ -666,6 +682,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             range_check: false,
             lookup_configuration: None,
             foreign_field_add: false,
+            foreign_field_mul: false,
             xor: false,
         };
 
@@ -677,6 +694,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 | GateType::ChaChaFinal => feature_flags.chacha = true,
                 GateType::RangeCheck0 | GateType::RangeCheck1 => feature_flags.range_check = true,
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
+                GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
                 _ => (),
             }
