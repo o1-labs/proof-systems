@@ -182,6 +182,9 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
 /// Linearize the `expr`.
 ///
+/// If the `feature_flags` argument is `None`, this will generate an expression using the
+/// `Expr::EnabledIf` variant for each of the flags.
+///
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
