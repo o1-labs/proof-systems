@@ -1837,11 +1837,13 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 mul_monomials(&x, &x)
             }
             EnabledIf(feature, x) => {
-                let e = x.monomials(ev);
-                HashMap::from_iter(
-                    e.into_iter()
-                        .map(|(m, c)| (m, Expr::EnabledIf(*feature, Box::new(c)))),
-                )
+                let mut monomials = x.monomials(ev);
+                for expr in monomials.values_mut() {
+                    let mut unflagged = Expr::zero();
+                    std::mem::swap(expr, &mut unflagged);
+                    *expr = Expr::EnabledIf(*feature, Box::new(unflagged))
+                }
+                monomials
             }
         }
     }
