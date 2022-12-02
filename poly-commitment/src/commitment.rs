@@ -571,9 +571,19 @@ impl<G: CommitmentCurve> SRS<G> {
         let is_zero = plnm.is_zero();
 
         let basis_len = self.g.len();
-        let coeffs_len = plnm.coeffs.len();
+        let mut coeffs_len = plnm.coeffs.len();
 
-        let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
+        let mut coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
+
+        // pad the last segment of coefficient chunks
+        // so that chunks always have the same length
+        if coeffs_len % basis_len != 0 {
+            let length_padding = basis_len - coeffs_len % basis_len;
+            for _ in 0..length_padding {
+                coeffs.push(G::ScalarField::zero().into_repr());
+            }
+            coeffs_len = coeffs.len();
+        }
 
         // chunk while commiting
         let mut unshifted = vec![];
