@@ -154,12 +154,12 @@ Inspired by the halving approach in foreign field multiplication, an optimized v
 
 $$
 \begin{aligned}
-r_{bot} &= (a_0 + 2^{88}\cdot a_1) + s \cdot (b_0 + 2^88) - q \cdot (f_0 + 2^88 \cdot f_1) - c \cdot 2^{176} \\
+r_{bot} &= (a_0 + 2^{88} \cdot a_1) + s \cdot (b_0 + 2^{88} \cdot b_1) - q \cdot (f_0 + 2^{88} \cdot f_1) - c \cdot 2^{176} \\
 r_{top} &= a_2 + s \cdot b_2 - q \cdot f_2 + c 
 \end{aligned}
 $$
 
-with `r_top = r_2` and `c = c_1`. 
+with $r_{top} = r_2$ and $c = c_1$. 
 
 ## Gadget
 

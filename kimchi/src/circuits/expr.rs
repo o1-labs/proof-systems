@@ -2527,6 +2527,11 @@ pub mod constraints {
             * (x.clone() - 2u64.into())
             * (x.clone() - 3u64.into())
     }
+
+    /// lo + mi * 2^{LIMB_BITS}
+    pub fn compact_limb<F: Field, T: ExprOps<F>>(lo: &T, mi: &T) -> T {
+        lo.clone() + mi.clone() * T::two_to_limb()
+    }
 }
 
 //

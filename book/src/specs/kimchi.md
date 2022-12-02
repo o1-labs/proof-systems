@@ -1308,6 +1308,15 @@ be done by copy constraining these values with a public input value. One could h
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.
 
+##### Integration
+
+- Copy signs from public input
+ - Range check the final bound
+
+```admonition::notice
+ TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
+```
+
 
 #### Foreign Field Multiplication
 

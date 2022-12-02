@@ -2,11 +2,11 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::ExprOps,
+    expr::constraints::{compact_limb, ExprOps},
     gate::GateType,
 };
 use ark_ff::PrimeField;
-use o1_utils::{foreign_field::TWO_TO_LIMB, LIMB_COUNT};
+use o1_utils::LIMB_COUNT;
 use std::{array, marker::PhantomData};
 
 //~ These circuit gates are used to constrain that
@@ -115,6 +115,15 @@ use std::{array, marker::PhantomData};
 //~ be done by copy constraining these values with a public input value. One could have a specific gate
 //~ for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 //~ the savings of one row and a few constraints of difference.
+//~
+//~ ##### Integration
+//~
+//~ - Copy signs from public input
+//~ - Range check the final bound
+//~
+//~ ```admonition::notice
+//~  TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
+//~ ```
 
 /// Implementation of the foreign field addition gate
 /// - Operates on Curr and Next rows.
@@ -129,7 +138,6 @@ where
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
-        let two_to_limb = T::literal(F::from(TWO_TO_LIMB));
 
         let left_input_lo = env.witness_curr(0);
         let left_input_mi = env.witness_curr(1);
@@ -161,7 +169,6 @@ where
 
         // Constraints to check the carry flag is -1, 0, or 1.
         checks.push(is_carry(&carry));
-        //checks.push(carry(&carry_mi));
 
         // Auxiliary inline function to obtain the constraints of a foreign field addition result
         let mut result = {
@@ -169,10 +176,10 @@ where
             // b_bot = b_0 + b_0 * 2^88
             // f_bot = f_0 + f_1 * 2^88
             // r_bot = a_bot + s * b_bot - q * f_bot - c * 2^176
-            let result_bot = two_limb(&left_input_lo, &left_input_mi)
-                + sign.clone() * two_limb(&right_input_lo, &right_input_mi)
-                - field_overflow.clone() * two_limb(&foreign_modulus[0], &foreign_modulus[1])
-                - carry.clone() * two_to_limb.clone() * two_to_limb;
+            let result_bot = compact_limb(&left_input_lo, &left_input_mi)
+                + sign.clone() * compact_limb(&right_input_lo, &right_input_mi)
+                - field_overflow.clone() * compact_limb(&foreign_modulus[0], &foreign_modulus[1])
+                - carry.clone() * T::two_to_2limb();
             // r_top = a_2 + s * b_2 - q * f_2 + c
             let result_top = left_input_hi + sign * right_input_hi
                 - field_overflow * foreign_modulus[2].clone()
@@ -181,7 +188,7 @@ where
             // r_bot = r_0 + 2^88 * r_1
             // r_top = r_2
             vec![
-                result_bot - two_limb(&result_lo, &result_mi),
+                result_bot - compact_limb(&result_lo, &result_mi),
                 result_top - result_hi,
             ]
         };
@@ -197,9 +204,4 @@ where
 fn is_carry<F: PrimeField, T: ExprOps<F>>(flag: &T) -> T {
     // Carry bits are -1, 0, or 1.
     flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
-}
-
-// Auxiliary function to obtain the composed value of the two lowest limbs of an element
-fn two_limb<F: PrimeField, T: ExprOps<F>>(lo_limb: &T, mi_limb: &T) -> T {
-    lo_limb.clone() + mi_limb.clone() * T::literal(F::from(TWO_TO_LIMB))
 }
