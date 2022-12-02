@@ -150,7 +150,45 @@ Instead, our gate encodes subtractions and additions directly within the sign te
 
 ### Optimization
 
-Inspired by the halving approach in foreign field multiplication, an optimized version of the above gate results in a reduction by 2 in the number of constraints and by 1 in the number of witness cells needed. The main idea is to condense the claims about the low and middle limbs in one single larger limb of 176 bits, which fit in our native field. This way, we can get rid of the low carry flag, its corresponding carry check, and the three result checks become just two. These are the new equations:
+So far, one can recompute the result as follows:
+
+```text
+bits  0..............87|88...........175|176...........263
+r  =  (-------r0-------|-------r1-------|-------r2-------)
+= 
+a  =  (-------a0-------|-------a1-------|-------a2-------)
++
+s = 1 | -1
+·
+b  =  (-------b0-------|-------b1-------|-------b2-------)
+- 
+q  =  -1 |0 | 1
+·
+f  =  (-------f0-------|-------f1-------|-------f2-------)
+                       >                >                >
+                      c_0              c_1               0
+```
+
+Inspired by the halving approach in foreign field multiplication, an optimized version of the above gate results in a reduction by 2 in the number of constraints and by 1 in the number of witness cells needed. The main idea is to condense the claims about the low and middle limbs in one single larger limb of 176 bits, which fit in our native field. This way, we can get rid of the low carry flag, its corresponding carry check, and the three result checks become just two.
+
+```text
+bits  0..............87|88...........175|176...........263
+r  =  (-------r0------- -------r1-------|-------r2-------)
+= 
+a  =  (-------a0------- -------a1-------|-------a2-------)
++
+s = 1 | -1
+·
+b  =  (-------b0------- -------b1-------|-------b2-------)
+- 
+q  =  -1 |0 | 1
+·
+f  =  (-------f0------- -------f1-------|-------f2-------)
+                                        >                >
+                                        c               0
+```
+
+ These are the new equations:
 
 $$
 \begin{aligned}

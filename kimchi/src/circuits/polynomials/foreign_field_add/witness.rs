@@ -136,7 +136,7 @@ pub fn create<F: PrimeField>(
 
     let foreign_modulus = ForeignElement::from_biguint(modulus);
 
-    let mut left = ForeignElement::from_biguint(inputs[LO].clone());
+    let mut left = ForeignElement::from_biguint(inputs[0].clone());
 
     let mut offset = 0;
     for i in 0..num {
@@ -147,8 +147,15 @@ pub fn create<F: PrimeField>(
         let right = ForeignElement::from_biguint(inputs[i + 1].clone());
         let (output, sign, ovf, carry) =
             compute_ffadd_values(&left, &right, opcodes[i], &foreign_modulus);
-        let right = ForeignElement::new([right[LO], right[MI], right[HI]]);
-        init_ffadd_row(&mut witness, offset, left, right, sign, ovf, carry);
+        init_ffadd_row(
+            &mut witness,
+            offset,
+            left.limbs,
+            [right[LO], right[MI], right[HI]],
+            sign,
+            ovf,
+            carry,
+        );
         offset += 1;
         left = output; // output is next left input
     }
@@ -161,8 +168,8 @@ pub fn create<F: PrimeField>(
 fn init_ffadd_row<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     offset: usize,
-    left: ForeignElement<F, 3>,
-    right: ForeignElement<F, 3>,
+    left: [F; 3],
+    right: [F; 3],
     sign: F,
     overflow: F,
     carry: F,
@@ -199,8 +206,8 @@ fn init_ffadd_row<F: PrimeField>(
 fn init_bound_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     offset: usize,
-    result: &ForeignElement<F, 3>,
-    bound: &ForeignElement<F, 3>,
+    result: &[F; 3],
+    bound: &[F; 3],
     carry: &F,
 ) {
     let witness_shape: Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> = vec![
@@ -276,5 +283,11 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
         col.extend(std::iter::repeat(F::zero()).take(2))
     }
 
-    init_bound_rows(witness, offset, &fe, &bound_output, &bound_carry);
+    init_bound_rows(
+        witness,
+        offset,
+        &fe.limbs,
+        &bound_output.limbs,
+        &bound_carry,
+    );
 }

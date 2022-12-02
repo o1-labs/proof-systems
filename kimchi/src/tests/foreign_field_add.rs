@@ -319,15 +319,6 @@ fn test_ffadd(
         );
     }
 
-    // check ffadd rows
-    /*
-    for row in 0..nops {
-        assert_eq!(
-            index.cs.gates[row].verify::<Vesta>(row, &witness, &index, &[]),
-            Ok(())
-        );
-    }*/
-
     (witness, index)
 }
 
