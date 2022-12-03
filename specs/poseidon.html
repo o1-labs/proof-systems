@@ -147,36 +147,60 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
-<h1 id="poseidon-hash"><a class="header" href="#poseidon-hash">Poseidon hash</a></h1>
-<p><strong>THIS IS WORK-IN-PROGRESS</strong></p>
-<p>A hash function that is efficient for zk-SNARKs. It is based on the sponge function, with a state composed of field elements and a permutation based on field element operation (addition and exponentiation).</p>
-<p>The perumtation is built like SPN block ciphers, with an S-box (exponentiation a group element), adding constants to the state, and matrix multiplication of the state (multiplications and additions) with an MDS matrix.</p>
-<p>Since a field element is around 255-bit, a single field element is enough as the capacity of the sponge. The state is therefore often small, with our state being 4 field elements and a rate of 3 field elements.</p>
+<h1 id="poseidon-hash-function"><a class="header" href="#poseidon-hash-function">Poseidon hash function</a></h1>
+<p>Poseidon is a hash function that can efficiently run in a zk circuit. (See <a href="https://www.poseidon-hash.info/">poseidon-hash.info</a>)
+It is based on the <a href="https://keccak.team/sponge_duplex.html#:~:text=A%20sponge%20function%20is%20a,or%20the%20retrieval%20of%20output.">sponge function</a>, with a state composed of field elements and a permutation based on field element operation (addition and exponentiation).</p>
+<p>The permutation contains an S-box (exponentiation of a group element), adding constants to the state, and matrix multiplication of the state (multiplications and additions) with an <a href="https://en.wikipedia.org/wiki/MDS_matrix">MDS matrix</a>.</p>
+<p>Since a field element is around 255-bit, a single field element is enough as the capacity of the sponge to provide around 128-bit security.</p>
+<div id="admonition-note" class="admonition note">
+<div class="admonition-title">
+<p>Note</p>
+<p><a class="admonition-anchor-link" href="#admonition-note"></a></p>
+</div>
+<div>
+<p>We might want to piggy back on the <a href="https://github.com/C2SP/C2SP/pull/3">zcash poseidon spec</a> at some point (perhaps by making this an extension of the zcash poseidon spec).</p>
+</div>
+</div>
+<h2 id="apis"><a class="header" href="#apis">APIs</a></h2>
+<p>We define a base sponge, and a scalar sponge. Both must be instantiated when verifying a proof (this is due to recursion-support baked in Kimchi).</p>
+<p>External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the <a href="./pickles.html">pickles specification</a>). 
+As such, the sponges they need to instantiate are most likely to be instantiated with:</p>
 <ul>
-<li>main website https://www.poseidon-hash.info/</li>
-<li>our ocaml implementation: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle/random_oracle.mli</li>
-<li>relies on random_oracle_input: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle_input/random_oracle_input.ml</li>
-<li>is instantiated with two types of fields:
+<li>Poseidon-Fp for base sponge</li>
+<li>Poseidon-Fq for the scalar sponge </li>
+</ul>
+<h3 id="base-sponge"><a class="header" href="#base-sponge">Base Sponge</a></h3>
 <ul>
-<li>https://github.com/minaprotocol/mina/blob/develop/src/nonconsensus/snark_params/snark_params_nonconsensus.ml</li>
-<li>pickles: 
+<li><code>new(params) -&gt; BaseSponge</code>. Creates a new base sponge.</li>
+<li><code>BaseSponge.absorb(field_element)</code>. Absorbs a field element by calling the underlying sponge <code>absorb</code> function.</li>
+<li><code>BaseSponge.absorb_point(point)</code>. Absorbs an elliptic curve point. If the point is the point at infinity, absorb two zeros. Otherwise, absorb the x and y coordinates with two calls to <code>absorb</code>.</li>
+<li><code>BaseSponge.absorb_scalar(field_element_of_scalar_field)</code>. Absorbs a scalar. 
 <ul>
-<li>seems to rely on zexe code (https://www.youtube.com/watch?v=RItcNRChrzI&amp;t=1732s)</li>
+<li>If the scalar field is smaller than the base field (e.g. Fp is smaller than Fq), then the scalar is casted to a field element of the base field and absorbed via <code>absorb</code>.</li>
+<li>Otherwise, the value is split between its least significant bit and the rest. Then both values are casted to field elements of the base field and absorbed via <code>absorb</code> (the high bits first, then the low bit).</li>
 </ul>
 </li>
+<li><code>BaseSponge.digest() -&gt; field_element</code>. The <code>squeeze</code> function of the underlying sponge function is called and the first field element is returned.</li>
+<li><code>BaseSponge.digest_scalar() -&gt; field_element_of_scalar_field</code>. </li>
+<li><code>BaseSponge.challenge // TODO: specify</code>. </li>
+<li><code>BaseSponge.challenge_fq // TODO: specify</code>. </li>
 </ul>
-</li>
-</ul>
-<p>we currently have a few choices:</p>
+<h3 id="scalar-sponge"><a class="header" href="#scalar-sponge">Scalar Sponge</a></h3>
 <ul>
-<li>specify our own version</li>
-<li>adhere to the <a href="https://github.com/C2SP/C2SP/pull/3">zcash poseidon spec</a></li>
-<li>specify an extension of the zcash poseidon spec</li>
+<li>new(params) -&gt; ScalarSponge</li>
+<li>ScalarSponge.absorb(scalar_field_element)</li>
+<li>ScalarSponge.digest() -&gt; scalar_field_element</li>
+<li>ScalarSponge.challenge // TODO: specify</li>
 </ul>
-<h2 id="pseudo-code"><a class="header" href="#pseudo-code">Pseudo-code</a></h2>
-<pre><code class="language-python"># modular exponentiation
-def sbox(field_element):
-    field_element^5
+<h2 id="algorithms"><a class="header" href="#algorithms">Algorithms</a></h2>
+<p>Note that every operation is done in the field of the sponge.</p>
+<p>In this section we define the high-level algorithm behind the permutation and the sponge.
+The permutation is never used directly by users, it is used only by the sponge function.</p>
+<h3 id="permutation"><a class="header" href="#permutation">Permutation</a></h3>
+<p>In pseudo-code:</p>
+<pre><code class="language-python">def sbox(field_element):
+    # modular exponentiation
+    return field_element^7
 
 # apply MDS matrix
 def apply_mds(state):
@@ -186,8 +210,8 @@ def apply_mds(state):
     n[2] = state[0] * mds[2][0] + state[1] * mds[2][1] + state[2] * mds[2][2]
     return n
     
-# a round
-def full_round(round, state):
+# a round in the permutation
+def apply_round(round, state):
     # sbox
     state[0] = sbox(state[0])
     state[1] = sbox(state[1])
@@ -197,14 +221,12 @@ def full_round(round, state):
     state = apply_mds(state)
 
     # add round constant
-    constant = round_constants[round]
-    state[0] += constant[0]
-    state[1] += constant[1]
-    state[2] += constant[2]
+    state[0] += round_constants[round][0]
+    state[1] += round_constants[round][1]
+    state[2] += round_constants[round][2]
 
-# poseidon is just a number of rounds with different round constants
-def poseidon(state, rounds):
-    # ARK_INITIAL is not used usually, but if used there's 
+# the permutation
+def permutation(state):
     round_offset = 0
     if ARK_INITIAL:
         constant = round_constants[0]
@@ -213,9 +235,72 @@ def poseidon(state, rounds):
         state[2] += constant[2]
         round_offset = 1
         
-    for round in range(round_offset, rounds + round_offset):
-        full_round(round, state)
+    for round in range(round_offset, ROUNDS + round_offset):
+        apply_round(round, state)    
 </code></pre>
+<h3 id="sponge"><a class="header" href="#sponge">Sponge</a></h3>
+<p>In pseudo-code:</p>
+<pre><code class="language-python">def new():
+    return {
+        &quot;state&quot;: [0] * RATE, # `RATE` field elements set to 0
+        &quot;mode&quot;: &quot;absorbing&quot;,
+        &quot;offset&quot;: 0,
+    }
+
+def absorb(sponge, field_element):
+    # if we're changing mode, reset the offset
+    if sponge.mode == &quot;squeezing&quot;:
+        sponge.mode = &quot;absorbing&quot;
+        sponge.offset = 0
+    # we reached the end of the rate, permute
+    elif sponge.offset == RATE:
+        sponge.state = permutation(sponge.state)
+        sponge.offset = 0
+    
+    # absorb by adding to the state
+    sponge.state[sponge.offset] += field_element
+    sponge.offset += 1
+
+def squeeze(sponge):
+    # permute when changing mode or when we already squeezed everything
+    if sponge.mode == &quot;absorbing&quot; or sponge.offset == RATE:
+        sponge.mode = &quot;squeezing&quot;
+        sponge.state = permutation(sponge.state)
+        sponge.offset = 0
+
+    result = sponge.state[sponge.offset]
+    sponge.offset += 1
+    return result
+</code></pre>
+<h2 id="instantiations"><a class="header" href="#instantiations">Instantiations</a></h2>
+<p>We instantiate two versions of Poseidon, one for the field Fp, and one for the field Fq (see the <a href="./pasta.html">pasta specification</a>).</p>
+<p>Both share the following sponge configuration:</p>
+<ul>
+<li>capacity 1</li>
+<li>rate: 2</li>
+</ul>
+<p>and the following permutation configuration:</p>
+<ul>
+<li>number of full rounds: 55</li>
+<li>sbox: 7</li>
+<li>ARK_INITIAL: false</li>
+</ul>
+<h3 id="poseidon-fp"><a class="header" href="#poseidon-fp">Poseidon-Fp</a></h3>
+<p>You can find the MDS matrix and round constants we use in <a href="/poseidon/src/pasta/fp_kimchi.rs">/poseidon/src/pasta/fp_kimchi.rs</a>.</p>
+<h3 id="poseidon-fq"><a class="header" href="#poseidon-fq">Poseidon-Fq</a></h3>
+<p>You can find the MDS matrix and round constants we use in <a href="/poseidon/src/pasta/fq_kimchi.rs">/poseidon/src/pasta/fp_kimchi.rs</a>.</p>
+<h2 id="test-vectors"><a class="header" href="#test-vectors">Test vectors</a></h2>
+<p>We have test vectors contained in <a href="/poseidon/src/tests/test_vectors/kimchi.json">/poseidon/src/tests/test_vectors/kimchi.json</a>.</p>
+<h2 id="pointers-to-the-ocaml-code"><a class="header" href="#pointers-to-the-ocaml-code">Pointers to the OCaml code</a></h2>
+<ul>
+<li>our ocaml implementation: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle/random_oracle.mli</li>
+<li>relies on random_oracle_input: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle_input/random_oracle_input.ml</li>
+<li>is instantiated with two types of fields:
+<ul>
+<li>https://github.com/minaprotocol/mina/blob/develop/src/nonconsensus/snark_params/snark_params_nonconsensus.ml</li>
+</ul>
+</li>
+</ul>
 
                     </main>
 
