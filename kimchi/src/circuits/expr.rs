@@ -142,7 +142,7 @@ pub struct Environment<'a, F: FftField> {
     /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
-    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
+    pub coefficient: &'a [Evaluations<F, D<F>>; COEFFICIENTS],
     /// The polynomial which vanishes on the last 4 elements of the domain.
     pub vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
@@ -2676,6 +2676,8 @@ macro_rules! auto_clone_array {
 
 pub use auto_clone;
 pub use auto_clone_array;
+
+use super::wires::COEFFICIENTS;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {

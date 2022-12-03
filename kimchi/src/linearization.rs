@@ -15,6 +15,7 @@ use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::polynomials::{generic, permutation, xor};
+use crate::circuits::wires::COEFFICIENTS;
 use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
@@ -166,7 +167,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     }
 
     // the coefficient polynomials
-    for i in 0..COLUMNS {
+    for i in 0..COEFFICIENTS {
         h.insert(Coefficient(i));
     }
 

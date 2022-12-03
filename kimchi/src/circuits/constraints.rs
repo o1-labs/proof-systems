@@ -61,8 +61,8 @@ pub struct EvaluatedColumnCoefficients<F: PrimeField> {
     pub permutation_coefficients: [DP<F>; PERMUTS],
 
     /// gate coefficients
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficients: [DP<F>; COLUMNS],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COEFFICIENTS]")]
+    pub coefficients: [DP<F>; COEFFICIENTS],
 
     /// generic gate selector
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -83,8 +83,8 @@ pub struct ColumnEvaluations<F: PrimeField> {
     pub permutation_coefficients8: [E<F, D<F>>; PERMUTS],
 
     /// coefficients over domain d8
-    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COLUMNS]")]
-    pub coefficients8: [E<F, D<F>>; COLUMNS],
+    #[serde_as(as = "[o1_utils::serialization::SerdeAs; COEFFICIENTS]")]
+    pub coefficients8: [E<F, D<F>>; COEFFICIENTS],
 
     /// generic selector over domain d4
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -406,7 +406,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         .interpolate();
 
         // coefficient polynomial
-        let coefficients: [_; COLUMNS] = array::from_fn(|i| {
+        let coefficients: [_; COEFFICIENTS] = array::from_fn(|i| {
             let padded = self
                 .gates
                 .iter()

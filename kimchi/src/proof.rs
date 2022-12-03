@@ -1,6 +1,6 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::wires::{COLUMNS, PERMUTS};
+use crate::circuits::wires::{COEFFICIENTS, COLUMNS, PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -60,8 +60,8 @@ pub struct ProofEvaluations<Field> {
     #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; PERMUTS - 1]")]
     pub s: [Field; PERMUTS - 1],
     /// coefficient polynomials
-    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COLUMNS]")]
-    pub coefficients: [Field; COLUMNS],
+    #[serde_as(as = "[Vec<o1_utils::serialization::SerdeAs>; COEFFICIENTS]")]
+    pub coefficients: [Field; COEFFICIENTS],
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Field>>,
     /// evaluation of the generic selector polynomial

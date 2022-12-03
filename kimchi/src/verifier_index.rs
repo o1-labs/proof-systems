@@ -10,7 +10,7 @@ use crate::{
             permutation::{zk_polynomial, zk_w3},
             range_check,
         },
-        wires::{COLUMNS, PERMUTS},
+        wires::{COEFFICIENTS, PERMUTS},
     },
     curve::KimchiCurve,
     error::VerifierIndexError,
@@ -82,7 +82,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub sigma_comm: [PolyComm<G>; PERMUTS],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub coefficients_comm: [PolyComm<G>; COLUMNS],
+    pub coefficients_comm: [PolyComm<G>; COEFFICIENTS],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub generic_comm: PolyComm<G>,

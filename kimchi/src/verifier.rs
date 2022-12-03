@@ -9,7 +9,7 @@ use crate::{
         lookup::{lookups::LookupsUsed, tables::combine_table},
         polynomials::permutation,
         scalars::RandomOracles,
-        wires::{COLUMNS, PERMUTS},
+        wires::{COEFFICIENTS, COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
     error::VerifyError,
@@ -390,7 +390,7 @@ where
                     .collect::<Vec<_>>(),
             );
             es.extend(
-                (0..COLUMNS)
+                (0..COEFFICIENTS)
                     .map(|c| {
                         (
                             self.evals
@@ -749,7 +749,7 @@ where
             .coefficients_comm
             .iter()
             .zip(
-                (0..COLUMNS)
+                (0..COEFFICIENTS)
                     .map(|i| {
                         proof
                             .evals

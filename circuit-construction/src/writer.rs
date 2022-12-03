@@ -4,7 +4,7 @@ use kimchi::circuits::{
     polynomials::generic::{
         DOUBLE_GENERIC_COEFFS, DOUBLE_GENERIC_REGISTERS, GENERIC_COEFFS, GENERIC_REGISTERS,
     },
-    wires::{Wire, COLUMNS},
+    wires::{Wire, COEFFICIENTS, COLUMNS},
 };
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
@@ -808,7 +808,7 @@ pub trait Cs<F: PrimeField> {
 
             self.gate(GateSpec {
                 typ: kimchi::circuits::gate::GateType::Poseidon,
-                coeffs: (0..COLUMNS)
+                coeffs: (0..COEFFICIENTS)
                     .map(|i| rc[offset + (i / width)][i % width])
                     .collect(),
                 row: vec![

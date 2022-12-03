@@ -218,7 +218,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
 pub mod testing {
     use super::*;
-    use crate::circuits::wires::Wire;
+    use crate::circuits::wires::{Wire, COEFFICIENTS};
     use itertools::iterate;
 
     impl<F: PrimeField> CircuitGate<F> {
@@ -284,7 +284,7 @@ pub mod testing {
             witness: &[DensePolynomial<F>; COLUMNS],
             public: &DensePolynomial<F>,
         ) -> bool {
-            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
+            let coefficientsm: [_; COEFFICIENTS] = array::from_fn(|i| {
                 self.column_evaluations.coefficients8[i]
                     .clone()
                     .interpolate()

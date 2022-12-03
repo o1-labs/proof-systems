@@ -8,6 +8,9 @@ use std::io::{Read, Result as IoResult, Write};
 /// Number of registers
 pub const COLUMNS: usize = 15;
 
+/// Number of coefficient columns
+pub const COEFFICIENTS: usize = 15;
+
 /// Number of registers that can be wired (participating in the permutation)
 pub const PERMUTS: usize = 7;
 
