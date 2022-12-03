@@ -187,7 +187,7 @@ where
 
         // If the srs size does not exactly divide the domain size
         let shifted: Option<Vec<<G as AffineCurve>::Projective>> =
-            if num_unshifteds * self.g.len() == n {
+            if n < srs_size || num_unshifteds * srs_size == n {
                 None
             } else {
                 // Initialize the vector to zero
