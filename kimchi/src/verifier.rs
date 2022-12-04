@@ -358,63 +358,27 @@ where
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
             es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
-            es.push((
-                vec![self.evals.z.zeta.clone(), self.evals.z.zeta_omega.clone()],
-                None,
-            ));
-            es.push((
-                vec![
-                    self.evals.generic_selector.zeta.clone(),
-                    self.evals.generic_selector.zeta_omega.clone(),
-                ],
-                None,
-            ));
-            es.push((
-                vec![
-                    self.evals.poseidon_selector.zeta.clone(),
-                    self.evals.poseidon_selector.zeta_omega.clone(),
-                ],
-                None,
-            ));
-            es.extend(
-                (0..COLUMNS)
-                    .map(|c| {
-                        (
-                            vec![
-                                self.evals.w[c].zeta.clone(),
-                                self.evals.w[c].zeta_omega.clone(),
-                            ],
-                            None,
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            es.extend(
-                (0..COLUMNS)
-                    .map(|c| {
-                        (
-                            vec![
-                                self.evals.coefficients[c].zeta.clone(),
-                                self.evals.coefficients[c].zeta_omega.clone(),
-                            ],
-                            None,
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            );
-            es.extend(
-                (0..PERMUTS - 1)
-                    .map(|c| {
-                        (
-                            vec![
-                                self.evals.s[c].zeta.clone(),
-                                self.evals.s[c].zeta_omega.clone(),
-                            ],
-                            None,
-                        )
-                    })
-                    .collect::<Vec<_>>(),
-            );
+            for col in [
+                Column::Z,
+                Column::Index(GateType::Generic),
+                Column::Index(GateType::Poseidon),
+            ]
+            .into_iter()
+            .chain((0..COLUMNS).map(Column::Witness))
+            .chain((0..COLUMNS).map(Column::Coefficient))
+            .chain((0..PERMUTS - 1).map(Column::Permutation))
+            {
+                es.push((
+                    {
+                        let evals = self
+                            .evals
+                            .get_column(col)
+                            .ok_or(VerifyError::MissingEvaluation(col))?;
+                        vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                    },
+                    None,
+                ))
+            }
 
             combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
         };
@@ -567,6 +531,10 @@ where
                     Coefficient(i) => {
                         scalars.push(scalar);
                         commitments.push(&index.coefficients_comm[*i]);
+                    }
+                    Permutation(i) => {
+                        scalars.push(scalar);
+                        commitments.push(&index.sigma_comm[*i]);
                     }
                     Z => {
                         scalars.push(scalar);

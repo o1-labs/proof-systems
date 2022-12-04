@@ -178,6 +178,7 @@ impl<'a, F: FftField> Environment<'a, F> {
                 None => None,
                 Some(e) => Some(e),
             },
+            Permutation(_) => None,
         }
     }
 }
@@ -223,6 +224,7 @@ pub enum Column {
     LookupRuntimeTable,
     Index(GateType),
     Coefficient(usize),
+    Permutation(usize),
 }
 
 impl Column {
@@ -248,6 +250,7 @@ impl Column {
                 format!("{:?}", gate)
             }
             Column::Coefficient(i) => format!("c_{{{}}}", i),
+            Column::Permutation(i) => format!("sigma_{{{}}}", i),
         }
     }
 
@@ -265,6 +268,7 @@ impl Column {
                 format!("{:?}", gate)
             }
             Column::Coefficient(i) => format!("c[{}]", i),
+            Column::Permutation(i) => format!("sigma_[{}]", i),
         }
     }
 }
@@ -590,6 +594,7 @@ impl Variable {
                 LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
                 Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
                 Index(GateType::Generic) => Ok(evals.generic_selector),
+                Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
                 LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
                     Err(ExprError::MissingIndexEvaluation(self.col))
