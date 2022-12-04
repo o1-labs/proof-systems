@@ -5,7 +5,10 @@ use crate::{
     alphas::Alphas,
     circuits::{
         expr::{Linearization, PolishToken},
-        lookup::{index::LookupSelectors, lookups::LookupsUsed},
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupInfo, LookupsUsed},
+        },
         polynomials::{
             permutation::{zk_polynomial, zk_w3},
             range_check,
@@ -50,8 +53,8 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub table_ids: Option<PolyComm<G>>,
 
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
+    /// Information about the specific lookups used
+    pub lookup_info: LookupInfo,
 
     /// An optional selector polynomial for runtime tables
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -179,6 +182,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     lookup_used: cs.configuration.lookup_used,
+                    lookup_info: cs.configuration.lookup_info.clone(),
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
@@ -191,7 +195,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
                     table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
                         self.srs.commit_evaluations_non_hiding(domain, table_ids8)
                     }),
-                    max_joint_size: cs.configuration.lookup_info.max_joint_size,
                     runtime_tables_selector: cs
                         .runtime_selector
                         .as_ref()
@@ -467,6 +470,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
         if let Some(LookupVerifierIndex {
             lookup_used: _,
+            lookup_info: _,
             lookup_table,
             table_ids,
             runtime_tables_selector,
@@ -479,8 +483,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     range_check_gate,
                     ffmul_gate,
                 },
-
-            max_joint_size: _,
         }) = lookup_index
         {
             for entry in lookup_table {
