@@ -2161,8 +2161,8 @@ We run the following algorithm:
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
 1. Setup the Fr-Sponge.
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-1. Compute evaluations for the previous recursion challenges.
 1. Absorb the previous recursion challenges.
+1. Compute evaluations for the previous recursion challenges.
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 
    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.

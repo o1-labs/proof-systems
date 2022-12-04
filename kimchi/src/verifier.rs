@@ -134,7 +134,7 @@ where
             .for_each(|c| absorb_commitment(&mut fq_sponge, c));
 
         //~ 1. If lookup is used:
-        let joint_combiner = if let Some(l) = &index.lookup_index {
+        if let Some(l) = &index.lookup_index {
             let lookup_commits = self
                 .commitments
                 .lookup
@@ -149,7 +149,9 @@ where
                     .ok_or(VerifyError::IncorrectRuntimeProof)?;
                 absorb_commitment(&mut fq_sponge, runtime_commit);
             }
+        }
 
+        let joint_combiner = if let Some(l) = &index.lookup_index {
             //~~ - If it involves queries to a multiple-column lookup table,
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
@@ -166,15 +168,23 @@ where
             let joint_combiner_field = joint_combiner.to_field(endo_r);
             let joint_combiner = (joint_combiner, joint_combiner_field);
 
-            //~~ - absorb the commitments to the sorted polynomials.
-            for com in &lookup_commits.sorted {
-                absorb_commitment(&mut fq_sponge, com);
-            }
-
             Some(joint_combiner)
         } else {
             None
         };
+
+        if index.lookup_index.is_some() {
+            let lookup_commits = self
+                .commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)?;
+
+            //~~ - absorb the commitments to the sorted polynomials.
+            for com in &lookup_commits.sorted {
+                absorb_commitment(&mut fq_sponge, com);
+            }
+        }
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -217,6 +227,18 @@ where
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         fr_sponge.absorb(&digest);
 
+        //~ 1. Absorb the previous recursion challenges.
+        let prev_challenge_digest = {
+            // Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive 'optional sponge'.
+            let mut fr_sponge = EFrSponge::new(G::sponge_params());
+            for RecursionChallenge { chals, .. } in &self.prev_challenges {
+                fr_sponge.absorb_multiple(chals);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(&prev_challenge_digest);
+
         // prepare some often used values
         let zeta1 = zeta.pow(&[n]);
         let zetaw = zeta * index.domain.group_gen;
@@ -243,18 +265,6 @@ where
                 (comm.clone(), evals)
             })
             .collect();
-
-        //~ 1. Absorb the previous recursion challenges.
-        let prev_challenge_digest = {
-            // Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive 'optional sponge'.
-            let mut fr_sponge = EFrSponge::new(G::sponge_params());
-            for RecursionChallenge { chals, .. } in &self.prev_challenges {
-                fr_sponge.absorb_multiple(chals);
-            }
-            fr_sponge.digest()
-        };
-        fr_sponge.absorb(&prev_challenge_digest);
 
         // retrieve ranges for the powers of alphas
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -494,15 +504,18 @@ where
     }
 
     //~ 1. Commit to the negated public input polynomial.
-    let lgr_comm = index
-        .srs()
-        .lagrange_bases
-        .get(&index.domain.size())
-        .expect("pre-computed committed lagrange bases not found");
-    let com: Vec<_> = lgr_comm.iter().take(index.public).collect();
-    let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-    let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
     let public_comm = {
+        if proof.public.len() != index.public {
+            return Err(VerifyError::IncorrectPubicInputLength(index.public));
+        }
+        let lgr_comm = index
+            .srs()
+            .lagrange_bases
+            .get(&index.domain.size())
+            .expect("pre-computed committed lagrange bases not found");
+        let com: Vec<_> = lgr_comm.iter().take(index.public).collect();
+        let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+        let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
         index
             .srs()
             .mask_custom(
