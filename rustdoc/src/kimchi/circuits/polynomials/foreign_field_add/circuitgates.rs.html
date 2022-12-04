@@ -195,6 +195,7 @@
 <a href="#195" id="195">195</a>
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Foreign field addition gate.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
@@ -310,6 +311,7 @@
 
 </span><span class="doccomment">/// Implementation of the foreign field addition gate
 /// - Operates on Curr and Next rows.
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>ForeignFieldAdd&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ForeignFieldAdd&lt;F&gt;

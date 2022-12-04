@@ -360,6 +360,7 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve
 //! endomorphism optimised variable base
 //! scalar multiplication custom Plonk polynomials.
@@ -535,6 +536,7 @@
 }
 
 <span class="doccomment">/// Implementation of the `EndosclMul` gate.
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>EndosclMul&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>EndosclMul&lt;F&gt;

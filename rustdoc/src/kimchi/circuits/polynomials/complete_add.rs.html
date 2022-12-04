@@ -296,6 +296,7 @@
 <a href="#296" id="296">296</a>
 <a href="#297" id="297">297</a>
 <a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements a complete EC addition gate.
 
 </span><span class="comment">//~ The layout is
@@ -384,6 +385,7 @@
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>CompleteAdd&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>CompleteAdd&lt;F&gt;

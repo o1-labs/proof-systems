@@ -610,6 +610,10 @@
 <a href="#610" id="610">610</a>
 <a href="#611" id="611">611</a>
 <a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the `ChaCha` constraints.
 
 </span><span class="comment">//~ There are four chacha constraint types, corresponding to the four lines in each quarter round.
@@ -824,6 +828,7 @@
 //
 
 </span><span class="doccomment">/// Implementation of the `ChaCha0` gate
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>ChaCha0&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha0&lt;F&gt;
@@ -840,6 +845,7 @@
 }
 
 <span class="doccomment">/// Implementation of the `ChaCha1` gate
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>ChaCha1&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha1&lt;F&gt;
@@ -856,6 +862,7 @@
 }
 
 <span class="doccomment">/// Implementation of the `ChaCha2` gate
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>ChaCha2&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaCha2&lt;F&gt;
@@ -872,6 +879,7 @@
 }
 
 <span class="doccomment">/// Implementation of the `ChaChaFinal` gate
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>ChaChaFinal&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>ChaChaFinal&lt;F&gt;

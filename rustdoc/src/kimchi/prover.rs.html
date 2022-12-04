@@ -1490,62 +1490,6 @@
 <a href="#1490" id="1490">1490</a>
 <a href="#1491" id="1491">1491</a>
 <a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
-<a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
-<a href="#1496" id="1496">1496</a>
-<a href="#1497" id="1497">1497</a>
-<a href="#1498" id="1498">1498</a>
-<a href="#1499" id="1499">1499</a>
-<a href="#1500" id="1500">1500</a>
-<a href="#1501" id="1501">1501</a>
-<a href="#1502" id="1502">1502</a>
-<a href="#1503" id="1503">1503</a>
-<a href="#1504" id="1504">1504</a>
-<a href="#1505" id="1505">1505</a>
-<a href="#1506" id="1506">1506</a>
-<a href="#1507" id="1507">1507</a>
-<a href="#1508" id="1508">1508</a>
-<a href="#1509" id="1509">1509</a>
-<a href="#1510" id="1510">1510</a>
-<a href="#1511" id="1511">1511</a>
-<a href="#1512" id="1512">1512</a>
-<a href="#1513" id="1513">1513</a>
-<a href="#1514" id="1514">1514</a>
-<a href="#1515" id="1515">1515</a>
-<a href="#1516" id="1516">1516</a>
-<a href="#1517" id="1517">1517</a>
-<a href="#1518" id="1518">1518</a>
-<a href="#1519" id="1519">1519</a>
-<a href="#1520" id="1520">1520</a>
-<a href="#1521" id="1521">1521</a>
-<a href="#1522" id="1522">1522</a>
-<a href="#1523" id="1523">1523</a>
-<a href="#1524" id="1524">1524</a>
-<a href="#1525" id="1525">1525</a>
-<a href="#1526" id="1526">1526</a>
-<a href="#1527" id="1527">1527</a>
-<a href="#1528" id="1528">1528</a>
-<a href="#1529" id="1529">1529</a>
-<a href="#1530" id="1530">1530</a>
-<a href="#1531" id="1531">1531</a>
-<a href="#1532" id="1532">1532</a>
-<a href="#1533" id="1533">1533</a>
-<a href="#1534" id="1534">1534</a>
-<a href="#1535" id="1535">1535</a>
-<a href="#1536" id="1536">1536</a>
-<a href="#1537" id="1537">1537</a>
-<a href="#1538" id="1538">1538</a>
-<a href="#1539" id="1539">1539</a>
-<a href="#1540" id="1540">1540</a>
-<a href="#1541" id="1541">1541</a>
-<a href="#1542" id="1542">1542</a>
-<a href="#1543" id="1543">1543</a>
-<a href="#1544" id="1544">1544</a>
-<a href="#1545" id="1545">1545</a>
-<a href="#1546" id="1546">1546</a>
-<a href="#1547" id="1547">1547</a>
-<a href="#1548" id="1548">1548</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1561,12 +1505,17 @@
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add, foreign_field_mul, generic, permutation,
+            foreign_field_add::{<span class="self">self</span>, circuitgates::ForeignFieldAdd},
+            foreign_field_mul::{<span class="self">self</span>, circuitgates::ForeignFieldMul},
+            generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check::{<span class="self">self</span>},
+            range_check::{
+                <span class="self">self</span>,
+                circuitgates::{RangeCheck0, RangeCheck1},
+            },
             varbasemul::VarbaseMul,
-            xor,
+            xor::Xor16,
         },
         wires::{COLUMNS, PERMUTS},
     },
@@ -2241,16 +2190,6 @@
 
                 generic4
             };
-
-            <span class="comment">// complete addition
-            </span>{
-                <span class="kw">let </span>add_constraint = CompleteAdd::combined_constraints(<span class="kw-2">&amp;</span>all_alphas);
-                <span class="kw">let </span>add4 = add_constraint.evaluations(<span class="kw-2">&amp;</span>env);
-                t4 += <span class="kw-2">&amp;</span>add4;
-
-                <span class="macro">check_constraint!</span>(index, add4);
-            }
-
             <span class="comment">// permutation
             </span><span class="kw">let </span>(<span class="kw-2">mut </span>t8, bnd) = {
                 <span class="kw">let </span>alphas =
@@ -2262,114 +2201,63 @@
                 (perm, bnd)
             };
 
-            <span class="comment">// scalar multiplication
-            </span>{
-                <span class="kw">let </span>mul8 = VarbaseMul::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                t8 += <span class="kw-2">&amp;</span>mul8;
+            {
+                <span class="kw">use </span><span class="kw">crate</span>::circuits::argument::DynArgument;
 
-                <span class="macro">check_constraint!</span>(index, mul8);
-            }
-
-            <span class="comment">// endoscaling
-            </span>{
-                <span class="kw">let </span>emul8 = EndosclMul::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                t8 += <span class="kw-2">&amp;</span>emul8;
-
-                <span class="macro">check_constraint!</span>(index, emul8);
-            }
-
-            <span class="comment">// endoscaling scalar computation
-            </span>{
-                <span class="kw">let </span>emulscalar8 =
-                    EndomulScalar::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                t8 += <span class="kw-2">&amp;</span>emulscalar8;
-
-                <span class="macro">check_constraint!</span>(index, emulscalar8);
-            }
-
-            <span class="comment">// poseidon
-            </span>{
-                <span class="kw">let </span>pos8 = Poseidon::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                t8 += <span class="kw-2">&amp;</span>pos8;
-
-                <span class="macro">check_constraint!</span>(index, pos8);
-            }
-
-            <span class="comment">// chacha
-            </span>{
-                <span class="kw">if </span>index
+                <span class="kw">let </span>chacha_enabled = index.column_evaluations.chacha_selectors8.is_some();
+                <span class="kw">let </span>range_check_enabled = index.column_evaluations.range_check_selectors8.is_some();
+                <span class="kw">let </span>foreign_field_addition_enabled = index
                     .column_evaluations
-                    .chacha_selectors8
-                    .as_ref()
-                    .is_some()
+                    .foreign_field_add_selector8
+                    .is_some();
+                <span class="kw">let </span>foreign_field_multiplication_enabled = index
+                    .column_evaluations
+                    .foreign_field_mul_selector8
+                    .is_some();
+                <span class="kw">let </span>xor_enabled = index.column_evaluations.xor_selector8.is_some();
+
+                <span class="kw">for </span>gate <span class="kw">in </span>[
+                    (
+                        (<span class="kw-2">&amp;</span>CompleteAdd::default() <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>DynArgument&lt;G::ScalarField&gt;),
+                        <span class="bool-val">true</span>,
+                    ),
+                    (<span class="kw-2">&amp;</span>VarbaseMul::default(), <span class="bool-val">true</span>),
+                    (<span class="kw-2">&amp;</span>EndosclMul::default(), <span class="bool-val">true</span>),
+                    (<span class="kw-2">&amp;</span>EndomulScalar::default(), <span class="bool-val">true</span>),
+                    (<span class="kw-2">&amp;</span>Poseidon::default(), <span class="bool-val">true</span>),
+                    <span class="comment">// Chacha gates
+                    </span>(<span class="kw-2">&amp;</span>ChaCha0::default(), chacha_enabled),
+                    (<span class="kw-2">&amp;</span>ChaCha1::default(), chacha_enabled),
+                    (<span class="kw-2">&amp;</span>ChaCha2::default(), chacha_enabled),
+                    (<span class="kw-2">&amp;</span>ChaChaFinal::default(), chacha_enabled),
+                    <span class="comment">// Range check gates
+                    </span>(<span class="kw-2">&amp;</span>RangeCheck0::default(), range_check_enabled),
+                    (<span class="kw-2">&amp;</span>RangeCheck1::default(), range_check_enabled),
+                    <span class="comment">// Foreign field addition gate
+                    </span>(<span class="kw-2">&amp;</span>ForeignFieldAdd::default(), foreign_field_addition_enabled),
+                    <span class="comment">// Foreign field multiplication gate
+                    </span>(
+                        <span class="kw-2">&amp;</span>ForeignFieldMul::default(),
+                        foreign_field_multiplication_enabled,
+                    ),
+                    <span class="comment">// Xor gate
+                    </span>(<span class="kw-2">&amp;</span>Xor16::default(), xor_enabled),
+                ]
+                .into_iter()
+                .filter_map(|(gate, is_enabled)| <span class="kw">if </span>is_enabled { <span class="prelude-val">Some</span>(gate) } <span class="kw">else </span>{ <span class="prelude-val">None </span>})
                 {
-                    <span class="kw">let </span>chacha0 = ChaCha0::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                    t4 += <span class="kw-2">&amp;</span>chacha0;
-
-                    <span class="kw">let </span>chacha1 = ChaCha1::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                    t4 += <span class="kw-2">&amp;</span>chacha1;
-
-                    <span class="kw">let </span>chacha2 = ChaCha2::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                    t4 += <span class="kw-2">&amp;</span>chacha2;
-
-                    <span class="kw">let </span>chacha_final =
-                        ChaChaFinal::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                    t4 += <span class="kw-2">&amp;</span>chacha_final;
-
-                    <span class="macro">check_constraint!</span>(index, chacha0);
-                    <span class="macro">check_constraint!</span>(index, chacha1);
-                    <span class="macro">check_constraint!</span>(index, chacha2);
-                    <span class="macro">check_constraint!</span>(index, chacha_final);
+                    <span class="kw">let </span>constraint = gate.combined_constraints(<span class="kw-2">&amp;</span>all_alphas);
+                    <span class="kw">let </span>eval = constraint.evaluations(<span class="kw-2">&amp;</span>env);
+                    <span class="kw">if </span>eval.domain().size == t4.domain().size {
+                        t4 += <span class="kw-2">&amp;</span>eval;
+                    } <span class="kw">else if </span>eval.domain().size == t8.domain().size {
+                        t8 += <span class="kw-2">&amp;</span>eval;
+                    } <span class="kw">else </span>{
+                        <span class="macro">panic!</span>(<span class="string">&quot;Bad evaluation&quot;</span>)
+                    }
+                    <span class="macro">check_constraint!</span>(index, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, gate.argument_type()), eval);
                 }
-            }
-
-            <span class="comment">// range check gates
-            </span><span class="kw">if </span>index.column_evaluations.range_check_selectors8.is_some() {
-                <span class="kw">for </span>gate_type <span class="kw">in </span>range_check::gadget::circuit_gates() {
-                    <span class="kw">let </span>range_check_constraint =
-                        range_check::gadget::circuit_gate_constraints(gate_type, <span class="kw-2">&amp;</span>all_alphas)
-                            .evaluations(<span class="kw-2">&amp;</span>env);
-                    <span class="macro">assert_eq!</span>(range_check_constraint.domain().size, t8.domain().size);
-                    t8 += <span class="kw-2">&amp;</span>range_check_constraint;
-                    <span class="macro">check_constraint!</span>(index, range_check_constraint);
-                }
-            }
-
-            <span class="comment">// foreign field addition
-            </span><span class="kw">if </span>index
-                .column_evaluations
-                .foreign_field_add_selector8
-                .is_some()
-            {
-                <span class="kw">let </span>foreign_field_add_constraint =
-                    foreign_field_add::gadget::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                <span class="macro">assert_eq!</span>(foreign_field_add_constraint.domain().size, t4.domain().size);
-                t4 += <span class="kw-2">&amp;</span>foreign_field_add_constraint;
-                <span class="macro">check_constraint!</span>(index, foreign_field_add_constraint);
-            }
-
-            <span class="comment">// foreign field multiplication
-            </span><span class="kw">if </span>index
-                .column_evaluations
-                .foreign_field_mul_selector8
-                .is_some()
-            {
-                <span class="kw">let </span>foreign_field_mul_constraint =
-                    foreign_field_mul::gadget::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                <span class="macro">assert_eq!</span>(foreign_field_mul_constraint.domain().size, t8.domain().size);
-                t8 += <span class="kw-2">&amp;</span>foreign_field_mul_constraint;
-                <span class="macro">check_constraint!</span>(index, foreign_field_mul_constraint);
-            }
-
-            <span class="comment">// xor
-            </span>{
-                <span class="kw">if </span>index.column_evaluations.xor_selector8.is_some() {
-                    <span class="kw">let </span>xor = xor::combined_constraints(<span class="kw-2">&amp;</span>all_alphas).evaluations(<span class="kw-2">&amp;</span>env);
-                    <span class="macro">assert_eq!</span>(xor.domain().size, t4.domain().size);
-                    t4 += <span class="kw-2">&amp;</span>xor;
-                    <span class="macro">check_constraint!</span>(index, xor);
-                }
-            }
+            };
 
             <span class="comment">// lookup
             </span>{

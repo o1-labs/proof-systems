@@ -436,6 +436,7 @@
 <a href="#436" id="436">436</a>
 <a href="#437" id="437">437</a>
 <a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements short Weierstrass curve variable base scalar multiplication custom Plonk polynomials.
 //!
 //! ```ignore
@@ -833,6 +834,7 @@
 }
 
 <span class="doccomment">/// Implementation of the `VarbaseMul` gate
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>VarbaseMul&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>VarbaseMul&lt;F&gt;

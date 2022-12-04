@@ -419,6 +419,7 @@
 <a href="#419" id="419">419</a>
 <a href="#420" id="420">420</a>
 <a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the Poseidon constraint polynomials.
 
 </span><span class="comment">//~ The poseidon gate encodes 5 rounds of the poseidon permutation.
@@ -748,6 +749,7 @@
 ///
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>Poseidon&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Poseidon&lt;F&gt; <span class="kw">where </span>F: Field {}

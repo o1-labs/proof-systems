@@ -421,6 +421,7 @@
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
 </span><span class="comment">//~ The double generic gate contains two generic gates.
@@ -487,6 +488,7 @@
 </span><span class="kw">pub const </span>DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * <span class="number">2</span>;
 
 <span class="doccomment">/// Implementation of the `Generic` gate
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>Generic&lt;F&gt;(PhantomData&lt;F&gt;);
 
 <span class="kw">impl</span>&lt;F&gt; Argument&lt;F&gt; <span class="kw">for </span>Generic&lt;F&gt;
