@@ -5,7 +5,7 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
-use crate::proof::{LookupEvaluations, ProofEvaluations};
+use crate::proof::{LookupEvaluations, PointEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -25,7 +25,7 @@ pub trait FrSponge<Fr: Field> {
 
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations<const N: usize>(&mut self, e: [&ProofEvaluations<Vec<Fr>>; N]);
+    fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
@@ -56,7 +56,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     }
 
     // We absorb all evaluations of the same polynomial at the same time
-    fn absorb_evaluations<const N: usize>(&mut self, e: [&ProofEvaluations<Vec<Fr>>; N]) {
+    fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>) {
         self.last_squeezed = vec![];
 
         let ProofEvaluations {
@@ -67,12 +67,12 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             lookup,
             generic_selector,
             poseidon_selector,
-        } = ProofEvaluations::transpose(e);
+        } = e;
 
         let mut points = vec![
-            &z,
-            &generic_selector,
-            &poseidon_selector,
+            z,
+            generic_selector,
+            poseidon_selector,
             &w[0],
             &w[1],
             &w[2],
@@ -127,9 +127,8 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         }
 
         for p in points {
-            for x in p {
-                self.sponge.absorb(x);
-            }
+            self.sponge.absorb(&p.zeta);
+            self.sponge.absorb(&p.zeta_omega);
         }
     }
 }
