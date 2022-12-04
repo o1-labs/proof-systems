@@ -139,7 +139,6 @@ where
             runtime_tables,
             index,
             Vec::new(),
-            None,
         )
     }
 
@@ -161,7 +160,6 @@ where
         runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
-        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -265,23 +263,9 @@ where
                     index.cs.domain.d1,
                 );
 
-            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
-                // no blinders: blind the witness
-                None => index
-                    .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
-                // blinders: blind the witness with them
-                Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index
-                        .srs
-                        .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
-                }
-            };
+            let com = index
+                .srs
+                .commit_evaluations(index.cs.domain.d1, &witness_eval, rng);
 
             w_comm.push(com);
         }

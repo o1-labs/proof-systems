@@ -2,20 +2,19 @@ use crate::writer::{Cs, GateSpec, System, Var, WitnessGenerator};
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, Zero};
 use commitment_dlog::{
-    commitment::{CommitmentCurve, PolyComm},
+    commitment::CommitmentCurve,
     srs::{endos, SRS},
 };
 use kimchi::{
-    circuits::{constraints::ConstraintSystem, gate::GateType, wires::COLUMNS},
+    circuits::{constraints::ConstraintSystem, gate::GateType},
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::ProverProof,
     prover_index::ProverIndex,
 };
 use mina_poseidon::FqSponge;
-use std::array;
 
-/// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
+/// Given an index, a group map, a public input vector, and a circuit `main`, it creates a proof.
 ///
 /// # Panics
 ///
@@ -23,7 +22,6 @@ use std::array;
 pub fn prove<G, H, EFqSponge, EFrSponge>(
     index: &ProverIndex<G>,
     group_map: &G::Map,
-    blinders: Option<[Option<G::ScalarField>; COLUMNS]>,
     public_input: Vec<G::ScalarField>,
     mut main: H,
 ) -> ProverProof<G>
@@ -51,27 +49,9 @@ where
     gen.curr_gate_count();
     let columns = gen.columns();
 
-    // custom blinders for the witness commitment
-    let blinders: [Option<PolyComm<G::ScalarField>>; COLUMNS] = match blinders {
-        None => array::from_fn(|_| None),
-        Some(bs) => array::from_fn(|i| {
-            bs[i].map(|b| PolyComm {
-                unshifted: vec![b],
-                shifted: None,
-            })
-        }),
-    };
-
     // create the proof
-    ProverProof::create_recursive::<EFqSponge, EFrSponge>(
-        group_map,
-        columns,
-        &[],
-        index,
-        vec![],
-        Some(blinders),
-    )
-    .unwrap()
+    ProverProof::create_recursive::<EFqSponge, EFrSponge>(group_map, columns, &[], index, vec![])
+        .unwrap()
 }
 
 /// Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit

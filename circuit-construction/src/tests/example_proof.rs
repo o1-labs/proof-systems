@@ -91,7 +91,6 @@ fn test_example_circuit() {
     let proof = prove::<Vesta, _, SpongeQ, SpongeR>(
         &prover_index,
         &group_map,
-        None,
         vec![public_key.x, public_key.y, hash],
         |sys, p| circuit::<Fp, Pallas, _>(&proof_system_constants, Some(&witness), sys, p),
     );
