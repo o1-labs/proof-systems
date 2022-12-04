@@ -61,10 +61,6 @@ def point_of_random_bytes(random_bytes):
 
 TODO: specify `map.to_group` in the previous section.
 
-## Endo stuff
-
-TODO: specify endo_r, endo_q
-
 ## URS values in practice
 
 As there is no limit to the number of commitment curve points you can generate, we only provide the first three ones to serve as test vectors.
