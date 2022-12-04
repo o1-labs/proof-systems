@@ -110,7 +110,7 @@ mod tests {
 
         // proof verified in 1.710 ms
         let start = Instant::now();
-        ctx.batch_verification(vec![proof.clone()]);
+        ctx.batch_verification(vec![proof]);
         println!("proof verified in {}", start.elapsed().as_millis());
     }
 }
