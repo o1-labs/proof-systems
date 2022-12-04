@@ -35,7 +35,7 @@ use crate::{
     },
     curve::KimchiCurve,
 };
-use ark_ff::{Field, PrimeField};
+use ark_ff::{Field, PrimeField, SquareRootField};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
@@ -77,7 +77,7 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     pub fn create_poseidon(
         wires: GateWires,
         // Coefficients are passed in in the logical order

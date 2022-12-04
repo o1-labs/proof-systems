@@ -132,7 +132,7 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         let x = 0;
         let y = 1;
         let z = 2;
-        let f = |t: u32| Fp::from(t);
+        let f = Fp::from;
         let nyb = |t: u32, i: usize| f((t >> (4 * i)) & 0b1111);
 
         let top_bit = (((s[x] as u64) + (s[z] as u64)) >> 32) as u32;
@@ -208,12 +208,12 @@ fn chacha_setup_bad_lookup(table_id: i32) {
         }
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 // Test lookup domain separation: if a different table ID is used, we shouldn't be able to use a
