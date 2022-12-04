@@ -21,7 +21,7 @@ use crate::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
-    combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
@@ -76,6 +76,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     RangeCheck1 => Some(&self.index.range_check_comm.as_ref()?[1]),
                     Xor16 => Some(self.index.xor_comm.as_ref()?),
                     ForeignFieldAdd => Some(self.index.foreign_field_add_comm.as_ref()?),
+                    ForeignFieldMul => Some(self.index.foreign_field_mul_comm.as_ref()?),
                 }
             }
         }
@@ -120,17 +121,17 @@ where
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
         for RecursionChallenge { comm, .. } in &self.prev_challenges {
-            fq_sponge.absorb_g(&comm.unshifted);
+            absorb_commitment(&mut fq_sponge, comm);
         }
 
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-        fq_sponge.absorb_g(&public_comm.unshifted);
+        absorb_commitment(&mut fq_sponge, public_comm);
 
         //~ 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
         self.commitments
             .w_comm
             .iter()
-            .for_each(|c| fq_sponge.absorb_g(&c.unshifted));
+            .for_each(|c| absorb_commitment(&mut fq_sponge, c));
 
         //~ 1. If lookup is used:
         if let Some(l) = &index.lookup_index {
@@ -146,7 +147,7 @@ where
                     .runtime
                     .as_ref()
                     .ok_or(VerifyError::IncorrectRuntimeProof)?;
-                fq_sponge.absorb_g(&runtime_commit.unshifted);
+                absorb_commitment(&mut fq_sponge, runtime_commit);
             }
         }
 
@@ -181,7 +182,7 @@ where
 
             //~~ - absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
-                fq_sponge.absorb_g(&com.unshifted);
+                absorb_commitment(&mut fq_sponge, com);
             }
         }
 
@@ -193,11 +194,11 @@ where
 
         //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         self.commitments.lookup.iter().for_each(|l| {
-            fq_sponge.absorb_g(&l.aggreg.unshifted);
+            absorb_commitment(&mut fq_sponge, &l.aggreg);
         });
 
         //~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
-        fq_sponge.absorb_g(&self.commitments.z_comm.unshifted);
+        absorb_commitment(&mut fq_sponge, &self.commitments.z_comm);
 
         //~ 1. Sample $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -211,7 +212,7 @@ where
         }
 
         //~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
-        fq_sponge.absorb_g(&self.commitments.t_comm.unshifted);
+        absorb_commitment(&mut fq_sponge, &self.commitments.t_comm);
 
         //~ 1. Sample $\zeta'$ with the Fq-Sponge.
         let zeta_chal = ScalarChallenge(fq_sponge.challenge());
@@ -389,21 +390,22 @@ where
 
             ft_eval0 += numerator * denominator;
 
-            let cs = Constants {
+            let constants = Constants::new(
                 alpha,
                 beta,
                 gamma,
-                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                foreign_field_modulus: index.foreign_field_modulus.clone(),
-            };
+                joint_combiner.as_ref().map(|j| j.1),
+                index.endo,
+                &G::sponge_params().mds,
+                index.foreign_field_modulus.clone(),
+            );
+
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
                 index.domain,
                 zeta,
                 &evals,
-                &cs,
+                &constants,
             )
             .unwrap();
 
@@ -497,6 +499,9 @@ where
             proof.prev_challenges.len(),
         ));
     }
+    if proof.public.len() != index.public {
+        return Err(VerifyError::IncorrectPubicInputLength(index.public));
+    }
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
@@ -508,17 +513,9 @@ where
             .lagrange_bases
             .get(&index.domain.size())
             .expect("pre-computed committed lagrange bases not found");
-        let com: Vec<_> = lgr_comm
-            .iter()
-            .map(|c| PolyComm {
-                unshifted: vec![*c],
-                shifted: None,
-            })
-            .take(index.public)
-            .collect();
-        let com_ref: Vec<_> = com.iter().collect();
+        let com: Vec<_> = lgr_comm.iter().take(index.public).collect();
         let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
-        let public_comm = PolyComm::<G>::multi_scalar_mul(&com_ref, &elm);
+        let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
         index
             .srs()
             .mask_custom(
@@ -578,15 +575,15 @@ where
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants from oracles function
-            let constants = Constants {
-                alpha: oracles.alpha,
-                beta: oracles.beta,
-                gamma: oracles.gamma,
-                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
-                mds: &G::sponge_params().mds,
-                foreign_field_modulus: index.foreign_field_modulus.clone(),
-            };
+            let constants = Constants::new(
+                oracles.alpha,
+                oracles.beta,
+                oracles.gamma,
+                oracles.joint_combiner.as_ref().map(|j| j.1),
+                index.endo,
+                &G::sponge_params().mds,
+                index.foreign_field_modulus.clone(),
+            );
 
             for (col, tokens) in &index.linearization.index_terms {
                 let scalar =

@@ -113,7 +113,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    /// Range check commitments
+    /// Range check polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
@@ -123,6 +123,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
+
+    /// Foreign field multiplication gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_mul_comm: Option<PolyComm<G>>,
 
     /// Xor commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -184,20 +188,19 @@ impl<G: KimchiCurve> ProverIndex<G> {
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e)),
                     lookup_table: cs
                         .lookup_table8
                         .iter()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e))
                         .collect(),
                     table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
-                        self.srs
-                            .commit_evaluations_non_hiding(domain, table_ids8, None)
+                        self.srs.commit_evaluations_non_hiding(domain, table_ids8)
                     }),
                     runtime_tables_selector: cs
                         .runtime_selector
                         .as_ref()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e)),
                 })
         };
 
@@ -215,57 +218,72 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 cell
             },
 
-            sigma_comm: array::from_fn(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
-            coefficients_comm: array::from_fn(|i| {
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
+            sigma_comm: array::from_fn(|i| {
+                self.srs.commit_non_hiding(
+                    &self.evaluated_column_coefficients.permutation_coefficients[i],
+                    None,
+                )
             }),
-            generic_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.genericm, None)),
+            coefficients_comm: array::from_fn(|i| {
+                self.srs.commit_evaluations_non_hiding(
+                    domain,
+                    &self.column_evaluations.coefficients8[i],
+                )
+            }),
+            generic_comm: mask_fixed(
+                self.srs
+                    .commit_non_hiding(&self.evaluated_column_coefficients.generic_selector, None),
+            ),
 
-            psm_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.psm, None)),
+            psm_comm: mask_fixed(
+                self.srs
+                    .commit_non_hiding(&self.evaluated_column_coefficients.poseidon_selector, None),
+            ),
 
             complete_add_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.complete_addl4,
-                None,
+                &self.column_evaluations.complete_add_selector4,
             ),
             mul_comm: self
                 .srs
-                .commit_evaluations_non_hiding(domain, &self.cs.mull8, None),
+                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
             emul_comm: self
                 .srs
-                .commit_evaluations_non_hiding(domain, &self.cs.emull, None),
+                .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
 
             endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.endomul_scalar8,
-                None,
+                &self.column_evaluations.endomul_scalar_selector8,
             ),
 
-            chacha_comm: self.cs.chacha8.as_ref().map(|c| {
-                array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
-            }),
+            chacha_comm: self
+                .column_evaluations
+                .chacha_selectors8
+                .as_ref()
+                .map(|c| array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i]))),
 
-            range_check_comm: self.cs.range_check_selector_polys.as_ref().map(|poly| {
-                array::from_fn(|i| {
-                    self.srs
-                        .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
-                })
-            }),
+            range_check_comm: self.column_evaluations.range_check_selectors8.as_ref().map(
+                |evals8| {
+                    array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &evals8[i]))
+                },
+            ),
 
             foreign_field_add_comm: self
-                .cs
-                .foreign_field_add_selector_poly
+                .column_evaluations
+                .foreign_field_add_selector8
                 .as_ref()
-                .map(|poly| {
-                    self.srs
-                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
-                }),
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            xor_comm: self.cs.xor_selector_poly.as_ref().map(|poly| {
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
-            }),
+            foreign_field_mul_comm: self
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            xor_comm: self
+                .column_evaluations
+                .xor_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
             zkpm: {
@@ -398,6 +416,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             chacha_comm,
             range_check_comm,
             foreign_field_add_comm,
+            foreign_field_mul_comm,
             foreign_field_modulus: _,
             xor_comm,
 
@@ -440,6 +459,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&range_check_comm.unshifted);
             }
         }
+        if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
+            fq_sponge.absorb_g(&foreign_field_mul_comm.unshifted);
+        }
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }
@@ -463,6 +485,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     chacha_final,
                     lookup_gate,
                     range_check_gate,
+                    ffmul_gate,
                 },
         }) = lookup_index
         {
@@ -487,6 +510,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
             if let Some(range_check_gate) = range_check_gate {
                 fq_sponge.absorb_g(&range_check_gate.unshifted);
+            }
+            if let Some(ffmul_gate) = ffmul_gate {
+                fq_sponge.absorb_g(&ffmul_gate.unshifted);
             }
         }
         fq_sponge.digest_fq()

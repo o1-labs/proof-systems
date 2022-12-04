@@ -75,8 +75,8 @@
 //~ |    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
 //~ |    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
 //~ |    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-//~ |    13 | crumb   `v0p6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
-//~ | LS:14 | crumb   `v0p7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
+//~ |    13 | crumb   `v0c6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
+//~ | LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
 //~
 //~ The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
 //~ constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
