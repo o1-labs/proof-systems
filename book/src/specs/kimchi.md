@@ -1834,7 +1834,7 @@ A proof consists of the following data structures:
 ```rs
 /// Evaluations of a polynomial at 2 points
 #[serde_as]
-#[derive(Copy, Clone, Serialize, Deserialize, Default)]
+#[derive(Copy, Clone, Serialize, Deserialize, Default, Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
@@ -1854,18 +1854,18 @@ pub struct PointEvaluations<Evals> {
 
 /// Evaluations of lookup polynomials
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
-pub struct LookupEvaluations<Eval> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LookupEvaluations<Evals> {
     /// sorted lookup table polynomial
-    pub sorted: Vec<Eval>,
+    pub sorted: Vec<Evals>,
     /// lookup aggregation polynomial
-    pub aggreg: Eval,
+    pub aggreg: Evals,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    pub table: Eval,
+    pub table: Evals,
 
     /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Eval>,
+    pub runtime: Option<Evals>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -1873,28 +1873,28 @@ pub struct LookupEvaluations<Eval> {
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<Eval> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProofEvaluations<Evals> {
     /// witness polynomials
-    pub w: [Eval; COLUMNS],
+    pub w: [Evals; COLUMNS],
     /// permutation polynomial
-    pub z: Eval,
+    pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [Eval; PERMUTS - 1],
+    pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    pub coefficients: [Eval; COLUMNS],
+    pub coefficients: [Evals; COLUMNS],
     /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Eval>>,
+    pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
-    pub generic_selector: Eval,
+    pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: Eval,
+    pub poseidon_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
@@ -1907,7 +1907,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 
 /// All the commitments that the prover creates as part of the proof.
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
@@ -1922,7 +1922,7 @@ pub struct ProverCommitments<G: AffineCurve> {
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
@@ -1948,7 +1948,7 @@ pub struct ProverProof<G: AffineCurve> {
 
 /// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct RecursionChallenge<G>
 where

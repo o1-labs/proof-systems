@@ -37,17 +37,17 @@ pub struct PointEvaluations<Evals> {
 /// Evaluations of lookup polynomials
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LookupEvaluations<Eval> {
+pub struct LookupEvaluations<Evals> {
     /// sorted lookup table polynomial
-    pub sorted: Vec<Eval>,
+    pub sorted: Vec<Evals>,
     /// lookup aggregation polynomial
-    pub aggreg: Eval,
+    pub aggreg: Evals,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    pub table: Eval,
+    pub table: Evals,
 
     /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Eval>,
+    pub runtime: Option<Evals>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -56,22 +56,22 @@ pub struct LookupEvaluations<Eval> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<Eval> {
+pub struct ProofEvaluations<Evals> {
     /// witness polynomials
-    pub w: [Eval; COLUMNS],
+    pub w: [Evals; COLUMNS],
     /// permutation polynomial
-    pub z: Eval,
+    pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [Eval; PERMUTS - 1],
+    pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    pub coefficients: [Eval; COLUMNS],
+    pub coefficients: [Evals; COLUMNS],
     /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Eval>>,
+    pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
-    pub generic_selector: Eval,
+    pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: Eval,
+    pub poseidon_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature
@@ -550,7 +550,6 @@ pub mod caml {
 
         pub generic_selector: PointEvaluations<Vec<CamlF>>,
         pub poseidon_selector: PointEvaluations<Vec<CamlF>>,
-
     }
 
     //
