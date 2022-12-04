@@ -212,6 +212,7 @@ fn line<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: 
 //
 
 /// Implementation of the `ChaCha0` gate
+#[derive(Default)]
 pub struct ChaCha0<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha0<F>
@@ -228,6 +229,7 @@ where
 }
 
 /// Implementation of the `ChaCha1` gate
+#[derive(Default)]
 pub struct ChaCha1<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha1<F>
@@ -244,6 +246,7 @@ where
 }
 
 /// Implementation of the `ChaCha2` gate
+#[derive(Default)]
 pub struct ChaCha2<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha2<F>
@@ -260,6 +263,7 @@ where
 }
 
 /// Implementation of the `ChaChaFinal` gate
+#[derive(Default)]
 pub struct ChaChaFinal<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaChaFinal<F>
