@@ -15,7 +15,7 @@ use crate::{
         wires::{GateWires, COLUMNS},
     },
     curve::KimchiCurve,
-    proof::ProofEvaluations,
+    proof::{PointEvaluations, ProofEvaluations},
 };
 use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
@@ -145,10 +145,8 @@ impl<F: PrimeField> CircuitGate<F> {
             foreign_field_modulus: None,
         };
 
-        let evals: [ProofEvaluations<G::ScalarField>; 2] = [
-            ProofEvaluations::dummy_with_witness_evaluations(this),
-            ProofEvaluations::dummy_with_witness_evaluations(next),
-        ];
+        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
+            ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
         let constraints = EndosclMul::constraints();
         for (i, c) in constraints.iter().enumerate() {
@@ -175,6 +173,7 @@ impl<F: PrimeField> CircuitGate<F> {
 }
 
 /// Implementation of the `EndosclMul` gate.
+#[derive(Default)]
 pub struct EndosclMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndosclMul<F>
