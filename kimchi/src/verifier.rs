@@ -30,6 +30,60 @@ use rand::thread_rng;
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
+pub struct Context<'a, G: KimchiCurve> {
+    proof: &'a ProverProof<G>,
+    index: &'a VerifierIndex<G>,
+}
+
+impl<'a, G: KimchiCurve> Context<'a, G> {
+    pub fn get_column(&self, col: Column) -> Option<&'a PolyComm<G>> {
+        use Column::*;
+        match col {
+            Witness(i) => Some(&self.proof.commitments.w_comm[i]),
+            Coefficient(i) => Some(&self.index.coefficients_comm[i]),
+            Permutation(i) => Some(&self.index.sigma_comm[i]),
+            Z => Some(&self.proof.commitments.z_comm),
+            LookupSorted(i) => Some(&self.proof.commitments.lookup.as_ref()?.sorted[i]),
+            LookupAggreg => Some(&self.proof.commitments.lookup.as_ref()?.aggreg),
+            LookupKindIndex(i) => {
+                Some(self.index.lookup_index.as_ref()?.lookup_selectors[i].as_ref()?)
+            }
+            LookupTable => None,
+            LookupRuntimeSelector => Some(
+                self.index
+                    .lookup_index
+                    .as_ref()?
+                    .runtime_tables_selector
+                    .as_ref()?,
+            ),
+            LookupRuntimeTable => None,
+            Index(t) => {
+                use GateType::*;
+                match t {
+                    Zero => None,
+                    Generic => Some(&self.index.generic_comm),
+                    Lookup => None,
+                    CompleteAdd => Some(&self.index.complete_add_comm),
+                    VarBaseMul => Some(&self.index.mul_comm),
+                    EndoMul => Some(&self.index.emul_comm),
+                    EndoMulScalar => Some(&self.index.endomul_scalar_comm),
+                    Poseidon => Some(&self.index.psm_comm),
+                    ChaCha0 => Some(&self.index.chacha_comm.as_ref()?[0]),
+                    ChaCha1 => Some(&self.index.chacha_comm.as_ref()?[1]),
+                    ChaCha2 => Some(&self.index.chacha_comm.as_ref()?[2]),
+                    ChaChaFinal => Some(&self.index.chacha_comm.as_ref()?[3]),
+                    CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
+                    RangeCheck0 => Some(&self.index.range_check_comm.as_ref()?[0]),
+                    RangeCheck1 => Some(&self.index.range_check_comm.as_ref()?[1]),
+                    Xor16 => Some(self.index.xor_comm.as_ref()?),
+                    ForeignFieldAdd => Some(self.index.foreign_field_add_comm.as_ref()?),
+                    ForeignFieldMul => Some(self.index.foreign_field_mul_comm.as_ref()?),
+                }
+            }
+        }
+    }
+}
+
 impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
@@ -517,105 +571,20 @@ where
                 index.foreign_field_modulus.clone(),
             );
 
+            let context = Context { proof, index };
+
             for (col, tokens) in &index.linearization.index_terms {
                 let scalar =
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
                         .expect("should evaluate");
 
-                use Column::*;
-                match col {
-                    Witness(i) => {
-                        scalars.push(scalar);
-                        commitments.push(&proof.commitments.w_comm[*i]);
-                    }
-                    Coefficient(i) => {
-                        scalars.push(scalar);
-                        commitments.push(&index.coefficients_comm[*i]);
-                    }
-                    Permutation(i) => {
-                        scalars.push(scalar);
-                        commitments.push(&index.sigma_comm[*i]);
-                    }
-                    Z => {
-                        scalars.push(scalar);
-                        commitments.push(&proof.commitments.z_comm);
-                    }
-                    LookupSorted(i) => {
-                        let lookup_coms = proof
-                            .commitments
-                            .lookup
-                            .as_ref()
-                            .ok_or(VerifyError::LookupCommitmentMissing)?;
-                        scalars.push(scalar);
-                        commitments.push(&lookup_coms.sorted[*i]);
-                    }
-                    LookupAggreg => {
-                        let lookup_coms = proof
-                            .commitments
-                            .lookup
-                            .as_ref()
-                            .ok_or(VerifyError::LookupCommitmentMissing)?;
-                        scalars.push(scalar);
-                        commitments.push(&lookup_coms.aggreg);
-                    }
-                    LookupKindIndex(i) => match index.lookup_index.as_ref() {
-                        None => {
-                            panic!("Attempted to use {:?}, but no lookup index was given", col)
-                        }
-                        Some(lindex) => {
-                            scalars.push(scalar);
-                            commitments.push(lindex.lookup_selectors[*i].as_ref().expect(
-                                &*format!(
-                                "Attempted to use {:?}, but it was not found in the verifier index",
-                                col
-                            ),
-                            ));
-                        }
-                    },
-                    LookupTable => panic!("Lookup table is unused in the linearization"),
-                    LookupRuntimeSelector => match index.lookup_index.as_ref() {
-                        None => {
-                            panic!("Attempted to use {:?}, but no lookup index was given", col)
-                        }
-                        Some(lindex) => match &lindex.runtime_tables_selector {
-                            None => panic!("No runtime selector was given"),
-                            Some(comm) => {
-                                scalars.push(scalar);
-                                commitments.push(comm);
-                            }
-                        },
-                    },
-                    LookupRuntimeTable => {
-                        panic!("runtime lookup table is unused in the linearization")
-                    }
-                    Index(t) => {
-                        use GateType::*;
-                        let c = match t {
-                            Zero | Generic | Lookup => {
-                                panic!("Selector for {:?} not defined", t)
-                            }
-                            CompleteAdd => &index.complete_add_comm,
-                            VarBaseMul => &index.mul_comm,
-                            EndoMul => &index.emul_comm,
-                            EndoMulScalar => &index.endomul_scalar_comm,
-                            Poseidon => &index.psm_comm,
-                            ChaCha0 => &index.chacha_comm.as_ref().unwrap()[0],
-                            ChaCha1 => &index.chacha_comm.as_ref().unwrap()[1],
-                            ChaCha2 => &index.chacha_comm.as_ref().unwrap()[2],
-                            ChaChaFinal => &index.chacha_comm.as_ref().unwrap()[3],
-                            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                                unimplemented!()
-                            }
-                            RangeCheck0 => &index.range_check_comm.as_ref().unwrap()[0],
-                            RangeCheck1 => &index.range_check_comm.as_ref().unwrap()[1],
-                            Xor16 => index.xor_comm.as_ref().unwrap(),
-                            ForeignFieldAdd => index.foreign_field_add_comm.as_ref().unwrap(),
-                            ForeignFieldMul => index.foreign_field_mul_comm.as_ref().unwrap(),
-                        };
-                        scalars.push(scalar);
-                        commitments.push(c);
-                    }
-                }
+                let col = *col;
+                scalars.push(scalar);
+                commitments.push(
+                    context
+                        .get_column(col)
+                        .ok_or(VerifyError::MissingCommitment(col))?,
+                );
             }
         }
 
