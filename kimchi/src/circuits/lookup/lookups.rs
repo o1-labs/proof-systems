@@ -31,6 +31,77 @@ pub enum LookupsUsed {
     Joint,
 }
 
+/// Flags for each of the hard-coded lookup patterns.
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+pub struct LookupPatterns {
+    pub xor: bool,
+    pub chacha_final: bool,
+    pub lookup_gate: bool,
+    pub range_check_gate: bool,
+    pub foreign_field_mul_gate: bool,
+}
+
+impl IntoIterator for LookupPatterns {
+    type Item = LookupPattern;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        // Destructor pattern to make sure we add new lookup patterns.
+        let LookupPatterns {
+            xor,
+            chacha_final,
+            lookup_gate,
+            range_check_gate,
+            foreign_field_mul_gate,
+        } = self;
+
+        let mut patterns = Vec::with_capacity(5);
+
+        if xor {
+            patterns.push(LookupPattern::Xor)
+        }
+        if chacha_final {
+            patterns.push(LookupPattern::ChaChaFinal)
+        }
+        if lookup_gate {
+            patterns.push(LookupPattern::LookupGate)
+        }
+        if range_check_gate {
+            patterns.push(LookupPattern::RangeCheckGate)
+        }
+        if foreign_field_mul_gate {
+            patterns.push(LookupPattern::ForeignFieldMulGate)
+        }
+        patterns.into_iter()
+    }
+}
+
+impl std::ops::Index<LookupPattern> for LookupPatterns {
+    type Output = bool;
+
+    fn index(&self, index: LookupPattern) -> &Self::Output {
+        match index {
+            LookupPattern::Xor => &self.xor,
+            LookupPattern::ChaChaFinal => &self.chacha_final,
+            LookupPattern::LookupGate => &self.lookup_gate,
+            LookupPattern::RangeCheckGate => &self.range_check_gate,
+            LookupPattern::ForeignFieldMulGate => &self.foreign_field_mul_gate,
+        }
+    }
+}
+
+impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
+    fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
+        match index {
+            LookupPattern::Xor => &mut self.xor,
+            LookupPattern::ChaChaFinal => &mut self.chacha_final,
+            LookupPattern::LookupGate => &mut self.lookup_gate,
+            LookupPattern::RangeCheckGate => &mut self.range_check_gate,
+            LookupPattern::ForeignFieldMulGate => &mut self.foreign_field_mul_gate,
+        }
+    }
+}
+
 /// Describes the desired lookup configuration.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupInfo {
