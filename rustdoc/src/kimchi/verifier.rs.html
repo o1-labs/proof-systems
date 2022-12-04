@@ -819,6 +819,19 @@
 <a href="#819" id="819">819</a>
 <a href="#820" id="820">820</a>
 <a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -955,7 +968,7 @@
             .for_each(|c| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, c));
 
         <span class="comment">//~ 1. If lookup is used:
-        </span><span class="kw">let </span>joint_combiner = <span class="kw">if let </span><span class="prelude-val">Some</span>(l) = <span class="kw-2">&amp;</span>index.lookup_index {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(l) = <span class="kw-2">&amp;</span>index.lookup_index {
             <span class="kw">let </span>lookup_commits = <span class="self">self
                 </span>.commitments
                 .lookup
@@ -970,7 +983,9 @@
                     .ok_or(VerifyError::IncorrectRuntimeProof)<span class="question-mark">?</span>;
                 absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, runtime_commit);
             }
+        }
 
+        <span class="kw">let </span>joint_combiner = <span class="kw">if let </span><span class="prelude-val">Some</span>(l) = <span class="kw-2">&amp;</span>index.lookup_index {
             <span class="comment">//~~ - If it involves queries to a multiple-column lookup table,
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,
             //~~   otherwise set the joint combiner challenge $j&#39;$ to $0$.
@@ -987,15 +1002,23 @@
             <span class="kw">let </span>joint_combiner_field = joint_combiner.to_field(endo_r);
             <span class="kw">let </span>joint_combiner = (joint_combiner, joint_combiner_field);
 
-            <span class="comment">//~~ - absorb the commitments to the sorted polynomials.
-            </span><span class="kw">for </span>com <span class="kw">in </span><span class="kw-2">&amp;</span>lookup_commits.sorted {
-                absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, com);
-            }
-
             <span class="prelude-val">Some</span>(joint_combiner)
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
+
+        <span class="kw">if </span>index.lookup_index.is_some() {
+            <span class="kw">let </span>lookup_commits = <span class="self">self
+                </span>.commitments
+                .lookup
+                .as_ref()
+                .ok_or(VerifyError::LookupCommitmentMissing)<span class="question-mark">?</span>;
+
+            <span class="comment">//~~ - absorb the commitments to the sorted polynomials.
+            </span><span class="kw">for </span>com <span class="kw">in </span><span class="kw-2">&amp;</span>lookup_commits.sorted {
+                absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, com);
+            }
+        }
 
         <span class="comment">//~ 1. Sample $\beta$ with the Fq-Sponge.
         </span><span class="kw">let </span>beta = fq_sponge.challenge();
@@ -1038,6 +1061,18 @@
         <span class="comment">//~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
         </span>fr_sponge.absorb(<span class="kw-2">&amp;</span>digest);
 
+        <span class="comment">//~ 1. Absorb the previous recursion challenges.
+        </span><span class="kw">let </span>prev_challenge_digest = {
+            <span class="comment">// Note: we absorb in a new sponge here to limit the scope in which we need the
+            // more-expensive &#39;optional sponge&#39;.
+            </span><span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
+            <span class="kw">for </span>RecursionChallenge { chals, .. } <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.prev_challenges {
+                fr_sponge.absorb_multiple(chals);
+            }
+            fr_sponge.digest()
+        };
+        fr_sponge.absorb(<span class="kw-2">&amp;</span>prev_challenge_digest);
+
         <span class="comment">// prepare some often used values
         </span><span class="kw">let </span>zeta1 = zeta.pow(<span class="kw-2">&amp;</span>[n]);
         <span class="kw">let </span>zetaw = zeta * index.domain.group_gen;
@@ -1064,18 +1099,6 @@
                 (comm.clone(), evals)
             })
             .collect();
-
-        <span class="comment">//~ 1. Absorb the previous recursion challenges.
-        </span><span class="kw">let </span>prev_challenge_digest = {
-            <span class="comment">// Note: we absorb in a new sponge here to limit the scope in which we need the
-            // more-expensive &#39;optional sponge&#39;.
-            </span><span class="kw">let </span><span class="kw-2">mut </span>fr_sponge = EFrSponge::new(G::sponge_params());
-            <span class="kw">for </span>RecursionChallenge { chals, .. } <span class="kw">in </span><span class="kw-2">&amp;</span><span class="self">self</span>.prev_challenges {
-                fr_sponge.absorb_multiple(chals);
-            }
-            fr_sponge.digest()
-        };
-        fr_sponge.absorb(<span class="kw-2">&amp;</span>prev_challenge_digest);
 
         <span class="comment">// retrieve ranges for the powers of alphas
         </span><span class="kw">let </span><span class="kw-2">mut </span>all_alphas = index.powers_of_alpha.clone();
@@ -1315,15 +1338,18 @@
     }
 
     <span class="comment">//~ 1. Commit to the negated public input polynomial.
-    </span><span class="kw">let </span>lgr_comm = index
-        .srs()
-        .lagrange_bases
-        .get(<span class="kw-2">&amp;</span>index.domain.size())
-        .expect(<span class="string">&quot;pre-computed committed lagrange bases not found&quot;</span>);
-    <span class="kw">let </span>com: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().take(index.public).collect();
-    <span class="kw">let </span>elm: Vec&lt;<span class="kw">_</span>&gt; = proof.public.iter().map(|s| -<span class="kw-2">*</span>s).collect();
-    <span class="kw">let </span>public_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>com, <span class="kw-2">&amp;</span>elm);
-    <span class="kw">let </span>public_comm = {
+    </span><span class="kw">let </span>public_comm = {
+        <span class="kw">if </span>proof.public.len() != index.public {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectPubicInputLength(index.public));
+        }
+        <span class="kw">let </span>lgr_comm = index
+            .srs()
+            .lagrange_bases
+            .get(<span class="kw-2">&amp;</span>index.domain.size())
+            .expect(<span class="string">&quot;pre-computed committed lagrange bases not found&quot;</span>);
+        <span class="kw">let </span>com: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().take(index.public).collect();
+        <span class="kw">let </span>elm: Vec&lt;<span class="kw">_</span>&gt; = proof.public.iter().map(|s| -<span class="kw-2">*</span>s).collect();
+        <span class="kw">let </span>public_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>com, <span class="kw-2">&amp;</span>elm);
         index
             .srs()
             .mask_custom(
