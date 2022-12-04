@@ -336,7 +336,8 @@ where
 // TODO: move to lookup::index
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct LookupConfiguration<F: FftField> {
+#[serde(bound = "F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize")]
+pub struct LookupConfiguration<F> {
     /// The kind of lookups used
     pub lookup_used: LookupsUsed,
 
