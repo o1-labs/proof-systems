@@ -346,6 +346,7 @@ pub const XOR_TABLE_ID: i32 = 0;
 
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
+
 ```
 
 
@@ -1105,8 +1106,8 @@ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and const
 |    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
 |    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
 |    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-|    13 | crumb   `v0p6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
-| LS:14 | crumb   `v0p7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
+|    13 | crumb   `v0c6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
+| LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
 
 The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
 constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
@@ -1206,11 +1207,12 @@ These circuit gates are used to constrain that
 left_input +/- right_input = field_overflow * foreign_modulus + result
 ```
 
-Documentation:
+##### Documentation
 
- For more details please see the [FFadd RFC](../rfcs/ffadd.md)
+ For more details please see the [Foreign Field Addition RFC](../rfcs/foreign_field_add.md)
 
-Mapping:
+##### Mapping
+
  To make things clearer, the following mapping between the variable names
  used in the code and those of the RFC document can be helpful.
 
@@ -1227,8 +1229,7 @@ Mapping:
     bound_carry_mi  -> k1
 ```
 
-Note:
- Our limbs are 88-bit long. We denote with:
+Note: Our limbs are 88-bit long. We denote with:
  - `lo` the least significant limb (in little-endian, this is from 0 to 87)
  - `mi` the middle limb            (in little-endian, this is from 88 to 175)
  - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
@@ -1274,31 +1275,132 @@ but where the result is larger than the modulus (yet smaller than 2^{264}). The 
  final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
  (meaning less than the modulus).
 
-You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+##### Layout
 
-| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
-|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
-|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
-|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
-|   6 | `sign`           (copy) |                         |  1              (check) |                   |
-|   7 | `field_overflow`        |                         |  1              (check) |                   |
-|   8 | `carry_lo`              |                         | `bound_carry_lo`        |                   |
-|   9 | `carry_mi`              |                         | `bound_carry_mi`        |                   |
-|  10 |                         |                         |                         |                   |
-|  11 |                         |                         |                         |                   |
-|  12 |                         |                         |                         |                   |
-|  13 |                         |                         |                         |                   |
-|  14 |                         |                         |                         |                   |
+You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
+
+| col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
+|   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
+|   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
+|   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
+|   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
+|   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
+|   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
+|  10 |                         |                        |                         |                   |
+|  11 |                         |                        |                         |                   |
+|  12 |                         |                        |                         |                   |
+|  13 |                         |                        |                         |                   |
+|  14 |                         |                        |                         |                   |
 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
 specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
 be done by copy constraining these values with a public input value. One could have a specific gate
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.
+
+
+#### Foreign Field Multiplication
+
+This gadget is used to constrain that
+
+```text
+left_input * right_input = quotient * foreign_field_modulus + remainder
+```
+
+##### Documentation
+
+For more details please see the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+
+##### Notations
+
+For clarity, we use more descriptive variable names in the code than in
+the RFC, which uses mathematical notations.
+
+In order to relate the two documents, the following mapping between the
+variable names used in the code and those of the RFC can be helpful.
+
+```text
+left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
+left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
+
+   product1_lo => p10   product1_hi_0 => p110   product1_hi_1 => p111
+     carry0 => v0        carry1_lo => v10          carry1_hi => v11
+
+                    scaled_carry1_hi => scaled_v11
+         quotient_bound0 => q'0       quotient_bound12 => q'12
+
+  quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
+````
+
+##### Suffixes
+
+The variable names in this code uses descriptive suffixes to convey information about the
+positions of the bits referred to.  When a word is split into up to `n` parts
+we use: `0`, `1` ... `n` (where `n` is the most significant).  For example, if we split
+word `x` into three limbs, we'd name them `x0`, `x1` and `x2` or `x[0]`, `x[1]` and `x[2]`.
+
+Continuing in this fashion, when one of those words is subsequently split in half, then we
+add the suffixes `_lo` and `_hi`, where `hi` corresponds to the most significant bits.
+For our running example, `x1` would become `x1_lo` and `x1_hi`.  If we are splitting into
+more than two things, then we pick meaningful names for each.
+
+So far we've explained our conventions for a splitting depth of up to 2.  For splitting
+deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
+would be split into `x1_lo_0` and `x1_lo_1`.
+
+##### Parameters
+
+* `foreign_field_modulus` := foreign field modulus $f$ (stored in constraint system)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (computed by prover/verifier)
+
+```admonition::notice
+NB: the native field modulus is obtainable from F, the native field's trait bound below.
+```
+
+##### Witness
+
+* `left_input` := left foreign field element multiplicand $ ~\in F_f$
+* `right_input` := right foreign field element multiplicand $ ~\in F_f$
+* `quotient` := foreign field quotient $ ~\in F_f$
+* `remainder` := foreign field remainder $ ~\in F_f$
+* `carry0` := 2 bit carry
+* `carry1_lo` := low 88 bits of `carry1`
+* `carry1_hi` := high 3 bits of `carry1`
+* `scaled_carry1_hi` : = `carry1_hi` scaled by 2^9
+* `product1_lo` := lowest 88 bits of middle intermediate product
+* `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
+* `product1_hi_1` := highest 2 bits of middle intermediate product
+* `quotient_bound` := quotient bound for checking `q < f`
+* `quotient_bound_carry01` := quotient bound addition 1st carry bit
+* `quotient_bound_carry2` := quotient bound addition 2nd carry bit
+
+##### Layout
+
+The foreign field multiplication gate's rows are layed out like this
+
+| col | `ForeignFieldMul`            | `Zero`                    |
+| --- | ---------------------------- | ------------------------- |
+|   0 | `left_input0`         (copy) | `remainder0`       (copy) |
+|   1 | `left_input1`         (copy) | `remainder1`       (copy) |
+|   2 | `left_input2`         (copy) | `remainder2`       (copy) |
+|   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
+|   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
+|   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
+|   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
+|   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
+|   8 | `scaled_carry1_hi` (plookup) |                           |
+|   9 | `carry0`                     |                           |
+|  10 | `quotient0`                  |                           |
+|  11 | `quotient1`                  |                           |
+|  12 | `quotient2`                  |                           |
+|  13 | `quotient_bound_carry01`     |                           |
+|  14 | `quotient_bound_carry2`      |                           |
 
 
 #### Xor
@@ -1519,6 +1621,12 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of the quotient polynomial according to the supported constraints
     pub max_quot_size: usize,
 
+    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
+
+    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
     pub verifier_index: Option<VerifierIndex<G>>,
@@ -1609,7 +1717,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    /// Range check commitments
+    /// Range check polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
 
@@ -1619,6 +1727,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
+
+    /// Foreign field multiplication gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_mul_comm: Option<PolyComm<G>>,
 
     /// Xor commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -1722,7 +1834,7 @@ A proof consists of the following data structures:
 ```rs
 /// Evaluations of a polynomial at 2 points
 #[serde_as]
-#[derive(Copy, Clone, Serialize, Deserialize, Default)]
+#[derive(Copy, Clone, Serialize, Deserialize, Default, Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
@@ -1742,18 +1854,18 @@ pub struct PointEvaluations<Evals> {
 
 /// Evaluations of lookup polynomials
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
-pub struct LookupEvaluations<Eval> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LookupEvaluations<Evals> {
     /// sorted lookup table polynomial
-    pub sorted: Vec<Eval>,
+    pub sorted: Vec<Evals>,
     /// lookup aggregation polynomial
-    pub aggreg: Eval,
+    pub aggreg: Evals,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    pub table: Eval,
+    pub table: Evals,
 
     /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Eval>,
+    pub runtime: Option<Evals>,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -1761,28 +1873,28 @@ pub struct LookupEvaluations<Eval> {
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<Eval> {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProofEvaluations<Evals> {
     /// witness polynomials
-    pub w: [Eval; COLUMNS],
+    pub w: [Evals; COLUMNS],
     /// permutation polynomial
-    pub z: Eval,
+    pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    pub s: [Eval; PERMUTS - 1],
+    pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    pub coefficients: [Eval; COLUMNS],
+    pub coefficients: [Evals; COLUMNS],
     /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Eval>>,
+    pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
-    pub generic_selector: Eval,
+    pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
-    pub poseidon_selector: Eval,
+    pub poseidon_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
@@ -1795,7 +1907,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 
 /// All the commitments that the prover creates as part of the proof.
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverCommitments<G: AffineCurve> {
     /// The commitments to the witness (execution trace)
@@ -1810,7 +1922,7 @@ pub struct ProverCommitments<G: AffineCurve> {
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct ProverProof<G: AffineCurve> {
     /// All the polynomial commitments required in the proof
@@ -1836,7 +1948,7 @@ pub struct ProverProof<G: AffineCurve> {
 
 /// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct RecursionChallenge<G>
 where
