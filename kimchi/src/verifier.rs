@@ -15,7 +15,7 @@ use crate::{
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{ProverProof, RecursionChallenge},
+    proof::{PointEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -168,10 +168,10 @@ where
         let zeta1 = zeta.pow(&[n]);
         let zetaw = zeta * index.domain.group_gen;
         let evaluation_points = [zeta, zetaw];
-        let powers_of_eval_points_for_chunks = [
-            zeta.pow(&[index.max_poly_size as u64]),
-            zetaw.pow(&[index.max_poly_size as u64]),
-        ];
+        let powers_of_eval_points_for_chunks = PointEvaluations {
+            zeta: zeta.pow(&[index.max_poly_size as u64]),
+            zeta_omega: zetaw.pow(&[index.max_poly_size as u64]),
+        };
 
         //~ 1. Compute evaluations for the previous recursion challenges.
         let polys: Vec<(PolyComm<G>, _)> = self
@@ -181,7 +181,10 @@ where
                 let evals = challenge.evals(
                     index.max_poly_size,
                     &evaluation_points,
-                    &powers_of_eval_points_for_chunks,
+                    &[
+                        powers_of_eval_points_for_chunks.zeta,
+                        powers_of_eval_points_for_chunks.zeta_omega,
+                    ],
                 );
                 let RecursionChallenge { chals: _, comm } = challenge;
                 (comm.clone(), evals)
@@ -259,7 +262,7 @@ where
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         fr_sponge.absorb_multiple(&public_evals[0]);
         fr_sponge.absorb_multiple(&public_evals[1]);
-        fr_sponge.absorb_evaluations([&self.evals[0], &self.evals[1]]);
+        fr_sponge.absorb_evaluations(&self.evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
@@ -275,10 +278,7 @@ where
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
 
-        let evals = vec![
-            self.evals[0].combine(powers_of_eval_points_for_chunks[0]),
-            self.evals[1].combine(powers_of_eval_points_for_chunks[1]),
-        ];
+        let evals = self.evals.combine(&powers_of_eval_points_for_chunks);
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
@@ -297,12 +297,12 @@ where
                 .next()
                 .expect("missing power of alpha for permutation");
 
-            let init = (evals[0].w[PERMUTS - 1] + gamma) * evals[1].z * alpha0 * zkp;
-            let mut ft_eval0 = evals[0]
+            let init = (evals.w[PERMUTS - 1].zeta + gamma) * evals.z.zeta_omega * alpha0 * zkp;
+            let mut ft_eval0 = evals
                 .w
                 .iter()
-                .zip(evals[0].s.iter())
-                .map(|(w, s)| (beta * s) + w + gamma)
+                .zip(evals.s.iter())
+                .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
                 .fold(init, |x, y| x * y);
 
             ft_eval0 -= if public_evals[0].is_empty() {
@@ -311,16 +311,16 @@ where
                 public_evals[0][0]
             };
 
-            ft_eval0 -= evals[0]
+            ft_eval0 -= evals
                 .w
                 .iter()
                 .zip(index.shift.iter())
-                .map(|(w, s)| gamma + (beta * zeta * s) + w)
-                .fold(alpha0 * zkp * evals[0].z, |x, y| x * y);
+                .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
+                .fold(alpha0 * zkp * evals.z.zeta, |x, y| x * y);
 
             let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
-                * (G::ScalarField::one() - evals[0].z);
+                * (G::ScalarField::one() - evals.z.zeta);
 
             let denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
             let denominator = denominator.inverse().expect("negligible probability");
@@ -359,31 +359,31 @@ where
             es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             es.push((
-                self.evals.iter().map(|e| e.z.clone()).collect::<Vec<_>>(),
+                vec![self.evals.z.zeta.clone(), self.evals.z.zeta_omega.clone()],
                 None,
             ));
             es.push((
-                self.evals
-                    .iter()
-                    .map(|e| e.generic_selector.clone())
-                    .collect::<Vec<_>>(),
+                vec![
+                    self.evals.generic_selector.zeta.clone(),
+                    self.evals.generic_selector.zeta_omega.clone(),
+                ],
                 None,
             ));
             es.push((
-                self.evals
-                    .iter()
-                    .map(|e| e.poseidon_selector.clone())
-                    .collect::<Vec<_>>(),
+                vec![
+                    self.evals.poseidon_selector.zeta.clone(),
+                    self.evals.poseidon_selector.zeta_omega.clone(),
+                ],
                 None,
             ));
             es.extend(
                 (0..COLUMNS)
                     .map(|c| {
                         (
-                            self.evals
-                                .iter()
-                                .map(|e| e.w[c].clone())
-                                .collect::<Vec<_>>(),
+                            vec![
+                                self.evals.w[c].zeta.clone(),
+                                self.evals.w[c].zeta_omega.clone(),
+                            ],
                             None,
                         )
                     })
@@ -393,10 +393,10 @@ where
                 (0..COLUMNS)
                     .map(|c| {
                         (
-                            self.evals
-                                .iter()
-                                .map(|e| e.coefficients[c].clone())
-                                .collect::<Vec<_>>(),
+                            vec![
+                                self.evals.coefficients[c].zeta.clone(),
+                                self.evals.coefficients[c].zeta_omega.clone(),
+                            ],
                             None,
                         )
                     })
@@ -406,10 +406,10 @@ where
                 (0..PERMUTS - 1)
                     .map(|c| {
                         (
-                            self.evals
-                                .iter()
-                                .map(|e| e.s[c].clone())
-                                .collect::<Vec<_>>(),
+                            vec![
+                                self.evals.s[c].zeta.clone(),
+                                self.evals.s[c].zeta_omega.clone(),
+                            ],
                             None,
                         )
                     })
@@ -515,10 +515,7 @@ where
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
-    let evals = vec![
-        proof.evals[0].combine(powers_of_eval_points_for_chunks[0]),
-        proof.evals[1].combine(powers_of_eval_points_for_chunks[1]),
-    ];
+    let evals = proof.evals.combine(&powers_of_eval_points_for_chunks);
 
     //~ 4. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
@@ -695,27 +692,25 @@ where
     //~~ - permutation commitment
     evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
+        evaluations: vec![proof.evals.z.zeta.clone(), proof.evals.z.zeta_omega.clone()],
         degree_bound: None,
     });
 
     //~~ - index commitments that use the coefficients
     evaluations.push(Evaluation {
         commitment: index.generic_comm.clone(),
-        evaluations: proof
-            .evals
-            .iter()
-            .map(|e| e.generic_selector.clone())
-            .collect(),
+        evaluations: vec![
+            proof.evals.generic_selector.zeta.clone(),
+            proof.evals.generic_selector.zeta_omega.clone(),
+        ],
         degree_bound: None,
     });
     evaluations.push(Evaluation {
         commitment: index.psm_comm.clone(),
-        evaluations: proof
-            .evals
-            .iter()
-            .map(|e| e.poseidon_selector.clone())
-            .collect(),
+        evaluations: vec![
+            proof.evals.poseidon_selector.zeta.clone(),
+            proof.evals.poseidon_selector.zeta_omega.clone(),
+        ],
         degree_bound: None,
     });
 
@@ -728,11 +723,10 @@ where
             .zip(
                 (0..COLUMNS)
                     .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.w[i].clone())
-                            .collect::<Vec<_>>()
+                        vec![
+                            proof.evals.w[i].zeta.clone(),
+                            proof.evals.w[i].zeta_omega.clone(),
+                        ]
                     })
                     .collect::<Vec<_>>(),
             )
@@ -751,11 +745,10 @@ where
             .zip(
                 (0..COLUMNS)
                     .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.coefficients[i].clone())
-                            .collect::<Vec<_>>()
+                        vec![
+                            proof.evals.coefficients[i].zeta.clone(),
+                            proof.evals.coefficients[i].zeta_omega.clone(),
+                        ]
                     })
                     .collect::<Vec<_>>(),
             )
@@ -774,11 +767,10 @@ where
             .zip(
                 (0..PERMUTS - 1)
                     .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.s[i].clone())
-                            .collect::<Vec<_>>()
+                        vec![
+                            proof.evals.s[i].zeta.clone(),
+                            proof.evals.s[i].zeta_omega.clone(),
+                        ]
                     })
                     .collect::<Vec<_>>(),
             )
@@ -796,30 +788,23 @@ where
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupCommitmentMissing)?;
-        let lookup_eval0 = proof.evals[0]
-            .lookup
-            .as_ref()
-            .ok_or(VerifyError::LookupEvalsMissing)?;
-        let lookup_eval1 = proof.evals[1]
+        let lookup_eval = proof
+            .evals
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
 
         // check that the there's as many evals as commitments for sorted polynomials
         let sorted_len = lookup_comms.sorted.len();
-        if sorted_len != lookup_eval0.sorted.len() || sorted_len != lookup_eval1.sorted.len() {
+        if sorted_len != lookup_eval.sorted.len() {
             return Err(VerifyError::ProofInconsistentLookup);
         }
 
         // add evaluations of sorted polynomials
-        for (comm, evals0, evals1) in izip!(
-            &lookup_comms.sorted,
-            lookup_eval0.sorted.clone(),
-            lookup_eval1.sorted.clone()
-        ) {
+        for (comm, evals) in izip!(&lookup_comms.sorted, lookup_eval.sorted.clone(),) {
             evaluations.push(Evaluation {
                 commitment: comm.clone(),
-                evaluations: vec![evals0, evals1],
+                evaluations: vec![evals.zeta, evals.zeta_omega],
                 degree_bound: None,
             });
         }
@@ -827,7 +812,10 @@ where
         // add evaluations of the aggreg polynomial
         evaluations.push(Evaluation {
             commitment: lookup_comms.aggreg.clone(),
-            evaluations: vec![lookup_eval0.aggreg.clone(), lookup_eval1.aggreg.clone()],
+            evaluations: vec![
+                lookup_eval.aggreg.zeta.clone(),
+                lookup_eval.aggreg.zeta_omega.clone(),
+            ],
             degree_bound: None,
         });
 
@@ -852,7 +840,10 @@ where
         // add evaluation of the table polynomial
         evaluations.push(Evaluation {
             commitment: table_comm,
-            evaluations: vec![lookup_eval0.table.clone(), lookup_eval1.table.clone()],
+            evaluations: vec![
+                lookup_eval.table.zeta.clone(),
+                lookup_eval.table.zeta_omega.clone(),
+            ],
             degree_bound: None,
         });
 
@@ -862,20 +853,15 @@ where
                 .runtime
                 .as_ref()
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
-            let runtime_eval0 = lookup_eval0
+            let runtime_eval = lookup_eval
                 .runtime
                 .as_ref()
-                .cloned()
-                .ok_or(VerifyError::IncorrectRuntimeProof)?;
-            let runtime_eval1 = lookup_eval1
-                .runtime
-                .as_ref()
-                .cloned()
+                .map(|x| x.map_ref(&|x| x.clone()))
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
 
             evaluations.push(Evaluation {
                 commitment: runtime.clone(),
-                evaluations: vec![runtime_eval0, runtime_eval1],
+                evaluations: vec![runtime_eval.zeta, runtime_eval.zeta_omega],
                 degree_bound: None,
             });
         }

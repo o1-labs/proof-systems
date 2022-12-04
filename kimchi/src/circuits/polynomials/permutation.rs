@@ -48,7 +48,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::ProverError,
-    proof::ProofEvaluations,
+    proof::{PointEvaluations, ProofEvaluations},
     prover_index::ProverIndex,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
@@ -326,7 +326,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &[ProofEvaluations<F>],
+        e: &ProofEvaluations<PointEvaluations<F>>,
         zeta: F,
         beta: F,
         gamma: F,
@@ -345,7 +345,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
 
 impl<F: PrimeField> ConstraintSystem<F> {
     pub fn perm_scalars(
-        e: &[ProofEvaluations<F>],
+        e: &ProofEvaluations<PointEvaluations<F>>,
         beta: F,
         gamma: F,
         mut alphas: impl Iterator<Item = F>,
@@ -375,13 +375,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~ \end{align}
         //~$$
         //~
-        let init = e[1].z * beta * alpha0 * zkp_zeta;
-        let res = e[0]
-            .w
-            .iter()
-            .zip(e[0].s.iter())
-            .map(|(w, s)| gamma + (beta * s) + w)
-            .fold(init, |x, y| x * y);
+        let init = e.z.zeta_omega * beta * alpha0 * zkp_zeta;
+        let res =
+            e.w.iter()
+                .zip(e.s.iter())
+                .map(|(w, s)| gamma + (beta * s.zeta) + w.zeta)
+                .fold(init, |x, y| x * y);
         -res
     }
 }
