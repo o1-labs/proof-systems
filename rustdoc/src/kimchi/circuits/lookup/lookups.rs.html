@@ -469,6 +469,10 @@
 <a href="#469" id="469">469</a>
 <a href="#470" id="470">470</a>
 <a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
@@ -748,6 +752,10 @@
 
 <span class="attr">#[derive(
     Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq, PartialOrd, Ord, Hash,
+)]
+#[cfg_attr(
+    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 </span><span class="kw">pub enum </span>LookupPattern {
     Xor,

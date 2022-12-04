@@ -516,6 +516,8 @@
 <a href="#516" id="516">516</a>
 <a href="#517" id="517">517</a>
 <a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
@@ -523,7 +525,10 @@
     alphas::Alphas,
     circuits::{
         expr::{Linearization, PolishToken},
-        lookup::{index::LookupSelectors, lookups::LookupsUsed},
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupInfo, LookupsUsed},
+        },
         polynomials::{
             permutation::{zk_polynomial, zk_w3},
             range_check,
@@ -568,8 +573,8 @@
     </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>table_ids: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
-    <span class="doccomment">/// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    </span><span class="kw">pub </span>max_joint_size: u32,
+    <span class="doccomment">/// Information about the specific lookups used
+    </span><span class="kw">pub </span>lookup_info: LookupInfo,
 
     <span class="doccomment">/// An optional selector polynomial for runtime tables
     </span><span class="attr">#[serde(bound = <span class="string">&quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;</span>)]
@@ -699,6 +704,7 @@
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     lookup_used: cs.configuration.lookup_used,
+                    lookup_info: cs.configuration.lookup_info.clone(),
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
@@ -711,7 +717,6 @@
                     table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
                         <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, table_ids8)
                     }),
-                    max_joint_size: cs.configuration.lookup_info.max_joint_size,
                     runtime_tables_selector: cs
                         .runtime_selector
                         .as_ref()
@@ -989,6 +994,7 @@
 
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(LookupVerifierIndex {
             lookup_used: <span class="kw">_</span>,
+            lookup_info: <span class="kw">_</span>,
             lookup_table,
             table_ids,
             runtime_tables_selector,
@@ -1001,8 +1007,6 @@
                     range_check_gate,
                     ffmul_gate,
                 },
-
-            max_joint_size: <span class="kw">_</span>,
         }) = lookup_index
         {
             <span class="kw">for </span>entry <span class="kw">in </span>lookup_table {
