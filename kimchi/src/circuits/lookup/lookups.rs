@@ -278,6 +278,10 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
 #[derive(
     Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum LookupPattern {
     Xor,
     ChaChaFinal,

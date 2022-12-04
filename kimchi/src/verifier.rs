@@ -23,7 +23,6 @@ use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
     absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
-use itertools::izip;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
@@ -640,7 +639,21 @@ where
     .chain((0..COLUMNS).map(Column::Coefficient))
     //~~ - sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
-    {
+    //~~ - lookup commitments
+    .chain(
+        index
+            .lookup_index
+            .as_ref()
+            .map(|li| {
+                // add evaluations of sorted polynomials
+                (0..li.lookup_info.max_per_row + 1)
+                    .map(Column::LookupSorted)
+                    // add evaluations of the aggreg polynomial
+                    .chain([Column::LookupAggreg].into_iter())
+            })
+            .into_iter()
+            .flatten(),
+    ) {
         let evals = proof
             .evals
             .get_column(col)
@@ -655,7 +668,6 @@ where
         });
     }
 
-    //~~ - lookup commitments
     if let Some(li) = &index.lookup_index {
         let lookup_comms = proof
             .commitments
@@ -668,37 +680,14 @@ where
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
 
-        // check that the there's as many evals as commitments for sorted polynomials
-        let sorted_len = lookup_comms.sorted.len();
-        if sorted_len != lookup_eval.sorted.len() {
-            return Err(VerifyError::ProofInconsistentLookup);
-        }
-
-        // add evaluations of sorted polynomials
-        for (comm, evals) in izip!(&lookup_comms.sorted, lookup_eval.sorted.clone(),) {
-            evaluations.push(Evaluation {
-                commitment: comm.clone(),
-                evaluations: vec![evals.zeta, evals.zeta_omega],
-                degree_bound: None,
-            });
-        }
-
-        // add evaluations of the aggreg polynomial
-        evaluations.push(Evaluation {
-            commitment: lookup_comms.aggreg.clone(),
-            evaluations: vec![
-                lookup_eval.aggreg.zeta.clone(),
-                lookup_eval.aggreg.zeta_omega.clone(),
-            ],
-            degree_bound: None,
-        });
-
         // compute table commitment
         let table_comm = {
             let joint_combiner = oracles
                 .joint_combiner
                 .expect("joint_combiner should be present if lookups are used");
-            let table_id_combiner = joint_combiner.1.pow([u64::from(li.max_joint_size)]);
+            let table_id_combiner = joint_combiner
+                .1
+                .pow([u64::from(li.lookup_info.max_joint_size)]);
             let lookup_table: Vec<_> = li.lookup_table.iter().collect();
             let runtime = lookup_comms.runtime.as_ref();
 
