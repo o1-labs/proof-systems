@@ -520,6 +520,15 @@ pub mod caml {
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
         ),
+        pub z: PointEvaluations<Vec<CamlF>>,
+        pub s: (
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+            PointEvaluations<Vec<CamlF>>,
+        ),
         pub coefficients: (
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
@@ -537,19 +546,11 @@ pub mod caml {
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
         ),
-        pub z: PointEvaluations<Vec<CamlF>>,
-        pub s: (
-            PointEvaluations<Vec<CamlF>>,
-            PointEvaluations<Vec<CamlF>>,
-            PointEvaluations<Vec<CamlF>>,
-            PointEvaluations<Vec<CamlF>>,
-            PointEvaluations<Vec<CamlF>>,
-            PointEvaluations<Vec<CamlF>>,
-        ),
+        pub lookup: Option<CamlLookupEvaluations<CamlF>>,
+
         pub generic_selector: PointEvaluations<Vec<CamlF>>,
         pub poseidon_selector: PointEvaluations<Vec<CamlF>>,
 
-        pub lookup: Option<CamlLookupEvaluations<CamlF>>,
     }
 
     //
