@@ -788,9 +788,37 @@
 <a href="#788" id="788">788</a>
 <a href="#789" id="789">789</a>
 <a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the data structures of a proof.
 
-</span><span class="kw">use </span><span class="kw">crate</span>::circuits::wires::{COLUMNS, PERMUTS};
+</span><span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    expr::Column,
+    gate::GateType,
+    wires::{COLUMNS, PERMUTS},
+};
 <span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::{FftField, One, Zero};
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
@@ -1180,6 +1208,26 @@
             zeta: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>evals.zeta, pt.zeta),
             zeta_omega: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>evals.zeta_omega, pt.zeta_omega),
         })
+    }
+}
+
+<span class="kw">impl</span>&lt;F&gt; ProofEvaluations&lt;F&gt; {
+    <span class="kw">pub fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>F&gt; {
+        <span class="kw">match </span>col {
+            Column::Witness(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.w[i]),
+            Column::Z =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.z),
+            Column::LookupSorted(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.lookup.as_ref()<span class="question-mark">?</span>.sorted[i]),
+            Column::LookupAggreg =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.lookup.as_ref()<span class="question-mark">?</span>.aggreg),
+            Column::LookupTable =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.lookup.as_ref()<span class="question-mark">?</span>.table),
+            Column::LookupKindIndex(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+            Column::LookupRuntimeSelector =&gt; <span class="prelude-val">None</span>,
+            Column::LookupRuntimeTable =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.lookup.as_ref()<span class="question-mark">?</span>.runtime.as_ref()<span class="question-mark">?</span>),
+            Column::Index(GateType::Generic) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.generic_selector),
+            Column::Index(GateType::Poseidon) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.poseidon_selector),
+            Column::Index(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
+            Column::Coefficient(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.coefficients[i]),
+            Column::Permutation(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.s[i]),
+        }
     }
 }
 

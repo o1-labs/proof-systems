@@ -2842,6 +2842,11 @@
 <a href="#2842" id="2842">2842</a>
 <a href="#2843" id="2843">2843</a>
 <a href="#2844" id="2844">2844</a>
+<a href="#2845" id="2845">2845</a>
+<a href="#2846" id="2846">2846</a>
+<a href="#2847" id="2847">2847</a>
+<a href="#2848" id="2848">2848</a>
+<a href="#2849" id="2849">2849</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -3022,6 +3027,7 @@
                 <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
                 <span class="prelude-val">Some</span>(e) =&gt; <span class="prelude-val">Some</span>(e),
             },
+            Permutation(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
         }
     }
 }
@@ -3067,6 +3073,7 @@
     LookupRuntimeTable,
     Index(GateType),
     Coefficient(usize),
+    Permutation(usize),
 }
 
 <span class="kw">impl </span>Column {
@@ -3092,6 +3099,7 @@
                 <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, gate)
             }
             Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c_{{{}}}&quot;</span>, i),
+            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_{{{}}}&quot;</span>, i),
         }
     }
 
@@ -3109,6 +3117,7 @@
                 <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, gate)
             }
             Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c[{}]&quot;</span>, i),
+            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_[{}]&quot;</span>, i),
         }
     }
 }
@@ -3434,6 +3443,7 @@
                 LookupRuntimeTable =&gt; l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
                 Index(GateType::Poseidon) =&gt; <span class="prelude-val">Ok</span>(evals.poseidon_selector),
                 Index(GateType::Generic) =&gt; <span class="prelude-val">Ok</span>(evals.generic_selector),
+                Permutation(i) =&gt; <span class="prelude-val">Ok</span>(evals.s[i]),
                 Coefficient(i) =&gt; <span class="prelude-val">Ok</span>(evals.coefficients[i]),
                 LookupKindIndex(<span class="kw">_</span>) | LookupRuntimeSelector | Index(<span class="kw">_</span>) =&gt; {
                     <span class="prelude-val">Err</span>(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col))
