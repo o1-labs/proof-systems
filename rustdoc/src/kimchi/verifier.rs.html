@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>verifier.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-bc83104505b8ebd3.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>verifier.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e963ab4a0d0c903e.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -956,20 +956,6 @@
 <a href="#956" id="956">956</a>
 <a href="#957" id="957">957</a>
 <a href="#958" id="958">958</a>
-<a href="#959" id="959">959</a>
-<a href="#960" id="960">960</a>
-<a href="#961" id="961">961</a>
-<a href="#962" id="962">962</a>
-<a href="#963" id="963">963</a>
-<a href="#964" id="964">964</a>
-<a href="#965" id="965">965</a>
-<a href="#966" id="966">966</a>
-<a href="#967" id="967">967</a>
-<a href="#968" id="968">968</a>
-<a href="#969" id="969">969</a>
-<a href="#970" id="970">970</a>
-<a href="#971" id="971">971</a>
-<a href="#972" id="972">972</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -987,7 +973,7 @@
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{ProverProof, RecursionChallenge},
+    proof::{PointEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
@@ -1140,10 +1126,10 @@
         </span><span class="kw">let </span>zeta1 = zeta.pow(<span class="kw-2">&amp;</span>[n]);
         <span class="kw">let </span>zetaw = zeta * index.domain.group_gen;
         <span class="kw">let </span>evaluation_points = [zeta, zetaw];
-        <span class="kw">let </span>powers_of_eval_points_for_chunks = [
-            zeta.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]),
-            zetaw.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]),
-        ];
+        <span class="kw">let </span>powers_of_eval_points_for_chunks = PointEvaluations {
+            zeta: zeta.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]),
+            zeta_omega: zetaw.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]),
+        };
 
         <span class="comment">//~ 1. Compute evaluations for the previous recursion challenges.
         </span><span class="kw">let </span>polys: Vec&lt;(PolyComm&lt;G&gt;, <span class="kw">_</span>)&gt; = <span class="self">self
@@ -1153,7 +1139,10 @@
                 <span class="kw">let </span>evals = challenge.evals(
                     index.max_poly_size,
                     <span class="kw-2">&amp;</span>evaluation_points,
-                    <span class="kw-2">&amp;</span>powers_of_eval_points_for_chunks,
+                    <span class="kw-2">&amp;</span>[
+                        powers_of_eval_points_for_chunks.zeta,
+                        powers_of_eval_points_for_chunks.zeta_omega,
+                    ],
                 );
                 <span class="kw">let </span>RecursionChallenge { chals: <span class="kw">_</span>, comm } = challenge;
                 (comm.clone(), evals)
@@ -1231,7 +1220,7 @@
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         </span>fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">0</span>]);
         fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">1</span>]);
-        fr_sponge.absorb_evaluations([<span class="kw-2">&amp;</span><span class="self">self</span>.evals[<span class="number">0</span>], <span class="kw-2">&amp;</span><span class="self">self</span>.evals[<span class="number">1</span>]]);
+        fr_sponge.absorb_evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>.evals);
 
         <span class="comment">//~ 1. Sample $v&#39;$ with the Fr-Sponge.
         </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
@@ -1247,10 +1236,7 @@
 
         <span class="comment">//~ 1. Create a list of all polynomials that have an evaluation proof.
 
-        </span><span class="kw">let </span>evals = <span class="macro">vec!</span>[
-            <span class="self">self</span>.evals[<span class="number">0</span>].combine(powers_of_eval_points_for_chunks[<span class="number">0</span>]),
-            <span class="self">self</span>.evals[<span class="number">1</span>].combine(powers_of_eval_points_for_chunks[<span class="number">1</span>]),
-        ];
+        </span><span class="kw">let </span>evals = <span class="self">self</span>.evals.combine(<span class="kw-2">&amp;</span>powers_of_eval_points_for_chunks);
 
         <span class="comment">//~ 1. Compute the evaluation of $ft(\zeta)$.
         </span><span class="kw">let </span>ft_eval0 = {
@@ -1269,12 +1255,12 @@
                 .next()
                 .expect(<span class="string">&quot;missing power of alpha for permutation&quot;</span>);
 
-            <span class="kw">let </span>init = (evals[<span class="number">0</span>].w[PERMUTS - <span class="number">1</span>] + gamma) * evals[<span class="number">1</span>].z * alpha0 * zkp;
-            <span class="kw">let </span><span class="kw-2">mut </span>ft_eval0 = evals[<span class="number">0</span>]
+            <span class="kw">let </span>init = (evals.w[PERMUTS - <span class="number">1</span>].zeta + gamma) * evals.z.zeta_omega * alpha0 * zkp;
+            <span class="kw">let </span><span class="kw-2">mut </span>ft_eval0 = evals
                 .w
                 .iter()
-                .zip(evals[<span class="number">0</span>].s.iter())
-                .map(|(w, s)| (beta * s) + w + gamma)
+                .zip(evals.s.iter())
+                .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
                 .fold(init, |x, y| x * y);
 
             ft_eval0 -= <span class="kw">if </span>public_evals[<span class="number">0</span>].is_empty() {
@@ -1283,16 +1269,16 @@
                 public_evals[<span class="number">0</span>][<span class="number">0</span>]
             };
 
-            ft_eval0 -= evals[<span class="number">0</span>]
+            ft_eval0 -= evals
                 .w
                 .iter()
                 .zip(index.shift.iter())
-                .map(|(w, s)| gamma + (beta * zeta * s) + w)
-                .fold(alpha0 * zkp * evals[<span class="number">0</span>].z, |x, y| x * y);
+                .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
+                .fold(alpha0 * zkp * evals.z.zeta, |x, y| x * y);
 
             <span class="kw">let </span>numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
-                * (G::ScalarField::one() - evals[<span class="number">0</span>].z);
+                * (G::ScalarField::one() - evals.z.zeta);
 
             <span class="kw">let </span>denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
             <span class="kw">let </span>denominator = denominator.inverse().expect(<span class="string">&quot;negligible probability&quot;</span>);
@@ -1331,31 +1317,31 @@
             es.push((public_evals.to_vec(), <span class="prelude-val">None</span>));
             es.push((<span class="macro">vec!</span>[ft_eval0, ft_eval1], <span class="prelude-val">None</span>));
             es.push((
-                <span class="self">self</span>.evals.iter().map(|e| e.z.clone()).collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                <span class="macro">vec!</span>[<span class="self">self</span>.evals.z.zeta.clone(), <span class="self">self</span>.evals.z.zeta_omega.clone()],
                 <span class="prelude-val">None</span>,
             ));
             es.push((
-                <span class="self">self</span>.evals
-                    .iter()
-                    .map(|e| e.generic_selector.clone())
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                <span class="macro">vec!</span>[
+                    <span class="self">self</span>.evals.generic_selector.zeta.clone(),
+                    <span class="self">self</span>.evals.generic_selector.zeta_omega.clone(),
+                ],
                 <span class="prelude-val">None</span>,
             ));
             es.push((
-                <span class="self">self</span>.evals
-                    .iter()
-                    .map(|e| e.poseidon_selector.clone())
-                    .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                <span class="macro">vec!</span>[
+                    <span class="self">self</span>.evals.poseidon_selector.zeta.clone(),
+                    <span class="self">self</span>.evals.poseidon_selector.zeta_omega.clone(),
+                ],
                 <span class="prelude-val">None</span>,
             ));
             es.extend(
                 (<span class="number">0</span>..COLUMNS)
                     .map(|c| {
                         (
-                            <span class="self">self</span>.evals
-                                .iter()
-                                .map(|e| e.w[c].clone())
-                                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                            <span class="macro">vec!</span>[
+                                <span class="self">self</span>.evals.w[c].zeta.clone(),
+                                <span class="self">self</span>.evals.w[c].zeta_omega.clone(),
+                            ],
                             <span class="prelude-val">None</span>,
                         )
                     })
@@ -1365,10 +1351,10 @@
                 (<span class="number">0</span>..COLUMNS)
                     .map(|c| {
                         (
-                            <span class="self">self</span>.evals
-                                .iter()
-                                .map(|e| e.coefficients[c].clone())
-                                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                            <span class="macro">vec!</span>[
+                                <span class="self">self</span>.evals.coefficients[c].zeta.clone(),
+                                <span class="self">self</span>.evals.coefficients[c].zeta_omega.clone(),
+                            ],
                             <span class="prelude-val">None</span>,
                         )
                     })
@@ -1378,10 +1364,10 @@
                 (<span class="number">0</span>..PERMUTS - <span class="number">1</span>)
                     .map(|c| {
                         (
-                            <span class="self">self</span>.evals
-                                .iter()
-                                .map(|e| e.s[c].clone())
-                                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
+                            <span class="macro">vec!</span>[
+                                <span class="self">self</span>.evals.s[c].zeta.clone(),
+                                <span class="self">self</span>.evals.s[c].zeta_omega.clone(),
+                            ],
                             <span class="prelude-val">None</span>,
                         )
                     })
@@ -1487,10 +1473,7 @@
     <span class="comment">//~ 1. Combine the chunked polynomials&#39; evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
-    </span><span class="kw">let </span>evals = <span class="macro">vec!</span>[
-        proof.evals[<span class="number">0</span>].combine(powers_of_eval_points_for_chunks[<span class="number">0</span>]),
-        proof.evals[<span class="number">1</span>].combine(powers_of_eval_points_for_chunks[<span class="number">1</span>]),
-    ];
+    </span><span class="kw">let </span>evals = proof.evals.combine(<span class="kw-2">&amp;</span>powers_of_eval_points_for_chunks);
 
     <span class="comment">//~ 4. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
@@ -1667,27 +1650,25 @@
     <span class="comment">//~~ - permutation commitment
     </span>evaluations.push(Evaluation {
         commitment: proof.commitments.z_comm.clone(),
-        evaluations: proof.evals.iter().map(|e| e.z.clone()).collect(),
+        evaluations: <span class="macro">vec!</span>[proof.evals.z.zeta.clone(), proof.evals.z.zeta_omega.clone()],
         degree_bound: <span class="prelude-val">None</span>,
     });
 
     <span class="comment">//~~ - index commitments that use the coefficients
     </span>evaluations.push(Evaluation {
         commitment: index.generic_comm.clone(),
-        evaluations: proof
-            .evals
-            .iter()
-            .map(|e| e.generic_selector.clone())
-            .collect(),
+        evaluations: <span class="macro">vec!</span>[
+            proof.evals.generic_selector.zeta.clone(),
+            proof.evals.generic_selector.zeta_omega.clone(),
+        ],
         degree_bound: <span class="prelude-val">None</span>,
     });
     evaluations.push(Evaluation {
         commitment: index.psm_comm.clone(),
-        evaluations: proof
-            .evals
-            .iter()
-            .map(|e| e.poseidon_selector.clone())
-            .collect(),
+        evaluations: <span class="macro">vec!</span>[
+            proof.evals.poseidon_selector.zeta.clone(),
+            proof.evals.poseidon_selector.zeta_omega.clone(),
+        ],
         degree_bound: <span class="prelude-val">None</span>,
     });
 
@@ -1700,11 +1681,10 @@
             .zip(
                 (<span class="number">0</span>..COLUMNS)
                     .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.w[i].clone())
-                            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                        <span class="macro">vec!</span>[
+                            proof.evals.w[i].zeta.clone(),
+                            proof.evals.w[i].zeta_omega.clone(),
+                        ]
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             )
@@ -1723,11 +1703,10 @@
             .zip(
                 (<span class="number">0</span>..COLUMNS)
                     .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.coefficients[i].clone())
-                            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                        <span class="macro">vec!</span>[
+                            proof.evals.coefficients[i].zeta.clone(),
+                            proof.evals.coefficients[i].zeta_omega.clone(),
+                        ]
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             )
@@ -1746,11 +1725,10 @@
             .zip(
                 (<span class="number">0</span>..PERMUTS - <span class="number">1</span>)
                     .map(|i| {
-                        proof
-                            .evals
-                            .iter()
-                            .map(|e| e.s[i].clone())
-                            .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+                        <span class="macro">vec!</span>[
+                            proof.evals.s[i].zeta.clone(),
+                            proof.evals.s[i].zeta_omega.clone(),
+                        ]
                     })
                     .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
             )
@@ -1768,30 +1746,23 @@
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupCommitmentMissing)<span class="question-mark">?</span>;
-        <span class="kw">let </span>lookup_eval0 = proof.evals[<span class="number">0</span>]
-            .lookup
-            .as_ref()
-            .ok_or(VerifyError::LookupEvalsMissing)<span class="question-mark">?</span>;
-        <span class="kw">let </span>lookup_eval1 = proof.evals[<span class="number">1</span>]
+        <span class="kw">let </span>lookup_eval = proof
+            .evals
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)<span class="question-mark">?</span>;
 
         <span class="comment">// check that the there&#39;s as many evals as commitments for sorted polynomials
         </span><span class="kw">let </span>sorted_len = lookup_comms.sorted.len();
-        <span class="kw">if </span>sorted_len != lookup_eval0.sorted.len() || sorted_len != lookup_eval1.sorted.len() {
+        <span class="kw">if </span>sorted_len != lookup_eval.sorted.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::ProofInconsistentLookup);
         }
 
         <span class="comment">// add evaluations of sorted polynomials
-        </span><span class="kw">for </span>(comm, evals0, evals1) <span class="kw">in </span><span class="macro">izip!</span>(
-            <span class="kw-2">&amp;</span>lookup_comms.sorted,
-            lookup_eval0.sorted.clone(),
-            lookup_eval1.sorted.clone()
-        ) {
+        </span><span class="kw">for </span>(comm, evals) <span class="kw">in </span><span class="macro">izip!</span>(<span class="kw-2">&amp;</span>lookup_comms.sorted, lookup_eval.sorted.clone(),) {
             evaluations.push(Evaluation {
                 commitment: comm.clone(),
-                evaluations: <span class="macro">vec!</span>[evals0, evals1],
+                evaluations: <span class="macro">vec!</span>[evals.zeta, evals.zeta_omega],
                 degree_bound: <span class="prelude-val">None</span>,
             });
         }
@@ -1799,7 +1770,10 @@
         <span class="comment">// add evaluations of the aggreg polynomial
         </span>evaluations.push(Evaluation {
             commitment: lookup_comms.aggreg.clone(),
-            evaluations: <span class="macro">vec!</span>[lookup_eval0.aggreg.clone(), lookup_eval1.aggreg.clone()],
+            evaluations: <span class="macro">vec!</span>[
+                lookup_eval.aggreg.zeta.clone(),
+                lookup_eval.aggreg.zeta_omega.clone(),
+            ],
             degree_bound: <span class="prelude-val">None</span>,
         });
 
@@ -1824,7 +1798,10 @@
         <span class="comment">// add evaluation of the table polynomial
         </span>evaluations.push(Evaluation {
             commitment: table_comm,
-            evaluations: <span class="macro">vec!</span>[lookup_eval0.table.clone(), lookup_eval1.table.clone()],
+            evaluations: <span class="macro">vec!</span>[
+                lookup_eval.table.zeta.clone(),
+                lookup_eval.table.zeta_omega.clone(),
+            ],
             degree_bound: <span class="prelude-val">None</span>,
         });
 
@@ -1834,20 +1811,15 @@
                 .runtime
                 .as_ref()
                 .ok_or(VerifyError::IncorrectRuntimeProof)<span class="question-mark">?</span>;
-            <span class="kw">let </span>runtime_eval0 = lookup_eval0
+            <span class="kw">let </span>runtime_eval = lookup_eval
                 .runtime
                 .as_ref()
-                .cloned()
-                .ok_or(VerifyError::IncorrectRuntimeProof)<span class="question-mark">?</span>;
-            <span class="kw">let </span>runtime_eval1 = lookup_eval1
-                .runtime
-                .as_ref()
-                .cloned()
+                .map(|x| x.map_ref(<span class="kw-2">&amp;</span>|x| x.clone()))
                 .ok_or(VerifyError::IncorrectRuntimeProof)<span class="question-mark">?</span>;
 
             evaluations.push(Evaluation {
                 commitment: runtime.clone(),
-                evaluations: <span class="macro">vec!</span>[runtime_eval0, runtime_eval1],
+                evaluations: <span class="macro">vec!</span>[runtime_eval.zeta, runtime_eval.zeta_omega],
                 degree_bound: <span class="prelude-val">None</span>,
             });
         }
@@ -1943,4 +1915,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (32e613bba 2022-12-02)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (234151769 2022-12-03)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

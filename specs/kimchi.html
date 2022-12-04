@@ -1806,28 +1806,40 @@ You can find these operations under the [proof creation](#proof-creation) and [p
 A proof consists of the following data structures:
 
 ```rs
+/// Evaluations of a polynomial at 2 points
+#[serde_as]
+#[derive(Copy, Clone, Serialize, Deserialize, Default, Debug)]
+#[cfg_attr(
+    feature = &quot;ocaml_types&quot;,
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+#[serde(bound(
+    serialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Evals&gt;&quot;,
+    deserialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;'de, Evals&gt;&quot;
+))]
+pub struct PointEvaluations&lt;Evals&gt; {
+    /// Evaluation at the challenge point zeta.
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
+    pub zeta: Evals,
+    /// Evaluation at `zeta . omega`, the product of the challenge point and the group generator.
+    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
+    pub zeta_omega: Evals,
+}
+
 /// Evaluations of lookup polynomials
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;,
-    deserialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;'de, Field&gt;&quot;
-))]
-pub struct LookupEvaluations&lt;Field&gt; {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LookupEvaluations&lt;Evals&gt; {
     /// sorted lookup table polynomial
-    #[serde_as(as = &quot;Vec&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;)]
-    pub sorted: Vec&lt;Field&gt;,
+    pub sorted: Vec&lt;Evals&gt;,
     /// lookup aggregation polynomial
-    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
-    pub aggreg: Field,
+    pub aggreg: Evals,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
-    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
-    pub table: Field,
+    pub table: Evals,
 
     /// Optionally, a runtime table polynomial.
-    #[serde_as(as = &quot;Option&lt;Vec&lt;o1_utils::serialization::SerdeAs&gt;&gt;&quot;)]
-    pub runtime: Option&lt;Field&gt;,
+    pub runtime: Option&lt;Evals&gt;,
 }
 
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
@@ -1835,38 +1847,28 @@ pub struct LookupEvaluations&lt;Field&gt; {
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
-#[serde(bound(
-    serialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::SerializeAs&lt;Field&gt;&quot;,
-    deserialize = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;: serde_with::DeserializeAs&lt;'de, Field&gt;&quot;
-))]
-pub struct ProofEvaluations&lt;Field&gt; {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProofEvaluations&lt;Evals&gt; {
     /// witness polynomials
-    #[serde_as(as = &quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;)]
-    pub w: [Field; COLUMNS],
+    pub w: [Evals; COLUMNS],
     /// permutation polynomial
-    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
-    pub z: Field,
+    pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
-    #[serde_as(as = &quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; PERMUTS - 1]&quot;)]
-    pub s: [Field; PERMUTS - 1],
+    pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    #[serde_as(as = &quot;[Vec&lt;o1_utils::serialization::SerdeAs&gt;; COLUMNS]&quot;)]
-    pub coefficients: [Field; COLUMNS],
+    pub coefficients: [Evals; COLUMNS],
     /// lookup-related evaluations
-    pub lookup: Option&lt;LookupEvaluations&lt;Field&gt;&gt;,
+    pub lookup: Option&lt;LookupEvaluations&lt;Evals&gt;&gt;,
     /// evaluation of the generic selector polynomial
-    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
-    pub generic_selector: Field,
+    pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
-    #[serde_as(as = &quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
-    pub poseidon_selector: Field,
+    pub poseidon_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct LookupCommitments&lt;G: AffineCurve&gt; {
     /// Commitments to the sorted lookup table polynomial (may have chunks)
@@ -1879,7 +1881,7 @@ pub struct LookupCommitments&lt;G: AffineCurve&gt; {
 
 /// All the commitments that the prover creates as part of the proof.
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct ProverCommitments&lt;G: AffineCurve&gt; {
     /// The commitments to the witness (execution trace)
@@ -1894,7 +1896,7 @@ pub struct ProverCommitments&lt;G: AffineCurve&gt; {
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
 #[serde_as]
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct ProverProof&lt;G: AffineCurve&gt; {
     /// All the polynomial commitments required in the proof
@@ -1904,8 +1906,7 @@ pub struct ProverProof&lt;G: AffineCurve&gt; {
     pub proof: OpeningProof&lt;G&gt;,
 
     /// Two evaluations over a number of committed polynomials
-    // TODO(mimoo): that really should be a type Evals { z: PE, zw: PE }
-    pub evals: [ProofEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;; 2],
+    pub evals: ProofEvaluations&lt;PointEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;&gt;,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = &quot;o1_utils::serialization::SerdeAs&quot;)]
@@ -1921,7 +1922,7 @@ pub struct ProverProof&lt;G: AffineCurve&gt; {
 
 /// A struct to store the challenges inside a `ProverProof`
 #[serde_as]
-#[derive(Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(bound = &quot;G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize&quot;)]
 pub struct RecursionChallenge&lt;G&gt;
 where

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-bc83104505b8ebd3.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-e963ab4a0d0c903e.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1546,45 +1546,6 @@
 <a href="#1546" id="1546">1546</a>
 <a href="#1547" id="1547">1547</a>
 <a href="#1548" id="1548">1548</a>
-<a href="#1549" id="1549">1549</a>
-<a href="#1550" id="1550">1550</a>
-<a href="#1551" id="1551">1551</a>
-<a href="#1552" id="1552">1552</a>
-<a href="#1553" id="1553">1553</a>
-<a href="#1554" id="1554">1554</a>
-<a href="#1555" id="1555">1555</a>
-<a href="#1556" id="1556">1556</a>
-<a href="#1557" id="1557">1557</a>
-<a href="#1558" id="1558">1558</a>
-<a href="#1559" id="1559">1559</a>
-<a href="#1560" id="1560">1560</a>
-<a href="#1561" id="1561">1561</a>
-<a href="#1562" id="1562">1562</a>
-<a href="#1563" id="1563">1563</a>
-<a href="#1564" id="1564">1564</a>
-<a href="#1565" id="1565">1565</a>
-<a href="#1566" id="1566">1566</a>
-<a href="#1567" id="1567">1567</a>
-<a href="#1568" id="1568">1568</a>
-<a href="#1569" id="1569">1569</a>
-<a href="#1570" id="1570">1570</a>
-<a href="#1571" id="1571">1571</a>
-<a href="#1572" id="1572">1572</a>
-<a href="#1573" id="1573">1573</a>
-<a href="#1574" id="1574">1574</a>
-<a href="#1575" id="1575">1575</a>
-<a href="#1576" id="1576">1576</a>
-<a href="#1577" id="1577">1577</a>
-<a href="#1578" id="1578">1578</a>
-<a href="#1579" id="1579">1579</a>
-<a href="#1580" id="1580">1580</a>
-<a href="#1581" id="1581">1581</a>
-<a href="#1582" id="1582">1582</a>
-<a href="#1583" id="1583">1583</a>
-<a href="#1584" id="1584">1584</a>
-<a href="#1585" id="1585">1585</a>
-<a href="#1586" id="1586">1586</a>
-<a href="#1587" id="1587">1587</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1613,8 +1574,8 @@
     error::ProverError,
     plonk_sponge::FrSponge,
     proof::{
-        LookupCommitments, LookupEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
-        RecursionChallenge,
+        LookupCommitments, LookupEvaluations, PointEvaluations, ProofEvaluations,
+        ProverCommitments, ProverProof, RecursionChallenge,
     },
     prover_index::ProverIndex,
 };
@@ -1688,8 +1649,7 @@
     aggreg8: <span class="prelude-ty">Option</span>&lt;Evaluations&lt;F, D&lt;F&gt;&gt;&gt;,
 
     <span class="doccomment">/// The evaluations of the aggregation polynomial for the proof
-    </span>eval_zeta: <span class="prelude-ty">Option</span>&lt;LookupEvaluations&lt;Vec&lt;F&gt;&gt;&gt;,
-    eval_zeta_omega: <span class="prelude-ty">Option</span>&lt;LookupEvaluations&lt;Vec&lt;F&gt;&gt;&gt;,
+    </span>eval: <span class="prelude-ty">Option</span>&lt;LookupEvaluations&lt;PointEvaluations&lt;Vec&lt;F&gt;&gt;&gt;&gt;,
 
     <span class="doccomment">/// Runtime table
     </span>runtime_table: <span class="prelude-ty">Option</span>&lt;DensePolynomial&lt;F&gt;&gt;,
@@ -2513,28 +2473,29 @@
             </span><span class="kw">let </span>joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
             <span class="kw">let </span>joint_table = joint_table.to_chunked_polynomial(index.max_poly_size);
 
-            <span class="kw">let </span>lookup_evals = |eval_point: G::ScalarField| {
-                <span class="kw">let </span>table = joint_table.evaluate_chunks(eval_point);
-
-                <span class="comment">// the runtime table polynomial
-                </span><span class="kw">let </span>runtime_table = lookup_context.runtime_table.as_ref().map(|rt| {
-                    rt.to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(eval_point)
-                });
-
-                LookupEvaluations {
-                    aggreg: aggreg.evaluate_chunks(eval_point),
-                    sorted: sorted
-                        .clone()
-                        .map(|s| s.evaluate_chunks(eval_point))
-                        .collect(),
-                    table,
-                    runtime: runtime_table,
-                }
-            };
-
-            lookup_context.eval_zeta = <span class="prelude-val">Some</span>(lookup_evals(zeta));
-            lookup_context.eval_zeta_omega = <span class="prelude-val">Some</span>(lookup_evals(zeta_omega));
+            lookup_context.eval = <span class="prelude-val">Some</span>(LookupEvaluations {
+                aggreg: PointEvaluations {
+                    zeta: aggreg.evaluate_chunks(zeta),
+                    zeta_omega: aggreg.evaluate_chunks(zeta_omega),
+                },
+                sorted: sorted
+                    .map(|sorted| PointEvaluations {
+                        zeta: sorted.evaluate_chunks(zeta),
+                        zeta_omega: sorted.evaluate_chunks(zeta_omega),
+                    })
+                    .collect(),
+                table: PointEvaluations {
+                    zeta: joint_table.evaluate_chunks(zeta),
+                    zeta_omega: joint_table.evaluate_chunks(zeta_omega),
+                },
+                runtime: lookup_context.runtime_table.as_ref().map(|runtime_table| {
+                    <span class="kw">let </span>runtime_table = runtime_table.to_chunked_polynomial(index.max_poly_size);
+                    PointEvaluations {
+                        zeta: runtime_table.evaluate_chunks(zeta),
+                        zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
+                    }
+                }),
+            })
         }
 
         <span class="comment">//~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
@@ -2555,80 +2516,63 @@
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-        </span><span class="kw">let </span>chunked_evals = {
-            <span class="kw">let </span>chunked_evals_zeta = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
-                s: array::from_fn(|i| {
-                    index.evaluated_column_coefficients.permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta)
-                }),
-                coefficients: array::from_fn(|i| {
-                    index.evaluated_column_coefficients.coefficients[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta)
-                }),
-                w: array::from_fn(|i| {
-                    witness_poly[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta)
-                }),
+        </span><span class="kw">let </span>chunked_evals = ProofEvaluations::&lt;PointEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; {
+            s: array::from_fn(|i| {
+                <span class="kw">let </span>chunked = index.evaluated_column_coefficients.permutation_coefficients
+                    [<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
+                    .to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            }),
+            coefficients: array::from_fn(|i| {
+                <span class="kw">let </span>chunked = index.evaluated_column_coefficients.coefficients[i]
+                    .to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            }),
+            w: array::from_fn(|i| {
+                <span class="kw">let </span>chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            }),
 
-                z: z_poly
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta),
+            z: {
+                <span class="kw">let </span>chunked = z_poly.to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            },
 
-                lookup: lookup_context.eval_zeta.take(),
+            lookup: lookup_context.eval.take(),
 
-                generic_selector: index
+            generic_selector: {
+                <span class="kw">let </span>chunked = index
                     .evaluated_column_coefficients
                     .generic_selector
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta),
+                    .to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            },
 
-                poseidon_selector: index
+            poseidon_selector: {
+                <span class="kw">let </span>chunked = index
                     .evaluated_column_coefficients
                     .poseidon_selector
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta),
-            };
-            <span class="kw">let </span>chunked_evals_zeta_omega = ProofEvaluations::&lt;Vec&lt;G::ScalarField&gt;&gt; {
-                s: array::from_fn(|i| {
-                    index.evaluated_column_coefficients.permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta_omega)
-                }),
-                coefficients: array::from_fn(|i| {
-                    index.evaluated_column_coefficients.coefficients[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta_omega)
-                }),
-
-                w: array::from_fn(|i| {
-                    witness_poly[i]
-                        .to_chunked_polynomial(index.max_poly_size)
-                        .evaluate_chunks(zeta_omega)
-                }),
-
-                z: z_poly
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta_omega),
-
-                lookup: lookup_context.eval_zeta_omega.take(),
-
-                generic_selector: index
-                    .evaluated_column_coefficients
-                    .generic_selector
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta_omega),
-
-                poseidon_selector: index
-                    .evaluated_column_coefficients
-                    .poseidon_selector
-                    .to_chunked_polynomial(index.max_poly_size)
-                    .evaluate_chunks(zeta_omega),
-            };
-
-            [chunked_evals_zeta, chunked_evals_zeta_omega]
+                    .to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            },
         };
 
         <span class="kw">let </span>zeta_to_srs_len = zeta.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]);
@@ -2638,34 +2582,11 @@
         <span class="comment">//~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
         </span><span class="kw">let </span>evals = {
-            <span class="kw">let </span>power_of_eval_points_for_chunks = [zeta_to_srs_len, zeta_omega_to_srs_len];
-            <span class="kw-2">&amp;</span>chunked_evals
-                .iter()
-                .zip(power_of_eval_points_for_chunks.iter()) <span class="comment">// (zeta , zeta_omega)
-                </span>.map(|(es, <span class="kw-2">&amp;</span>e1)| ProofEvaluations::&lt;G::ScalarField&gt; {
-                    s: array::from_fn(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.s[i], e1)),
-                    coefficients: array::from_fn(|i| {
-                        DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.coefficients[i], e1)
-                    }),
-                    w: array::from_fn(|i| DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.w[i], e1)),
-                    z: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.z, e1),
-                    lookup: es.lookup.as_ref().map(|l| LookupEvaluations {
-                        table: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>l.table, e1),
-                        aggreg: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>l.aggreg, e1),
-                        sorted: l
-                            .sorted
-                            .iter()
-                            .map(|p| DensePolynomial::eval_polynomial(p, e1))
-                            .collect(),
-                        runtime: l
-                            .runtime
-                            .as_ref()
-                            .map(|p| DensePolynomial::eval_polynomial(p, e1)),
-                    }),
-                    generic_selector: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.generic_selector, e1),
-                    poseidon_selector: DensePolynomial::eval_polynomial(<span class="kw-2">&amp;</span>es.poseidon_selector, e1),
-                })
-                .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;()
+            <span class="kw">let </span>powers_of_eval_points_for_chunks = PointEvaluations {
+                zeta: zeta_to_srs_len,
+                zeta_omega: zeta_omega_to_srs_len,
+            };
+            chunked_evals.combine(<span class="kw-2">&amp;</span>powers_of_eval_points_for_chunks)
         };
 
         <span class="comment">//~ 1. Compute the ft polynomial.
@@ -2679,11 +2600,12 @@
                 // permutation (not part of linearization yet)
                 </span><span class="kw">let </span>alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                <span class="kw">let </span>f = index.perm_lnrz(evals, zeta, beta, gamma, alphas);
+                <span class="kw">let </span>f = index.perm_lnrz(<span class="kw-2">&amp;</span>evals, zeta, beta, gamma, alphas);
 
                 <span class="comment">// the circuit polynomial
                 </span><span class="kw">let </span>f = {
-                    <span class="kw">let </span>(_lin_constant, lin) = index.linearization.to_polynomial(<span class="kw-2">&amp;</span>env, zeta, evals);
+                    <span class="kw">let </span>(_lin_constant, lin) =
+                        index.linearization.to_polynomial(<span class="kw-2">&amp;</span>env, zeta, <span class="kw-2">&amp;</span>evals);
                     f + lin
                 };
 
@@ -2771,7 +2693,7 @@
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         </span>fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">0</span>]);
         fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">1</span>]);
-        fr_sponge.absorb_evaluations([<span class="kw-2">&amp;</span>chunked_evals[<span class="number">0</span>], <span class="kw-2">&amp;</span>chunked_evals[<span class="number">1</span>]]);
+        fr_sponge.absorb_evaluations(<span class="kw-2">&amp;</span>chunked_evals);
 
         <span class="comment">//~ 1. Sample $v&#39;$ with the Fr-Sponge
         </span><span class="kw">let </span>v_chal = fr_sponge.challenge();
@@ -2942,7 +2864,7 @@
         <span class="kw">pub </span>commitments: CamlProverCommitments&lt;CamlG&gt;,
         <span class="kw">pub </span>proof: CamlOpeningProof&lt;CamlG, CamlF&gt;,
         <span class="comment">// OCaml doesn&#39;t have sized arrays, so we have to convert to a tuple..
-        </span><span class="kw">pub </span>evals: (CamlProofEvaluations&lt;CamlF&gt;, CamlProofEvaluations&lt;CamlF&gt;),
+        </span><span class="kw">pub </span>evals: CamlProofEvaluations&lt;CamlF&gt;,
         <span class="kw">pub </span>ft_eval1: CamlF,
         <span class="kw">pub </span>public: Vec&lt;CamlF&gt;,
         <span class="kw">pub </span>prev_challenges: Vec&lt;CamlRecursionChallenge&lt;CamlG, CamlF&gt;&gt;, <span class="comment">//Vec&lt;(Vec&lt;CamlF&gt;, CamlPolyComm&lt;CamlG&gt;)&gt;,
@@ -3143,7 +3065,7 @@
             <span class="self">Self </span>{
                 commitments: pp.commitments.into(),
                 proof: pp.proof.into(),
-                evals: (pp.evals[<span class="number">0</span>].clone().into(), pp.evals[<span class="number">1</span>].clone().into()),
+                evals: pp.evals.into(),
                 ft_eval1: pp.ft_eval1.into(),
                 public: pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
@@ -3160,7 +3082,7 @@
             ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
-                evals: [caml_pp.evals.<span class="number">0</span>.into(), caml_pp.evals.<span class="number">1</span>.into()],
+                evals: caml_pp.evals.into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
                 public: caml_pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: caml_pp
@@ -3173,4 +3095,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (32e613bba 2022-12-02)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (234151769 2022-12-03)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
