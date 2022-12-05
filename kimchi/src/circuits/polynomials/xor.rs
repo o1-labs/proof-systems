@@ -25,8 +25,11 @@ use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use o1_utils::{big_bits, big_xor, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
+
+use super::generic::GenericGateSpec;
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a XOR gadget for `bits` length
@@ -36,7 +39,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
-    pub fn create_xor(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
+    pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut gates = (0..num_xors)
             .map(|i| CircuitGate {
@@ -46,11 +49,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             })
             .collect::<Vec<_>>();
         let zero_row = new_row + num_xors;
-        gates.push(CircuitGate {
-            typ: GateType::Generic,
-            wires: Wire::for_row(zero_row),
-            coeffs: vec![F::one()],
-        });
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::for_row(zero_row),
+            GenericGateSpec::Const(F::zero()),
+            None,
+        ));
         // check fin_in1, fin_in2, fin_out are zero
         gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
         gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
@@ -400,11 +403,6 @@ where
 }
 
 // Witness layout
-//   * The values of the crumbs appear with the least significant crumb first
-//     but with big endian ordering of the bits inside the 32/64 element.
-//   * The first column of the XOR row and the first and second columns of the
-//     Zero rows must be instantiated before the rest, otherwise they copy 0.
-//
 fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
@@ -454,7 +452,7 @@ fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     ]
 }
 
-fn init_xor<F: PrimeField>(
+pub(crate) fn init_xor<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     curr_row: usize,
     bits: usize,
@@ -470,13 +468,22 @@ fn init_xor<F: PrimeField>(
     )
 }
 
-/// Extends the xor rows to the full witness
+/// Extends the Xor rows to the full witness
+/// Panics if the words are larger than the desired bits
 pub fn extend_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     bits: usize,
     words: (F, F, F),
 ) {
-    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+    let input1_big = words.0.to_biguint();
+    let input2_big = words.1.to_biguint();
+    let output_big = words.2.to_biguint();
+    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) || bits < big_bits(&output_big)
+    {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let xor_witness: [Vec<F>; COLUMNS] =
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
     let xor_row = witness[0].len();
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
@@ -484,18 +491,25 @@ pub fn extend_xor_rows<F: PrimeField>(
     init_xor(witness, xor_row, bits, words);
 }
 
-/// Create a keccak Xor for up to 128 bits
-/// Input: first input and second input
-pub fn create<F: PrimeField>(input1: u128, input2: u128, bits: usize) -> [Vec<F>; COLUMNS] {
-    let output = input1 ^ input2;
+/// Create a Xor for up to the native length starting at row 0
+/// Input: first input and second input, bits length, current row
+/// Panics if the desired bits is smaller than the inputs length
+pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [Vec<F>; COLUMNS] {
+    let input1_big = input1.to_biguint();
+    let input2_big = input2.to_biguint();
+    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let output = big_xor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
+
     init_xor(
         &mut xor_witness,
         0,
         bits,
-        (F::from(input1), F::from(input2), F::from(output)),
+        (input1, input2, F::from_biguint(output).unwrap()),
     );
 
     xor_witness

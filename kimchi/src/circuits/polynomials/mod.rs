@@ -5,7 +5,6 @@ pub mod endosclmul;
 pub mod foreign_field_add;
 pub mod foreign_field_mul;
 pub mod generic;
-pub mod keccak;
 pub mod permutation;
 pub mod poseidon;
 pub mod range_check;

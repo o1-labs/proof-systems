@@ -953,7 +953,6 @@ dependencies = [
  "hex",
  "mina-curves",
  "num-bigint",
- "num-integer",
  "num-traits",
  "rand",
  "rand_core",

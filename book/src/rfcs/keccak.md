@@ -42,6 +42,7 @@ Before we describe the specific gate design approaches, below are some constrain
 Kimchi framework that dictated those approaches.
 * only 4 lookups per row
 * only first 7 columns are available to the permutation polynomial
+<<<<<<< HEAD
 
 ## Rot64
 
@@ -162,3 +163,5 @@ means that $a \cdot 2^{64} + b = a'\cdot 2^{64} + b'$. Moving terms to the left 
   - But this cannot happen, because $r$, which is the rotation offset, can at most take the value 63, and we defined the field lenth to be at least twice the word length. Then, $2\cdot64 - 1$ cannot be larger than $n + 1$. CONTRADICTION.
 
 EOP.
+=======
+>>>>>>> 4eb1dd36987af6c12186ca400d9e4fb9b9904818
