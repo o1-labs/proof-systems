@@ -352,8 +352,10 @@
 <a href="#352" id="352">352</a>
 <a href="#353" id="353">353</a>
 <a href="#354" id="354">354</a>
-</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::commitment::<span class="kw-2">*</span>;
-<span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+</pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::srs::SRS;
+<span class="kw">use crate</span>::{commitment::<span class="kw-2">*</span>, srs::endos};
 <span class="kw">use </span>ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -450,6 +452,8 @@
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
+        <span class="kw">let </span>(endo_q, endo_r) = endos::&lt;G&gt;();
+
         <span class="kw">let </span>rounds = math::ceil_log2(<span class="self">self</span>.g.len());
         <span class="kw">let </span>padded_length = <span class="number">1 </span>&lt;&lt; rounds;
 
@@ -577,7 +581,7 @@
             sponge.absorb_g(<span class="kw-2">&amp;</span>[r]);
 
             <span class="kw">let </span>u_pre = squeeze_prechallenge(<span class="kw-2">&amp;mut </span>sponge);
-            <span class="kw">let </span>u = u_pre.to_field(<span class="kw-2">&amp;</span><span class="self">self</span>.endo_r);
+            <span class="kw">let </span>u = u_pre.to_field(<span class="kw-2">&amp;</span>endo_r);
             <span class="kw">let </span>u_inv = u.inverse().unwrap();
 
             chals.push(u);
@@ -607,7 +611,7 @@
                 })
                 .collect();
 
-            g = G::combine_one_endo(<span class="self">self</span>.endo_r, <span class="self">self</span>.endo_q, <span class="kw-2">&amp;</span>g_lo, <span class="kw-2">&amp;</span>g_hi, u_pre);
+            g = G::combine_one_endo(endo_r, endo_q, <span class="kw-2">&amp;</span>g_lo, <span class="kw-2">&amp;</span>g_hi, u_pre);
         }
 
         <span class="macro">assert!</span>(g.len() == <span class="number">1</span>);
@@ -629,7 +633,7 @@
         .into_affine();
 
         sponge.absorb_g(<span class="kw-2">&amp;</span>[delta]);
-        <span class="kw">let </span>c = ScalarChallenge(sponge.challenge()).to_field(<span class="kw-2">&amp;</span><span class="self">self</span>.endo_r);
+        <span class="kw">let </span>c = ScalarChallenge(sponge.challenge()).to_field(<span class="kw-2">&amp;</span>endo_r);
 
         <span class="kw">let </span>z1 = a0 * c + d;
         <span class="kw">let </span>z2 = c * r_prime + r_delta;

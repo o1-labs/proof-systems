@@ -174,7 +174,12 @@ But in our code, because of the cycles:</p>
 <li>scalar field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941647379679742748393362948097</span></span></span></span></li>
 <li>mina generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">12418654782883325593414442427049395787963493412651469444558597405572177144507</span><span class="mclose">)</span></span></span></span></li>
 <li>arkworks generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">−</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></li>
+<li>endo:</li>
 </ul>
+<pre><code>
+endo_q = 2D33357CB532458ED3552A23A8554E5005270D29D19FC7D27B7FD22F0201B547
+endo_r = 397E65A7D7C1AD71AEE24B27E308F0A61259527EC1D4752E619D1840AF55F1B1
+</code></pre>
 <p>You can use <a href="https://www.sagemath.org/">sage</a> to test this:</p>
 <pre><code class="language-py">Fp = GF(28948022309329048855892746252171976963363056481941560715954676764349967630337)
 Pallas = EllipticCurve(Fp, [0, 5])
@@ -182,12 +187,28 @@ Pallas.count_points()
 </code></pre>
 <h2 id="vesta"><a class="header" href="#vesta">Vesta</a></h2>
 <ul>
-<li>curve equation: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0085em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8974em;vertical-align:-0.0833em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">5</span></span></span></span></li>
-<li>base field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941647379679742748393362948097</span></span></span></span></li>
-<li>scalar field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941560715954676764349967630337</span></span></span></span></li>
-<li>mina generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">11426906929455361843568202299992114520848200991084027513389447476559454104162</span><span class="mclose">)</span></span></span></span></li>
-<li>arkworks generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">−</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></li>
+<li>
+<p>curve equation: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1.0085em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8974em;vertical-align:-0.0833em;"></span><span class="mord"><span class="mord mathnormal">x</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8141em;"><span style="top:-3.063em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">3</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">5</span></span></span></span></p>
+</li>
+<li>
+<p>base field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941647379679742748393362948097</span></span></span></span></p>
+</li>
+<li>
+<p>scalar field: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">28948022309329048855892746252171976963363056481941560715954676764349967630337</span></span></span></span></p>
+</li>
+<li>
+<p>mina generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">11426906929455361843568202299992114520848200991084027513389447476559454104162</span><span class="mclose">)</span></span></span></span></p>
+</li>
+<li>
+<p>arkworks generator: <span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">−</span><span class="mord">1</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord">2</span><span class="mclose">)</span></span></span></span></p>
+</li>
+<li>
+<p>endo:</p>
+</li>
 </ul>
+<pre><code>endo_q = 06819A58283E528E511DB4D81CF70F5A0FED467D47C033AF2AA9D2E050AA0E4F
+endo_r = 12CCCA834ACDBA712CAAD5DC57AAB1B01D1F8BD237AD31491DAD5EBDFDFE4AB9
+</code></pre>
 <p>You can use <a href="https://www.sagemath.org/">sage</a> to test this:</p>
 <pre><code class="language-py">Fq = GF(28948022309329048855892746252171976963363056481941647379679742748393362948097)
 Vesta = EllipticCurve(Fq, [0, 5])

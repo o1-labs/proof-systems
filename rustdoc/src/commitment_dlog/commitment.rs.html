@@ -1177,6 +1177,8 @@
 <a href="#1177" id="1177">1177</a>
 <a href="#1178" id="1178">1178</a>
 <a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Dlog-based polynomial commitment schema.
 //! The folowing functionality is implemented
 //!
@@ -1185,7 +1187,8 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-</span><span class="kw">use crate</span>::{error::CommitmentError, srs::SRS};
+</span><span class="kw">use </span><span class="kw">crate</span>::srs::endos;
+<span class="kw">use crate</span>::{error::CommitmentError, srs::SRS};
 <span class="kw">use </span>ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine <span class="kw">as </span>SWJAffine, msm::VariableBaseMSM,
     AffineCurve, ProjectiveCurve, SWModelParameters,
@@ -1871,6 +1874,8 @@
 
         <span class="kw">let </span>padded_length = <span class="number">1 </span>&lt;&lt; max_rounds;
 
+        <span class="kw">let </span>(<span class="kw">_</span>, endo_r) = endos::&lt;G&gt;();
+
         <span class="comment">// TODO: This will need adjusting
         </span><span class="kw">let </span>padding = padded_length - nonzero_length;
         <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[<span class="self">self</span>.h];
@@ -1927,11 +1932,10 @@
             <span class="kw">let </span>t = sponge.challenge_fq();
             <span class="kw">let </span>u: G = to_group(group_map, t);
 
-            <span class="kw">let </span>Challenges { chal, chal_inv } =
-                opening.challenges::&lt;EFqSponge&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.endo_r, sponge);
+            <span class="kw">let </span>Challenges { chal, chal_inv } = opening.challenges::&lt;EFqSponge&gt;(<span class="kw-2">&amp;</span>endo_r, sponge);
 
             sponge.absorb_g(<span class="kw-2">&amp;</span>[opening.delta]);
-            <span class="kw">let </span>c = ScalarChallenge(sponge.challenge()).to_field(<span class="kw-2">&amp;</span><span class="self">self</span>.endo_r);
+            <span class="kw">let </span>c = ScalarChallenge(sponge.challenge()).to_field(<span class="kw-2">&amp;</span>endo_r);
 
             <span class="comment">// &lt; s, sum_i evalscale^i pows(evaluation_point[i]) &gt;
             // ==

@@ -163,7 +163,6 @@ This needs to be fixed.</p>
 <ul>
 <li><code>Gs</code>: an arbitrary ordered list of curve points that can be used to commit to a polynomial in a non-hiding way.</li>
 <li><code>H</code>: a blinding curve point that can be used to add hidding to a polynomial commitment scheme.</li>
-<li><code>endo_q, endo_r</code>: TODO</li>
 </ul>
 <p>The URS is generated deterministically, and thus can be rederived if not stored.</p>
 <p>As different circuits of different size do not share the same domain, and the size of the domain is directly equal to the number of <code>Gs</code> curve points we use to commit to polynomials, we often want to share the same URS of maximum size across many circuits (constraint systems).
@@ -210,8 +209,6 @@ def point_of_random_bytes(random_bytes):
     return map.to_group(t)
 </code></pre>
 <p>TODO: specify <code>map.to_group</code> in the previous section.</p>
-<h2 id="endo-stuff"><a class="header" href="#endo-stuff">Endo stuff</a></h2>
-<p>TODO: specify endo_r, endo_q</p>
 <h2 id="urs-values-in-practice"><a class="header" href="#urs-values-in-practice">URS values in practice</a></h2>
 <p>As there is no limit to the number of commitment curve points you can generate, we only provide the first three ones to serve as test vectors.</p>
 <p>TODO: specify the encoding</p>
@@ -224,10 +221,6 @@ G2 = (x=26985F27306586711466C5B2C28754AA62FE33516D75CEF1F7751F1A169713FD, y=2E89
 <p><strong><code>H</code></strong>:</p>
 <pre><code>H = (x=092060386301C999AAB4F263757836369CA27975E28BC7A8E5B2CE5B26262201, y=314FC4D83AE66A509F9D41BE6165F2606A209A9B5805EE85CE20249C5EBCBE26)
 </code></pre>
-<p><strong>endo</strong>:</p>
-<pre><code>endo_q = 06819A58283E528E511DB4D81CF70F5A0FED467D47C033AF2AA9D2E050AA0E4F
-endo_r = 12CCCA834ACDBA712CAAD5DC57AAB1B01D1F8BD237AD31491DAD5EBDFDFE4AB9
-</code></pre>
 <h3 id="pallas"><a class="header" href="#pallas">Pallas</a></h3>
 <pre><code>G0 = (x363D83141FD1E0540718FADBA7278ABAEEDB46D7A3F050F2CFF1DF4F300C9C30, y=034C68F4079B4F338A19BE2D7BFA44B395C65B9790DD273F361327446C778764)
 G1 = (x2CC40B77D87665244AE5EB5304E8744004C80061AD08476A0F0656C13134EA45, y=28146EC860159DB55CB5EA5B14F0AA2F8751DEDFE0DDAFD1C313B15575C4B4AC)
@@ -235,11 +228,6 @@ G2 = (x2808BC21BEB90314377BF6130285FABE6CE4B8A4457FB25BC95EBA0083DF27E3, y=1E04E
 </code></pre>
 <p><strong><code>H</code></strong>:</p>
 <pre><code>H = (x221B959DACD2052AAE26193FCA36B53279866A4FBBAB0D5A2F828B5FD7778201, y=058C8F1105CAE57F4891EADC9B85C8954E5067190E155E61D66855ACE69C16C0)
-</code></pre>
-<p><strong>endo</strong>:</p>
-<pre><code>
-endo_q = 2D33357CB532458ED3552A23A8554E5005270D29D19FC7D27B7FD22F0201B547
-endo_r = 397E65A7D7C1AD71AEE24B27E308F0A61259527EC1D4752E619D1840AF55F1B1
 </code></pre>
 
                     </main>
