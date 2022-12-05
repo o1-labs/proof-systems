@@ -4,7 +4,7 @@ use o1_utils::FieldHelpers;
 use super::{variables::Variables, WitnessCell};
 use crate::circuits::polynomial::COLUMNS;
 
-/// Witness cell copied from bits of another witness cell
+/// Witness cell that copies bits from another cell and adds a constant to it
 pub struct SumCopyBitsCell<F: Field> {
     row: usize,
     col: usize,
@@ -14,7 +14,7 @@ pub struct SumCopyBitsCell<F: Field> {
 }
 
 impl<F: Field> SumCopyBitsCell<F> {
-    /// Create witness cell copied from bits [start, end) of the witness cell at position (row, col)
+    /// Create witness cell copied from bits [start, end) of the witness cell at position (row, col) with a constant to be summed
     pub fn create(
         row: usize,
         col: usize,

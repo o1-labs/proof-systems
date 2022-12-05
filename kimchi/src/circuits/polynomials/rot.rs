@@ -32,17 +32,20 @@ use rand::{rngs::StdRng, SeedableRng};
 use std::marker::PhantomData;
 use std::{array, collections::HashMap};
 
-pub const LEFT: bool = true;
-pub const RIGHT: bool = false;
+#[derive(Clone, Copy, PartialEq, Debug)]
+pub enum RotMode {
+    Left,
+    Right,
+}
 
 impl<F: PrimeField> CircuitGate<F> {
     /// Creates a Rot64 gadget to rotate a word
     /// It will need:
-    /// - 1 Generic gate to constrain to zero some limbs
+    /// - 1 Generic gate to constrain to zero the top 2 limbs of the shifted witness of the rotation
     ///
     /// It has:
     /// - 1 Rot64 gate to rotate the word
-    /// - 1 RangeCheck0 to constrain the size of some parameters
+    /// - 1 RangeCheck0 to constrain the size of the shifted witness of the rotation
     pub fn create_rot64(new_row: usize, rot: u32) -> Vec<Self> {
         vec![
             CircuitGate {
@@ -61,7 +64,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Create one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
-    pub fn create_rot(new_row: usize, rot: u32, side: bool) -> (usize, Vec<Self>) {
+    pub fn create_rot(new_row: usize, rot: u32, side: RotMode) -> (usize, Vec<Self>) {
         // Initial Generic gate to constrain the output to be zero
         let zero_row = new_row;
         let mut gates = vec![CircuitGate::<F>::create_generic_gadget(
@@ -71,7 +74,7 @@ impl<F: PrimeField> CircuitGate<F> {
         )];
 
         let rot_row = zero_row + 1;
-        let mut rot64_gates = if side == LEFT {
+        let mut rot64_gates = if side == RotMode::Left {
             Self::create_rot64(rot_row, rot)
         } else {
             Self::create_rot64(rot_row, 64 - rot)
@@ -335,7 +338,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
 
 //~ ##### `Rot64` - Constraints for known-length rotation of 64-bit words
 //~
-//~ * This circuit gate is used to constrain that a 64-bit word is rotated by r<64 bits to the "left".
+//~ * This circuit gate is used to constrain that a 64-bit word is rotated by $r < 64$ bits to the "left".
 //~ * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
 //~ * This gate operates on the `Curr` and `Next` rows.
 //~
@@ -343,12 +346,15 @@ fn set_up_lookup_env_data<F: PrimeField>(
 //~ * Shift to the left
 //~ * Add the excess bits to the right
 //~
-//~ We represent shifting with multiplication modulo 2^{64}. That is, for each word to be rotated, we provide in
+//~ We represent shifting with multiplication modulo $2^{64}$. That is, for each word to be rotated, we provide in
 //~ the witness a quotient and a remainder, similarly to `ForeignFieldMul` such that the following operation holds:
 //~
 //~ $$word \cdot 2^{rot} = quotient \cdot 2^{64} + remainder$$
 //~
 //~ Then, the remainder corresponds to the shifted word, and the quotient corresponds to the excess bits.
+//~
+//~ $$word \cdot 2^{rot} = excess \cdot 2^{64} + shifted$$
+//~
 //~ Thus, in order to obtain the rotated word, we need to add the quotient and the remainder as follows:
 //~
 //~ $$rotated = shifted + excess$$
@@ -363,7 +369,9 @@ fn set_up_lookup_env_data<F: PrimeField>(
 //~ $$
 //~ The latter can be obtained with a `RangeCheck0` gate setting the two most significant limbs to zero.
 //~ The former is equivalent to the following check:
-//~ $$excess - 2^{rot} + 2^{64} < 2^{64}$$
+//~
+//~ $$bound = excess - 2^{rot} + 2^{64} < 2^{64}$$
+//~
 //~ which is doable with the constraints in a `RangeCheck0` gate. Since our current row within the `Rot64` gate
 //~ is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
 //~ and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
@@ -389,26 +397,28 @@ fn set_up_lookup_env_data<F: PrimeField>(
 //~ |     14 |      `bound_crumb7` | `shifted_crumb7` |
 //~
 //~ In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
-//~ to perform the rotation are fixed, public, and known in advance, according to the following table:
+//~ to perform the rotation are fixed, public, and known in advance, according to the following table,
+//~ depending on the coordinate of each cell within the 5x5 matrix state:
 //~
 //~ | y \ x |   0 |   1 |   2 |   3 |   4 |
 //~ | ----- | --- | --- | --- | --- | --- |
-//~ | 0     |   0 |   1 | 190 |  28 |  91 |
-//~ | 1     |  36 | 300 |   6 |  55 | 276 |
-//~ | 2     |   3 |  10 | 171 | 153 | 231 |
-//~ | 3     | 105 |  45 |  15 |  21 | 136 |
-//~ | 4     | 210 |  66 | 253 | 120 |  78 |
+//~ | 0     |   0 |  36 |   3 | 105 | 210 |
+//~ | 1     |   1 | 300 |  10 |  45 |  66 |
+//~ | 2     | 190 |   6 | 171 |  15 | 253 |
+//~ | 3     |  28 |  55 | 153 |  21 | 120 |
+//~ | 4     |  91 | 276 | 231 | 136 |  78 |
 //~
-//~ But since we are always using 64-bit words, we can have an equivalent table with these values modulo 64
-//~ to avoid needing multiple passes of the rotation gate (a single step would cause overflows):
+//~ But since we will always be using 64-bit words in our Keccak usecase ($w = 64$), we can have an equivalent
+//~ table with these values modulo 64 to avoid needing multiple passes of the rotation gate (a single step would
+//~ cause overflows otherwise):
 //~
 //~ | y \ x |   0 |   1 |   2 |   3 |   4 |
 //~ | ----- | --- | --- | --- | --- | --- |
-//~ | 0     |   0 |   1 |  62 |  28 |  27 |
-//~ | 1     |  36 |  44 |   6 |  55 |  20 |
-//~ | 2     |   3 |  10 |  43 |  25 |  39 |
-//~ | 3     |  41 |  45 |  15 |  21 |   8 |
-//~ | 4     |  18 |   2 |  61 |  56 |  14 |
+//~ | 0     |   0 |  36 |   3 |  41 |  18 |
+//~ | 1     |   1 |  44 |  10 |  45 |   2 |
+//~ | 2     |  62 |   6 |  43 |  15 |  61 |
+//~ | 3     |  28 |  55 |  25 |  21 |  56 |
+//~ | 4     |  27 |  20 |  39 |   8 |  14 |
 //~
 //~ Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
 //~ gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
@@ -429,6 +439,7 @@ where
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
+        // C0..C7: x * (x - 1) * (x - 2) * (x - 3) = 0
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&env.witness_curr(i)))
             .collect::<Vec<T>>();
@@ -445,8 +456,8 @@ where
         let two_to_rot = env.coeff(0);
 
         // Obtains the following checks:
-        // word * 2^{rot} = (excess * 2^64 + shifted)
-        // rotated = shifted + excess
+        // C8: word * 2^{rot} = (excess * 2^64 + shifted)
+        // C9: rotated = shifted + excess
         constraints.push(
             word * two_to_rot.clone() - (excess.clone() * two_to_64.clone() + shifted.clone()),
         );
@@ -468,7 +479,8 @@ where
             power_of_2 *= 4096u64.into(); // 12 bits
         }
 
-        // Check that bound = excess - 2^rot + 2^64 so as to prove that excess < 2^64
+        // Check that excess < 2^rot by checking that bound < 2^64
+        // C10:bound = excess - 2^rot + 2^64
         constraints.push(bound - (excess - two_to_rot + two_to_64));
 
         constraints
@@ -544,10 +556,14 @@ pub fn extend_rot_rows<F: PrimeField>(
 /// Create a rotation witness
 /// Input: word to be rotated, rotation offset, and side of rotation.
 /// Output: witness for rotation word and initial row with all zeros
-pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: bool) -> [Vec<F>; COLUMNS] {
+pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: RotMode) -> [Vec<F>; COLUMNS] {
     // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
-    let rot = if side == RIGHT { 64 - rot } else { rot };
+    let rot = if side == RotMode::Right {
+        64 - rot
+    } else {
+        rot
+    };
     create_witness_rot(&mut witness, word, rot);
     witness
 }
@@ -558,10 +574,19 @@ pub fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: 
     assert_ne!(rot, 0, "Rotation value must be non-zero");
     assert!(rot < 64, "Rotation value must be less than 64");
 
+    // Split word into shifted and excess parts to compute the witnesses for rotation as follows
+    //          <   64     >  bits
+    // word   = [---|------]
+    //          <rot>         bits
+    // excess = [---]
+    // shifted      [------] * 2^rot
+    // rot    = [------|000]
+    //        +        [---] excess
     let shifted = (word as u128 * 2u128.pow(rot) % 2u128.pow(64)) as u64;
     let excess = word / 2u64.pow(64 - rot);
     let rotated = shifted + excess;
     // Value for the added value for the bound
+    // Right input of the "FFAdd" for the bound equation
     let bound = 2u128.pow(64) - 2u128.pow(rot);
 
     extend_rot_rows(

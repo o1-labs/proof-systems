@@ -1,7 +1,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::CircuitGate,
-    polynomials::rot::{self, LEFT, RIGHT},
+    polynomials::rot::{self, RotMode},
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -12,7 +12,7 @@ use super::framework::TestFramework;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
-fn create_test_constraint_system(rot: u32, side: bool) -> ConstraintSystem<Fp> {
+fn create_test_constraint_system(rot: u32, side: RotMode) -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_rot(0, rot, side) };
 
     // Temporary workaround for lookup-table/domain-size issue
@@ -28,7 +28,7 @@ fn create_test_constraint_system(rot: u32, side: bool) -> ConstraintSystem<Fp> {
 fn prove_and_verify() {
     let rot = rand::thread_rng().gen_range(1..64);
     // Create
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_rot(0, rot, LEFT);
+    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_rot(0, rot, RotMode::Left);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -40,7 +40,7 @@ fn prove_and_verify() {
     let word = rand::thread_rng().gen_range(0..2u128.pow(64)) as u64;
 
     // Create witness
-    let witness = rot::create_witness(word, rot, LEFT);
+    let witness = rot::create_witness(word, rot, RotMode::Left);
 
     TestFramework::default()
         .gates(gates)
@@ -55,7 +55,7 @@ fn test_prove_and_verify() {
     prove_and_verify();
 }
 
-fn test_rot(word: u64, rot: u32, side: bool) {
+fn test_rot(word: u64, rot: u32, side: RotMode) {
     let cs = create_test_constraint_system(rot, side);
     let witness = rot::create_witness(word, rot, side);
     for row in 0..=2 {
@@ -69,7 +69,7 @@ fn test_rot(word: u64, rot: u32, side: bool) {
             Ok(())
         );
     }
-    if side == LEFT {
+    if side == RotMode::Left {
         assert_eq!(PallasField::from(word.rotate_left(rot)), witness[1][1]);
     } else {
         assert_eq!(PallasField::from(word.rotate_right(rot)), witness[1][1]);
@@ -81,6 +81,6 @@ fn test_rot(word: u64, rot: u32, side: bool) {
 fn test_rot_random() {
     let rot = rand::thread_rng().gen_range(1..=63);
     let word = rand::thread_rng().gen_range(0..2u128.pow(64)) as u64;
-    test_rot(word, rot, LEFT);
-    test_rot(word, rot, RIGHT);
+    test_rot(word, rot, RotMode::Left);
+    test_rot(word, rot, RotMode::Right);
 }

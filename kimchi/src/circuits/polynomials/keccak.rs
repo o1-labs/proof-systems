@@ -49,6 +49,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let mut rot_row = new_row;
         for row in ROT_TAB {
             for rot in row {
+                // if rotation by 0 bits, no need to create a gate for it
                 if rot == 0 {
                     continue;
                 }
