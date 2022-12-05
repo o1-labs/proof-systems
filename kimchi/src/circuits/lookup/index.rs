@@ -45,7 +45,7 @@ pub struct LookupSelectors<T> {
     /// LookupGate pattern lookup selector
     pub lookup_gate: Option<T>,
     /// RangeCheckGate pattern lookup selector
-    pub range_check_gate: Option<T>,
+    pub range_check: Option<T>,
     /// FFMulGate pattern lookup selector
     pub ffmul_gate: Option<T>,
 }
@@ -60,7 +60,7 @@ struct LookupSelectorsSerdeAs<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub lookup_gate: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub range_check_gate: Option<E<F, D<F>>>,
+    pub range_check: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub ffmul_gate: Option<E<F, D<F>>>,
 }
@@ -76,7 +76,7 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
             xor: val.xor.clone(),
             chacha_final: val.chacha_final.clone(),
             lookup_gate: val.lookup_gate.clone(),
-            range_check_gate: val.range_check_gate.clone(),
+            range_check: val.range_check.clone(),
             ffmul_gate: val.ffmul_gate.clone(),
         };
         repr.serialize(serializer)
@@ -94,14 +94,14 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
             xor,
             chacha_final,
             lookup_gate,
-            range_check_gate,
+            range_check,
             ffmul_gate,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
             xor,
             chacha_final,
             lookup_gate,
-            range_check_gate,
+            range_check,
             ffmul_gate,
         })
     }
@@ -115,7 +115,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
             LookupPattern::Xor => &self.xor,
             LookupPattern::ChaChaFinal => &self.chacha_final,
             LookupPattern::LookupGate => &self.lookup_gate,
-            LookupPattern::RangeCheckGate => &self.range_check_gate,
+            LookupPattern::RangeCheck => &self.range_check,
             LookupPattern::ForeignFieldMulGate => &self.ffmul_gate,
         }
     }
@@ -127,7 +127,7 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
             LookupPattern::Xor => &mut self.xor,
             LookupPattern::ChaChaFinal => &mut self.chacha_final,
             LookupPattern::LookupGate => &mut self.lookup_gate,
-            LookupPattern::RangeCheckGate => &mut self.range_check_gate,
+            LookupPattern::RangeCheck => &mut self.range_check,
             LookupPattern::ForeignFieldMulGate => &mut self.ffmul_gate,
         }
     }
@@ -139,7 +139,7 @@ impl<T> LookupSelectors<T> {
             xor,
             chacha_final,
             lookup_gate,
-            range_check_gate,
+            range_check,
             ffmul_gate,
         } = self;
         // This closure isn't really redundant -- it shields the parameter from a copy -- but
@@ -150,7 +150,7 @@ impl<T> LookupSelectors<T> {
             xor: xor.map(f),
             chacha_final: chacha_final.map(f),
             lookup_gate: lookup_gate.map(f),
-            range_check_gate: range_check_gate.map(f),
+            range_check: range_check.map(f),
             ffmul_gate: ffmul_gate.map(f),
         }
     }
@@ -160,7 +160,7 @@ impl<T> LookupSelectors<T> {
             xor: self.xor.as_ref(),
             chacha_final: self.chacha_final.as_ref(),
             lookup_gate: self.lookup_gate.as_ref(),
-            range_check_gate: self.range_check_gate.as_ref(),
+            range_check: self.range_check.as_ref(),
             ffmul_gate: self.ffmul_gate.as_ref(),
         }
     }

@@ -498,7 +498,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     xor,
                     chacha_final,
                     lookup_gate,
-                    range_check_gate,
+                    range_check,
                     ffmul_gate,
                 },
         }) = lookup_index
@@ -522,8 +522,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             if let Some(lookup_gate) = lookup_gate {
                 fq_sponge.absorb_g(&lookup_gate.unshifted);
             }
-            if let Some(range_check_gate) = range_check_gate {
-                fq_sponge.absorb_g(&range_check_gate.unshifted);
+            if let Some(range_check) = range_check {
+                fq_sponge.absorb_g(&range_check.unshifted);
             }
             if let Some(ffmul_gate) = ffmul_gate {
                 fq_sponge.absorb_g(&ffmul_gate.unshifted);

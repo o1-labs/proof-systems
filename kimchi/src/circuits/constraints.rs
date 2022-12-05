@@ -717,6 +717,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
+                GateType::Rot64 => feature_flags.rot = true,
                 _ => (),
             }
         }

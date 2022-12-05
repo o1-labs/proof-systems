@@ -18,7 +18,7 @@ use crate::{
         },
         polynomial::COLUMNS,
         wires::Wire,
-        witness::{self, SumCopyBitsCell, VariableCell, Variables, WitnessCell},
+        witness::{self, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,
@@ -342,7 +342,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
     })
 }
 
-/// Get the xor lookup table
+/// Get the rot lookup table
 pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }
@@ -500,32 +500,29 @@ where
 
 // ROTATION WITNESS COMPUTATION
 
-fn layout_rot64<F: PrimeField>(sum: F, curr_row: usize) -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
-    [
-        rot_row(sum, curr_row),
-        range_check_0_row("shifted", curr_row + 1),
-    ]
+fn layout_rot64<F: PrimeField>(curr_row: usize) -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
+    [rot_row(), range_check_0_row("shifted", curr_row + 1)]
 }
 
-fn rot_row<F: PrimeField>(sum: F, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+fn rot_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     [
         VariableCell::create("word"),
         VariableCell::create("rotated"),
         VariableCell::create("excess"),
         /* 12-bit plookups */
-        SumCopyBitsCell::create(curr_row, 2, 52, 64, sum),
-        SumCopyBitsCell::create(curr_row, 2, 40, 52, sum),
-        SumCopyBitsCell::create(curr_row, 2, 28, 40, sum),
-        SumCopyBitsCell::create(curr_row, 2, 16, 28, sum),
+        VariableBitsCell::create("bound", 52, 64),
+        VariableBitsCell::create("bound", 40, 52),
+        VariableBitsCell::create("bound", 28, 40),
+        VariableBitsCell::create("bound", 16, 28),
         /* 2-bit crumbs */
-        SumCopyBitsCell::create(curr_row, 2, 14, 16, sum),
-        SumCopyBitsCell::create(curr_row, 2, 12, 14, sum),
-        SumCopyBitsCell::create(curr_row, 2, 10, 12, sum),
-        SumCopyBitsCell::create(curr_row, 2, 8, 10, sum),
-        SumCopyBitsCell::create(curr_row, 2, 6, 8, sum),
-        SumCopyBitsCell::create(curr_row, 2, 4, 6, sum),
-        SumCopyBitsCell::create(curr_row, 2, 2, 4, sum),
-        SumCopyBitsCell::create(curr_row, 2, 0, 2, sum),
+        VariableBitsCell::create("bound", 14, 16),
+        VariableBitsCell::create("bound", 12, 14),
+        VariableBitsCell::create("bound", 10, 12),
+        VariableBitsCell::create("bound", 8, 10),
+        VariableBitsCell::create("bound", 6, 8),
+        VariableBitsCell::create("bound", 4, 6),
+        VariableBitsCell::create("bound", 2, 4),
+        VariableBitsCell::create("bound", 0, 2),
     ]
 }
 
@@ -538,12 +535,12 @@ fn init_rot64<F: PrimeField>(
     shifted: F,
     bound: F,
 ) {
-    let rot_rows = layout_rot64(bound, curr_row);
+    let rot_rows = layout_rot64(curr_row);
     witness::init(
         witness,
         curr_row,
         &rot_rows,
-        &variable_map!["word" => word, "rotated" => rotated, "excess" => excess, "shifted" => shifted],
+        &variable_map!["word" => word, "rotated" => rotated, "excess" => excess, "shifted" => shifted, "bound" => excess+bound],
     );
 }
 

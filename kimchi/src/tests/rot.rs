@@ -1,10 +1,7 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::CircuitGate,
-    polynomials::{
-        rot::{self, RotMode},
-        xor,
-    },
+    polynomials::rot::{self, RotMode},
     wires::Wire,
 };
 
@@ -14,7 +11,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use rand::Rng;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 use super::framework::TestFramework;
 
@@ -23,6 +20,11 @@ type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
+
+const RNG_SEED: [u8; 32] = [
+    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
+    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
+];
 
 fn create_test_constraint_system(rot: u32, side: RotMode) -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_rot(0, rot, side) };
@@ -38,7 +40,8 @@ fn create_test_constraint_system(rot: u32, side: RotMode) -> ConstraintSystem<Fp
 
 // Function to create a prover and verifier to test the ROT circuit
 fn prove_and_verify() {
-    let rot = rand::thread_rng().gen_range(1..64);
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rot = rng.gen_range(1..64);
     // Create
     let (mut next_row, mut gates) = CircuitGate::<Fp>::create_rot(0, rot, RotMode::Left);
 
@@ -49,7 +52,7 @@ fn prove_and_verify() {
     }
 
     // Create input
-    let word = rand::thread_rng().gen_range(0..2u128.pow(64)) as u64;
+    let word = rng.gen_range(0..2u128.pow(64)) as u64;
 
     // Create witness
     let witness = rot::create_witness(word, rot, RotMode::Left);
@@ -57,7 +60,7 @@ fn prove_and_verify() {
     TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![xor::lookup_table()])
+        .lookup_tables(vec![rot::lookup_table()])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
 }
@@ -92,8 +95,9 @@ fn test_rot(word: u64, rot: u32, side: RotMode) {
 #[test]
 // Test that a random offset between 1 and 63 work as expected, both left and right
 fn test_rot_random() {
-    let rot = rand::thread_rng().gen_range(1..=63);
-    let word = rand::thread_rng().gen_range(0..2u128.pow(64)) as u64;
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let rot = rng.gen_range(1..=63);
+    let word = rng.gen_range(0..2u128.pow(64)) as u64;
     test_rot(word, rot, RotMode::Left);
     test_rot(word, rot, RotMode::Right);
 }

@@ -286,7 +286,7 @@ pub enum LookupPattern {
     Xor,
     ChaChaFinal,
     LookupGate,
-    RangeCheckGate,
+    RangeCheck,
     ForeignFieldMulGate,
 }
 
@@ -294,7 +294,7 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate => 4,
+            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck => 4,
             LookupPattern::LookupGate => 3,
             LookupPattern::ForeignFieldMulGate => 2,
         }
@@ -305,7 +305,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal => 3,
             LookupPattern::LookupGate => 2,
-            LookupPattern::ForeignFieldMulGate | LookupPattern::RangeCheckGate => 1,
+            LookupPattern::ForeignFieldMulGate | LookupPattern::RangeCheck => 1,
         }
     }
 
@@ -382,7 +382,7 @@ impl LookupPattern {
                     })
                     .collect()
             }
-            LookupPattern::RangeCheckGate => {
+            LookupPattern::RangeCheck => {
                 (3..=6)
                     .map(|column| {
                         //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -418,7 +418,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
-            LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
+            LookupPattern::RangeCheck => Some(GateLookupTable::RangeCheck),
             LookupPattern::ForeignFieldMulGate => Some(GateLookupTable::RangeCheck),
         }
     }
@@ -431,7 +431,9 @@ impl LookupPattern {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::Xor),
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
-            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
+            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) | (Rot64, Curr) => {
+                Some(LookupPattern::RangeCheck)
+            }
             (ForeignFieldMul, Curr) => Some(LookupPattern::ForeignFieldMulGate),
             (Xor16, Curr) => Some(LookupPattern::Xor),
             _ => None,
@@ -451,7 +453,7 @@ impl GateType {
             LookupPattern::Xor,
             LookupPattern::ChaChaFinal,
             LookupPattern::LookupGate,
-            LookupPattern::RangeCheckGate,
+            LookupPattern::RangeCheck,
             LookupPattern::ForeignFieldMulGate,
         ]
     }
