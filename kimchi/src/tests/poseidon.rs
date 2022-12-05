@@ -9,14 +9,19 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::Zero;
-use mina_curves::pasta::{Fp, Vesta};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use o1_utils::math;
-use oracle::constants::{PlonkSpongeConstantsKimchi, SpongeConstants};
 use std::array;
 
 // aliases
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit
 const ROUNDS_PER_HASH: usize = SpongeParams::PERM_ROUNDS_FULL;
@@ -32,7 +37,7 @@ fn test_poseidon() {
     println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
-    //let round_constants = oracle::pasta::fp_kimchi::params().round_constants;
+    //let round_constants = mina_poseidon::pasta::fp_kimchi::params().round_constants;
     let round_constants = &*Vesta::sponge_params().round_constants;
 
     // we keep track of an absolute row, and relative row within a gadget
@@ -44,9 +49,9 @@ fn test_poseidon() {
     // custom constraints for Poseidon hash function permutation
     // ROUNDS_FULL full rounds constraint gates
     for _ in 0..NUM_POS {
-        let first_wire = Wire::new(abs_row);
+        let first_wire = Wire::for_row(abs_row);
         let last_row = abs_row + POS_ROWS_PER_HASH;
-        let last_wire = Wire::new(last_row);
+        let last_wire = Wire::for_row(last_row);
         let (poseidon, row) = CircuitGate::<Fp>::create_poseidon_gadget(
             abs_row,
             [first_wire, last_wire],
@@ -76,9 +81,9 @@ fn test_poseidon() {
         );
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

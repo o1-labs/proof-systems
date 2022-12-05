@@ -1,13 +1,13 @@
 [workspace]
 members = [
-    "cairo",
+    "turshi",
     "curves",
     "groupmap",
     "hasher",
     "kimchi",
     "circuit-construction",
-    "oracle",
-    "oracle/export_test_vectors",
+    "poseidon",
+    "poseidon/export_test_vectors",
     "poly-commitment",
     "signer",
     "tools/kimchi-visu",
