@@ -69,47 +69,10 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             poseidon_selector,
         } = e;
 
-        let mut points = vec![
-            z,
-            generic_selector,
-            poseidon_selector,
-            &w[0],
-            &w[1],
-            &w[2],
-            &w[3],
-            &w[4],
-            &w[5],
-            &w[6],
-            &w[7],
-            &w[8],
-            &w[9],
-            &w[10],
-            &w[11],
-            &w[12],
-            &w[13],
-            &w[14],
-            &coefficients[0],
-            &coefficients[1],
-            &coefficients[2],
-            &coefficients[3],
-            &coefficients[4],
-            &coefficients[5],
-            &coefficients[6],
-            &coefficients[7],
-            &coefficients[8],
-            &coefficients[9],
-            &coefficients[10],
-            &coefficients[11],
-            &coefficients[12],
-            &coefficients[13],
-            &coefficients[14],
-            &s[0],
-            &s[1],
-            &s[2],
-            &s[3],
-            &s[4],
-            &s[5],
-        ];
+        let mut points = vec![z, generic_selector, poseidon_selector];
+        w.iter().for_each(|w_i| points.push(w_i));
+        coefficients.iter().for_each(|c_i| points.push(c_i));
+        s.iter().for_each(|s_i| points.push(s_i));
 
         if let Some(l) = lookup.as_ref() {
             let LookupEvaluations {
@@ -120,15 +83,13 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             } = l;
             points.push(aggreg);
             points.push(table);
-            for s in sorted {
-                points.push(s);
-            }
+            sorted.iter().for_each(|s| points.push(s));
             runtime.iter().for_each(|x| points.push(x));
         }
 
-        for p in points {
+        points.into_iter().for_each(|p| {
             self.sponge.absorb(&p.zeta);
             self.sponge.absorb(&p.zeta_omega);
-        }
+        })
     }
 }
