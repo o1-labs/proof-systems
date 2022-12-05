@@ -16,7 +16,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{big_bits, big_xor, FieldHelpers};
+use o1_utils::{big_bits, BitXor, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -100,13 +100,13 @@ pub(crate) fn check_xor(
         for crumb in 0..4 {
             assert_eq!(
                 witness[11 + crumb][x + ini_row],
-                PallasField::from(big_xor(&in1[crumb], &in2[crumb]))
+                PallasField::from(BigUint::bitxor(&in1[crumb], &in2[crumb]))
             );
         }
     }
     assert_eq!(
         witness[2][ini_row],
-        PallasField::from(big_xor(&input1, &input2))
+        PallasField::from(BigUint::bitxor(&input1, &input2))
     );
 }
 
