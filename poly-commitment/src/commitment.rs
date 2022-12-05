@@ -625,8 +625,13 @@ impl<G: CommitmentCurve> SRS<G> {
         };
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
-                let s = (plnm.domain().size / domain.size) as usize;
-                let v: Vec<_> = (0..(domain.size())).map(|i| plnm.evals[s * i]).collect();
+                let v = evals_domain_size_cast(
+                    &plnm.evals,
+                    plnm.domain().size(),
+                    domain.size(),
+                    domain.size(),
+                    0,
+                );
                 commit_evaluations(&v, basis)
             }
             std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
@@ -875,6 +880,21 @@ pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
         res += &(x * y);
     }
     res
+}
+
+pub fn evals_domain_size_cast<F: Clone + Send + Sync>(
+    evals: &Vec<F>,
+    src_domain_size: usize,
+    target_domain_size: usize,
+    target_domain_evals_size: usize,
+    shift: usize,
+) -> Vec<F> {
+    let scale = src_domain_size / target_domain_size;
+    assert!(scale != 0);
+    (0..target_domain_evals_size)
+        .into_par_iter()
+        .map(|i| evals[(scale * i + src_domain_size * shift) % evals.len()].clone())
+        .collect()
 }
 
 //
