@@ -11,6 +11,8 @@ use thiserror::Error;
 pub enum FieldHelpersError {
     #[error("failed to deserialize field bytes")]
     DeserializeBytes,
+    #[error("failed to deserialize field bits")]
+    DeserializeBits,
     #[error("failed to decode hex")]
     DecodeHex,
     #[error("failed to convert BigUint into field element")]

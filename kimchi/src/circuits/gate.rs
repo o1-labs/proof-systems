@@ -116,10 +116,7 @@ pub enum GateType {
     ForeignFieldMul = 19,
     // Gates for Keccak
     Xor16 = 20,
-<<<<<<< HEAD
     Rot64 = 21,
-=======
->>>>>>> 9d32339530cd1cc0db34c289c5fe45b42bea0d4c
 }
 
 /// Gate error
