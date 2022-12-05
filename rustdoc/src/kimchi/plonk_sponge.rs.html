@@ -93,45 +93,6 @@
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
 <a href="#95" id="95">95</a>
-<a href="#96" id="96">96</a>
-<a href="#97" id="97">97</a>
-<a href="#98" id="98">98</a>
-<a href="#99" id="99">99</a>
-<a href="#100" id="100">100</a>
-<a href="#101" id="101">101</a>
-<a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">use </span>mina_poseidon::sponge::{DefaultFrSponge, ScalarChallenge};
 <span class="kw">use </span>mina_poseidon::{
@@ -203,47 +164,10 @@
             poseidon_selector,
         } = e;
 
-        <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[
-            z,
-            generic_selector,
-            poseidon_selector,
-            <span class="kw-2">&amp;</span>w[<span class="number">0</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">1</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">2</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">3</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">4</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">5</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">6</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">7</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">8</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">9</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">10</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">11</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">12</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">13</span>],
-            <span class="kw-2">&amp;</span>w[<span class="number">14</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">0</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">1</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">2</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">3</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">4</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">5</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">6</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">7</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">8</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">9</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">10</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">11</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">12</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">13</span>],
-            <span class="kw-2">&amp;</span>coefficients[<span class="number">14</span>],
-            <span class="kw-2">&amp;</span>s[<span class="number">0</span>],
-            <span class="kw-2">&amp;</span>s[<span class="number">1</span>],
-            <span class="kw-2">&amp;</span>s[<span class="number">2</span>],
-            <span class="kw-2">&amp;</span>s[<span class="number">3</span>],
-            <span class="kw-2">&amp;</span>s[<span class="number">4</span>],
-            <span class="kw-2">&amp;</span>s[<span class="number">5</span>],
-        ];
+        <span class="kw">let </span><span class="kw-2">mut </span>points = <span class="macro">vec!</span>[z, generic_selector, poseidon_selector];
+        w.iter().for_each(|w_i| points.push(w_i));
+        coefficients.iter().for_each(|c_i| points.push(c_i));
+        s.iter().for_each(|s_i| points.push(s_i));
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(l) = lookup.as_ref() {
             <span class="kw">let </span>LookupEvaluations {
@@ -254,17 +178,15 @@
             } = l;
             points.push(aggreg);
             points.push(table);
-            <span class="kw">for </span>s <span class="kw">in </span>sorted {
-                points.push(s);
-            }
+            sorted.iter().for_each(|s| points.push(s));
             runtime.iter().for_each(|x| points.push(x));
         }
 
-        <span class="kw">for </span>p <span class="kw">in </span>points {
+        points.into_iter().for_each(|p| {
             <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>p.zeta);
             <span class="self">self</span>.sponge.absorb(<span class="kw-2">&amp;</span>p.zeta_omega);
-        }
+        })
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (234151769 2022-12-03)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (53e4b9dd7 2022-12-04)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
