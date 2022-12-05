@@ -3,7 +3,7 @@ mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
 mod copy_shift_cell;
-mod crumb_cell;
+mod nybble_cell;
 mod sum_copy_bits_cell;
 mod variable_bits_cell;
 mod variable_cell;
@@ -14,7 +14,7 @@ pub use self::{
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
     copy_shift_cell::CopyShiftCell,
-    crumb_cell::CrumbCell,
+    nybble_cell::NybbleCell,
     sum_copy_bits_cell::SumCopyBitsCell,
     variable_bits_cell::VariableBitsCell,
     variable_cell::VariableCell,

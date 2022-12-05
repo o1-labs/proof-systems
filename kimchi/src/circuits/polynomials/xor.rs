@@ -15,7 +15,7 @@ use crate::{
         },
         polynomial::COLUMNS,
         wires::Wire,
-        witness::{self, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
+        witness::{self, ConstantCell, CopyBitsCell, NybbleCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,
@@ -25,7 +25,8 @@ use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use o1_utils::{big_bits, big_xor, FieldHelpers};
+use num_bigint::BigUint;
+use o1_utils::{big_bits, BigUintFieldHelpers, BitXor, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
 
@@ -414,9 +415,9 @@ fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCe
 
 fn xor_row<F: PrimeField>(crumb: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     [
-        CrumbCell::create("in1", crumb),
-        CrumbCell::create("in2", crumb),
-        CrumbCell::create("out", crumb),
+        NybbleCell::create("in1", crumb),
+        NybbleCell::create("in2", crumb),
+        NybbleCell::create("out", crumb),
         CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit crumb of in1
         CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit crumb of in1
         CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit crumb of in1
@@ -500,7 +501,7 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [
     if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) {
         panic!("Bits must be greater or equal than the inputs length");
     }
-    let output = big_xor(&input1_big, &input2_big);
+    let output = BigUint::bitxor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
@@ -509,7 +510,7 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [
         &mut xor_witness,
         0,
         bits,
-        (input1, input2, F::from_biguint(output).unwrap()),
+        (input1, input2, output.to_field().unwrap()),
     );
 
     xor_witness

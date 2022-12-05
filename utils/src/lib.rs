@@ -14,9 +14,9 @@ pub mod hasher;
 pub mod math;
 pub mod serialization;
 
-pub use big_bit_ops::{big_bits, big_xor};
+pub use big_bit_ops::{big_bits, BitXor};
 pub use chunked_evaluations::ChunkedEvaluations;
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;
-pub use field_helpers::FieldHelpers;
+pub use field_helpers::{BigUintFieldHelpers, FieldHelpers};
 pub use foreign_field::{ForeignElement, LIMB_COUNT};

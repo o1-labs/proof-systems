@@ -58,6 +58,9 @@ pub trait FieldHelpers<F> {
         BigUint::from_bytes_le(&self.to_bytes())
     }
 
+    /// Create a new field element from this field elements bits
+    fn bits_to_field(&self, start: usize, end: usize) -> Result<F>;
+
     /// Field size in bytes
     fn size_in_bytes() -> usize
     where
@@ -118,6 +121,22 @@ impl<F: Field> FieldHelpers<F> for F {
             }
             bits
         })
+    }
+
+    fn bits_to_field(&self, start: usize, end: usize) -> Result<F> {
+        F::from_bits(&self.to_bits()[start..end]).map_err(|_| FieldHelpersError::DeserializeBits)
+    }
+}
+
+/// Field element wrapper for [BigUint]
+pub trait BigUintFieldHelpers {
+    /// Convert BigUint into PrimeField element
+    fn to_field<F: PrimeField>(self) -> Result<F>;
+}
+
+impl BigUintFieldHelpers for BigUint {
+    fn to_field<F: PrimeField>(self) -> Result<F> {
+        F::from_biguint(self)
     }
 }
 
@@ -246,7 +265,7 @@ mod tests {
     #[test]
     fn field_big() {
         let fe_1024 = BaseField::from(1024u32);
-        let big_1024: BigUint = fe_1024.into();
+        let big_1024 = fe_1024.into();
         assert_eq!(big_1024, BigUint::new(vec![1024]));
 
         assert_eq!(
