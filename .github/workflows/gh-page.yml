@@ -34,10 +34,10 @@ jobs:
 
       - name: Arrange website folder hierarchy
         run: |
-          mv ./target/doc ./book/book/rustdoc
+          mv ./target/doc ./book/book/html/rustdoc
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./book/book
+          publish_dir: ./book/book/html

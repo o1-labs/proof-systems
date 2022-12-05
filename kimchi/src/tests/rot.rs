@@ -1,14 +1,26 @@
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::CircuitGate,
-    polynomials::rot::{self, RotMode},
+    polynomials::{
+        rot::{self, RotMode},
+        xor,
+    },
     wires::Wire,
 };
+
 use ark_ec::AffineCurve;
-use mina_curves::pasta::{Fp, Pallas, Vesta};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use rand::Rng;
 
 use super::framework::TestFramework;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
@@ -24,7 +36,7 @@ fn create_test_constraint_system(rot: u32, side: RotMode) -> ConstraintSystem<Fp
     ConstraintSystem::create(gates).build().unwrap()
 }
 
-// Function to create a prover and verifier to test the XOR circuit
+// Function to create a prover and verifier to test the ROT circuit
 fn prove_and_verify() {
     let rot = rand::thread_rng().gen_range(1..64);
     // Create
@@ -42,11 +54,12 @@ fn prove_and_verify() {
     // Create witness
     let witness = rot::create_witness(word, rot, RotMode::Left);
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
+        .lookup_tables(vec![xor::lookup_table()])
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
 }
 
 #[test]

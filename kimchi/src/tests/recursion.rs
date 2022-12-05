@@ -6,10 +6,18 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
 use commitment_dlog::commitment::b_poly_coefficients;
-use mina_curves::pasta::Fp;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use o1_utils::math;
 use rand::prelude::*;
 use std::array;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_recursion() {
@@ -20,7 +28,7 @@ fn test_recursion() {
     fill_in_witness(0, &mut witness, &[]);
 
     // setup
-    let test_runner = TestFramework::default()
+    let test_runner = TestFramework::<Vesta>::default()
         .num_prev_challenges(1)
         .gates(gates)
         .witness(witness)
@@ -42,5 +50,5 @@ fn test_recursion() {
 
     test_runner
         .recursion(vec![prev_challenges])
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

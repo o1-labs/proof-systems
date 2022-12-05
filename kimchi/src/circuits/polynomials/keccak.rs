@@ -1,7 +1,7 @@
 //! Keccak gadget
 use std::array;
 
-use ark_ff::PrimeField;
+use ark_ff::{PrimeField, SquareRootField};
 
 use crate::circuits::{
     gate::{CircuitGate, Connect},
@@ -26,7 +26,7 @@ pub const ROT_TAB: [[u32; 5]; 5] = [
     [27, 20, 39, 8, 14],
 ];
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates Keccak gadget.
     /// Right now it only creates an initial generic gate with all zeros starting on `new_row` and then
     /// calls the Keccak rotation gadget
