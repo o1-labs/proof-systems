@@ -15,8 +15,8 @@ impl BitXor for BigUint {
         // Pad to equal size in bytes
         let bytes1 = input1.to_bytes_le().len();
         let bytes2 = input2.to_bytes_le().len();
-        let in1 = vectorize(&input1, bytes2);
-        let in2 = vectorize(&input2, bytes1);
+        let in1 = vectorize(input1, bytes2);
+        let in2 = vectorize(input2, bytes1);
         BigUint::from_bytes_le(
             &in1.iter()
                 .zip(in2.iter())
