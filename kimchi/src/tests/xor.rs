@@ -1,19 +1,25 @@
 use std::cmp::max;
 
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::CircuitGate,
-    polynomial::COLUMNS,
-    polynomials::xor::{self},
-    wires::Wire,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, CircuitGateError, GateType},
+        polynomial::COLUMNS,
+        polynomials::xor::{self},
+        wires::Wire,
+    },
+    curve::KimchiCurve,
+    plonk_sponge::FrSponge,
+    prover_index::testing::new_index_for_test_with_lookups,
 };
 
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One};
-use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use ark_ff::{Field, One, PrimeField, Zero};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
+    FqSponge,
 };
 use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{big_bits, BitXor, FieldHelpers};
@@ -21,11 +27,13 @@ use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
 
+type PallasField = <Pallas as AffineCurve>::BaseField;
+
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-
-type PallasField = <Pallas as AffineCurve>::BaseField;
+type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
+type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 const XOR: bool = true;
 
@@ -34,8 +42,13 @@ const RNG_SEED: [u8; 32] = [
     89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
 ];
 
-fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
+fn create_test_constraint_system_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
+    bits: usize,
+) -> ConstraintSystem<G::ScalarField>
+where
+    G::BaseField: PrimeField,
+{
+    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_xor_gadget(0, bits);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -47,44 +60,44 @@ fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
 }
 
 // Generates a random field element of up to a given number of bits
-pub(crate) fn random_field(bits: usize, rng: &mut StdRng) -> PallasField {
-    PallasField::from_biguint(
+pub(crate) fn random_field<G: KimchiCurve>(bits: usize, rng: &mut StdRng) -> G::ScalarField {
+    G::ScalarField::from_biguint(
         rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
     )
     .unwrap()
 }
 
 // Initialize a random input
-pub(crate) fn initialize(
-    input: Option<PallasField>,
+pub(crate) fn initialize<G: KimchiCurve>(
+    input: Option<G::ScalarField>,
     bits: Option<usize>,
     rng: &mut StdRng,
-) -> PallasField {
+) -> G::ScalarField {
     if let Some(inp) = input {
         inp
     } else {
         assert!(bits.is_some());
         let bits = bits.unwrap();
-        random_field(bits, rng)
+        random_field::<G>(bits, rng)
     }
 }
 
 // Returns the all ones BigUint of bits length
-pub(crate) fn all_ones(bits: usize) -> PallasField {
-    PallasField::from(2u128).pow(&[bits as u64]) - PallasField::one()
+pub(crate) fn all_ones<G: KimchiCurve>(bits: usize) -> G::ScalarField {
+    G::ScalarField::from(2u128).pow(&[bits as u64]) - G::ScalarField::one()
 }
 
-// Returns a given crumb of 4 bits
-pub(crate) fn xor_crumb(word: BigUint, crumb: usize) -> BigUint {
-    (word >> (4 * crumb)) % 2u128.pow(4)
+// Returns a given nybble of 4 bits
+pub(crate) fn xor_nybble(word: BigUint, nybble: usize) -> BigUint {
+    (word >> (4 * nybble)) % 2u128.pow(4)
 }
 
-// Manually checks the XOR of each crumb in the witness
-pub(crate) fn check_xor(
-    witness: &[Vec<PallasField>; COLUMNS],
+// Manually checks the XOR of each nybble in the witness
+pub(crate) fn check_xor<G: KimchiCurve>(
+    witness: &[Vec<G::ScalarField>; COLUMNS],
     bits: usize,
-    input1: PallasField,
-    input2: PallasField,
+    input1: G::ScalarField,
+    input2: G::ScalarField,
     not: bool,
 ) {
     let input1 = input1.to_biguint();
@@ -92,35 +105,42 @@ pub(crate) fn check_xor(
     let ini_row = if not == XOR { 0 } else { 1 };
     for x in 0..xor::num_xors(bits) {
         let in1 = (0..4)
-            .map(|i| xor_crumb(input1.clone(), i + 4 * x))
+            .map(|i| xor_nybble(input1.clone(), i + 4 * x))
             .collect::<Vec<BigUint>>();
         let in2 = (0..4)
-            .map(|i| xor_crumb(input2.clone(), i + 4 * x))
+            .map(|i| xor_nybble(input2.clone(), i + 4 * x))
             .collect::<Vec<BigUint>>();
-        for crumb in 0..4 {
+        for nybble in 0..4 {
             assert_eq!(
-                witness[11 + crumb][x + ini_row],
-                PallasField::from(BigUint::bitxor(&in1[crumb], &in2[crumb]))
+                witness[11 + nybble][x + ini_row],
+                G::ScalarField::from(BigUint::bitxor(&in1[nybble], &in2[nybble]))
             );
         }
     }
     assert_eq!(
         witness[2][ini_row],
-        PallasField::from(BigUint::bitxor(&input1, &input2))
+        G::ScalarField::from(BigUint::bitxor(&input1, &input2))
     );
 }
 
-// General test for Xor
-fn test_xor(
-    in1: Option<PallasField>,
-    in2: Option<PallasField>,
+fn setup_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
+    in1: Option<G::ScalarField>,
+    in2: Option<G::ScalarField>,
     bits: Option<usize>,
-) -> [Vec<PallasField>; COLUMNS] {
+) -> (
+    ConstraintSystem<G::ScalarField>,
+    [Vec<G::ScalarField>; COLUMNS],
+)
+where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
     let rng = &mut StdRng::from_seed(RNG_SEED);
     // Initalize inputs
     // If some input was given then use that one, otherwise generate a random one with the given bits
-    let input1 = initialize(in1, bits, rng);
-    let input2 = initialize(in2, bits, rng);
+    let input1 = initialize::<G>(in1, bits, rng);
+    let input2 = initialize::<G>(in2, bits, rng);
 
     // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
     // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
@@ -129,17 +149,32 @@ fn test_xor(
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
-    let cs = create_test_constraint_system_xor(bits);
+    let cs = create_test_constraint_system_xor::<G, EFqSponge, EFrSponge>(bits);
     let witness = xor::create_xor_witness(input1, input2, bits);
-    for row in 0..xor::num_xors(bits) + 1 {
+
+    check_xor::<G>(&witness, bits, input1, input2, XOR);
+
+    (cs, witness)
+}
+
+// General test for Xor
+fn test_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
+    in1: Option<G::ScalarField>,
+    in2: Option<G::ScalarField>,
+    bits: Option<usize>,
+) -> [Vec<G::ScalarField>; COLUMNS]
+where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
+    let (cs, witness) = setup_xor::<G, EFqSponge, EFrSponge>(in1, in2, bits);
+    for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
-
-    check_xor(&witness, bits, input1, input2, XOR);
-
     witness
 }
 
@@ -158,8 +193,8 @@ fn test_prove_and_verify_xor() {
         next_row += 1;
     }
 
-    let input1 = random_field(bits, rng);
-    let input2 = random_field(bits, rng);
+    let input1 = random_field::<Vesta>(bits, rng);
+    let input2 = random_field::<Vesta>(bits, rng);
 
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
@@ -177,7 +212,8 @@ fn test_prove_and_verify_xor() {
 fn test_xor64_alternating() {
     let input1 = PallasField::from(6510615555426900570u64);
     let input2 = PallasField::from(11936128518282651045u64);
-    let witness = test_xor(Some(input1), Some(input2), Some(64));
+    let witness =
+        test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input1), Some(input2), Some(64));
     assert_eq!(witness[2][0], PallasField::from(2u128.pow(64) - 1));
     assert_eq!(witness[2][1], PallasField::from(2u64.pow(48) - 1));
     assert_eq!(witness[2][2], PallasField::from(2u64.pow(32) - 1));
@@ -190,7 +226,8 @@ fn test_xor64_alternating() {
 fn test_xor64_zeros() {
     // forces zero to fit in 64 bits even if it only needs 1 bit
     let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
-    let witness = test_xor(Some(zero), Some(zero), Some(64));
+    let witness =
+        test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero), Some(zero), Some(64));
     assert_eq!(witness[2][0], PallasField::from(0));
 }
 
@@ -198,37 +235,87 @@ fn test_xor64_zeros() {
 // Test a XOR of 64bit whose inputs are all zero and all one. Checks it works fine with non-dense values.
 fn test_xor64_zero_one() {
     let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
-    let all_ones = all_ones(64);
-    let witness = test_xor(Some(zero), Some(all_ones), None);
+    let all_ones = all_ones::<Vesta>(64);
+    let witness =
+        test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero), Some(all_ones), None);
     assert_eq!(witness[2][0], all_ones);
 }
 
 #[test]
 // Tests a XOR of 8 bits for a random input
 fn test_xor8_random() {
-    test_xor(None, None, Some(8));
+    test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(8));
+    test_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, Some(8));
 }
 
 #[test]
 // Tests a XOR of 16 bits for a random input
 fn test_xor16_random() {
-    test_xor(None, None, Some(16));
+    test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+    test_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, Some(16));
 }
 
 #[test]
 // Tests a XOR of 32 bits for a random input
 fn test_xor32_random() {
-    test_xor(None, None, Some(32));
+    test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(32));
+    test_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, Some(32));
 }
 
 #[test]
 // Tests a XOR of 64 bits for a random input
 fn test_xor64_random() {
-    test_xor(None, None, Some(64));
+    test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(64));
+    test_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, Some(64));
 }
 
 #[test]
 // Test a random XOR of 128 bits
 fn test_xor128_random() {
-    test_xor(None, None, Some(128));
+    test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(128));
+    test_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, Some(128));
+}
+
+#[test]
+// Test that a random XOR of 16 bits fails if the inputs do not decompose correctly
+fn test_bad_decomp() {
+    let (cs, mut witness) =
+        setup_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+    // modify by one each of the witness cells individually
+    for col in 0..COLUMNS {
+        // first three columns make fail the ith+1 constraint
+        // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
+        let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
+        witness[col][0] += PallasField::one();
+        assert_eq!(
+            cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+            Err(CircuitGateError::Constraint(GateType::Xor16, bad))
+        );
+        witness[col][0] -= PallasField::one();
+    }
+    // undo changes
+    assert_eq!(
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+        Ok(())
+    );
+}
+
+#[test]
+// Test that a 16-bit XOR gate fails if the witness does not correspond to a XOR operation
+fn test_bad_xor() {
+    let (cs, mut witness) =
+        setup_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+    // modify the output to be all zero
+    witness[2][0] = PallasField::zero();
+    for i in 1..=4 {
+        witness[COLUMNS - i][0] = PallasField::zero();
+    }
+    let index =
+        new_index_for_test_with_lookups(cs.gates, 0, 0, vec![xor::lookup_table()], None, None);
+    assert_eq!(
+        index.cs.gates[0].verify_xor::<Vesta>(0, &witness, &index),
+        Err(CircuitGateError::InvalidLookupConstraintSorted(
+            GateType::Xor16
+        ))
+    );
 }

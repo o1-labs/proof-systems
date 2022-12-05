@@ -15,7 +15,7 @@ use crate::{
         },
         polynomial::COLUMNS,
         wires::Wire,
-        witness::{self, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
+        witness::{self, ConstantCell, CopyBitsCell, NybbleCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,
@@ -417,9 +417,9 @@ fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCe
 
 fn xor_row<F: PrimeField>(crumb: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     [
-        CrumbCell::create("in1", crumb),
-        CrumbCell::create("in2", crumb),
-        CrumbCell::create("out", crumb),
+        NybbleCell::create("in1", crumb),
+        NybbleCell::create("in2", crumb),
+        NybbleCell::create("out", crumb),
         CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit crumb of in1
         CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit crumb of in1
         CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit crumb of in1
