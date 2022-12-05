@@ -138,7 +138,6 @@ pub fn create<F: PrimeField>(
 
     let mut left = ForeignElement::from_biguint(inputs[0].clone());
 
-    let mut offset = 0;
     for i in 0..num {
         // Create foreign field addition row
         for w in &mut witness {
@@ -149,14 +148,13 @@ pub fn create<F: PrimeField>(
             compute_ffadd_values(&left, &right, opcodes[i], &foreign_modulus);
         init_ffadd_row(
             &mut witness,
-            offset,
+            i,
             left.limbs,
             [right[LO], right[MI], right[HI]],
             sign,
             ovf,
             carry,
         );
-        offset += 1;
         left = output; // output is next left input
     }
 

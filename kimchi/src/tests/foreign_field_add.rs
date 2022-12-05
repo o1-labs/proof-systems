@@ -728,7 +728,7 @@ fn test_wrong_sum() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 4)),
     );
@@ -752,7 +752,7 @@ fn test_wrong_dif() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 4)),
     );
@@ -1026,7 +1026,7 @@ fn test_bad_bound() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 1)),
     );
@@ -1038,7 +1038,7 @@ fn test_bad_bound() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 1)),
     );
@@ -1048,7 +1048,7 @@ fn test_bad_bound() {
             1,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(()),
     );
@@ -1076,7 +1076,7 @@ fn test_random_bad_input() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::ForeignFieldAdd,
@@ -1091,7 +1091,7 @@ fn test_random_bad_input() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 4)),
     );
@@ -1119,7 +1119,7 @@ fn test_random_bad_parameters() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 4)),
     );
@@ -1131,7 +1131,7 @@ fn test_random_bad_parameters() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 4)),
     );
@@ -1143,7 +1143,7 @@ fn test_random_bad_parameters() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 4)),
     );
@@ -1154,7 +1154,7 @@ fn test_random_bad_parameters() {
             0,
             &witness,
             &index.cs,
-            &witness[0][0..index.cs.public].to_vec()
+            &witness[0][0..index.cs.public]
         ),
         Ok(()),
     );
@@ -1316,12 +1316,7 @@ fn test_ffadd_no_rc() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
