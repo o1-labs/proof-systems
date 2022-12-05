@@ -278,11 +278,16 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
 #[derive(
     Copy, Clone, Serialize, Deserialize, Debug, EnumIter, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum LookupPattern {
     Xor,
     ChaChaFinal,
     LookupGate,
     RangeCheckGate,
+    ForeignFieldMulGate,
 }
 
 impl LookupPattern {
@@ -291,6 +296,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate => 4,
             LookupPattern::LookupGate => 3,
+            LookupPattern::ForeignFieldMulGate => 2,
         }
     }
 
@@ -299,7 +305,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal => 3,
             LookupPattern::LookupGate => 2,
-            LookupPattern::RangeCheckGate => 1,
+            LookupPattern::ForeignFieldMulGate | LookupPattern::RangeCheckGate => 1,
         }
     }
 
@@ -390,6 +396,20 @@ impl LookupPattern {
                     })
                     .collect()
             }
+            LookupPattern::ForeignFieldMulGate => {
+                (7..=8)
+                    .map(|column| {
+                        //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                        //   - - - - - - - L L - -  -  -  -  -
+                        JointLookup {
+                            table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                            entry: vec![SingleLookup {
+                                value: vec![(F::one(), curr_row(column))],
+                            }],
+                        }
+                    })
+                    .collect()
+            }
         }
     }
 
@@ -399,6 +419,7 @@ impl LookupPattern {
             LookupPattern::Xor | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
             LookupPattern::LookupGate => None,
             LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
+            LookupPattern::ForeignFieldMulGate => Some(GateLookupTable::RangeCheck),
         }
     }
 
@@ -411,6 +432,7 @@ impl LookupPattern {
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::LookupGate),
             (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
+            (ForeignFieldMul, Curr) => Some(LookupPattern::ForeignFieldMulGate),
             (Xor16, Curr) => Some(LookupPattern::Xor),
             _ => None,
         }
@@ -430,6 +452,7 @@ impl GateType {
             LookupPattern::ChaChaFinal,
             LookupPattern::LookupGate,
             LookupPattern::RangeCheckGate,
+            LookupPattern::ForeignFieldMulGate,
         ]
     }
 }

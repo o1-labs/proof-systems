@@ -10,12 +10,20 @@ use crate::circuits::{
 
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One};
-use mina_curves::pasta::{Fp, Pallas, Vesta};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{big_bit_ops::*, FieldFromBig, FieldHelpers};
+use o1_utils::{big_bits, big_xor, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 
@@ -41,7 +49,7 @@ fn create_test_constraint_system_xor(bits: usize) -> ConstraintSystem<Fp> {
 // Generates a random field element of up to a given number of bits
 pub(crate) fn random_field(bits: usize, rng: &mut StdRng) -> PallasField {
     PallasField::from_biguint(
-        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
+        rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
     )
     .unwrap()
 }
@@ -125,12 +133,7 @@ fn test_xor(
     let witness = xor::create_xor_witness(input1, input2, bits);
     for row in 0..xor::num_xors(bits) + 1 {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
@@ -161,12 +164,12 @@ fn test_prove_and_verify_xor() {
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
 }
 
 #[test]
@@ -186,7 +189,7 @@ fn test_xor64_alternating() {
 // Test a XOR of 64bit whose inputs are zero. Checks it works fine with non-dense values.
 fn test_xor64_zeros() {
     // forces zero to fit in 64 bits even if it only needs 1 bit
-    let zero = PallasField::from_biguint(&BigUint::from(0u32)).unwrap();
+    let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
     let witness = test_xor(Some(zero), Some(zero), Some(64));
     assert_eq!(witness[2][0], PallasField::from(0));
 }
@@ -194,7 +197,7 @@ fn test_xor64_zeros() {
 #[test]
 // Test a XOR of 64bit whose inputs are all zero and all one. Checks it works fine with non-dense values.
 fn test_xor64_zero_one() {
-    let zero = PallasField::from_biguint(&BigUint::from(0u32)).unwrap();
+    let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
     let all_ones = all_ones(64);
     let witness = test_xor(Some(zero), Some(all_ones), None);
     assert_eq!(witness[2][0], all_ones);

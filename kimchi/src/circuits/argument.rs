@@ -174,3 +174,21 @@ pub trait Argument<F: PrimeField> {
         }
     }
 }
+
+pub trait DynArgument<F: PrimeField> {
+    fn constraints(&self) -> Vec<E<F>>;
+    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F>;
+    fn argument_type(&self) -> ArgumentType;
+}
+
+impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
+    fn constraints(&self) -> Vec<E<F>> {
+        <Self as Argument<F>>::constraints()
+    }
+    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F> {
+        <Self as Argument<F>>::combined_constraints(alphas)
+    }
+    fn argument_type(&self) -> ArgumentType {
+        <Self as Argument<F>>::ARGUMENT_TYPE
+    }
+}
