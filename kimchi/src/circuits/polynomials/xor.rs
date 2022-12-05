@@ -25,7 +25,7 @@ use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use o1_utils::{big_bits, big_xor, FieldHelpers};
+use o1_utils::{big_bits, big_xor, BigUintFieldHelpers, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
 
@@ -511,7 +511,7 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [
         &mut xor_witness,
         0,
         bits,
-        (input1, input2, F::from_biguint(output).unwrap()),
+        (input1, input2, output.to_field().unwrap()),
     );
 
     xor_witness
