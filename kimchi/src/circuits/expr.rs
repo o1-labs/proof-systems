@@ -6,7 +6,7 @@ use crate::{
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
-    proof::ProofEvaluations,
+    proof::{PointEvaluations, ProofEvaluations},
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
@@ -178,6 +178,7 @@ impl<'a, F: FftField> Environment<'a, F> {
                 None => None,
                 Some(e) => Some(e),
             },
+            Permutation(_) => None,
         }
     }
 }
@@ -223,6 +224,7 @@ pub enum Column {
     LookupRuntimeTable,
     Index(GateType),
     Coefficient(usize),
+    Permutation(usize),
 }
 
 impl Column {
@@ -248,6 +250,7 @@ impl Column {
                 format!("{:?}", gate)
             }
             Column::Coefficient(i) => format!("c_{{{}}}", i),
+            Column::Permutation(i) => format!("sigma_{{{}}}", i),
         }
     }
 
@@ -265,6 +268,7 @@ impl Column {
                 format!("{:?}", gate)
             }
             Column::Coefficient(i) => format!("c[{}]", i),
+            Column::Permutation(i) => format!("sigma_[{}]", i),
         }
     }
 }
@@ -492,6 +496,26 @@ impl Op2 {
     }
 }
 
+/// The feature flags that can be used to enable or disable parts of constraints.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
+pub enum FeatureFlag {
+    ChaCha,
+    RangeCheck,
+    ForeignFieldAdd,
+    ForeignFieldMul,
+    Xor,
+}
+
+impl FeatureFlag {
+    fn is_enabled(&self) -> bool {
+        todo!("Handle features")
+    }
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -515,6 +539,8 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
+    /// Expression is conditional on the given feature flag, returns 0 if disabled.
+    EnabledIf(FeatureFlag, Box<Expr<C>>),
 }
 
 /// For efficiency of evaluation, we compile expressions to
@@ -527,7 +553,10 @@ pub enum PolishToken<F> {
     Gamma,
     JointCombiner,
     EndoCoefficient,
-    Mds { row: usize, col: usize },
+    Mds {
+        row: usize,
+        col: usize,
+    },
     ForeignFieldModulus(usize),
     NegForeignFieldModulus(usize),
     Literal(F),
@@ -541,29 +570,40 @@ pub enum PolishToken<F> {
     UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
+    /// Skip the given number of tokens if the feature is disabled, and emit a zero instead.
+    SkipIfNot(FeatureFlag, usize),
 }
 
 impl Variable {
-    fn evaluate<F: Field>(&self, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
-        let evals = &evals[self.row.shift()];
-        use Column::*;
-        let l = evals
-            .lookup
-            .as_ref()
-            .ok_or(ExprError::LookupShouldNotBeUsed);
-        match self.col {
-            Witness(i) => Ok(evals.w[i]),
-            Z => Ok(evals.z),
-            LookupSorted(i) => l.map(|l| l.sorted[i]),
-            LookupAggreg => l.map(|l| l.aggreg),
-            LookupTable => l.map(|l| l.table),
-            LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
-            Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-            Index(GateType::Generic) => Ok(evals.generic_selector),
-            Coefficient(i) => Ok(evals.coefficients[i]),
-            LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                Err(ExprError::MissingIndexEvaluation(self.col))
+    fn evaluate<F: Field>(
+        &self,
+        evals: &ProofEvaluations<PointEvaluations<F>>,
+    ) -> Result<F, ExprError> {
+        let point_evaluations = {
+            use Column::*;
+            let l = evals
+                .lookup
+                .as_ref()
+                .ok_or(ExprError::LookupShouldNotBeUsed);
+            match self.col {
+                Witness(i) => Ok(evals.w[i]),
+                Z => Ok(evals.z),
+                LookupSorted(i) => l.map(|l| l.sorted[i]),
+                LookupAggreg => l.map(|l| l.aggreg),
+                LookupTable => l.map(|l| l.table),
+                LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
+                Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
+                Index(GateType::Generic) => Ok(evals.generic_selector),
+                Permutation(i) => Ok(evals.s[i]),
+                Coefficient(i) => Ok(evals.coefficients[i]),
+                LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
+                    Err(ExprError::MissingIndexEvaluation(self.col))
+                }
             }
+        }?;
+        match self.row {
+            CurrOrNext::Curr => Ok(point_evaluations.zeta),
+            CurrOrNext::Next => Ok(point_evaluations.zeta_omega),
         }
     }
 }
@@ -574,13 +614,19 @@ impl<F: FftField> PolishToken<F> {
         toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
 
+        let mut skip_count = 0;
+
         for t in toks.iter() {
+            if skip_count > 0 {
+                skip_count -= 1;
+                continue;
+            }
             use PolishToken::*;
             match t {
                 Alpha => stack.push(c.alpha),
@@ -635,6 +681,12 @@ impl<F: FftField> PolishToken<F> {
                     cache.push(x);
                 }
                 Load(i) => stack.push(cache[*i]),
+                SkipIfNot(feature, count) => {
+                    if !feature.is_enabled() {
+                        skip_count = *count;
+                        stack.push(F::zero());
+                    }
+                }
             }
         }
 
@@ -677,6 +729,7 @@ impl<C> Expr<C> {
             }
             Pow(e, d) => d * e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
+            EnabledIf(_, e) => e.degree(d1_size),
         }
     }
 }
@@ -1322,6 +1375,17 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                     }
                 }
             }
+            Expr::EnabledIf(feature, e) => {
+                let tok = PolishToken::SkipIfNot(*feature, 0);
+                res.push(tok);
+                let len_before = res.len();
+                /* Clone the cache, to make sure we don't try to access cached statements later
+                when the feature flag is off. */
+                let mut cache = cache.clone();
+                e.to_polish_(&mut cache, res);
+                let len_after = res.len();
+                res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+            }
         }
     }
 
@@ -1345,6 +1409,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
+            EnabledIf(feature, e) => EnabledIf(*feature, Box::new(e.evaluate_constants_(c))),
         }
     }
 
@@ -1353,7 +1418,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
         env: &Environment<F>,
     ) -> Result<F, ExprError> {
         self.evaluate_(d, pt, evals, &env.constants)
@@ -1364,7 +1429,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         &self,
         d: D<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         use Expr::*;
@@ -1392,6 +1457,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
+            EnabledIf(feature, e) if feature.is_enabled() => e.evaluate_(d, pt, evals, c),
+            EnabledIf(_, _) => Ok(F::zero()),
         }
     }
 
@@ -1413,7 +1480,12 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(&self, d: D<F>, pt: F, evals: &[ProofEvaluations<F>]) -> Result<F, ExprError> {
+    pub fn evaluate(
+        &self,
+        d: D<F>,
+        pt: F,
+        evals: &ProofEvaluations<PointEvaluations<F>>,
+    ) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1439,6 +1511,13 @@ impl<F: FftField> Expr<F> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
+            EnabledIf(feature, e) => {
+                if feature.is_enabled() {
+                    e.evaluate(d, pt, evals)
+                } else {
+                    Ok(F::zero())
+                }
+            }
         }
     }
 
@@ -1603,6 +1682,16 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
+            Expr::EnabledIf(feature, e) => {
+                if feature.is_enabled() {
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is off. */
+                    let mut cache = cache.clone();
+                    return e.evaluations_helper(&mut cache, d, env);
+                } else {
+                    EvalResult::Constant(F::zero())
+                }
+            }
         };
         Either::Left(res)
     }
@@ -1650,7 +1739,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
@@ -1680,7 +1769,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &[ProofEvaluations<F>],
+        evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
@@ -1754,6 +1843,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             VanishesOnLast4Rows => true,
             UnnormalizedLagrangeBasis(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
+            EnabledIf(_, x) => x.is_constant(evaluated),
         }
     }
 
@@ -1829,6 +1919,15 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             Square(x) => {
                 let x = x.monomials(ev);
                 mul_monomials(&x, &x)
+            }
+            EnabledIf(feature, x) => {
+                let mut monomials = x.monomials(ev);
+                for expr in monomials.values_mut() {
+                    let mut unflagged = Expr::zero();
+                    std::mem::swap(expr, &mut unflagged);
+                    *expr = Expr::EnabledIf(*feature, Box::new(unflagged))
+                }
+                monomials
             }
         }
     }
@@ -2247,6 +2346,9 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            EnabledIf(feature, e) => {
+                format!("enabled_if({:?}, (fun () -> {}))", feature, e.ocaml(cache))
+            }
         }
     }
 
@@ -2288,6 +2390,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.latex_name()
             }
+            EnabledIf(feature, _) => format!("{:?}", feature),
         }
     }
 
@@ -2310,6 +2413,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
+            EnabledIf(feature, _) => format!("{:?}", feature),
         }
     }
 

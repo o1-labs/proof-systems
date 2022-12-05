@@ -64,6 +64,7 @@ pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
 pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
 
 /// Implementation of the `Generic` gate
+#[derive(Default)]
 pub struct Generic<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Generic<F>
