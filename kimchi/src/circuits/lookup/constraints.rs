@@ -385,6 +385,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
         // (1 minus the sum of the lookup selectors)
         let non_lookup_indicator = {
             let lookup_indicator = lookup_info
+                .features
                 .patterns
                 .into_iter()
                 .map(|spec| column(Column::LookupKindIndex(spec)))
@@ -465,6 +466,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             let dummy_rows = non_lookup_indicator * f_term(&vec![]);
 
             lookup_info
+                .features
                 .patterns
                 .into_iter()
                 .map(|spec| column(Column::LookupKindIndex(spec)) * f_term(&spec.lookups::<F>()))
@@ -560,7 +562,7 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
 
     // if we are using runtime tables, we add:
     // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
-    if configuration.lookup_info.uses_runtime_tables {
+    if configuration.lookup_info.features.uses_runtime_tables {
         let rt_constraints = runtime_tables::constraints();
         res.extend(rt_constraints);
     }

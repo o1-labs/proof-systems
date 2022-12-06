@@ -421,34 +421,35 @@ where
                         }
                     };
 
-                    let combined_entry = if !lcs.configuration.lookup_info.uses_runtime_tables {
-                        let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
+                    let combined_entry =
+                        if !lcs.configuration.lookup_info.features.uses_runtime_tables {
+                            let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
 
-                        combine_table_entry(
-                            &joint_combiner,
-                            &table_id_combiner,
-                            table_row,
-                            &table_id,
-                        )
-                    } else {
-                        // if runtime table are used, the second row is modified
-                        let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
+                            combine_table_entry(
+                                &joint_combiner,
+                                &table_id_combiner,
+                                table_row,
+                                &table_id,
+                            )
+                        } else {
+                            // if runtime table are used, the second row is modified
+                            let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
 
-                        let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
-                            if col == 1 {
-                                &second_col.evals[idx]
-                            } else {
-                                &e.evals[idx]
-                            }
-                        });
+                            let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
+                                if col == 1 {
+                                    &second_col.evals[idx]
+                                } else {
+                                    &e.evals[idx]
+                                }
+                            });
 
-                        combine_table_entry(
-                            &joint_combiner,
-                            &table_id_combiner,
-                            table_row,
-                            &table_id,
-                        )
-                    };
+                            combine_table_entry(
+                                &joint_combiner,
+                                &table_id_combiner,
+                                table_row,
+                                &table_id,
+                            )
+                        };
                     evals.push(combined_entry);
                 }
 

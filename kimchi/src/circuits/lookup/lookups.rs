@@ -33,6 +33,14 @@ pub struct LookupPatterns {
     pub foreign_field_mul_gate: bool,
 }
 
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LookupFeatures {
+    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
+    pub patterns: LookupPatterns,
+    /// True if runtime lookup tables are used.
+    pub uses_runtime_tables: bool,
+}
+
 impl IntoIterator for LookupPatterns {
     type Item = LookupPattern;
     type IntoIter = std::vec::IntoIter<Self::Item>;
@@ -97,15 +105,12 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
 /// Describes the desired lookup configuration.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupInfo {
-    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
-    /// This is a vector of all the kinds of lookup constraints in this configuration.
-    pub patterns: LookupPatterns,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
     pub max_joint_size: u32,
-    /// True if runtime lookup tables are used.
-    pub uses_runtime_tables: bool,
+    /// The features enabled for this lookup configuration
+    pub features: LookupFeatures,
 }
 
 impl LookupInfo {
@@ -117,10 +122,12 @@ impl LookupInfo {
             max_joint_size: patterns
                 .into_iter()
                 .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
-
-            patterns,
             max_per_row,
-            uses_runtime_tables,
+
+            features: LookupFeatures {
+                patterns,
+                uses_runtime_tables,
+            },
         }
     }
 
@@ -145,7 +152,7 @@ impl LookupInfo {
 
     /// Check what kind of lookups, if any, are used by this circuit.
     pub fn joint_lookups_used(&self) -> bool {
-        for lookup_pattern in self.patterns {
+        for lookup_pattern in self.features.patterns {
             if lookup_pattern.max_joint_size() > 1 {
                 return true;
             }
@@ -163,7 +170,7 @@ impl LookupInfo {
         let n = domain.d1.size();
 
         let mut selector_values = LookupSelectors::default();
-        for kind in self.patterns {
+        for kind in self.features.patterns {
             selector_values[kind] = Some(vec![F::zero(); n]);
         }
 

@@ -179,7 +179,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         h.insert(LookupTable);
 
         // the runtime lookup polynomials
-        if lcs.lookup_info.uses_runtime_tables {
+        if lcs.lookup_info.features.uses_runtime_tables {
             h.insert(LookupRuntimeTable);
         }
     }
