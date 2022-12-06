@@ -61,7 +61,7 @@ where
         res
     }
 
-    pub fn to_constant_and_terms_inner(
+    fn to_constant_and_terms_inner(
         &self,
         scale: F,
         constant: F,
@@ -123,16 +123,6 @@ where
         match (self, other) {
             (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x * y),
 
-            // TODO: this was not in the original ocaml code, but seems correct to me
-            (CVar::Constant(cst), _) | (_, CVar::Constant(cst)) if cst.is_zero() => {
-                CVar::Constant(F::zero())
-            }
-
-            // TODO: same here
-            (CVar::Constant(cst), cvar) | (cvar, CVar::Constant(cst)) if cst.is_one() => {
-                cvar.clone()
-            }
-
             (CVar::Constant(cst), cvar) | (cvar, CVar::Constant(cst)) => cvar.scale(*cst),
 
             (_, _) => {
@@ -157,7 +147,6 @@ where
        if z <> 0 then r = 0 and z * z_inv = 1
     */
     fn equal_constraints(state: &mut RunState<F>, z: Self, z_inv: Self, r: Self) {
-        // TODO: the ocaml code actually calls assert_all
         let one_minus_r = CVar::Constant(F::one()) - &r;
         let zero = CVar::Constant(F::zero());
         state.assert_r1cs(Some("equals_1"), z_inv, z.clone(), one_minus_r);
@@ -175,26 +164,6 @@ where
             (F::zero(), z_inv)
         } else {
             (F::one(), F::zero())
-        }
-    }
-
-    pub fn equal(&self, state: &mut RunState<F>, other: &CVar<F>) -> Boolean<F> {
-        match (self, other) {
-            (CVar::Constant(x), CVar::Constant(y)) => {
-                let res = if x == y { F::one() } else { F::zero() };
-                let cvars = vec![CVar::Constant(res)];
-                Boolean::from_cvars_unsafe(cvars, ())
-            }
-            _ => {
-                let z = self - other;
-                let z_clone = z.clone();
-                let (res, z_inv): (CVar<F>, CVar<F>) =
-                    state.compute(loc!(), move |env| Self::equal_vars(env, &z_clone));
-                Self::equal_constraints(state, z, z_inv, res.clone());
-
-                let cvars = vec![res];
-                Boolean::from_cvars_unsafe(cvars, ())
-            }
         }
     }
 }
@@ -222,7 +191,7 @@ where
         cvars[0].clone()
     }
 
-    fn check(&self, _cs: &mut super::checked_runner::RunState<F>) {
+    fn check(&self, _cs: &mut RunState<F>) {
         // do nothing
     }
 
@@ -289,7 +258,6 @@ where
     fn sub(self, other: Self) -> Self::Output {
         match (self, other) {
             (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x - y),
-            // TODO: why not just create a Sub variant?
             _ => self.add(&other.scale(-F::one())),
         }
     }
