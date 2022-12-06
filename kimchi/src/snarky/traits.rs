@@ -2,9 +2,7 @@
 
 use ark_ff::PrimeField;
 
-use super::{
-    cvar::CVar,
-};
+use super::{checked_runner::RunState, cvar::CVar};
 
 /// A snarky type is a type that can be used in a circuit.
 /// It references an equivalent "out-of-circuit" type that one can use outside of the circuit.

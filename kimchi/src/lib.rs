@@ -27,3 +27,11 @@ pub mod verifier_index;
 
 #[cfg(test)]
 mod tests;
+
+/// Handy macro to return the filename and line number of a place in the code.
+#[macro_export]
+macro_rules! loc {
+    () => {{
+        format!("{}:{}", file!(), line!())
+    }};
+}

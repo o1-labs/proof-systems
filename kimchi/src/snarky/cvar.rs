@@ -4,6 +4,11 @@ use ark_ff::PrimeField;
 
 use crate::{loc, snarky::traits::SnarkyType};
 
+use super::{
+    checked_runner::{RunState, WitnessGeneration},
+    constraint_system::SnarkyCvar,
+};
+
 /// A circuit variable represents a field element in the circuit.
 #[derive(Clone, Debug)]
 pub enum CVar<F>
