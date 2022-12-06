@@ -5,10 +5,7 @@ use crate::{
     commitment_dlog::srs::SRS,
     curve::KimchiCurve,
     groupmap::GroupMap,
-    oracle::{
-        constants::PlonkSpongeConstantsKimchi,
-        sponge::{DefaultFqSponge, DefaultFrSponge},
-    },
+    mina_poseidon::FqSponge,
     plonk_sponge::FrSponge,
     proof::ProverProof,
     prover_index::ProverIndex,
@@ -18,7 +15,6 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{PrimeField, Zero as _};
 use commitment_dlog::commitment::CommitmentCurve;
-use oracle::FqSponge;
 
 use super::{checked_runner::RunState, traits::SnarkyType};
 
@@ -55,7 +51,11 @@ where
 {
     /// Produces an assembly-like encoding of the circuit.
     pub fn asm(&self) -> String {
-        self.compiled_circuit.generate_asm()
+        crate::circuits::gate::Circuit::new(
+            self.compiled_circuit.public_input_size,
+            &self.compiled_circuit.gates,
+        )
+        .generate_asm()
     }
 
     /// Produces a proof for the given public input.
@@ -134,8 +134,7 @@ where
         // verify the witness
         if debug {
             self.index
-                .cs
-                .verify::<Circuit::Curve>(&witness.0, &public_input_and_output)
+                .verify(&witness.0, &public_input_and_output)
                 .unwrap();
         }
 

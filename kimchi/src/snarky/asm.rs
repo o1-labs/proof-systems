@@ -8,6 +8,9 @@ use crate::circuits::gate::{Circuit, CircuitGate, GateType};
 use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
 use crate::circuits::wires::Wire;
 use ark_ff::PrimeField;
+use itertools::Itertools;
+
+use super::api::Witness;
 
 /// Print a field in a negative form if it's past the half point.
 fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
@@ -200,6 +203,18 @@ where
 
     pub fn is_empty(&self) -> bool {
         self.ordered.is_empty()
+    }
+}
+
+impl<F> Witness<F>
+where
+    F: PrimeField,
+{
+    pub fn debug(&self) {
+        for (row, values) in self.0.iter().enumerate() {
+            let values = values.iter().map(|v| pretty(*v)).join(" | ");
+            println!("{row} - {values}");
+        }
     }
 }
 
