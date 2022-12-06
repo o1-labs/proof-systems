@@ -2,7 +2,7 @@ use std::ops::{Add, Neg, Sub};
 
 use ark_ff::PrimeField;
 
-use crate::{loc, snarky::traits::SnarkyType};
+use crate::snarky::traits::SnarkyType;
 
 use super::{
     checked_runner::{RunState, WitnessGeneration},
