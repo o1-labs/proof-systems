@@ -1,5 +1,3 @@
-use ark_ff::PrimeField;
-
 use crate::{
     loc,
     snarky::{
@@ -7,6 +5,7 @@ use crate::{
         traits::SnarkyType,
     },
 };
+use ark_ff::PrimeField;
 
 trait OutOfCircuitSnarkyType2<F> {
     type InCircuit;

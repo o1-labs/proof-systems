@@ -1,16 +1,14 @@
+use crate::{
+    loc,
+    snarky::{api::SnarkyCircuit, boolean::Boolean},
+    snarky::{checked_runner::RunState, cvar::CVar},
+};
 use ark_ff::One;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::{
+use oracle::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-
-use crate::{
-    loc,
-    snarky::{checked_runner::RunState, cvar::CVar},
-};
-
-use super::{api::SnarkyCircuit, boolean::Boolean};
 
 type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;

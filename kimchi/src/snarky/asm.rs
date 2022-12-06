@@ -1,16 +1,19 @@
 //! An ASM-like language to print a human-friendly version of a circuit.
 
+use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::hash::Hash;
 
-use crate::circuits::gate::{Circuit, CircuitGate, GateType};
+use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
 use crate::circuits::wires::Wire;
+use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
-use itertools::Itertools;
 
-use super::api::Witness;
+use super::api::{CompiledCircuit, SnarkyCircuit, Witness};
+
+type ScalarField<T> = <<T as SnarkyCircuit>::Curve as AffineCurve>::ScalarField;
 
 /// Print a field in a negative form if it's past the half point.
 fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
@@ -138,11 +141,14 @@ where
             3 => "l2",
             4 => "r2",
             5 => "o2",
-            x => panic!("invalid generic column: {x}"),
+            _ => panic!("invalid generic column: {x}"),
         }
     }
 
-    fn extract_vars_from_coeffs(vars: &mut OrderedHashSet<F>, coeffs: &[F]) {
+    fn extract_vars_from_coeffs(
+        vars: &mut OrderedHashSet<ScalarField<Circuit>>,
+        coeffs: &[ScalarField<Circuit>],
+    ) {
         for coeff in coeffs {
             let s = pretty(*coeff);
             if s.len() >= 5 {

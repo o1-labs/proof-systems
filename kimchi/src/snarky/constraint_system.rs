@@ -1,16 +1,19 @@
 #![allow(clippy::all)]
 
-use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::polynomials::generic::GENERIC_COEFFS;
-use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
-use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
+use crate::{
+    circuits::{
+        gate::{CircuitGate, GateType},
+        polynomials::{
+            generic::GENERIC_COEFFS,
+            poseidon::{ROUNDS_PER_HASH, ROUNDS_PER_ROW, SPONGE_WIDTH},
+        },
+        wires::{Wire, COLUMNS, PERMUTS},
+    },
+    snarky::{checked_runner::WitnessGeneration, constants::Constants, cvar::CVar},
+};
 use ark_ff::PrimeField;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
-
-use super::checked_runner::WitnessGeneration;
-use super::constants::Constants;
-use super::cvar::CVar;
 
 /** A row indexing in a constraint system.
     Either a public input row, or a non-public input row that starts at index 0.
@@ -160,6 +163,10 @@ pub enum KimchiConstraint<Var, Field> {
     },
     Poseidon {
         state: Vec<Vec<Var>>,
+    },
+    Poseidon2 {
+        states: [[Var; SPONGE_WIDTH]; ROUNDS_PER_HASH],
+        last: [Var; SPONGE_WIDTH],
     },
     EcAddComplete {
         p1: (Var, Var),
@@ -1225,6 +1232,28 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 ];
                 self.add_row(vars, GateType::Zero, vec![]);
             }
+            KimchiConstraint::Poseidon2 { states, last } => {
+                states
+                    .map(|round| round.map(|x| self.reduce_to_var(x)))
+                    .into_iter()
+                    .zip(self.constants.poseidon.round_constants.clone().into_iter())
+                    .chunks(ROUNDS_PER_ROW)
+                    .into_iter()
+                    .for_each(|rounds| {
+                        let (vars, coeffs) = rounds
+                            .into_iter()
+                            .flat_map(|(round, round_constants)| {
+                                round
+                                    .into_iter()
+                                    .map(Option::Some)
+                                    .zip(round_constants.into_iter())
+                            })
+                            .unzip();
+                        self.add_row(vars, GateType::Poseidon, coeffs);
+                    });
+                let last = last.map(|x| self.reduce_to_var(x)).map(Some).to_vec();
+                self.add_row(last, GateType::Zero, vec![]);
+            }
             KimchiConstraint::EcAddComplete {
                 p1,
                 p2,
@@ -1372,6 +1401,9 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             }
         }
     }
+    pub(crate) fn sponge_params(&self) -> oracle::poseidon::ArithmeticSpongeParams<Field> {
+        self.constants.poseidon.clone()
+    }
 }
 
 enum ConstantOrVar {
@@ -1423,6 +1455,7 @@ where
 
             // we trust the witness generation to be correct for other gates
             KimchiConstraint::Poseidon { .. }
+            | KimchiConstraint::Poseidon2 { .. }
             | KimchiConstraint::EcAddComplete { .. }
             | KimchiConstraint::EcScale { .. }
             | KimchiConstraint::EcEndoscale { .. }

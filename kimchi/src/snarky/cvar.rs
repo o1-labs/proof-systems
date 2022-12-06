@@ -1,7 +1,3 @@
-use std::ops::{Add, Neg, Sub};
-
-use ark_ff::PrimeField;
-
 use crate::{
     loc,
     snarky::{
@@ -11,6 +7,8 @@ use crate::{
         traits::SnarkyType,
     },
 };
+use ark_ff::PrimeField;
+use std::ops::{Add, Neg, Sub};
 
 /// A circuit variable represents a field element in the circuit.
 #[derive(Clone, Debug)]

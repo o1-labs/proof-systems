@@ -1,7 +1,6 @@
 //! The circuit-generation and witness-generation logic.
 
-use ark_ff::PrimeField;
-
+use super::{api::Witness, constants::Constants};
 use crate::{
     circuits::gate::CircuitGate,
     curve::KimchiCurve,
@@ -13,8 +12,7 @@ use crate::{
         traits::SnarkyType,
     },
 };
-
-use super::{api::Witness, constants::Constants};
+use ark_ff::PrimeField;
 
 /// A wrapper around [BasicSnarkyConstraint] and [KimchiConstraintSystem] that allows for an optional label (for debugging).
 #[derive(Debug)]
@@ -236,7 +234,7 @@ where
     pub fn compute<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
-        FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
+        FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
         self.compute_inner(true, loc, to_compute_value)
     }
@@ -255,7 +253,7 @@ where
     fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: String, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
-        FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
+        FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
         match self.mode {
             Mode::WitnessGeneration => {
@@ -357,6 +355,12 @@ where
                 self.add_constraint_inner(constraints);
             }
         }
+    }
+    pub fn add_constraint(&mut self, constraint: Constraint<F>, annotation: Option<&'static str>) {
+        self.add_constraints(vec![AnnotatedConstraint {
+            annotation,
+            constraint,
+        }])
     }
 
     fn add_constraint_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
@@ -476,5 +480,13 @@ where
 
         // return public output and witness
         Witness(witness)
+    }
+
+    pub(crate) fn poseidon_params(&self) -> oracle::poseidon::ArithmeticSpongeParams<F> {
+        self.system.as_ref().map(|sys| sys.sponge_params()).unwrap()
+    }
+
+    pub fn poseidon(&mut self, loc: String, preimage: (CVar<F>, CVar<F>)) -> (CVar<F>, CVar<F>) {
+        super::poseidon::poseidon(loc, self, preimage)
     }
 }
