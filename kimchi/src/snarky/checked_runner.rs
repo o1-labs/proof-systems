@@ -45,17 +45,6 @@ pub enum Constraint<F: PrimeField> {
     KimchiConstraint(KimchiConstraint<CVar<F>, F>),
 }
 
-/// The mode in which the [RunState] is running.
-#[derive(Default, Clone, Copy)]
-pub enum Mode {
-    /// This will construct the kimchi gates for the circuit.
-    #[default]
-    CircuitGeneration,
-
-    /// This will construct the execution trace (or witness) for the circuit.
-    WitnessGeneration,
-}
-
 /// The state used when compiling a circuit in snarky, or used in witness generation as well.
 pub struct RunState<F>
 where
