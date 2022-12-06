@@ -1,6 +1,11 @@
 [package]
 name = "o1-utils"
 version = "0.1.0"
+description = "Set of utility extending arkworks"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
 edition = "2021"
 license = "Apache-2.0"
 
@@ -15,9 +20,15 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 hex = "0.4"
 num-bigint = "0.4.0"
+num-integer = "0.1.45"
+num-traits = "0.2"
 sha2 = "0.10.2"
 thiserror = "1.0.30"
+rand = "0.8.0"
+rand_core = "0.6.3"
 
 [dev-dependencies]
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
-mina-curves = { path = "../curves" }
+mina-curves = { path = "../curves", version = "0.1.0" }
+num-bigint = { version = "0.4.3", features = ["rand"] }
+secp256k1 = "0.24.1"

@@ -22,7 +22,7 @@ fn main() {
         let row = {
             for i in 0..public {
                 let g = CircuitGate::<Fp>::create_generic_gadget(
-                    Wire::new(i),
+                    Wire::for_row(i),
                     GenericGateSpec::Pub,
                     None,
                 );
@@ -36,7 +36,7 @@ fn main() {
             let round_constants = &poseidon_params.round_constants;
             let (g, row) = CircuitGate::<Fp>::create_poseidon_gadget(
                 row,
-                [Wire::new(row), Wire::new(row + 11)],
+                [Wire::for_row(row), Wire::for_row(row + 11)],
                 round_constants,
             );
             gates.extend(g);
@@ -59,7 +59,7 @@ fn main() {
     };
 
     // create the index
-    let index = new_index_for_test(gates, public);
+    let index = new_index_for_test::<Vesta>(gates, public);
 
     // create the witness
     let mut witness = Witness::new(row + 1).inner();

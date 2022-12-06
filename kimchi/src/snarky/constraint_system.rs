@@ -48,6 +48,7 @@ impl Position<usize> {
 
 /** A gate/row/constraint consists of a type (kind), a row, the other cells its columns/cells are
 connected to (`wired_to`), and the selector polynomial associated with the gate. */
+#[derive(Clone)]
 struct GateSpec<Row, Field> {
     kind: GateType,
     wired_to: Vec<Position<Row>>,
@@ -542,7 +543,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
 
         let digest = {
             use o1_utils::hasher::CryptoDigest as _;
-            let circuit = crate::circuits::gate::Circuit(&rust_gates);
+            let circuit = crate::circuits::gate::Circuit::new(public_input_size, &rust_gates);
             circuit.digest()
         };
 

@@ -14,7 +14,7 @@ use ark_ff::Zero;
 use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
@@ -45,7 +45,7 @@ mod tests {
         let de_pf: ProverProof<Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
-        ctx.batch_verification(vec![de_pf.clone()]);
+        ctx.batch_verification(vec![de_pf]);
     }
 
     #[test]
@@ -64,7 +64,7 @@ mod tests {
             serde_json::to_string(&verifier_index).expect("couldn't serialize index");
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify::<Vesta>(&witness, &public).unwrap();
+        index.verify(&witness, &public).unwrap();
 
         // add the proof to the batch
         let group_map = <Vesta as CommitmentCurve>::Map::setup();

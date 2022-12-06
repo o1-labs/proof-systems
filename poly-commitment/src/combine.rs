@@ -21,7 +21,7 @@ use ark_ec::{
 };
 use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
-use oracle::sponge::ScalarChallenge;
+use mina_poseidon::sponge::ScalarChallenge;
 use rayon::prelude::*;
 
 fn add_pairs_in_place<P: SWModelParameters>(pairs: &mut Vec<SWJAffine<P>>) {
