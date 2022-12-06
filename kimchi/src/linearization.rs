@@ -32,7 +32,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField};
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
-    feature_flags: Option<&FeatureFlags<F>>,
+    feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
@@ -127,8 +127,10 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
     // lookup
-    if let Some(lcs) = feature_flags.and_then(|x| x.lookup_configuration.as_ref()) {
-        let constraints = lookup::constraints::constraints(lcs, false);
+    if let Some(feature_flags) = feature_flags {
+        let lookup_configuration =
+            LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
+        let constraints = lookup::constraints::constraints(&lookup_configuration, false);
 
         // note: the number of constraints depends on the lookup configuration,
         // specifically the presence of runtime tables.
@@ -187,10 +189,36 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
 pub fn linearization_columns<F: FftField + SquareRootField>(
-    lookup_constraint_system: Option<&LookupConfiguration<F>>,
+    feature_flags: Option<&FeatureFlags>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
     use Column::*;
+
+    let feature_flags = match feature_flags {
+        Some(feature_flags) => *feature_flags,
+        None =>
+        // Generating using `EnabledIf`, turn on all feature flags.
+        {
+            FeatureFlags {
+                chacha: true,
+                range_check: true,
+                foreign_field_add: true,
+                foreign_field_mul: true,
+                xor: true,
+                lookup_features: LookupFeatures {
+                    patterns: LookupPatterns {
+                        xor: true,
+                        chacha_final: true,
+                        lookup_gate: true,
+                        range_check_gate: true,
+                        foreign_field_mul_gate: true,
+                    },
+                    joint_lookup_used: true,
+                    uses_runtime_tables: true,
+                },
+            }
+        }
+    };
 
     // the witness polynomials
     for i in 0..COLUMNS {
@@ -202,16 +230,22 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         h.insert(Coefficient(i));
     }
 
+    let lookup_info = if feature_flags.lookup_features.patterns == LookupPatterns::default() {
+        Some(LookupInfo::create(feature_flags.lookup_features))
+    } else {
+        None
+    };
+
     // the lookup polynomials
-    if let Some(lcs) = &lookup_constraint_system {
-        for i in 0..=lcs.lookup_info.max_per_row {
+    if let Some(lookup_info) = lookup_info {
+        for i in 0..=lookup_info.max_per_row {
             h.insert(LookupSorted(i));
         }
         h.insert(LookupAggreg);
         h.insert(LookupTable);
 
         // the runtime lookup polynomials
-        if lcs.lookup_info.features.uses_runtime_tables {
+        if lookup_info.features.uses_runtime_tables {
             h.insert(LookupRuntimeTable);
         }
     }
@@ -237,11 +271,10 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 ///
 /// Will panic if the `linearization` process fails.
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
-    feature_flags: Option<&FeatureFlags<F>>,
+    feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
-    let evaluated_cols =
-        linearization_columns::<F>(feature_flags.and_then(|x| x.lookup_configuration.as_ref()));
+    let evaluated_cols = linearization_columns::<F>(feature_flags);
 
     let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
 

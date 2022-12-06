@@ -5,10 +5,7 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{
-            constraints::LookupConfiguration, index::LookupConstraintSystem,
-            lookups::LookupFeatures, tables::LookupTable,
-        },
+        lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
         polynomials::range_check,
@@ -36,9 +33,8 @@ use std::sync::Arc;
 //
 
 /// Flags for optional features in the constraint system
-#[derive(Clone, Serialize, Deserialize, Debug)]
-#[serde(bound = "F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize")]
-pub struct FeatureFlags<F> {
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+pub struct FeatureFlags {
     /// ChaCha gates
     pub chacha: bool,
     /// Range check gates
@@ -51,8 +47,6 @@ pub struct FeatureFlags<F> {
     pub xor: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
-    /// Lookups
-    pub lookup_configuration: Option<LookupConfiguration<F>>,
 }
 
 /// The polynomials representing evaluated columns, in coefficient form.
@@ -151,8 +145,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub gates: Vec<CircuitGate<F>>,
 
     /// flags for optional features
-    #[serde(bound = "FeatureFlags<F>: Serialize + DeserializeOwned")]
-    pub feature_flags: FeatureFlags<F>,
+    pub feature_flags: FeatureFlags,
 
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -685,7 +678,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let mut feature_flags = FeatureFlags {
             chacha: false,
             range_check: false,
-            lookup_configuration: None,
             lookup_features,
             foreign_field_add: false,
             foreign_field_mul: false,
@@ -715,9 +707,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let lookup_constraint_system =
             LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
                 .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
-        feature_flags.lookup_configuration = lookup_constraint_system
-            .as_ref()
-            .map(|lcs| lcs.configuration.clone());
 
         let sid = shifts.map[0].clone();
 
