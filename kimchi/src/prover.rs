@@ -5,9 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
-        lookup::{
-            self, lookups::LookupsUsed, runtime_tables::RuntimeTable, tables::combine_table_entry,
-        },
+        lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
@@ -380,9 +378,7 @@ where
             //~~ - If queries involve a lookup table with multiple columns
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
-            let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
-
-            let joint_combiner = if joint_lookup_used {
+            let joint_combiner = if lcs.configuration.joint_lookup_used {
                 fq_sponge.challenge()
             } else {
                 G::ScalarField::zero()

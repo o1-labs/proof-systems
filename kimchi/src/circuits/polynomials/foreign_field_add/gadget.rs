@@ -18,7 +18,7 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
             self,
-            lookups::{LookupInfo, LookupsUsed},
+            lookups::LookupInfo,
             tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
@@ -330,8 +330,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
     let rng = &mut StdRng::from_seed([1u8; 32]);
 
     // Set up joint-combiner and table-id-combiner
-    let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
-    let joint_combiner = if joint_lookup_used {
+    let joint_combiner = if lcs.configuration.joint_lookup_used {
         F::rand(rng)
     } else {
         F::zero()

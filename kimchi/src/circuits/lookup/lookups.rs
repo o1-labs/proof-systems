@@ -23,14 +23,6 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
         .fold(0, |acc, x| std::cmp::max(x.max_lookups_per_row(), acc))
 }
 
-/// Specifies whether a constraint system uses joint lookups. Used to make sure we
-/// squeeze the challenge `joint_combiner` when needed, and not when not needed.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum LookupsUsed {
-    Single,
-    Joint,
-}
-
 /// Flags for each of the hard-coded lookup patterns.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LookupPatterns {
@@ -152,16 +144,13 @@ impl LookupInfo {
     }
 
     /// Check what kind of lookups, if any, are used by this circuit.
-    pub fn lookup_used(&self) -> Option<LookupsUsed> {
-        let mut lookups_used = None;
+    pub fn joint_lookups_used(&self) -> bool {
         for lookup_pattern in self.patterns {
             if lookup_pattern.max_joint_size() > 1 {
-                return Some(LookupsUsed::Joint);
-            } else {
-                lookups_used = Some(LookupsUsed::Single);
+                return true;
             }
         }
-        lookups_used
+        false
     }
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
