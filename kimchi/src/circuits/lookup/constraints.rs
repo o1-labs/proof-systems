@@ -338,9 +338,6 @@ where
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(bound = "F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize")]
 pub struct LookupConfiguration<F> {
-    /// Whether joint lookups are used
-    pub joint_lookup_used: bool,
-
     /// Information about the specific lookups used
     pub lookup_info: LookupInfo,
 

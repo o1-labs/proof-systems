@@ -517,6 +517,7 @@ mod tests {
                 foreign_field_mul_gate: false,
             },
             uses_runtime_tables: false,
+            joint_lookup_used: true,
         });
 
         let evaluated_cols = {

@@ -221,7 +221,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
         match LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {
             None => Ok(None),
             Some(lookup_info) => {
-                let joint_lookup_used = lookup_info.joint_lookups_used();
                 let d1_size = domain.d1.size();
 
                 // The maximum number of entries that can be provided across all tables.
@@ -461,7 +460,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     runtime_tables,
                     runtime_table_offset,
                     configuration: LookupConfiguration {
-                        joint_lookup_used,
                         lookup_info,
                         dummy_lookup,
                     },

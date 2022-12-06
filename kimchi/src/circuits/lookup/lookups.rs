@@ -106,12 +106,24 @@ impl LookupPatterns {
         }
         kinds
     }
+
+    /// Check what kind of lookups, if any, are used by this circuit.
+    pub fn joint_lookups_used(&self) -> bool {
+        for lookup_pattern in self.clone() {
+            if lookup_pattern.max_joint_size() > 1 {
+                return true;
+            }
+        }
+        false
+    }
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LookupFeatures {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     pub patterns: LookupPatterns,
+    /// Whether joint lookups are used
+    pub joint_lookup_used: bool,
     /// True if runtime lookup tables are used.
     pub uses_runtime_tables: bool,
 }
@@ -120,9 +132,12 @@ impl LookupFeatures {
     pub fn from_gates<F: PrimeField>(gates: &[CircuitGate<F>], uses_runtime_tables: bool) -> Self {
         let patterns = LookupPatterns::from_gates(gates);
 
+        let joint_lookup_used = patterns.joint_lookups_used();
+
         LookupFeatures {
             patterns,
             uses_runtime_tables,
+            joint_lookup_used,
         }
     }
 }
@@ -164,16 +179,6 @@ impl LookupInfo {
         } else {
             Some(Self::create(features))
         }
-    }
-
-    /// Check what kind of lookups, if any, are used by this circuit.
-    pub fn joint_lookups_used(&self) -> bool {
-        for lookup_pattern in self.features.patterns {
-            if lookup_pattern.max_joint_size() > 1 {
-                return true;
-            }
-        }
-        false
     }
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that

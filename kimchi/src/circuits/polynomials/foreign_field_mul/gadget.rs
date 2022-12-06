@@ -215,7 +215,7 @@ fn set_up_lookup_env_data<F: PrimeField>(
     let rng = &mut StdRng::from_seed([1u8; 32]);
 
     // Set up joint-combiner and table-id-combiner
-    let joint_combiner = if lcs.configuration.joint_lookup_used {
+    let joint_combiner = if lcs.configuration.lookup_info.features.joint_lookup_used {
         F::rand(rng)
     } else {
         F::zero()

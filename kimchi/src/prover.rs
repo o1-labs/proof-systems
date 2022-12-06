@@ -378,7 +378,7 @@ where
             //~~ - If queries involve a lookup table with multiple columns
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
-            let joint_combiner = if lcs.configuration.joint_lookup_used {
+            let joint_combiner = if lcs.configuration.lookup_info.features.joint_lookup_used {
                 fq_sponge.challenge()
             } else {
                 G::ScalarField::zero()
