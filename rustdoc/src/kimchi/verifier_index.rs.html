@@ -514,10 +514,6 @@
 <a href="#514" id="514">514</a>
 <a href="#515" id="515">515</a>
 <a href="#516" id="516">516</a>
-<a href="#517" id="517">517</a>
-<a href="#518" id="518">518</a>
-<a href="#519" id="519">519</a>
-<a href="#520" id="520">520</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
@@ -589,8 +585,6 @@
     </span><span class="kw">pub </span>domain: D&lt;G::ScalarField&gt;,
     <span class="doccomment">/// maximal size of polynomial section
     </span><span class="kw">pub </span>max_poly_size: usize,
-    <span class="doccomment">/// maximal size of the quotient polynomial according to the supported constraints
-    </span><span class="kw">pub </span>max_quot_size: usize,
     <span class="doccomment">/// polynomial commitment keys
     </span><span class="attr">#[serde(skip)]
     </span><span class="kw">pub </span>srs: OnceCell&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
@@ -728,7 +722,6 @@
         </span>VerifierIndex {
             domain,
             max_poly_size: <span class="self">self</span>.max_poly_size,
-            max_quot_size: <span class="self">self</span>.max_quot_size,
             powers_of_alpha: <span class="self">self</span>.powers_of_alpha.clone(),
             public: <span class="self">self</span>.cs.public,
             prev_challenges: <span class="self">self</span>.cs.prev_challenges,
@@ -917,7 +910,6 @@
         </span><span class="kw">let </span>VerifierIndex {
             domain: <span class="kw">_</span>,
             max_poly_size: <span class="kw">_</span>,
-            max_quot_size: <span class="kw">_</span>,
             srs: <span class="kw">_</span>,
             public: <span class="kw">_</span>,
             prev_challenges: <span class="kw">_</span>,
@@ -1039,4 +1031,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (53e4b9dd7 2022-12-04)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (e1d819583 2022-12-05)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

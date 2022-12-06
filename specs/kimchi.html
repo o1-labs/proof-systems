@@ -1592,9 +1592,6 @@ pub struct ProverIndex&lt;G: KimchiCurve&gt; {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
-
     #[serde(bound = &quot;EvaluatedColumnCoefficients&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
     pub evaluated_column_coefficients: EvaluatedColumnCoefficients&lt;G::ScalarField&gt;,
 
@@ -1647,8 +1644,6 @@ pub struct VerifierIndex&lt;G: KimchiCurve&gt; {
     pub domain: D&lt;G::ScalarField&gt;,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
