@@ -92,26 +92,25 @@ where
 {
     /// Creates a new non-deterministic variable associated to a value type ([SnarkyType]),
     /// and a closure that can compute it when in witness generation mode.
-    pub fn compute<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    pub fn compute<T, FUNC>(&mut self, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
-        self.compute_inner(true, loc, to_compute_value)
+        self.compute_inner(true, to_compute_value)
     }
 
     /// Same as [Self::compute] except that it does not attempt to constrain the value it computes.
     /// This is to be used internally only, when we know that the value cannot be malformed.
-    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
-        self.compute_inner(false, loc, to_compute_value)
+        self.compute_inner(false, to_compute_value)
     }
 
-    // TODO: make loc argument work
-    fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: String, to_compute_value: FUNC) -> T
+    fn compute_inner<T, FUNC>(&mut self, checked: bool, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,

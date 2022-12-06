@@ -133,7 +133,7 @@ where
             (_, _) => {
                 let self_clone = self.clone();
                 let other_clone = other.clone();
-                let res: CVar<F> = cs.compute(loc!(), move |env| {
+                let res: CVar<F> = cs.compute(move |env| {
                     let x: F = env.read_var(&self_clone);
                     let y: F = env.read_var(&other_clone);
                     x * y
