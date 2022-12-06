@@ -27,12 +27,6 @@ pub struct SRS<G: CommitmentCurve> {
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
-    /// Coefficient for the curve endomorphism
-    #[serde(skip)]
-    pub endo_r: G::ScalarField,
-    /// Coefficient for the curve endomorphism
-    #[serde(skip)]
-    pub endo_q: G::BaseField,
 }
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
@@ -228,8 +222,6 @@ where
             })
             .collect();
 
-        let (endo_q, endo_r) = endos::<G>();
-
         const MISC: usize = 1;
         let [h]: [G; MISC] = array::from_fn(|i| {
             let mut h = Blake2b512::new();
@@ -242,8 +234,6 @@ where
             g,
             h,
             lagrange_bases: HashMap::new(),
-            endo_r,
-            endo_q,
         }
     }
 }
