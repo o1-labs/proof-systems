@@ -86,7 +86,11 @@ where
     next_var: usize,
 
     /// Indication that we're running the witness generation (as opposed to the circuit creation).
-    mode: Mode,
+    has_witness: bool,
+
+    /// Indication that we're running in prover mode (as opposed to compiling the circuit).
+    // TODO: more doc on that
+    as_prover: bool,
 }
 
 //
@@ -163,7 +167,8 @@ where
             eval_constraints: false,
             num_public_inputs,
             next_var: 0,
-            mode: Mode::CircuitGeneration,
+            has_witness: false,
+            as_prover: false,
         };
 
         // allocate the public inputs
@@ -255,52 +260,49 @@ where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
-        match self.mode {
-            Mode::WitnessGeneration => {
-                // compute the value by running the closure
-                let value = to_compute_value(self);
+        if self.has_witness {
+            // compute the value by running the closure
+            let value = to_compute_value(self);
 
-                // convert the value into field elements
-                let (fields, aux) = T::value_to_field_elements(&value);
-                let mut field_vars = vec![];
+            // convert the value into field elements
+            let (fields, aux) = T::value_to_field_elements(&value);
+            let mut field_vars = vec![];
 
-                // convert each field element into a circuit var
-                for field in fields {
-                    let v = self.store_field_elt(field);
-                    field_vars.push(v);
-                }
-
-                // parse them as a snarky type
-                let snarky_type = T::from_cvars_unsafe(field_vars, aux);
-
-                // constrain the conversion
-                if checked {
-                    snarky_type.check(self);
-                }
-
-                // return the snarky type
-                snarky_type
+            // convert each field element into a circuit var
+            for field in fields {
+                let v = self.store_field_elt(field);
+                field_vars.push(v);
             }
-            Mode::CircuitGeneration => {
-                // create enough variables to store the given type
-                let mut cvars = vec![];
-                for _ in 0..T::SIZE_IN_FIELD_ELEMENTS {
-                    let v = self.alloc_var();
-                    cvars.push(v);
-                }
 
-                // parse them as a snarky type
-                let aux = T::constraint_system_auxiliary();
-                let snarky_type = T::from_cvars_unsafe(cvars, aux);
+            // parse them as a snarky type
+            let snarky_type = T::from_cvars_unsafe(field_vars, aux);
 
-                // constrain the created circuit variables
-                if checked {
-                    snarky_type.check(self);
-                }
-
-                // return the snarky type
-                snarky_type
+            // constrain the conversion
+            if checked {
+                snarky_type.check(self);
             }
+
+            // return the snarky type
+            snarky_type
+        } else {
+            // create enough variables to store the given type
+            let mut cvars = vec![];
+            for _ in 0..T::SIZE_IN_FIELD_ELEMENTS {
+                let v = self.alloc_var();
+                cvars.push(v);
+            }
+
+            // parse them as a snarky type
+            let aux = T::constraint_system_auxiliary();
+            let snarky_type = T::from_cvars_unsafe(cvars, aux);
+
+            // constrain the created circuit variables
+            if checked {
+                snarky_type.check(self);
+            }
+
+            // return the snarky type
+            snarky_type
         }
     }
 
@@ -341,21 +343,20 @@ where
         let constraint = BasicSnarkyConstraint::Equal(x, y);
         self.assert_(annotation, vec![constraint]);
     }
+
     /// Adds a list of [AnnotatedConstraint]s to the circuit.
     pub fn add_constraints(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
-        match self.mode {
-            Mode::WitnessGeneration => {
-                if self.eval_constraints {
-                    for constraint in &constraints {
-                        constraint.check_constraint(self);
-                    }
+        if self.has_witness {
+            if self.eval_constraints {
+                for constraint in &constraints {
+                    constraint.check_constraint(self);
                 }
             }
-            Mode::CircuitGeneration => {
-                self.add_constraint_inner(constraints);
-            }
+        } else {
+            self.add_constraint_inner(constraints);
         }
     }
+
     pub fn add_constraint(&mut self, constraint: Constraint<F>, annotation: Option<&'static str>) {
         self.add_constraints(vec![AnnotatedConstraint {
             annotation,
@@ -450,7 +451,7 @@ where
     }
 
     pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
-        self.mode = Mode::WitnessGeneration;
+        self.has_witness = true;
         self.public_input = public_input;
         self.next_var = self.num_public_inputs;
     }
