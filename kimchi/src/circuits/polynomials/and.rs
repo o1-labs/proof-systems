@@ -77,10 +77,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             sum,
             Some(and),
         ));
+        // connect the XOR inputs to the inputs of the first generic gate
+        gates.connect_cell_pair((xor_row, 0), (and_row, 0));
+        gates.connect_cell_pair((xor_row, 1), (and_row, 1));
+        // connect the sum output of the first generic gate to the left input of the second generic gate
+        gates.connect_cell_pair((and_row, 2), (and_row, 3));
         // connect the XOR output to the right input of the second generic gate
         gates.connect_cell_pair((xor_row, 2), (and_row, 4));
-        // connect the sum output to the left input of the second generic gate
-        gates.connect_cell_pair((and_row, 2), (and_row, 3));
 
         (gates.len(), gates)
     }

@@ -8,10 +8,11 @@ use crate::{
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover_index::testing::new_index_for_test_with_lookups,
 };
 
 use ark_ec::AffineCurve;
-use ark_ff::{One, PrimeField};
+use ark_ff::{One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -280,24 +281,45 @@ fn verify_bad_and_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
         // first three columns make fail the ith+1 constraint
         // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
-        witness[col][0] += G::ScalarField::one();
+        let xor_row = 0;
+        let and_row = 2;
+        witness[col][xor_row] += G::ScalarField::one();
         // Update copy constraints of generic gate
         if col < 2 {
-            witness[col][2] += G::ScalarField::one();
+            assert_eq!(
+                cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+                Err(CircuitGateError::CopyConstraint {
+                    typ: GateType::Xor16,
+                    src: Wire { row: xor_row, col },
+                    dst: Wire { row: and_row, col }
+                })
+            );
+            witness[col][and_row] += G::ScalarField::one();
         }
         if col == 2 {
-            witness[4][2] += G::ScalarField::one();
+            assert_eq!(
+                cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+                Err(CircuitGateError::CopyConstraint {
+                    typ: GateType::Xor16,
+                    src: Wire { row: xor_row, col },
+                    dst: Wire {
+                        row: and_row,
+                        col: 4
+                    },
+                })
+            );
+            witness[4][and_row] += G::ScalarField::one();
         }
         assert_eq!(
             cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
-        witness[col][0] -= G::ScalarField::one();
+        witness[col][xor_row] -= G::ScalarField::one();
         if col < 2 {
-            witness[col][2] -= G::ScalarField::one();
+            witness[col][and_row] -= G::ScalarField::one();
         }
         if col == 2 {
-            witness[4][2] -= G::ScalarField::one();
+            witness[4][and_row] -= G::ScalarField::one();
         }
     }
     // undo changes
@@ -312,4 +334,24 @@ fn verify_bad_and_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
 fn test_and_bad_decomposition() {
     let (cs, mut witness) = setup_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 2);
     verify_bad_and_decomposition::<Vesta, VestaBaseSponge, VestaScalarSponge>(&mut witness, cs);
+}
+
+#[test]
+// Test AND when the decomposition of the inner XOR is incorrect
+fn test_bad_and() {
+    let (cs, mut witness) = setup_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 2);
+    // modify the output to be all zero
+    witness[2][0] = PallasField::zero();
+    for i in 1..=4 {
+        witness[COLUMNS - i][0] = PallasField::zero();
+    }
+    witness[4][2] = PallasField::zero();
+    let index =
+        new_index_for_test_with_lookups(cs.gates, 0, 0, vec![xor::lookup_table()], None, None);
+    assert_eq!(
+        index.cs.gates[0].verify_xor::<Vesta>(0, &witness, &index),
+        Err(CircuitGateError::InvalidLookupConstraintSorted(
+            GateType::Xor16
+        ))
+    );
 }
