@@ -6,6 +6,7 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
+use crate::srs::endos;
 use crate::{error::CommitmentError, srs::SRS};
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
@@ -702,6 +703,8 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let padded_length = 1 << max_rounds;
 
+        let (_, endo_r) = endos::<G>();
+
         // TODO: This will need adjusting
         let padding = padded_length - nonzero_length;
         let mut points = vec![self.h];
@@ -758,11 +761,10 @@ impl<G: CommitmentCurve> SRS<G> {
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
 
-            let Challenges { chal, chal_inv } =
-                opening.challenges::<EFqSponge>(&self.endo_r, sponge);
+            let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&endo_r, sponge);
 
             sponge.absorb_g(&[opening.delta]);
-            let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
+            let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
 
             // < s, sum_i evalscale^i pows(evaluation_point[i]) >
             // ==
