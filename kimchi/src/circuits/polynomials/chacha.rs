@@ -475,7 +475,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            lookup::lookups::{LookupInfo, LookupPattern},
+            lookup::lookups::{LookupInfo, LookupPatterns},
             wires::*,
         },
         curve::KimchiCurve,
@@ -509,9 +509,13 @@ mod tests {
     #[test]
     fn chacha_linearization() {
         let lookup_info = LookupInfo::create(
-            [LookupPattern::Xor, LookupPattern::ChaChaFinal]
-                .into_iter()
-                .collect(),
+            LookupPatterns {
+                xor: true,
+                chacha_final: true,
+                lookup_gate: false,
+                range_check_gate: false,
+                foreign_field_mul_gate: false,
+            },
             false,
         );
 

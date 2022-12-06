@@ -17,9 +17,9 @@ use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
-fn max_lookups_per_row(kinds: &[LookupPattern]) -> usize {
+fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     kinds
-        .iter()
+        .into_iter()
         .fold(0, |acc, x| std::cmp::max(x.max_lookups_per_row(), acc))
 }
 
@@ -32,7 +32,7 @@ pub enum LookupsUsed {
 }
 
 /// Flags for each of the hard-coded lookup patterns.
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct LookupPatterns {
     pub xor: bool,
     pub chacha_final: bool,
@@ -107,7 +107,7 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
 pub struct LookupInfo {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     /// This is a vector of all the kinds of lookup constraints in this configuration.
-    pub kinds: Vec<LookupPattern>,
+    pub patterns: LookupPatterns,
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
     /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
@@ -118,18 +118,15 @@ pub struct LookupInfo {
 
 impl LookupInfo {
     /// Create the default lookup configuration.
-    pub fn create(patterns: HashSet<LookupPattern>, uses_runtime_tables: bool) -> Self {
-        let mut kinds: Vec<LookupPattern> = patterns.into_iter().collect();
-        kinds.sort();
-
-        let max_per_row = max_lookups_per_row(&kinds);
+    pub fn create(patterns: LookupPatterns, uses_runtime_tables: bool) -> Self {
+        let max_per_row = max_lookups_per_row(patterns);
 
         LookupInfo {
-            max_joint_size: kinds
-                .iter()
+            max_joint_size: patterns
+                .into_iter()
                 .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
 
-            kinds,
+            patterns,
             max_per_row,
             uses_runtime_tables,
         }
@@ -139,15 +136,15 @@ impl LookupInfo {
         gates: &[CircuitGate<F>],
         uses_runtime_tables: bool,
     ) -> Option<Self> {
-        let mut kinds = HashSet::new();
+        let mut kinds = LookupPatterns::default();
         for g in gates.iter() {
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
                 if let Some(lookup_pattern) = LookupPattern::from_gate(g.typ, *r) {
-                    kinds.insert(lookup_pattern);
+                    kinds[lookup_pattern] = true;
                 }
             }
         }
-        if kinds.is_empty() {
+        if kinds == LookupPatterns::default() {
             None
         } else {
             Some(Self::create(kinds, uses_runtime_tables))
@@ -157,7 +154,7 @@ impl LookupInfo {
     /// Check what kind of lookups, if any, are used by this circuit.
     pub fn lookup_used(&self) -> Option<LookupsUsed> {
         let mut lookups_used = None;
-        for lookup_pattern in &self.kinds {
+        for lookup_pattern in self.patterns {
             if lookup_pattern.max_joint_size() > 1 {
                 return Some(LookupsUsed::Joint);
             } else {
@@ -177,8 +174,8 @@ impl LookupInfo {
         let n = domain.d1.size();
 
         let mut selector_values = LookupSelectors::default();
-        for kind in &self.kinds {
-            selector_values[*kind] = Some(vec![F::zero(); n]);
+        for kind in self.patterns {
+            selector_values[kind] = Some(vec![F::zero(); n]);
         }
 
         let mut gate_tables = HashSet::new();

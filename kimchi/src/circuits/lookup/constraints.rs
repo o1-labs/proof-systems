@@ -385,9 +385,9 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
         // (1 minus the sum of the lookup selectors)
         let non_lookup_indicator = {
             let lookup_indicator = lookup_info
-                .kinds
-                .iter()
-                .map(|spec| column(Column::LookupKindIndex(*spec)))
+                .patterns
+                .into_iter()
+                .map(|spec| column(Column::LookupKindIndex(spec)))
                 .fold(E::zero(), |acc: E<F>, x| acc + x);
 
             E::one() - lookup_indicator
@@ -465,9 +465,9 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             let dummy_rows = non_lookup_indicator * f_term(&vec![]);
 
             lookup_info
-                .kinds
-                .iter()
-                .map(|spec| column(Column::LookupKindIndex(*spec)) * f_term(&spec.lookups::<F>()))
+                .patterns
+                .into_iter()
+                .map(|spec| column(Column::LookupKindIndex(spec)) * f_term(&spec.lookups::<F>()))
                 .fold(dummy_rows, |acc, x| acc + x)
         };
 
