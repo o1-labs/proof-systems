@@ -3,7 +3,10 @@
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::lookup;
-use crate::circuits::lookup::constraints::LookupConfiguration;
+use crate::circuits::lookup::{
+    constraints::LookupConfiguration,
+    lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+};
 // TODO JES: CLEAN UP
 use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
 use crate::circuits::polynomials::complete_add::CompleteAdd;
@@ -125,7 +128,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     // lookup
     if let Some(lcs) = feature_flags.and_then(|x| x.lookup_configuration.as_ref()) {
-        let constraints = lookup::constraints::constraints(lcs);
+        let constraints = lookup::constraints::constraints(lcs, false);
 
         // note: the number of constraints depends on the lookup configuration,
         // specifically the presence of runtime tables.
@@ -136,6 +139,35 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
         let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
         let combined = Expr::combine_constraints(alphas, constraints);
+
+        expr += combined;
+    } else if feature_flags.is_none() {
+        let all_features = LookupFeatures {
+            patterns: LookupPatterns {
+                xor: true,
+                chacha_final: true,
+                lookup_gate: true,
+                range_check_gate: true,
+                foreign_field_mul_gate: true,
+            },
+            uses_runtime_tables: true,
+            joint_lookup_used: true,
+        };
+        let lookup_configuration = LookupConfiguration::new(LookupInfo::create(all_features));
+        let constraints = lookup::constraints::constraints(&lookup_configuration, false);
+
+        // note: the number of constraints depends on the lookup configuration,
+        // specifically the presence of runtime tables.
+        let constraints_len = u32::try_from(constraints.len())
+            .expect("we always expect a relatively low amount of constraints");
+
+        powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
+
+        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
+        let combined = Expr::EnabledIf(
+            FeatureFlag::LookupTables,
+            Box::new(Expr::combine_constraints(alphas, constraints)),
+        );
 
         expr += combined;
     }

@@ -767,7 +767,7 @@ where
             // lookup
             {
                 if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                    let constraints = lookup::constraints::constraints(&lcs.configuration);
+                    let constraints = lookup::constraints::constraints(&lcs.configuration, false);
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");
                     let lookup_alphas =

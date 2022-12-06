@@ -349,12 +349,30 @@ pub struct LookupConfiguration<F> {
     pub dummy_lookup: JointLookupValue<F>,
 }
 
+impl<F: Zero> LookupConfiguration<F> {
+    pub fn new(lookup_info: LookupInfo) -> LookupConfiguration<F> {
+        // For computational efficiency, we choose the dummy lookup value to be all 0s in table 0.
+        let dummy_lookup = JointLookup {
+            entry: vec![],
+            table_id: F::zero(),
+        };
+
+        LookupConfiguration {
+            lookup_info,
+            dummy_lookup,
+        }
+    }
+}
+
 /// Specifies the lookup constraints as expressions.
 ///
 /// # Panics
 ///
 /// Will panic if single `element` length is bigger than `max_per_row` length.
-pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(
+    configuration: &LookupConfiguration<F>,
+    generate_feature_flags: bool,
+) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -385,7 +403,13 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
                 .features
                 .patterns
                 .into_iter()
-                .map(|spec| column(Column::LookupKindIndex(spec)))
+                .map(|spec| {
+                    let mut term = column(Column::LookupKindIndex(spec));
+                    if generate_feature_flags {
+                        term = E::EnabledIf(FeatureFlag::LookupPattern(spec), Box::new(term))
+                    }
+                    term
+                })
                 .fold(E::zero(), |acc: E<F>, x| acc + x);
 
             E::one() - lookup_indicator
@@ -466,7 +490,14 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
                 .features
                 .patterns
                 .into_iter()
-                .map(|spec| column(Column::LookupKindIndex(spec)) * f_term(&spec.lookups::<F>()))
+                .map(|spec| {
+                    let mut term =
+                        column(Column::LookupKindIndex(spec)) * f_term(&spec.lookups::<F>());
+                    if generate_feature_flags {
+                        term = E::EnabledIf(FeatureFlag::LookupPattern(spec), Box::new(term))
+                    }
+                    term
+                })
                 .fold(dummy_rows, |acc, x| acc + x)
         };
 
@@ -560,7 +591,15 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
     // if we are using runtime tables, we add:
     // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
     if configuration.lookup_info.features.uses_runtime_tables {
-        let rt_constraints = runtime_tables::constraints();
+        let mut rt_constraints = runtime_tables::constraints();
+        if generate_feature_flags {
+            for term in rt_constraints.iter_mut() {
+                // Dummy value, to appease the borrow checker.
+                let mut boxed_term = Box::new(constant(F::zero()));
+                std::mem::swap(term, &mut *boxed_term);
+                *term = E::EnabledIf(FeatureFlag::RuntimeLookupTables, boxed_term)
+            }
+        }
         res.extend(rt_constraints);
     }
 
