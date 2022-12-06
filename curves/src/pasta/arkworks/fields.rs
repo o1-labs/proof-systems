@@ -32,7 +32,7 @@ macro_rules! impl_fp256 {
             #[derive(serde::Serialize, serde::Deserialize)]
             pub struct $CamlF(
                 #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-                $ArkF
+                pub $ArkF
             );
 
             //
