@@ -5,7 +5,6 @@ use crate::{
     circuits::{
         constraints::{ColumnEvaluations, ConstraintSystem, EvaluatedColumnCoefficients},
         expr::{Linearization, PolishToken},
-        wires::PERMUTS,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -42,9 +41,6 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
-
     #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
     pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
 
@@ -76,19 +72,13 @@ impl<G: KimchiCurve> ProverIndex<G> {
         if cs.public > 0 {
             assert!(
                 max_poly_size >= cs.domain.d1.size(),
-                "polynomial segment size has to be not smaller that that of the circuit!"
+                "polynomial segment size has to be not smaller than that of the circuit!"
             );
         }
         cs.endo = endo_q;
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
-
-        // set `max_quot_size` to the degree of the quotient polynomial,
-        // which is obtained by looking at the highest monomial in the sum
-        // $$\sum_{i=0}^{PERMUTS} (w_i(x) + \beta k_i x + \gamma)$$
-        // where the $w_i(x)$ are of degree the size of the domain.
-        let max_quot_size = PERMUTS * cs.domain.d1.size();
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
@@ -100,7 +90,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             powers_of_alpha,
             srs,
             max_poly_size,
-            max_quot_size,
             evaluated_column_coefficients,
             column_evaluations,
             verifier_index: None,
