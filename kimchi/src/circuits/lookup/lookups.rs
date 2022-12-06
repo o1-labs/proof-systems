@@ -33,14 +33,6 @@ pub struct LookupPatterns {
     pub foreign_field_mul_gate: bool,
 }
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct LookupFeatures {
-    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
-    pub patterns: LookupPatterns,
-    /// True if runtime lookup tables are used.
-    pub uses_runtime_tables: bool,
-}
-
 impl IntoIterator for LookupPatterns {
     type Item = LookupPattern;
     type IntoIter = std::vec::IntoIter<Self::Item>;
@@ -102,6 +94,39 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
     }
 }
 
+impl LookupPatterns {
+    pub fn from_gates<F: PrimeField>(gates: &[CircuitGate<F>]) -> LookupPatterns {
+        let mut kinds = LookupPatterns::default();
+        for g in gates.iter() {
+            for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
+                if let Some(lookup_pattern) = LookupPattern::from_gate(g.typ, *r) {
+                    kinds[lookup_pattern] = true;
+                }
+            }
+        }
+        kinds
+    }
+}
+
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LookupFeatures {
+    /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
+    pub patterns: LookupPatterns,
+    /// True if runtime lookup tables are used.
+    pub uses_runtime_tables: bool,
+}
+
+impl LookupFeatures {
+    pub fn from_gates<F: PrimeField>(gates: &[CircuitGate<F>], uses_runtime_tables: bool) -> Self {
+        let patterns = LookupPatterns::from_gates(gates);
+
+        LookupFeatures {
+            patterns,
+            uses_runtime_tables,
+        }
+    }
+}
+
 /// Describes the desired lookup configuration.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct LookupInfo {
@@ -115,19 +140,16 @@ pub struct LookupInfo {
 
 impl LookupInfo {
     /// Create the default lookup configuration.
-    pub fn create(patterns: LookupPatterns, uses_runtime_tables: bool) -> Self {
-        let max_per_row = max_lookups_per_row(patterns);
+    pub fn create(features: LookupFeatures) -> Self {
+        let max_per_row = max_lookups_per_row(features.patterns);
 
         LookupInfo {
-            max_joint_size: patterns
+            max_joint_size: features
+                .patterns
                 .into_iter()
                 .fold(0, |acc, v| std::cmp::max(acc, v.max_joint_size())),
             max_per_row,
-
-            features: LookupFeatures {
-                patterns,
-                uses_runtime_tables,
-            },
+            features,
         }
     }
 
@@ -135,18 +157,12 @@ impl LookupInfo {
         gates: &[CircuitGate<F>],
         uses_runtime_tables: bool,
     ) -> Option<Self> {
-        let mut kinds = LookupPatterns::default();
-        for g in gates.iter() {
-            for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
-                if let Some(lookup_pattern) = LookupPattern::from_gate(g.typ, *r) {
-                    kinds[lookup_pattern] = true;
-                }
-            }
-        }
-        if kinds == LookupPatterns::default() {
+        let features = LookupFeatures::from_gates(gates, uses_runtime_tables);
+
+        if features.patterns == LookupPatterns::default() {
             None
         } else {
-            Some(Self::create(kinds, uses_runtime_tables))
+            Some(Self::create(features))
         }
     }
 
