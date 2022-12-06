@@ -1401,7 +1401,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             }
         }
     }
-    pub(crate) fn sponge_params(&self) -> oracle::poseidon::ArithmeticSpongeParams<Field> {
+    pub(crate) fn sponge_params(&self) -> mina_poseidon::poseidon::ArithmeticSpongeParams<Field> {
         self.constants.poseidon.clone()
     }
 }

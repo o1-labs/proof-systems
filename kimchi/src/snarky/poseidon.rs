@@ -8,7 +8,7 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use itertools::Itertools;
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi, permutation::full_round2,
     poseidon::ArithmeticSpongeParams,
 };

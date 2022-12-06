@@ -5,15 +5,12 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::hash::Hash;
 
-use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::gate::{Circuit, CircuitGate, GateType};
 use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
 use crate::circuits::wires::Wire;
-use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 
-use super::api::{CompiledCircuit, SnarkyCircuit, Witness};
-
-type ScalarField<T> = <<T as SnarkyCircuit>::Curve as AffineCurve>::ScalarField;
+use super::api::{ Witness};
 
 /// Print a field in a negative form if it's past the half point.
 fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
@@ -141,14 +138,11 @@ where
             3 => "l2",
             4 => "r2",
             5 => "o2",
-            _ => panic!("invalid generic column: {x}"),
+            x => panic!("invalid generic column: {x}"),
         }
     }
 
-    fn extract_vars_from_coeffs(
-        vars: &mut OrderedHashSet<ScalarField<Circuit>>,
-        coeffs: &[ScalarField<Circuit>],
-    ) {
+    fn extract_vars_from_coeffs(vars: &mut OrderedHashSet<F>, coeffs: &[F]) {
         for coeff in coeffs {
             let s = pretty(*coeff);
             if s.len() >= 5 {

@@ -482,7 +482,7 @@ where
         Witness(witness)
     }
 
-    pub(crate) fn poseidon_params(&self) -> oracle::poseidon::ArithmeticSpongeParams<F> {
+    pub(crate) fn poseidon_params(&self) -> mina_poseidon::poseidon::ArithmeticSpongeParams<F> {
         self.system.as_ref().map(|sys| sys.sponge_params()).unwrap()
     }
 
