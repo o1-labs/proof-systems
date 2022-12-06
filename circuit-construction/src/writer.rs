@@ -6,7 +6,7 @@ use kimchi::circuits::{
     },
     wires::{Wire, COLUMNS},
 };
-use oracle::{
+use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     permutation::full_round,
 };
@@ -992,11 +992,7 @@ impl<F: PrimeField> System<F> {
                 }
             });
 
-            let g = CircuitGate {
-                typ: gate.typ,
-                wires,
-                coeffs: gate.coeffs.clone(),
-            };
+            let g = CircuitGate::new(gate.typ, wires, gate.coeffs.clone());
             gates.push(g);
         }
 

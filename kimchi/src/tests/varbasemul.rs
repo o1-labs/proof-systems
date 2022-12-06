@@ -7,10 +7,18 @@ use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use colored::Colorize;
-use mina_curves::pasta::{Fp as F, Pallas as Other};
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 use std::time::Instant;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn varbase_mul_test() {
@@ -26,16 +34,16 @@ fn varbase_mul_test() {
 
     for i in 0..(chunks * num_scalars) {
         let row = 2 * i;
-        gates.push(CircuitGate {
-            typ: GateType::VarBaseMul,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
-        gates.push(CircuitGate {
-            typ: GateType::Zero,
-            wires: Wire::new(row + 1),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(
+            GateType::VarBaseMul,
+            Wire::for_row(row),
+            vec![],
+        ));
+        gates.push(CircuitGate::new(
+            GateType::Zero,
+            Wire::for_row(row + 1),
+            vec![],
+        ));
     }
 
     let mut witness: [Vec<F>; COLUMNS] =
@@ -81,9 +89,9 @@ fn varbase_mul_test() {
         start.elapsed()
     );
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

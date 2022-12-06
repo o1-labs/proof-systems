@@ -1,6 +1,6 @@
 //! Range check gate
 
-use ark_ff::{FftField, PrimeField, Zero};
+use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -24,13 +24,14 @@ use crate::{
         wires::Wire,
     },
     curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
 
 use super::circuitgates::{RangeCheck0, RangeCheck1};
 
 pub const GATE_COUNT: usize = 2;
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Create range check gate for constraining three 88-bit values.
     ///     Inputs the starting row
     ///     Outputs tuple (`next_row`, `circuit_gates`) where
@@ -38,26 +39,10 @@ impl<F: PrimeField> CircuitGate<F> {
     ///       `circuit_gates` - vector of circuit gates comprising this gate
     pub fn create_multi_range_check(start_row: usize) -> (usize, Vec<Self>) {
         let mut circuit_gates = vec![
-            CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: Wire::new(start_row),
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: Wire::new(start_row + 1),
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::RangeCheck1,
-                wires: Wire::new(start_row + 2),
-                coeffs: vec![],
-            },
-            CircuitGate {
-                typ: GateType::Zero,
-                wires: Wire::new(start_row + 3),
-                coeffs: vec![],
-            },
+            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]),
+            CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row + 1), vec![]),
+            CircuitGate::new(GateType::RangeCheck1, Wire::for_row(start_row + 2), vec![]),
+            CircuitGate::new(GateType::Zero, Wire::for_row(start_row + 3), vec![]),
         ];
 
         // copy v0p0
@@ -75,20 +60,28 @@ impl<F: PrimeField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
+    /// Create foreign field muti-range-check gadget by extending the existing gates
+    pub fn extend_multi_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
+        let (next_row, circuit_gates) = Self::create_multi_range_check(*curr_row);
+        *curr_row = next_row;
+        gates.extend_from_slice(&circuit_gates);
+    }
+
     /// Create single range check gate
     ///     Inputs the starting row
     ///     Outputs tuple (`next_row`, `circuit_gates`) where
     ///       `next_row`      - next row after this gate
     ///       `circuit_gates` - vector of circuit gates comprising this gate
     pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
-        (
-            start_row + 1,
-            vec![CircuitGate {
-                typ: GateType::RangeCheck0,
-                wires: Wire::new(start_row),
-                coeffs: vec![],
-            }],
-        )
+        let gate = CircuitGate::new(GateType::RangeCheck0, Wire::for_row(start_row), vec![]);
+        (start_row + 1, vec![gate])
+    }
+
+    /// Create foreign field range-check gate by extending the existing gates
+    pub fn extend_range_check(gates: &mut Vec<Self>, curr_row: &mut usize) {
+        let (next_row, circuit_gates) = Self::create_range_check(*curr_row);
+        *curr_row = next_row;
+        gates.extend_from_slice(&circuit_gates);
     }
 
     /// Verify the witness against a range check (related) circuit gate
@@ -110,14 +103,15 @@ impl<F: PrimeField> CircuitGate<F> {
         &self,
         _: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<G::ScalarField>,
+        index: &ProverIndex<G>,
     ) -> CircuitGateResult<()> {
         if !circuit_gates().contains(&self.typ) {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 
         // Pad the witness to domain d1 size
-        let padding_length = cs
+        let padding_length = index
+            .cs
             .domain
             .d1
             .size
@@ -130,7 +124,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         // Compute witness polynomial
         let witness_poly: [DensePolynomial<F>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), cs.domain.d1)
+            Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1)
                 .interpolate()
         });
 
@@ -138,29 +132,33 @@ impl<F: PrimeField> CircuitGate<F> {
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let beta = F::rand(rng);
         let gamma = F::rand(rng);
-        let z_poly = cs
+        let z_poly = index
             .perm_aggreg(&witness, &beta, &gamma, rng)
             .map_err(|_| CircuitGateError::InvalidCopyConstraint(self.typ))?;
 
         // Compute witness polynomial evaluations
-        let witness_evals = cs.evaluate(&witness_poly, &z_poly);
+        let witness_evals = index.cs.evaluate(&witness_poly, &z_poly);
 
         let mut index_evals = HashMap::new();
         index_evals.insert(
             self.typ,
-            &cs.range_check_selector_polys.as_ref().unwrap()[circuit_gate_selector_index(self.typ)]
-                .eval8,
+            &index
+                .column_evaluations
+                .range_check_selectors8
+                .as_ref()
+                .unwrap()[circuit_gate_selector_index(self.typ)],
         );
 
         // Set up lookup environment
-        let lcs = cs
+        let lcs = index
+            .cs
             .lookup_constraint_system
             .as_ref()
             .ok_or(CircuitGateError::MissingLookupConstraintSystem(self.typ))?;
 
         let lookup_env_data = set_up_lookup_env_data(
             self.typ,
-            cs,
+            &index.cs,
             &witness,
             &beta,
             &gamma,
@@ -183,15 +181,16 @@ impl<F: PrimeField> CircuitGate<F> {
                     beta: F::rand(rng),
                     gamma: F::rand(rng),
                     joint_combiner: Some(F::rand(rng)),
-                    endo_coefficient: cs.endo,
+                    endo_coefficient: index.cs.endo,
                     mds: &G::sponge_params().mds,
+                    foreign_field_modulus: None,
                 },
                 witness: &witness_evals.d8.this.w,
-                coefficient: &cs.coefficients8,
-                vanishes_on_last_4_rows: &cs.precomputations().vanishes_on_last_4_rows,
+                coefficient: &index.column_evaluations.coefficients8,
+                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
                 z: &witness_evals.d8.this.z,
-                l0_1: l0_1(cs.domain.d1),
-                domain: cs.domain,
+                l0_1: l0_1(index.cs.domain.d1),
+                domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
             }
@@ -211,7 +210,7 @@ impl<F: PrimeField> CircuitGate<F> {
         if constraints
             .evaluations(&env)
             .interpolate()
-            .divide_by_vanishing_poly(cs.domain.d1)
+            .divide_by_vanishing_poly(index.cs.domain.d1)
             .unwrap()
             .1
             .is_zero()
@@ -378,7 +377,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
+pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
         GateType::RangeCheck0 => RangeCheck0::<F>::CONSTRAINTS,
         GateType::RangeCheck1 => RangeCheck1::<F>::CONSTRAINTS,
@@ -391,7 +390,7 @@ pub fn circuit_gate_constraint_count<F: FftField>(typ: GateType) -> u32 {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
     match typ {
         GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas),
         GateType::RangeCheck1 => RangeCheck1::combined_constraints(alphas),
@@ -400,7 +399,7 @@ pub fn circuit_gate_constraints<F: FftField>(typ: GateType, alphas: &Alphas<F>) 
 }
 
 /// Get the combined constraints for all range check circuit gate types
-pub fn combined_constraints<F: FftField>(alphas: &Alphas<F>) -> E<F> {
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
     RangeCheck0::combined_constraints(alphas) + RangeCheck1::combined_constraints(alphas)
 }
 

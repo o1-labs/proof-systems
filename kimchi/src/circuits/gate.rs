@@ -5,16 +5,15 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, poseidon, range_check, turshi,
-            varbasemul,
+            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
+            poseidon, range_check, turshi, varbasemul,
         },
         wires::*,
     },
     curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-use ark_ff::{bytes::ToBytes, PrimeField};
-use ark_poly::Evaluations;
-use ark_poly::Radix2EvaluationDomain as D;
+use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -22,7 +21,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr};
+use super::{argument::ArgumentWitness, expr, polynomials::xor};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -61,6 +60,7 @@ impl CurrOrNext {
     Clone,
     Copy,
     Debug,
+    Default,
     PartialEq,
     FromPrimitive,
     ToPrimitive,
@@ -78,6 +78,7 @@ impl CurrOrNext {
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 pub enum GateType {
+    #[default]
     /// Zero gate
     Zero = 0,
     /// Generic arithmetic gate
@@ -104,20 +105,13 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    /// Range check (16-24)
+    /// Range check
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    // ForeignFieldAdd = 25,
-    // ForeignFieldMul = 26,
-}
-
-/// Selector polynomial
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SelectorPolynomial<F: PrimeField> {
-    /// Evaluation form (evaluated over domain d8)
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub eval8: Evaluations<F, D<F>>,
+    ForeignFieldAdd = 18,
+    ForeignFieldMul = 19,
+    // Gates for Keccak
+    Xor16 = 20,
 }
 
 /// Gate error
@@ -159,16 +153,27 @@ pub enum CircuitGateError {
 pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 
 #[serde_as]
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 /// A single gate in a circuit.
 pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
     pub typ: GateType,
+
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
+
     /// public selector polynomials that can used as handy coefficients in gates
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub coeffs: Vec<F>,
+}
+
+impl<F> CircuitGate<F>
+where
+    F: PrimeField,
+{
+    pub fn new(typ: GateType, wires: GateWires, coeffs: Vec<F>) -> Self {
+        Self { typ, wires, coeffs }
+    }
 }
 
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
@@ -188,14 +193,10 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
-        CircuitGate {
-            typ: GateType::Zero,
-            wires,
-            coeffs: Vec::new(),
-        }
+        CircuitGate::new(GateType::Zero, wires, vec![])
     }
 
     /// This function verifies the consistency of the wire
@@ -208,7 +209,7 @@ impl<F: PrimeField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        index: &ProverIndex<G>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -218,17 +219,26 @@ impl<F: PrimeField> CircuitGate<F> {
             Poseidon => self.verify_poseidon::<G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<G>(row, witness, cs),
-            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, cs),
+            EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
+            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
             // TODO: implement the verification for chacha
             ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<G>(row, witness, cs)
+                self.verify_cairo_gate::<G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check::<G>(row, witness, cs)
+                .verify_range_check::<G>(row, witness, index)
+                .map_err(|e| e.to_string()),
+            ForeignFieldAdd => self
+                .verify_foreign_field_add::<G>(row, witness, index)
+                .map_err(|e| e.to_string()),
+            ForeignFieldMul => self
+                .verify_foreign_field_mul::<G>(row, witness, index)
+                .map_err(|e| e.to_string()),
+            Xor16 => self
+                .verify_xor::<G>(row, witness, index)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -245,14 +255,15 @@ impl<F: PrimeField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants::<F> {
-            alpha: F::one(),
-            beta: F::one(),
-            gamma: F::one(),
-            joint_combiner: Some(F::one()),
-            endo_coefficient: cs.endo,
-            mds: &G::sponge_params().mds,
-        };
+        let constants = expr::Constants::new(
+            F::one(),
+            F::one(),
+            F::one(),
+            Some(F::one()),
+            cs.endo,
+            &G::sponge_params().mds,
+            cs.foreign_field_modulus.clone(),
+        );
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
 
@@ -310,13 +321,20 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
+            GateType::ForeignFieldAdd => {
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
+            }
+            GateType::ForeignFieldMul => {
+                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
+            }
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
         };
 
         // Check for failed constraints
         for (i, result) in results.iter().enumerate() {
             if !result.is_zero() {
                 // Pinpoint failed constraint
-                return Err(CircuitGateError::Constraint(self.typ, i));
+                return Err(CircuitGateError::Constraint(self.typ, i + 1));
             }
         }
 
@@ -363,6 +381,9 @@ pub trait Connect {
     ///       with self-connections.  If the two cells are transitively already part
     ///       of the same permutation then this would split it.
     fn connect_cell_pair(&mut self, cell1: (usize, usize), cell2: (usize, usize));
+
+    /// Connects a generic gate cell with zeros to a given row for 64bit range check
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -371,16 +392,49 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self[cell_pre.0].wires[cell_pre.1] = self[cell_new.0].wires[cell_new.1];
         self[cell_new.0].wires[cell_new.1] = wire_tmp;
     }
+
+    fn connect_64bit(&mut self, zero_row: usize, start_row: usize) {
+        // Connect the 64-bit cells from previous Generic gate with zeros in first 12 bits
+        self.connect_cell_pair((start_row, 1), (start_row, 2));
+        self.connect_cell_pair((start_row, 2), (zero_row, 0));
+        self.connect_cell_pair((zero_row, 0), (start_row, 1));
+    }
 }
 
-/// A circuit is specified as a series of [`CircuitGate`].
+/// A circuit is specified as a public input size and a list of [`CircuitGate`].
 #[derive(Serialize)]
-pub struct Circuit<'a, F: PrimeField>(
-    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
-);
+#[serde(bound = "CircuitGate<F>: Serialize")]
+pub struct Circuit<'a, F: PrimeField> {
+    pub public_input_size: usize,
+    pub gates: &'a [CircuitGate<F>],
+}
+
+impl<'a, F> Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    pub fn new(public_input_size: usize, gates: &'a [CircuitGate<F>]) -> Self {
+        Self {
+            public_input_size,
+            gates,
+        }
+    }
+}
 
 impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
+}
+
+impl<'a, F> From<&'a ConstraintSystem<F>> for Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    fn from(cs: &'a ConstraintSystem<F>) -> Self {
+        Self {
+            public_input_size: cs.public,
+            gates: &cs.gates,
+        }
+    }
 }
 
 #[cfg(feature = "ocaml_types")]
@@ -508,11 +562,11 @@ mod tests {
 
     prop_compose! {
         fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
-            CircuitGate {
+            CircuitGate::new(
                 typ,
                 wires,
                 coeffs,
-            }
+            )
         }
     }
 

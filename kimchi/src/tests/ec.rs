@@ -4,11 +4,19 @@ use crate::circuits::{
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
-use mina_curves::pasta::{Fp as F, Pallas as Other};
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
 use super::framework::TestFramework;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 // Tests add and double gates
 #[test]
@@ -20,11 +28,11 @@ fn ec_test() {
     let mut gates = vec![];
 
     for row in 0..(num_doubles + num_additions + num_infs) {
-        gates.push(CircuitGate {
-            typ: GateType::CompleteAdd,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(
+            GateType::CompleteAdd,
+            Wire::for_row(row),
+            vec![],
+        ));
     }
 
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![]);
@@ -59,9 +67,7 @@ fn ec_test() {
         res
     };
 
-    for i in 0..num_doubles {
-        let p = ps[i];
-
+    for &p in ps.iter().take(num_doubles) {
         let p2 = p + p;
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
@@ -113,8 +119,7 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    for i in 0..num_infs {
-        let p = ps[i];
+    for &p in ps.iter().take(num_infs) {
         let q = -p;
 
         let p2 = p + p;
@@ -140,9 +145,9 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

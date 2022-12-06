@@ -8,10 +8,17 @@ use crate::{
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
 use commitment_dlog::srs::endos;
-use mina_curves::pasta::{Fp as F, Vesta};
-use oracle::sponge::ScalarChallenge;
+use mina_curves::pasta::{Fp as F, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn endomul_scalar_test() {
@@ -28,11 +35,11 @@ fn endomul_scalar_test() {
     for s in 0..num_scalars {
         for i in 0..rows_per_scalar {
             let row = rows_per_scalar * s + i;
-            gates.push(CircuitGate {
-                typ: GateType::EndoMulScalar,
-                wires: Wire::new(row),
-                coeffs: vec![],
-            });
+            gates.push(CircuitGate::new(
+                GateType::EndoMulScalar,
+                Wire::for_row(row),
+                vec![],
+            ));
         }
     }
 
@@ -57,9 +64,9 @@ fn endomul_scalar_test() {
         );
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }

@@ -262,6 +262,17 @@ TODO: for each gate describe how to create it?
 
 {sections.range_check}
 
+#### Foreign Field Addition
+
+{sections.foreign_field_add}
+
+#### Foreign Field Multiplication
+
+{sections.foreign_field_mul}
+#### Xor
+
+{sections.xor16}
+
 ## Setup
 
 In this section we specify the setup that goes into creating two indexes from a circuit:

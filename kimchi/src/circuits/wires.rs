@@ -17,7 +17,7 @@ pub const WIRES: [usize; COLUMNS] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1
 /// Wire documents the other cell that is wired to this one.
 /// If the cell represents an internal wire, an input to the circuit,
 /// or a final output of the circuit, the cell references itself.
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Default, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct Wire {
@@ -27,9 +27,14 @@ pub struct Wire {
 }
 
 impl Wire {
+    /// Creates a new [Wire].
+    pub fn new(row: usize, col: usize) -> Self {
+        Self { row, col }
+    }
+
     /// Creates a new set of wires for a given row.
-    pub fn new(row: usize) -> [Self; PERMUTS] {
-        array::from_fn(|col| Self { row, col })
+    pub fn for_row(row: usize) -> [Self; PERMUTS] {
+        GateWires::new(row)
     }
 }
 
@@ -37,6 +42,28 @@ impl Wire {
 /// represents the same cell (row and column) or a different cell in another row.
 /// (This is to help the permutation argument.)
 pub type GateWires = [Wire; PERMUTS];
+
+/// Since we don't have a specific type for the wires of a row,
+/// we have to implement these convenience functions through a trait.
+pub trait Wirable: Sized {
+    /// Creates a new set of wires for a given row.
+    fn new(row: usize) -> Self;
+
+    /// Wire the cell at `col` to another cell (`to`).
+    fn wire(self, col: usize, to: Wire) -> Self;
+}
+
+impl Wirable for GateWires {
+    fn new(row: usize) -> Self {
+        array::from_fn(|col| Wire { row, col })
+    }
+
+    fn wire(mut self, col: usize, to: Wire) -> Self {
+        assert!(col < PERMUTS);
+        self[col] = to;
+        self
+    }
+}
 
 impl ToBytes for Wire {
     #[inline]

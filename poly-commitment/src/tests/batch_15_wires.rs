@@ -10,10 +10,10 @@ use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
+use mina_poseidon::sponge::DefaultFqSponge;
+use mina_poseidon::FqSponge;
 use o1_utils::ExtendedDensePolynomial as _;
-use oracle::constants::PlonkSpongeConstantsKimchi as SC;
-use oracle::sponge::DefaultFqSponge;
-use oracle::FqSponge;
 use rand::Rng;
 use std::time::{Duration, Instant};
 
@@ -30,8 +30,9 @@ where
 
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-    let sponge =
-        DefaultFqSponge::<VestaParameters, SC>::new(oracle::pasta::fq_kimchi::static_params());
+    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(
+        mina_poseidon::pasta::fq_kimchi::static_params(),
+    );
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);

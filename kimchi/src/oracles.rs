@@ -2,9 +2,9 @@
 //! As we move more code to the Rust side,
 //! we hope to be able to remove this code in the future.
 
-use crate::{alphas::Alphas, circuits::scalars::RandomOracles};
+use crate::{alphas::Alphas, circuits::scalars::RandomOracles, proof::PointEvaluations};
 use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
-use oracle::FqSponge;
+use mina_poseidon::FqSponge;
 
 /// The result of running the oracle protocol
 pub struct OraclesResult<G, EFqSponge>
@@ -23,7 +23,7 @@ where
     /// public polynomial evaluations
     pub public_evals: [Vec<G::ScalarField>; 2],
     /// zeta^n and (zeta * omega)^n
-    pub powers_of_eval_points_for_chunks: [G::ScalarField; 2],
+    pub powers_of_eval_points_for_chunks: PointEvaluations<G::ScalarField>,
     /// recursion data
     #[allow(clippy::type_complexity)]
     pub polys: Vec<(PolyComm<G>, Vec<Vec<G::ScalarField>>)>,

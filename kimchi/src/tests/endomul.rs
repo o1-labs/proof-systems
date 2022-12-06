@@ -7,10 +7,17 @@ use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use commitment_dlog::srs::endos;
-use mina_curves::pasta::{Fp as F, Pallas as Other};
-use oracle::sponge::ScalarChallenge;
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
+};
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
 fn endomul_test() {
@@ -29,19 +36,15 @@ fn endomul_test() {
     for s in 0..num_scalars {
         for i in 0..chunks {
             let row = rows_per_scalar * s + i;
-            gates.push(CircuitGate {
-                typ: GateType::EndoMul,
-                wires: Wire::new(row),
-                coeffs: vec![],
-            });
+            gates.push(CircuitGate::new(
+                GateType::EndoMul,
+                Wire::for_row(row),
+                vec![],
+            ));
         }
 
         let row = rows_per_scalar * s + chunks;
-        gates.push(CircuitGate {
-            typ: GateType::Zero,
-            wires: Wire::new(row),
-            coeffs: vec![],
-        });
+        gates.push(CircuitGate::new(GateType::Zero, Wire::for_row(row), vec![]));
     }
 
     let (endo_q, endo_r) = endos::<Other>();
@@ -107,9 +110,9 @@ fn endomul_test() {
         assert_eq!(x.into_repr(), res.n.into_repr());
     }
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
