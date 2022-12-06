@@ -49,19 +49,6 @@ macro_rules! impl_fp256 {
             pub mod caml {
                 use super::*;
 
-                use crate::arkworks::{BigInteger256, caml_bytes_string::CamlBytesString};
-
-                use ark_ff::bytes::ToBytes;
-                use ark_ff::{FftField, Field, One, PrimeField, SquareRootField, UniformRand, Zero};
-                use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
-                use num_bigint::BigUint;
-                use rand::rngs::StdRng;
-
-                use std::{
-                    cmp::Ordering::{Equal, Greater, Less},
-                    convert::{TryFrom, TryInto},
-                };
-
                 ocaml::custom!($CamlF);
 
                 unsafe impl<'a> ocaml::FromValue<'a> for $CamlF {

@@ -9,6 +9,3 @@ pub mod bigint256;
 pub mod fp256;
 
 pub use bigint256::BigInteger256;
-
-#[cfg(feature = "ocaml_types")]
-pub mod caml_bytes_string;
