@@ -7,7 +7,8 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::PrimeField;
-use o1_utils::{big_bits, big_not, FieldFromBig, FieldHelpers};
+use num_bigint::BigUint;
+use o1_utils::{big_bits, BitOps, FieldHelpers};
 use std::{array, cmp::max};
 
 use super::{
@@ -141,7 +142,7 @@ impl<F: PrimeField> CircuitGate<F> {
 /// Input: first input and second input
 pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<usize>) -> [Vec<F>; COLUMNS] {
     let input = input.to_biguint();
-    let output = big_not(&input, bits);
+    let output = BigUint::bitnot(&input, bits);
     let bits = max(big_bits(&input), bits.unwrap_or(0));
     let mut not_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);

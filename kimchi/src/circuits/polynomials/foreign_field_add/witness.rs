@@ -11,7 +11,9 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
-use o1_utils::foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB};
+use o1_utils::foreign_field::{
+    BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB,
+};
 use std::array;
 
 /// All foreign field operations allowed
@@ -25,13 +27,13 @@ pub enum FFOps {
     Mul,
 }
 
-// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
-// all necessary values needed for the witness layout. Meaning:
-// - the result of the addition/subtraction as a ForeignElement
-// - the sign of the operation
-// - the overflow flag
-// - the carry_lo and carry_mi values
-fn compute_subadd_values<F: PrimeField>(
+/// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
+/// all necessary values needed for the witness layout. Meaning:
+/// - the result of the addition/subtraction as a ForeignElement
+/// - the sign of the operation
+/// - the overflow flag
+/// - the carry_lo and carry_mi values
+pub fn compute_subadd_values<F: PrimeField>(
     left_input: &ForeignElement<F, 3>,
     right_input: &ForeignElement<F, 4>,
     opcode: FFOps,
@@ -103,6 +105,7 @@ fn compute_subadd_values<F: PrimeField>(
     let carry_lo = result[MI] - left_input[MI] - sign * right_input[MI]
         + field_overflow * foreign_modulus[MI]
         + two_to_limb * carry_mi;
+
     (result, sign, field_overflow, carry_lo, carry_mi)
 }
 
@@ -129,7 +132,7 @@ pub fn create<F: PrimeField>(
 
     // Create multi-range-check witness for first left input
     let mut left = ForeignElement::from_biguint(inputs[LO].clone());
-    range_check::witness::extend(&mut witness, left.clone());
+    range_check::witness::extend_multi_from_fe(&mut witness, &left);
     let mut add_values: Vec<(F, F, F, F)> = vec![];
     for i in 0..num {
         let right = ForeignElement::from_biguint(inputs[i + 1].clone());
@@ -138,15 +141,15 @@ pub fn create<F: PrimeField>(
         // Create multi-range-check witness for right_input (left_input was done in previous iteration) and output
         // We only obtain the 3 lower limbs of right because the range check takes only 264 bits now
         let right_3_limb = ForeignElement::new([right[LO], right[MI], right[HI]]);
-        range_check::witness::extend(&mut witness, right_3_limb);
-        range_check::witness::extend(&mut witness, output.clone());
+        range_check::witness::extend_multi_from_fe(&mut witness, &right_3_limb);
+        range_check::witness::extend_multi_from_fe(&mut witness, &output);
 
         add_values.append(&mut vec![(sign, overflow, carry_lo, carry_mi)]);
         left = output; // output
     }
 
     // Compute values for final bound check, needs a 4 limb right input
-    let right = ForeignElement::<F, 4>::from_biguint(BigUint::from(TWO_TO_LIMB).pow(3));
+    let right = ForeignElement::<F, 4>::from_biguint(BigUint::binary_modulus());
 
     let (bound, sign, overflow, bound_carry_lo, bound_carry_mi) =
         compute_subadd_values(&left, &right, FFOps::Add, &foreign_modulus);
@@ -155,7 +158,7 @@ pub fn create<F: PrimeField>(
     assert_eq!(overflow, F::one());
 
     // Final RangeCheck for bound
-    range_check::witness::extend(&mut witness, bound);
+    range_check::witness::extend_multi_from_fe(&mut witness, &bound);
     let mut offset = witness[LO].len(); // number of witness rows of the gadget before the first row of the addition gate
 
     // Include FFAdds gates for operations and final bound check
@@ -183,9 +186,43 @@ pub fn create<F: PrimeField>(
     for w in &mut witness {
         w.extend(std::iter::repeat(F::zero()).take(2));
     }
-    init_foreign_field_fin_rows(&mut witness, offset, num, [bound_carry_lo, bound_carry_mi]);
+    init_foreign_field_fin_rows_from_multi_range_check(
+        &mut witness,
+        offset,
+        num,
+        [bound_carry_lo, bound_carry_mi],
+    );
 
     witness
+}
+
+/// Create witness for bound computation addition gate
+pub fn extend_witness_bound_addition<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    limbs: &[F; 3],
+    foreign_field_modulus: &[F; 3],
+) {
+    // Convert to types used by this module
+    let fe = ForeignElement::<F, 3>::new(*limbs);
+    let foreign_field_modulus = ForeignElement::<F, 3>::new(*foreign_field_modulus);
+
+    // Compute values for final bound check, needs a 4 limb right input
+    let right_input = ForeignElement::<F, 4>::from_biguint(BigUint::binary_modulus());
+
+    // Compute the bound and related witness data
+    let (bound, sign, overflow, bound_carry0, bound_carry1) =
+        compute_subadd_values(&fe, &right_input, FFOps::Add, &foreign_field_modulus);
+    // Make sure they have the right value
+    assert_eq!(sign, F::one());
+    assert_eq!(overflow, F::one());
+
+    // Extend the witness for the add gate
+    let offset = witness[0].len();
+    for col in witness.iter_mut().take(COLUMNS) {
+        col.extend(std::iter::repeat(F::zero()).take(2))
+    }
+
+    init_foreign_field_fin_rows(witness, offset, &fe, &bound, [bound_carry0, bound_carry1]);
 }
 
 fn init_foreign_field_add_rows<F: PrimeField>(
@@ -228,6 +265,64 @@ fn init_foreign_field_add_rows<F: PrimeField>(
 }
 
 fn init_foreign_field_fin_rows<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    offset: usize,
+    input: &ForeignElement<F, 3>,  // left_input
+    output: &ForeignElement<F, 3>, // Bound addition output
+    carry: [F; 2],
+) {
+    let witness_shape: [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] = [
+        [
+            // ForeignFieldFin row
+            VariableCell::create("input0"),
+            VariableCell::create("input1"),
+            VariableCell::create("input2"),
+            ConstantCell::create(F::zero()),            // 0
+            ConstantCell::create(F::zero()),            // 0
+            ConstantCell::create(F::from(TWO_TO_LIMB)), // 2^88
+            ConstantCell::create(F::one()),             // sign
+            ConstantCell::create(F::one()),             // field_overflow
+            VariableCell::create("carry_lo"),
+            VariableCell::create("carry_mi"),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+        ],
+        [
+            // Zero Row
+            VariableCell::create("output0"),
+            VariableCell::create("output1"),
+            VariableCell::create("output2"),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+        ],
+    ];
+
+    witness::init(
+        witness,
+        offset,
+        &witness_shape,
+        &variable_map![
+            "input0" => input[0], "input1" => input[1], "input2" => input[2],
+            "output0" => output[0], "output1" => output[1], "output2" => output[2],
+            "carry_lo" => carry[0], "carry_mi" => carry[1]
+        ],
+    );
+}
+
+fn init_foreign_field_fin_rows_from_multi_range_check<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     offset: usize,
     num: usize,

@@ -3,6 +3,7 @@ mod ec;
 mod endomul;
 mod endomul_scalar;
 mod foreign_field_add;
+mod foreign_field_mul;
 mod framework;
 mod generic;
 mod lookup;
