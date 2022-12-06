@@ -67,6 +67,9 @@
 - [RFC 1: Final check](./plonk/final_check.md)
 - [RFC 2: Maller's optimization for kimchi](./plonk/maller_15.md)
 - [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
+- [RFC 4: Foreign Field Addition](./rfcs/foreign_field_add.md)
+- [RFC 5: Foreign Field Multiplication](./rfcs/foreign_field_mul.md)
+- [RFC 6: Keccak](./rfcs/keccak.md)
 
 # Specifications
 

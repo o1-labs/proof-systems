@@ -9,8 +9,16 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::Zero;
-use mina_curves::pasta::Fp;
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
 use std::array;
+
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
     let lookup_table_values: Vec<Vec<_>> = table_sizes
@@ -33,7 +41,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
 
     // circuit gates
     let gates = (0..num_lookups)
-        .map(|i| CircuitGate::new(GateType::Lookup, Wire::new(i), vec![]))
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
         .collect();
 
     let witness = {
@@ -86,12 +94,12 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 #[test]
@@ -146,7 +154,11 @@ fn runtime_table(num: usize, indexed: bool) {
     // circuit
     let mut gates = vec![];
     for row in 0..20 {
-        gates.push(CircuitGate::new(GateType::Lookup, Wire::new(row), vec![]));
+        gates.push(CircuitGate::new(
+            GateType::Lookup,
+            Wire::for_row(row),
+            vec![],
+        ));
     }
 
     // witness
@@ -173,13 +185,13 @@ fn runtime_table(num: usize, indexed: bool) {
     print_witness(&witness, 0, 20);
 
     // run test
-    TestFramework::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_tables_setup)
         .setup()
         .runtime_tables(runtime_tables)
-        .prove_and_verify();
+        .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
 
 #[test]

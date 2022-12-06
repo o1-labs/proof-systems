@@ -64,27 +64,27 @@ impl Hashable for Transaction {
 impl Transaction {
     pub fn new_payment(from: PubKey, to: PubKey, amount: u64, fee: u64, nonce: u32) -> Self {
         Transaction {
-            fee: fee,
+            fee,
             fee_token: 1,
             fee_payer_pk: from.into_compressed(),
-            nonce: nonce,
+            nonce,
             valid_until: u32::MAX,
             memo: std::array::from_fn(|i| (i == 0) as u8),
             tag: PAYMENT_TX_TAG,
             source_pk: from.into_compressed(),
             receiver_pk: to.into_compressed(),
             token_id: 1,
-            amount: amount,
+            amount,
             token_locked: false,
         }
     }
 
     pub fn new_delegation(from: PubKey, to: PubKey, fee: u64, nonce: u32) -> Self {
         Transaction {
-            fee: fee,
+            fee,
             fee_token: 1,
             fee_payer_pk: from.into_compressed(),
-            nonce: nonce,
+            nonce,
             valid_until: u32::MAX,
             memo: std::array::from_fn(|i| (i == 0) as u8),
             tag: DELEGATION_TX_TAG,

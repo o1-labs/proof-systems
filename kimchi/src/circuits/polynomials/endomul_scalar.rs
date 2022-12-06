@@ -11,7 +11,7 @@ use crate::{
     },
     curve::KimchiCurve,
 };
-use ark_ff::{BitIteratorLE, FftField, Field, PrimeField};
+use ark_ff::{BitIteratorLE, Field, PrimeField};
 use std::array;
 use std::marker::PhantomData;
 
@@ -154,11 +154,12 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~   * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`
 //~
 
+#[derive(Default)]
 pub struct EndomulScalar<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndomulScalar<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;

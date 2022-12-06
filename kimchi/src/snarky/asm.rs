@@ -1,19 +1,13 @@
-//! ASM-like language.
+//! An ASM-like language to print a human-friendly version of a circuit.
 
-use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::hash::Hash;
 
-use crate::circuits::gate::{CircuitGate, GateType};
+use crate::circuits::gate::{Circuit, CircuitGate, GateType};
 use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
 use crate::circuits::wires::Wire;
-use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
-
-use super::api::{CompiledCircuit, SnarkyCircuit, Witness};
-
-type ScalarField<T> = <<T as SnarkyCircuit>::Curve as AffineCurve>::ScalarField;
 
 /// Print a field in a negative form if it's past the half point.
 fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
@@ -26,17 +20,17 @@ fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
     }
 }
 
-impl<Circuit> CompiledCircuit<Circuit>
+impl<'a, F> Circuit<'a, F>
 where
-    Circuit: SnarkyCircuit,
+    F: PrimeField,
 {
     pub fn generate_asm(&self) -> String {
-        let mut res = "".to_string();
+        let mut res = String::new();
 
         // vars
         let mut vars = OrderedHashSet::default();
 
-        for CircuitGate { coeffs, .. } in &self.gates {
+        for CircuitGate { coeffs, .. } in self.gates {
             Self::extract_vars_from_coeffs(&mut vars, coeffs);
         }
 
@@ -48,7 +42,12 @@ where
         for (row, CircuitGate { typ, coeffs, wires }) in self.gates.iter().enumerate() {
             // gate
             {
-                write!(res, "row{row}.").unwrap();
+                let is_pub = if row < self.public_input_size {
+                    "pub."
+                } else {
+                    ""
+                };
+                write!(res, "row{row}.{is_pub}").unwrap();
                 let coeffs = Self::parse_coeffs(&vars, coeffs);
                 write!(res, "{typ:?}").unwrap();
                 res.push('<');
@@ -68,7 +67,10 @@ where
 
             // wires
             {
-                let mut wires_str = vec![];
+                // wiring
+                let mut wires1 = vec![];
+                let mut wires2 = vec![];
+
                 for (
                     col,
                     Wire {
@@ -78,7 +80,7 @@ where
                 ) in wires.iter().enumerate()
                 {
                     if row != *to_row || col != *to_col {
-                        let col = if matches!(typ, GateType::Generic) {
+                        let col_str = if matches!(typ, GateType::Generic) {
                             format!(".{}", Self::generic_cols(col))
                         } else {
                             format!("[{col}]")
@@ -90,21 +92,33 @@ where
                             format!("[{to_col}]")
                         };
 
-                        wires_str.push(format!("{col} -> row{to_row}{to_col}"));
+                        let res = format!("{col_str} -> row{to_row}{to_col}");
+
+                        if matches!(typ, GateType::Generic) && col < GENERIC_REGISTERS {
+                            wires1.push(res);
+                        } else {
+                            wires2.push(res);
+                        }
                     }
                 }
 
-                if !wires_str.is_empty() {
-                    if matches!(typ, GateType::Generic) && wires_str.len() > GENERIC_REGISTERS {
-                        let (wires1, wires2) = wires_str.split_at(GENERIC_REGISTERS);
+                match (!wires1.is_empty(), !wires2.is_empty()) {
+                    (false, false) => (),
+                    (true, false) => {
+                        res.push_str(&wires1.join(", "));
+                        res.push('\n');
+                    }
+                    (false, true) => {
+                        res.push_str(&wires2.join(", "));
+                        res.push('\n');
+                    }
+                    (true, true) => {
                         res.push_str(&wires1.join(", "));
                         res.push('\n');
                         res.push_str(&wires2.join(", "));
-                    } else {
-                        res.push_str(&wires_str.join(", "));
+                        res.push('\n');
                     }
-                    res.push('\n');
-                }
+                };
             }
 
             res.push('\n');
@@ -121,14 +135,11 @@ where
             3 => "l2",
             4 => "r2",
             5 => "o2",
-            _ => panic!("invalid generic column"),
+            x => panic!("invalid generic column: {x}"),
         }
     }
 
-    fn extract_vars_from_coeffs(
-        vars: &mut OrderedHashSet<ScalarField<Circuit>>,
-        coeffs: &[ScalarField<Circuit>],
-    ) {
+    fn extract_vars_from_coeffs(vars: &mut OrderedHashSet<F>, coeffs: &[F]) {
         for coeff in coeffs {
             let s = pretty(*coeff);
             if s.len() >= 5 {
@@ -137,10 +148,7 @@ where
         }
     }
 
-    fn parse_coeffs(
-        vars: &OrderedHashSet<ScalarField<Circuit>>,
-        coeffs: &[ScalarField<Circuit>],
-    ) -> Vec<String> {
+    fn parse_coeffs(vars: &OrderedHashSet<F>, coeffs: &[F]) -> Vec<String> {
         coeffs
             .iter()
             .map(|x| {
@@ -195,14 +203,55 @@ where
     }
 }
 
-impl<F> Witness<F>
-where
-    F: PrimeField,
-{
-    pub fn debug(&self) {
-        for (row, values) in self.0.iter().enumerate() {
-            let values = values.iter().map(|v| pretty(*v)).join(" | ");
-            println!("{row} - {values}");
+#[cfg(test)]
+mod tests {
+    use mina_curves::pasta::Fp;
+
+    use crate::circuits::wires::Wirable;
+
+    use super::*;
+
+    #[test]
+    fn test_simple_circuit_asm() {
+        let public_input_size = 1;
+        let gates: &Vec<CircuitGate<Fp>> = &vec![
+            CircuitGate::new(
+                GateType::Generic,
+                Wire::for_row(0),
+                vec![1.into(), 2.into()],
+            ),
+            CircuitGate::new(
+                GateType::Poseidon,
+                Wire::for_row(1).wire(0, Wire::new(0, 1)),
+                vec![1.into(), 2.into()],
+            ),
+            CircuitGate::new(
+                GateType::Generic,
+                Wire::for_row(2)
+                    .wire(0, Wire::new(1, 2))
+                    .wire(3, Wire::new(2, 5))
+                    .wire(5, Wire::new(1, 1)),
+                vec![1.into(), 2.into()],
+            ),
+        ];
+
+        let circuit = Circuit::new(public_input_size, gates);
+
+        const EXPECTED: &str = r#"row0.pub.Generic<1,2>
+
+row1.Poseidon<1,2>
+[0] -> row0.r1
+
+row2.Generic<1,2>
+.l1 -> row1[2]
+.l2 -> row2.o2, .o2 -> row1[1]"#;
+
+        let asm = circuit.generate_asm();
+
+        if EXPECTED.trim() != asm.trim() {
+            eprintln!("expected:\n{EXPECTED}\n");
+            eprintln!("obtained:\n{asm}");
+            panic!("obtained asm does not match expected asm")
         }
     }
 }

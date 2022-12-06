@@ -567,7 +567,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
 
         let digest = {
             use o1_utils::hasher::CryptoDigest as _;
-            let circuit = crate::circuits::gate::Circuit(&rust_gates);
+            let circuit = crate::circuits::gate::Circuit::new(public_input_size, &rust_gates);
             circuit.digest()
         };
 

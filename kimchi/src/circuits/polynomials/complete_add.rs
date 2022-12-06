@@ -19,7 +19,7 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
 
 /// This enforces that
@@ -86,11 +86,12 @@ fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
+#[derive(Default)]
 pub struct CompleteAdd<F>(PhantomData<F>);
 
 impl<F> Argument<F> for CompleteAdd<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;

@@ -35,8 +35,8 @@ use crate::{
     },
     curve::KimchiCurve,
 };
-use ark_ff::{FftField, Field, PrimeField};
-use oracle::{
+use ark_ff::{Field, PrimeField, SquareRootField};
+use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
@@ -77,7 +77,7 @@ pub const fn round_to_cols(i: usize) -> Range<usize> {
     start..(start + SPONGE_WIDTH)
 }
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     pub fn create_poseidon(
         wires: GateWires,
         // Coefficients are passed in in the logical order
@@ -327,13 +327,14 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ///
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
+#[derive(Default)]
 pub struct Poseidon<F>(PhantomData<F>);
 
 impl<F> Poseidon<F> where F: Field {}
 
 impl<F> Argument<F> for Poseidon<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;

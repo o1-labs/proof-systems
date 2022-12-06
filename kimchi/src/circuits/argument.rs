@@ -7,7 +7,7 @@
 use std::marker::PhantomData;
 
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
-use ark_ff::{FftField, Field};
+use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -100,6 +100,14 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     pub fn mds(&self, row: usize, col: usize) -> T {
         T::constant(ConstantExpr::<F>::Mds { row, col }, self.data.as_ref())
     }
+
+    /// Helper to access the foreign field modulus limb at index idx
+    pub fn foreign_modulus(&self, idx: usize) -> T {
+        T::constant(
+            ConstantExpr::<F>::ForeignFieldModulus(idx),
+            self.data.as_ref(),
+        )
+    }
 }
 
 /// Argument environment data for constraints of field elements
@@ -132,7 +140,7 @@ impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
 }
 
 /// The interface for a minimal argument implementation.
-pub trait Argument<F: FftField> {
+pub trait Argument<F: PrimeField> {
     /// The type of constraints that this will produce.
     /// This is important to enforce that we don't combine the constraints
     /// with powers of alpha that collide with other mutually inclusive arguments.
@@ -164,5 +172,23 @@ pub trait Argument<F: FftField> {
         } else {
             combined_constraints
         }
+    }
+}
+
+pub trait DynArgument<F: PrimeField> {
+    fn constraints(&self) -> Vec<E<F>>;
+    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F>;
+    fn argument_type(&self) -> ArgumentType;
+}
+
+impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
+    fn constraints(&self) -> Vec<E<F>> {
+        <Self as Argument<F>>::constraints()
+    }
+    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F> {
+        <Self as Argument<F>>::combined_constraints(alphas)
+    }
+    fn argument_type(&self) -> ArgumentType {
+        <Self as Argument<F>>::ARGUMENT_TYPE
     }
 }

@@ -1,6 +1,11 @@
 [package]
 name = "kimchi"
 version = "0.1.0"
+description = "The kimchi proof system"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
 edition = "2021"
 license = "Apache-2.0"
 
@@ -14,8 +19,9 @@ ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 blake2 = "0.10.0"
-num-bigint = "0.4.0"
+num-bigint = { version = "0.4.0", features = [ "serde" ] }
 num-derive = "0.3"
+num-integer = "0.1.45"
 num-traits = "0.2"
 itertools = "0.10.3"
 rand = "0.8.0"
@@ -33,12 +39,12 @@ strum_macros = "0.24.0"
 # TODO: audit this
 disjoint-set = "0.0.2"
 
-cairo = { path = "../cairo" }
-commitment_dlog = { path = "../poly-commitment" }
-groupmap = { path = "../groupmap" }
-mina-curves = { path = "../curves" }
-o1-utils = { path = "../utils" }
-oracle = { path = "../oracle" }
+turshi = { path = "../turshi", version = "0.1.0" }
+commitment_dlog = { path = "../poly-commitment", version = "0.1.0" }
+groupmap = { path = "../groupmap", version = "0.1.0" }
+mina-curves = { path = "../curves", version = "0.1.0" }
+o1-utils = { path = "../utils", version = "0.1.0" }
+mina-poseidon = { path = "../poseidon", version = "0.1.0" }
 
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { version = "0.1.0", optional = true }
@@ -50,7 +56,8 @@ proptest = "1.0.0"
 proptest-derive = "0.3.0"
 colored = "2.0.0"
 serde_json = { version = "1.0" }
-num-bigint = "0.4.3"
+num-bigint = { version = "0.4.3", features = ["rand"] }
+secp256k1 = "0.24.1"
 
 # benchmarks
 criterion = "0.3"
@@ -66,5 +73,5 @@ harness = false
 
 [features]
 default = []
-ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "oracle/ocaml_types" ]
+ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "mina-poseidon/ocaml_types" ]
 wasm_types = [ "wasm-bindgen" ]

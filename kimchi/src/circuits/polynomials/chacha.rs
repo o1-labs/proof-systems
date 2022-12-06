@@ -147,7 +147,7 @@ use crate::circuits::{
     expr::constraints::{boolean, ExprOps},
     gate::{CurrOrNext, GateType},
 };
-use ark_ff::{FftField, Field};
+use ark_ff::{FftField, Field, PrimeField};
 
 //
 // Implementation internals
@@ -155,7 +155,7 @@ use ark_ff::{FftField, Field};
 
 /// 8-nybble sequences that are laid out as 4 nybbles per row over the two row,
 /// like y^x' or x+z
-fn chunks_over_2_rows<F: Field, T: ExprOps<F>>(
+fn chunks_over_2_rows<F: PrimeField, T: ExprOps<F>>(
     env: &ArgumentEnv<F, T>,
     col_offset: usize,
 ) -> Vec<T> {
@@ -175,7 +175,7 @@ fn combine_nybbles<F: Field, T: ExprOps<F>>(ns: Vec<T>) -> T {
 }
 
 /// Constraints for the line L(x, x', y, y', z, k), where k = 4 * `nybble_rotation`
-fn line<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
+fn line<F: PrimeField, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize) -> Vec<T> {
     let y_xor_xprime_nybbles = chunks_over_2_rows(env, 3);
     let x_plus_z_nybbles = chunks_over_2_rows(env, 7);
     let y_nybbles = chunks_over_2_rows(env, 11);
@@ -212,11 +212,12 @@ fn line<F: Field, T: ExprOps<F>>(env: &ArgumentEnv<F, T>, nybble_rotation: usize
 //
 
 /// Implementation of the `ChaCha0` gate
+#[derive(Default)]
 pub struct ChaCha0<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha0<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha0);
     const CONSTRAINTS: u32 = 5;
@@ -228,11 +229,12 @@ where
 }
 
 /// Implementation of the `ChaCha1` gate
+#[derive(Default)]
 pub struct ChaCha1<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha1<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha1);
     const CONSTRAINTS: u32 = 5;
@@ -244,11 +246,12 @@ where
 }
 
 /// Implementation of the `ChaCha2` gate
+#[derive(Default)]
 pub struct ChaCha2<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaCha2<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaCha2);
     const CONSTRAINTS: u32 = 5;
@@ -260,11 +263,12 @@ where
 }
 
 /// Implementation of the `ChaChaFinal` gate
+#[derive(Default)]
 pub struct ChaChaFinal<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ChaChaFinal<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ChaChaFinal);
     const CONSTRAINTS: u32 = 9;
@@ -475,7 +479,7 @@ mod tests {
             wires::*,
         },
         curve::KimchiCurve,
-        proof::{LookupEvaluations, ProofEvaluations},
+        proof::{LookupEvaluations, PointEvaluations, ProofEvaluations},
     };
     use ark_ff::{UniformRand, Zero};
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
@@ -505,7 +509,7 @@ mod tests {
     #[test]
     fn chacha_linearization() {
         let lookup_info = LookupInfo::create(
-            [LookupPattern::ChaCha, LookupPattern::ChaChaFinal]
+            [LookupPattern::Xor, LookupPattern::ChaChaFinal]
                 .into_iter()
                 .collect(),
             false,
@@ -545,23 +549,26 @@ mod tests {
         let d = D::new(1024).unwrap();
 
         let pt = F::rand(rng);
-        let mut eval = || ProofEvaluations {
-            w: array::from_fn(|_| F::rand(rng)),
-            z: F::rand(rng),
-            s: array::from_fn(|_| F::rand(rng)),
-            generic_selector: F::zero(),
-            poseidon_selector: F::zero(),
+        let mut rand_eval = || PointEvaluations {
+            zeta: F::rand(rng),
+            zeta_omega: F::rand(rng),
+        };
+        let eval = ProofEvaluations {
+            w: array::from_fn(|_| rand_eval()),
+            z: rand_eval(),
+            s: array::from_fn(|_| rand_eval()),
+            coefficients: array::from_fn(|_| rand_eval()),
+            generic_selector: PointEvaluations::default(),
+            poseidon_selector: PointEvaluations::default(),
             lookup: Some(LookupEvaluations {
                 sorted: (0..(lookup_info.max_per_row + 1))
-                    .map(|_| F::rand(rng))
+                    .map(|_| rand_eval())
                     .collect(),
-                aggreg: F::rand(rng),
-                table: F::rand(rng),
+                aggreg: rand_eval(),
+                table: rand_eval(),
                 runtime: None,
             }),
         };
-
-        let evals = vec![eval(), eval()];
 
         let constants = Constants {
             alpha: F::rand(rng),
@@ -570,14 +577,15 @@ mod tests {
             joint_combiner: None,
             endo_coefficient: F::zero(),
             mds: &Vesta::sponge_params().mds,
+            foreign_field_modulus: None,
         };
 
         assert_eq!(
             linearized
                 .constant_term
-                .evaluate_(d, pt, &evals, &constants)
+                .evaluate_(d, pt, &eval, &constants)
                 .unwrap(),
-            PolishToken::evaluate(&linearized_polish.constant_term, d, pt, &evals, &constants)
+            PolishToken::evaluate(&linearized_polish.constant_term, d, pt, &eval, &constants)
                 .unwrap()
         );
 
@@ -588,8 +596,8 @@ mod tests {
             .for_each(|((c1, e1), (c2, e2))| {
                 assert_eq!(c1, c2);
                 println!("{:?} ?", c1);
-                let x1 = e1.evaluate_(d, pt, &evals, &constants).unwrap();
-                let x2 = PolishToken::evaluate(e2, d, pt, &evals, &constants).unwrap();
+                let x1 = e1.evaluate_(d, pt, &eval, &constants).unwrap();
+                let x2 = PolishToken::evaluate(e2, d, pt, &eval, &constants).unwrap();
                 if x1 != x2 {
                     println!("e1: {}", e1.ocaml_str());
                     println!("e2: {}", Polish(e2.clone()));
@@ -601,8 +609,8 @@ mod tests {
 
         /*
         assert_eq!(
-            expr.evaluate_(d, pt, &evals, &constants).unwrap(),
-            PolishToken::evaluate(&expr_polish, d, pt, &evals, &constants).unwrap());
+            expr.evaluate_(d, pt, &eval, &constants).unwrap(),
+            PolishToken::evaluate(&expr_polish, d, pt, &eval, &constants).unwrap());
             */
     }
 }

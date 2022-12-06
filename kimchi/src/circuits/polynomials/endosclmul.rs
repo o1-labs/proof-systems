@@ -15,9 +15,9 @@ use crate::{
         wires::{GateWires, COLUMNS},
     },
     curve::KimchiCurve,
-    proof::ProofEvaluations,
+    proof::{PointEvaluations, ProofEvaluations},
 };
-use ark_ff::{FftField, Field, PrimeField};
+use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
 
 //~ We implement custom gate constraints for short Weierstrass curve
@@ -142,12 +142,11 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: None,
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
+            foreign_field_modulus: None,
         };
 
-        let evals: [ProofEvaluations<G::ScalarField>; 2] = [
-            ProofEvaluations::dummy_with_witness_evaluations(this),
-            ProofEvaluations::dummy_with_witness_evaluations(next),
-        ];
+        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
+            ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
         let constraints = EndosclMul::constraints();
         for (i, c) in constraints.iter().enumerate() {
@@ -174,11 +173,12 @@ impl<F: PrimeField> CircuitGate<F> {
 }
 
 /// Implementation of the `EndosclMul` gate.
+#[derive(Default)]
 pub struct EndosclMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndosclMul<F>
 where
-    F: FftField,
+    F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;

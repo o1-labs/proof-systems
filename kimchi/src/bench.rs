@@ -14,7 +14,7 @@ use crate::{
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use oracle::{
+use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
@@ -44,7 +44,7 @@ impl BenchmarkCtx {
 
         #[allow(clippy::explicit_counter_loop)]
         for row in 0..num_gates {
-            let wires = Wire::new(row);
+            let wires = Wire::for_row(row);
             gates.push(CircuitGate::create_generic_gadget(
                 wires,
                 GenericGateSpec::Const(1u32.into()),
@@ -110,7 +110,7 @@ mod tests {
 
         // proof verified in 1.710 ms
         let start = Instant::now();
-        ctx.batch_verification(vec![proof.clone()]);
+        ctx.batch_verification(vec![proof]);
         println!("proof verified in {}", start.elapsed().as_millis());
     }
 }

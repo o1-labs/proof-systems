@@ -2,8 +2,8 @@ use crate::circuits::{
     gate::CircuitGate,
     polynomials::turshi::{testing::*, witness::*},
 };
-use cairo::{CairoMemory, CairoProgram};
 use mina_curves::pasta::Fp as F;
+use turshi::{CairoMemory, CairoProgram};
 
 #[test]
 fn test_cairo_should_fail() {
@@ -75,10 +75,8 @@ fn test_cairo_gate() {
     let (circuit, _) = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
 
     // Verify each gate
-    let mut row = 0;
-    for gate in circuit {
+    for (row, gate) in circuit.into_iter().enumerate() {
         let res_ensure = ensure_cairo_gate(&gate, row, &witness);
         assert_eq!(Ok(()), res_ensure);
-        row = row + 1;
     }
 }
