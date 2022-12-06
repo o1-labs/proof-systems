@@ -11,8 +11,9 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::Wire,
 };
-use ark_ff::PrimeField;
-use o1_utils::{big_and, big_bits, big_xor, field_helpers::FieldFromBig, FieldHelpers};
+use ark_ff::{PrimeField, SquareRootField};
+use num_bigint::BigUint;
+use o1_utils::{big_bits, BitOps, FieldHelpers};
 
 //~ We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
 //~ add one `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
@@ -47,7 +48,7 @@ use o1_utils::{big_and, big_bits, big_xor, field_helpers::FieldFromBig, FieldHel
 //~ * the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
 //~ * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates an AND gadget for `bits` length.
     /// The full operation being performed is the following:
     /// `a AND b = 1/2 * (a + b - (a XOR b))`
@@ -96,11 +97,11 @@ pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> 
     }
 
     // Compute BigUint output of AND, XOR
-    let big_and = big_and(&input1_big, &input2_big, bytes);
-    let big_xor = big_xor(&input1_big, &input2_big);
+    let big_and = BigUint::bitand(&input1_big, &input2_big, bytes);
+    let big_xor = BigUint::bitxor(&input1_big, &input2_big);
     // Transform BigUint values to field elements
-    let xor = F::from_biguint(&big_xor).unwrap();
-    let and = F::from_biguint(&big_and).unwrap();
+    let xor = F::from_biguint(big_xor).unwrap();
+    let and = F::from_biguint(big_and).unwrap();
     let sum = input1 + input2;
 
     let and_row = num_xors(bytes * 8) + 1;

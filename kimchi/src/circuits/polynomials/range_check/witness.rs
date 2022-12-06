@@ -108,8 +108,7 @@ pub fn range_check_0_row<F: PrimeField>(
     ]
 }
 
-/// Create a multi range check witness
-/// Input: three 88-bit values: v0, v1 and v2
+/// Create a multi range check witness from three 88-bit values: v0, v1 and v2
 pub fn create_multi<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
     let layout = layout();
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 4]);
@@ -120,6 +119,11 @@ pub fn create_multi<F: PrimeField>(v0: F, v1: F, v2: F) -> [Vec<F>; COLUMNS] {
     init_row(&mut witness, 0, 3, &layout, &variables!());
 
     witness
+}
+
+/// Create a multi range check witness from limbs
+pub fn create_multi_limbs<F: PrimeField>(limbs: &[F; 3]) -> [Vec<F>; COLUMNS] {
+    create_multi(limbs[0], limbs[1], limbs[2])
 }
 
 /// Create a single range check witness
@@ -134,8 +138,32 @@ pub fn create<F: PrimeField>(v0: F) -> [Vec<F>; COLUMNS] {
 }
 
 /// Extend an existing witness with a multi-range-check gadget for foreign field element
-pub fn extend<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: ForeignElement<F, 3>) {
-    let limbs_witness = create_multi(fe[0], fe[1], fe[2]);
+pub fn extend_multi<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], v0: F, v1: F, v2: F) {
+    let limbs_witness = create_multi(v0, v1, v2);
+    for col in 0..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
+}
+
+/// Extend an existing witness with a multi-range-check gadget for foreign field element
+pub fn extend_multi_limbs<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], limbs: &[F; 3]) {
+    let limbs_witness = create_multi_limbs(limbs);
+    for col in 0..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
+}
+
+/// Extend an existing witness with a multi-range-check gadget for ForeignElement
+pub fn extend_multi_from_fe<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    fe: &ForeignElement<F, 3>,
+) {
+    extend_multi(witness, fe.limbs[0], fe.limbs[1], fe.limbs[2]);
+}
+
+/// Extend an existing witness with a single range check witness for foreign field element
+pub fn extend<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], fe: F) {
+    let limbs_witness = create(fe);
     for col in 0..COLUMNS {
         witness[col].extend(limbs_witness[col].iter())
     }

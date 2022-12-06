@@ -64,6 +64,12 @@ pub enum VerifyError {
 
     #[error("runtime tables are used, but missing from the proof")]
     IncorrectRuntimeProof,
+
+    #[error("the evaluation for {0:?} is missing")]
+    MissingEvaluation(crate::circuits::expr::Column),
+
+    #[error("the commitment for {0:?} is missing")]
+    MissingCommitment(crate::circuits::expr::Column),
 }
 
 /// Errors that can arise when preparing the setup

@@ -1,28 +1,51 @@
-use crate::circuits::{
-    constraints::ConstraintSystem,
-    gate::CircuitGate,
-    polynomial::COLUMNS,
-    polynomials::{and, xor},
-    wires::Wire,
+use crate::{
+    circuits::{
+        constraints::ConstraintSystem,
+        gate::{CircuitGate, CircuitGateError, GateType},
+        polynomial::COLUMNS,
+        polynomials::{and, xor},
+        wires::Wire,
+    },
+    curve::KimchiCurve,
+    plonk_sponge::FrSponge,
 };
 
 use ark_ec::AffineCurve;
-use mina_curves::pasta::{Fp, Pallas, Vesta};
+use ark_ff::{One, PrimeField};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+    FqSponge,
+};
 use num_bigint::BigUint;
-use o1_utils::{big_and, big_xor, FieldFromBig, FieldHelpers};
+use o1_utils::{BitOps, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::{framework::TestFramework, xor::initialize};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
+type VestaField = <Vesta as AffineCurve>::BaseField;
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
+type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 const RNG_SEED: [u8; 32] = [
     211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
     89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
 ];
 
-fn create_test_constraint_system(bytes: usize) -> ConstraintSystem<Fp> {
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_and(0, bytes);
+fn create_test_constraint_system_and<G: KimchiCurve, EFqSponge, EFrSponge>(
+    bytes: usize,
+) -> ConstraintSystem<G::ScalarField>
+where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
+    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_and(0, bytes);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -34,42 +57,69 @@ fn create_test_constraint_system(bytes: usize) -> ConstraintSystem<Fp> {
 }
 
 // Manually checks the AND of the witness
-fn check_and(
-    witness: &[Vec<PallasField>; COLUMNS],
+fn check_and<G: KimchiCurve>(
+    witness: &[Vec<G::ScalarField>; COLUMNS],
     bytes: usize,
-    input1: PallasField,
-    input2: PallasField,
+    input1: G::ScalarField,
+    input2: G::ScalarField,
 ) {
     let and_row = xor::num_xors(bytes * 8) + 1;
     let big_in1 = input1.to_biguint();
     let big_in2 = input2.to_biguint();
-    assert_eq!(witness[3][and_row], PallasField::from(input1 + input2));
+    assert_eq!(witness[3][and_row], (input1 + input2).into());
     assert_eq!(
         witness[4][and_row],
-        PallasField::from(big_xor(&big_in1, &big_in2))
+        BigUint::bitxor(&big_in1, &big_in2).into()
     );
     assert_eq!(
         witness[5][and_row],
-        PallasField::from(big_and(&big_in1, &big_in2, bytes))
+        BigUint::bitand(&big_in1, &big_in2, bytes).into()
     );
 }
 
-fn test_and(
-    in1: Option<PallasField>,
-    in2: Option<PallasField>,
+fn setup_and<G: KimchiCurve, EFqSponge, EFrSponge>(
+    input1: Option<G::ScalarField>,
+    input2: Option<G::ScalarField>,
     bytes: usize,
-) -> [Vec<PallasField>; COLUMNS] {
+) -> (
+    ConstraintSystem<G::ScalarField>,
+    [Vec<G::ScalarField>; COLUMNS],
+)
+where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
-    let cs = create_test_constraint_system(bytes);
+    let cs = create_test_constraint_system_and::<G, EFqSponge, EFrSponge>(bytes);
 
-    let in1 = initialize(in1, Some(bytes * 8), rng);
-    let in2 = initialize(in2, Some(bytes * 8), rng);
+    // Initalize inputs
+    let input1 = initialize::<G>(input1, Some(bytes * 8), rng);
+    let input2 = initialize::<G>(input2, Some(bytes * 8), rng);
 
-    let witness = and::create_and_witness(in1, in2, bytes);
-    for row in 0..xor::num_xors(bytes * 8) + 2 {
+    let witness = and::create_and_witness(input1, input2, bytes);
+
+    check_and::<G>(&witness, bytes, input1, input2);
+
+    (cs, witness)
+}
+
+fn test_and<G: KimchiCurve, EFqSponge, EFrSponge>(
+    input1: Option<G::ScalarField>,
+    input2: Option<G::ScalarField>,
+    bytes: usize,
+) -> [Vec<G::ScalarField>; COLUMNS]
+where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
+    let (cs, witness) = setup_and::<G, EFqSponge, EFrSponge>(input1, input2, bytes);
+
+    for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(
+            cs.gates[row].verify_witness::<G>(
                 row,
                 &witness,
                 &cs,
@@ -79,17 +129,20 @@ fn test_and(
         );
     }
 
-    check_and(&witness, bytes, in1, in2);
-
     witness
 }
 
 // Function to create a prover and verifier to test the AND circuit
-fn prove_and_verify(bytes: usize) {
+fn prove_and_verify<G: KimchiCurve, EFqSponge, EFrSponge>(bytes: usize)
+where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Create
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_and(0, bytes);
+    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_and(0, bytes);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -98,24 +151,25 @@ fn prove_and_verify(bytes: usize) {
     }
 
     // Create inputs
-    let input1 = initialize(None, Some(bytes * 8), rng);
-    let input2 = initialize(None, Some(bytes * 8), rng);
+    let input1 = initialize::<G>(None, Some(bytes * 8), rng);
+    let input2 = initialize::<G>(None, Some(bytes * 8), rng);
 
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    TestFramework::default()
+    TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
-        .prove_and_verify();
+        .prove_and_verify::<EFqSponge, EFrSponge>();
 }
 
 #[test]
 // End-to-end test
 fn test_prove_and_verify() {
-    prove_and_verify(8);
+    prove_and_verify::<Vesta, VestaBaseSponge, VestaScalarSponge>(8);
+    prove_and_verify::<Pallas, PallasBaseSponge, PallasScalarSponge>(8);
 }
 
 #[test]
@@ -123,58 +177,139 @@ fn test_prove_and_verify() {
 fn test_and64_alternating() {
     let input1 = PallasField::from(6510615555426900570u64);
     let input2 = PallasField::from(11936128518282651045u64);
-    test_and(Some(input1), Some(input2), 8);
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input1), Some(input2), 8);
+    let input1 = VestaField::from(6510615555426900570u64);
+    let input2 = VestaField::from(11936128518282651045u64);
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(Some(input1), Some(input2), 8);
 }
 
 #[test]
 // Test a AND of 64bit whose inputs are zero. Checks it works fine with non-dense values.
 fn test_and64_zeros() {
-    let zero = PallasField::from(0u8);
-    test_and(Some(zero), Some(zero), 8);
+    let zero_pallas = PallasField::from(0u8);
+    let zero_vesta = VestaField::from(0u8);
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero_pallas), Some(zero_pallas), 8);
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(Some(zero_vesta), Some(zero_vesta), 8);
 }
 
 #[test]
 // Tests a AND of 8 bits for a random input
 fn test_and8_random() {
-    test_and(None, None, 1);
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 1);
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, 1);
 }
 
 #[test]
 // Tests a XOR of 16 bits for a random input
 fn test_and16_random() {
-    test_and(None, None, 2);
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 2);
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, 2);
 }
 
 #[test]
 // Tests a AND of 32 bits for a random input
 fn test_and32_random() {
-    test_and(None, None, 4);
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 4);
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, 4);
 }
 
 #[test]
 // Tests a AND of 64 bits for a random input
 fn test_and64_random() {
-    test_and(None, None, 8);
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 8);
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, 8);
 }
 
 #[test]
 // Test a random AND of 128 bits
 fn test_and128_random() {
-    test_and(None, None, 16);
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 16);
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, 16);
 }
 
 #[test]
 // Test AND when the sum of the inputs overflows the field size
 fn test_and_overflow() {
-    let input =
-        PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::from(1u8))).unwrap();
-    test_and(Some(input), Some(input), 256 / 8);
+    let bytes = 256 / 8;
+    let input_pallas =
+        PallasField::from_biguint(PallasField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        Some(input_pallas),
+        Some(input_pallas),
+        bytes,
+    );
+    let input_vesta =
+        VestaField::from_biguint(VestaField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+        Some(input_vesta),
+        Some(input_vesta),
+        bytes,
+    );
 }
 
 #[test]
 // Test AND when the sum of the inputs overflows the field size
 fn test_and_overflow_one() {
+    let bytes = 256 / 8;
     let input =
-        PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::from(1u8))).unwrap();
-    test_and(Some(input), Some(PallasField::from(1u8)), 256 / 8);
+        PallasField::from_biguint(PallasField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+    test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        Some(input),
+        Some(PallasField::from(1u8)),
+        bytes,
+    );
+    let input =
+        VestaField::from_biguint(VestaField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+    test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+        Some(input),
+        Some(VestaField::from(1u8)),
+        bytes,
+    );
+}
+
+fn verify_bad_and_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
+    witness: &mut [Vec<G::ScalarField>; COLUMNS],
+    cs: ConstraintSystem<G::ScalarField>,
+) where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
+    // modify by one each of the witness cells individually
+    for col in 0..COLUMNS {
+        // first three columns make fail the ith+1 constraint
+        // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
+        let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
+        witness[col][0] += G::ScalarField::one();
+        // Update copy constraints of generic gate
+        if col < 2 {
+            witness[col][2] += G::ScalarField::one();
+        }
+        if col == 2 {
+            witness[4][2] += G::ScalarField::one();
+        }
+        assert_eq!(
+            cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+            Err(CircuitGateError::Constraint(GateType::Xor16, bad))
+        );
+        witness[col][0] -= G::ScalarField::one();
+        if col < 2 {
+            witness[col][2] -= G::ScalarField::one();
+        }
+        if col == 2 {
+            witness[4][2] -= G::ScalarField::one();
+        }
+    }
+    // undo changes
+    assert_eq!(
+        cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+        Ok(())
+    );
+}
+
+#[test]
+// Test AND when the decomposition of the inner XOR is incorrect
+fn test_and_bad_decomposition() {
+    let (cs, mut witness) = setup_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 2);
+    verify_bad_and_decomposition::<Vesta, VestaBaseSponge, VestaScalarSponge>(&mut witness, cs);
 }
