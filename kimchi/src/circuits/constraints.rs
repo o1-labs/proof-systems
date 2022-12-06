@@ -6,7 +6,8 @@ use crate::{
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
         lookup::{
-            constraints::LookupConfiguration, index::LookupConstraintSystem, tables::LookupTable,
+            constraints::LookupConfiguration, index::LookupConstraintSystem,
+            lookups::LookupFeatures, tables::LookupTable,
         },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
@@ -48,6 +49,8 @@ pub struct FeatureFlags<F> {
     pub foreign_field_mul: bool,
     /// XOR gate
     pub xor: bool,
+    /// Lookup features
+    pub lookup_features: LookupFeatures,
     /// Lookups
     pub lookup_configuration: Option<LookupConfiguration<F>>,
 }
@@ -677,10 +680,13 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             .collect();
         gates.append(&mut padding);
 
+        let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
+
         let mut feature_flags = FeatureFlags {
             chacha: false,
             range_check: false,
             lookup_configuration: None,
+            lookup_features,
             foreign_field_add: false,
             foreign_field_mul: false,
             xor: false,
