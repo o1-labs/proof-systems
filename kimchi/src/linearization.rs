@@ -231,9 +231,9 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     }
 
     let lookup_info = if feature_flags.lookup_features.patterns == LookupPatterns::default() {
-        Some(LookupInfo::create(feature_flags.lookup_features))
-    } else {
         None
+    } else {
+        Some(LookupInfo::create(feature_flags.lookup_features))
     };
 
     // the lookup polynomials
