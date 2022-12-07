@@ -156,9 +156,9 @@ means that $a \cdot 2^{64} + b = a'\cdot 2^{64} + b'$. Moving terms to the left 
   - This means $\beta \equiv_n -2^{64} \alpha = k \cdot n - 2^{64} \alpha$ for any $k$.
   - According to the assumption, both $0\leq a<2^r$ and $0\leq a'<2^r$. This means, the difference $\alpha:=(a - a')$ lies anywhere in between the following interval: 
   - $$1 - 2^r \leq \alpha \leq 2^r - 1$$
-  - We plug in this interval to thea above equation to obtain the following interval for $\beta$:
+  - We plug in this interval to the above equation to obtain the following interval for $\beta$:
   - $$k\cdot n - 2^{64}(1-2^r)\leq \beta \leq k\cdot n - 2^{64}(2^r - 1) $$
-  - We look at this interval from both sides of the inequality: $\beta \geq kn - 2^{64} + 2^{64+r}$ and $\beta \leq kn + 2^{64} - 2^{64+r}$ and we wonder if $kn - 2^{64} + 2^{64+r} \leq kn + 2^{64} - 2^{64+r}$ is possible. We rewrite as follows:
+  - We look at this interval from both sides of the inequality: $\beta \geq kn - 2^{64} + 2^{64+r}$ and $\beta \leq kn + 2^{64} - 2^{64+r}$ and we wonder if $kn - 2^{64} + 2^{64+r} \leq kn + 2^{64} - 2^{64+r}$ is at all possible. We rewrite as follows:
   - $$2^{64+r} - 2^{64} \leq 2^{64} - 2^{64+r}$$
   - $$2\cdot2^{64+r} \leq 2\cdot2^{64} $$
   - $$2^{64+r} \leq 2^{64} $$
