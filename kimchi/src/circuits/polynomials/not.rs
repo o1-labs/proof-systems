@@ -8,7 +8,7 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
-use o1_utils::{big_bits, BitOps, FieldHelpers};
+use o1_utils::{BigUintHelpers, BitOps, FieldHelpers};
 use std::{array, cmp::max};
 
 use super::{
@@ -147,7 +147,7 @@ pub fn extend_not_xor_witness<F: PrimeField>(
 ) {
     let input = input.to_biguint();
     let output = BigUint::bitnot(&input, bits);
-    let bits = max(big_bits(&input), bits.unwrap_or(0));
+    let bits = max(input.bitlen(), bits.unwrap_or(0));
     let mut not_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
     init_xor(
@@ -171,7 +171,7 @@ pub fn extend_not_xor_witness<F: PrimeField>(
 pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<usize>) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
     let input_big = input.to_biguint();
-    let real_bits = max(big_bits(&input_big), bits.unwrap_or(0));
+    let real_bits = max(input_big.bitlen(), bits.unwrap_or(0));
     witness[0][0] = F::from(2u8).pow(&[real_bits as u64]) - F::one();
     extend_not_xor_witness(&mut witness, input, bits);
     witness
@@ -205,7 +205,7 @@ pub fn extend_not_gnrc_witness<F: PrimeField>(
         .map(|input| input.to_biguint())
         .collect::<Vec<_>>();
     for input in inputs.clone() {
-        if bits < big_bits(&input) {
+        if bits < input.bitlen() {
             panic!("Bits must be greater or equal than the inputs length");
         }
     }

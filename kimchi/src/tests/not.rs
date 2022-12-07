@@ -15,10 +15,10 @@ use crate::{
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     prover_index::testing::new_index_for_test_with_lookups,
-    tests::xor::{all_ones, check_xor, random_field},
+    tests::xor::{all_ones, check_xor},
 };
 
-use super::{framework::TestFramework, xor::initialize};
+use super::framework::TestFramework;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
@@ -28,7 +28,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::BigUint;
-use o1_utils::{big_bits, BitOps, FieldHelpers};
+use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -111,11 +111,11 @@ where
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
-    let inp = initialize::<G>(inp, bits, rng);
+    let inp = rng.gen(inp, bits);
 
     // If user specified a concrete number of bits, use that (if they are sufficient to hold the input)
     // Otherwise, use the length of the input
-    let bits_real = max(big_bits(&inp.to_biguint()), bits.unwrap_or(0));
+    let bits_real = max(inp.to_biguint().bitlen(), bits.unwrap_or(0));
 
     let cs = create_test_constraint_system_not_xor::<G, EFqSponge, EFrSponge>(bits_real);
 
@@ -176,7 +176,7 @@ where
         assert!(len.is_some());
         let len = len.unwrap();
         (0..len)
-            .map(|_| random_field::<G>(bits, rng))
+            .map(|_| rng.gen_field_with_bits(bits))
             .collect::<Vec<G::ScalarField>>()
     };
 
@@ -225,7 +225,7 @@ fn check_not_xor<G: KimchiCurve>(
     bits: Option<usize>,
 ) {
     let input_big = input.to_biguint();
-    let bits = max(big_bits(&input_big), bits.unwrap_or(0));
+    let bits = max(input_big.bitlen(), bits.unwrap_or(0));
     check_xor::<G>(&witness, bits, input, all_ones::<G>(bits), NOT);
     assert_eq!(
         witness[2][1],
@@ -280,8 +280,7 @@ fn test_prove_and_verify_not_xor() {
 
     // Create witness and random inputs
 
-    let witness =
-        create_not_xor_witness::<PallasField>(random_field::<Vesta>(bits, rng), Some(bits));
+    let witness = create_not_xor_witness::<PallasField>(rng.gen_field_with_bits(bits), Some(bits));
 
     TestFramework::<Vesta>::default()
         .gates(gates)
@@ -320,7 +319,7 @@ fn test_prove_and_verify_five_not_gnrc() {
     // Create witness and random inputs
     let witness: [Vec<PallasField>; 15] = create_not_gnrc_witness::<PallasField>(
         &(0..5)
-            .map(|_| random_field::<Vesta>(bits, rng))
+            .map(|_| rng.gen_field_with_bits(bits))
             .collect::<Vec<PallasField>>(),
         bits,
     );
@@ -354,7 +353,7 @@ fn test_not_xor_crumbs_random() {
     for i in 2..=7 {
         let bits = 2u32.pow(i) as usize;
         let rng = &mut StdRng::from_seed(RNG_SEED);
-        let input = random_field::<Vesta>(bits, rng);
+        let input = rng.gen_field_with_bits(bits);
         test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), Some(bits));
         test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), None);
     }
@@ -364,9 +363,9 @@ fn test_not_xor_crumbs_random() {
 // Tests a NOT for a random-length big input
 fn test_not_xor_big_random() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
-    let input = random_field::<Vesta>(200, rng);
+    let input = rng.gen_field_with_bits(200);
     test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), None);
-    let input = random_field::<Pallas>(200, rng);
+    let input = rng.gen_field_with_bits(200);
     test_not_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(Some(input), None);
 }
 
@@ -390,11 +389,11 @@ fn test_not_gnrc_vector() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     // up to 2^16, 2^32, 2^64, 2^128, 2^254
     let inputs = (0..5)
-        .map(|i| random_field::<Vesta>(4 + i, rng))
+        .map(|i| rng.gen_field_with_bits(4 + i))
         .collect::<Vec<PallasField>>();
     test_not_gnrc::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(inputs), 254, None);
     let inputs = (0..5)
-        .map(|i| random_field::<Pallas>(4 + i, rng))
+        .map(|i| rng.gen_field_with_bits(4 + i))
         .collect::<Vec<VestaField>>();
     test_not_gnrc::<Pallas, PallasBaseSponge, PallasScalarSponge>(Some(inputs), 254, None);
 }

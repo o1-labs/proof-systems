@@ -21,8 +21,8 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
-use num_bigint::{BigUint, RandBigInt};
-use o1_utils::{big_bits, BitOps, FieldHelpers};
+use num_bigint::BigUint;
+use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -58,29 +58,6 @@ where
     ConstraintSystem::create(gates).build().unwrap()
 }
 
-// Generates a random field element of up to a given number of bits
-pub(crate) fn random_field<G: KimchiCurve>(bits: usize, rng: &mut StdRng) -> G::ScalarField {
-    G::ScalarField::from_biguint(
-        &rng.gen_biguint_range(&BigUint::from(0u8), &BigUint::from(2u8).pow(bits as u32)),
-    )
-    .unwrap()
-}
-
-// Initialize a random input
-pub(crate) fn initialize<G: KimchiCurve>(
-    input: Option<G::ScalarField>,
-    bits: Option<usize>,
-    rng: &mut StdRng,
-) -> G::ScalarField {
-    if let Some(inp) = input {
-        inp
-    } else {
-        assert!(bits.is_some());
-        let bits = bits.unwrap();
-        random_field::<G>(bits, rng)
-    }
-}
-
 // Returns the all ones BigUint of bits length
 pub(crate) fn all_ones<G: KimchiCurve>(bits: usize) -> G::ScalarField {
     G::ScalarField::from(2u128).pow(&[bits as u64]) - G::ScalarField::one()
@@ -102,26 +79,28 @@ pub(crate) fn check_xor<G: KimchiCurve>(
     let input1 = input1.to_biguint();
     let input2 = input2.to_biguint();
     let ini_row = if not == XOR { 0 } else { 1 };
-    for x in 0..xor::num_xors(bits) {
+    for xor in 0..xor::num_xors(bits) {
         let in1 = (0..4)
-            .map(|i| xor_nybble(input1.clone(), i + 4 * x))
+            .map(|i| xor_nybble(input1.clone(), i + 4 * xor))
             .collect::<Vec<BigUint>>();
         let in2 = (0..4)
-            .map(|i| xor_nybble(input2.clone(), i + 4 * x))
+            .map(|i| xor_nybble(input2.clone(), i + 4 * xor))
             .collect::<Vec<BigUint>>();
         for nybble in 0..4 {
             assert_eq!(
-                witness[11 + nybble][x + ini_row],
-                G::ScalarField::from(BigUint::bitxor(&in1[nybble], &in2[nybble]))
+                witness[11 + nybble][xor + ini_row],
+                BigUint::bitxor(&in1[nybble], &in2[nybble]).into()
             );
         }
     }
     assert_eq!(
         witness[2][ini_row],
-        G::ScalarField::from(BigUint::bitxor(&input1, &input2))
+        BigUint::bitxor(&input1, &input2).into()
     );
 }
 
+// Creates the constraint system and witness for xor, and checks the witness values without
+// calling the constraints verification
 fn setup_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
     in1: Option<G::ScalarField>,
     in2: Option<G::ScalarField>,
@@ -138,13 +117,13 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
     // Initalize inputs
     // If some input was given then use that one, otherwise generate a random one with the given bits
-    let input1 = initialize::<G>(in1, bits, rng);
-    let input2 = initialize::<G>(in2, bits, rng);
+    let input1 = rng.gen(in1, bits);
+    let input2 = rng.gen(in2, bits);
 
     // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
     // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
-    let bits1 = big_bits(&input1.to_biguint());
-    let bits2 = big_bits(&input2.to_biguint());
+    let bits1 = input1.to_biguint().bitlen();
+    let bits2 = input2.to_biguint().bitlen();
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
@@ -156,7 +135,7 @@ where
     (cs, witness)
 }
 
-// General test for Xor
+// General test for Xor, first sets up the xor, and then uses the verification of the constraints
 fn test_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
     in1: Option<G::ScalarField>,
     in2: Option<G::ScalarField>,
@@ -192,8 +171,8 @@ fn test_prove_and_verify_xor() {
         next_row += 1;
     }
 
-    let input1 = random_field::<Vesta>(bits, rng);
-    let input2 = random_field::<Vesta>(bits, rng);
+    let input1 = rng.gen_field_with_bits(bits);
+    let input2 = rng.gen_field_with_bits(bits);
 
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);

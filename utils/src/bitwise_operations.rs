@@ -1,18 +1,22 @@
 //! This module provides a set of functions to perform bit operations on big integers.
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
-use rand::Rng;
 use std::cmp::{max, Ordering};
 
-/// Exclusive or of the bits of two inputs
+use crate::BigUintHelpers;
+
+/// Bitwise operations
 pub trait BitOps<Rhs = Self> {
-    /// Exclusive or of the bits of two BigUint inputs
+    /// Bitwise XOR of two Self inputs
     fn bitxor(input1: &Rhs, input: &Rhs) -> Rhs;
 
-    /// Negate the bits of a BigUint input
+    /// Negate the bits of a Self input
     /// If it provides a larger desired `bits` than the input length then it takes the padded input of `bits` length.
     /// Otherwise it only takes the bits of the input.
     fn bitnot(input: &Rhs, bits: Option<usize>) -> Rhs;
+
+    /// Returns the bit value of a Self input at a certain position or zero
+    fn bit_at(input: &Rhs, index: u32) -> bool;
 }
 
 impl BitOps for BigUint {
@@ -20,8 +24,8 @@ impl BitOps for BigUint {
         // Pad to equal size in bytes
         let bytes1 = input1.to_bytes_le().len();
         let bytes2 = input2.to_bytes_le().len();
-        let in1 = vectorize(input1, bytes2);
-        let in2 = vectorize(input2, bytes1);
+        let in1 = to_padded_bytes(input1, bytes2);
+        let in2 = to_padded_bytes(input2, bytes1);
         BigUint::from_bytes_le(
             &in1.iter()
                 .zip(in2.iter())
@@ -34,53 +38,28 @@ impl BitOps for BigUint {
         // pad if needed / desired
         // first get the number of bits of the input,
         // take into account that BigUint::bits() returns 0 if the input is 0
-        let in_bits = big_bits(input) as usize;
+        let in_bits = input.bitlen() as usize;
         let bits = max(in_bits, bits.unwrap_or(0));
         // build vector of bits in little endian (least significant bit in position 0)
         let mut bit_vec = vec![];
         // negate each of the bits of the input
-        (0..bits).for_each(|i| bit_vec.push(!bit_at(input, i as u32)));
+        (0..bits).for_each(|i| bit_vec.push(!Self::bit_at(input, i as u32)));
         le_bitvec_to_biguint(&bit_vec)
     }
-}
 
-/// returns the minimum number of bits required to represent a BigUint
-pub fn big_bits(input: &BigUint) -> usize {
-    if input.to_bytes_le() == [0u8] {
-        1
-    } else {
-        input.bits() as usize
-    }
-}
-
-/// Produces a random BigUint of a given number of bits
-pub fn big_random(bits: usize) -> BigUint {
-    if bits == 0 {
-        panic!("Cannot generate a random number of 0 bits");
-    }
-    let bytes = bits / 8;
-    let extra = bits % 8;
-    let mut big = (0..bytes)
-        .map(|_| rand::thread_rng().gen_range(0..255))
-        .collect::<Vec<u8>>();
-    if extra > 0 {
-        big.push(rand::thread_rng().gen_range(0..2u8.pow(extra as u32)));
-    }
-    BigUint::from_bytes_le(&big)
-}
-
-// Returns the bit value of a BigUint input at a certain position or zero
-fn bit_at(input: &BigUint, index: u32) -> bool {
-    if input.bit(index as u64) {
-        ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
-    } else {
-        false
+    // Returns the bit value of a BigUint input at a certain position or zero
+    fn bit_at(input: &BigUint, index: u32) -> bool {
+        if input.bit(index as u64) {
+            ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
+        } else {
+            false
+        }
     }
 }
 
 // Returns a BigUint as a Vec<u8> padded with zeros to a certain number of bytes
 // Panics if bytes < input.len()
-fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
+fn to_padded_bytes(input: &BigUint, bytes: usize) -> Vec<u8> {
     let bytes_inp = input.to_bytes_le().len();
     match bytes.cmp(&bytes_inp) {
         Ordering::Greater => pad(input, bytes - bytes_inp),
@@ -156,7 +135,7 @@ mod tests {
             let input = BigUint::from(byte as u8);
             let negated = BigUint::from(!byte as u8); // full 8 bits
             assert_eq!(BigUint::bitnot(&input, Some(8)), negated); // full byte
-            let bits = big_bits(&input);
+            let bits = input.bitlen();
             let min_negated = 2u32.pow(bits as u32) - 1 - byte;
             // only up to needed
             assert_eq!(BigUint::bitnot(&input, None), BigUint::from(min_negated));
