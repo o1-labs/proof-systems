@@ -480,3 +480,28 @@ where
         super::poseidon::poseidon(loc, self, preimage)
     }
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    #[derive(ocaml_gen::CustomType)]
+    pub struct CamlRunState<F>(RunState<F>);
+
+    extern "C" fn finalize_run_state<F: PrimeField>(v: ocaml::Raw) {
+        unsafe {
+            let p = v.as_pointer::<CamlRunState<F>>();
+            p.drop_in_place()
+        };
+    }
+
+    impl<F> ocaml::Custom for CamlRunState<F>
+    where
+        F: PrimeField,
+    {
+        ocaml::custom! {
+            name: "rust.CamlRunState",
+            finalize: finalize_run_state::<F>
+        }
+    }
+}
