@@ -472,8 +472,6 @@ pub fn constraints<F: FftField>(
         // each value is also multipled with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
         let dummy_padding = |spec_len| {
-            // v contains the `max_per_row` powers of `beta + dummy` starting with 1
-            // v[i] = (gamma + dummy)^i
             let mut res = E::one();
             let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup.clone();
             for i in spec_len..lookup_info.max_per_row {
