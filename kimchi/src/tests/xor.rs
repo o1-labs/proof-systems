@@ -27,7 +27,6 @@ use rand::{rngs::StdRng, SeedableRng};
 use super::framework::TestFramework;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
-
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
