@@ -48,7 +48,7 @@ impl<F: PrimeField> CircuitGate<F> {
     ) -> usize {
         // taking advantage of double generic gates to negate two words in each row
         let mut new_row = new_row;
-        for _ in 0..nots / 2 {
+        for _ in 0..(nots / 2) {
             new_row = Self::not_gnrc(gates, pub_row, new_row, true);
         }
         // odd number of NOTs require one more row to negate the last word only
@@ -138,9 +138,13 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 }
 
-/// Create a Not for less than 255 bits (native field) starting at row 0
-/// Input: first input and second input
-pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<usize>) -> [Vec<F>; COLUMNS] {
+/// Extend a Not witness for less than 255 bits (native field)
+/// Input: full witness, first input and optional bit length
+pub fn extend_not_xor_witness<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    input: F,
+    bits: Option<usize>,
+) {
     let input = input.to_biguint();
     let output = BigUint::bitnot(&input, bits);
     let bits = max(big_bits(&input), bits.unwrap_or(0));
@@ -157,16 +161,44 @@ pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<usize>) -> [
         ),
     );
 
-    not_witness
+    for col in 0..COLUMNS {
+        witness[col].extend(not_witness[col].iter());
+    }
+}
+
+/// Create a Not witness for less than 255 bits (native field) starting at row 0
+/// Input: first input and optional bit length
+pub fn create_not_xor_witness<F: PrimeField>(input: F, bits: Option<usize>) -> [Vec<F>; COLUMNS] {
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
+    let input_big = input.to_biguint();
+    let real_bits = max(big_bits(&input_big), bits.unwrap_or(0));
+    witness[0][0] = F::from(2u8).pow(&[real_bits as u64]) - F::one();
+    extend_not_xor_witness(&mut witness, input, bits);
+    witness
 }
 
 /// Creates as many negations as the number of inputs. The inputs must fit in the native field.
 /// We start at the row 0 using generic gates to perform the negations.
 /// Input: a vector of words to be negated, and the number of bits (all the same)
 /// Panics if the bits length is too small for the inputs
+pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &[F], bits: usize) -> [Vec<F>; COLUMNS] {
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
+    witness[0][0] = F::from(2u8).pow(&[bits as u64]) - F::one();
+    extend_not_gnrc_witness(&mut witness, inputs, bits);
+    witness
+}
+
+/// Extends negation witnesses from generic gate, assuming the input witness already contains
+/// public input rows holding the 2^bits-1 value.
+/// Input: a vector of words to be negated, and the number of bits (all the same)
+/// Panics if the bits length is too small for the inputs
 /// INTEGRATION: Set public input of bits in public generic gate
 /// TODO: `witness[0][pub] = 2^bits - 1`
-pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &[F], bits: usize) -> [Vec<F>; COLUMNS] {
+pub fn extend_not_gnrc_witness<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    inputs: &[F],
+    bits: usize,
+) {
     // Check inputs fit in bits and in native field
     let inputs = inputs
         .iter()
@@ -179,7 +211,7 @@ pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &[F], bits: usize) -> [Vec
     }
     let all_ones = F::from(2u8).pow(&[bits as u64]) - F::one();
     let rows = (inputs.len() as f64 / 2.0).ceil() as usize;
-    let mut not_witness = array::from_fn(|_| vec![F::zero(); rows]);
+    let mut not_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); rows]);
     for (i, input) in inputs.iter().enumerate().step_by(2) {
         let row = i / 2;
         // fill in first NOT
@@ -197,5 +229,7 @@ pub fn create_not_gnrc_witness<F: PrimeField>(inputs: &[F], bits: usize) -> [Vec
             not_witness[5][row] = not2;
         }
     }
-    not_witness
+    for col in 0..COLUMNS {
+        witness[col].extend(not_witness[col].iter());
+    }
 }
