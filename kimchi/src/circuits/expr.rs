@@ -511,6 +511,10 @@ pub enum FeatureFlag {
     LookupTables,
     RuntimeLookupTables,
     LookupPattern(LookupPattern),
+    /// Enabled if the table width is at least the given number
+    TableWidth(isize), // NB: isize so that we don't need to convert for OCaml :(
+    /// Enabled if the number of lookups per row is at least the given number
+    LookupsPerRow(isize), // NB: isize so that we don't need to convert for OCaml :(
 }
 
 impl FeatureFlag {

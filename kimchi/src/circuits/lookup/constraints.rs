@@ -557,9 +557,17 @@ pub fn constraints<F: FftField>(
             // gamma * (beta + 1) + sorted[i](x) + beta * sorted[i](x w)
             // or
             // gamma * (beta + 1) + sorted[i](x w) + beta * sorted[i](x)
-            gammabeta1.clone()
+            let mut expr = gammabeta1.clone()
                 + E::cell(Column::LookupSorted(i), s1)
-                + E::beta() * E::cell(Column::LookupSorted(i), s2)
+                + E::beta() * E::cell(Column::LookupSorted(i), s2);
+            if generate_feature_flags {
+                expr = E::IfFeature(
+                    FeatureFlag::LookupsPerRow(i as isize),
+                    Box::new(expr),
+                    Box::new(E::one()),
+                );
+            }
+            expr
         })
         .fold(E::one(), |acc: E<F>, x| acc * x);
 
@@ -590,8 +598,16 @@ pub fn constraints<F: FftField>(
                 // Check compatibility of the first elements
                 0
             };
-            E::UnnormalizedLagrangeBasis(first_or_last)
-                * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)))
+            let mut expr = E::UnnormalizedLagrangeBasis(first_or_last)
+                * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)));
+            if generate_feature_flags {
+                expr = E::IfFeature(
+                    FeatureFlag::LookupsPerRow((i + 1) as isize),
+                    Box::new(expr),
+                    Box::new(E::zero()),
+                )
+            }
+            expr
         })
         .collect();
     res.extend(compatibility_checks);
