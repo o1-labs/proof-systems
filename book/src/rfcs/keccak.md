@@ -42,7 +42,6 @@ Before we describe the specific gate design approaches, below are some constrain
 Kimchi framework that dictated those approaches.
 * only 4 lookups per row
 * only first 7 columns are available to the permutation polynomial
-<<<<<<< HEAD
 
 ## Rot64
 
@@ -138,7 +137,7 @@ $$
 
 where $k$ is a parameter to instantiate the solutions, $w$ is the word to be rotated, $r$ is the rotation amount, and $n$ is the field length.
 
-Then, that means that there are two different solutions, $(x=a<2^r, y=b<2^{64})$ and $(x=a'<2^r, y=b'<2^{64})$ with at least $a \neq a'$ or $b \neq b'$. We will show that this is impossible.
+Then, that means that there are two different solutions, $(0\leq x=a<2^r, 0\leq y=b<2^{64})$ and $(0\leq x=a'<2^r, 0\leq y=b'<2^{64})$ with at least $a \neq a'$ or $b \neq b'$. We will show that this is impossible.
 
 If both are solutions to the same equation, then: 
 $$
@@ -153,15 +152,15 @@ means that $a \cdot 2^{64} + b = a'\cdot 2^{64} + b'$. Moving terms to the left 
   
 - $b = b'$ and $a \neq a'$: then $2^{64}(a - a') \equiv_n 0$ and this can only happen if $a' = a + n$. But since $n > 2^r$, then $a'$ cannot be smaller than $2^r$ as it was assumed. CONTRADICTION.
 
-- $a\neq a'$ and $b \neq b'$: then we have something like $2^{64} \alpha + \beta \equiv_n 0$. We choose to express $\alpha$:
-  - $$2^{64} \alpha = n - \beta = n - b + b' > n - 2^{64} + 1$$
-  - According to the assumption, both $b<2^{64}$ and $b'<2^{64}$. Then the minimum value $2^{64}\alpha$ could take corresponds to the scenario where $b = 2^{64} - 1$ and $b'=0$.
-  - By definition, $\alpha = (a - a')$ and both $a,a'<2^r$, so $\alpha$ will at most take the value $2^r - 1$. Then we have:
-  - $$2^{64} \cdot (2^r - 1) > n - 2^{64} + 1$$
-  - $$2^{64 + r} - 2^{64} > n - 2^{64} + 1$$
-  - $$2^{64 + r} > n + 1$$
-  - But this cannot happen, because $r$, which is the rotation offset, can at most take the value 63, and we defined the field lenth to be at least twice the word length. Then, $2\cdot64 - 1$ cannot be larger than $n + 1$. CONTRADICTION.
-
-EOP.
-=======
->>>>>>> 4eb1dd36987af6c12186ca400d9e4fb9b9904818
+- $a\neq a'$ and $b \neq b'$: then we have something like $2^{64} \alpha + \beta \equiv_n 0$. 
+  - This means $\beta \equiv_n -2^{64} \alpha = k \cdot n - 2^{64} \alpha$ for any $k$.
+  - According to the assumption, both $0\leq a<2^r$ and $0\leq a'<2^r$. This means, the difference $\alpha:=(a - a')$ lies anywhere in between the following interval: 
+  - $$1 - 2^r \leq \alpha \leq 2^r - 1$$
+  - We plug in this interval to thea above equation to obtain the following interval for $\beta$:
+  - $$k\cdot n - 2^{64}(1-2^r)\leq \beta \leq k\cdot n - 2^{64}(2^r - 1) $$
+  - We look at this interval from both sides of the inequality: $\beta \geq kn - 2^{64} + 2^{64+r}$ and $\beta \leq kn + 2^{64} - 2^{64+r}$ and we wonder if $kn - 2^{64} + 2^{64+r} \leq kn + 2^{64} - 2^{64+r}$ is possible. We rewrite as follows:
+  - $$2^{64+r} - 2^{64} \leq 2^{64} - 2^{64+r}$$
+  - $$2\cdot2^{64+r} \leq 2\cdot2^{64} $$
+  - $$2^{64+r} \leq 2^{64} $$
+  - But this can only happen if $r\leq 0$, which is impossible since we assume $0 < r < 64$.CONTRADICTION.
+- EOP.
