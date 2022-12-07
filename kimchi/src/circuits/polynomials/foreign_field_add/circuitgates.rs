@@ -172,30 +172,24 @@ where
         checks.push(is_carry(&carry));
 
         // Auxiliary inline function to obtain the constraints of a foreign field addition result
-        let mut result = {
-            // a_bot = a_0 + a_1 * 2^88
-            // b_bot = b_0 + b_0 * 2^88
-            // f_bot = f_0 + f_1 * 2^88
-            // r_bot = a_bot + s * b_bot - q * f_bot - c * 2^176
-            let result_bot = compact_limb(&left_input_lo, &left_input_mi)
-                + sign.clone() * compact_limb(&right_input_lo, &right_input_mi)
-                - field_overflow.clone() * compact_limb(&foreign_modulus[0], &foreign_modulus[1])
-                - carry.clone() * T::two_to_2limb();
-            // r_top = a_2 + s * b_2 - q * f_2 + c
-            let result_top = left_input_hi + sign * right_input_hi
-                - field_overflow * foreign_modulus[2].clone()
-                + carry;
-            // Result values match
-            // r_bot = r_0 + 2^88 * r_1
-            // r_top = r_2
-            vec![
-                result_bot - compact_limb(&result_lo, &result_mi),
-                result_top - result_hi,
-            ]
-        };
 
+        // a_bot = a_0 + a_1 * 2^88
+        // b_bot = b_0 + b_1 * 2^88
+        // f_bot = f_0 + f_1 * 2^88
+        // r_bot = a_bot + s * b_bot - q * f_bot - c * 2^176
+        let result_bot = compact_limb(&left_input_lo, &left_input_mi)
+            + sign.clone() * compact_limb(&right_input_lo, &right_input_mi)
+            - field_overflow.clone() * compact_limb(&foreign_modulus[0], &foreign_modulus[1])
+            - carry.clone() * T::two_to_2limb();
+        // r_top = a_2 + s * b_2 - q * f_2 + c
+        let result_top = left_input_hi + sign * right_input_hi
+            - field_overflow * foreign_modulus[2].clone()
+            + carry;
         // Result values match
-        checks.append(&mut result);
+        // r_bot = r_0 + r_1 * 2^88
+        // r_top = r_2
+        checks.push(result_bot - compact_limb(&result_lo, &result_mi));
+        checks.push(result_top - result_hi);
 
         checks
     }
