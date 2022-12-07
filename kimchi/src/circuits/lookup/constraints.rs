@@ -420,9 +420,20 @@ pub fn constraints<F: FftField>(
         };
 
         let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
-        let table_id_combiner = joint_combiner
-            .clone()
-            .pow(lookup_info.max_joint_size.into());
+        let table_id_combiner =
+            // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
+            // needed.
+            (1..lookup_info.max_joint_size).fold(joint_combiner.clone(), |acc, i| {
+                let mut new_term = joint_combiner.clone();
+                if generate_feature_flags {
+                    new_term = E::IfFeature(
+                        FeatureFlag::TableWidth((i + 1) as isize),
+                        Box::new(new_term),
+                        Box::new(E::one()),
+                    );
+                }
+                acc * new_term
+            });
 
         // combine the columns of the dummy lookup row
         let dummy_lookup = {
