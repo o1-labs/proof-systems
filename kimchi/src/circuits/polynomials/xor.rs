@@ -15,7 +15,7 @@ use crate::{
         },
         polynomial::COLUMNS,
         wires::Wire,
-        witness::{self, ConstantCell, CopyBitsCell, NybbleCell, Variables, WitnessCell},
+        witness::{self, ConstantCell, CopyBitsCell, VariableBitsCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,
@@ -26,7 +26,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use num_bigint::BigUint;
-use o1_utils::{big_bits, BigUintFieldHelpers, BitXor, FieldHelpers};
+use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitOps, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
 
@@ -332,7 +332,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate
 //~
-//~ The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+//~ The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
@@ -413,23 +413,24 @@ fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCe
     layout
 }
 
-fn xor_row<F: PrimeField>(crumb: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+fn xor_row<F: PrimeField>(nybble: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+    let start = nybble * 16;
     [
-        NybbleCell::create("in1", crumb),
-        NybbleCell::create("in2", crumb),
-        NybbleCell::create("out", crumb),
-        CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 12, 16), // Fourth 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 1, 0, 4), // First 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 4, 8), // Second 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 8, 12), // Third 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 12, 16), // Fourth 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 2, 0, 4), // First 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 4, 8), // Second 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 8, 12), // Third 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 12, 16), // Fourth 4-bit crumb of out
+        VariableBitsCell::create("in1", start, None),
+        VariableBitsCell::create("in2", start, None),
+        VariableBitsCell::create("out", start, None),
+        CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 12, 16), // Fourth 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 1, 0, 4), // First 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 4, 8), // Second 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 8, 12), // Third 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 12, 16), // Fourth 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 2, 0, 4), // First 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 4, 8), // Second 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 8, 12), // Third 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 12, 16), // Fourth 4-bit nybble of out
     ]
 }
 
@@ -479,8 +480,7 @@ pub fn extend_xor_rows<F: PrimeField>(
     let input1_big = words.0.to_biguint();
     let input2_big = words.1.to_biguint();
     let output_big = words.2.to_biguint();
-    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) || bits < big_bits(&output_big)
-    {
+    if bits < input1_big.bitlen() || bits < input2_big.bitlen() || bits < output_big.bitlen() {
         panic!("Bits must be greater or equal than the inputs length");
     }
     let xor_witness: [Vec<F>; COLUMNS] =
@@ -498,7 +498,7 @@ pub fn extend_xor_rows<F: PrimeField>(
 pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [Vec<F>; COLUMNS] {
     let input1_big = input1.to_biguint();
     let input2_big = input2.to_biguint();
-    if bits < big_bits(&input1_big) || bits < big_bits(&input2_big) {
+    if bits < input1_big.bitlen() || bits < input2_big.bitlen() {
         panic!("Bits must be greater or equal than the inputs length");
     }
     let output = BigUint::bitxor(&input1_big, &input2_big);

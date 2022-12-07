@@ -1,22 +1,21 @@
 //! This module provides a set of functions to perform bit operations on big integers.
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
-use rand::Rng;
 use std::cmp::Ordering;
 
-/// Exclusive or of the bits of two inputs
-pub trait BitXor<Rhs = Self> {
-    /// Exclusive or of the bits of two BigUint inputs
+/// Bitwise operations
+pub trait BitOps<Rhs = Self> {
+    /// Bitwise XOR of two BigUint inputs
     fn bitxor(input1: &Rhs, input: &Rhs) -> Rhs;
 }
 
-impl BitXor for BigUint {
+impl BitOps for BigUint {
     fn bitxor(input1: &BigUint, input2: &BigUint) -> BigUint {
         // Pad to equal size in bytes
         let bytes1 = input1.to_bytes_le().len();
         let bytes2 = input2.to_bytes_le().len();
-        let in1 = vectorize(input1, bytes2);
-        let in2 = vectorize(input2, bytes1);
+        let in1 = to_padded_bytes(input1, bytes2);
+        let in2 = to_padded_bytes(input2, bytes1);
         BigUint::from_bytes_le(
             &in1.iter()
                 .zip(in2.iter())
@@ -26,34 +25,9 @@ impl BitXor for BigUint {
     }
 }
 
-/// returns the minimum number of bits required to represent a BigUint
-pub fn big_bits(input: &BigUint) -> usize {
-    if input.to_bytes_le() == [0u8] {
-        1
-    } else {
-        input.bits() as usize
-    }
-}
-
-/// Produces a random BigUint of a given number of bits
-pub fn big_random(bits: usize) -> BigUint {
-    if bits == 0 {
-        panic!("Cannot generate a random number of 0 bits");
-    }
-    let bytes = bits / 8;
-    let extra = bits % 8;
-    let mut big = (0..bytes)
-        .map(|_| rand::thread_rng().gen_range(0..255))
-        .collect::<Vec<u8>>();
-    if extra > 0 {
-        big.push(rand::thread_rng().gen_range(0..2u8.pow(extra as u32)));
-    }
-    BigUint::from_bytes_le(&big)
-}
-
 // Returns a BigUint as a Vec<u8> padded with zeros to a certain number of bytes
 // Panics if bytes < input.len()
-fn vectorize(input: &BigUint, bytes: usize) -> Vec<u8> {
+fn to_padded_bytes(input: &BigUint, bytes: usize) -> Vec<u8> {
     let bytes_inp = input.to_bytes_le().len();
     match bytes.cmp(&bytes_inp) {
         Ordering::Greater => pad(input, bytes - bytes_inp),

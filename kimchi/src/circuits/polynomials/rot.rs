@@ -510,19 +510,19 @@ fn rot_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
         VariableCell::create("rotated"),
         VariableCell::create("excess"),
         /* 12-bit plookups */
-        VariableBitsCell::create("bound", 52, 64),
-        VariableBitsCell::create("bound", 40, 52),
-        VariableBitsCell::create("bound", 28, 40),
-        VariableBitsCell::create("bound", 16, 28),
+        VariableBitsCell::create("bound", 52, Some(64)),
+        VariableBitsCell::create("bound", 40, Some(52)),
+        VariableBitsCell::create("bound", 28, Some(40)),
+        VariableBitsCell::create("bound", 16, Some(28)),
         /* 2-bit crumbs */
-        VariableBitsCell::create("bound", 14, 16),
-        VariableBitsCell::create("bound", 12, 14),
-        VariableBitsCell::create("bound", 10, 12),
-        VariableBitsCell::create("bound", 8, 10),
-        VariableBitsCell::create("bound", 6, 8),
-        VariableBitsCell::create("bound", 4, 6),
-        VariableBitsCell::create("bound", 2, 4),
-        VariableBitsCell::create("bound", 0, 2),
+        VariableBitsCell::create("bound", 14, Some(16)),
+        VariableBitsCell::create("bound", 12, Some(14)),
+        VariableBitsCell::create("bound", 10, Some(12)),
+        VariableBitsCell::create("bound", 8, Some(10)),
+        VariableBitsCell::create("bound", 6, Some(8)),
+        VariableBitsCell::create("bound", 4, Some(6)),
+        VariableBitsCell::create("bound", 2, Some(4)),
+        VariableBitsCell::create("bound", 0, Some(2)),
     ]
 }
 

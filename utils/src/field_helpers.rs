@@ -1,7 +1,8 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_bigint::BigUint;
+use num_bigint::{BigUint, RandBigInt};
+use rand::rngs::StdRng;
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -21,6 +22,31 @@ pub enum FieldHelpersError {
 
 /// Result alias using [FieldHelpersError]
 pub type Result<T> = std::result::Result<T, FieldHelpersError>;
+
+/// Helper to generate random field elements
+pub trait RandomField<F> {
+    /// Generates a random field element of up to a given number of bits
+    fn gen_field_with_bits(&mut self, bits: usize) -> F;
+
+    /// Initialize a random input with a random value of given length
+    fn gen(&mut self, input: Option<F>, bits: Option<usize>) -> F;
+}
+
+impl<F: PrimeField> RandomField<F> for StdRng {
+    fn gen_field_with_bits(&mut self, bits: usize) -> F {
+        F::from_biguint(self.gen_biguint_below(&BigUint::from(2u8).pow(bits as u32))).unwrap()
+    }
+
+    fn gen(&mut self, input: Option<F>, bits: Option<usize>) -> F {
+        if let Some(inp) = input {
+            inp
+        } else {
+            assert!(bits.is_some());
+            let bits = bits.unwrap();
+            self.gen_field_with_bits(bits)
+        }
+    }
+}
 
 /// Field element helpers
 ///   Unless otherwise stated everything is in little-endian byte order.
