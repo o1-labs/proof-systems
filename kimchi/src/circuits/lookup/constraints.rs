@@ -449,6 +449,25 @@ pub fn constraints<F: FftField>(
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
         };
 
+        // (1 + beta)^max_per_row
+        let beta1_per_row: E<F> = {
+            let beta1 = E::Constant(ConstantExpr::one() + ConstantExpr::Beta);
+            // Compute beta1.pow(lookup_info.max_per_row)
+            let mut res = beta1.clone();
+            for i in 1..lookup_info.max_per_row {
+                let mut beta1_used = beta1.clone();
+                if generate_feature_flags {
+                    beta1_used = E::IfFeature(
+                        FeatureFlag::LookupsPerRow((i + 1) as isize),
+                        Box::new(beta1_used),
+                        Box::new(E::one()),
+                    );
+                }
+                res = res * beta1_used;
+            }
+            res
+        };
+
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
         // each value is also multipled with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
@@ -469,13 +488,10 @@ pub fn constraints<F: FftField>(
                 res = res * dummy_used;
             }
 
-            // TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
-            // (1 + beta)^max_per_row
-            let beta1_per_row: E<F> = E::Constant(
-                (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row as u64),
-            );
-
-            res * beta1_per_row
+            // NOTE: We multiply by beta1_per_row here instead of at the end, because the
+            // expression framework will fold the constants together rather than multiplying the
+            // whole d8-sized polynomial evaluations by multiple constants.
+            res * beta1_per_row.clone()
         };
 
         // This is set up so that on rows that have lookups, chunk will be equal
