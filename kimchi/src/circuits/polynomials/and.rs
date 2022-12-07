@@ -13,7 +13,7 @@ use crate::circuits::{
 };
 use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
-use o1_utils::{big_bits, BitOps, FieldHelpers};
+use o1_utils::{BigUintHelpers, BitOps, FieldHelpers};
 
 //~ We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
 //~ add one `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
@@ -95,7 +95,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> [Vec<F>; COLUMNS] {
     let input1_big = input1.to_biguint();
     let input2_big = input2.to_biguint();
-    if bytes * 8 < big_bits(&input1_big) || bytes * 8 < big_bits(&input2_big) {
+    if bytes * 8 < input1_big.bitlen() || bytes * 8 < input2_big.bitlen() {
         panic!("Bytes must be greater or equal than the inputs length");
     }
 

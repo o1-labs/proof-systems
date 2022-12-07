@@ -20,10 +20,10 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::BigUint;
-use o1_utils::{BitOps, FieldHelpers};
+use o1_utils::{BitOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
-use super::{framework::TestFramework, xor::initialize};
+use super::framework::TestFramework;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
@@ -96,8 +96,8 @@ where
     let cs = create_test_constraint_system_and::<G, EFqSponge, EFrSponge>(bytes);
 
     // Initalize inputs
-    let input1 = initialize::<G>(input1, Some(bytes * 8), rng);
-    let input2 = initialize::<G>(input2, Some(bytes * 8), rng);
+    let input1 = rng.gen(input1, Some(bytes * 8));
+    let input2 = rng.gen(input2, Some(bytes * 8));
 
     let witness = and::create_and_witness(input1, input2, bytes);
 
@@ -152,8 +152,8 @@ where
     }
 
     // Create inputs
-    let input1 = initialize::<G>(None, Some(bytes * 8), rng);
-    let input2 = initialize::<G>(None, Some(bytes * 8), rng);
+    let input1 = rng.gen(None, Some(bytes * 8));
+    let input2 = rng.gen(None, Some(bytes * 8));
 
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
