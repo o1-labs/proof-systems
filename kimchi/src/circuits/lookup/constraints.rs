@@ -452,13 +452,21 @@ pub fn constraints<F: FftField>(
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
         // each value is also multipled with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
-        let dummy_padding = |padding_len| {
+        let dummy_padding = |spec_len| {
             // v contains the `max_per_row` powers of `beta + dummy` starting with 1
             // v[i] = (gamma + dummy)^i
             let mut res = E::one();
             let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup.clone();
-            for _i in 1..=padding_len {
-                res = res.clone() * dummy.clone();
+            for i in spec_len..lookup_info.max_per_row {
+                let mut dummy_used = dummy.clone();
+                if generate_feature_flags {
+                    dummy_used = E::IfFeature(
+                        FeatureFlag::LookupsPerRow((i + 1) as isize),
+                        Box::new(dummy_used),
+                        Box::new(E::one()),
+                    );
+                }
+                res = res * dummy_used;
             }
 
             // TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
@@ -478,8 +486,7 @@ pub fn constraints<F: FftField>(
             assert!(spec.len() <= lookup_info.max_per_row);
 
             // padding is (1+beta)^max_per_rows * (gamma + dummy)^pad
-            let padding_len = lookup_info.max_per_row - spec.len();
-            let padding = dummy_padding(padding_len);
+            let padding = dummy_padding(spec.len());
 
             // padding * \mul (gamma + combined_witnesses)
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
