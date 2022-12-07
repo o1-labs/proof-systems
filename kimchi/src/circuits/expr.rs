@@ -45,8 +45,8 @@ pub enum ExprError {
     #[error("Cannot get index evaluation {0:?} (should have been linearized away)")]
     MissingIndexEvaluation(Column),
 
-    #[error("Linearization failed")]
-    FailedLinearization,
+    #[error("Linearization failed (too many unevaluated columns: {0:?}")]
+    FailedLinearization(Vec<Variable>),
 
     #[error("runtime table not available")]
     MissingRuntime,
@@ -2001,7 +2001,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                     }
                 }
             } else {
-                return Err(ExprError::FailedLinearization);
+                return Err(ExprError::FailedLinearization(unevaluated));
             }
         }
         Ok(Linearization {
