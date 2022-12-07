@@ -406,7 +406,11 @@ pub fn constraints<F: FftField>(
                 .map(|spec| {
                     let mut term = column(Column::LookupKindIndex(spec));
                     if generate_feature_flags {
-                        term = E::EnabledIf(FeatureFlag::LookupPattern(spec), Box::new(term))
+                        term = E::IfFeature(
+                            FeatureFlag::LookupPattern(spec),
+                            Box::new(term),
+                            Box::new(E::zero()),
+                        )
                     }
                     term
                 })
@@ -494,7 +498,11 @@ pub fn constraints<F: FftField>(
                     let mut term =
                         column(Column::LookupKindIndex(spec)) * f_term(&spec.lookups::<F>());
                     if generate_feature_flags {
-                        term = E::EnabledIf(FeatureFlag::LookupPattern(spec), Box::new(term))
+                        term = E::IfFeature(
+                            FeatureFlag::LookupPattern(spec),
+                            Box::new(term),
+                            Box::new(E::zero()),
+                        )
                     }
                     term
                 })
@@ -597,7 +605,11 @@ pub fn constraints<F: FftField>(
                 // Dummy value, to appease the borrow checker.
                 let mut boxed_term = Box::new(constant(F::zero()));
                 std::mem::swap(term, &mut *boxed_term);
-                *term = E::EnabledIf(FeatureFlag::RuntimeLookupTables, boxed_term)
+                *term = E::IfFeature(
+                    FeatureFlag::RuntimeLookupTables,
+                    boxed_term,
+                    Box::new(E::zero()),
+                )
             }
         }
         res.extend(rt_constraints);

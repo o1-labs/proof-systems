@@ -24,7 +24,7 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
-use ark_ff::{FftField, PrimeField, SquareRootField};
+use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
 /// Get the expresion of constraints.
 ///
@@ -64,7 +64,11 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
                 expr += chacha_expr();
             }
         } else {
-            expr += Expr::EnabledIf(FeatureFlag::ChaCha, Box::new(chacha_expr()));
+            expr += Expr::IfFeature(
+                FeatureFlag::ChaCha,
+                Box::new(chacha_expr()),
+                Box::new(Expr::zero()),
+            );
         }
     }
 
@@ -76,7 +80,11 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
                 expr += range_check_expr();
             }
         } else {
-            expr += Expr::EnabledIf(FeatureFlag::RangeCheck, Box::new(range_check_expr()));
+            expr += Expr::IfFeature(
+                FeatureFlag::RangeCheck,
+                Box::new(range_check_expr()),
+                Box::new(Expr::zero()),
+            );
         }
     }
 
@@ -87,9 +95,10 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
                 expr += foreign_field_add_expr();
             }
         } else {
-            expr += Expr::EnabledIf(
+            expr += Expr::IfFeature(
                 FeatureFlag::ForeignFieldAdd,
                 Box::new(foreign_field_add_expr()),
+                Box::new(Expr::zero()),
             );
         }
     }
@@ -101,9 +110,10 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
                 expr += foreign_field_mul_expr();
             }
         } else {
-            expr += Expr::EnabledIf(
+            expr += Expr::IfFeature(
                 FeatureFlag::ForeignFieldMul,
                 Box::new(foreign_field_mul_expr()),
+                Box::new(Expr::zero()),
             );
         }
     }
@@ -115,7 +125,11 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
                 expr += xor_expr();
             }
         } else {
-            expr += Expr::EnabledIf(FeatureFlag::Xor, Box::new(xor_expr()));
+            expr += Expr::IfFeature(
+                FeatureFlag::Xor,
+                Box::new(xor_expr()),
+                Box::new(Expr::zero()),
+            );
         }
     }
 
@@ -129,8 +143,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // lookup
     if let Some(feature_flags) = feature_flags {
         if feature_flags.lookup_features.patterns != LookupPatterns::default() {
-        let lookup_configuration =
-            LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
+            let lookup_configuration =
+                LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
             let constraints = lookup::constraints::constraints(&lookup_configuration, false);
 
             // note: the number of constraints depends on the lookup configuration,
@@ -168,9 +182,10 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
 
         let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
-        let combined = Expr::EnabledIf(
+        let combined = Expr::IfFeature(
             FeatureFlag::LookupTables,
             Box::new(Expr::combine_constraints(alphas, constraints)),
+            Box::new(Expr::zero()),
         );
 
         expr += combined;
@@ -199,7 +214,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     let feature_flags = match feature_flags {
         Some(feature_flags) => *feature_flags,
         None =>
-        // Generating using `EnabledIf`, turn on all feature flags.
+        // Generating using `IfFeature`, turn on all feature flags.
         {
             FeatureFlags {
                 chacha: true,
@@ -267,7 +282,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// Linearize the `expr`.
 ///
 /// If the `feature_flags` argument is `None`, this will generate an expression using the
-/// `Expr::EnabledIf` variant for each of the flags.
+/// `Expr::IfFeature` variant for each of the flags.
 ///
 /// # Panics
 ///
