@@ -5,7 +5,7 @@ use std::cmp::Ordering;
 
 /// Bitwise operations
 pub trait BitOps<Rhs = Self> {
-    /// Ebitwise XOR of two BigUint inputs
+    /// Bitwise XOR of two BigUint inputs
     fn bitxor(input1: &Rhs, input: &Rhs) -> Rhs;
 }
 
@@ -22,23 +22,6 @@ impl BitOps for BigUint {
                 .map(|(b1, b2)| b1 ^ b2)
                 .collect::<Vec<u8>>(),
         )
-    }
-}
-
-/// Helpers for BigUint
-pub trait BigUintHelpers<Rhs = Self> {
-    /// Returns the minimum number of bits required to represent a BigUint
-    /// As opposed to BigUint::bits, this function returns 1 for the input zero
-    fn bitlen(&self) -> usize;
-}
-
-impl BigUintHelpers for BigUint {
-    fn bitlen(&self) -> usize {
-        if self.to_bytes_le() == [0u8] {
-            1
-        } else {
-            self.bits() as usize
-        }
     }
 }
 
