@@ -452,13 +452,13 @@ pub fn constraints<F: FftField>(
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
         // each value is also multipled with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
-        let dummy_padding: Vec<E<F>> = {
+        let dummy_padding = |padding_len| {
             // v contains the `max_per_row` powers of `beta + dummy` starting with 1
             // v[i] = (gamma + dummy)^i
-            let mut dummies = vec![E::one()];
-            let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup;
-            for i in 1..=lookup_info.max_per_row {
-                dummies.push(dummies[i - 1].clone() * dummy.clone());
+            let mut res = E::one();
+            let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup.clone();
+            for _i in 1..=padding_len {
+                res = res.clone() * dummy.clone();
             }
 
             // TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
@@ -467,10 +467,7 @@ pub fn constraints<F: FftField>(
                 (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row as u64),
             );
 
-            dummies
-                .iter()
-                .map(|dummies| dummies.clone() * beta1_per_row.clone())
-                .collect()
+            res * beta1_per_row
         };
 
         // This is set up so that on rows that have lookups, chunk will be equal
@@ -482,7 +479,7 @@ pub fn constraints<F: FftField>(
 
             // padding is (1+beta)^max_per_rows * (gamma + dummy)^pad
             let padding_len = lookup_info.max_per_row - spec.len();
-            let padding = dummy_padding[padding_len].clone();
+            let padding = dummy_padding(padding_len);
 
             // padding * \mul (gamma + combined_witnesses)
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
