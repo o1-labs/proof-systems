@@ -25,6 +25,10 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
 
 /// Flags for each of the hard-coded lookup patterns.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 pub struct LookupPatterns {
     pub xor: bool,
     pub chacha_final: bool,
@@ -119,6 +123,10 @@ impl LookupPatterns {
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 pub struct LookupFeatures {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     pub patterns: LookupPatterns,
