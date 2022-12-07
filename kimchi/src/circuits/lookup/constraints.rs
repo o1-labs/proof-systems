@@ -419,21 +419,21 @@ pub fn constraints<F: FftField>(
             E::one() - lookup_indicator
         };
 
-        let joint_combiner = ConstantExpr::JointCombiner;
+        let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
         let table_id_combiner = joint_combiner
             .clone()
             .pow(lookup_info.max_joint_size.into());
 
         // combine the columns of the dummy lookup row
         let dummy_lookup = {
-            let expr_dummy: JointLookupValue<ConstantExpr<F>> = JointLookup {
+            let expr_dummy: JointLookupValue<E<F>> = JointLookup {
                 entry: configuration
                     .dummy_lookup
                     .entry
                     .iter()
-                    .map(|x| ConstantExpr::Literal(*x))
+                    .map(|x| E::Constant(ConstantExpr::Literal(*x)))
                     .collect(),
-                table_id: ConstantExpr::Literal(configuration.dummy_lookup.table_id),
+                table_id: E::Constant(ConstantExpr::Literal(configuration.dummy_lookup.table_id)),
             };
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
         };
@@ -441,19 +441,20 @@ pub fn constraints<F: FftField>(
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
         // each value is also multipled with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
-        let dummy_padding: Vec<ConstantExpr<F>> = {
+        let dummy_padding: Vec<E<F>> = {
             // v contains the `max_per_row` powers of `beta + dummy` starting with 1
             // v[i] = (gamma + dummy)^i
-            let mut dummies = vec![ConstantExpr::one()];
-            let dummy = ConstantExpr::Gamma + dummy_lookup;
+            let mut dummies = vec![E::one()];
+            let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup;
             for i in 1..=lookup_info.max_per_row {
                 dummies.push(dummies[i - 1].clone() * dummy.clone());
             }
 
             // TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
             // (1 + beta)^max_per_row
-            let beta1_per_row: ConstantExpr<F> =
-                (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row as u64);
+            let beta1_per_row: E<F> = E::Constant(
+                (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row as u64),
+            );
 
             dummies
                 .iter()
@@ -477,13 +478,9 @@ pub fn constraints<F: FftField>(
             spec.iter()
                 .map(|j| {
                     E::Constant(ConstantExpr::Gamma)
-                        + j.evaluate(
-                            &E::Constant(joint_combiner.clone()),
-                            &E::Constant(table_id_combiner.clone()),
-                            &eval,
-                        )
+                        + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
                 })
-                .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
+                .fold(padding, |acc: E<F>, x| acc * x)
         };
 
         // f part of the numerator
