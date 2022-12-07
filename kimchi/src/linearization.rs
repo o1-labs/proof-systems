@@ -128,22 +128,24 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     // lookup
     if let Some(feature_flags) = feature_flags {
+        if feature_flags.lookup_features.patterns != LookupPatterns::default() {
         let lookup_configuration =
             LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
-        let constraints = lookup::constraints::constraints(&lookup_configuration, false);
+            let constraints = lookup::constraints::constraints(&lookup_configuration, false);
 
-        // note: the number of constraints depends on the lookup configuration,
-        // specifically the presence of runtime tables.
-        let constraints_len = u32::try_from(constraints.len())
-            .expect("we always expect a relatively low amount of constraints");
+            // note: the number of constraints depends on the lookup configuration,
+            // specifically the presence of runtime tables.
+            let constraints_len = u32::try_from(constraints.len())
+                .expect("we always expect a relatively low amount of constraints");
 
-        powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
+            powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
 
-        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
-        let combined = Expr::combine_constraints(alphas, constraints);
+            let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
+            let combined = Expr::combine_constraints(alphas, constraints);
 
-        expr += combined;
-    } else if feature_flags.is_none() {
+            expr += combined;
+        }
+    } else {
         let all_features = LookupFeatures {
             patterns: LookupPatterns {
                 xor: true,
