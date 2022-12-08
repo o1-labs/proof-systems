@@ -130,6 +130,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub xor_comm: Option<PolyComm<G>>,
 
+    /// Rot commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub rot_comm: Option<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -281,6 +285,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .xor_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            rot_comm: self
+                .column_evaluations
+                .rot_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
             zkpm: {
@@ -415,6 +424,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             foreign_field_mul_comm,
             foreign_field_modulus: _,
             xor_comm,
+            rot_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -466,6 +476,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             fq_sponge.absorb_g(&xor_comm.unshifted);
         }
 
+        if let Some(rot_comm) = rot_comm {
+            fq_sponge.absorb_g(&rot_comm.unshifted);
+        }
+
         // Lookup index; optional
 
         if let Some(LookupVerifierIndex {
@@ -479,9 +493,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 LookupSelectors {
                     xor,
                     chacha_final,
-                    lookup_gate,
-                    range_check_gate,
-                    ffmul_gate,
+                    lookup,
+                    range_check,
+                    ffmul,
                 },
         }) = lookup_index
         {
@@ -501,14 +515,14 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             if let Some(chacha_final) = chacha_final {
                 fq_sponge.absorb_g(&chacha_final.unshifted);
             }
-            if let Some(lookup_gate) = lookup_gate {
-                fq_sponge.absorb_g(&lookup_gate.unshifted);
+            if let Some(lookup) = lookup {
+                fq_sponge.absorb_g(&lookup.unshifted);
             }
-            if let Some(range_check_gate) = range_check_gate {
-                fq_sponge.absorb_g(&range_check_gate.unshifted);
+            if let Some(range_check) = range_check {
+                fq_sponge.absorb_g(&range_check.unshifted);
             }
-            if let Some(ffmul_gate) = ffmul_gate {
-                fq_sponge.absorb_g(&ffmul_gate.unshifted);
+            if let Some(ffmul) = ffmul {
+                fq_sponge.absorb_g(&ffmul.unshifted);
             }
         }
         fq_sponge.digest_fq()
