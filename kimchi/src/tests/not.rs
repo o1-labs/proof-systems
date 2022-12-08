@@ -28,7 +28,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::BigUint;
-use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, RandomField};
+use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -219,7 +219,7 @@ fn check_not_xor<G: KimchiCurve>(
     check_xor::<G>(witness, bits, input, all_ones::<G>(bits), NOT);
     assert_eq!(
         witness[2][1],
-        BigUint::bitnot(&input_big, Some(bits)).into()
+        BigUint::bitwise_not(&input_big, Some(bits)).into()
     );
 }
 
@@ -234,12 +234,12 @@ fn check_not_gnrc<G: KimchiCurve>(
         if i % 2 == 0 {
             assert_eq!(
                 witness[2][1 + i / 2],
-                BigUint::bitnot(&input, Some(bits)).into()
+                BigUint::bitwise_not(&input, Some(bits)).into()
             );
         } else {
             assert_eq!(
                 witness[5][1 + (i - 1) / 2],
-                BigUint::bitnot(&input, Some(bits)).into()
+                BigUint::bitwise_not(&input, Some(bits)).into()
             );
         }
     }

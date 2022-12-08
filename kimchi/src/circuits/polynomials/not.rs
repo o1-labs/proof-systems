@@ -8,7 +8,7 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
-use o1_utils::{BigUintHelpers, BitOps, FieldHelpers};
+use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers};
 use std::{array, cmp::max};
 
 use super::{
@@ -146,7 +146,7 @@ pub fn extend_not_xor_witness<F: PrimeField>(
     bits: Option<usize>,
 ) {
     let input = input.to_biguint();
-    let output = BigUint::bitnot(&input, bits);
+    let output = BigUint::bitwise_not(&input, bits);
     let bits = max(input.bitlen(), bits.unwrap_or(0));
     let mut not_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
