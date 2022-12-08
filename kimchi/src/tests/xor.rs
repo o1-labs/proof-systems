@@ -269,14 +269,14 @@ fn verify_bad_xor_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
         witness[col][0] += G::ScalarField::one();
         assert_eq!(
-            cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][0] -= G::ScalarField::one();
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
