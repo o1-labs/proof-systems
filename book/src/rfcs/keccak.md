@@ -19,18 +19,8 @@ Fp[0,0] &= F[0,0] \oplus RC
 $$
 
 FOR $0\leq x, y \leq 4$ and $\rho[x,y]$ is the rotation offset defined for Keccak.
-The values are in the table below extracted from the Keccak reference
-<https://keccak.team/files/Keccak-reference-3.0.pdf>
 
-|       | x = 3 | x = 4 | x = 0 | x = 1 | x = 2 |
-| ----- | ----- | ----- | ----- | ----- | ----- |
-| y = 2 | 155   | 231   | 3     | 10    | 171   |
-| y = 1 | 55    | 276   | 36    | 300   | 6     |
-| y = 0 | 28    | 91    | 0     | 1     | 190   |
-| y = 4 | 120   | 78    | 210   | 66    | 253   |
-| y = 3 | 21    | 136   | 105   | 45    | 15    |
-
-## Design Approach:
+## Design Approach:
 
 The atomic operations are XOR, ROT, NOT, AND. In the sections below, we will describe
 the gates for these operations. Below are some common approaches followed in their design.
@@ -42,4 +32,3 @@ Before we describe the specific gate design approaches, below are some constrain
 Kimchi framework that dictated those approaches.
 * only 4 lookups per row
 * only first 7 columns are available to the permutation polynomial
-

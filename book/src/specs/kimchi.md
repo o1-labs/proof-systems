@@ -365,7 +365,7 @@ will translate into a scalar multiplication by 0, which is free.
 
 #### The Lookup Selectors
 
-**ChaChaSelector**. Performs 4 queries to the XOR lookup table.
+**XorSelector**. Performs 4 queries to the XOR lookup table.
 
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
@@ -1430,7 +1430,7 @@ It uses three different types of constraints
 * plookup       - xor-table plookup (4-bits)
 * decomposition - the constraints inside the gate
 
-The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
 Given values `in1`, `in2` and `out`, the layout looks like this:
 
 | Column |          `Curr`  |          `Next`  |

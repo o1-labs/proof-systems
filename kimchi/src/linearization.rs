@@ -12,9 +12,8 @@ use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 use crate::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
 use crate::circuits::polynomials::poseidon::Poseidon;
-use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
-use crate::circuits::polynomials::{generic, permutation, xor};
+use crate::circuits::polynomials::{generic, permutation, range_check, xor};
 use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
