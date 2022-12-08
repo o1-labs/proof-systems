@@ -1716,10 +1716,6 @@ pub struct VerifierIndex&lt;G: KimchiCurve&gt; {
     #[serde(bound = &quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
     pub xor_comm: Option&lt;PolyComm&lt;G&gt;&gt;,
 
-    /// Rot commitments
-    #[serde(bound = &quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
-    pub rot_comm: Option&lt;PolyComm&lt;G&gt;&gt;,
-
     /// wire coordinate shifts
     #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]
     pub shift: [G::ScalarField; PERMUTS],

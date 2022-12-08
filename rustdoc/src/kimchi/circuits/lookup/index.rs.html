@@ -517,12 +517,12 @@
     </span><span class="kw">pub </span>xor: <span class="prelude-ty">Option</span>&lt;T&gt;,
     <span class="doccomment">/// ChachaFinal pattern lookup selector
     </span><span class="kw">pub </span>chacha_final: <span class="prelude-ty">Option</span>&lt;T&gt;,
-    <span class="doccomment">/// Lookup pattern lookup selector
-    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;T&gt;,
-    <span class="doccomment">/// RangeCheck pattern lookup selector
-    </span><span class="kw">pub </span>range_check: <span class="prelude-ty">Option</span>&lt;T&gt;,
-    <span class="doccomment">/// FFMul pattern lookup selector
-    </span><span class="kw">pub </span>ffmul: <span class="prelude-ty">Option</span>&lt;T&gt;,
+    <span class="doccomment">/// LookupGate pattern lookup selector
+    </span><span class="kw">pub </span>lookup_gate: <span class="prelude-ty">Option</span>&lt;T&gt;,
+    <span class="doccomment">/// RangeCheckGate pattern lookup selector
+    </span><span class="kw">pub </span>range_check_gate: <span class="prelude-ty">Option</span>&lt;T&gt;,
+    <span class="doccomment">/// FFMulGate pattern lookup selector
+    </span><span class="kw">pub </span>ffmul_gate: <span class="prelude-ty">Option</span>&lt;T&gt;,
 }
 
 <span class="attr">#[serde_as]
@@ -533,11 +533,11 @@
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>chacha_final: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>lookup_gate: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>range_check: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>range_check_gate: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>ffmul: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
+    </span><span class="kw">pub </span>ffmul_gate: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: FftField&gt; serde_with::SerializeAs&lt;LookupSelectors&lt;E&lt;F, D&lt;F&gt;&gt;&gt;&gt;
@@ -550,9 +550,9 @@
         <span class="kw">let </span>repr = LookupSelectorsSerdeAs {
             xor: val.xor.clone(),
             chacha_final: val.chacha_final.clone(),
-            lookup: val.lookup.clone(),
-            range_check: val.range_check.clone(),
-            ffmul: val.ffmul.clone(),
+            lookup_gate: val.lookup_gate.clone(),
+            range_check_gate: val.range_check_gate.clone(),
+            ffmul_gate: val.ffmul_gate.clone(),
         };
         repr.serialize(serializer)
     }
@@ -568,16 +568,16 @@
         <span class="kw">let </span>LookupSelectorsSerdeAs {
             xor,
             chacha_final,
-            lookup,
-            range_check,
-            ffmul,
+            lookup_gate,
+            range_check_gate,
+            ffmul_gate,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(LookupSelectors {
             xor,
             chacha_final,
-            lookup,
-            range_check,
-            ffmul,
+            lookup_gate,
+            range_check_gate,
+            ffmul_gate,
         })
     }
 }
@@ -589,9 +589,9 @@
         <span class="kw">match </span>index {
             LookupPattern::Xor =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.xor,
             LookupPattern::ChaChaFinal =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.chacha_final,
-            LookupPattern::Lookup =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.lookup,
-            LookupPattern::RangeCheck =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.range_check,
-            LookupPattern::ForeignFieldMul =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.ffmul,
+            LookupPattern::LookupGate =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.lookup_gate,
+            LookupPattern::RangeCheckGate =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.range_check_gate,
+            LookupPattern::ForeignFieldMulGate =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.ffmul_gate,
         }
     }
 }
@@ -601,9 +601,9 @@
         <span class="kw">match </span>index {
             LookupPattern::Xor =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.xor,
             LookupPattern::ChaChaFinal =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.chacha_final,
-            LookupPattern::Lookup =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.lookup,
-            LookupPattern::RangeCheck =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.range_check,
-            LookupPattern::ForeignFieldMul =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.ffmul,
+            LookupPattern::LookupGate =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.lookup_gate,
+            LookupPattern::RangeCheckGate =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.range_check_gate,
+            LookupPattern::ForeignFieldMulGate =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.ffmul_gate,
         }
     }
 }
@@ -613,9 +613,9 @@
         <span class="kw">let </span>LookupSelectors {
             xor,
             chacha_final,
-            lookup,
-            range_check,
-            ffmul,
+            lookup_gate,
+            range_check_gate,
+            ffmul_gate,
         } = <span class="self">self</span>;
         <span class="comment">// This closure isn&#39;t really redundant -- it shields the parameter from a copy -- but
         // clippy isn&#39;t smart enough to figure that out..
@@ -624,9 +624,9 @@
         LookupSelectors {
             xor: xor.map(f),
             chacha_final: chacha_final.map(f),
-            lookup: lookup.map(f),
-            range_check: range_check.map(f),
-            ffmul: ffmul.map(f),
+            lookup_gate: lookup_gate.map(f),
+            range_check_gate: range_check_gate.map(f),
+            ffmul_gate: ffmul_gate.map(f),
         }
     }
 
@@ -634,9 +634,9 @@
         LookupSelectors {
             xor: <span class="self">self</span>.xor.as_ref(),
             chacha_final: <span class="self">self</span>.chacha_final.as_ref(),
-            lookup: <span class="self">self</span>.lookup.as_ref(),
-            range_check: <span class="self">self</span>.range_check.as_ref(),
-            ffmul: <span class="self">self</span>.ffmul.as_ref(),
+            lookup_gate: <span class="self">self</span>.lookup_gate.as_ref(),
+            range_check_gate: <span class="self">self</span>.range_check_gate.as_ref(),
+            ffmul_gate: <span class="self">self</span>.ffmul_gate.as_ref(),
         }
     }
 }

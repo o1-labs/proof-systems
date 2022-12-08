@@ -2852,20 +2852,6 @@
 <a href="#2852" id="2852">2852</a>
 <a href="#2853" id="2853">2853</a>
 <a href="#2854" id="2854">2854</a>
-<a href="#2855" id="2855">2855</a>
-<a href="#2856" id="2856">2856</a>
-<a href="#2857" id="2857">2857</a>
-<a href="#2858" id="2858">2858</a>
-<a href="#2859" id="2859">2859</a>
-<a href="#2860" id="2860">2860</a>
-<a href="#2861" id="2861">2861</a>
-<a href="#2862" id="2862">2862</a>
-<a href="#2863" id="2863">2863</a>
-<a href="#2864" id="2864">2864</a>
-<a href="#2865" id="2865">2865</a>
-<a href="#2866" id="2866">2866</a>
-<a href="#2867" id="2867">2867</a>
-<a href="#2868" id="2868">2868</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -3376,7 +3362,6 @@
     ForeignFieldAdd,
     ForeignFieldMul,
     Xor,
-    Rot,
 }
 
 <span class="kw">impl </span>FeatureFlag {
@@ -5313,8 +5298,6 @@
 
 </span><span class="doccomment">/// A number of useful constraints
 </span><span class="kw">pub mod </span>constraints {
-    <span class="kw">use </span>o1_utils::Two;
-
     <span class="kw">use </span><span class="kw">crate</span>::circuits::argument::ArgumentData;
     <span class="kw">use </span>std::fmt;
 
@@ -5340,9 +5323,6 @@
     </span><span class="kw">where
         </span><span class="self">Self</span>: std::marker::Sized,
     {
-        <span class="doccomment">/// 2^pow
-        </span><span class="kw">fn </span>two_pow(pow: u64) -&gt; <span class="self">Self</span>;
-
         <span class="doccomment">/// 2^{LIMB_BITS}
         </span><span class="kw">fn </span>two_to_limb() -&gt; <span class="self">Self</span>;
 
@@ -5384,10 +5364,6 @@
     <span class="kw">where
         </span>F: PrimeField,
     {
-        <span class="kw">fn </span>two_pow(pow: u64) -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;&gt;::literal(&lt;F <span class="kw">as </span>Two&lt;F&gt;&gt;::two_pow(pow))
-        }
-
         <span class="kw">fn </span>two_to_limb() -&gt; <span class="self">Self </span>{
             Expr::&lt;ConstantExpr&lt;F&gt;&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_limb())
         }
@@ -5438,10 +5414,6 @@
     }
 
     <span class="kw">impl</span>&lt;F: Field&gt; ExprOps&lt;F&gt; <span class="kw">for </span>F {
-        <span class="kw">fn </span>two_pow(pow: u64) -&gt; <span class="self">Self </span>{
-            &lt;F <span class="kw">as </span>Two&lt;F&gt;&gt;::two_pow(pow)
-        }
-
         <span class="kw">fn </span>two_to_limb() -&gt; <span class="self">Self </span>{
             &lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_limb()
         }

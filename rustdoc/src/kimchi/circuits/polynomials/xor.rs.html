@@ -520,6 +520,8 @@
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
@@ -553,6 +555,8 @@
 <span class="kw">use </span>std::{array, collections::HashMap, marker::PhantomData};
 
 <span class="kw">use </span><span class="kw">super</span>::generic::GenericGateSpec;
+
+<span class="kw">pub const </span>GATE_COUNT: usize = <span class="number">1</span>;
 
 <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Creates a XOR gadget for `bits` length
