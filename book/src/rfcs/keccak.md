@@ -1,10 +1,10 @@
 # RFC: Keccak
 
-The Keccak gadget is comprised of 3 circuit gates (Xor16, Rot64, and Zero)
+The Keccak gadget is comprised of 3 circuit gates (`Xor16`, `Rot64`, and `Zero`)
 
 Keccak works with 64-bit words. The state is represented using $5\times 5$ matrix
 of 64 bit words. Each compression step of Keccak consists of 24 rounds. Let us
-denote the state matrix with A (indexing elements as A[x,y]), from which we derive
+denote the state matrix with $A$ (indexing elements as $A[x,y]$), from which we derive
 further states as follows in each round. Each round then consists of the following 5 steps:
 
 $$
@@ -13,12 +13,12 @@ C[x] &= A[x,0] \oplus A[x,1] \oplus A[x,2] \oplus A[x,3] \oplus A[x,4] \\
 D[x] &= C[x-1] \oplus ROT(C[x+1],1) \\
 E[x,y] &= A[x,y]  \oplus D[x] \\
 B[y,2x+3y] &= ROT(E[x,y],\rho[x,y]) \\
-F[x,y] &= B[x,y] \oplus ((NOT B[x+1,y]) AND B[x+2,y]) \\
+F[x,y] &= B[x,y] \oplus ((NOT\ B[x+1,y]) AND\ B[x+2,y]) \\
 Fp[0,0] &= F[0,0] \oplus RC
 \end{align}
 $$
 
-FOR $0\leq x, y \leq 4$ and $\rho[x,y]$ is the rotation offset defined for Keccak.
+for $0\leq x, y \leq 4$ and $\rho[x,y]$ is the rotation offset defined for Keccak.
 The values are in the table below extracted from the Keccak reference
 <https://keccak.team/files/Keccak-reference-3.0.pdf>
 
@@ -49,7 +49,7 @@ It is clear from the definition of the rotation gate that its constraints are co
 (meaning that honest instances always satisfy the constraints). It is left to be proven
 that the proposal is sound. In this section, we will give a proof that as soon as we 
 perform the range checks on the excess and shifted parts of the input, only one possible
-assignment satisfies the constraints. Meaning, that there is no dishonest instance that
+assignment satisfies the constraints. This means that there is no dishonest instance that
 can make the constraints pass. We will also give an example where one could find wrong
 rotation witnesses that would satisfy the constraints if we did not check the range.
 
@@ -58,7 +58,7 @@ rotation witnesses that would satisfy the constraints if we did not check the ra
 First of all, we will illustrate the necessity of range-checks with a simple example. 
 For the sake of readability, we will use some toy field lengths. In particular, let us 
 assume that our words have 4 bits, meaning all of the elements between `0x0` and `0xF`. 
-Next, we will be using the native field $\mathbb{F}_{2^5}$. 
+Next, we will be using the native field $\mathbb{F}_{32}$. 
 
 As we will later see, this choice of field lengths is not enough to perform any 4-bit
 rotation, since the operations in the constraints would overflow the native field.
@@ -88,7 +88,7 @@ We can easily check that the proposed values of the shifted `0b1010=10` and the 
 `0b1=1` values satisfy the above constraint because $26 = 1 \cdot 16 + 10$ and $11 = 1 + 10$. 
 Now, the question is: _can we find another value for excess and shifted, such that their addition results in an incorrect rotated word?_
 
-The answer to this question is yes, due to __diophantic equations__. We basically want to find $x,y$ such that $26 = x \cdot 16 + y (\text{ mod } 32)$. The solution to this equation is:
+The answer to this question is yes, due to __diophantine equations__. We basically want to find $x,y$ such that $26 = x \cdot 16 + y (\text{ mod } 32)$. The solution to this equation is:
 
 $$
 \begin{align*}
@@ -108,7 +108,7 @@ We chose these word and field lengths to better understand the behaviour of the 
   - $$26 - 16 \cdot (2 \cdot n + 1) \iff 26 - 32n - 16 \equiv_{32} 26 - 16 = 10$$
   - Meaning, if $x = 2n+1$ then $y = 10$. 
 
-Thus, possible solutions to the diophantic equation are:
+Thus, possible solutions to the diophantine equation are:
 
 $$
 \begin{align*}
@@ -123,7 +123,7 @@ All of the above incorrect solutions differ in one thing: they have different bi
 
 ### Sufficiency of range checks
 
-In the following, we will give a proof that performing range checks for these values is not only necessary but also sufficient to prove that the rotation gate is sound. Meaning, we will prove that there are no two possible solutions of the decomposition constraint that while having correct bit lengths. Now, for the sake of robustness, we will consider 64-bit words and fields with at least twice the bit length of the words (as is our case). 
+In the following, we will give a proof that performing range checks for these values is not only necessary but also sufficient to prove that the rotation gate is sound. In other words, we will prove there are no two possible solutions of the decomposition constraint that have the correct bit lengths. Now, for the sake of robustness, we will consider 64-bit words and fields with at least twice the bit length of the words (as is our case). 
 
 We will proceed by __contradiction__. Suppose there are two different solutions to the following diophantic equation:
 
@@ -146,11 +146,11 @@ w \cdot 2^r &= a \cdot 2^{64} + b \\
 w \cdot 2^r &= a'\cdot 2^{64} + b'
 \end{align*}
 $$
-means that $a \cdot 2^{64} + b = a'\cdot 2^{64} + b'$. Moving terms to the left side, we have an equivalent equality: $2^{64}(a-a') + (b-b')=0 \text{ mod } n$. There are three cases to consider:
+means that $a \cdot 2^{64} + b = a'\cdot 2^{64} + b'$. Moving terms to the left side, we have an equivalent equality: $2^{64}(a-a') + (b-b')=0 \mod{n}$. There are three cases to consider:
 
-- $a = a'$ and $b \neq b'$: then $(b - b') \equiv_n 0$ and this can only happen if $b' = b + n$. But since $n > 2^{64}$, then $b'$ cannot be smaller than $2^{64}$ as it was assumed. CONTRADICTION.
+- $a = a'$ and $b \neq b'$: then $(b - b') \equiv_n 0$ and this can only happen if $b' = b + kn$. But since $n > 2^{64}$, then $b'$ cannot be smaller than $2^{64}$ as it was assumed. CONTRADICTION.
   
-- $b = b'$ and $a \neq a'$: then $2^{64}(a - a') \equiv_n 0$ and this can only happen if $a' = a + n$. But since $n > 2^r$, then $a'$ cannot be smaller than $2^r$ as it was assumed. CONTRADICTION.
+- $b = b'$ and $a \neq a'$: then $2^{64}(a - a') \equiv_n 0$ and this can only happen if $a' = a + kn$. But since $n > 2^r$, then $a'$ cannot be smaller than $2^r$ as it was assumed. CONTRADICTION.
 
 - $a\neq a'$ and $b \neq b'$: then we have something like $2^{64} \alpha + \beta \equiv_n 0$. 
   - This means $\beta \equiv_n -2^{64} \alpha = k \cdot n - 2^{64} \alpha$ for any $k$.
