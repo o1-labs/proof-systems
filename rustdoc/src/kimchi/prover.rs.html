@@ -1486,6 +1486,14 @@
 <a href="#1486" id="1486">1486</a>
 <a href="#1487" id="1487">1487</a>
 <a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1510,6 +1518,7 @@
                 <span class="self">self</span>,
                 circuitgates::{RangeCheck0, RangeCheck1},
             },
+            rot::Rot64,
             varbasemul::VarbaseMul,
             xor::Xor16,
         },
@@ -2145,6 +2154,10 @@
                 index_evals.insert(GateType::Xor16, selector);
             }
 
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index.column_evaluations.rot_selector8.as_ref() {
+                index_evals.insert(GateType::Rot64, selector);
+            }
+
             <span class="kw">let </span>mds = <span class="kw-2">&amp;</span>G::sponge_params().mds;
             Environment {
                 constants: Constants::new(
@@ -2207,6 +2220,7 @@
                     .foreign_field_mul_selector8
                     .is_some();
                 <span class="kw">let </span>xor_enabled = index.column_evaluations.xor_selector8.is_some();
+                <span class="kw">let </span>rot_enabled = index.column_evaluations.rot_selector8.is_some();
 
                 <span class="kw">for </span>gate <span class="kw">in </span>[
                     (
@@ -2234,6 +2248,8 @@
                     ),
                     <span class="comment">// Xor gate
                     </span>(<span class="kw-2">&amp;</span>Xor16::default(), xor_enabled),
+                    <span class="comment">// Rot gate
+                    </span>(<span class="kw-2">&amp;</span>Rot64::default(), rot_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| <span class="kw">if </span>is_enabled { <span class="prelude-val">Some</span>(gate) } <span class="kw">else </span>{ <span class="prelude-val">None </span>})

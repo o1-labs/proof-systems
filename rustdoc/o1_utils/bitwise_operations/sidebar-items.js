@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":[["BitOps","Bitwise operations"]]};
+window.SIDEBAR_ITEMS = {"trait":[["BitwiseOps","Bitwise operations"]]};

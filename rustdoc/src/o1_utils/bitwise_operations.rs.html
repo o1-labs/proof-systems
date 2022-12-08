@@ -86,19 +86,62 @@
 <a href="#86" id="86">86</a>
 <a href="#87" id="87">87</a>
 <a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides a set of functions to perform bit operations on big integers.
 //! In particular, it gives XOR and NOT for BigUint.
 </span><span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>std::cmp::Ordering;
 
 <span class="doccomment">/// Bitwise operations
-</span><span class="kw">pub trait </span>BitOps&lt;Rhs = <span class="self">Self</span>&gt; {
+</span><span class="kw">pub trait </span>BitwiseOps&lt;Rhs = <span class="self">Self</span>&gt; {
     <span class="doccomment">/// Bitwise XOR of two BigUint inputs
-    </span><span class="kw">fn </span>bitxor(input1: <span class="kw-2">&amp;</span>Rhs, input: <span class="kw-2">&amp;</span>Rhs) -&gt; Rhs;
+    </span><span class="kw">fn </span>bitwise_xor(input1: <span class="kw-2">&amp;</span>Rhs, input: <span class="kw-2">&amp;</span>Rhs) -&gt; Rhs;
+
+    <span class="doccomment">/// Conjunction of the bits of two BigUint inputs for a given number of bytes
+    </span><span class="kw">fn </span>bitwise_and(input1: <span class="kw-2">&amp;</span>Rhs, input: <span class="kw-2">&amp;</span>Rhs, bytes: usize) -&gt; Rhs;
 }
 
-<span class="kw">impl </span>BitOps <span class="kw">for </span>BigUint {
-    <span class="kw">fn </span>bitxor(input1: <span class="kw-2">&amp;</span>BigUint, input2: <span class="kw-2">&amp;</span>BigUint) -&gt; BigUint {
+<span class="kw">impl </span>BitwiseOps <span class="kw">for </span>BigUint {
+    <span class="kw">fn </span>bitwise_xor(input1: <span class="kw-2">&amp;</span>BigUint, input2: <span class="kw-2">&amp;</span>BigUint) -&gt; BigUint {
         <span class="comment">// Pad to equal size in bytes
         </span><span class="kw">let </span>bytes1 = input1.to_bytes_le().len();
         <span class="kw">let </span>bytes2 = input2.to_bytes_le().len();
@@ -108,6 +151,17 @@
             <span class="kw-2">&amp;</span>in1.iter()
                 .zip(in2.iter())
                 .map(|(b1, b2)| b1 ^ b2)
+                .collect::&lt;Vec&lt;u8&gt;&gt;(),
+        )
+    }
+
+    <span class="kw">fn </span>bitwise_and(input1: <span class="kw-2">&amp;</span>BigUint, input2: <span class="kw-2">&amp;</span>BigUint, bytes: usize) -&gt; BigUint {
+        <span class="kw">let </span>in1 = to_padded_bytes(input1, bytes);
+        <span class="kw">let </span>in2 = to_padded_bytes(input2, bytes);
+        BigUint::from_bytes_le(
+            <span class="kw-2">&amp;</span>in1.iter()
+                .zip(in2.iter())
+                .map(|(b1, b2)| b1 &amp; b2)
                 .collect::&lt;Vec&lt;u8&gt;&gt;(),
         )
     }
@@ -155,7 +209,33 @@
         <span class="kw">let </span>big1 = BigUint::from_bytes_le(<span class="kw-2">&amp;</span>input1);
         <span class="kw">let </span>big2 = BigUint::from_bytes_le(<span class="kw-2">&amp;</span>input2);
         <span class="macro">assert_eq!</span>(
-            BigUint::bitxor(<span class="kw-2">&amp;</span>big1, <span class="kw-2">&amp;</span>big2),
+            BigUint::bitwise_xor(<span class="kw-2">&amp;</span>big1, <span class="kw-2">&amp;</span>big2),
+            BigUint::from_bytes_le(<span class="kw-2">&amp;</span>output)
+        );
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_and_256bits() {
+        <span class="kw">let </span>input1: Vec&lt;u8&gt; = <span class="macro">vec!</span>[
+            <span class="number">123</span>, <span class="number">18</span>, <span class="number">7</span>, <span class="number">249</span>, <span class="number">123</span>, <span class="number">134</span>, <span class="number">183</span>, <span class="number">124</span>, <span class="number">11</span>, <span class="number">37</span>, <span class="number">29</span>, <span class="number">2</span>, <span class="number">76</span>, <span class="number">29</span>, <span class="number">3</span>, <span class="number">1</span>, <span class="number">100</span>, <span class="number">101</span>, <span class="number">102</span>, <span class="number">103</span>,
+            <span class="number">104</span>, <span class="number">105</span>, <span class="number">106</span>, <span class="number">107</span>, <span class="number">108</span>, <span class="number">109</span>, <span class="number">110</span>, <span class="number">111</span>, <span class="number">112</span>, <span class="number">113</span>, <span class="number">114</span>, <span class="number">115</span>, <span class="number">200</span>, <span class="number">201</span>, <span class="number">202</span>, <span class="number">203</span>, <span class="number">204</span>,
+            <span class="number">205</span>, <span class="number">206</span>, <span class="number">207</span>, <span class="number">208</span>, <span class="number">209</span>, <span class="number">210</span>, <span class="number">211</span>, <span class="number">212</span>, <span class="number">213</span>, <span class="number">214</span>, <span class="number">215</span>,
+        ];
+        <span class="kw">let </span>input2: Vec&lt;u8&gt; = <span class="macro">vec!</span>[
+            <span class="number">33</span>, <span class="number">76</span>, <span class="number">13</span>, <span class="number">224</span>, <span class="number">2</span>, <span class="number">0</span>, <span class="number">21</span>, <span class="number">96</span>, <span class="number">131</span>, <span class="number">137</span>, <span class="number">229</span>, <span class="number">200</span>, <span class="number">128</span>, <span class="number">255</span>, <span class="number">127</span>, <span class="number">15</span>, <span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>, <span class="number">4</span>, <span class="number">5</span>, <span class="number">6</span>,
+            <span class="number">7</span>, <span class="number">8</span>, <span class="number">9</span>, <span class="number">10</span>, <span class="number">11</span>, <span class="number">12</span>, <span class="number">13</span>, <span class="number">14</span>, <span class="number">15</span>, <span class="number">16</span>, <span class="number">80</span>, <span class="number">81</span>, <span class="number">82</span>, <span class="number">93</span>, <span class="number">94</span>, <span class="number">95</span>, <span class="number">76</span>, <span class="number">77</span>, <span class="number">78</span>, <span class="number">69</span>, <span class="number">60</span>, <span class="number">61</span>,
+            <span class="number">52</span>, <span class="number">53</span>, <span class="number">54</span>, <span class="number">45</span>,
+        ];
+        <span class="kw">let </span>output: Vec&lt;u8&gt; = <span class="macro">vec!</span>[
+            <span class="number">33</span>, <span class="number">0</span>, <span class="number">5</span>, <span class="number">224</span>, <span class="number">2</span>, <span class="number">0</span>, <span class="number">21</span>, <span class="number">96</span>, <span class="number">3</span>, <span class="number">1</span>, <span class="number">5</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">29</span>, <span class="number">3</span>, <span class="number">1</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">4</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">8</span>, <span class="number">8</span>, <span class="number">8</span>, <span class="number">10</span>,
+            <span class="number">12</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">2</span>, <span class="number">16</span>, <span class="number">64</span>, <span class="number">65</span>, <span class="number">66</span>, <span class="number">73</span>, <span class="number">76</span>, <span class="number">77</span>, <span class="number">76</span>, <span class="number">77</span>, <span class="number">64</span>, <span class="number">65</span>, <span class="number">16</span>, <span class="number">17</span>, <span class="number">20</span>, <span class="number">21</span>, <span class="number">22</span>, <span class="number">5</span>,
+        ];
+        <span class="macro">assert_eq!</span>(
+            BigUint::bitwise_and(
+                <span class="kw-2">&amp;</span>BigUint::from_bytes_le(<span class="kw-2">&amp;</span>input1),
+                <span class="kw-2">&amp;</span>BigUint::from_bytes_le(<span class="kw-2">&amp;</span>input2),
+                <span class="number">256</span>,
+            ),
             BigUint::from_bytes_le(<span class="kw-2">&amp;</span>output)
         );
     }
@@ -167,7 +247,7 @@
                 <span class="kw">let </span>input1 = BigUint::from(byte1 <span class="kw">as </span>u8);
                 <span class="kw">let </span>input2 = BigUint::from(byte2 <span class="kw">as </span>u8);
                 <span class="macro">assert_eq!</span>(
-                    BigUint::bitxor(<span class="kw-2">&amp;</span>input1, <span class="kw-2">&amp;</span>input2),
+                    BigUint::bitwise_xor(<span class="kw-2">&amp;</span>input1, <span class="kw-2">&amp;</span>input2),
                     BigUint::from((byte1 ^ byte2) <span class="kw">as </span>u8)
                 );
             }

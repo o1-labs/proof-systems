@@ -345,8 +345,6 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].
 
 </span><span class="kw">use </span>ark_ff::{BigInteger, Field, FpParameters, PrimeField};
@@ -394,6 +392,25 @@
             <span class="kw">let </span>bits = bits.unwrap();
             <span class="self">self</span>.gen_field_with_bits(bits)
         }
+    }
+}
+
+<span class="doccomment">/// Helper to obtain two
+</span><span class="kw">pub trait </span>Two&lt;F&gt; {
+    <span class="doccomment">/// Value two
+    </span><span class="kw">fn </span>two() -&gt; F;
+
+    <span class="doccomment">/// Power of two
+    </span><span class="kw">fn </span>two_pow(pow: u64) -&gt; F;
+}
+
+<span class="kw">impl</span>&lt;F: Field&gt; Two&lt;F&gt; <span class="kw">for </span>F {
+    <span class="kw">fn </span>two() -&gt; F {
+        F::from(<span class="number">2u8</span>)
+    }
+
+    <span class="kw">fn </span>two_pow(pow: u64) -&gt; F {
+        F::two().pow(<span class="kw-2">&amp;</span>[pow])
     }
 }
 
@@ -533,7 +550,6 @@
     <span class="kw">use </span>ark_ec::AffineCurve;
     <span class="kw">use </span>ark_ff::One;
     <span class="kw">use </span>mina_curves::pasta::Pallas <span class="kw">as </span>CurvePoint;
-    <span class="kw">use </span>BigUintFieldHelpers;
 
     <span class="doccomment">/// Base field element type
     </span><span class="kw">pub type </span>BaseField = &lt;CurvePoint <span class="kw">as </span>AffineCurve&gt;::BaseField;
@@ -566,7 +582,7 @@
         <span class="macro">assert!</span>(BaseField::from_hex(
             <span class="string">&quot;25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39&quot;
         </span>)
-        .is_ok(),);
+        .is_ok());
 
         <span class="kw">let </span>field_hex = <span class="string">&quot;f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36&quot;</span>;
         <span class="macro">assert_eq!</span>(
@@ -625,7 +641,7 @@
             .expect(<span class="string">&quot;Failed to deserialize field hex&quot;</span>)
             .to_bits()
         )
-        .is_ok(),);
+        .is_ok());
 
         <span class="macro">assert_eq!</span>(
             BaseField::from_bits(<span class="kw-2">&amp;</span><span class="macro">vec!</span>[<span class="bool-val">true</span>; BaseField::size_in_bits()]),
@@ -641,7 +657,7 @@
     }
 
     <span class="attr">#[test]
-    </span><span class="kw">fn </span>field_biguit_field_helpers() {
+    </span><span class="kw">fn </span>field_big() {
         <span class="kw">let </span>fe_1024 = BaseField::from(<span class="number">1024u32</span>);
         <span class="kw">let </span>big_1024 = fe_1024.into();
         <span class="macro">assert_eq!</span>(big_1024, BigUint::new(<span class="macro">vec!</span>[<span class="number">1024</span>]));
@@ -674,26 +690,6 @@
             BaseField::from_biguint(big_zero_32).expect(<span class="string">&quot;Failed&quot;</span>),
             BaseField::from_biguint(big_zero_1).expect(<span class="string">&quot;Failed&quot;</span>)
         );
-
-        <span class="macro">assert_eq!</span>(
-            BigUint::from_bytes_be(<span class="kw-2">&amp;</span>BaseField::from(<span class="number">0u32</span>).into_repr().to_bytes_be()),
-            BigUint::from_bytes_be(<span class="kw-2">&amp;</span>[<span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>])
-        );
-
-        <span class="macro">assert_eq!</span>(
-            BaseField::from_biguint(BigUint::from_bytes_be(<span class="kw-2">&amp;</span>[<span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>, <span class="number">0x00</span>]))
-                .expect(<span class="string">&quot;Failed to convert big uint&quot;</span>),
-            BaseField::from(<span class="number">0u32</span>)
-        );
-
-        <span class="kw">let </span>bytes = [
-            <span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>, <span class="number">149</span>, <span class="number">45</span>, <span class="number">39</span>, <span class="number">185</span>, <span class="number">126</span>, <span class="number">202</span>, <span class="number">208</span>, <span class="number">104</span>, <span class="number">182</span>, <span class="number">152</span>,
-            <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8</span>,
-        ];
-        <span class="kw">let </span>fe = BaseField::from_bytes(<span class="kw-2">&amp;</span>bytes).expect(<span class="string">&quot;failed to create field element from bytes&quot;</span>);
-        <span class="kw">let </span>bi = BigUint::from_bytes_le(<span class="kw-2">&amp;</span>bytes);
-        <span class="macro">assert_eq!</span>(fe.to_biguint(), bi);
-        <span class="macro">assert_eq!</span>(bi.to_field::&lt;BaseField&gt;().unwrap(), fe);
     }
 }
 </code></pre></div>

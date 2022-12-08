@@ -583,6 +583,15 @@
 <a href="#583" id="583">583</a>
 <a href="#584" id="584">584</a>
 <a href="#585" id="585">585</a>
+<a href="#586" id="586">586</a>
+<a href="#587" id="587">587</a>
+<a href="#588" id="588">588</a>
+<a href="#589" id="589">589</a>
+<a href="#590" id="590">590</a>
+<a href="#591" id="591">591</a>
+<a href="#592" id="592">592</a>
+<a href="#593" id="593">593</a>
+<a href="#594" id="594">594</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -606,7 +615,11 @@
 <span class="kw">use </span>std::io::{<span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write};
 <span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use super</span>::{argument::ArgumentWitness, expr, polynomials::xor};
+<span class="kw">use super</span>::{
+    argument::ArgumentWitness,
+    expr,
+    polynomials::{rot, xor},
+};
 
 <span class="doccomment">/// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -697,6 +710,7 @@
     ForeignFieldMul = <span class="number">19</span>,
     <span class="comment">// Gates for Keccak
     </span>Xor16 = <span class="number">20</span>,
+    Rot64 = <span class="number">21</span>,
 }
 
 <span class="doccomment">/// Gate error
@@ -825,6 +839,9 @@
             Xor16 =&gt; <span class="self">self
                 </span>.verify_xor::&lt;G&gt;(row, witness, index)
                 .map_err(|e| e.to_string()),
+            Rot64 =&gt; <span class="self">self
+                </span>.verify_rot::&lt;G&gt;(row, witness, index)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -913,6 +930,7 @@
                 foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(<span class="kw-2">&amp;</span>env)
             }
             GateType::Xor16 =&gt; xor::Xor16::constraint_checks(<span class="kw-2">&amp;</span>env),
+            GateType::Rot64 =&gt; rot::Rot64::constraint_checks(<span class="kw-2">&amp;</span>env),
         };
 
         <span class="comment">// Check for failed constraints
