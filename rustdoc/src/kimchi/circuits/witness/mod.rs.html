@@ -206,14 +206,11 @@
 <a href="#206" id="206">206</a>
 <a href="#207" id="207">207</a>
 <a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
 </pre><pre class="rust"><code><span class="kw">use </span>ark_ff::{Field, PrimeField};
 <span class="kw">mod </span>constant_cell;
 <span class="kw">mod </span>copy_bits_cell;
 <span class="kw">mod </span>copy_cell;
 <span class="kw">mod </span>copy_shift_cell;
-<span class="kw">mod </span>crumb_cell;
 <span class="kw">mod </span>variable_bits_cell;
 <span class="kw">mod </span>variable_cell;
 <span class="kw">mod </span>variables;
@@ -223,7 +220,6 @@
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
     copy_shift_cell::CopyShiftCell,
-    crumb_cell::CrumbCell,
     variable_bits_cell::VariableBitsCell,
     variable_cell::VariableCell,
     variables::{variable_map, variables, Variables},

@@ -520,22 +520,6 @@
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
 <a href="#522" id="522">522</a>
-<a href="#523" id="523">523</a>
-<a href="#524" id="524">524</a>
-<a href="#525" id="525">525</a>
-<a href="#526" id="526">526</a>
-<a href="#527" id="527">527</a>
-<a href="#528" id="528">528</a>
-<a href="#529" id="529">529</a>
-<a href="#530" id="530">530</a>
-<a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
-<a href="#536" id="536">536</a>
-<a href="#537" id="537">537</a>
-<a href="#538" id="538">538</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
@@ -544,7 +528,7 @@
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{<span class="self">self</span>, constraints::ExprOps, l0_1, Environment, LookupEnvironment, E},
+        expr::{<span class="self">self</span>, constraints::ExprOps, l0_1, Environment, LookupEnvironment},
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
             <span class="self">self</span>,
@@ -553,7 +537,7 @@
         },
         polynomial::COLUMNS,
         wires::Wire,
-        witness::{<span class="self">self</span>, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
+        witness::{<span class="self">self</span>, ConstantCell, CopyBitsCell, VariableBitsCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,
@@ -563,10 +547,12 @@
 <span class="kw">use </span>ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitOps, FieldHelpers};
 <span class="kw">use </span>rand::{rngs::StdRng, SeedableRng};
 <span class="kw">use </span>std::{array, collections::HashMap, marker::PhantomData};
 
-<span class="kw">pub const </span>GATE_COUNT: usize = <span class="number">1</span>;
+<span class="kw">use </span><span class="kw">super</span>::generic::GenericGateSpec;
 
 <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Creates a XOR gadget for `bits` length
@@ -576,7 +562,7 @@
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
-    </span><span class="kw">pub fn </span>create_xor(new_row: usize, bits: usize) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
+    </span><span class="kw">pub fn </span>create_xor_gadget(new_row: usize, bits: usize) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
         <span class="kw">let </span>num_xors = num_xors(bits);
         <span class="kw">let </span><span class="kw-2">mut </span>gates = (<span class="number">0</span>..num_xors)
             .map(|i| CircuitGate {
@@ -586,11 +572,11 @@
             })
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>zero_row = new_row + num_xors;
-        gates.push(CircuitGate {
-            typ: GateType::Generic,
-            wires: Wire::for_row(zero_row),
-            coeffs: <span class="macro">vec!</span>[F::one()],
-        });
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::for_row(zero_row),
+            GenericGateSpec::Const(F::zero()),
+            <span class="prelude-val">None</span>,
+        ));
         <span class="comment">// check fin_in1, fin_in2, fin_out are zero
         </span>gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">1</span>));
         gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">2</span>));
@@ -605,7 +591,7 @@
         witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
         index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;,
     ) -&gt; CircuitGateResult&lt;()&gt; {
-        <span class="kw">if </span>!circuit_gates().contains(<span class="kw-2">&amp;</span><span class="self">self</span>.typ) {
+        <span class="kw">if </span>GateType::Xor16 != <span class="self">self</span>.typ {
             <span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::InvalidCircuitGateType(<span class="self">self</span>.typ));
         }
 
@@ -694,13 +680,10 @@
 
         <span class="comment">// Setup powers of alpha
         </span><span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;F&gt;::default();
-        alphas.register(
-            ArgumentType::Gate(<span class="self">self</span>.typ),
-            circuit_gate_constraint_count::&lt;F&gt;(<span class="self">self</span>.typ),
-        );
+        alphas.register(ArgumentType::Gate(<span class="self">self</span>.typ), Xor16::&lt;F&gt;::CONSTRAINTS);
 
         <span class="comment">// Get constraints for this circuit gate
-        </span><span class="kw">let </span>constraints = circuit_gate_constraints(<span class="self">self</span>.typ, <span class="kw-2">&amp;</span>alphas);
+        </span><span class="kw">let </span>constraints = Xor16::combined_constraints(<span class="kw-2">&amp;</span>alphas);
 
         <span class="comment">// Verify it against the environment
         </span><span class="kw">if </span>constraints
@@ -855,32 +838,6 @@
     })
 }
 
-<span class="doccomment">/// Get vector of xor circuit gate types
-</span><span class="kw">pub fn </span>circuit_gates() -&gt; [GateType; GATE_COUNT] {
-    [GateType::Xor16]
-}
-
-<span class="doccomment">/// Number of constraints for a given xor gate type
-</span><span class="kw">pub fn </span>circuit_gate_constraint_count&lt;F: PrimeField&gt;(typ: GateType) -&gt; u32 {
-    <span class="kw">match </span>typ {
-        GateType::Xor16 =&gt; Xor16::&lt;F&gt;::CONSTRAINTS,
-        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid gate type&quot;</span>),
-    }
-}
-
-<span class="doccomment">/// Get combined constraints for a given xor circuit gate type
-</span><span class="kw">pub fn </span>circuit_gate_constraints&lt;F: PrimeField&gt;(typ: GateType, alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
-    <span class="kw">match </span>typ {
-        GateType::Xor16 =&gt; Xor16::combined_constraints(alphas),
-        <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid gate type&quot;</span>),
-    }
-}
-
-<span class="doccomment">/// Get the combined constraints for all xor circuit gate types
-</span><span class="kw">pub fn </span>combined_constraints&lt;F: PrimeField&gt;(alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
-    Xor16::combined_constraints(alphas)
-}
-
 <span class="doccomment">/// Get the xor lookup table
 </span><span class="kw">pub fn </span>lookup_table&lt;F: PrimeField&gt;() -&gt; LookupTable&lt;F&gt; {
     lookup::tables::get_table::&lt;F&gt;(GateLookupTable::Xor)
@@ -897,7 +854,7 @@
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate
 //~
-//~ The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+//~ The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
@@ -969,11 +926,6 @@
 }
 
 <span class="comment">// Witness layout
-//   * The values of the crumbs appear with the least significant crumb first
-//     but with big endian ordering of the bits inside the 32/64 element.
-//   * The first column of the XOR row and the first and second columns of the
-//     Zero rows must be instantiated before the rest, otherwise they copy 0.
-//
 </span><span class="kw">fn </span>layout&lt;F: PrimeField&gt;(curr_row: usize, bits: usize) -&gt; Vec&lt;[Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;; COLUMNS]&gt; {
     <span class="kw">let </span>num_xor = num_xors(bits);
     <span class="kw">let </span><span class="kw-2">mut </span>layout = (<span class="number">0</span>..num_xor)
@@ -983,23 +935,24 @@
     layout
 }
 
-<span class="kw">fn </span>xor_row&lt;F: PrimeField&gt;(crumb: usize, curr_row: usize) -&gt; [Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;; COLUMNS] {
+<span class="kw">fn </span>xor_row&lt;F: PrimeField&gt;(nybble: usize, curr_row: usize) -&gt; [Box&lt;<span class="kw">dyn </span>WitnessCell&lt;F&gt;&gt;; COLUMNS] {
+    <span class="kw">let </span>start = nybble * <span class="number">16</span>;
     [
-        CrumbCell::create(<span class="string">&quot;in1&quot;</span>, crumb),
-        CrumbCell::create(<span class="string">&quot;in2&quot;</span>, crumb),
-        CrumbCell::create(<span class="string">&quot;out&quot;</span>, crumb),
-        CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">0</span>, <span class="number">4</span>), <span class="comment">// First 4-bit crumb of in1
-        </span>CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">4</span>, <span class="number">8</span>), <span class="comment">// Second 4-bit crumb of in1
-        </span>CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">8</span>, <span class="number">12</span>), <span class="comment">// Third 4-bit crumb of in1
-        </span>CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">12</span>, <span class="number">16</span>), <span class="comment">// Fourth 4-bit crumb of in1
-        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">0</span>, <span class="number">4</span>), <span class="comment">// First 4-bit crumb of in2
-        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">4</span>, <span class="number">8</span>), <span class="comment">// Second 4-bit crumb of in2
-        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">8</span>, <span class="number">12</span>), <span class="comment">// Third 4-bit crumb of in2
-        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">12</span>, <span class="number">16</span>), <span class="comment">// Fourth 4-bit crumb of in2
-        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">0</span>, <span class="number">4</span>), <span class="comment">// First 4-bit crumb of out
-        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">4</span>, <span class="number">8</span>), <span class="comment">// Second 4-bit crumb of out
-        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">8</span>, <span class="number">12</span>), <span class="comment">// Third 4-bit crumb of out
-        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">12</span>, <span class="number">16</span>), <span class="comment">// Fourth 4-bit crumb of out
+        VariableBitsCell::create(<span class="string">&quot;in1&quot;</span>, start, <span class="prelude-val">None</span>),
+        VariableBitsCell::create(<span class="string">&quot;in2&quot;</span>, start, <span class="prelude-val">None</span>),
+        VariableBitsCell::create(<span class="string">&quot;out&quot;</span>, start, <span class="prelude-val">None</span>),
+        CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">0</span>, <span class="number">4</span>), <span class="comment">// First 4-bit nybble of in1
+        </span>CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">4</span>, <span class="number">8</span>), <span class="comment">// Second 4-bit nybble of in1
+        </span>CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">8</span>, <span class="number">12</span>), <span class="comment">// Third 4-bit nybble of in1
+        </span>CopyBitsCell::create(curr_row, <span class="number">0</span>, <span class="number">12</span>, <span class="number">16</span>), <span class="comment">// Fourth 4-bit nybble of in1
+        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">0</span>, <span class="number">4</span>), <span class="comment">// First 4-bit nybble of in2
+        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">4</span>, <span class="number">8</span>), <span class="comment">// Second 4-bit nybble of in2
+        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">8</span>, <span class="number">12</span>), <span class="comment">// Third 4-bit nybble of in2
+        </span>CopyBitsCell::create(curr_row, <span class="number">1</span>, <span class="number">12</span>, <span class="number">16</span>), <span class="comment">// Fourth 4-bit nybble of in2
+        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">0</span>, <span class="number">4</span>), <span class="comment">// First 4-bit nybble of out
+        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">4</span>, <span class="number">8</span>), <span class="comment">// Second 4-bit nybble of out
+        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">8</span>, <span class="number">12</span>), <span class="comment">// Third 4-bit nybble of out
+        </span>CopyBitsCell::create(curr_row, <span class="number">2</span>, <span class="number">12</span>, <span class="number">16</span>), <span class="comment">// Fourth 4-bit nybble of out
     </span>]
 }
 
@@ -1023,7 +976,7 @@
     ]
 }
 
-<span class="kw">fn </span>init_xor&lt;F: PrimeField&gt;(
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>init_xor&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     curr_row: usize,
     bits: usize,
@@ -1039,13 +992,21 @@
     )
 }
 
-<span class="doccomment">/// Extends the xor rows to the full witness
+<span class="doccomment">/// Extends the Xor rows to the full witness
+/// Panics if the words are larger than the desired bits
 </span><span class="kw">pub fn </span>extend_xor_rows&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     bits: usize,
     words: (F, F, F),
 ) {
-    <span class="kw">let </span>xor_witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); num_xors(bits) + <span class="number">1</span>]);
+    <span class="kw">let </span>input1_big = words.<span class="number">0</span>.to_biguint();
+    <span class="kw">let </span>input2_big = words.<span class="number">1</span>.to_biguint();
+    <span class="kw">let </span>output_big = words.<span class="number">2</span>.to_biguint();
+    <span class="kw">if </span>bits &lt; input1_big.bitlen() || bits &lt; input2_big.bitlen() || bits &lt; output_big.bitlen() {
+        <span class="macro">panic!</span>(<span class="string">&quot;Bits must be greater or equal than the inputs length&quot;</span>);
+    }
+    <span class="kw">let </span>xor_witness: [Vec&lt;F&gt;; COLUMNS] =
+        array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">1 </span>+ num_xors(bits) <span class="kw">as </span>usize]);
     <span class="kw">let </span>xor_row = witness[<span class="number">0</span>].len();
     <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
@@ -1053,18 +1014,25 @@
     init_xor(witness, xor_row, bits, words);
 }
 
-<span class="doccomment">/// Create a keccak Xor for up to 128 bits
-/// Input: first input and second input
-</span><span class="kw">pub fn </span>create&lt;F: PrimeField&gt;(input1: u128, input2: u128, bits: usize) -&gt; [Vec&lt;F&gt;; COLUMNS] {
-    <span class="kw">let </span>output = input1 ^ input2;
+<span class="doccomment">/// Create a Xor for up to the native length starting at row 0
+/// Input: first input and second input, bits length, current row
+/// Panics if the desired bits is smaller than the inputs length
+</span><span class="kw">pub fn </span>create_xor_witness&lt;F: PrimeField&gt;(input1: F, input2: F, bits: usize) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+    <span class="kw">let </span>input1_big = input1.to_biguint();
+    <span class="kw">let </span>input2_big = input2.to_biguint();
+    <span class="kw">if </span>bits &lt; input1_big.bitlen() || bits &lt; input2_big.bitlen() {
+        <span class="macro">panic!</span>(<span class="string">&quot;Bits must be greater or equal than the inputs length&quot;</span>);
+    }
+    <span class="kw">let </span>output = BigUint::bitxor(<span class="kw-2">&amp;</span>input1_big, <span class="kw-2">&amp;</span>input2_big);
 
     <span class="kw">let </span><span class="kw-2">mut </span>xor_witness: [Vec&lt;F&gt;; COLUMNS] =
-        array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); num_xors(bits) + <span class="number">1</span>]);
+        array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">1 </span>+ num_xors(bits) <span class="kw">as </span>usize]);
+
     init_xor(
         <span class="kw-2">&amp;mut </span>xor_witness,
         <span class="number">0</span>,
         bits,
-        (F::from(input1), F::from(input2), F::from(output)),
+        (input1, input2, output.to_field().unwrap()),
     );
 
     xor_witness

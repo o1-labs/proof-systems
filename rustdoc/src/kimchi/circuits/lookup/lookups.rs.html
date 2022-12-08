@@ -473,6 +473,8 @@
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
 <a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
@@ -760,18 +762,18 @@
 </span><span class="kw">pub enum </span>LookupPattern {
     Xor,
     ChaChaFinal,
-    LookupGate,
-    RangeCheckGate,
-    ForeignFieldMulGate,
+    Lookup,
+    RangeCheck,
+    ForeignFieldMul,
 }
 
 <span class="kw">impl </span>LookupPattern {
     <span class="doccomment">/// Returns the maximum number of lookups per row that are used by the pattern.
     </span><span class="kw">pub fn </span>max_lookups_per_row(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="kw">match </span><span class="self">self </span>{
-            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate =&gt; <span class="number">4</span>,
-            LookupPattern::LookupGate =&gt; <span class="number">3</span>,
-            LookupPattern::ForeignFieldMulGate =&gt; <span class="number">2</span>,
+            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck =&gt; <span class="number">4</span>,
+            LookupPattern::Lookup =&gt; <span class="number">3</span>,
+            LookupPattern::ForeignFieldMul =&gt; <span class="number">2</span>,
         }
     }
 
@@ -779,8 +781,8 @@
     </span><span class="kw">pub fn </span>max_joint_size(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="kw">match </span><span class="self">self </span>{
             LookupPattern::Xor | LookupPattern::ChaChaFinal =&gt; <span class="number">3</span>,
-            LookupPattern::LookupGate =&gt; <span class="number">2</span>,
-            LookupPattern::ForeignFieldMulGate | LookupPattern::RangeCheckGate =&gt; <span class="number">1</span>,
+            LookupPattern::Lookup =&gt; <span class="number">2</span>,
+            LookupPattern::ForeignFieldMul | LookupPattern::RangeCheck =&gt; <span class="number">1</span>,
         }
     }
 
@@ -838,7 +840,7 @@
                     })
                     .collect()
             }
-            LookupPattern::LookupGate =&gt; {
+            LookupPattern::Lookup =&gt; {
                 (<span class="number">0</span>..<span class="number">3</span>)
                     .map(|i| {
                         <span class="comment">// 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -857,7 +859,7 @@
                     })
                     .collect()
             }
-            LookupPattern::RangeCheckGate =&gt; {
+            LookupPattern::RangeCheck =&gt; {
                 (<span class="number">3</span>..=<span class="number">6</span>)
                     .map(|column| {
                         <span class="comment">//   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -871,7 +873,7 @@
                     })
                     .collect()
             }
-            LookupPattern::ForeignFieldMulGate =&gt; {
+            LookupPattern::ForeignFieldMul =&gt; {
                 (<span class="number">7</span>..=<span class="number">8</span>)
                     .map(|column| {
                         <span class="comment">//   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -892,9 +894,9 @@
     </span><span class="kw">pub fn </span>table(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;GateLookupTable&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             LookupPattern::Xor | LookupPattern::ChaChaFinal =&gt; <span class="prelude-val">Some</span>(GateLookupTable::Xor),
-            LookupPattern::LookupGate =&gt; <span class="prelude-val">None</span>,
-            LookupPattern::RangeCheckGate =&gt; <span class="prelude-val">Some</span>(GateLookupTable::RangeCheck),
-            LookupPattern::ForeignFieldMulGate =&gt; <span class="prelude-val">Some</span>(GateLookupTable::RangeCheck),
+            LookupPattern::Lookup =&gt; <span class="prelude-val">None</span>,
+            LookupPattern::RangeCheck =&gt; <span class="prelude-val">Some</span>(GateLookupTable::RangeCheck),
+            LookupPattern::ForeignFieldMul =&gt; <span class="prelude-val">Some</span>(GateLookupTable::RangeCheck),
         }
     }
 
@@ -905,9 +907,11 @@
         <span class="kw">match </span>(gate_type, curr_or_next) {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) =&gt; <span class="prelude-val">Some</span>(LookupPattern::Xor),
             (ChaChaFinal, Curr | Next) =&gt; <span class="prelude-val">Some</span>(LookupPattern::ChaChaFinal),
-            (Lookup, Curr) =&gt; <span class="prelude-val">Some</span>(LookupPattern::LookupGate),
-            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) =&gt; <span class="prelude-val">Some</span>(LookupPattern::RangeCheckGate),
-            (ForeignFieldMul, Curr) =&gt; <span class="prelude-val">Some</span>(LookupPattern::ForeignFieldMulGate),
+            (Lookup, Curr) =&gt; <span class="prelude-val">Some</span>(LookupPattern::Lookup),
+            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) | (Rot64, Curr) =&gt; {
+                <span class="prelude-val">Some</span>(LookupPattern::RangeCheck)
+            }
+            (ForeignFieldMul, Curr) =&gt; <span class="prelude-val">Some</span>(LookupPattern::ForeignFieldMul),
             (Xor16, Curr) =&gt; <span class="prelude-val">Some</span>(LookupPattern::Xor),
             <span class="kw">_ </span>=&gt; <span class="prelude-val">None</span>,
         }
@@ -925,9 +929,9 @@
         <span class="macro">vec!</span>[
             LookupPattern::Xor,
             LookupPattern::ChaChaFinal,
-            LookupPattern::LookupGate,
-            LookupPattern::RangeCheckGate,
-            LookupPattern::ForeignFieldMulGate,
+            LookupPattern::Lookup,
+            LookupPattern::RangeCheck,
+            LookupPattern::ForeignFieldMul,
         ]
     }
 }

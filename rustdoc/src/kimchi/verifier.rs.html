@@ -832,6 +832,7 @@
 <a href="#832" id="832">832</a>
 <a href="#833" id="833">833</a>
 <a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -908,9 +909,10 @@
                     CairoClaim | CairoInstruction | CairoFlags | CairoTransition =&gt; <span class="prelude-val">None</span>,
                     RangeCheck0 =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.range_check_comm.as_ref()<span class="question-mark">?</span>[<span class="number">0</span>]),
                     RangeCheck1 =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.range_check_comm.as_ref()<span class="question-mark">?</span>[<span class="number">1</span>]),
-                    Xor16 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.xor_comm.as_ref()<span class="question-mark">?</span>),
                     ForeignFieldAdd =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.foreign_field_add_comm.as_ref()<span class="question-mark">?</span>),
                     ForeignFieldMul =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.foreign_field_mul_comm.as_ref()<span class="question-mark">?</span>),
+                    Xor16 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.xor_comm.as_ref()<span class="question-mark">?</span>),
+                    Rot64 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.rot_comm.as_ref()<span class="question-mark">?</span>),
                 }
             }
         }

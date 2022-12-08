@@ -514,6 +514,20 @@
 <a href="#514" id="514">514</a>
 <a href="#515" id="515">515</a>
 <a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
@@ -645,6 +659,10 @@
     <span class="doccomment">/// Xor commitments
     </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>xor_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
+
+    <span class="doccomment">/// Rot commitments
+    </span><span class="attr">#[serde(bound = <span class="string">&quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;</span>)]
+    </span><span class="kw">pub </span>rot_comm: <span class="prelude-ty">Option</span>&lt;PolyComm&lt;G&gt;&gt;,
 
     <span class="doccomment">/// wire coordinate shifts
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
@@ -797,6 +815,11 @@
                 .xor_selector8
                 .as_ref()
                 .map(|eval8| <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, eval8)),
+            rot_comm: <span class="self">self
+                </span>.column_evaluations
+                .rot_selector8
+                .as_ref()
+                .map(|eval8| <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: <span class="self">self</span>.cs.shift,
             zkpm: {
@@ -931,6 +954,7 @@
             foreign_field_mul_comm,
             foreign_field_modulus: <span class="kw">_</span>,
             xor_comm,
+            rot_comm,
 
             <span class="comment">// Lookup index; optional
             </span>lookup_index,
@@ -982,6 +1006,10 @@
             fq_sponge.absorb_g(<span class="kw-2">&amp;</span>xor_comm.unshifted);
         }
 
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(rot_comm) = rot_comm {
+            fq_sponge.absorb_g(<span class="kw-2">&amp;</span>rot_comm.unshifted);
+        }
+
         <span class="comment">// Lookup index; optional
 
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(LookupVerifierIndex {
@@ -995,9 +1023,9 @@
                 LookupSelectors {
                     xor,
                     chacha_final,
-                    lookup_gate,
-                    range_check_gate,
-                    ffmul_gate,
+                    lookup,
+                    range_check,
+                    ffmul,
                 },
         }) = lookup_index
         {
@@ -1017,14 +1045,14 @@
             <span class="kw">if let </span><span class="prelude-val">Some</span>(chacha_final) = chacha_final {
                 fq_sponge.absorb_g(<span class="kw-2">&amp;</span>chacha_final.unshifted);
             }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(lookup_gate) = lookup_gate {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>lookup_gate.unshifted);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(lookup) = lookup {
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>lookup.unshifted);
             }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(range_check_gate) = range_check_gate {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check_gate.unshifted);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(range_check) = range_check {
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>range_check.unshifted);
             }
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(ffmul_gate) = ffmul_gate {
-                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>ffmul_gate.unshifted);
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(ffmul) = ffmul {
+                fq_sponge.absorb_g(<span class="kw-2">&amp;</span>ffmul.unshifted);
             }
         }
         fq_sponge.digest_fq()

@@ -416,7 +416,7 @@ columns, those entries that have the dummy value of</p>
 <p><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.854em;vertical-align:-0.1944em;"></span><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.7278em;vertical-align:-0.0833em;"></span><span class="mord">0</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1.0585em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.05724em;">j</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">∗</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.6444em;"></span><span class="mord">0</span></span></span></span></span></p>
 <p>will translate into a scalar multiplication by 0, which is free.</p>
 <h4 id="the-lookup-selectors"><a class="header" href="#the-lookup-selectors">The Lookup Selectors</a></h4>
-<p><strong>ChaChaSelector</strong>. Performs 4 queries to the XOR lookup table.</p>
+<p><strong>XorSelector</strong>. Performs 4 queries to the XOR lookup table.</p>
 <div class="table-wrapper"><table><thead><tr><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th><th>-</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th><th>-</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th><th>-</th><th style="text-align: center">l</th><th style="text-align: center">r</th><th style="text-align: center">o</th></tr></thead><tbody>
 <tr><td style="text-align: center">1, r3</td><td style="text-align: center">1, r7</td><td style="text-align: center">1, r11</td><td>-</td><td style="text-align: center">1, r4</td><td style="text-align: center">1, r8</td><td style="text-align: center">1, r12</td><td>-</td><td style="text-align: center">1, r5</td><td style="text-align: center">1, r9</td><td style="text-align: center">1, r13</td><td>-</td><td style="text-align: center">1, r6</td><td style="text-align: center">1, r10</td><td style="text-align: center">1, r14</td></tr>
 </tbody></table>
@@ -1368,7 +1368,7 @@ It uses three different types of constraints
 * plookup       - xor-table plookup (4-bits)
 * decomposition - the constraints inside the gate
 
-The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
 Given values `in1`, `in2` and `out`, the layout looks like this:
 
 | Column |          `Curr`  |          `Next`  |
@@ -1715,6 +1715,10 @@ pub struct VerifierIndex&lt;G: KimchiCurve&gt; {
     /// Xor commitments
     #[serde(bound = &quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
     pub xor_comm: Option&lt;PolyComm&lt;G&gt;&gt;,
+
+    /// Rot commitments
+    #[serde(bound = &quot;Option&lt;PolyComm&lt;G&gt;&gt;: Serialize + DeserializeOwned&quot;)]
+    pub rot_comm: Option&lt;PolyComm&lt;G&gt;&gt;,
 
     /// wire coordinate shifts
     #[serde_as(as = &quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;)]

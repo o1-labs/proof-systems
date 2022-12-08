@@ -220,6 +220,16 @@
 <a href="#220" id="220">220</a>
 <a href="#221" id="221">221</a>
 <a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::alphas::Alphas;
@@ -234,9 +244,8 @@
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::poseidon::Poseidon;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::range_check;
 <span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::varbasemul::VarbaseMul;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::{generic, permutation, xor};
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::{generic, permutation, range_check, rot, xor};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
@@ -335,6 +344,17 @@
             }
         } <span class="kw">else </span>{
             expr += Expr::EnabledIf(FeatureFlag::Xor, Box::new(xor_expr()));
+        }
+    }
+
+    {
+        <span class="kw">let </span>rot_expr = || rot::Rot64::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(feature_flags) = feature_flags {
+            <span class="kw">if </span>feature_flags.rot {
+                expr += rot_expr();
+            }
+        } <span class="kw">else </span>{
+            expr += Expr::EnabledIf(FeatureFlag::Rot, Box::new(rot_expr()));
         }
     }
 

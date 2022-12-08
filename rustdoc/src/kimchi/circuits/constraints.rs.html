@@ -770,6 +770,28 @@
 <a href="#770" id="770">770</a>
 <a href="#771" id="771">771</a>
 <a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -820,6 +842,8 @@
     </span><span class="kw">pub </span>foreign_field_mul: bool,
     <span class="doccomment">/// XOR gate
     </span><span class="kw">pub </span>xor: bool,
+    <span class="doccomment">/// ROT gate
+    </span><span class="kw">pub </span>rot: bool,
     <span class="doccomment">/// Lookups
     </span><span class="kw">pub </span>lookup_configuration: <span class="prelude-ty">Option</span>&lt;LookupConfiguration&lt;F&gt;&gt;,
 }
@@ -901,6 +925,10 @@
     <span class="doccomment">/// Xor gate selector over domain d8
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>xor_selector8: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
+
+    <span class="doccomment">/// Rot gate selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>rot_selector8: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 }
 
 <span class="attr">#[serde_as]
@@ -1339,6 +1367,19 @@
             }
         };
 
+        <span class="kw">let </span>rot_selector8 = {
+            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.rot {
+                <span class="prelude-val">None
+            </span>} <span class="kw">else </span>{
+                <span class="prelude-val">Some</span>(selector_polynomial(
+                    GateType::Rot64,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                ))
+            }
+        };
+
         <span class="comment">// TODO: This doesn&#39;t need to be degree 8 but that would require some changes in expr
         </span><span class="kw">let </span>coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.coefficients[i]
@@ -1359,6 +1400,7 @@
             foreign_field_add_selector8,
             foreign_field_mul_selector8,
             xor_selector8,
+            rot_selector8,
         }
     }
 }
@@ -1456,6 +1498,7 @@
             foreign_field_add: <span class="bool-val">false</span>,
             foreign_field_mul: <span class="bool-val">false</span>,
             xor: <span class="bool-val">false</span>,
+            rot: <span class="bool-val">false</span>,
         };
 
         <span class="kw">for </span>gate <span class="kw">in </span><span class="kw-2">&amp;</span>gates {
@@ -1468,6 +1511,7 @@
                 GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
                 GateType::ForeignFieldMul =&gt; feature_flags.foreign_field_mul = <span class="bool-val">true</span>,
                 GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
+                GateType::Rot64 =&gt; feature_flags.rot = <span class="bool-val">true</span>,
                 <span class="kw">_ </span>=&gt; (),
             }
         }
