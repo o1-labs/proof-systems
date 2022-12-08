@@ -11,6 +11,7 @@ mod not;
 mod poseidon;
 mod range_check;
 mod recursion;
+mod rot;
 mod serde;
 mod turshi;
 mod varbasemul;

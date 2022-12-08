@@ -12,7 +12,6 @@ use crate::{
     plonk_sponge::FrSponge,
     prover_index::testing::new_index_for_test_with_lookups,
 };
-
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};

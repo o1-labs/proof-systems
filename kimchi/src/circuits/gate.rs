@@ -21,7 +21,11 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr, polynomials::xor};
+use super::{
+    argument::ArgumentWitness,
+    expr,
+    polynomials::{rot, xor},
+};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -112,6 +116,7 @@ pub enum GateType {
     ForeignFieldMul = 19,
     // Gates for Keccak
     Xor16 = 20,
+    Rot64 = 21,
 }
 
 /// Gate error
@@ -240,6 +245,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Xor16 => self
                 .verify_xor::<G>(row, witness, index)
                 .map_err(|e| e.to_string()),
+            Rot64 => self
+                .verify_rot::<G>(row, witness, index)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -328,6 +336,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env),
+            GateType::Rot64 => rot::Rot64::constraint_checks(&env),
         };
 
         // Check for failed constraints

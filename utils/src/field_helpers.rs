@@ -48,6 +48,25 @@ impl<F: PrimeField> RandomField<F> for StdRng {
     }
 }
 
+/// Helper to obtain two
+pub trait Two<F> {
+    /// Value two
+    fn two() -> F;
+
+    /// Power of two
+    fn two_pow(pow: u64) -> F;
+}
+
+impl<F: Field> Two<F> for F {
+    fn two() -> F {
+        F::from(2u8)
+    }
+
+    fn two_pow(pow: u64) -> F {
+        F::two().pow(&[pow])
+    }
+}
+
 /// Field element helpers
 ///   Unless otherwise stated everything is in little-endian byte order.
 pub trait FieldHelpers<F> {
@@ -185,7 +204,6 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::One;
     use mina_curves::pasta::Pallas as CurvePoint;
-    use BigUintFieldHelpers;
 
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
@@ -218,7 +236,7 @@ mod tests {
         assert!(BaseField::from_hex(
             "25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39"
         )
-        .is_ok(),);
+        .is_ok());
 
         let field_hex = "f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36";
         assert_eq!(
@@ -277,7 +295,7 @@ mod tests {
             .expect("Failed to deserialize field hex")
             .to_bits()
         )
-        .is_ok(),);
+        .is_ok());
 
         assert_eq!(
             BaseField::from_bits(&vec![true; BaseField::size_in_bits()]),
@@ -293,7 +311,7 @@ mod tests {
     }
 
     #[test]
-    fn field_biguit_field_helpers() {
+    fn field_big() {
         let fe_1024 = BaseField::from(1024u32);
         let big_1024: BigUint = fe_1024.into();
         assert_eq!(big_1024, BigUint::new(vec![1024]));
@@ -325,17 +343,6 @@ mod tests {
         assert_eq!(
             BaseField::from_biguint(&big_zero_32).expect("Failed"),
             BaseField::from_biguint(&big_zero_1).expect("Failed")
-        );
-
-        assert_eq!(
-            BigUint::from_bytes_be(&BaseField::from(0u32).into_repr().to_bytes_be()),
-            BigUint::from_bytes_be(&[0x00, 0x00, 0x00, 0x00, 0x00])
-        );
-
-        assert_eq!(
-            BaseField::from_biguint(&BigUint::from_bytes_be(&[0x00, 0x00, 0x00, 0x00, 0x00]))
-                .expect("Failed to convert big uint"),
-            BaseField::from(0u32)
         );
 
         let bytes = [
