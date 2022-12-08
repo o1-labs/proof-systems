@@ -4,16 +4,16 @@ use num_bigint::BigUint;
 use std::cmp::Ordering;
 
 /// Bitwise operations
-pub trait BitOps<Rhs = Self> {
+pub trait BitwiseOps<Rhs = Self> {
     /// Bitwise XOR of two BigUint inputs
-    fn bitxor(input1: &Rhs, input: &Rhs) -> Rhs;
+    fn bitwise_xor(input1: &Rhs, input: &Rhs) -> Rhs;
 
     /// Conjunction of the bits of two BigUint inputs for a given number of bytes
-    fn bitand(input1: &Rhs, input: &Rhs, bytes: usize) -> Rhs;
+    fn bitwise_and(input1: &Rhs, input: &Rhs, bytes: usize) -> Rhs;
 }
 
-impl BitOps for BigUint {
-    fn bitxor(input1: &BigUint, input2: &BigUint) -> BigUint {
+impl BitwiseOps for BigUint {
+    fn bitwise_xor(input1: &BigUint, input2: &BigUint) -> BigUint {
         // Pad to equal size in bytes
         let bytes1 = input1.to_bytes_le().len();
         let bytes2 = input2.to_bytes_le().len();
@@ -27,7 +27,7 @@ impl BitOps for BigUint {
         )
     }
 
-    fn bitand(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
+    fn bitwise_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
         let in1 = to_padded_bytes(input1, bytes);
         let in2 = to_padded_bytes(input2, bytes);
         BigUint::from_bytes_le(
@@ -81,7 +81,7 @@ mod tests {
         let big1 = BigUint::from_bytes_le(&input1);
         let big2 = BigUint::from_bytes_le(&input2);
         assert_eq!(
-            BigUint::bitxor(&big1, &big2),
+            BigUint::bitwise_xor(&big1, &big2),
             BigUint::from_bytes_le(&output)
         );
     }
@@ -103,7 +103,7 @@ mod tests {
             12, 0, 0, 2, 16, 64, 65, 66, 73, 76, 77, 76, 77, 64, 65, 16, 17, 20, 21, 22, 5,
         ];
         assert_eq!(
-            BigUint::bitand(
+            BigUint::bitwise_and(
                 &BigUint::from_bytes_le(&input1),
                 &BigUint::from_bytes_le(&input2),
                 256,
@@ -119,7 +119,7 @@ mod tests {
                 let input1 = BigUint::from(byte1 as u8);
                 let input2 = BigUint::from(byte2 as u8);
                 assert_eq!(
-                    BigUint::bitxor(&input1, &input2),
+                    BigUint::bitwise_xor(&input1, &input2),
                     BigUint::from((byte1 ^ byte2) as u8)
                 );
             }

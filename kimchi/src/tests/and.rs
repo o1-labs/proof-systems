@@ -20,7 +20,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::BigUint;
-use o1_utils::{BitOps, FieldHelpers, RandomField};
+use o1_utils::{BitwiseOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -34,8 +34,8 @@ type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 const RNG_SEED: [u8; 32] = [
-    211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
-    89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
+    255, 27, 111, 55, 22, 200, 10, 1, 0, 136, 56, 16, 2, 30, 31, 77, 18, 11, 40, 53, 5, 8, 189, 92,
+    97, 25, 21, 12, 13, 44, 14, 12,
 ];
 
 fn create_test_constraint_system_and<G: KimchiCurve, EFqSponge, EFrSponge>(
@@ -70,11 +70,11 @@ fn check_and<G: KimchiCurve>(
     assert_eq!(witness[3][and_row], input1 + input2);
     assert_eq!(
         witness[4][and_row],
-        BigUint::bitxor(&big_in1, &big_in2).into()
+        BigUint::bitwise_xor(&big_in1, &big_in2).into()
     );
     assert_eq!(
         witness[5][and_row],
-        BigUint::bitand(&big_in1, &big_in2, bytes).into()
+        BigUint::bitwise_and(&big_in1, &big_in2, bytes).into()
     );
 }
 
@@ -156,7 +156,7 @@ where
     TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![xor::lookup_table()])
+        .lookup_tables(vec![and::lookup_table()])
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>();
 }
@@ -171,11 +171,11 @@ fn test_prove_and_verify() {
 #[test]
 // Test a AND of 64bit whose output is all ones with alternating inputs
 fn test_and64_alternating() {
-    let input1 = PallasField::from(6510615555426900570u64);
-    let input2 = PallasField::from(11936128518282651045u64);
+    let input1 = PallasField::from(0x5A5A5A5A5A5A5A5Au64);
+    let input2 = PallasField::from(0xA5A5A5A5A5A5A5A5u64);
     test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input1), Some(input2), 8);
-    let input1 = VestaField::from(6510615555426900570u64);
-    let input2 = VestaField::from(11936128518282651045u64);
+    let input1 = VestaField::from(0x5A5A5A5A5A5A5A5Au64);
+    let input2 = VestaField::from(0xA5A5A5A5A5A5A5A5u64);
     test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(Some(input1), Some(input2), 8);
 }
 

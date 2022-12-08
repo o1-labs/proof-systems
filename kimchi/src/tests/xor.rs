@@ -21,7 +21,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::BigUint;
-use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, RandomField};
+use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -88,13 +88,13 @@ pub(crate) fn check_xor<G: KimchiCurve>(
         for nybble in 0..4 {
             assert_eq!(
                 witness[11 + nybble][xor + ini_row],
-                BigUint::bitxor(&in1[nybble], &in2[nybble]).into()
+                BigUint::bitwise_xor(&in1[nybble], &in2[nybble]).into()
             );
         }
     }
     assert_eq!(
         witness[2][ini_row],
-        BigUint::bitxor(&input1, &input2).into()
+        BigUint::bitwise_xor(&input1, &input2).into()
     );
 }
 
@@ -187,8 +187,8 @@ fn test_prove_and_verify_xor() {
 #[test]
 // Test a XOR of 64bit whose output is all ones with alternating inputs
 fn test_xor64_alternating() {
-    let input1 = PallasField::from(6510615555426900570u64);
-    let input2 = PallasField::from(11936128518282651045u64);
+    let input1 = PallasField::from(0x5A5A5A5A5A5A5A5Au64);
+    let input2 = PallasField::from(0xA5A5A5A5A5A5A5A5u64);
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input1), Some(input2), Some(64));
     assert_eq!(witness[2][0], PallasField::from(2u128.pow(64) - 1));
