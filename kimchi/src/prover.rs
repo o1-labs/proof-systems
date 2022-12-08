@@ -13,7 +13,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::{self, circuitgates::ForeignFieldAdd},
+            foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
             permutation::ZK_ROWS,
@@ -637,13 +637,9 @@ where
                 .foreign_field_add_selector8
                 .as_ref()
             {
-                index_evals.extend(
-                    foreign_field_add::gadget::circuit_gates()
-                        .iter()
-                        .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, selector)),
-                );
+                index_evals.insert(GateType::ForeignFieldAdd, selector);
             }
+
             if let Some(selector) = index
                 .column_evaluations
                 .foreign_field_mul_selector8
