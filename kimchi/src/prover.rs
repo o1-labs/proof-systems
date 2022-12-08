@@ -785,6 +785,8 @@ where
                             t4 += &eval;
                         } else if eval.domain().size == t8.domain().size {
                             t8 += &eval;
+                        } else if eval.evals.iter().all(|x| x.is_zero()) {
+                            // Skip any 0-valued evaluations
                         } else {
                             panic!("Bad evaluation")
                         }

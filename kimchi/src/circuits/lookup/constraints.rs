@@ -638,6 +638,10 @@ pub fn constraints<F: FftField>(
         .collect();
     res.extend(compatibility_checks);
 
+    // Padding to make sure that the position of the runtime tables constraints is always
+    // consistent.
+    res.extend((lookup_info.max_per_row..4).map(|_| E::zero()));
+
     // if we are using runtime tables, we add:
     // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
     if configuration.lookup_info.features.uses_runtime_tables {
