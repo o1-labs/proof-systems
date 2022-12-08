@@ -1,8 +1,12 @@
 use crate::{
     circuits::{
+        constraints::FeatureFlags,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        lookup::{index::LookupSelectors, lookups::LookupPattern},
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupPattern, LookupPatterns},
+        },
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -548,6 +552,147 @@ pub enum Expr<C> {
     Cache(CacheId, Box<Expr<C>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
     IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
+}
+
+impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
+    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
+        use Expr::*;
+        match self {
+            Constant(_) | Cell(_) | VanishesOnLast4Rows | UnnormalizedLagrangeBasis(_) => {
+                (self.clone(), false)
+            }
+            Double(c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && c_reduced.is_zero() {
+                    (Expr::zero(), true)
+                } else {
+                    (Double(Box::new(c_reduced)), false)
+                }
+            }
+            Square(c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, true)
+                } else {
+                    (Square(Box::new(c_reduced)), false)
+                }
+            }
+            BinOp(op, c1, c2) => {
+                let (c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                match op {
+                    Op2::Add => {
+                        if reduce_further1 && c1_reduced.is_zero() {
+                            if reduce_further2 && c2_reduced.is_zero() {
+                                (Expr::zero(), true)
+                            } else {
+                                (c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_zero() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Add, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                    Op2::Sub => {
+                        if reduce_further1 && c1_reduced.is_zero() {
+                            if reduce_further2 && c2_reduced.is_zero() {
+                                (Expr::zero(), true)
+                            } else {
+                                (-c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_zero() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Sub, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                    Op2::Mul => {
+                        if reduce_further1 && c1_reduced.is_zero() {
+                            (Expr::zero(), true)
+                        } else if reduce_further2 && c2_reduced.is_zero() {
+                            (Expr::zero(), true)
+                        } else if reduce_further1 && c1_reduced.is_one() {
+                            if reduce_further2 && c2_reduced.is_one() {
+                                (Expr::one(), true)
+                            } else {
+                                (c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_one() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Mul, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                }
+            }
+            Pow(c, power) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, true)
+                } else {
+                    (Pow(Box::new(c_reduced), *power), false)
+                }
+            }
+            Cache(cache_id, c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further {
+                    (c_reduced, true)
+                } else {
+                    (Cache(*cache_id, Box::new(c_reduced)), false)
+                }
+            }
+            IfFeature(feature, c1, c2) => {
+                let is_enabled = {
+                    use FeatureFlag::*;
+                    match feature {
+                        ChaCha => features.chacha,
+                        RangeCheck => features.range_check,
+                        ForeignFieldAdd => features.foreign_field_add,
+                        ForeignFieldMul => features.foreign_field_mul,
+                        Xor => features.xor,
+                        LookupTables => {
+                            features.lookup_features.patterns != LookupPatterns::default()
+                        }
+                        RuntimeLookupTables => features.lookup_features.uses_runtime_tables,
+                        LookupPattern(pattern) => features.lookup_features.patterns[*pattern],
+                        TableWidth(width) => features
+                            .lookup_features
+                            .patterns
+                            .clone()
+                            .into_iter()
+                            .any(|feature| feature.max_joint_size() >= (*width as u32)),
+                        LookupsPerRow(count) => features
+                            .lookup_features
+                            .patterns
+                            .clone()
+                            .into_iter()
+                            .any(|feature| feature.max_lookups_per_row() >= (*count as usize)),
+                    }
+                };
+                if is_enabled {
+                    let (c1_reduced, _) = c1.apply_feature_flags_inner(features);
+                    (c1_reduced, false)
+                } else {
+                    let (c2_reduced, _) = c2.apply_feature_flags_inner(features);
+                    (c2_reduced, true)
+                }
+            }
+        }
+    }
+    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C> {
+        let (res, _) = self.apply_feature_flags_inner(features);
+        res
+    }
 }
 
 /// For efficiency of evaluation, we compile expressions to
