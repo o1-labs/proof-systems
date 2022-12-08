@@ -67,7 +67,7 @@ fn check_and<G: KimchiCurve>(
     let and_row = xor::num_xors(bytes * 8) + 1;
     let big_in1 = input1.to_biguint();
     let big_in2 = input2.to_biguint();
-    assert_eq!(witness[3][and_row], (input1 + input2).into());
+    assert_eq!(witness[3][and_row], input1 + input2);
     assert_eq!(
         witness[4][and_row],
         BigUint::bitxor(&big_in1, &big_in2).into()
@@ -120,12 +120,7 @@ where
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
@@ -287,7 +282,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
         // Update copy constraints of generic gate
         if col < 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -298,7 +293,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
         }
         if col == 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+                cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
                     typ: GateType::Xor16,
                     src: Wire { row: xor_row, col },
@@ -311,7 +306,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
             witness[4][and_row] += G::ScalarField::one();
         }
         assert_eq!(
-            cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][xor_row] -= G::ScalarField::one();
@@ -324,7 +319,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<G>(0, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
