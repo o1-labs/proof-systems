@@ -6,7 +6,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, l0_1, Environment, LookupEnvironment, E},
+        expr::{self, constraints::ExprOps, l0_1, Environment, LookupEnvironment},
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         lookup::{
             self,
@@ -15,7 +15,7 @@ use crate::{
         },
         polynomial::COLUMNS,
         wires::Wire,
-        witness::{self, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
+        witness::{self, ConstantCell, CopyBitsCell, VariableBitsCell, Variables, WitnessCell},
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,
@@ -25,10 +25,12 @@ use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use num_bigint::BigUint;
+use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitOps, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
 
-pub const GATE_COUNT: usize = 1;
+use super::generic::GenericGateSpec;
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a XOR gadget for `bits` length
@@ -38,7 +40,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
-    pub fn create_xor(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
+    pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut gates = (0..num_xors)
             .map(|i| CircuitGate {
@@ -48,11 +50,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             })
             .collect::<Vec<_>>();
         let zero_row = new_row + num_xors;
-        gates.push(CircuitGate {
-            typ: GateType::Generic,
-            wires: Wire::for_row(zero_row),
-            coeffs: vec![F::one()],
-        });
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::for_row(zero_row),
+            GenericGateSpec::Const(F::zero()),
+            None,
+        ));
         // check fin_in1, fin_in2, fin_out are zero
         gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
         gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
@@ -67,7 +69,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         index: &ProverIndex<G>,
     ) -> CircuitGateResult<()> {
-        if !circuit_gates().contains(&self.typ) {
+        if GateType::Xor16 != self.typ {
             return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
         }
 
@@ -156,13 +158,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         // Setup powers of alpha
         let mut alphas = Alphas::<F>::default();
-        alphas.register(
-            ArgumentType::Gate(self.typ),
-            circuit_gate_constraint_count::<F>(self.typ),
-        );
+        alphas.register(ArgumentType::Gate(self.typ), Xor16::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
-        let constraints = circuit_gate_constraints(self.typ, &alphas);
+        let constraints = Xor16::combined_constraints(&alphas);
 
         // Verify it against the environment
         if constraints
@@ -317,32 +316,6 @@ fn set_up_lookup_env_data<F: PrimeField>(
     })
 }
 
-/// Get vector of xor circuit gate types
-pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::Xor16]
-}
-
-/// Number of constraints for a given xor gate type
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::Xor16 => Xor16::<F>::CONSTRAINTS,
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get combined constraints for a given xor circuit gate type
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
-    match typ {
-        GateType::Xor16 => Xor16::combined_constraints(alphas),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get the combined constraints for all xor circuit gate types
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    Xor16::combined_constraints(alphas)
-}
-
 /// Get the xor lookup table
 pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::Xor)
@@ -359,7 +332,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate
 //~
-//~ The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+//~ The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
@@ -431,11 +404,6 @@ where
 }
 
 // Witness layout
-//   * The values of the crumbs appear with the least significant crumb first
-//     but with big endian ordering of the bits inside the 32/64 element.
-//   * The first column of the XOR row and the first and second columns of the
-//     Zero rows must be instantiated before the rest, otherwise they copy 0.
-//
 fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
@@ -445,23 +413,24 @@ fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCe
     layout
 }
 
-fn xor_row<F: PrimeField>(crumb: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+fn xor_row<F: PrimeField>(nybble: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+    let start = nybble * 16;
     [
-        CrumbCell::create("in1", crumb),
-        CrumbCell::create("in2", crumb),
-        CrumbCell::create("out", crumb),
-        CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 12, 16), // Fourth 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 1, 0, 4), // First 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 4, 8), // Second 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 8, 12), // Third 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 12, 16), // Fourth 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 2, 0, 4), // First 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 4, 8), // Second 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 8, 12), // Third 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 12, 16), // Fourth 4-bit crumb of out
+        VariableBitsCell::create("in1", start, None),
+        VariableBitsCell::create("in2", start, None),
+        VariableBitsCell::create("out", start, None),
+        CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 12, 16), // Fourth 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 1, 0, 4), // First 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 4, 8), // Second 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 8, 12), // Third 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 12, 16), // Fourth 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 2, 0, 4), // First 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 4, 8), // Second 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 8, 12), // Third 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 12, 16), // Fourth 4-bit nybble of out
     ]
 }
 
@@ -485,7 +454,7 @@ fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     ]
 }
 
-fn init_xor<F: PrimeField>(
+pub(crate) fn init_xor<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     curr_row: usize,
     bits: usize,
@@ -501,13 +470,21 @@ fn init_xor<F: PrimeField>(
     )
 }
 
-/// Extends the xor rows to the full witness
+/// Extends the Xor rows to the full witness
+/// Panics if the words are larger than the desired bits
 pub fn extend_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     bits: usize,
     words: (F, F, F),
 ) {
-    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+    let input1_big = words.0.to_biguint();
+    let input2_big = words.1.to_biguint();
+    let output_big = words.2.to_biguint();
+    if bits < input1_big.bitlen() || bits < input2_big.bitlen() || bits < output_big.bitlen() {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let xor_witness: [Vec<F>; COLUMNS] =
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
     let xor_row = witness[0].len();
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
@@ -515,18 +492,25 @@ pub fn extend_xor_rows<F: PrimeField>(
     init_xor(witness, xor_row, bits, words);
 }
 
-/// Create a keccak Xor for up to 128 bits
-/// Input: first input and second input
-pub fn create<F: PrimeField>(input1: u128, input2: u128, bits: usize) -> [Vec<F>; COLUMNS] {
-    let output = input1 ^ input2;
+/// Create a Xor for up to the native length starting at row 0
+/// Input: first input and second input, bits length, current row
+/// Panics if the desired bits is smaller than the inputs length
+pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [Vec<F>; COLUMNS] {
+    let input1_big = input1.to_biguint();
+    let input2_big = input2.to_biguint();
+    if bits < input1_big.bitlen() || bits < input2_big.bitlen() {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let output = BigUint::bitxor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
+
     init_xor(
         &mut xor_witness,
         0,
         bits,
-        (F::from(input1), F::from(input2), F::from(output)),
+        (input1, input2, output.to_field().unwrap()),
     );
 
     xor_witness

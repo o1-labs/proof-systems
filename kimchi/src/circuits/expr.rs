@@ -509,6 +509,7 @@ pub enum FeatureFlag {
     ForeignFieldAdd,
     ForeignFieldMul,
     Xor,
+    Rot,
 }
 
 impl FeatureFlag {
@@ -2471,6 +2472,8 @@ where
 
 /// A number of useful constraints
 pub mod constraints {
+    use o1_utils::Two;
+
     use crate::circuits::argument::ArgumentData;
     use std::fmt;
 
@@ -2496,6 +2499,9 @@ pub mod constraints {
     where
         Self: std::marker::Sized,
     {
+        /// 2^pow
+        fn two_pow(pow: u64) -> Self;
+
         /// 2^{LIMB_BITS}
         fn two_to_limb() -> Self;
 
@@ -2537,6 +2543,10 @@ pub mod constraints {
     where
         F: PrimeField,
     {
+        fn two_pow(pow: u64) -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as Two<F>>::two_pow(pow))
+        }
+
         fn two_to_limb() -> Self {
             Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
         }
@@ -2587,6 +2597,10 @@ pub mod constraints {
     }
 
     impl<F: Field> ExprOps<F> for F {
+        fn two_pow(pow: u64) -> Self {
+            <F as Two<F>>::two_pow(pow)
+        }
+
         fn two_to_limb() -> Self {
             <F as ForeignFieldHelpers<F>>::two_to_limb()
         }

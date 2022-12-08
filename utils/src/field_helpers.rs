@@ -1,7 +1,8 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
-use num_bigint::BigUint;
+use num_bigint::{BigUint, RandBigInt};
+use rand::rngs::StdRng;
 use std::ops::Neg;
 use thiserror::Error;
 
@@ -21,6 +22,50 @@ pub enum FieldHelpersError {
 
 /// Result alias using [FieldHelpersError]
 pub type Result<T> = std::result::Result<T, FieldHelpersError>;
+
+/// Helper to generate random field elements
+pub trait RandomField<F> {
+    /// Generates a random field element of up to a given number of bits
+    fn gen_field_with_bits(&mut self, bits: usize) -> F;
+
+    /// Initialize a random input with a random value of given length
+    fn gen(&mut self, input: Option<F>, bits: Option<usize>) -> F;
+}
+
+impl<F: PrimeField> RandomField<F> for StdRng {
+    fn gen_field_with_bits(&mut self, bits: usize) -> F {
+        F::from_biguint(self.gen_biguint_below(&BigUint::from(2u8).pow(bits as u32))).unwrap()
+    }
+
+    fn gen(&mut self, input: Option<F>, bits: Option<usize>) -> F {
+        if let Some(inp) = input {
+            inp
+        } else {
+            assert!(bits.is_some());
+            let bits = bits.unwrap();
+            self.gen_field_with_bits(bits)
+        }
+    }
+}
+
+/// Helper to obtain two
+pub trait Two<F> {
+    /// Value two
+    fn two() -> F;
+
+    /// Power of two
+    fn two_pow(pow: u64) -> F;
+}
+
+impl<F: Field> Two<F> for F {
+    fn two() -> F {
+        F::from(2u8)
+    }
+
+    fn two_pow(pow: u64) -> F {
+        F::two().pow(&[pow])
+    }
+}
 
 /// Field element helpers
 ///   Unless otherwise stated everything is in little-endian byte order.
@@ -158,7 +203,6 @@ mod tests {
     use ark_ec::AffineCurve;
     use ark_ff::One;
     use mina_curves::pasta::Pallas as CurvePoint;
-    use BigUintFieldHelpers;
 
     /// Base field element type
     pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
@@ -191,7 +235,7 @@ mod tests {
         assert!(BaseField::from_hex(
             "25b89cf1a14e2de6124fea18758bf890af76fff31b7fc68713c7653c61b49d39"
         )
-        .is_ok(),);
+        .is_ok());
 
         let field_hex = "f2eee8d8f6e5fb182c610cae6c5393fce69dc4d900e7b4923b074e54ad00fb36";
         assert_eq!(
@@ -250,7 +294,7 @@ mod tests {
             .expect("Failed to deserialize field hex")
             .to_bits()
         )
-        .is_ok(),);
+        .is_ok());
 
         assert_eq!(
             BaseField::from_bits(&vec![true; BaseField::size_in_bits()]),
@@ -266,7 +310,7 @@ mod tests {
     }
 
     #[test]
-    fn field_biguit_field_helpers() {
+    fn field_big() {
         let fe_1024 = BaseField::from(1024u32);
         let big_1024 = fe_1024.into();
         assert_eq!(big_1024, BigUint::new(vec![1024]));
@@ -299,25 +343,5 @@ mod tests {
             BaseField::from_biguint(big_zero_32).expect("Failed"),
             BaseField::from_biguint(big_zero_1).expect("Failed")
         );
-
-        assert_eq!(
-            BigUint::from_bytes_be(&BaseField::from(0u32).into_repr().to_bytes_be()),
-            BigUint::from_bytes_be(&[0x00, 0x00, 0x00, 0x00, 0x00])
-        );
-
-        assert_eq!(
-            BaseField::from_biguint(BigUint::from_bytes_be(&[0x00, 0x00, 0x00, 0x00, 0x00]))
-                .expect("Failed to convert big uint"),
-            BaseField::from(0u32)
-        );
-
-        let bytes = [
-            46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182, 152,
-            235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8,
-        ];
-        let fe = BaseField::from_bytes(&bytes).expect("failed to create field element from bytes");
-        let bi = BigUint::from_bytes_le(&bytes);
-        assert_eq!(fe.to_biguint(), bi);
-        assert_eq!(bi.to_field::<BaseField>().unwrap(), fe);
     }
 }

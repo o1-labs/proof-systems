@@ -285,18 +285,18 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
 pub enum LookupPattern {
     Xor,
     ChaChaFinal,
-    LookupGate,
-    RangeCheckGate,
-    ForeignFieldMulGate,
+    Lookup,
+    RangeCheck,
+    ForeignFieldMul,
 }
 
 impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheckGate => 4,
-            LookupPattern::LookupGate => 3,
-            LookupPattern::ForeignFieldMulGate => 2,
+            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck => 4,
+            LookupPattern::Lookup => 3,
+            LookupPattern::ForeignFieldMul => 2,
         }
     }
 
@@ -304,8 +304,8 @@ impl LookupPattern {
     pub fn max_joint_size(&self) -> u32 {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal => 3,
-            LookupPattern::LookupGate => 2,
-            LookupPattern::ForeignFieldMulGate | LookupPattern::RangeCheckGate => 1,
+            LookupPattern::Lookup => 2,
+            LookupPattern::ForeignFieldMul | LookupPattern::RangeCheck => 1,
         }
     }
 
@@ -363,7 +363,7 @@ impl LookupPattern {
                     })
                     .collect()
             }
-            LookupPattern::LookupGate => {
+            LookupPattern::Lookup => {
                 (0..3)
                     .map(|i| {
                         // 0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -382,7 +382,7 @@ impl LookupPattern {
                     })
                     .collect()
             }
-            LookupPattern::RangeCheckGate => {
+            LookupPattern::RangeCheck => {
                 (3..=6)
                     .map(|column| {
                         //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -396,7 +396,7 @@ impl LookupPattern {
                     })
                     .collect()
             }
-            LookupPattern::ForeignFieldMulGate => {
+            LookupPattern::ForeignFieldMul => {
                 (7..=8)
                     .map(|column| {
                         //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
@@ -417,9 +417,9 @@ impl LookupPattern {
     pub fn table(&self) -> Option<GateLookupTable> {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
-            LookupPattern::LookupGate => None,
-            LookupPattern::RangeCheckGate => Some(GateLookupTable::RangeCheck),
-            LookupPattern::ForeignFieldMulGate => Some(GateLookupTable::RangeCheck),
+            LookupPattern::Lookup => None,
+            LookupPattern::RangeCheck => Some(GateLookupTable::RangeCheck),
+            LookupPattern::ForeignFieldMul => Some(GateLookupTable::RangeCheck),
         }
     }
 
@@ -430,9 +430,11 @@ impl LookupPattern {
         match (gate_type, curr_or_next) {
             (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::Xor),
             (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
-            (Lookup, Curr) => Some(LookupPattern::LookupGate),
-            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) => Some(LookupPattern::RangeCheckGate),
-            (ForeignFieldMul, Curr) => Some(LookupPattern::ForeignFieldMulGate),
+            (Lookup, Curr) => Some(LookupPattern::Lookup),
+            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) | (Rot64, Curr) => {
+                Some(LookupPattern::RangeCheck)
+            }
+            (ForeignFieldMul, Curr) => Some(LookupPattern::ForeignFieldMul),
             (Xor16, Curr) => Some(LookupPattern::Xor),
             _ => None,
         }
@@ -450,9 +452,9 @@ impl GateType {
         vec![
             LookupPattern::Xor,
             LookupPattern::ChaChaFinal,
-            LookupPattern::LookupGate,
-            LookupPattern::RangeCheckGate,
-            LookupPattern::ForeignFieldMulGate,
+            LookupPattern::Lookup,
+            LookupPattern::RangeCheck,
+            LookupPattern::ForeignFieldMul,
         ]
     }
 }
