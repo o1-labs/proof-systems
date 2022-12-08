@@ -1,3 +1,4 @@
+use crate::constants::Constants;
 use ark_ff::{BigInteger, FftField, PrimeField};
 use kimchi::circuits::{
     gate::{CircuitGate, GateType},
@@ -10,10 +11,9 @@ use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     permutation::full_round,
 };
+use o1_utils::Two;
 use std::array;
 use std::collections::HashMap;
-
-use crate::constants::Constants;
 
 /// A variable in our circuit.
 /// Variables are assigned with an index to differentiate from each other.
@@ -161,7 +161,7 @@ pub trait Cs<F: PrimeField> {
 
         let v = self.var(|| {
             // TODO: No need to recompute this each time.
-            let two = Fr::from(2u64);
+            let two = Fr::two();
             let shift = Fr::one() + two.pow(&[length as u64]);
 
             let x = g();
@@ -706,8 +706,8 @@ pub trait Cs<F: PrimeField> {
         // Reverse string of bits to have MSB first in the vector
         let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
 
-        let mut a = self.var(|| F::from(2u64));
-        let mut b = self.var(|| F::from(2u64));
+        let mut a = self.var(|| F::two());
+        let mut b = self.var(|| F::two());
         let mut n = zero;
 
         let one = F::one();

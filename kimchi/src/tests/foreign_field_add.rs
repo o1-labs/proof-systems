@@ -28,8 +28,8 @@ use mina_poseidon::{
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
 use o1_utils::{
-    foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB},
-    FieldHelpers,
+    foreign_field::{HI, LO, MI},
+    BigUintForeignFieldHelpers, FieldHelpers, ForeignElement, ForeignFieldHelpers,
 };
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::sync::Arc;
@@ -377,12 +377,12 @@ fn compute_dif(modulus: BigUint, left: &[u8], right: &[u8]) -> BigUint {
 // obtains a random input of 32 bytes that fits in the foreign modulus
 fn random_input(rng: &mut StdRng, modulus: BigUint, large: bool) -> Vec<u8> {
     let mut random_str = vec![];
-    let mut random_big = BigUint::from_u128(2u128.pow(88)).unwrap().pow(3);
+    let mut random_big = BigUint::two_to_limb().pow(3);
     while random_big > modulus {
         random_big = if large {
-            rng.gen_biguint_below(&BigUint::from(2u32).pow(32))
+            rng.gen_biguint_below(&BigUint::two_pow(32))
         } else {
-            rng.gen_biguint_below(&BigUint::from(2u32).pow(20))
+            rng.gen_biguint_below(&BigUint::two_pow(20))
         };
         random_str = random_big.to_bytes_be();
     }
@@ -676,7 +676,7 @@ fn test_no_carry_limbs() {
     );
     check_carry(witness.clone(), PallasField::zero());
     // check middle limb is all ones
-    let all_one_limb = PallasField::from(2u128.pow(88) - 1);
+    let all_one_limb = PallasField::two_to_limb() - PallasField::one();
     assert_eq!(witness[1][1], all_one_limb);
 }
 
@@ -724,7 +724,7 @@ fn test_wrong_sum() {
         true,
     );
     // wrong result
-    let all_ones_limb = PallasField::from(2u128.pow(88) - 1);
+    let all_ones_limb = PallasField::two_to_limb() - PallasField::one();
     witness[0][1] = all_ones_limb;
     witness[0][11] = all_ones_limb;
 
@@ -922,7 +922,7 @@ fn test_foreign_is_native_add() {
     let result = ForeignElement::<PallasField, 3>::from_biguint(sum_big.clone());
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
-    let two_to_limb = PallasField::from(TWO_TO_LIMB);
+    let two_to_limb = PallasField::two_to_limb();
     let left = ForeignElement::<PallasField, 3>::from_be(&left_input);
     let right = ForeignElement::<PallasField, 3>::from_be(&right_input);
     let left = (left[HI] * two_to_limb + left[MI]) * two_to_limb + left[LO];
@@ -955,7 +955,7 @@ fn test_foreign_is_native_sub() {
     let result = ForeignElement::<PallasField, 3>::from_biguint(dif_big.clone());
     check_result(witness, vec![result.clone()]);
     // check result is in the native field
-    let two_to_limb = PallasField::from(TWO_TO_LIMB);
+    let two_to_limb = PallasField::two_to_limb();
     let left = ForeignElement::<PallasField, 3>::from_be(&left_input);
     let right = ForeignElement::<PallasField, 3>::from_be(&right_input);
     let left = (left[HI] * two_to_limb + left[MI]) * two_to_limb + left[LO];

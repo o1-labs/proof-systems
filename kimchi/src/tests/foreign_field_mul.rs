@@ -12,7 +12,7 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_integer::Integer;
@@ -31,6 +31,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::RandBigInt;
+use o1_utils::Two;
 use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -490,7 +491,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 13), G::ScalarField::from(2u32))], // Make q'_carry01 non-boolean
+            vec![((0, 13), G::ScalarField::two())], // Make q'_carry01 non-boolean
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -528,7 +529,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 14), G::ScalarField::from(2u32))], // Make q'_carry2 non-boolean
+            vec![((0, 14), G::ScalarField::two())], // Make q'_carry2 non-boolean
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -889,7 +890,7 @@ fn test_nonzero_second_bit_carry11() {
         vec![],
     );
     assert_eq!(result, Ok(()));
-    assert_eq!(witness[7][0], PallasField::from(2u32)); // carry11 is not zero
+    assert_eq!(witness[7][0], PallasField::two()); // carry11 is not zero
     assert_eq!(
         &a * &b % secp256k1_modulus(),
         [witness[0][1], witness[1][1], witness[2][1]].compose()
@@ -957,7 +958,7 @@ fn test_invalid_carry11_scaling() {
         &a,
         &b,
         &secp256k1_modulus(),
-        vec![((0, 8), PallasField::from(2u32))], // Invalidate scaled_carry11
+        vec![((0, 8), PallasField::two())], // Invalidate scaled_carry11
     );
     // The 5th constraint (i.e. C8) should fail
     assert_eq!(
@@ -1009,7 +1010,7 @@ fn test_invalid_carry11_plookup() {
         &a,
         &b,
         &secp256k1_modulus(),
-        vec![((0, 7), PallasField::from(2u32).pow(&[12u64]))], // Make carry11 13 bits long
+        vec![((0, 7), PallasField::two_pow(12))], // Make carry11 13 bits long
     );
     // Above should panic
 }
@@ -1053,7 +1054,7 @@ fn test_invalid_scaled_carry11_plookup() {
         &a,
         &b,
         &secp256k1_modulus(),
-        vec![((0, 8), PallasField::from(2u32).pow(&[12u64]))], // Make scaled_carry11 13 bits long
+        vec![((0, 8), PallasField::two_pow(12))], // Make scaled_carry11 13 bits long
     );
     // Above should panic
 }
@@ -1344,7 +1345,7 @@ fn test_rand_foreign_field_element_with_bound_overflows_2() {
     for _ in 0..1000 {
         test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
             rng,
-            &(BigUint::from(2u32).pow(259) - BigUint::one()),
+            &(BigUint::two_pow(259) - BigUint::one()),
         );
     }
 }
@@ -1356,7 +1357,7 @@ fn test_rand_foreign_field_element_with_bound_overflows_3() {
     for _ in 0..1000 {
         test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
             rng,
-            &(BigUint::from(2u32).pow(259) / BigUint::from(382734983107u64)),
+            &(BigUint::two_pow(259) / BigUint::from(382734983107u64)),
         );
     }
 }
@@ -1401,9 +1402,6 @@ fn test_rand_foreign_field_element_with_bound_overflows_6() {
 // Cannot have overflow when f'0 is zero
 fn test_rand_foreign_field_element_with_bound_overflows_7() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
-    rand_foreign_field_element_with_bound_overflows::<PallasField>(
-        rng,
-        &BigUint::from(2u32).pow(257),
-    )
-    .expect("Failed to get element with bound overflow");
+    rand_foreign_field_element_with_bound_overflows::<PallasField>(rng, &BigUint::two_pow(257))
+        .expect("Failed to get element with bound overflow");
 }

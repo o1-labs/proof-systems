@@ -12,12 +12,11 @@ use crate::{
     proof::ProverProof,
     prover_index::testing::new_index_for_test_with_lookups,
 };
-
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, Zero};
+use ark_ff::{One, Zero};
 use ark_poly::EvaluationDomain;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
-use o1_utils::FieldHelpers;
+use o1_utils::{FieldHelpers, ForeignFieldHelpers, Two};
 
 use std::array;
 use std::sync::Arc;
@@ -318,7 +317,7 @@ fn verify_range_check0_valid_v0_in_range() {
     let index = create_test_prover_index(0);
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(2u64).pow([88]) - PallasField::one(),
+        PallasField::two_to_limb() - PallasField::one(),
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -341,7 +340,7 @@ fn verify_range_check0_valid_v0_in_range() {
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(2u64).pow([64]),
+        PallasField::two_pow(64),
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -416,7 +415,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(2u64).pow([88]) - PallasField::one(),
+        PallasField::two_to_limb() - PallasField::one(),
         PallasField::zero(),
     );
 
@@ -439,7 +438,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(2u64).pow([63]),
+        PallasField::two_pow(63),
         PallasField::zero(),
     );
 
@@ -512,7 +511,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
     let index = create_test_prover_index(0);
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(2u64).pow([88]), // out of range
+        PallasField::two_to_limb(), // out of range
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -535,7 +534,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
-        PallasField::from(2u64).pow([96]), // out of range
+        PallasField::two_pow(96), // out of range
         PallasField::zero(),
         PallasField::zero(),
     );
@@ -564,7 +563,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(2u64).pow([88]), // out of range
+        PallasField::two_to_limb(), // out of range
         PallasField::zero(),
     );
 
@@ -587,7 +586,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
 
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
-        PallasField::from(2u64).pow([96]), // out of range
+        PallasField::two_pow(96), // out of range
         PallasField::zero(),
     );
 
@@ -617,8 +616,8 @@ fn verify_range_check0_test_copy_constraints() {
         for col in 1..=2 {
             // Copy constraints impact v0 and v1
             let mut witness = range_check::witness::create_multi::<PallasField>(
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                PallasField::two_to_limb() - PallasField::one(), // in range
+                PallasField::two_to_limb() - PallasField::one(), // in range
                 PallasField::zero(),
             );
 
@@ -677,7 +676,7 @@ fn verify_range_check0_v0_test_lookups() {
     for i in 3..=6 {
         // Test ith lookup
         let mut witness = range_check::witness::create_multi::<PallasField>(
-            PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+            PallasField::two_to_limb() - PallasField::one(), // in range
             PallasField::zero(),
             PallasField::zero(),
         );
@@ -691,7 +690,7 @@ fn verify_range_check0_v0_test_lookups() {
 
         // Negative test
         // make ith plookup limb out of range
-        witness[i][0] = PallasField::from(2u64.pow(12));
+        witness[i][0] = PallasField::two_pow(12);
 
         // gates[0] is RangeCheck0 and constrains some of v0
         assert_eq!(
@@ -711,7 +710,7 @@ fn verify_range_check0_v1_test_lookups() {
         // Test ith lookup
         let mut witness = range_check::witness::create_multi::<PallasField>(
             PallasField::zero(),
-            PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+            PallasField::two_to_limb() - PallasField::one(), // in range
             PallasField::zero(),
         );
 
@@ -724,7 +723,7 @@ fn verify_range_check0_v1_test_lookups() {
 
         // Negative test
         // make ith plookup limb out of range
-        witness[i][1] = PallasField::from(2u64.pow(12));
+        witness[i][1] = PallasField::two_pow(12);
 
         // gates[1] is RangeCheck0 and constrains some of v1
         assert_eq!(
@@ -909,7 +908,7 @@ fn verify_range_check1_valid_v2_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(2u64).pow([88]) - PallasField::one(),
+        PallasField::two_to_limb() - PallasField::one(),
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -932,7 +931,7 @@ fn verify_range_check1_valid_v2_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(2u64).pow([64]),
+        PallasField::two_pow(64),
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -1006,7 +1005,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(2u64).pow([88]), // out of range
+        PallasField::two_to_limb(), // out of range
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -1029,7 +1028,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
     let witness = range_check::witness::create_multi::<PallasField>(
         PallasField::zero(),
         PallasField::zero(),
-        PallasField::from(2u64).pow([96]), // out of range
+        PallasField::two_pow(96), // out of range
     );
 
     // gates[2] is RangeCheck1 and constrains v2
@@ -1058,8 +1057,8 @@ fn verify_range_check1_test_copy_constraints() {
         for col in 1..=2 {
             // Copy constraints impact v0 and v1
             let mut witness = range_check::witness::create_multi::<PallasField>(
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                PallasField::two_to_limb() - PallasField::one(), // in range
+                PallasField::two_to_limb() - PallasField::one(), // in range
                 PallasField::zero(),
             );
 
@@ -1122,7 +1121,7 @@ fn verify_range_check1_test_curr_row_lookups() {
         let mut witness = range_check::witness::create_multi::<PallasField>(
             PallasField::zero(),
             PallasField::zero(),
-            PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+            PallasField::two_to_limb() - PallasField::one(), // in range
         );
 
         // Positive test
@@ -1154,8 +1153,8 @@ fn verify_range_check1_test_next_row_lookups() {
     for row in 0..=1 {
         for col in 1..=2 {
             let mut witness = range_check::witness::create_multi::<PallasField>(
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+                PallasField::two_to_limb() - PallasField::one(), // in range
+                PallasField::two_to_limb() - PallasField::one(), // in range
                 PallasField::zero(),
             );
 
@@ -1168,8 +1167,8 @@ fn verify_range_check1_test_next_row_lookups() {
 
             // Negative test by making plookup limb out of range
             // and making sure copy constraint is valid
-            witness[col][row] = PallasField::from(2u64.pow(12));
-            witness[col - 1 + 2 * row + 3][3] = PallasField::from(2u64.pow(12));
+            witness[col][row] = PallasField::two_pow(12);
+            witness[col - 1 + 2 * row + 3][3] = PallasField::two_pow(12);
             assert_eq!(
                 index.cs.gates[2].verify_range_check::<Vesta>(2, &witness, &index),
                 Err(CircuitGateError::InvalidLookupConstraintSorted(
@@ -1225,7 +1224,7 @@ fn verify_64_bit_range_check() {
     //   1   0 0 X X ... X   RangeCheck0
     let mut witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::zero()]);
     range_check::witness::create::<PallasField>(
-        PallasField::from(2u64).pow([64]) - PallasField::one(), // in range
+        PallasField::two_pow(64) - PallasField::one(), // in range
     )
     .iter_mut()
     .enumerate()
@@ -1254,7 +1253,7 @@ fn verify_64_bit_range_check() {
     //   1   0 X X X ... X   RangeCheck0
     let mut witness: [Vec<PallasField>; COLUMNS] = array::from_fn(|_| vec![PallasField::zero()]);
     range_check::witness::create::<PallasField>(
-        PallasField::from(2u64).pow([64]), // out of range
+        PallasField::two_pow(64), // out of range
     )
     .iter_mut()
     .enumerate()

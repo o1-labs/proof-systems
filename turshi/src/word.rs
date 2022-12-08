@@ -7,7 +7,7 @@
 use crate::flags::*;
 use crate::helper::CairoFieldHelpers;
 use ark_ff::Field;
-use o1_utils::field_helpers::FieldHelpers;
+use o1_utils::{FieldHelpers, Two};
 
 /// A Cairo word for the runner. Some words are instructions (which fit inside a `u64`). Others are immediate values (any `F` element).
 #[derive(Clone, Copy)]
@@ -15,7 +15,7 @@ pub struct CairoWord<F>(F);
 
 /// Returns an offset of 16 bits to its biased representation in the interval `[-2^15,2^15)` as a field element
 fn bias<F: Field>(offset: F) -> F {
-    offset - F::from(2u16.pow(15u32)) // -2^15 + sum_(i=0..15) b_i * 2^i
+    offset - F::two_pow(15) // -2^15 + sum_(i=0..15) b_i * 2^i
 }
 
 impl<F: Field> CairoWord<F> {

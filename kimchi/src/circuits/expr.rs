@@ -2475,6 +2475,9 @@ pub mod constraints {
         /// 2^pow
         fn two_pow(pow: u64) -> Self;
 
+        /// 2
+        fn two() -> Self;
+
         /// 2^{LIMB_BITS}
         fn two_to_limb() -> Self;
 
@@ -2516,6 +2519,10 @@ pub mod constraints {
     where
         F: PrimeField,
     {
+        fn two() -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as Two<F>>::two())
+        }
+
         fn two_pow(pow: u64) -> Self {
             Expr::<ConstantExpr<F>>::literal(<F as Two<F>>::two_pow(pow))
         }
@@ -2570,6 +2577,10 @@ pub mod constraints {
     }
 
     impl<F: Field> ExprOps<F> for F {
+        fn two() -> Self {
+            <F as Two<F>>::two()
+        }
+
         fn two_pow(pow: u64) -> Self {
             <F as Two<F>>::two_pow(pow)
         }
@@ -2583,7 +2594,7 @@ pub mod constraints {
         }
 
         fn double(&self) -> Self {
-            *self * F::from(2u64)
+            *self * <F as Two<F>>::two()
         }
 
         fn square(&self) -> Self {
@@ -2845,15 +2856,12 @@ pub mod test {
             T::one() + T::one()
         }
         assert_eq!(test_2::<Fp, E<Fp>>(), E::one() + E::one());
-        assert_eq!(test_2::<Fp, Fp>(), Fp::from(2u64));
+        assert_eq!(test_2::<Fp, Fp>(), Fp::two());
 
         fn test_3<F: Field, T: ExprOps<F>>(x: T) -> T {
-            T::from(2u64) * x
+            T::two() * x
         }
-        assert_eq!(
-            test_3::<Fp, E<Fp>>(E::from(3u64)),
-            E::from(2u64) * E::from(3u64)
-        );
+        assert_eq!(test_3::<Fp, E<Fp>>(E::from(3u64)), E::two() * E::from(3u64));
         assert_eq!(test_3(Fp::from(3u64)), Fp::from(6u64));
 
         fn test_4<F: Field, T: ExprOps<F>>(x: T) -> T {

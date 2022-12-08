@@ -244,6 +244,7 @@ mod tests {
     use super::*;
     use crate::circuits::gate::GateType;
     use mina_curves::pasta::{Fp, Vesta};
+    use o1_utils::Two;
 
     // testing [Builder]
 
@@ -301,7 +302,7 @@ mod tests {
         assert_eq!(powers.next(), Some(2));
         assert_eq!(powers.next(), Some(3));
 
-        let alpha = Fp::from(2);
+        let alpha = Fp::two();
         alphas.instantiate(alpha);
 
         let mut alphas = alphas.get_alphas(ArgumentType::Gate(GateType::Poseidon), 4);

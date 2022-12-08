@@ -5,6 +5,7 @@ use crate::flags::*;
 use crate::memory::CairoMemory;
 use crate::word::{CairoWord, FlagBits, FlagSets, Offsets};
 use ark_ff::Field;
+use o1_utils::Two;
 
 /// A structure to store program counter, allocation pointer and frame pointer
 #[derive(Clone, Copy)]
@@ -308,7 +309,7 @@ impl<'a, F: Field> CairoStep<'a, F> {
             /*0*/
             OP1_DBL => (self.vars.op0.expect("None op0 for OP1_DBL"), F::one()), // double indexing, op0 should be positive for address
             /*1*/
-            OP1_VAL => (self.curr.pc, F::from(2u32)), // off_op1 will be 1 and then op1 contains an immediate value
+            OP1_VAL => (self.curr.pc, F::two()), // off_op1 will be 1 and then op1 contains an immediate value
             /*2*/ OP1_FP => (self.curr.fp, F::one()),
             /*4*/ OP1_AP => (self.curr.ap, F::one()),
             _ => panic!("Invalid op1_src flagset"),
@@ -417,11 +418,11 @@ impl<'a, F: Field> CairoStep<'a, F> {
             self.vars.op0 = self.mem.read(self.curr.ap + F::one()); //update op0 content
 
             // Update fp
-            next_fp = Some(self.curr.ap + F::from(2u32)); // pointer for next frame is after current fp and instruction after call
-                                                          // Update ap
+            next_fp = Some(self.curr.ap + F::two()); // pointer for next frame is after current fp and instruction after call
+                                                     // Update ap
             match self.instr().ap_up() {
                 /*0*/
-                AP_Z2 => next_ap = Some(self.curr.ap + F::from(2u32)), // two words were written so advance 2 positions
+                AP_Z2 => next_ap = Some(self.curr.ap + F::two()), // two words were written so advance 2 positions
                 _ => panic!("ap increment in call instruction"), // ap increments not allowed in call instructions
             };
         } else if self.instr().opcode() == OPC_JMP_INC /*0*/

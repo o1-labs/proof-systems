@@ -493,7 +493,7 @@ pub mod testing {
 
         // well formness of instruction
         let shape = {
-            let shift = F::from(2u32.pow(15)); // 2^15;
+            let shift = F::two_pow(15); // 2^15;
             let pow16 = shift.double(); // 2^16
             let dst_sft = off_dst + shift;
             let op0_sft = off_op0 + shift;
@@ -501,7 +501,7 @@ pub mod testing {
             // recompose instruction as: flags[14..0] | op1_sft | op0_sft | dst_sft
             let mut aux = flags[14];
             for i in (0..14).rev() {
-                aux = aux * F::from(2u32) + flags[i];
+                aux = aux * F::two() + flags[i];
             }
             // complete with "flags" * 2^48 + op1_sft * 2^32 + op0_sft * 2^16 + dst_sft
             ((aux * pow16 + op1_sft) * pow16 + op0_sft) * pow16 + dst_sft
@@ -620,7 +620,7 @@ pub mod testing {
 
         let zero = F::zero();
         let one = F::one();
-        let two = F::from(2u16);
+        let two = F::two();
 
         // REGISTERS RELATED
 

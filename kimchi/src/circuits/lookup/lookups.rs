@@ -10,6 +10,7 @@ use crate::circuits::{
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
+use o1_utils::Two;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Mul, Neg};
@@ -345,7 +346,7 @@ impl LookupPattern {
                     .collect()
             }
             LookupPattern::ChaChaFinal => {
-                let one_half = F::from(2u64).inverse().unwrap();
+                let one_half = F::two().inverse().unwrap();
                 let neg_one_half = -one_half;
                 (0..4)
                     .map(|i| {

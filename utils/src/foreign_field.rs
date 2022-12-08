@@ -1,6 +1,7 @@
 //! Describes helpers for foreign field arithmetics
 
 use crate::field_helpers::FieldHelpers;
+use crate::Two;
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_traits::Zero;
@@ -18,19 +19,11 @@ pub const HI: usize = 2;
 /// Limb length for foreign field elements
 pub const LIMB_BITS: usize = 88;
 
-/// Two to the power of the limb length
-pub const TWO_TO_LIMB: u128 = 2u128.pow(LIMB_BITS as u32);
-
 /// Number of desired limbs for foreign field elements
 pub const LIMB_COUNT: usize = 3;
 
 /// Exponent of binary modulus (i.e. t)
 pub const BINARY_MODULUS_EXP: usize = LIMB_BITS * LIMB_COUNT;
-
-/// Two to the power of the limb length
-pub fn two_to_limb() -> BigUint {
-    BigUint::from(TWO_TO_LIMB)
-}
 
 /// Represents a foreign field element
 #[derive(Clone, PartialEq, Eq)]
@@ -162,11 +155,11 @@ pub trait ForeignFieldHelpers<T> {
 
 impl<F: Field> ForeignFieldHelpers<F> for F {
     fn two_to_limb() -> Self {
-        F::from(2u64).pow(&[LIMB_BITS as u64])
+        F::two_pow(LIMB_BITS as u64)
     }
 
     fn two_to_2limb() -> Self {
-        F::from(2u64).pow(&[2 * LIMB_BITS as u64])
+        F::two_to_limb().square()
     }
 }
 
@@ -174,6 +167,9 @@ impl<F: Field> ForeignFieldHelpers<F> for F {
 pub trait BigUintForeignFieldHelpers {
     /// 2
     fn two() -> Self;
+
+    /// 2^pow
+    fn two_pow(pow: u32) -> Self;
 
     /// 2^{LIMB_SIZE}
     fn two_to_limb() -> Self;
@@ -203,6 +199,10 @@ pub trait BigUintForeignFieldHelpers {
 impl BigUintForeignFieldHelpers for BigUint {
     fn two() -> Self {
         Self::from(2u32)
+    }
+
+    fn two_pow(pow: u32) -> Self {
+        Self::two().pow(pow)
     }
 
     fn two_to_limb() -> Self {

@@ -180,8 +180,8 @@ where
         let c_coeffs = [
             F::zero(),
             F::from(11u64) / F::from(6u64),
-            -F::from(5u64) / F::from(2u64),
-            F::from(2u64) / F::from(3u64),
+            -F::from(5u64) / F::two(),
+            F::two() / F::from(3u64),
         ];
 
         let crumb_over_x_coeffs = [-F::from(6u64), F::from(11u64), -F::from(6u64), F::one()];
@@ -232,8 +232,8 @@ pub fn gen_witness<F: PrimeField + std::fmt::Display>(
         .collect();
     let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
 
-    let mut a = F::from(2u64);
-    let mut b = F::from(2u64);
+    let mut a = F::two();
+    let mut b = F::two();
     let mut n = F::zero();
 
     let one = F::one();
@@ -283,7 +283,7 @@ pub fn gen_witness<F: PrimeField + std::fmt::Display>(
 fn c_func<F: Field>(x: F) -> F {
     let zero = F::zero();
     let one = F::one();
-    let two = F::from(2u64);
+    let two = F::two();
     let three = F::from(3u64);
 
     match x {
@@ -298,7 +298,7 @@ fn c_func<F: Field>(x: F) -> F {
 fn d_func<F: Field>(x: F) -> F {
     let zero = F::zero();
     let one = F::one();
-    let two = F::from(2u64);
+    let two = F::two();
     let three = F::from(3u64);
 
     match x {
@@ -321,7 +321,7 @@ mod tests {
     fn c_poly<F: Field>(x: F) -> F {
         let x2 = x.square();
         let x3 = x * x2;
-        (F::from(2u64) / F::from(3u64)) * x3 - (F::from(5u64) / F::from(2u64)) * x2
+        (F::two() / F::from(3u64)) * x3 - (F::from(5u64) / F::two()) * x2
             + (F::from(11u64) / F::from(6u64)) * x
     }
 

@@ -1,6 +1,7 @@
 use super::{variables::Variables, WitnessCell};
 use crate::circuits::polynomial::COLUMNS;
 use ark_ff::Field;
+use o1_utils::Two;
 
 /// Witness cell copied from another cell and shifted
 pub struct CopyShiftCell {
@@ -18,6 +19,6 @@ impl CopyShiftCell {
 
 impl<F: Field> WitnessCell<F> for CopyShiftCell {
     fn value(&self, witness: &mut [Vec<F>; COLUMNS], _variables: &Variables<F>) -> F {
-        F::from(2u32).pow([self.shift]) * witness[self.col][self.row]
+        F::two_pow(self.shift) * witness[self.col][self.row]
     }
 }

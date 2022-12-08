@@ -21,4 +21,6 @@ pub use chunked_evaluations::ChunkedEvaluations;
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;
 pub use field_helpers::{BigUintFieldHelpers, FieldHelpers, RandomField, Two};
-pub use foreign_field::{ForeignElement, LIMB_COUNT};
+pub use foreign_field::{
+    BigUintForeignFieldHelpers, ForeignElement, ForeignFieldHelpers, LIMB_COUNT,
+};

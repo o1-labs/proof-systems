@@ -285,7 +285,7 @@ where
         let low_bits = chunks_over_2_rows(env, 5);
         let yprime = env.witness_curr(0);
 
-        let one_half = F::from(2u64).inverse().unwrap();
+        let one_half = F::two().inverse().unwrap();
 
         // (y xor xprime) <<< 7
         // per the comment at the top of the file

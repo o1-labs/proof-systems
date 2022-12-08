@@ -13,7 +13,7 @@ use crate::{
     prover_index::testing::new_index_for_test_with_lookups,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, One, PrimeField, Zero};
+use ark_ff::{One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -21,6 +21,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::BigUint;
+use o1_utils::Two;
 use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
@@ -59,7 +60,7 @@ where
 
 // Returns the all ones BigUint of bits length
 pub(crate) fn all_ones<G: KimchiCurve>(bits: usize) -> G::ScalarField {
-    G::ScalarField::from(2u128).pow(&[bits as u64]) - G::ScalarField::one()
+    G::ScalarField::two_pow(bits as u64) - G::ScalarField::one()
 }
 
 // Returns a given nybble of 4 bits
@@ -191,11 +192,11 @@ fn test_xor64_alternating() {
     let input2 = PallasField::from(11936128518282651045u64);
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input1), Some(input2), Some(64));
-    assert_eq!(witness[2][0], PallasField::from(2u128.pow(64) - 1));
-    assert_eq!(witness[2][1], PallasField::from(2u64.pow(48) - 1));
-    assert_eq!(witness[2][2], PallasField::from(2u64.pow(32) - 1));
-    assert_eq!(witness[2][3], PallasField::from(2u32.pow(16) - 1));
-    assert_eq!(witness[2][4], PallasField::from(0));
+    assert_eq!(witness[2][0], PallasField::two_pow(64) - PallasField::one());
+    assert_eq!(witness[2][1], PallasField::two_pow(48) - PallasField::one());
+    assert_eq!(witness[2][2], PallasField::two_pow(32) - PallasField::one());
+    assert_eq!(witness[2][3], PallasField::two_pow(16) - PallasField::one());
+    assert_eq!(witness[2][4], PallasField::zero());
 }
 
 #[test]
