@@ -48,6 +48,25 @@ impl<F: PrimeField> RandomField<F> for StdRng {
     }
 }
 
+/// Helper to obtain two
+pub trait Two<F> {
+    /// Value two
+    fn two() -> F;
+
+    /// Power of two
+    fn two_pow(pow: u64) -> F;
+}
+
+impl<F: Field> Two<F> for F {
+    fn two() -> F {
+        F::from(2u8)
+    }
+
+    fn two_pow(pow: u64) -> F {
+        F::two().pow(&[pow])
+    }
+}
+
 /// Field element helpers
 ///   Unless otherwise stated everything is in little-endian byte order.
 pub trait FieldHelpers<F> {

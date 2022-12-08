@@ -51,7 +51,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             CircuitGate {
                 typ: GateType::Rot64,
                 wires: Wire::for_row(new_row),
-                coeffs: vec![F::from(2u32).pow(&[rot as u64])],
+                coeffs: vec![F::two_pow(rot as u64)],
             },
             CircuitGate {
                 typ: GateType::RangeCheck0,
@@ -64,6 +64,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Create one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
+    /// INTEGRATION:
+    /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// - same with rotated word
     pub fn create_rot(new_row: usize, rot: u32, side: RotMode) -> (usize, Vec<Self>) {
         // Initial Generic gate to constrain the output to be zero
         let zero_row = new_row;
@@ -457,7 +460,7 @@ where
         // NOTE:
         // If we ever want to make this gate more generic, the power of two for the length
         // could be a coefficient of the gate instead of a fixed value in the constraints.
-        let two_to_64 = T::from(2u64).pow(64);
+        let two_to_64 = T::two_pow(64);
 
         let word = env.witness_curr(0);
         let rotated = env.witness_curr(1);
@@ -480,13 +483,13 @@ where
         // Sum 2-bit limbs
         for i in (7..COLUMNS).rev() {
             bound += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= T::from(4u64); // 2 bits
+            power_of_2 *= T::two_pow(2); // 2 bits
         }
 
         // Sum 12-bit limbs
         for i in (3..=6).rev() {
             bound += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= 4096u64.into(); // 12 bits
+            power_of_2 *= T::two_pow(12); // 12 bits
         }
 
         // Check that excess < 2^rot by checking that bound < 2^64
