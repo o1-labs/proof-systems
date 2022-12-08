@@ -1275,33 +1275,47 @@ but where the result is larger than the modulus (yet smaller than 2^{264}). The 
  final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
  (meaning less than the modulus).
 
+A more optimized version of these constraints is able to reduce by 2 the number of constraints and
+by 1 the number of witness cells needed. The idea is to condense the low and middle limbs in one longer
+limb of 176 bits (which fits inside our native field) and getting rid of the low carry flag.
+With this idea in mind, the sole carry flag we need is the one located between the middle and the high limbs.
+
 ##### Layout
 
-You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
+You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 
-| col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-| --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
-|   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
-|   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
-|   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
-|   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
-|   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
-|   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
-|   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
-|  10 |                         |                        |                         |                   |
-|  11 |                         |                        |                         |                   |
-|  12 |                         |                        |                         |                   |
-|  13 |                         |                        |                         |                   |
-|  14 |                         |                        |                         |                   |
+| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
+|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
+|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
+|   6 | `sign`           (copy) |                         |  1              (check) |                   |
+|   7 | `field_overflow`        |                         |  1              (check) |                   |
+|   8 | `carry`                 |                         | `bound_carry`           |                   |
+|   9 |                         |                         |                         |                   |
+|  10 |                         |                         |                         |                   |
+|  11 |                         |                         |                         |                   |
+|  12 |                         |                         |                         |                   |
+|  13 |                         |                         |                         |                   |
+|  14 |                         |                         |                         |                   |
 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
 specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
 be done by copy constraining these values with a public input value. One could have a specific gate
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.
+
+##### Integration
+
+- Copy signs from public input
+ - Range check the final bound
+
+```admonition::notice
+ TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
+```
 
 
 #### Foreign Field Multiplication
@@ -1618,9 +1632,6 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
-
     #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
     pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
 
@@ -1673,8 +1684,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,

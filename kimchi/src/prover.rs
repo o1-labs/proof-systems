@@ -639,6 +639,7 @@ where
             {
                 index_evals.insert(GateType::ForeignFieldAdd, selector);
             }
+
             if let Some(selector) = index
                 .column_evaluations
                 .foreign_field_mul_selector8
