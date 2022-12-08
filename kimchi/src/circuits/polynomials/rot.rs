@@ -1,5 +1,6 @@
 //~ Rotation of a 64-bit word by a known offset
 
+use super::{generic::GenericGateSpec, range_check::witness::range_check_0_row};
 use crate::{
     alphas::Alphas,
     circuits::{
@@ -30,8 +31,6 @@ use ark_poly::{
 };
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
-
-use super::{generic::GenericGateSpec, range_check::witness::range_check_0_row};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum RotMode {
@@ -450,12 +449,12 @@ where
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
-        // C0..C7: x * (x - 1) * (x - 2) * (x - 3) = 0
+        // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
         let mut constraints = (7..COLUMNS)
             .map(|i| crumb(&env.witness_curr(i)))
             .collect::<Vec<T>>();
 
-        // TODO:
+        // NOTE:
         // If we ever want to make this gate more generic, the power of two for the length
         // could be a coefficient of the gate instead of a fixed value in the constraints.
         let two_to_64 = T::from(2u64).pow(64);
@@ -467,8 +466,8 @@ where
         let two_to_rot = env.coeff(0);
 
         // Obtains the following checks:
-        // C8: word * 2^{rot} = (excess * 2^64 + shifted)
-        // C9: rotated = shifted + excess
+        // C9: word * 2^{rot} = (excess * 2^64 + shifted)
+        // C10: rotated = shifted + excess
         constraints.push(
             word * two_to_rot.clone() - (excess.clone() * two_to_64.clone() + shifted.clone()),
         );
@@ -491,7 +490,8 @@ where
         }
 
         // Check that excess < 2^rot by checking that bound < 2^64
-        // C10:bound = excess - 2^rot + 2^64
+        // Check RFC of Keccak for more details on the proof of this
+        // C11:bound = excess - 2^rot + 2^64
         constraints.push(bound - (excess - two_to_rot + two_to_64));
 
         constraints
@@ -566,6 +566,8 @@ pub fn extend_rot_rows<F: PrimeField>(
 /// Output: witness for rotation word and initial row with all zeros
 pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: RotMode) -> [Vec<F>; COLUMNS] {
     // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
+    assert!(rot < 64, "Rotation value must be less than 64");
+    assert_ne!(rot, 0, "Rotation value must be non-zero");
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
     let rot = if side == RotMode::Right {
         64 - rot
@@ -578,10 +580,7 @@ pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: RotMode) -> [Vec
 
 /// Create a rotation witness
 /// Input: word to be rotated, rotation offset,
-pub fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: u64, rot: u32) {
-    assert_ne!(rot, 0, "Rotation value must be non-zero");
-    assert!(rot < 64, "Rotation value must be less than 64");
-
+fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: u64, rot: u32) {
     // Split word into shifted and excess parts to compute the witnesses for rotation as follows
     //          <   64     >  bits
     // word   = [---|------]
