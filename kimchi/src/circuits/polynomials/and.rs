@@ -63,12 +63,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let xor_row = new_row;
         let (and_row, mut gates) = Self::create_xor_gadget(xor_row, bytes * 8);
         let sum = GenericGateSpec::Add {
-            left_coeff: Some(1u32.into()),
-            right_coeff: Some(1u32.into()),
-            output_coeff: Some(-F::one()),
+            left_coeff: None,
+            right_coeff: None,
+            output_coeff: None,
         };
         let and = GenericGateSpec::Add {
-            left_coeff: Some(F::one()),
+            left_coeff: None,
             right_coeff: Some(-F::one()),
             output_coeff: Some(-F::from(2u32)),
         };
