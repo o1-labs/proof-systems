@@ -13,16 +13,16 @@ use crate::circuits::{
 };
 use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
-use o1_utils::{BigUintHelpers, BitOps, FieldHelpers};
+use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, Two};
 
 //~ We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
-//~ add one `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
+//~ add an `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
 //~ lookup table that would have the same size as that of the Xor.
 //~ For now, we are willing to pay this small overhead and produce AND gadget as follows:
 //~
 //~ We observe that we can express bitwise addition as follows:
-//~ $$ A + B = (A \oplus B) + 2 \cdot (A \wedge B) $$
-//~ where $\oplus$ is the bitwise XOR operation, $\wedge$ is the bitwise AND operation, and $+$ is the addition operation.
+//~ $$ A + B = (A \oplus B) + 2 \cdot (A \& B) $$
+//~ where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
 //~ In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
 //~ Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
 //~ $$ A \& B = \frac{A + B - (A \oplus B)}{2} $$
@@ -38,8 +38,8 @@ use o1_utils::{BigUintHelpers, BitOps, FieldHelpers};
 //~
 //~ Then, our AND gadget for $n$ bytes looks as follows:
 //~ * $n/8$ Xor16 gates
-//~ * 1 (single) Generic gate to check the constant zero
-//~ * 1 (double) Generic gate to check sum and the conjunction equations
+//~ * 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
+//~ * 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
 //~
 //~ Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
 //~ * Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
@@ -49,7 +49,7 @@ use o1_utils::{BigUintHelpers, BitOps, FieldHelpers};
 //~ * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
-    /// Creates an AND gadget for `bits` length.
+    /// Creates an AND gadget for `bytes` length.
     /// The full operation being performed is the following:
     /// `a AND b = 1/2 * (a + b - (a XOR b))`
     /// Includes:
@@ -60,17 +60,20 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
     pub fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
+        assert!(bytes > 0, "Bytes must be a positive number");
         let xor_row = new_row;
         let (and_row, mut gates) = Self::create_xor_gadget(xor_row, bytes * 8);
+        // a + b = sum
         let sum = GenericGateSpec::Add {
             left_coeff: None,
             right_coeff: None,
             output_coeff: None,
         };
+        // 2 * and = sum - xor
         let and = GenericGateSpec::Add {
             left_coeff: None,
             right_coeff: Some(-F::one()),
-            output_coeff: Some(-F::from(2u32)),
+            output_coeff: Some(-F::two()),
         };
         gates.push(Self::create_generic_gadget(
             Wire::for_row(and_row),
