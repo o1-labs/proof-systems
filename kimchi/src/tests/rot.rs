@@ -101,12 +101,7 @@ where
     let (witness, cs) = setup_rot::<G, EFqSponge, EFrSponge>(word, rot, side);
     for row in 0..=2 {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
@@ -183,12 +178,7 @@ fn test_bad_constraints() {
         witness[i + 7][1] += PallasField::from(4u32);
         // Decomposition constraint fails
         assert_eq!(
-            cs.gates[1].verify_witness::<Vesta>(
-                1,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Rot64, i + 1))
         );
         // undo
@@ -200,7 +190,7 @@ fn test_bad_constraints() {
     witness[0][1] += PallasField::one();
     // Decomposition constraint fails
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
     // undo
@@ -211,7 +201,7 @@ fn test_bad_constraints() {
     witness[1][1] += PallasField::one();
     // Rotated word is wrong
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Rot64, 10))
     );
     // undo
@@ -224,12 +214,7 @@ fn test_bad_constraints() {
         witness[i + 3][1] += PallasField::one();
         // Bound constraint fails
         assert_eq!(
-            cs.gates[1].verify_witness::<Vesta>(
-                1,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Rot64, 11))
         );
         // undo
@@ -239,7 +224,7 @@ fn test_bad_constraints() {
     // modify excess
     witness[2][1] += PallasField::one();
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
     witness[2][1] -= PallasField::one();
@@ -247,25 +232,25 @@ fn test_bad_constraints() {
     // modify shifted
     witness[0][2] += PallasField::one();
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
 
     // modify value of shifted to be more than 64 bits
     witness[0][2] += PallasField::two_pow(64);
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
     // Update decomposition
     witness[2][2] += PallasField::one();
     // Make sure the 64-bit check fails
     assert_eq!(
-        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::RangeCheck0,
             src: Wire { row: 2, col: 2 },
