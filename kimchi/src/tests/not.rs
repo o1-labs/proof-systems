@@ -140,12 +140,7 @@ where
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
@@ -205,12 +200,7 @@ where
     // test public input and not generic gate
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(
-                row,
-                &witness,
-                &cs,
-                &witness[0][0..cs.public].to_vec()
-            ),
+            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
             Ok(())
         );
     }
@@ -226,7 +216,7 @@ fn check_not_xor<G: KimchiCurve>(
 ) {
     let input_big = input.to_biguint();
     let bits = max(input_big.bitlen(), bits.unwrap_or(0));
-    check_xor::<G>(&witness, bits, input, all_ones::<G>(bits), NOT);
+    check_xor::<G>(witness, bits, input, all_ones::<G>(bits), NOT);
     assert_eq!(
         witness[2][1],
         BigUint::bitnot(&input_big, Some(bits)).into()
@@ -236,7 +226,7 @@ fn check_not_xor<G: KimchiCurve>(
 // Manually checks the NOTs of a vector of inputs in generic gates
 fn check_not_gnrc<G: KimchiCurve>(
     witness: &[Vec<G::ScalarField>; COLUMNS],
-    inputs: &Vec<G::ScalarField>,
+    inputs: &[G::ScalarField],
     bits: usize,
 ) {
     for (i, input) in inputs.iter().enumerate() {
@@ -406,7 +396,7 @@ fn test_bad_not_gnrc() {
     // modify public input row to make sure the copy constraint fails and the generic gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::Generic,
             src: Wire { row: 0, col: 0 },
@@ -430,7 +420,7 @@ fn test_bad_not_xor() {
     // modify public input row to make sure the copy constraint fails and the XOR gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::Generic,
             src: Wire { row: 0, col: 0 },
@@ -440,7 +430,7 @@ fn test_bad_not_xor() {
     witness[1][1] += PallasField::one();
     // decomposition of xor fails
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public].to_vec()),
+        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Xor16, 2))
     );
     // Make the second input zero with correct decomposition to make sure XOR table fails
