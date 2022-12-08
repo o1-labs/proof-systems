@@ -21,7 +21,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use num_bigint::BigUint;
-use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, RandomField};
+use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -88,13 +88,13 @@ pub(crate) fn check_xor<G: KimchiCurve>(
         for nybble in 0..4 {
             assert_eq!(
                 witness[11 + nybble][xor + ini_row],
-                BigUint::bitxor(&in1[nybble], &in2[nybble]).into()
+                BigUint::bitwise_xor(&in1[nybble], &in2[nybble]).into()
             );
         }
     }
     assert_eq!(
         witness[2][ini_row],
-        BigUint::bitxor(&input1, &input2).into()
+        BigUint::bitwise_xor(&input1, &input2).into()
     );
 }
 
@@ -187,8 +187,8 @@ fn test_prove_and_verify_xor() {
 #[test]
 // Test a XOR of 64bit whose output is all ones with alternating inputs
 fn test_xor64_alternating() {
-    let input1 = PallasField::from(6510615555426900570u64);
-    let input2 = PallasField::from(11936128518282651045u64);
+    let input1 = PallasField::from(0x5A5A5A5A5A5A5A5Au64);
+    let input2 = PallasField::from(0xA5A5A5A5A5A5A5A5u64);
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input1), Some(input2), Some(64));
     assert_eq!(witness[2][0], PallasField::from(2u128.pow(64) - 1));
@@ -253,28 +253,39 @@ fn test_xor128_random() {
     test_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, Some(128));
 }
 
-#[test]
-// Test that a random XOR of 16 bits fails if the inputs do not decompose correctly
-fn test_bad_decomp() {
-    let (cs, mut witness) =
-        setup_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+fn verify_bad_xor_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
+    witness: &mut [Vec<G::ScalarField>; COLUMNS],
+    cs: ConstraintSystem<G::ScalarField>,
+) where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
     // modify by one each of the witness cells individually
     for col in 0..COLUMNS {
         // first three columns make fail the ith+1 constraint
         // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
-        witness[col][0] += PallasField::one();
+        witness[col][0] += G::ScalarField::one();
         assert_eq!(
-            cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
-        witness[col][0] -= PallasField::one();
+        witness[col][0] -= G::ScalarField::one();
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
+}
+
+#[test]
+// Test that a random XOR of 16 bits fails if the inputs do not decompose correctly
+fn test_bad_xor_decompsition() {
+    let (cs, mut witness) =
+        setup_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+    verify_bad_xor_decomposition::<Vesta, VestaBaseSponge, VestaScalarSponge>(&mut witness, cs);
 }
 
 #[test]

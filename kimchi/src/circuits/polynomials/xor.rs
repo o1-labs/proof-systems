@@ -26,7 +26,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use num_bigint::BigUint;
-use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitOps, FieldHelpers};
+use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers};
 use rand::{rngs::StdRng, SeedableRng};
 use std::{array, collections::HashMap, marker::PhantomData};
 
@@ -501,7 +501,7 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [
     if bits < input1_big.bitlen() || bits < input2_big.bitlen() {
         panic!("Bits must be greater or equal than the inputs length");
     }
-    let output = BigUint::bitxor(&input1_big, &input2_big);
+    let output = BigUint::bitwise_xor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
         array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
