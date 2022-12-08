@@ -13,7 +13,7 @@ use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldA
 use crate::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
-use crate::circuits::polynomials::{generic, permutation, range_check, xor};
+use crate::circuits::polynomials::{generic, permutation, range_check, rot, xor};
 use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
@@ -112,6 +112,17 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
             }
         } else {
             expr += Expr::EnabledIf(FeatureFlag::Xor, Box::new(xor_expr()));
+        }
+    }
+
+    {
+        let rot_expr = || rot::Rot64::combined_constraints(&powers_of_alpha);
+        if let Some(feature_flags) = feature_flags {
+            if feature_flags.rot {
+                expr += rot_expr();
+            }
+        } else {
+            expr += Expr::EnabledIf(FeatureFlag::Rot, Box::new(rot_expr()));
         }
     }
 

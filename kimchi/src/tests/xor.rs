@@ -12,7 +12,6 @@ use crate::{
     plonk_sponge::FrSponge,
     prover_index::testing::new_index_for_test_with_lookups,
 };
-
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
@@ -28,7 +27,6 @@ use rand::{rngs::StdRng, SeedableRng};
 use super::framework::TestFramework;
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
-
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
