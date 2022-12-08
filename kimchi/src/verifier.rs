@@ -74,9 +74,10 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
                     RangeCheck0 => Some(&self.index.range_check_comm.as_ref()?[0]),
                     RangeCheck1 => Some(&self.index.range_check_comm.as_ref()?[1]),
-                    Xor16 => Some(self.index.xor_comm.as_ref()?),
                     ForeignFieldAdd => Some(self.index.foreign_field_add_comm.as_ref()?),
                     ForeignFieldMul => Some(self.index.foreign_field_mul_comm.as_ref()?),
+                    Xor16 => Some(self.index.xor_comm.as_ref()?),
+                    Rot64 => Some(self.index.rot_comm.as_ref()?),
                 }
             }
         }

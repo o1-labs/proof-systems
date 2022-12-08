@@ -1,5 +1,5 @@
-use crate::commitment::*;
 use crate::srs::SRS;
+use crate::{commitment::*, srs::endos};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -96,6 +96,8 @@ impl<G: CommitmentCurve> SRS<G> {
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
+        let (endo_q, endo_r) = endos::<G>();
+
         let rounds = math::ceil_log2(self.g.len());
         let padded_length = 1 << rounds;
 
@@ -223,7 +225,7 @@ impl<G: CommitmentCurve> SRS<G> {
             sponge.absorb_g(&[r]);
 
             let u_pre = squeeze_prechallenge(&mut sponge);
-            let u = u_pre.to_field(&self.endo_r);
+            let u = u_pre.to_field(&endo_r);
             let u_inv = u.inverse().unwrap();
 
             chals.push(u);
@@ -253,7 +255,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 })
                 .collect();
 
-            g = G::combine_one_endo(self.endo_r, self.endo_q, &g_lo, &g_hi, u_pre);
+            g = G::combine_one_endo(endo_r, endo_q, &g_lo, &g_hi, u_pre);
         }
 
         assert!(g.len() == 1);
@@ -275,7 +277,7 @@ impl<G: CommitmentCurve> SRS<G> {
         .into_affine();
 
         sponge.absorb_g(&[delta]);
-        let c = ScalarChallenge(sponge.challenge()).to_field(&self.endo_r);
+        let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
 
         let z1 = a0 * c + d;
         let z2 = c * r_prime + r_delta;

@@ -22,6 +22,7 @@ use crate::{
                 self,
                 circuitgates::{RangeCheck0, RangeCheck1},
             },
+            rot::Rot64,
             varbasemul::VarbaseMul,
             xor::Xor16,
         },
@@ -639,6 +640,7 @@ where
             {
                 index_evals.insert(GateType::ForeignFieldAdd, selector);
             }
+
             if let Some(selector) = index
                 .column_evaluations
                 .foreign_field_mul_selector8
@@ -654,6 +656,10 @@ where
 
             if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
                 index_evals.insert(GateType::Xor16, selector);
+            }
+
+            if let Some(selector) = index.column_evaluations.rot_selector8.as_ref() {
+                index_evals.insert(GateType::Rot64, selector);
             }
 
             let mds = &G::sponge_params().mds;
@@ -718,6 +724,7 @@ where
                     .foreign_field_mul_selector8
                     .is_some();
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
+                let rot_enabled = index.column_evaluations.rot_selector8.is_some();
 
                 for gate in [
                     (
@@ -745,6 +752,8 @@ where
                     ),
                     // Xor gate
                     (&Xor16::default(), xor_enabled),
+                    // Rot gate
+                    (&Rot64::default(), rot_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })

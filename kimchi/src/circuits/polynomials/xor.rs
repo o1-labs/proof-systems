@@ -32,8 +32,6 @@ use std::{array, collections::HashMap, marker::PhantomData};
 
 use super::generic::GenericGateSpec;
 
-pub const GATE_COUNT: usize = 1;
-
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a XOR gadget for `bits` length
     /// Includes:
