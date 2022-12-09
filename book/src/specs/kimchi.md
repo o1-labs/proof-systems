@@ -1089,25 +1089,25 @@ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and const
 * `vipj` is the jth 12-bit limb of value $v_i$
 * `vicj` is the jth 2-bit crumb limb of value $v_i$
 
-| Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`  | `Zero`          |
-| ----- | -------------- | -------------- | -------------- | --------------- |
-| Rows  |          0     |          1     |          2     |          3      |
-| Cols  |                |                |                |                 |
-|     0 |         `v0`   |         `v1`   |         `v2`   |         `0`     |
-|  MS:1 | copy    `v0p0` | copy    `v1p0` | crumb   `v2c0` | crumb   `v2c10` |
-|     2 | copy    `v0p1` | copy    `v1p1` | crumb   `v2c1` | crumb   `v2c11` |
-|     3 | plookup `v0p2` | plookup `v1p2` | plookup `v2p0` | plookup `v0p0`  |
-|     4 | plookup `v0p3` | plookup `v1p3` | plookup `v2p1` | plookup `v0p1`  |
-|     5 | plookup `v0p4` | plookup `v1p4` | plookup `v2p2` | plookup `v1p0`  |
-|     6 | plookup `v0p5` | plookup `v1p5` | plookup `v2p3` | plookup `v1p1`  |
-|     7 | crumb   `v0c0` | crumb   `v1c0` | crumb   `v2c2` | crumb   `v2c12` |
-|     8 | crumb   `v0c1` | crumb   `v1c1` | crumb   `v2c3` | crumb   `v2c13` |
-|     9 | crumb   `v0c2` | crumb   `v1c2` | crumb   `v2c4` | crumb   `v2c14` |
-|    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
-|    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
-|    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-|    13 | crumb   `v0c6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
-| LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
+| Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`   | `Zero`          |
+| ----- | -------------- | -------------- | --------------- | --------------- |
+| Rows  |          0     |          1     |          2      |          3      |
+| Cols  |                |                |                 |                 |
+|     0 |         `v0`   |         `v1`   |          `v2`   | crumb   `v2c9`  |
+|  MS:1 | copy    `v0p0` | copy    `v1p0` | optional `v12`  | crumb   `v2c10` |
+|     2 | copy    `v0p1` | copy    `v1p1` | crumb    `v2c0` | crumb   `v2c11` |
+|     3 | plookup `v0p2` | plookup `v1p2` | plookup  `v2p0` | plookup `v0p0`  |
+|     4 | plookup `v0p3` | plookup `v1p3` | plookup  `v2p1` | plookup `v0p1`  |
+|     5 | plookup `v0p4` | plookup `v1p4` | plookup  `v2p2` | plookup `v1p0`  |
+|     6 | plookup `v0p5` | plookup `v1p5` | plookup  `v2p3` | plookup `v1p1`  |
+|     7 | crumb   `v0c0` | crumb   `v1c0` | crumb    `v2c1` | crumb   `v2c12` |
+|     8 | crumb   `v0c1` | crumb   `v1c1` | crumb    `v2c2` | crumb   `v2c13` |
+|     9 | crumb   `v0c2` | crumb   `v1c2` | crumb    `v2c3` | crumb   `v2c14` |
+|    10 | crumb   `v0c3` | crumb   `v1c3` | crumb    `v2c4` | crumb   `v2c15` |
+|    11 | crumb   `v0c4` | crumb   `v1c4` | crumb    `v2c5` | crumb   `v2c16` |
+|    12 | crumb   `v0c5` | crumb   `v1c5` | crumb    `v2c6` | crumb   `v2c17` |
+|    13 | crumb   `v0c6` | crumb   `v1c6` | crumb    `v2c7` | crumb   `v2c18` |
+| LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb    `v2c8` | crumb   `v2c19` |
 
 The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
 constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
@@ -1178,23 +1178,23 @@ It uses two different types of constraints
 
 Given value `v2` the layout looks like this
 
-| Column | `Curr`         | `Next`        |
-| ------ | -------------- | ------------- |
-|      0 |         `v2`   | (ignored)     |
-|      1 | crumb   `v2c0` | crumb `v2c10` |
-|      2 | crumb   `v2c1` | crumb `v2c11` |
-|      3 | plookup `v2p0` | (ignored)     |
-|      4 | plookup `v2p1` | (ignored)     |
-|      5 | plookup `v2p2` | (ignored)     |
-|      6 | plookup `v2p3` | (ignored)     |
-|      7 | crumb   `v2c2` | crumb `v2c12` |
-|      8 | crumb   `v2c3` | crumb `v2c13` |
-|      9 | crumb   `v2c4` | crumb `v2c14` |
-|     10 | crumb   `v2c5` | crumb `v2c15` |
-|     11 | crumb   `v2c6` | crumb `v2c16` |
-|     12 | crumb   `v2c7` | crumb `v2c17` |
-|     13 | crumb   `v2c8` | crumb `v2c18` |
-|     14 | crumb   `v2c9` | crumb `v2c19` |
+| Column | `Curr`          | `Next`        |
+| ------ | --------------- | ------------- |
+|      0 |          `v2`   | crumb `v2c9`  |
+|      1 | optional `v12`  | crumb `v2c10` |
+|      2 | crumb    `v2c0` | crumb `v2c11` |
+|      3 | plookup  `v2p0` | (ignored)     |
+|      4 | plookup  `v2p1` | (ignored)     |
+|      5 | plookup  `v2p2` | (ignored)     |
+|      6 | plookup  `v2p3` | (ignored)     |
+|      7 | crumb    `v2c1` | crumb `v2c12` |
+|      8 | crumb    `v2c2` | crumb `v2c13` |
+|      9 | crumb    `v2c3` | crumb `v2c14` |
+|     10 | crumb    `v2c4` | crumb `v2c15` |
+|     11 | crumb    `v2c5` | crumb `v2c16` |
+|     12 | crumb    `v2c6` | crumb `v2c17` |
+|     13 | crumb    `v2c7` | crumb `v2c18` |
+|     14 | crumb    `v2c8` | crumb `v2c19` |
 
 where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
