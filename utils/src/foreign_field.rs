@@ -284,6 +284,18 @@ impl<F: PrimeField> FieldArrayCompose<F, 3> for [F; 3] {
     }
 }
 
+/// PrimeField array compact limbs
+pub trait FieldArrayCompact<F: PrimeField> {
+    /// Compose field limbs into BigUint
+    fn to_compact_limbs(&self) -> [F; 2];
+}
+
+impl<F: PrimeField> FieldArrayCompact<F> for [F; 3] {
+    fn to_compact_limbs(&self) -> [F; 2] {
+        [self[0] + F::two_to_limb() * self[1], self[2]]
+    }
+}
+
 /// BigUint array PrimeField helpers
 pub trait BigUintArrayFieldHelpers<const N: usize> {
     /// Convert limbs from BigUint to field element
