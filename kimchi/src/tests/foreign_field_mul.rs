@@ -144,12 +144,11 @@ where
         // Add witness for external multi-range checks (product1_lo, product1_hi_0, carry1_lo and result)
         external_checks.extend_witness_multi_range_checks(&mut witness);
 
-        // TODO: (required for soundness) Wire this up once range-check gate is updated to support compact limbs
-        // // Quotient bound multi-range-check
-        // CircuitGate::extend_compact_multi_range_check(next_row);
-        // gates.connect_cell_pair((1, 3), (TODO1, 0));
-        // gates.connect_cell_pair((1, 4), (TODO2, 0));
-        // external_checks.extend_witness_compact_multi_range_checks(&mut witness);
+        // Quotient bound multi-range-check
+        CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((1, 3), (22, 1));
+        gates.connect_cell_pair((1, 4), (20, 0));
+        external_checks.extend_witness_compact_multi_range_checks(&mut witness);
     }
 
     // Temporary workaround for lookup-table/domain-size issue
