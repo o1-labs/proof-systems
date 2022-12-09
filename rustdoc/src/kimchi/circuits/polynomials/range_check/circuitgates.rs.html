@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-92ec330caa5a75cd.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-d32a9866c4c3e823.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -334,6 +334,11 @@
 <a href="#334" id="334">334</a>
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
 </pre><pre class="rust"><code><span class="comment">//~ The range check gadget is comprised of three circuit gates (`RangeCheck0`, `RangeCheck1`
 //~ and `Zero`) and can perform range checks on three values of up to 88 bits: $v_0, v_1$ and $v_2$.
 //~
@@ -394,25 +399,25 @@
 //~ * `vipj` is the jth 12-bit limb of value $v_i$
 //~ * `vicj` is the jth 2-bit crumb limb of value $v_i$
 //~
-//~ | Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`  | `Zero`          |
-//~ | ----- | -------------- | -------------- | -------------- | --------------- |
-//~ | Rows  |          0     |          1     |          2     |          3      |
-//~ | Cols  |                |                |                |                 |
-//~ |     0 |         `v0`   |         `v1`   |         `v2`   |         `0`     |
-//~ |  MS:1 | copy    `v0p0` | copy    `v1p0` | crumb   `v2c0` | crumb   `v2c10` |
-//~ |     2 | copy    `v0p1` | copy    `v1p1` | crumb   `v2c1` | crumb   `v2c11` |
-//~ |     3 | plookup `v0p2` | plookup `v1p2` | plookup `v2p0` | plookup `v0p0`  |
-//~ |     4 | plookup `v0p3` | plookup `v1p3` | plookup `v2p1` | plookup `v0p1`  |
-//~ |     5 | plookup `v0p4` | plookup `v1p4` | plookup `v2p2` | plookup `v1p0`  |
-//~ |     6 | plookup `v0p5` | plookup `v1p5` | plookup `v2p3` | plookup `v1p1`  |
-//~ |     7 | crumb   `v0c0` | crumb   `v1c0` | crumb   `v2c2` | crumb   `v2c12` |
-//~ |     8 | crumb   `v0c1` | crumb   `v1c1` | crumb   `v2c3` | crumb   `v2c13` |
-//~ |     9 | crumb   `v0c2` | crumb   `v1c2` | crumb   `v2c4` | crumb   `v2c14` |
-//~ |    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
-//~ |    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
-//~ |    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-//~ |    13 | crumb   `v0c6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
-//~ | LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
+//~ | Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`   | `Zero`          |
+//~ | ----- | -------------- | -------------- | --------------- | --------------- |
+//~ | Rows  |          0     |          1     |          2      |          3      |
+//~ | Cols  |                |                |                 |                 |
+//~ |     0 |         `v0`   |         `v1`   |          `v2`   | crumb   `v2c9`  |
+//~ |  MS:1 | copy    `v0p0` | copy    `v1p0` | optional `v12`  | crumb   `v2c10` |
+//~ |     2 | copy    `v0p1` | copy    `v1p1` | crumb    `v2c0` | crumb   `v2c11` |
+//~ |     3 | plookup `v0p2` | plookup `v1p2` | plookup  `v2p0` | plookup `v0p0`  |
+//~ |     4 | plookup `v0p3` | plookup `v1p3` | plookup  `v2p1` | plookup `v0p1`  |
+//~ |     5 | plookup `v0p4` | plookup `v1p4` | plookup  `v2p2` | plookup `v1p0`  |
+//~ |     6 | plookup `v0p5` | plookup `v1p5` | plookup  `v2p3` | plookup `v1p1`  |
+//~ |     7 | crumb   `v0c0` | crumb   `v1c0` | crumb    `v2c1` | crumb   `v2c12` |
+//~ |     8 | crumb   `v0c1` | crumb   `v1c1` | crumb    `v2c2` | crumb   `v2c13` |
+//~ |     9 | crumb   `v0c2` | crumb   `v1c2` | crumb    `v2c3` | crumb   `v2c14` |
+//~ |    10 | crumb   `v0c3` | crumb   `v1c3` | crumb    `v2c4` | crumb   `v2c15` |
+//~ |    11 | crumb   `v0c4` | crumb   `v1c4` | crumb    `v2c5` | crumb   `v2c16` |
+//~ |    12 | crumb   `v0c5` | crumb   `v1c5` | crumb    `v2c6` | crumb   `v2c17` |
+//~ |    13 | crumb   `v0c6` | crumb   `v1c6` | crumb    `v2c7` | crumb   `v2c18` |
+//~ | LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb    `v2c8` | crumb   `v2c19` |
 //~
 //~ The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
 //~ constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
@@ -491,7 +496,7 @@
     </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck0);
-    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">9</span>;
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">10</span>;
 
     <span class="comment">// Constraints for RangeCheck0
     //   * Operates on Curr row
@@ -538,6 +543,15 @@
         <span class="comment">// Check value v against the sum of limbs
         </span>constraints.push(sum_of_limbs - env.witness_curr(<span class="number">0</span>));
 
+        <span class="comment">// Optional compact limbs format (enabled when coeff[0] == 1, disabled when coeff[1] = 0)
+        //   Constrain decomposition of compact limb next(1)
+        //   next(1) = curr(0) + 2^L * next(0)
+        </span>constraints.push(
+            env.coeff(<span class="number">0</span>)
+                * (env.witness_next(<span class="number">1</span>)
+                    - (env.witness_curr(<span class="number">0</span>) + T::two_to_limb() * env.witness_next(<span class="number">0</span>))),
+        );
+
         constraints
     }
 }
@@ -554,23 +568,23 @@
 //~
 //~ Given value `v2` the layout looks like this
 //~
-//~ | Column | `Curr`         | `Next`        |
-//~ | ------ | -------------- | ------------- |
-//~ |      0 |         `v2`   | (ignored)     |
-//~ |      1 | crumb   `v2c0` | crumb `v2c10` |
-//~ |      2 | crumb   `v2c1` | crumb `v2c11` |
-//~ |      3 | plookup `v2p0` | (ignored)     |
-//~ |      4 | plookup `v2p1` | (ignored)     |
-//~ |      5 | plookup `v2p2` | (ignored)     |
-//~ |      6 | plookup `v2p3` | (ignored)     |
-//~ |      7 | crumb   `v2c2` | crumb `v2c12` |
-//~ |      8 | crumb   `v2c3` | crumb `v2c13` |
-//~ |      9 | crumb   `v2c4` | crumb `v2c14` |
-//~ |     10 | crumb   `v2c5` | crumb `v2c15` |
-//~ |     11 | crumb   `v2c6` | crumb `v2c16` |
-//~ |     12 | crumb   `v2c7` | crumb `v2c17` |
-//~ |     13 | crumb   `v2c8` | crumb `v2c18` |
-//~ |     14 | crumb   `v2c9` | crumb `v2c19` |
+//~ | Column | `Curr`          | `Next`        |
+//~ | ------ | --------------- | ------------- |
+//~ |      0 |          `v2`   | crumb `v2c9`  |
+//~ |      1 | optional `v12`  | crumb `v2c10` |
+//~ |      2 | crumb    `v2c0` | crumb `v2c11` |
+//~ |      3 | plookup  `v2p0` | (ignored)     |
+//~ |      4 | plookup  `v2p1` | (ignored)     |
+//~ |      5 | plookup  `v2p2` | (ignored)     |
+//~ |      6 | plookup  `v2p3` | (ignored)     |
+//~ |      7 | crumb    `v2c1` | crumb `v2c12` |
+//~ |      8 | crumb    `v2c2` | crumb `v2c13` |
+//~ |      9 | crumb    `v2c3` | crumb `v2c14` |
+//~ |     10 | crumb    `v2c4` | crumb `v2c15` |
+//~ |     11 | crumb    `v2c5` | crumb `v2c16` |
+//~ |     12 | crumb    `v2c6` | crumb `v2c17` |
+//~ |     13 | crumb    `v2c7` | crumb `v2c18` |
+//~ |     14 | crumb    `v2c8` | crumb `v2c19` |
 //~
 //~ where the notation `v2ci` and `v2pi` defined in the &quot;Layout&quot; section above.
 
@@ -590,10 +604,9 @@
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
     </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
         <span class="comment">// 1) Apply range constraints on limbs for Curr row
-        //    * Columns 1-2 are 2-bit crumbs
-        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints = (<span class="number">1</span>..=<span class="number">2</span>)
-            .map(|i| crumb(<span class="kw-2">&amp;</span>env.witness_curr(i)))
-            .collect::&lt;Vec&lt;T&gt;&gt;();
+        //    * Column 2 is a 2-bit crumb
+        </span><span class="kw">let </span><span class="kw-2">mut </span>constraints = <span class="macro">vec!</span>[crumb(<span class="kw-2">&amp;</span>env.witness_curr(<span class="number">2</span>))];
+
         <span class="comment">//    * Columns 3-6 are 12-bit plookup range constraints (these are specified
         //      in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
@@ -604,9 +617,9 @@
         );
 
         <span class="comment">// 2) Apply range constraints on limbs for Next row
-        //    * Columns 1-2 are 2-bit crumbs
+        //    * Columns 0-2 are 2-bit crumbs
         </span>constraints.append(
-            <span class="kw-2">&amp;mut </span>(<span class="number">1</span>..=<span class="number">2</span>)
+            <span class="kw-2">&amp;mut </span>(<span class="number">0</span>..=<span class="number">2</span>)
                 .map(|i| crumb(<span class="kw-2">&amp;</span>env.witness_next(i)))
                 .collect::&lt;Vec&lt;T&gt;&gt;(),
         );
@@ -641,7 +654,7 @@
         </span>}
 
         <span class="comment">// Next row:  Sum remaining 2-bit limbs vc10 and vc11
-        </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">1</span>..=<span class="number">2</span>).rev() {
+        </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">0</span>..=<span class="number">2</span>).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
         </span>}
@@ -658,11 +671,8 @@
             power_of_2 <span class="kw-2">*</span>= <span class="number">4096u64</span>.into(); <span class="comment">// 12 bits
         </span>}
 
-        <span class="comment">// Curr row:  Sum remaining 2-bit limbs: vc0 and vc1
-        </span><span class="kw">for </span>i <span class="kw">in </span>(<span class="number">1</span>..=<span class="number">2</span>).rev() {
-            sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 <span class="kw-2">*</span>= <span class="number">4u64</span>.into(); <span class="comment">// 2 bits
-        </span>}
+        <span class="comment">// Curr row:  Add remaining 2-bit limb v2c0 to sum
+        </span>sum_of_limbs += power_of_2.clone() * env.witness_curr(<span class="number">2</span>);
 
         <span class="comment">// Check value v2 against the sum of limbs
         </span>constraints.push(sum_of_limbs - env.witness_curr(<span class="number">0</span>));
@@ -671,4 +681,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (01fbc5ae7 2022-12-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7632db0e8 2022-12-08)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

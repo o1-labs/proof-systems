@@ -1071,21 +1071,21 @@ some lookups of v0 and v1 to the final row.</p>
 <div class="table-wrapper"><table><thead><tr><th>Gates</th><th><code>RangeCheck0</code></th><th><code>RangeCheck0</code></th><th><code>RangeCheck1</code></th><th><code>Zero</code></th></tr></thead><tbody>
 <tr><td>Rows</td><td>0</td><td>1</td><td>2</td><td>3</td></tr>
 <tr><td>Cols</td><td></td><td></td><td></td><td></td></tr>
-<tr><td>0</td><td><code>v0</code></td><td><code>v1</code></td><td><code>v2</code></td><td><code>0</code></td></tr>
-<tr><td>MS:1</td><td>copy    <code>v0p0</code></td><td>copy    <code>v1p0</code></td><td>crumb   <code>v2c0</code></td><td>crumb   <code>v2c10</code></td></tr>
-<tr><td>2</td><td>copy    <code>v0p1</code></td><td>copy    <code>v1p1</code></td><td>crumb   <code>v2c1</code></td><td>crumb   <code>v2c11</code></td></tr>
-<tr><td>3</td><td>plookup <code>v0p2</code></td><td>plookup <code>v1p2</code></td><td>plookup <code>v2p0</code></td><td>plookup <code>v0p0</code></td></tr>
-<tr><td>4</td><td>plookup <code>v0p3</code></td><td>plookup <code>v1p3</code></td><td>plookup <code>v2p1</code></td><td>plookup <code>v0p1</code></td></tr>
-<tr><td>5</td><td>plookup <code>v0p4</code></td><td>plookup <code>v1p4</code></td><td>plookup <code>v2p2</code></td><td>plookup <code>v1p0</code></td></tr>
-<tr><td>6</td><td>plookup <code>v0p5</code></td><td>plookup <code>v1p5</code></td><td>plookup <code>v2p3</code></td><td>plookup <code>v1p1</code></td></tr>
-<tr><td>7</td><td>crumb   <code>v0c0</code></td><td>crumb   <code>v1c0</code></td><td>crumb   <code>v2c2</code></td><td>crumb   <code>v2c12</code></td></tr>
-<tr><td>8</td><td>crumb   <code>v0c1</code></td><td>crumb   <code>v1c1</code></td><td>crumb   <code>v2c3</code></td><td>crumb   <code>v2c13</code></td></tr>
-<tr><td>9</td><td>crumb   <code>v0c2</code></td><td>crumb   <code>v1c2</code></td><td>crumb   <code>v2c4</code></td><td>crumb   <code>v2c14</code></td></tr>
-<tr><td>10</td><td>crumb   <code>v0c3</code></td><td>crumb   <code>v1c3</code></td><td>crumb   <code>v2c5</code></td><td>crumb   <code>v2c15</code></td></tr>
-<tr><td>11</td><td>crumb   <code>v0c4</code></td><td>crumb   <code>v1c4</code></td><td>crumb   <code>v2c6</code></td><td>crumb   <code>v2c16</code></td></tr>
-<tr><td>12</td><td>crumb   <code>v0c5</code></td><td>crumb   <code>v1c5</code></td><td>crumb   <code>v2c7</code></td><td>crumb   <code>v2c17</code></td></tr>
-<tr><td>13</td><td>crumb   <code>v0c6</code></td><td>crumb   <code>v1c6</code></td><td>crumb   <code>v2c8</code></td><td>crumb   <code>v2c18</code></td></tr>
-<tr><td>LS:14</td><td>crumb   <code>v0c7</code></td><td>crumb   <code>v1c7</code></td><td>crumb   <code>v2c9</code></td><td>crumb   <code>v2c19</code></td></tr>
+<tr><td>0</td><td><code>v0</code></td><td><code>v1</code></td><td><code>v2</code></td><td>crumb   <code>v2c9</code></td></tr>
+<tr><td>MS:1</td><td>copy    <code>v0p0</code></td><td>copy    <code>v1p0</code></td><td>optional <code>v12</code></td><td>crumb   <code>v2c10</code></td></tr>
+<tr><td>2</td><td>copy    <code>v0p1</code></td><td>copy    <code>v1p1</code></td><td>crumb    <code>v2c0</code></td><td>crumb   <code>v2c11</code></td></tr>
+<tr><td>3</td><td>plookup <code>v0p2</code></td><td>plookup <code>v1p2</code></td><td>plookup  <code>v2p0</code></td><td>plookup <code>v0p0</code></td></tr>
+<tr><td>4</td><td>plookup <code>v0p3</code></td><td>plookup <code>v1p3</code></td><td>plookup  <code>v2p1</code></td><td>plookup <code>v0p1</code></td></tr>
+<tr><td>5</td><td>plookup <code>v0p4</code></td><td>plookup <code>v1p4</code></td><td>plookup  <code>v2p2</code></td><td>plookup <code>v1p0</code></td></tr>
+<tr><td>6</td><td>plookup <code>v0p5</code></td><td>plookup <code>v1p5</code></td><td>plookup  <code>v2p3</code></td><td>plookup <code>v1p1</code></td></tr>
+<tr><td>7</td><td>crumb   <code>v0c0</code></td><td>crumb   <code>v1c0</code></td><td>crumb    <code>v2c1</code></td><td>crumb   <code>v2c12</code></td></tr>
+<tr><td>8</td><td>crumb   <code>v0c1</code></td><td>crumb   <code>v1c1</code></td><td>crumb    <code>v2c2</code></td><td>crumb   <code>v2c13</code></td></tr>
+<tr><td>9</td><td>crumb   <code>v0c2</code></td><td>crumb   <code>v1c2</code></td><td>crumb    <code>v2c3</code></td><td>crumb   <code>v2c14</code></td></tr>
+<tr><td>10</td><td>crumb   <code>v0c3</code></td><td>crumb   <code>v1c3</code></td><td>crumb    <code>v2c4</code></td><td>crumb   <code>v2c15</code></td></tr>
+<tr><td>11</td><td>crumb   <code>v0c4</code></td><td>crumb   <code>v1c4</code></td><td>crumb    <code>v2c5</code></td><td>crumb   <code>v2c16</code></td></tr>
+<tr><td>12</td><td>crumb   <code>v0c5</code></td><td>crumb   <code>v1c5</code></td><td>crumb    <code>v2c6</code></td><td>crumb   <code>v2c17</code></td></tr>
+<tr><td>13</td><td>crumb   <code>v0c6</code></td><td>crumb   <code>v1c6</code></td><td>crumb    <code>v2c7</code></td><td>crumb   <code>v2c18</code></td></tr>
+<tr><td>LS:14</td><td>crumb   <code>v0c7</code></td><td>crumb   <code>v1c7</code></td><td>crumb    <code>v2c8</code></td><td>crumb   <code>v2c19</code></td></tr>
 </tbody></table>
 </div>
 <p>The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
@@ -1157,21 +1157,21 @@ constraining columns 1 and 2 to zero</li>
 </ul>
 <p>Given value <code>v2</code> the layout looks like this</p>
 <div class="table-wrapper"><table><thead><tr><th>Column</th><th><code>Curr</code></th><th><code>Next</code></th></tr></thead><tbody>
-<tr><td>0</td><td><code>v2</code></td><td>(ignored)</td></tr>
-<tr><td>1</td><td>crumb   <code>v2c0</code></td><td>crumb <code>v2c10</code></td></tr>
-<tr><td>2</td><td>crumb   <code>v2c1</code></td><td>crumb <code>v2c11</code></td></tr>
-<tr><td>3</td><td>plookup <code>v2p0</code></td><td>(ignored)</td></tr>
-<tr><td>4</td><td>plookup <code>v2p1</code></td><td>(ignored)</td></tr>
-<tr><td>5</td><td>plookup <code>v2p2</code></td><td>(ignored)</td></tr>
-<tr><td>6</td><td>plookup <code>v2p3</code></td><td>(ignored)</td></tr>
-<tr><td>7</td><td>crumb   <code>v2c2</code></td><td>crumb <code>v2c12</code></td></tr>
-<tr><td>8</td><td>crumb   <code>v2c3</code></td><td>crumb <code>v2c13</code></td></tr>
-<tr><td>9</td><td>crumb   <code>v2c4</code></td><td>crumb <code>v2c14</code></td></tr>
-<tr><td>10</td><td>crumb   <code>v2c5</code></td><td>crumb <code>v2c15</code></td></tr>
-<tr><td>11</td><td>crumb   <code>v2c6</code></td><td>crumb <code>v2c16</code></td></tr>
-<tr><td>12</td><td>crumb   <code>v2c7</code></td><td>crumb <code>v2c17</code></td></tr>
-<tr><td>13</td><td>crumb   <code>v2c8</code></td><td>crumb <code>v2c18</code></td></tr>
-<tr><td>14</td><td>crumb   <code>v2c9</code></td><td>crumb <code>v2c19</code></td></tr>
+<tr><td>0</td><td><code>v2</code></td><td>crumb <code>v2c9</code></td></tr>
+<tr><td>1</td><td>optional <code>v12</code></td><td>crumb <code>v2c10</code></td></tr>
+<tr><td>2</td><td>crumb    <code>v2c0</code></td><td>crumb <code>v2c11</code></td></tr>
+<tr><td>3</td><td>plookup  <code>v2p0</code></td><td>(ignored)</td></tr>
+<tr><td>4</td><td>plookup  <code>v2p1</code></td><td>(ignored)</td></tr>
+<tr><td>5</td><td>plookup  <code>v2p2</code></td><td>(ignored)</td></tr>
+<tr><td>6</td><td>plookup  <code>v2p3</code></td><td>(ignored)</td></tr>
+<tr><td>7</td><td>crumb    <code>v2c1</code></td><td>crumb <code>v2c12</code></td></tr>
+<tr><td>8</td><td>crumb    <code>v2c2</code></td><td>crumb <code>v2c13</code></td></tr>
+<tr><td>9</td><td>crumb    <code>v2c3</code></td><td>crumb <code>v2c14</code></td></tr>
+<tr><td>10</td><td>crumb    <code>v2c4</code></td><td>crumb <code>v2c15</code></td></tr>
+<tr><td>11</td><td>crumb    <code>v2c5</code></td><td>crumb <code>v2c16</code></td></tr>
+<tr><td>12</td><td>crumb    <code>v2c6</code></td><td>crumb <code>v2c17</code></td></tr>
+<tr><td>13</td><td>crumb    <code>v2c7</code></td><td>crumb <code>v2c18</code></td></tr>
+<tr><td>14</td><td>crumb    <code>v2c8</code></td><td>crumb <code>v2c19</code></td></tr>
 </tbody></table>
 </div>
 <p>where the notation <code>v2ci</code> and <code>v2pi</code> defined in the “Layout” section above.</p>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-92ec330caa5a75cd.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/range_check/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-d32a9866c4c3e823.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-046227e470cd3629.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-800f2ee593c8e6f7.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-9edae3c387f5a5b3.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-287cecec4dbb45b0.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -176,20 +176,83 @@
 <a href="#176" id="176">176</a>
 <a href="#177" id="177">177</a>
 <a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Range check witness computation
 
 </span><span class="kw">use </span>ark_ff::PrimeField;
-<span class="kw">use </span>o1_utils::ForeignElement;
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>num_integer::Integer;
+<span class="kw">use </span>o1_utils::field_helpers::BigUintFieldHelpers;
+<span class="kw">use </span>o1_utils::{FieldHelpers, ForeignElement};
 <span class="kw">use </span>std::array;
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::witness::Variables;
+<span class="kw">use </span><span class="kw">crate</span>::variable_map;
 <span class="kw">use crate</span>::{
     circuits::{
         polynomial::COLUMNS,
-        witness::{init_row, ConstantCell, CopyBitsCell, CopyCell, VariableCell, WitnessCell},
+        witness::{init_row, CopyBitsCell, CopyCell, VariableCell, WitnessCell},
     },
     variables,
 };
+<span class="kw">use </span>o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 <span class="doccomment">/// Witness layout
 ///   * The values and cell contents are in little-endian order.
@@ -211,28 +274,28 @@
         <span class="comment">/* row 3, RangeCheck1 row */
         </span>[
             VariableCell::create(<span class="string">&quot;v2&quot;</span>),
-            <span class="comment">/* 2-bit crumbs (placed here to keep lookup pattern */
+            VariableCell::create(<span class="string">&quot;v12&quot;</span>), <span class="comment">// optional
+            /* 2-bit crumbs (placed here to keep lookup pattern */
             /*               the same as RangeCheck0) */
             </span>CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">86</span>, <span class="number">88</span>),
-            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">84</span>, <span class="number">86</span>),
             <span class="comment">/* 12-bit plookups */
-            </span>CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">72</span>, <span class="number">84</span>),
-            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">60</span>, <span class="number">72</span>),
-            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">48</span>, <span class="number">60</span>),
-            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">36</span>, <span class="number">48</span>),
+            </span>CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">74</span>, <span class="number">86</span>),
+            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">62</span>, <span class="number">74</span>),
+            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">50</span>, <span class="number">62</span>),
+            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">38</span>, <span class="number">50</span>),
             <span class="comment">/* 2-bit crumbs */
-            </span>CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">34</span>, <span class="number">36</span>),
+            </span>CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">36</span>, <span class="number">38</span>),
+            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">34</span>, <span class="number">36</span>),
             CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">32</span>, <span class="number">34</span>),
             CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">30</span>, <span class="number">32</span>),
             CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">28</span>, <span class="number">30</span>),
             CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">26</span>, <span class="number">28</span>),
             CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">24</span>, <span class="number">26</span>),
             CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">22</span>, <span class="number">24</span>),
-            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">20</span>, <span class="number">22</span>),
         ],
         <span class="comment">/* row 4, Zero row */
         </span>[
-            ConstantCell::create(F::zero()),
+            CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">20</span>, <span class="number">22</span>),
             <span class="comment">/* 2-bit crumbs (placed here to keep lookup pattern */
             /*               the same as RangeCheck0) */
             </span>CopyBitsCell::create(<span class="number">2</span>, <span class="number">0</span>, <span class="number">18</span>, <span class="number">20</span>),
@@ -293,7 +356,38 @@
 
     init_row(<span class="kw-2">&amp;mut </span>witness, <span class="number">0</span>, <span class="number">0</span>, <span class="kw-2">&amp;</span>layout, <span class="kw-2">&amp;</span><span class="macro">variables!</span>(v0));
     init_row(<span class="kw-2">&amp;mut </span>witness, <span class="number">0</span>, <span class="number">1</span>, <span class="kw-2">&amp;</span>layout, <span class="kw-2">&amp;</span><span class="macro">variables!</span>(v1));
-    init_row(<span class="kw-2">&amp;mut </span>witness, <span class="number">0</span>, <span class="number">2</span>, <span class="kw-2">&amp;</span>layout, <span class="kw-2">&amp;</span><span class="macro">variables!</span>(v2));
+    init_row(
+        <span class="kw-2">&amp;mut </span>witness,
+        <span class="number">0</span>,
+        <span class="number">2</span>,
+        <span class="kw-2">&amp;</span>layout,
+        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>(<span class="string">&quot;v2&quot; </span>=&gt; v2, <span class="string">&quot;v12&quot; </span>=&gt; F::zero()),
+    );
+    init_row(<span class="kw-2">&amp;mut </span>witness, <span class="number">0</span>, <span class="number">3</span>, <span class="kw-2">&amp;</span>layout, <span class="kw-2">&amp;</span><span class="macro">variables!</span>());
+
+    witness
+}
+
+<span class="doccomment">/// Create a multi range check witness from two limbs: v01 (176 bits), v2 (88 bits),
+/// where v2 is the most significant limb and v01 is the least significant limb
+</span><span class="kw">pub fn </span>create_multi_compact&lt;F: PrimeField&gt;(v01: F, v2: F) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+    <span class="kw">let </span>layout = layout();
+    <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">4</span>]);
+
+    <span class="kw">let </span>(v1, v0) = v01.to_biguint().div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_limb());
+    <span class="kw">let </span>v0: F = v0.to_field().expect(<span class="string">&quot;failed to convert to field element&quot;</span>);
+    <span class="kw">let </span>v1: F = v1.to_field().expect(<span class="string">&quot;failed to convert to field element&quot;</span>);
+
+    init_row(<span class="kw-2">&amp;mut </span>witness, <span class="number">0</span>, <span class="number">0</span>, <span class="kw-2">&amp;</span>layout, <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>(<span class="string">&quot;v0&quot; </span>=&gt; v2));
+    init_row(<span class="kw-2">&amp;mut </span>witness, <span class="number">0</span>, <span class="number">1</span>, <span class="kw-2">&amp;</span>layout, <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>(<span class="string">&quot;v1&quot; </span>=&gt; v0));
+
+    init_row(
+        <span class="kw-2">&amp;mut </span>witness,
+        <span class="number">0</span>,
+        <span class="number">2</span>,
+        <span class="kw-2">&amp;</span>layout,
+        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>(<span class="string">&quot;v2&quot; </span>=&gt; v1, <span class="string">&quot;v12&quot; </span>=&gt; v01),
+    );
     init_row(<span class="kw-2">&amp;mut </span>witness, <span class="number">0</span>, <span class="number">3</span>, <span class="kw-2">&amp;</span>layout, <span class="kw-2">&amp;</span><span class="macro">variables!</span>());
 
     witness
@@ -302,6 +396,11 @@
 <span class="doccomment">/// Create a multi range check witness from limbs
 </span><span class="kw">pub fn </span>create_multi_limbs&lt;F: PrimeField&gt;(limbs: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>]) -&gt; [Vec&lt;F&gt;; COLUMNS] {
     create_multi(limbs[<span class="number">0</span>], limbs[<span class="number">1</span>], limbs[<span class="number">2</span>])
+}
+
+<span class="doccomment">/// Create a multi range check witness from compact limbs
+</span><span class="kw">pub fn </span>create_multi_compact_limbs&lt;F: PrimeField&gt;(limbs: <span class="kw-2">&amp;</span>[F; <span class="number">2</span>]) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+    create_multi_compact(limbs[<span class="number">0</span>], limbs[<span class="number">1</span>])
 }
 
 <span class="doccomment">/// Create a single range check witness
@@ -315,7 +414,7 @@
     witness
 }
 
-<span class="doccomment">/// Extend an existing witness with a multi-range-check gadget for foreign field element
+<span class="doccomment">/// Extend an existing witness with a multi-range-check gadget for three 88-bit values: v0, v1 and v2
 </span><span class="kw">pub fn </span>extend_multi&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], v0: F, v1: F, v2: F) {
     <span class="kw">let </span>limbs_witness = create_multi(v0, v1, v2);
     <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
@@ -323,9 +422,26 @@
     }
 }
 
-<span class="doccomment">/// Extend an existing witness with a multi-range-check gadget for foreign field element
+<span class="doccomment">/// Extend and existing witness with a multi range check witness for two limbs: v01 (176 bits), v2 (88 bits),
+/// where v2 is the most significant limb and v01 is the least significant limb
+</span><span class="kw">pub fn </span>extend_multi_compact&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], v01: F, v2: F) {
+    <span class="kw">let </span>limbs_witness = create_multi_compact(v01, v2);
+    <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
+}
+
+<span class="doccomment">/// Extend an existing witness with a multi-range-check gadget for limbs
 </span><span class="kw">pub fn </span>extend_multi_limbs&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], limbs: <span class="kw-2">&amp;</span>[F; <span class="number">3</span>]) {
     <span class="kw">let </span>limbs_witness = create_multi_limbs(limbs);
+    <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+        witness[col].extend(limbs_witness[col].iter())
+    }
+}
+
+<span class="doccomment">/// Extend an existing witness with a multi-range-check gadget for compact limbs
+</span><span class="kw">pub fn </span>extend_multi_compact_limbs&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], limbs: <span class="kw-2">&amp;</span>[F; <span class="number">2</span>]) {
+    <span class="kw">let </span>limbs_witness = create_multi_compact_limbs(limbs);
     <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
         witness[col].extend(limbs_witness[col].iter())
     }
@@ -355,4 +471,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (01fbc5ae7 2022-12-07)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.67.0-nightly (7632db0e8 2022-12-08)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
