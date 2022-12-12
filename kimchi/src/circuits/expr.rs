@@ -614,9 +614,9 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                         }
                     }
                     Op2::Mul => {
-                        if reduce_further1 && c1_reduced.is_zero() {
-                            (Expr::zero(), true)
-                        } else if reduce_further2 && c2_reduced.is_zero() {
+                        if reduce_further1 && c1_reduced.is_zero()
+                            || reduce_further2 && c2_reduced.is_zero()
+                        {
                             (Expr::zero(), true)
                         } else if reduce_further1 && c1_reduced.is_one() {
                             if reduce_further2 && c2_reduced.is_one() {
@@ -668,13 +668,11 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                         TableWidth(width) => features
                             .lookup_features
                             .patterns
-                            .clone()
                             .into_iter()
                             .any(|feature| feature.max_joint_size() >= (*width as u32)),
                         LookupsPerRow(count) => features
                             .lookup_features
                             .patterns
-                            .clone()
                             .into_iter()
                             .any(|feature| feature.max_lookups_per_row() >= (*count as usize)),
                     }

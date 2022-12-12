@@ -113,7 +113,7 @@ impl LookupPatterns {
 
     /// Check what kind of lookups, if any, are used by this circuit.
     pub fn joint_lookups_used(&self) -> bool {
-        for lookup_pattern in self.clone() {
+        for lookup_pattern in *self {
             if lookup_pattern.max_joint_size() > 1 {
                 return true;
             }

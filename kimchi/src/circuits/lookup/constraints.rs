@@ -463,7 +463,7 @@ pub fn constraints<F: FftField>(
                         Box::new(E::one()),
                     );
                 }
-                res = res * beta1_used;
+                res *= beta1_used;
             }
             res
         };
@@ -483,7 +483,7 @@ pub fn constraints<F: FftField>(
                         Box::new(E::one()),
                     );
                 }
-                res = res * dummy_used;
+                res *= dummy_used;
             }
 
             // NOTE: We multiply by beta1_per_row here instead of at the end, because the
