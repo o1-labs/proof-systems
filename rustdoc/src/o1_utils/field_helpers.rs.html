@@ -345,6 +345,16 @@
 <a href="#345" id="345">345</a>
 <a href="#346" id="346">346</a>
 <a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Useful helper methods to extend [ark_ff::Field].
 
 </span><span class="kw">use </span>ark_ff::{BigInteger, Field, FpParameters, PrimeField};
@@ -381,7 +391,7 @@
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; RandomField&lt;F&gt; <span class="kw">for </span>StdRng {
     <span class="kw">fn </span>gen_field_with_bits(<span class="kw-2">&amp;mut </span><span class="self">self</span>, bits: usize) -&gt; F {
-        F::from_biguint(<span class="self">self</span>.gen_biguint_below(<span class="kw-2">&amp;</span>BigUint::from(<span class="number">2u8</span>).pow(bits <span class="kw">as </span>u32))).unwrap()
+        F::from_biguint(<span class="kw-2">&amp;</span><span class="self">self</span>.gen_biguint_below(<span class="kw-2">&amp;</span>BigUint::from(<span class="number">2u8</span>).pow(bits <span class="kw">as </span>u32))).unwrap()
     }
 
     <span class="kw">fn </span>gen(<span class="kw-2">&amp;mut </span><span class="self">self</span>, input: <span class="prelude-ty">Option</span>&lt;F&gt;, bits: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; F {
@@ -427,11 +437,12 @@
     </span><span class="kw">fn </span>from_bits(bits: <span class="kw-2">&amp;</span>[bool]) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;;
 
     <span class="doccomment">/// Deserialize from BigUint
-    </span><span class="kw">fn </span>from_biguint(big: BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;
+    </span><span class="kw">fn </span>from_biguint(big: <span class="kw-2">&amp;</span>BigUint) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt;
     <span class="kw">where
         </span>F: PrimeField,
     {
-        big.try_into()
+        big.clone()
+            .try_into()
             .map_err(|<span class="kw">_</span>| FieldHelpersError::DeserializeBytes)
     }
 
@@ -530,7 +541,7 @@
 
 <span class="kw">impl </span>BigUintFieldHelpers <span class="kw">for </span>BigUint {
     <span class="kw">fn </span>to_field&lt;F: PrimeField&gt;(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;F&gt; {
-        F::from_biguint(<span class="self">self</span>)
+        F::from_biguint(<span class="kw-2">&amp;</span><span class="self">self</span>)
     }
 }
 
@@ -659,11 +670,11 @@
     <span class="attr">#[test]
     </span><span class="kw">fn </span>field_big() {
         <span class="kw">let </span>fe_1024 = BaseField::from(<span class="number">1024u32</span>);
-        <span class="kw">let </span>big_1024 = fe_1024.into();
+        <span class="kw">let </span>big_1024: BigUint = fe_1024.into();
         <span class="macro">assert_eq!</span>(big_1024, BigUint::new(<span class="macro">vec!</span>[<span class="number">1024</span>]));
 
         <span class="macro">assert_eq!</span>(
-            BaseField::from_biguint(big_1024).expect(<span class="string">&quot;Failed to deserialize big uint&quot;</span>),
+            BaseField::from_biguint(<span class="kw-2">&amp;</span>big_1024).expect(<span class="string">&quot;Failed to deserialize big uint&quot;</span>),
             fe_1024
         );
 
@@ -679,7 +690,7 @@
         );
 
         <span class="macro">assert_eq!</span>(
-            BaseField::from_biguint(BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_32bytes))
+            BaseField::from_biguint(<span class="kw-2">&amp;</span>BigUint::from_bytes_be(<span class="kw-2">&amp;</span>be_zero_32bytes))
                 .expect(<span class="string">&quot;Failed to convert big uint&quot;</span>),
             field_zero
         );
@@ -687,10 +698,19 @@
         <span class="macro">assert_eq!</span>(big_zero_32, big_zero_1);
 
         <span class="macro">assert_eq!</span>(
-            BaseField::from_biguint(big_zero_32).expect(<span class="string">&quot;Failed&quot;</span>),
-            BaseField::from_biguint(big_zero_1).expect(<span class="string">&quot;Failed&quot;</span>)
+            BaseField::from_biguint(<span class="kw-2">&amp;</span>big_zero_32).expect(<span class="string">&quot;Failed&quot;</span>),
+            BaseField::from_biguint(<span class="kw-2">&amp;</span>big_zero_1).expect(<span class="string">&quot;Failed&quot;</span>)
         );
+
+        <span class="kw">let </span>bytes = [
+            <span class="number">46</span>, <span class="number">174</span>, <span class="number">218</span>, <span class="number">228</span>, <span class="number">42</span>, <span class="number">116</span>, <span class="number">97</span>, <span class="number">213</span>, <span class="number">149</span>, <span class="number">45</span>, <span class="number">39</span>, <span class="number">185</span>, <span class="number">126</span>, <span class="number">202</span>, <span class="number">208</span>, <span class="number">104</span>, <span class="number">182</span>, <span class="number">152</span>,
+            <span class="number">235</span>, <span class="number">185</span>, <span class="number">78</span>, <span class="number">138</span>, <span class="number">14</span>, <span class="number">76</span>, <span class="number">69</span>, <span class="number">56</span>, <span class="number">139</span>, <span class="number">182</span>, <span class="number">19</span>, <span class="number">222</span>, <span class="number">126</span>, <span class="number">8</span>,
+        ];
+        <span class="kw">let </span>fe = BaseField::from_bytes(<span class="kw-2">&amp;</span>bytes).expect(<span class="string">&quot;failed to create field element from bytes&quot;</span>);
+        <span class="kw">let </span>bi = BigUint::from_bytes_le(<span class="kw-2">&amp;</span>bytes);
+        <span class="macro">assert_eq!</span>(fe.to_biguint(), bi);
+        <span class="macro">assert_eq!</span>(bi.to_field::&lt;BaseField&gt;().unwrap(), fe);
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (c6fcdb690 2022-12-10)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

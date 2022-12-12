@@ -126,10 +126,75 @@
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module provides a set of functions to perform bit operations on big integers.
 //! In particular, it gives XOR and NOT for BigUint.
 </span><span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>std::cmp::Ordering;
+<span class="kw">use </span>std::cmp::{max, Ordering};
+
+<span class="kw">use </span><span class="kw">crate</span>::BigUintHelpers;
 
 <span class="doccomment">/// Bitwise operations
 </span><span class="kw">pub trait </span>BitwiseOps&lt;Rhs = <span class="self">Self</span>&gt; {
@@ -138,6 +203,11 @@
 
     <span class="doccomment">/// Conjunction of the bits of two BigUint inputs for a given number of bytes
     </span><span class="kw">fn </span>bitwise_and(input1: <span class="kw-2">&amp;</span>Rhs, input: <span class="kw-2">&amp;</span>Rhs, bytes: usize) -&gt; Rhs;
+
+    <span class="doccomment">/// Negate the bits of a Self input
+    /// If it provides a larger desired `bits` than the input length then it takes the padded input of `bits` length.
+    /// Otherwise it only takes the bits of the input.
+    </span><span class="kw">fn </span>bitwise_not(input: <span class="kw-2">&amp;</span>Rhs, bits: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; Rhs;
 }
 
 <span class="kw">impl </span>BitwiseOps <span class="kw">for </span>BigUint {
@@ -153,6 +223,19 @@
                 .map(|(b1, b2)| b1 ^ b2)
                 .collect::&lt;Vec&lt;u8&gt;&gt;(),
         )
+    }
+
+    <span class="kw">fn </span>bitwise_not(input: <span class="kw-2">&amp;</span>BigUint, bits: <span class="prelude-ty">Option</span>&lt;usize&gt;) -&gt; BigUint {
+        <span class="comment">// pad if needed / desired
+        // first get the number of bits of the input,
+        // take into account that BigUint::bits() returns 0 if the input is 0
+        </span><span class="kw">let </span>in_bits = input.bitlen() <span class="kw">as </span>usize;
+        <span class="kw">let </span>bits = max(in_bits, bits.unwrap_or(<span class="number">0</span>));
+        <span class="comment">// build vector of bits in little endian (least significant bit in position 0)
+        </span><span class="kw">let </span><span class="kw-2">mut </span>bit_vec = <span class="macro">vec!</span>[];
+        <span class="comment">// negate each of the bits of the input
+        </span>(<span class="number">0</span>..bits).for_each(|i| bit_vec.push(!bit_at(input, i <span class="kw">as </span>u32)));
+        ToBigUint::to_biguint(<span class="kw-2">&amp;</span>bit_vec)
     }
 
     <span class="kw">fn </span>bitwise_and(input1: <span class="kw-2">&amp;</span>BigUint, input2: <span class="kw-2">&amp;</span>BigUint, bytes: usize) -&gt; BigUint {
@@ -182,6 +265,33 @@
     <span class="kw">let </span><span class="kw-2">mut </span>padded = input.to_bytes_le().to_vec();
     padded.resize(bytes + padded.len(), <span class="number">0u8</span>);
     padded
+}
+
+<span class="comment">// Returns the bit value of a BigUint input at a certain position or zero
+</span><span class="kw">fn </span>bit_at(input: <span class="kw-2">&amp;</span>BigUint, index: u32) -&gt; bool {
+    <span class="kw">if </span>input.bit(index <span class="kw">as </span>u64) {
+        ((input / BigUint::from(<span class="number">2u8</span>).pow(index)) % BigUint::from(<span class="number">2u32</span>)) == BigUint::from(<span class="number">1u32</span>)
+    } <span class="kw">else </span>{
+        <span class="bool-val">false
+    </span>}
+}
+
+<span class="doccomment">/// Converts types to a BigUint
+</span><span class="kw">trait </span>ToBigUint {
+    <span class="doccomment">/// Converts a vector of bits in little endian to a BigUint
+    </span><span class="kw">fn </span>to_biguint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BigUint;
+}
+
+<span class="kw">impl </span>ToBigUint <span class="kw">for </span>Vec&lt;bool&gt; {
+    <span class="kw">fn </span>to_biguint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BigUint {
+        <span class="kw">let </span><span class="kw-2">mut </span>bigvalue = BigUint::from(<span class="number">0u8</span>);
+        <span class="kw">let </span><span class="kw-2">mut </span>power = BigUint::from(<span class="number">1u8</span>);
+        <span class="kw">for </span>bit <span class="kw">in </span><span class="self">self </span>{
+            bigvalue += power.clone() * BigUint::from(<span class="kw-2">*</span>bit <span class="kw">as </span>u8);
+            power <span class="kw-2">*</span>= BigUint::from(<span class="number">2u8</span>);
+        }
+        bigvalue
+    }
 }
 
 <span class="attr">#[cfg(test)]
@@ -253,6 +363,22 @@
             }
         }
     }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_not_all_byte() {
+        <span class="kw">for </span>byte <span class="kw">in </span><span class="number">0</span>..<span class="number">256 </span>{
+            <span class="kw">let </span>input = BigUint::from(byte <span class="kw">as </span>u8);
+            <span class="kw">let </span>negated = BigUint::from(!byte <span class="kw">as </span>u8); <span class="comment">// full 8 bits
+            </span><span class="macro">assert_eq!</span>(BigUint::bitwise_not(<span class="kw-2">&amp;</span>input, <span class="prelude-val">Some</span>(<span class="number">8</span>)), negated); <span class="comment">// full byte
+            </span><span class="kw">let </span>bits = input.bitlen();
+            <span class="kw">let </span>min_negated = <span class="number">2u32</span>.pow(bits <span class="kw">as </span>u32) - <span class="number">1 </span>- byte;
+            <span class="comment">// only up to needed
+            </span><span class="macro">assert_eq!</span>(
+                BigUint::bitwise_not(<span class="kw-2">&amp;</span>input, <span class="prelude-val">None</span>),
+                BigUint::from(min_negated)
+            );
+        }
+    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (c6fcdb690 2022-12-10)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="o1_utils" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
