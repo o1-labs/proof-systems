@@ -47,7 +47,7 @@ impl BitwiseOps for BigUint {
         let mut bit_vec = vec![];
         // negate each of the bits of the input
         (0..bits).for_each(|i| bit_vec.push(!Self::bit_at(input, i as u32)));
-        le_bitvec_to_biguint(&bit_vec)
+        ToBigUint::to_biguint(&bit_vec)
     }
 
     // Returns the bit value of a BigUint input at a certain position or zero
@@ -88,15 +88,22 @@ fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
     padded
 }
 
-// Transforms a vector of bits in little endian to a BigUint
-fn le_bitvec_to_biguint(input: &[bool]) -> BigUint {
-    let mut bigvalue = BigUint::from(0u8);
-    let mut power = BigUint::from(1u8);
-    for bit in input {
-        bigvalue += power.clone() * BigUint::from(*bit as u8);
-        power *= BigUint::from(2u8);
+/// Converts types to a BigUint
+trait ToBigUint {
+    /// Converts a vector of bits in little endian to a BigUint
+    fn to_biguint(&self) -> BigUint;
+}
+
+impl ToBigUint for Vec<bool> {
+    fn to_biguint(&self) -> BigUint {
+        let mut bigvalue = BigUint::from(0u8);
+        let mut power = BigUint::from(1u8);
+        for bit in self {
+            bigvalue += power.clone() * BigUint::from(*bit as u8);
+            power *= BigUint::from(2u8);
+        }
+        bigvalue
     }
-    bigvalue
 }
 
 #[cfg(test)]

@@ -205,7 +205,7 @@ fn test_xor64_zeros() {
     let zero = PallasField::zero();
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero), Some(zero), Some(64));
-    assert_eq!(witness[2][0], PallasField::zero());
+    assert_eq!(witness[2][0], zero);
 }
 
 #[test]
