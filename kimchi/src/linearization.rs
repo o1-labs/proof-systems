@@ -15,9 +15,8 @@ use crate::circuits::polynomials::endosclmul::EndosclMul;
 use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 use crate::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
 use crate::circuits::polynomials::poseidon::Poseidon;
-use crate::circuits::polynomials::range_check;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
-use crate::circuits::polynomials::{generic, permutation, xor};
+use crate::circuits::polynomials::{generic, permutation, range_check, rot, xor};
 use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
@@ -133,6 +132,21 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         }
     }
 
+    {
+        let rot_expr = || rot::Rot64::combined_constraints(&powers_of_alpha);
+        if let Some(feature_flags) = feature_flags {
+            if feature_flags.rot {
+                expr += rot_expr();
+            }
+        } else {
+            expr += Expr::IfFeature(
+                FeatureFlag::Rot,
+                Box::new(rot_expr()),
+                Box::new(Expr::zero()),
+            );
+        }
+    }
+
     if generic {
         expr += generic::Generic::combined_constraints(&powers_of_alpha);
     }
@@ -164,9 +178,9 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
             patterns: LookupPatterns {
                 xor: true,
                 chacha_final: true,
-                lookup_gate: true,
-                range_check_gate: true,
-                foreign_field_mul_gate: true,
+                lookup: true,
+                range_check: true,
+                foreign_field_mul: true,
             },
             uses_runtime_tables: true,
             joint_lookup_used: true,
@@ -232,13 +246,14 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
                 foreign_field_add: true,
                 foreign_field_mul: true,
                 xor: true,
+                rot: true,
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,
                         chacha_final: true,
-                        lookup_gate: true,
-                        range_check_gate: true,
-                        foreign_field_mul_gate: true,
+                        lookup: true,
+                        range_check: true,
+                        foreign_field_mul: true,
                     },
                     joint_lookup_used: true,
                     uses_runtime_tables: true,

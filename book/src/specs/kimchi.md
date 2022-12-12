@@ -365,7 +365,7 @@ will translate into a scalar multiplication by 0, which is free.
 
 #### The Lookup Selectors
 
-**ChaChaSelector**. Performs 4 queries to the XOR lookup table.
+**XorSelector**. Performs 4 queries to the XOR lookup table.
 
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
@@ -1089,25 +1089,25 @@ This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and const
 * `vipj` is the jth 12-bit limb of value $v_i$
 * `vicj` is the jth 2-bit crumb limb of value $v_i$
 
-| Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`  | `Zero`          |
-| ----- | -------------- | -------------- | -------------- | --------------- |
-| Rows  |          0     |          1     |          2     |          3      |
-| Cols  |                |                |                |                 |
-|     0 |         `v0`   |         `v1`   |         `v2`   |         `0`     |
-|  MS:1 | copy    `v0p0` | copy    `v1p0` | crumb   `v2c0` | crumb   `v2c10` |
-|     2 | copy    `v0p1` | copy    `v1p1` | crumb   `v2c1` | crumb   `v2c11` |
-|     3 | plookup `v0p2` | plookup `v1p2` | plookup `v2p0` | plookup `v0p0`  |
-|     4 | plookup `v0p3` | plookup `v1p3` | plookup `v2p1` | plookup `v0p1`  |
-|     5 | plookup `v0p4` | plookup `v1p4` | plookup `v2p2` | plookup `v1p0`  |
-|     6 | plookup `v0p5` | plookup `v1p5` | plookup `v2p3` | plookup `v1p1`  |
-|     7 | crumb   `v0c0` | crumb   `v1c0` | crumb   `v2c2` | crumb   `v2c12` |
-|     8 | crumb   `v0c1` | crumb   `v1c1` | crumb   `v2c3` | crumb   `v2c13` |
-|     9 | crumb   `v0c2` | crumb   `v1c2` | crumb   `v2c4` | crumb   `v2c14` |
-|    10 | crumb   `v0c3` | crumb   `v1c3` | crumb   `v2c5` | crumb   `v2c15` |
-|    11 | crumb   `v0c4` | crumb   `v1c4` | crumb   `v2c6` | crumb   `v2c16` |
-|    12 | crumb   `v0c5` | crumb   `v1c5` | crumb   `v2c7` | crumb   `v2c17` |
-|    13 | crumb   `v0c6` | crumb   `v1c6` | crumb   `v2c8` | crumb   `v2c18` |
-| LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb   `v2c9` | crumb   `v2c19` |
+| Gates | `RangeCheck0`  | `RangeCheck0`  | `RangeCheck1`   | `Zero`          |
+| ----- | -------------- | -------------- | --------------- | --------------- |
+| Rows  |          0     |          1     |          2      |          3      |
+| Cols  |                |                |                 |                 |
+|     0 |         `v0`   |         `v1`   |          `v2`   | crumb   `v2c9`  |
+|  MS:1 | copy    `v0p0` | copy    `v1p0` | optional `v12`  | crumb   `v2c10` |
+|     2 | copy    `v0p1` | copy    `v1p1` | crumb    `v2c0` | crumb   `v2c11` |
+|     3 | plookup `v0p2` | plookup `v1p2` | plookup  `v2p0` | plookup `v0p0`  |
+|     4 | plookup `v0p3` | plookup `v1p3` | plookup  `v2p1` | plookup `v0p1`  |
+|     5 | plookup `v0p4` | plookup `v1p4` | plookup  `v2p2` | plookup `v1p0`  |
+|     6 | plookup `v0p5` | plookup `v1p5` | plookup  `v2p3` | plookup `v1p1`  |
+|     7 | crumb   `v0c0` | crumb   `v1c0` | crumb    `v2c1` | crumb   `v2c12` |
+|     8 | crumb   `v0c1` | crumb   `v1c1` | crumb    `v2c2` | crumb   `v2c13` |
+|     9 | crumb   `v0c2` | crumb   `v1c2` | crumb    `v2c3` | crumb   `v2c14` |
+|    10 | crumb   `v0c3` | crumb   `v1c3` | crumb    `v2c4` | crumb   `v2c15` |
+|    11 | crumb   `v0c4` | crumb   `v1c4` | crumb    `v2c5` | crumb   `v2c16` |
+|    12 | crumb   `v0c5` | crumb   `v1c5` | crumb    `v2c6` | crumb   `v2c17` |
+|    13 | crumb   `v0c6` | crumb   `v1c6` | crumb    `v2c7` | crumb   `v2c18` |
+| LS:14 | crumb   `v0c7` | crumb   `v1c7` | crumb    `v2c8` | crumb   `v2c19` |
 
 The 12-bit chunks are constrained with plookups and the 2-bit crumbs are
 constrained with degree-4 constraints of the form $x (x - 1) (x - 2) (x - 3)$.
@@ -1178,23 +1178,23 @@ It uses two different types of constraints
 
 Given value `v2` the layout looks like this
 
-| Column | `Curr`         | `Next`        |
-| ------ | -------------- | ------------- |
-|      0 |         `v2`   | (ignored)     |
-|      1 | crumb   `v2c0` | crumb `v2c10` |
-|      2 | crumb   `v2c1` | crumb `v2c11` |
-|      3 | plookup `v2p0` | (ignored)     |
-|      4 | plookup `v2p1` | (ignored)     |
-|      5 | plookup `v2p2` | (ignored)     |
-|      6 | plookup `v2p3` | (ignored)     |
-|      7 | crumb   `v2c2` | crumb `v2c12` |
-|      8 | crumb   `v2c3` | crumb `v2c13` |
-|      9 | crumb   `v2c4` | crumb `v2c14` |
-|     10 | crumb   `v2c5` | crumb `v2c15` |
-|     11 | crumb   `v2c6` | crumb `v2c16` |
-|     12 | crumb   `v2c7` | crumb `v2c17` |
-|     13 | crumb   `v2c8` | crumb `v2c18` |
-|     14 | crumb   `v2c9` | crumb `v2c19` |
+| Column | `Curr`          | `Next`        |
+| ------ | --------------- | ------------- |
+|      0 |          `v2`   | crumb `v2c9`  |
+|      1 | optional `v12`  | crumb `v2c10` |
+|      2 | crumb    `v2c0` | crumb `v2c11` |
+|      3 | plookup  `v2p0` | (ignored)     |
+|      4 | plookup  `v2p1` | (ignored)     |
+|      5 | plookup  `v2p2` | (ignored)     |
+|      6 | plookup  `v2p3` | (ignored)     |
+|      7 | crumb    `v2c1` | crumb `v2c12` |
+|      8 | crumb    `v2c2` | crumb `v2c13` |
+|      9 | crumb    `v2c3` | crumb `v2c14` |
+|     10 | crumb    `v2c4` | crumb `v2c15` |
+|     11 | crumb    `v2c5` | crumb `v2c16` |
+|     12 | crumb    `v2c6` | crumb `v2c17` |
+|     13 | crumb    `v2c7` | crumb `v2c18` |
+|     14 | crumb    `v2c8` | crumb `v2c19` |
 
 where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
@@ -1275,33 +1275,47 @@ but where the result is larger than the modulus (yet smaller than 2^{264}). The 
  final bound check is to make sure that the final result (`min_result`) is indeed the minimum one
  (meaning less than the modulus).
 
+A more optimized version of these constraints is able to reduce by 2 the number of constraints and
+by 1 the number of witness cells needed. The idea is to condense the low and middle limbs in one longer
+limb of 176 bits (which fits inside our native field) and getting rid of the low carry flag.
+With this idea in mind, the sole carry flag we need is the one located between the middle and the high limbs.
+
 ##### Layout
 
-You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.
+You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 
-| col | `ForeignFieldAdd`       | more `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-| --- | ----------------------- | ---------------------- | ----------------------- | ----------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)     | `min_result_lo` (copy)  | `bound_lo` (copy) |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)     | `min_result_mi` (copy)  | `bound_mi` (copy) |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)     | `min_result_hi` (copy)  | `bound_hi` (copy) |
-|   3 | `right_input_lo` (copy) |  ...                   |  0              (check) |                   |
-|   4 | `right_input_mi` (copy) |  ...                   |  0              (check) |                   |
-|   5 | `right_input_hi` (copy) |  ...                   |  2^88           (check) |                   |
-|   6 | `sign`           (copy) |  ...                   |  1              (check) |                   |
-|   7 | `field_overflow`        |  ...                   |  1              (check) |                   |
-|   8 | `carry_lo`              |  ...                   | `bound_carry_lo`        |                   |
-|   9 | `carry_mi`              |  ...                   | `bound_carry_mi`        |                   |
-|  10 |                         |                        |                         |                   |
-|  11 |                         |                        |                         |                   |
-|  12 |                         |                        |                         |                   |
-|  13 |                         |                        |                         |                   |
-|  14 |                         |                        |                         |                   |
+| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
+|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
+|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
+|   6 | `sign`           (copy) |                         |  1              (check) |                   |
+|   7 | `field_overflow`        |                         |  1              (check) |                   |
+|   8 | `carry`                 |                         | `bound_carry`           |                   |
+|   9 |                         |                         |                         |                   |
+|  10 |                         |                         |                         |                   |
+|  11 |                         |                         |                         |                   |
+|  12 |                         |                         |                         |                   |
+|  13 |                         |                         |                         |                   |
+|  14 |                         |                         |                         |                   |
 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
 specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
 be done by copy constraining these values with a public input value. One could have a specific gate
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.
+
+##### Integration
+
+- Copy signs from public input
+ - Range check the final bound
+
+```admonition::notice
+ TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
+```
 
 
 #### Foreign Field Multiplication
@@ -1416,7 +1430,7 @@ It uses three different types of constraints
 * plookup       - xor-table plookup (4-bits)
 * decomposition - the constraints inside the gate
 
-The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
 Given values `in1`, `in2` and `out`, the layout looks like this:
 
 | Column |          `Curr`  |          `Next`  |
@@ -1455,6 +1469,85 @@ to obtain a gadget for 64-bit words XOR:
  Rough computations show that if we run 8 or more Keccaks in one circuit we should
  use the 8-bit XOR table.
 ```
+
+
+#### Not
+
+We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
+
+ The first version of the NOT gadget reuses `Xor16` by making the following observation: __the bitwise NOT operation is equivalent to the
+bitwise XOR operation with the all one words of a certain length__. In other words,
+$$ \neg x = x \oplus 1^* $$
+where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
+XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
+ with $1^*$ is equivalent to bitwise negation (i.e. NOT).
+
+ Then, if we take the XOR gadget with a second input to be the all one word of the same length, that gives us the NOT gadget.
+ The correct length can be imposed by having a public input containing the `2^bits - 1` value and wiring it to the second input of the XOR gate.
+This approach needs as many rows as an XOR would need, for a single negation, but it comes with the advantage of making sure the input is of a certain length.
+
+The other approach can be more efficient if we already know the length of the inputs. For example, the input may be the input of a range check gate,
+or the output of a previous XOR gadget (which will be the case in our Keccak usecase).
+In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
+This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
+
+** NOT Layout using XOR **
+
+Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
+follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
+
+| Row       | `CircuitGate` | Purpose                                                               |
+| --------- | ------------- | --------------------------------------------------------------------- |
+| pub       | `Generic`     | Leading row with the public $1^*$ value                               |
+| i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
+| i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+
+** NOT Layout using Generic gates **
+
+Here we show the layout of the NOT gadget using the Generic approach. The gadget needs a row with a public input containing the all-one word of the given length, exactly as above.
+Then, one Generic gate reusing the all-one word as left inputs can be used to negate up to two words per row. This approach requires that the input word is known (or constrained)
+to have a given length.
+
+| Row | `CircuitGate` | Purpose                                                                       |
+| --- | ------------- | ----------------------------------------------------------------------------- |
+| pub | `Generic`     | Leading row with the public $1^*$ value                                       |
+| i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
+
+
+##### And
+
+We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
+add an `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
+lookup table that would have the same size as that of the Xor.
+For now, we are willing to pay this small overhead and produce AND gadget as follows:
+
+We observe that we can express bitwise addition as follows:
+$$ A + B = (A \oplus B) + 2 \cdot (A \& B) $$
+where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
+In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
+Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
+$$ A \& B = \frac{A + B - (A \oplus B)}{2} $$
+Let us define the following operations for better readability:
+```
+ a + b = sum
+a ^ b = xor
+a & b = and
+```
+Then, we can rewrite the above equation as follows:
+$$ 2 \cdot and = sum - xor $$
+which can be expressed as a double generic gate.
+
+Then, our AND gadget for $n$ bytes looks as follows:
+* $n/8$ Xor16 gates
+* 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
+* 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
+
+Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
+* Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
+* Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
+Meaning,
+* the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
+* the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
 
 ## Setup
@@ -1618,9 +1711,6 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
-
     #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
     pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
 
@@ -1673,8 +1763,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
@@ -1735,6 +1823,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Xor commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub xor_comm: Option<PolyComm<G>>,
+
+    /// Rot commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub rot_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]

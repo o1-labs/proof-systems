@@ -512,9 +512,9 @@ mod tests {
             patterns: LookupPatterns {
                 xor: true,
                 chacha_final: true,
-                lookup_gate: false,
-                range_check_gate: false,
-                foreign_field_mul_gate: false,
+                lookup: false,
+                range_check: false,
+                foreign_field_mul: false,
             },
             uses_runtime_tables: false,
             joint_lookup_used: true,

@@ -23,6 +23,8 @@ range_check = "../../../kimchi/src/circuits/polynomials/range_check/circuitgates
 foreign_field_add = "../../../kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs"
 foreign_field_mul = "../../../kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs"
 xor16 = "../../../kimchi/src/circuits/polynomials/xor.rs"
+not_gadget = "../../../kimchi/src/circuits/polynomials/not.rs"
+and_gadget = "../../../kimchi/src/circuits/polynomials/and.rs"
 
 # lookup
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"

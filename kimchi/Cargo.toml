@@ -19,7 +19,7 @@ ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-serialize = "0.3.0"
 blake2 = "0.10.0"
-num-bigint = { version = "0.4.0", features = [ "serde" ] }
+num-bigint = { version = "0.4.3", features = ["rand", "serde"]}
 num-derive = "0.3"
 num-integer = "0.1.45"
 num-traits = "0.2"
@@ -57,7 +57,7 @@ proptest-derive = "0.3.0"
 colored = "2.0.0"
 serde_json = { version = "1.0" }
 num-bigint = { version = "0.4.3", features = ["rand"] }
-secp256k1 = "0.24.1"
+secp256k1 = "0.24.2"
 
 # benchmarks
 criterion = "0.3"

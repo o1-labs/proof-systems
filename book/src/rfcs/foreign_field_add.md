@@ -148,6 +148,57 @@ Mathematically speaking, a subtraction within a field is no more than an additio
 
 Instead, our gate encodes subtractions and additions directly within the sign term that is multiplying the right input. This way, there is no need to check that the negated value is performed correctly (which would require an additional row for a potential `FFNeg` gate).
 
+### Optimization
+
+So far, one can recompute the result as follows:
+
+```text
+bits  0..............87|88...........175|176...........263
+r  =  (-------r0-------|-------r1-------|-------r2-------)
+= 
+a  =  (-------a0-------|-------a1-------|-------a2-------)
++
+s = 1 | -1
+·
+b  =  (-------b0-------|-------b1-------|-------b2-------)
+- 
+q  =  -1 |0 | 1
+·
+f  =  (-------f0-------|-------f1-------|-------f2-------)
+                       >                >                >
+                      c_0              c_1               0
+```
+
+Inspired by the halving approach in foreign field multiplication, an optimized version of the above gate results in a reduction by 2 in the number of constraints and by 1 in the number of witness cells needed. The main idea is to condense the claims about the low and middle limbs in one single larger limb of 176 bits, which fit in our native field. This way, we can get rid of the low carry flag, its corresponding carry check, and the three result checks become just two.
+
+```text
+bits  0..............87|88...........175|176...........263
+r  =  (-------r0------- -------r1-------|-------r2-------)
+= 
+a  =  (-------a0------- -------a1-------|-------a2-------)
++
+s = 1 | -1
+·
+b  =  (-------b0------- -------b1-------|-------b2-------)
+- 
+q  =  -1 |0 | 1
+·
+f  =  (-------f0------- -------f1-------|-------f2-------)
+                                        >                >
+                                        c               0
+```
+
+ These are the new equations:
+
+$$
+\begin{aligned}
+r_{bot} &= (a_0 + 2^{88} \cdot a_1) + s \cdot (b_0 + 2^{88} \cdot b_1) - q \cdot (f_0 + 2^{88} \cdot f_1) - c \cdot 2^{176} \\
+r_{top} &= a_2 + s \cdot b_2 - q \cdot f_2 + c 
+\end{aligned}
+$$
+
+with $r_{top} = r_2$ and $c = c_1$. 
+
 ## Gadget
 
 The foreign field gadget will be composed by 4 sets of `RangeCheck` gadgets for witnesses $a, b, r, u$ accounting for 16 rows in total; followed by one row with `ForeignFieldAdd` gate type; a final `ForeignFieldAdd` with a `Zero` row. The first four rows constrain the range of the left input. The following four constrain the range of the right input. The next range check is for the result of the addition of left and right. Next, a final range check for the upper bound therm. Then the foreign field addition gate performs the actual addition. And the final foreign field addition gate (followed by a zero gate) takes care of the final upper bound operation. A total of 19 rows with 15 columns in Kimchi.

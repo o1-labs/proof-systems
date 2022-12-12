@@ -45,6 +45,8 @@ pub struct FeatureFlags {
     pub foreign_field_mul: bool,
     /// XOR gate
     pub xor: bool,
+    /// ROT gate
+    pub rot: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
 }
@@ -126,6 +128,10 @@ pub struct ColumnEvaluations<F: PrimeField> {
     /// Xor gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub xor_selector8: Option<E<F, D<F>>>,
+
+    /// Rot gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub rot_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -563,6 +569,19 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        let rot_selector8 = {
+            if !self.feature_flags.rot {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::Rot64,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.coefficients[i]
@@ -583,6 +602,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_add_selector8,
             foreign_field_mul_selector8,
             xor_selector8,
+            rot_selector8,
         }
     }
 }
@@ -682,6 +702,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_add: false,
             foreign_field_mul: false,
             xor: false,
+            rot: false,
         };
 
         for gate in &gates {
@@ -694,6 +715,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
+                GateType::Rot64 => feature_flags.rot = true,
                 _ => (),
             }
         }
