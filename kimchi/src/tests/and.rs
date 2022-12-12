@@ -228,14 +228,14 @@ fn test_and128_random() {
 fn test_and_overflow() {
     let bytes = 256 / 8;
     let input_pallas =
-        PallasField::from_biguint(PallasField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+        PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::one())).unwrap();
     test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         Some(input_pallas),
         Some(input_pallas),
         bytes,
     );
     let input_vesta =
-        VestaField::from_biguint(VestaField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+        VestaField::from_biguint(&(VestaField::modulus_biguint() - BigUint::one())).unwrap();
     test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         Some(input_vesta),
         Some(input_vesta),
@@ -248,14 +248,14 @@ fn test_and_overflow() {
 fn test_and_overflow_one() {
     let bytes = 256 / 8;
     let input =
-        PallasField::from_biguint(PallasField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+        PallasField::from_biguint(&(PallasField::modulus_biguint() - BigUint::one())).unwrap();
     test_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         Some(input),
         Some(PallasField::from(1u8)),
         bytes,
     );
     let input =
-        VestaField::from_biguint(VestaField::modulus_biguint() - BigUint::from(1u8)).unwrap();
+        VestaField::from_biguint(&(VestaField::modulus_biguint() - BigUint::one())).unwrap();
     test_and::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         Some(input),
         Some(VestaField::from(1u8)),
