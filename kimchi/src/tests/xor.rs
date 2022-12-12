@@ -202,16 +202,16 @@ fn test_xor64_alternating() {
 // Test a XOR of 64bit whose inputs are zero. Checks it works fine with non-dense values.
 fn test_xor64_zeros() {
     // forces zero to fit in 64 bits even if it only needs 1 bit
-    let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
+    let zero = PallasField::zero();
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero), Some(zero), Some(64));
-    assert_eq!(witness[2][0], PallasField::from(0));
+    assert_eq!(witness[2][0], zero);
 }
 
 #[test]
 // Test a XOR of 64bit whose inputs are all zero and all one. Checks it works fine with non-dense values.
 fn test_xor64_zero_one() {
-    let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
+    let zero = PallasField::zero();
     let all_ones = all_ones::<Vesta>(64);
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero), Some(all_ones), None);

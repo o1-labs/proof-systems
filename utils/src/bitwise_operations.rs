@@ -1,7 +1,9 @@
 //! This module provides a set of functions to perform bit operations on big integers.
 //! In particular, it gives XOR and NOT for BigUint.
 use num_bigint::BigUint;
-use std::cmp::Ordering;
+use std::cmp::{max, Ordering};
+
+use crate::BigUintHelpers;
 
 /// Bitwise operations
 pub trait BitwiseOps<Rhs = Self> {
@@ -10,6 +12,11 @@ pub trait BitwiseOps<Rhs = Self> {
 
     /// Conjunction of the bits of two BigUint inputs for a given number of bytes
     fn bitwise_and(input1: &Rhs, input: &Rhs, bytes: usize) -> Rhs;
+
+    /// Negate the bits of a Self input
+    /// If it provides a larger desired `bits` than the input length then it takes the padded input of `bits` length.
+    /// Otherwise it only takes the bits of the input.
+    fn bitwise_not(input: &Rhs, bits: Option<usize>) -> Rhs;
 }
 
 impl BitwiseOps for BigUint {
@@ -25,6 +32,19 @@ impl BitwiseOps for BigUint {
                 .map(|(b1, b2)| b1 ^ b2)
                 .collect::<Vec<u8>>(),
         )
+    }
+
+    fn bitwise_not(input: &BigUint, bits: Option<usize>) -> BigUint {
+        // pad if needed / desired
+        // first get the number of bits of the input,
+        // take into account that BigUint::bits() returns 0 if the input is 0
+        let in_bits = input.bitlen() as usize;
+        let bits = max(in_bits, bits.unwrap_or(0));
+        // build vector of bits in little endian (least significant bit in position 0)
+        let mut bit_vec = vec![];
+        // negate each of the bits of the input
+        (0..bits).for_each(|i| bit_vec.push(!bit_at(input, i as u32)));
+        ToBigUint::to_biguint(&bit_vec)
     }
 
     fn bitwise_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
@@ -54,6 +74,33 @@ fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
     let mut padded = input.to_bytes_le().to_vec();
     padded.resize(bytes + padded.len(), 0u8);
     padded
+}
+
+// Returns the bit value of a BigUint input at a certain position or zero
+fn bit_at(input: &BigUint, index: u32) -> bool {
+    if input.bit(index as u64) {
+        ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
+    } else {
+        false
+    }
+}
+
+/// Converts types to a BigUint
+trait ToBigUint {
+    /// Converts a vector of bits in little endian to a BigUint
+    fn to_biguint(&self) -> BigUint;
+}
+
+impl ToBigUint for Vec<bool> {
+    fn to_biguint(&self) -> BigUint {
+        let mut bigvalue = BigUint::from(0u8);
+        let mut power = BigUint::from(1u8);
+        for bit in self {
+            bigvalue += power.clone() * BigUint::from(*bit as u8);
+            power *= BigUint::from(2u8);
+        }
+        bigvalue
+    }
 }
 
 #[cfg(test)]
@@ -123,6 +170,22 @@ mod tests {
                     BigUint::from((byte1 ^ byte2) as u8)
                 );
             }
+        }
+    }
+
+    #[test]
+    fn test_not_all_byte() {
+        for byte in 0..256 {
+            let input = BigUint::from(byte as u8);
+            let negated = BigUint::from(!byte as u8); // full 8 bits
+            assert_eq!(BigUint::bitwise_not(&input, Some(8)), negated); // full byte
+            let bits = input.bitlen();
+            let min_negated = 2u32.pow(bits as u32) - 1 - byte;
+            // only up to needed
+            assert_eq!(
+                BigUint::bitwise_not(&input, None),
+                BigUint::from(min_negated)
+            );
         }
     }
 }

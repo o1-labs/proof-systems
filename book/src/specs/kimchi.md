@@ -1471,6 +1471,49 @@ to obtain a gadget for 64-bit words XOR:
 ```
 
 
+#### Not
+
+We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
+
+ The first version of the NOT gadget reuses `Xor16` by making the following observation: __the bitwise NOT operation is equivalent to the
+bitwise XOR operation with the all one words of a certain length__. In other words,
+$$ \neg x = x \oplus 1^* $$
+where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
+XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
+ with $1^*$ is equivalent to bitwise negation (i.e. NOT).
+
+ Then, if we take the XOR gadget with a second input to be the all one word of the same length, that gives us the NOT gadget.
+ The correct length can be imposed by having a public input containing the `2^bits - 1` value and wiring it to the second input of the XOR gate.
+This approach needs as many rows as an XOR would need, for a single negation, but it comes with the advantage of making sure the input is of a certain length.
+
+The other approach can be more efficient if we already know the length of the inputs. For example, the input may be the input of a range check gate,
+or the output of a previous XOR gadget (which will be the case in our Keccak usecase).
+In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
+This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
+
+** NOT Layout using XOR **
+
+Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
+follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
+
+| Row       | `CircuitGate` | Purpose                                                               |
+| --------- | ------------- | --------------------------------------------------------------------- |
+| pub       | `Generic`     | Leading row with the public $1^*$ value                               |
+| i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
+| i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+
+** NOT Layout using Generic gates **
+
+Here we show the layout of the NOT gadget using the Generic approach. The gadget needs a row with a public input containing the all-one word of the given length, exactly as above.
+Then, one Generic gate reusing the all-one word as left inputs can be used to negate up to two words per row. This approach requires that the input word is known (or constrained)
+to have a given length.
+
+| Row | `CircuitGate` | Purpose                                                                       |
+| --- | ------------- | ----------------------------------------------------------------------------- |
+| pub | `Generic`     | Leading row with the public $1^*$ value                                       |
+| i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
+
+
 ##### And
 
 We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
