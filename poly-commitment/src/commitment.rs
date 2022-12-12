@@ -13,7 +13,7 @@ use ark_ec::{
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
 use ark_ff::{
-    BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
+    BigInteger, FftField, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
 };
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -626,13 +626,15 @@ impl<G: CommitmentCurve> SRS<G> {
         };
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
-                let v = evals_domain_size_cast(
-                    &plnm.evals,
-                    plnm.domain().size(),
-                    domain.size(),
-                    domain.size(),
+                let v = to_domain(
+                    &plnm,
+                    plnm.domain().size as usize,
+                    domain.size as usize,
+                    domain,
                     0,
-                );
+                    None,
+                )
+                .evals;
                 commit_evaluations(&v, basis)
             }
             std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
@@ -884,19 +886,33 @@ pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
     res
 }
 
-pub fn evals_domain_size_cast<F: Clone + Send + Sync>(
-    evals: &Vec<F>,
-    src_domain_size: usize,
+/// Cast the evaluations in specfic domain size to the smaller domain size.
+///
+/// ## Panics
+///
+/// Panics if `evals_domain_size` is smaller than `target_domain_size`.
+pub fn to_domain<F: FftField>(
+    evals: &Evaluations<F, D<F>>,
+    evals_domain_size: usize,
     target_domain_size: usize,
-    target_domain_evals_size: usize,
+    target_domain: D<F>,
     shift: usize,
-) -> Vec<F> {
-    let scale = src_domain_size / target_domain_size;
-    assert!(scale != 0);
-    (0..target_domain_evals_size)
-        .into_par_iter()
-        .map(|i| evals[(scale * i + src_domain_size * shift) % evals.len()].clone())
-        .collect()
+    constant: Option<F>,
+) -> Evaluations<F, D<F>> {
+    let scale = evals_domain_size / target_domain_size;
+    assert_ne!(
+        scale, 0,
+        "we can't move to a bigger domain without interpolating and reevaluating the polynomial"
+    );
+    let f = |i| {
+        if let Some(cst) = constant {
+            cst + evals.evals[(scale * i + evals_domain_size * shift) % evals.evals.len()]
+        } else {
+            evals.evals[(scale * i + evals_domain_size * shift) % evals.evals.len()]
+        }
+    };
+    let new_evals = (0..target_domain.size()).into_par_iter().map(f).collect();
+    Evaluations::from_vec_and_domain(new_evals, target_domain)
 }
 
 //
