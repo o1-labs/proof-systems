@@ -174,8 +174,7 @@ impl<F: PrimeField> CircuitGate<F> {
 /// Input: full witness, first input and optional bit length
 /// If `bits` is not provided, the negation is performed using the length of the `input` in bits.
 /// If `bits` is provided, the negation takes the maximum length between `bits` and that of `input`.
-/// INTEGRATION: Set public input of bits in public generic gate
-/// NOTE: `witness[0][pub] = 2^bits - 1`
+/// INTEGRATION: set a row of the witness with public input `2^bits - 1` and wire to the second input of the first Xor gate.
 pub fn extend_not_witness_checked_length<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     input: F,

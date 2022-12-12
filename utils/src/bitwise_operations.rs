@@ -17,9 +17,6 @@ pub trait BitwiseOps<Rhs = Self> {
     /// If it provides a larger desired `bits` than the input length then it takes the padded input of `bits` length.
     /// Otherwise it only takes the bits of the input.
     fn bitwise_not(input: &Rhs, bits: Option<usize>) -> Rhs;
-
-    /// Returns the bit value of a Self input at a certain position or zero
-    fn bit_at(input: &Rhs, index: u32) -> bool;
 }
 
 impl BitwiseOps for BigUint {
@@ -46,17 +43,8 @@ impl BitwiseOps for BigUint {
         // build vector of bits in little endian (least significant bit in position 0)
         let mut bit_vec = vec![];
         // negate each of the bits of the input
-        (0..bits).for_each(|i| bit_vec.push(!Self::bit_at(input, i as u32)));
+        (0..bits).for_each(|i| bit_vec.push(!bit_at(input, i as u32)));
         ToBigUint::to_biguint(&bit_vec)
-    }
-
-    // Returns the bit value of a BigUint input at a certain position or zero
-    fn bit_at(input: &BigUint, index: u32) -> bool {
-        if input.bit(index as u64) {
-            ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
-        } else {
-            false
-        }
     }
 
     fn bitwise_and(input1: &BigUint, input2: &BigUint, bytes: usize) -> BigUint {
@@ -86,6 +74,15 @@ fn pad(input: &BigUint, bytes: usize) -> Vec<u8> {
     let mut padded = input.to_bytes_le().to_vec();
     padded.resize(bytes + padded.len(), 0u8);
     padded
+}
+
+// Returns the bit value of a BigUint input at a certain position or zero
+fn bit_at(input: &BigUint, index: u32) -> bool {
+    if input.bit(index as u64) {
+        ((input / BigUint::from(2u8).pow(index)) % BigUint::from(2u32)) == BigUint::from(1u32)
+    } else {
+        false
+    }
 }
 
 /// Converts types to a BigUint
