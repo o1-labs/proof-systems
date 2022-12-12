@@ -143,7 +143,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                     joint_combiner: Some(F::rand(rng)),
                     endo_coefficient: index.cs.endo,
                     mds: &G::sponge_params().mds,
-                    foreign_field_modulus: None,
                 },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,

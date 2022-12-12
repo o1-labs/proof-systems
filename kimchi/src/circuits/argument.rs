@@ -100,14 +100,6 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     pub fn mds(&self, row: usize, col: usize) -> T {
         T::constant(ConstantExpr::<F>::Mds { row, col }, self.data.as_ref())
     }
-
-    /// Helper to access the foreign field modulus limb at index idx
-    pub fn foreign_modulus(&self, idx: usize) -> T {
-        T::constant(
-            ConstantExpr::<F>::ForeignFieldModulus(idx),
-            self.data.as_ref(),
-        )
-    }
 }
 
 /// Argument environment data for constraints of field elements

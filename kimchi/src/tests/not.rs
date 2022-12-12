@@ -407,8 +407,7 @@ fn test_bad_not_gnrc() {
         })
     );
     witness[0][1] += PallasField::one();
-    let index =
-        new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None, None);
+    let index = new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None);
     assert_eq!(
         index.cs.gates[1].verify::<Vesta>(1, &witness, &index, &[]),
         Err(("generic: incorrect gate").to_string())
@@ -443,8 +442,7 @@ fn test_bad_not_xor() {
     witness[8][1] = PallasField::zero();
     witness[9][1] = PallasField::zero();
     witness[10][1] = PallasField::zero();
-    let index =
-        new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None, None);
+    let index = new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None);
     assert_eq!(
         index.cs.gates[1].verify_xor::<Vesta>(1, &witness, &index),
         Err(CircuitGateError::InvalidLookupConstraintSorted(

@@ -1370,8 +1370,8 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 
 ##### Parameters
 
-* `foreign_field_modulus` := foreign field modulus $f$ (stored in constraint system)
-* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (computed by prover/verifier)
+* `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
 
 ```admonition::notice
 NB: the native field modulus is obtainable from F, the native field's trait bound below.
@@ -1808,9 +1808,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Range check polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
-
-    /// Foreign field modulus
-    pub foreign_field_modulus: Option<BigUint>,
 
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]

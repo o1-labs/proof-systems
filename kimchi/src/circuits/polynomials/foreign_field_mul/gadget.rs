@@ -6,6 +6,8 @@ use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use num_bigint::BigUint;
+use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 use rand::{prelude::StdRng, SeedableRng};
 use std::array;
 
@@ -39,12 +41,19 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///     Outputs tuple (next_row, circuit_gates) where
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
-    pub fn create_foreign_field_mul(start_row: usize) -> (usize, Vec<Self>) {
+    pub fn create_foreign_field_mul(
+        start_row: usize,
+        foreign_field_modulus: &BigUint,
+    ) -> (usize, Vec<Self>) {
+        let neg_foreign_field_modulus = foreign_field_modulus.negate().to_field_limbs::<F>();
+        let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let circuit_gates = vec![
             CircuitGate {
                 typ: GateType::ForeignFieldMul,
                 wires: Wire::for_row(start_row),
-                coeffs: vec![],
+                coeffs: [foreign_field_modulus, neg_foreign_field_modulus]
+                    .concat()
+                    .to_vec(),
             },
             CircuitGate {
                 typ: GateType::Zero,
@@ -57,8 +66,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     /// Create foreign field multiplication gate by extending the existing gates
-    pub fn extend_foreign_field_mul(gates: &mut Vec<Self>, curr_row: &mut usize) {
-        let (next_row, circuit_gates) = Self::create_foreign_field_mul(*curr_row);
+    pub fn extend_foreign_field_mul(
+        gates: &mut Vec<Self>,
+        curr_row: &mut usize,
+        foreign_field_modulus: &BigUint,
+    ) {
+        let (next_row, circuit_gates) =
+            Self::create_foreign_field_mul(*curr_row, foreign_field_modulus);
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
     }
@@ -139,15 +153,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Set up the environment
         let env = {
             Environment {
-                constants: expr::Constants::new(
-                    F::rand(rng),
-                    F::rand(rng),
-                    F::rand(rng),
-                    Some(F::rand(rng)),
-                    index.cs.endo,
-                    &G::sponge_params().mds,
-                    index.cs.foreign_field_modulus.clone(),
-                ),
+                constants: expr::Constants {
+                    alpha: F::rand(rng),
+                    beta: F::rand(rng),
+                    gamma: F::rand(rng),
+                    joint_combiner: Some(F::rand(rng)),
+                    endo_coefficient: index.cs.endo,
+                    mds: &G::sponge_params().mds,
+                },
                 witness: &witness_evals.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,

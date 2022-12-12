@@ -263,15 +263,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants::new(
-            F::one(),
-            F::one(),
-            F::one(),
-            Some(F::one()),
-            cs.endo,
-            &G::sponge_params().mds,
-            cs.foreign_field_modulus.clone(),
-        );
+        let constants = expr::Constants {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: Some(F::one()),
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+        };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
 

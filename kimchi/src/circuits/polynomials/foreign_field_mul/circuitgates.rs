@@ -50,8 +50,8 @@
 //~
 //~ ##### Parameters
 //~
-//~ * `foreign_field_modulus` := foreign field modulus $f$ (stored in constraint system)
-//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (computed by prover/verifier)
+//~ * `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
+//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
 //~
 //~ ```admonition::notice
 //~ NB: the native field modulus is obtainable from F, the native field's trait bound below.
@@ -101,7 +101,7 @@ use crate::{
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, ConstantExpr},
+        expr::constraints::ExprOps,
         gate::GateType,
     },
 };
@@ -277,12 +277,10 @@ where
         let product1_hi_1 = env.witness_next(7);
 
         // Foreign field modulus limbs
-        let foreign_field_modulus =
-            array::from_fn(|i| env.constant(ConstantExpr::ForeignFieldModulus(i)));
+        let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
 
         // Negated foreign field modulus limbs
-        let neg_foreign_field_modulus =
-            array::from_fn(|i| env.constant(ConstantExpr::NegForeignFieldModulus(i)));
+        let neg_foreign_field_modulus = array::from_fn(|i| env.coeff(3 + i));
 
         // Compute intermediate products
         auto_clone_array!(
