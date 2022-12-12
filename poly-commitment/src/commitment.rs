@@ -627,7 +627,7 @@ impl<G: CommitmentCurve> SRS<G> {
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
                 let v = to_domain(
-                    &plnm,
+                    plnm,
                     plnm.domain().size as usize,
                     domain.size as usize,
                     domain,
