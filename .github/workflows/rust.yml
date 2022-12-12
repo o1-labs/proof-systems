@@ -53,6 +53,16 @@ jobs:
           version: 0.4.1
 
       #
+      # Build
+      #
+
+      - name: Ensure that everything builds
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-targets --all-features
+
+      #
       # Tests
       #
 

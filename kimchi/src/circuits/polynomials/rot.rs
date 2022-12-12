@@ -56,7 +56,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             CircuitGate {
                 typ: GateType::RangeCheck0,
                 wires: Wire::for_row(new_row + 1),
-                coeffs: vec![],
+                coeffs: vec![F::zero()],
             },
         ]
     }
