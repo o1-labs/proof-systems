@@ -34,7 +34,7 @@ pub trait RandomField<F> {
 
 impl<F: PrimeField> RandomField<F> for StdRng {
     fn gen_field_with_bits(&mut self, bits: usize) -> F {
-        F::from_biguint(self.gen_biguint_below(&BigUint::from(2u8).pow(bits as u32))).unwrap()
+        F::from_biguint(&self.gen_biguint_below(&BigUint::from(2u8).pow(bits as u32))).unwrap()
     }
 
     fn gen(&mut self, input: Option<F>, bits: Option<usize>) -> F {
@@ -80,11 +80,12 @@ pub trait FieldHelpers<F> {
     fn from_bits(bits: &[bool]) -> Result<F>;
 
     /// Deserialize from BigUint
-    fn from_biguint(big: BigUint) -> Result<F>
+    fn from_biguint(big: &BigUint) -> Result<F>
     where
         F: PrimeField,
     {
-        big.try_into()
+        big.clone()
+            .try_into()
             .map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
@@ -183,7 +184,7 @@ pub trait BigUintFieldHelpers {
 
 impl BigUintFieldHelpers for BigUint {
     fn to_field<F: PrimeField>(self) -> Result<F> {
-        F::from_biguint(self)
+        F::from_biguint(&self)
     }
 }
 
@@ -312,11 +313,11 @@ mod tests {
     #[test]
     fn field_big() {
         let fe_1024 = BaseField::from(1024u32);
-        let big_1024 = fe_1024.into();
+        let big_1024: BigUint = fe_1024.into();
         assert_eq!(big_1024, BigUint::new(vec![1024]));
 
         assert_eq!(
-            BaseField::from_biguint(big_1024).expect("Failed to deserialize big uint"),
+            BaseField::from_biguint(&big_1024).expect("Failed to deserialize big uint"),
             fe_1024
         );
 
@@ -332,7 +333,7 @@ mod tests {
         );
 
         assert_eq!(
-            BaseField::from_biguint(BigUint::from_bytes_be(&be_zero_32bytes))
+            BaseField::from_biguint(&BigUint::from_bytes_be(&be_zero_32bytes))
                 .expect("Failed to convert big uint"),
             field_zero
         );
@@ -340,8 +341,17 @@ mod tests {
         assert_eq!(big_zero_32, big_zero_1);
 
         assert_eq!(
-            BaseField::from_biguint(big_zero_32).expect("Failed"),
-            BaseField::from_biguint(big_zero_1).expect("Failed")
+            BaseField::from_biguint(&big_zero_32).expect("Failed"),
+            BaseField::from_biguint(&big_zero_1).expect("Failed")
         );
+
+        let bytes = [
+            46, 174, 218, 228, 42, 116, 97, 213, 149, 45, 39, 185, 126, 202, 208, 104, 182, 152,
+            235, 185, 78, 138, 14, 76, 69, 56, 139, 182, 19, 222, 126, 8,
+        ];
+        let fe = BaseField::from_bytes(&bytes).expect("failed to create field element from bytes");
+        let bi = BigUint::from_bytes_le(&bytes);
+        assert_eq!(fe.to_biguint(), bi);
+        assert_eq!(bi.to_field::<BaseField>().unwrap(), fe);
     }
 }

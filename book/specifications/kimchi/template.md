@@ -273,6 +273,9 @@ TODO: for each gate describe how to create it?
 
 {sections.xor16}
 
+#### Not
+
+{sections.not_gadget}
 ##### And
 
 {sections.and_gadget}
