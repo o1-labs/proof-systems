@@ -199,12 +199,28 @@
 <a href="#199" id="199">199</a>
 <a href="#200" id="200">200</a>
 <a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
 </span><span class="kw">use </span>std::collections::HashMap;
 
 <span class="kw">use </span>ark_ff::{PrimeField, SquareRootField, Zero};
 <span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>num_bigint::BigUint;
+<span class="kw">use </span>o1_utils::foreign_field::BigUintForeignFieldHelpers;
 <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
 <span class="kw">use </span>std::array;
 
@@ -241,8 +257,13 @@
     ///      [n+1]         -&gt; 1 Zero row for bound result
     /// ]
     ///
-    </span><span class="kw">pub fn </span>create(start_row: usize, num: usize) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
+    </span><span class="kw">pub fn </span>create(
+        start_row: usize,
+        num: usize,
+        foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
+    ) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
         <span class="kw">let </span>next_row = start_row;
+        <span class="kw">let </span>foreign_field_modulus = foreign_field_modulus.to_field_limbs::&lt;F&gt;();
         <span class="kw">let </span><span class="kw-2">mut </span>circuit_gates = <span class="macro">vec!</span>[];
 
         <span class="comment">// Foreign field addition gates
@@ -252,7 +273,7 @@
             circuit_gates.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[CircuitGate {
                 typ: GateType::ForeignFieldAdd,
                 wires: Wire::for_row(next_row + i),
-                coeffs: <span class="macro">vec!</span>[],
+                coeffs: foreign_field_modulus.to_vec(),
             }]);
         }
         <span class="comment">// Then the final bound gate and the zero gate
@@ -260,7 +281,7 @@
             CircuitGate {
                 typ: GateType::ForeignFieldAdd,
                 wires: Wire::for_row(next_row + num),
-                coeffs: <span class="macro">vec!</span>[],
+                coeffs: foreign_field_modulus.to_vec(),
             },
             CircuitGate {
                 typ: GateType::Zero,
@@ -277,12 +298,16 @@
     ///     Outputs tuple (next_row, circuit_gates) where
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
-    </span><span class="kw">pub fn </span>create_single_ffadd(start_row: usize) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
+    </span><span class="kw">pub fn </span>create_single_ffadd(
+        start_row: usize,
+        foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
+    ) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
+        <span class="kw">let </span>foreign_field_modulus = foreign_field_modulus.to_field_limbs::&lt;F&gt;();
         <span class="kw">let </span>circuit_gates = <span class="macro">vec!</span>[
             CircuitGate {
                 typ: GateType::ForeignFieldAdd,
                 wires: Wire::for_row(start_row),
-                coeffs: <span class="macro">vec!</span>[],
+                coeffs: foreign_field_modulus.to_vec(),
             },
             CircuitGate {
                 typ: GateType::Zero,
@@ -295,8 +320,12 @@
     }
 
     <span class="doccomment">/// Create foreign field addition gate by extending the existing gates
-    </span><span class="kw">pub fn </span>extend_single_foreign_field_add(gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;, curr_row: <span class="kw-2">&amp;mut </span>usize) {
-        <span class="kw">let </span>(next_row, circuit_gates) = <span class="self">Self</span>::create_single_ffadd(<span class="kw-2">*</span>curr_row);
+    </span><span class="kw">pub fn </span>extend_single_foreign_field_add(
+        gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
+        curr_row: <span class="kw-2">&amp;mut </span>usize,
+        foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
+    ) {
+        <span class="kw">let </span>(next_row, circuit_gates) = <span class="self">Self</span>::create_single_ffadd(<span class="kw-2">*</span>curr_row, foreign_field_modulus);
         <span class="kw-2">*</span>curr_row = next_row;
         gates.extend_from_slice(<span class="kw-2">&amp;</span>circuit_gates);
     }
@@ -355,15 +384,14 @@
         <span class="comment">// Set up the environment
         </span><span class="kw">let </span>env = {
             Environment {
-                constants: expr::Constants::new(
-                    F::rand(rng),
-                    F::rand(rng),
-                    F::rand(rng),
-                    <span class="prelude-val">Some</span>(F::rand(rng)),
-                    index.cs.endo,
-                    <span class="kw-2">&amp;</span>G::sponge_params().mds,
-                    index.cs.foreign_field_modulus.clone(),
-                ),
+                constants: expr::Constants {
+                    alpha: F::rand(rng),
+                    beta: F::rand(rng),
+                    gamma: F::rand(rng),
+                    joint_combiner: <span class="prelude-val">Some</span>(F::rand(rng)),
+                    endo_coefficient: index.cs.endo,
+                    mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+                },
                 witness: <span class="kw-2">&amp;</span>witness_evals.d8.this.w,
                 coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>index.cs.precomputations().vanishes_on_last_4_rows,
@@ -401,4 +429,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -519,7 +519,6 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
-<a href="#522" id="522">522</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
@@ -665,7 +664,6 @@
                     joint_combiner: <span class="prelude-val">Some</span>(F::rand(rng)),
                     endo_coefficient: index.cs.endo,
                     mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-                    foreign_field_modulus: <span class="prelude-val">None</span>,
                 },
                 witness: <span class="kw-2">&amp;</span>witness_evals.d8.this.w,
                 coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,
@@ -1043,4 +1041,4 @@
     (bits <span class="kw">as </span>f64 / <span class="number">16.0</span>).ceil() <span class="kw">as </span>usize
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

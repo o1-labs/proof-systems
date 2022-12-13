@@ -591,7 +591,6 @@
 <a href="#591" id="591">591</a>
 <a href="#592" id="592">592</a>
 <a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -857,15 +856,14 @@
         </span><span class="kw">let </span>argument_witness = <span class="self">self</span>.argument_witness(row, witness)<span class="question-mark">?</span>;
         <span class="comment">// Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        </span><span class="kw">let </span>constants = expr::Constants::new(
-            F::one(),
-            F::one(),
-            F::one(),
-            <span class="prelude-val">Some</span>(F::one()),
-            cs.endo,
-            <span class="kw-2">&amp;</span>G::sponge_params().mds,
-            cs.foreign_field_modulus.clone(),
-        );
+        </span><span class="kw">let </span>constants = expr::Constants {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: <span class="prelude-val">Some</span>(F::one()),
+            endo_coefficient: cs.endo,
+            mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+        };
         <span class="comment">// Create the argument environment for the constraints over field elements
         </span><span class="kw">let </span>env = ArgumentEnv::&lt;F, F&gt;::create(argument_witness, <span class="self">self</span>.coeffs.clone(), constants);
 
@@ -1187,4 +1185,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

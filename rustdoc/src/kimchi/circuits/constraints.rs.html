@@ -775,23 +775,6 @@
 <a href="#775" id="775">775</a>
 <a href="#776" id="776">776</a>
 <a href="#777" id="777">777</a>
-<a href="#778" id="778">778</a>
-<a href="#779" id="779">779</a>
-<a href="#780" id="780">780</a>
-<a href="#781" id="781">781</a>
-<a href="#782" id="782">782</a>
-<a href="#783" id="783">783</a>
-<a href="#784" id="784">784</a>
-<a href="#785" id="785">785</a>
-<a href="#786" id="786">786</a>
-<a href="#787" id="787">787</a>
-<a href="#788" id="788">788</a>
-<a href="#789" id="789">789</a>
-<a href="#790" id="790">790</a>
-<a href="#791" id="791">791</a>
-<a href="#792" id="792">792</a>
-<a href="#793" id="793">793</a>
-<a href="#794" id="794">794</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -816,7 +799,6 @@
     univariate::DensePolynomial <span class="kw">as </span>DP, EvaluationDomain, Evaluations <span class="kw">as </span>E,
     Radix2EvaluationDomain <span class="kw">as </span>D,
 };
-<span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::ExtendedEvaluations;
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -955,9 +937,6 @@
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>sid: Vec&lt;F&gt;,
 
-    <span class="doccomment">/// Foreign field modulus
-    </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
-
     <span class="doccomment">/// wire coordinate shifts
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;[o1_utils::serialization::SerdeAs; PERMUTS]&quot;</span>)]
     </span><span class="kw">pub </span>shift: [F; PERMUTS],
@@ -990,7 +969,6 @@
     lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;,
     runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;,
     precomputations: <span class="prelude-ty">Option</span>&lt;Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;&gt;,
-    foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
 }
 
 <span class="doccomment">/// Create selector polynomial for a circuit gate
@@ -1041,7 +1019,6 @@
             lookup_tables: <span class="macro">vec!</span>[],
             runtime_tables: <span class="prelude-val">None</span>,
             precomputations: <span class="prelude-val">None</span>,
-            foreign_field_modulus: <span class="prelude-val">None</span>,
         }
     }
 
@@ -1452,16 +1429,6 @@
         <span class="self">self
     </span>}
 
-    <span class="doccomment">/// Set up the foreign field modulus passed as an optional BigUint
-    /// If not invoked, it is `None` by default.
-    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
-    /// and warns if the foreign modulus being passed is smaller than the native modulus
-    /// because right now we only support foreign modulus that are larger than the native modulus.
-    </span><span class="kw">pub fn </span>foreign_field_modulus(<span class="kw-2">mut </span><span class="self">self</span>, foreign_field_modulus: <span class="kw-2">&amp;</span><span class="prelude-ty">Option</span>&lt;BigUint&gt;) -&gt; <span class="self">Self </span>{
-        <span class="self">self</span>.foreign_field_modulus = foreign_field_modulus.clone();
-        <span class="self">self
-    </span>}
-
     <span class="doccomment">/// Build the [ConstraintSystem] from a [Builder].
     </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConstraintSystem&lt;F&gt;, SetupError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="self">self</span>.gates;
@@ -1541,7 +1508,6 @@
             public: <span class="self">self</span>.public,
             prev_challenges: <span class="self">self</span>.prev_challenges,
             sid,
-            foreign_field_modulus: <span class="self">self</span>.foreign_field_modulus,
             gates,
             shift: shifts.shifts,
             endo,
@@ -1587,4 +1553,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

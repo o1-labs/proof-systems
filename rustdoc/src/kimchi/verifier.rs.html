@@ -831,8 +831,6 @@
 <a href="#831" id="831">831</a>
 <a href="#832" id="832">832</a>
 <a href="#833" id="833">833</a>
-<a href="#834" id="834">834</a>
-<a href="#835" id="835">835</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -1226,15 +1224,14 @@
 
             ft_eval0 += numerator * denominator;
 
-            <span class="kw">let </span>constants = Constants::new(
+            <span class="kw">let </span>constants = Constants {
                 alpha,
                 beta,
                 gamma,
-                joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
-                index.endo,
-                <span class="kw-2">&amp;</span>G::sponge_params().mds,
-                index.foreign_field_modulus.clone(),
-            );
+                joint_combiner: joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
+                endo_coefficient: index.endo,
+                mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            };
 
             ft_eval0 -= PolishToken::evaluate(
                 <span class="kw-2">&amp;</span>index.linearization.constant_term,
@@ -1411,15 +1408,14 @@
         <span class="comment">// other gates are implemented using the expression framework
         </span>{
             <span class="comment">// TODO: Reuse constants from oracles function
-            </span><span class="kw">let </span>constants = Constants::new(
-                oracles.alpha,
-                oracles.beta,
-                oracles.gamma,
-                oracles.joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
-                index.endo,
-                <span class="kw-2">&amp;</span>G::sponge_params().mds,
-                index.foreign_field_modulus.clone(),
-            );
+            </span><span class="kw">let </span>constants = Constants {
+                alpha: oracles.alpha,
+                beta: oracles.beta,
+                gamma: oracles.gamma,
+                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
+                endo_coefficient: index.endo,
+                mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            };
 
             <span class="kw">for </span>(col, tokens) <span class="kw">in </span><span class="kw-2">&amp;</span>index.linearization.index_terms {
                 <span class="kw">let </span>scalar =
@@ -1669,4 +1665,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

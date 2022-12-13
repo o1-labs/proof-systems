@@ -187,9 +187,6 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [`ProverIndex`].
 
 </span><span class="kw">use crate</span>::{
@@ -335,7 +332,6 @@
     };
     <span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
     <span class="kw">use </span>commitment_dlog::srs::endos;
-    <span class="kw">use </span>num_bigint::BigUint;
 
     <span class="doccomment">/// Create new index for lookups.
     ///
@@ -348,7 +344,6 @@
         prev_challenges: usize,
         lookup_tables: Vec&lt;LookupTable&lt;G::ScalarField&gt;&gt;,
         runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;G::ScalarField&gt;&gt;&gt;,
-        foreign_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
     ) -&gt; ProverIndex&lt;G&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
@@ -360,7 +355,6 @@
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
-            .foreign_field_modulus(<span class="kw-2">&amp;</span>foreign_modulus)
             .build()
             .unwrap();
         <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::&lt;G&gt;::create(cs.domain.d1.size());
@@ -379,8 +373,8 @@
         </span>G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::&lt;G&gt;(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+        new_index_for_test_with_lookups::&lt;G&gt;(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

@@ -2776,96 +2776,6 @@
 <a href="#2776" id="2776">2776</a>
 <a href="#2777" id="2777">2777</a>
 <a href="#2778" id="2778">2778</a>
-<a href="#2779" id="2779">2779</a>
-<a href="#2780" id="2780">2780</a>
-<a href="#2781" id="2781">2781</a>
-<a href="#2782" id="2782">2782</a>
-<a href="#2783" id="2783">2783</a>
-<a href="#2784" id="2784">2784</a>
-<a href="#2785" id="2785">2785</a>
-<a href="#2786" id="2786">2786</a>
-<a href="#2787" id="2787">2787</a>
-<a href="#2788" id="2788">2788</a>
-<a href="#2789" id="2789">2789</a>
-<a href="#2790" id="2790">2790</a>
-<a href="#2791" id="2791">2791</a>
-<a href="#2792" id="2792">2792</a>
-<a href="#2793" id="2793">2793</a>
-<a href="#2794" id="2794">2794</a>
-<a href="#2795" id="2795">2795</a>
-<a href="#2796" id="2796">2796</a>
-<a href="#2797" id="2797">2797</a>
-<a href="#2798" id="2798">2798</a>
-<a href="#2799" id="2799">2799</a>
-<a href="#2800" id="2800">2800</a>
-<a href="#2801" id="2801">2801</a>
-<a href="#2802" id="2802">2802</a>
-<a href="#2803" id="2803">2803</a>
-<a href="#2804" id="2804">2804</a>
-<a href="#2805" id="2805">2805</a>
-<a href="#2806" id="2806">2806</a>
-<a href="#2807" id="2807">2807</a>
-<a href="#2808" id="2808">2808</a>
-<a href="#2809" id="2809">2809</a>
-<a href="#2810" id="2810">2810</a>
-<a href="#2811" id="2811">2811</a>
-<a href="#2812" id="2812">2812</a>
-<a href="#2813" id="2813">2813</a>
-<a href="#2814" id="2814">2814</a>
-<a href="#2815" id="2815">2815</a>
-<a href="#2816" id="2816">2816</a>
-<a href="#2817" id="2817">2817</a>
-<a href="#2818" id="2818">2818</a>
-<a href="#2819" id="2819">2819</a>
-<a href="#2820" id="2820">2820</a>
-<a href="#2821" id="2821">2821</a>
-<a href="#2822" id="2822">2822</a>
-<a href="#2823" id="2823">2823</a>
-<a href="#2824" id="2824">2824</a>
-<a href="#2825" id="2825">2825</a>
-<a href="#2826" id="2826">2826</a>
-<a href="#2827" id="2827">2827</a>
-<a href="#2828" id="2828">2828</a>
-<a href="#2829" id="2829">2829</a>
-<a href="#2830" id="2830">2830</a>
-<a href="#2831" id="2831">2831</a>
-<a href="#2832" id="2832">2832</a>
-<a href="#2833" id="2833">2833</a>
-<a href="#2834" id="2834">2834</a>
-<a href="#2835" id="2835">2835</a>
-<a href="#2836" id="2836">2836</a>
-<a href="#2837" id="2837">2837</a>
-<a href="#2838" id="2838">2838</a>
-<a href="#2839" id="2839">2839</a>
-<a href="#2840" id="2840">2840</a>
-<a href="#2841" id="2841">2841</a>
-<a href="#2842" id="2842">2842</a>
-<a href="#2843" id="2843">2843</a>
-<a href="#2844" id="2844">2844</a>
-<a href="#2845" id="2845">2845</a>
-<a href="#2846" id="2846">2846</a>
-<a href="#2847" id="2847">2847</a>
-<a href="#2848" id="2848">2848</a>
-<a href="#2849" id="2849">2849</a>
-<a href="#2850" id="2850">2850</a>
-<a href="#2851" id="2851">2851</a>
-<a href="#2852" id="2852">2852</a>
-<a href="#2853" id="2853">2853</a>
-<a href="#2854" id="2854">2854</a>
-<a href="#2855" id="2855">2855</a>
-<a href="#2856" id="2856">2856</a>
-<a href="#2857" id="2857">2857</a>
-<a href="#2858" id="2858">2858</a>
-<a href="#2859" id="2859">2859</a>
-<a href="#2860" id="2860">2860</a>
-<a href="#2861" id="2861">2861</a>
-<a href="#2862" id="2862">2862</a>
-<a href="#2863" id="2863">2863</a>
-<a href="#2864" id="2864">2864</a>
-<a href="#2865" id="2865">2865</a>
-<a href="#2866" id="2866">2866</a>
-<a href="#2867" id="2867">2867</a>
-<a href="#2868" id="2868">2868</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         domains::EvaluationDomains,
@@ -2881,11 +2791,7 @@
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D,
 };
 <span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>num_bigint::BigUint;
-<span class="kw">use </span>o1_utils::{
-    foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers},
-    FieldHelpers,
-};
+<span class="kw">use </span>o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::{Add, AddAssign, Mul, Neg, Sub};
@@ -2920,26 +2826,6 @@
     </span>MissingRuntime,
 }
 
-<span class="doccomment">/// Structure to contain foreign field modulus and its negation
-</span><span class="kw">pub struct </span>ForeignFieldModulus {
-    <span class="doccomment">/// Foreign field modulus
-    </span><span class="kw">pub </span>value: BigUint,
-    <span class="doccomment">/// Negated foreign field modulus
-    </span><span class="kw">pub </span>negated: BigUint,
-}
-
-<span class="kw">impl </span>ForeignFieldModulus {
-    <span class="doccomment">/// Create a new foreign field modulus structure
-    </span><span class="kw">pub fn </span>new(foreign_field_modulus: BigUint) -&gt; <span class="self">Self </span>{
-        <span class="comment">// Store the foreign field modulus f and f negated over the CRT binary field modulus
-        // f&#39; = 2^t - f
-        </span>ForeignFieldModulus {
-            value: foreign_field_modulus.clone(),
-            negated: foreign_field_modulus.negate(),
-        }
-    }
-}
-
 <span class="doccomment">/// The collection of constants required to evaluate an `Expr`.
 </span><span class="kw">pub struct </span>Constants&lt;F: <span class="lifetime">&#39;static</span>&gt; {
     <span class="doccomment">/// The challenge alpha from the PLONK IOP.
@@ -2955,33 +2841,6 @@
     </span><span class="kw">pub </span>endo_coefficient: F,
     <span class="doccomment">/// The MDS matrix
     </span><span class="kw">pub </span>mds: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>Vec&lt;Vec&lt;F&gt;&gt;,
-    <span class="doccomment">/// The modulus for foreign field operations
-    </span><span class="kw">pub </span>foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;ForeignFieldModulus&gt;,
-}
-
-<span class="kw">impl</span>&lt;F: <span class="lifetime">&#39;static</span>&gt; Constants&lt;F&gt; {
-    <span class="doccomment">/// Create constants require to evaluate an `Expr`
-    </span><span class="kw">pub fn </span>new(
-        alpha: F,
-        beta: F,
-        gamma: F,
-        joint_combiner: <span class="prelude-ty">Option</span>&lt;F&gt;,
-        endo_coefficient: F,
-        mds: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>Vec&lt;Vec&lt;F&gt;&gt;,
-        foreign_field_modulus: <span class="prelude-ty">Option</span>&lt;BigUint&gt;,
-    ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>foreign_field_modulus = foreign_field_modulus.map(ForeignFieldModulus::new);
-
-        Constants {
-            alpha,
-            beta,
-            gamma,
-            joint_combiner,
-            endo_coefficient,
-            mds,
-            foreign_field_modulus,
-        }
-    }
 }
 
 <span class="doccomment">/// The polynomials specific to the lookup argument.
@@ -3189,8 +3048,6 @@
     // separate constant expression types.
     </span>EndoCoefficient,
     Mds { row: usize, col: usize },
-    ForeignFieldModulus(usize),
-    NegForeignFieldModulus(usize),
     Literal(F),
     Pow(Box&lt;ConstantExpr&lt;F&gt;&gt;, u64),
     <span class="comment">// TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -3212,10 +3069,6 @@
                 row: <span class="kw-2">*</span>row,
                 col: <span class="kw-2">*</span>col,
             }),
-            ConstantExpr::ForeignFieldModulus(i) =&gt; res.push(PolishToken::ForeignFieldModulus(<span class="kw-2">*</span>i)),
-            ConstantExpr::NegForeignFieldModulus(i) =&gt; {
-                res.push(PolishToken::NegForeignFieldModulus(<span class="kw-2">*</span>i))
-            }
             ConstantExpr::Add(x, y) =&gt; {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -3263,20 +3116,6 @@
             JointCombiner =&gt; c.joint_combiner.expect(<span class="string">&quot;joint lookup was not expected&quot;</span>),
             EndoCoefficient =&gt; c.endo_coefficient,
             Mds { row, col } =&gt; c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col],
-            ForeignFieldModulus(i) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(modulus) = <span class="kw-2">&amp;</span>c.foreign_field_modulus {
-                    modulus.value.to_field_limbs::&lt;F&gt;()[<span class="kw-2">*</span>i]
-                } <span class="kw">else </span>{
-                    F::zero()
-                }
-            }
-            NegForeignFieldModulus(i) =&gt; {
-                <span class="kw">if let </span><span class="prelude-val">Some</span>(modulus) = <span class="kw-2">&amp;</span>c.foreign_field_modulus {
-                    modulus.negated.to_field_limbs()[<span class="kw-2">*</span>i]
-                } <span class="kw">else </span>{
-                    F::zero()
-                }
-            }
             Literal(x) =&gt; <span class="kw-2">*</span>x,
             Pow(x, p) =&gt; x.value(c).pow(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>p <span class="kw">as </span>u64]),
             Mul(x, y) =&gt; x.value(c) * y.value(c),
@@ -3426,8 +3265,6 @@
         row: usize,
         col: usize,
     },
-    ForeignFieldModulus(usize),
-    NegForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -3506,16 +3343,6 @@
                 }
                 EndoCoefficient =&gt; stack.push(c.endo_coefficient),
                 Mds { row, col } =&gt; stack.push(c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col]),
-                ForeignFieldModulus(i) =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(modulus) = <span class="kw-2">&amp;</span>c.foreign_field_modulus {
-                        stack.push(modulus.value.to_field_limbs()[<span class="kw-2">*</span>i])
-                    }
-                }
-                NegForeignFieldModulus(i) =&gt; {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(modulus) = <span class="kw-2">&amp;</span>c.foreign_field_modulus {
-                        stack.push(modulus.negated.to_field_limbs()[<span class="kw-2">*</span>i])
-                    }
-                }
                 VanishesOnLast4Rows =&gt; stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) =&gt; {
                     stack.push(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, <span class="kw-2">*</span>i, <span class="kw-2">&amp;</span>pt))
@@ -5113,8 +4940,6 @@
             JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign_field_modulus({i})&quot;</span>),
-            NegForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;neg_foreign_field_modulus({i})&quot;</span>),
             Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;field(\&quot;0x{}\&quot;)&quot;</span>, x.into_repr()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha_pow({n})&quot;</span>),
@@ -5135,8 +4960,6 @@
             JointCombiner =&gt; <span class="string">&quot;joint\\_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo\\_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign\\_field\\_modulus({i})&quot;</span>),
-            NegForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;neg\\_foreign\\_field\\_modulus({i})&quot;</span>),
             Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\mathbb{{F}}({})&quot;</span>, x.into_repr().into()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\alpha^{{{n}}}&quot;</span>),
@@ -5157,8 +4980,6 @@
             JointCombiner =&gt; <span class="string">&quot;joint_combiner&quot;</span>.to_string(),
             EndoCoefficient =&gt; <span class="string">&quot;endo_coefficient&quot;</span>.to_string(),
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
-            ForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;foreign_field_modulus({i})&quot;</span>),
-            NegForeignFieldModulus(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;neg_foreign_field_modulus({i})&quot;</span>),
             Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
                 Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha^{}&quot;</span>, n),
@@ -5668,7 +5489,6 @@
                 joint_combiner: <span class="prelude-val">None</span>,
                 endo_coefficient: one,
                 mds: <span class="kw-2">&amp;</span>Vesta::sponge_params().mds,
-                foreign_field_modulus: <span class="prelude-val">None</span>,
             },
             witness: <span class="kw-2">&amp;</span>domain_evals.d8.this.w,
             coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,
@@ -5735,4 +5555,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>

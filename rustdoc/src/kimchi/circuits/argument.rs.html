@@ -184,14 +184,6 @@
 <a href="#184" id="184">184</a>
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
 </pre><pre class="rust"><code><span class="doccomment">//! An argument is simply a number of constraints,
 //! which we want to enforce on all points of the domain.
 //! Both the permutation and the plookup arguments fit this type.
@@ -294,14 +286,6 @@
     </span><span class="kw">pub fn </span>mds(<span class="kw-2">&amp;</span><span class="self">self</span>, row: usize, col: usize) -&gt; T {
         T::constant(ConstantExpr::&lt;F&gt;::Mds { row, col }, <span class="self">self</span>.data.as_ref())
     }
-
-    <span class="doccomment">/// Helper to access the foreign field modulus limb at index idx
-    </span><span class="kw">pub fn </span>foreign_modulus(<span class="kw-2">&amp;</span><span class="self">self</span>, idx: usize) -&gt; T {
-        T::constant(
-            ConstantExpr::&lt;F&gt;::ForeignFieldModulus(idx),
-            <span class="self">self</span>.data.as_ref(),
-        )
-    }
 }
 
 <span class="doccomment">/// Argument environment data for constraints of field elements
@@ -387,4 +371,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (bdb07a8ec 2022-12-11)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
