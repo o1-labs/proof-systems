@@ -138,7 +138,7 @@ where
     const CONSTRAINTS: u32 = 5;
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.foreign_modulus(i));
+        let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         let left_input_lo = env.witness_curr(0);
         let left_input_mi = env.witness_curr(1);

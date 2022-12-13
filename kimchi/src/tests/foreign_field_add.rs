@@ -165,7 +165,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 //     Outputs tuple (next_row, circuit_gates) where
 //       next_row      - next row after this gate
 //       circuit_gates - vector of circuit gates comprising this gate
-fn full_gadget<F: PrimeField + SquareRootField>(num: usize) -> (usize, Vec<CircuitGate<F>>) {
+fn full_gadget<F: PrimeField + SquareRootField>(
+    num: usize,
+    foreign_field_modulus: &BigUint,
+) -> (usize, Vec<CircuitGate<F>>) {
     // {
     //  [i] ->       -> 1 ForeignFieldAdd row
     // } * num times
@@ -178,7 +181,7 @@ fn full_gadget<F: PrimeField + SquareRootField>(num: usize) -> (usize, Vec<Circu
     //  [n+10+8i...n+13+8i]  -> 1 Multi RangeCheck for result
     // } * num times
     // [9n+6...9n+9] -> 1 Multi RangeCheck for bound
-    let (mut next_row, mut gates) = CircuitGate::<F>::create(0, num);
+    let (mut next_row, mut gates) = CircuitGate::<F>::create(0, num, foreign_field_modulus);
 
     // RANGE CHECKS
     // Add rangechecks for inputs, results, and final bound
@@ -272,13 +275,13 @@ fn full_witness<F: PrimeField>(
 
 fn create_test_constraint_system_ffadd(
     num: usize,
-    modulus: BigUint,
+    foreign_field_modulus: BigUint,
     full: bool,
 ) -> ProverIndex<Vesta> {
     let (mut next_row, mut gates) = if full {
-        full_gadget(num)
+        full_gadget(num, &foreign_field_modulus)
     } else {
-        CircuitGate::<PallasField>::create(0, num)
+        CircuitGate::<PallasField>::create(0, num, &foreign_field_modulus)
     };
 
     // Temporary workaround for lookup-table/domain-size issue
@@ -287,10 +290,7 @@ fn create_test_constraint_system_ffadd(
         next_row += 1;
     }
 
-    let cs = ConstraintSystem::create(gates)
-        .foreign_field_modulus(&Some(modulus))
-        .build()
-        .unwrap();
+    let cs = ConstraintSystem::create(gates).build().unwrap();
     let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
     srs.add_lagrange_basis(cs.domain.d1);
     let srs = Arc::new(srs);
@@ -306,18 +306,18 @@ fn field_max(modulus: BigUint) -> BigUint {
 
 // helper to reduce lines of code in repetitive test structure
 fn test_ffadd(
-    foreign_modulus: BigUint,
+    foreign_field_modulus: BigUint,
     inputs: Vec<BigUint>,
     ops: &Vec<FFOps>,
     full: bool,
 ) -> ([Vec<PallasField>; COLUMNS], ProverIndex<Vesta>) {
     let nops = ops.len();
-    let index = create_test_constraint_system_ffadd(nops, foreign_modulus.clone(), full);
+    let index = create_test_constraint_system_ffadd(nops, foreign_field_modulus.clone(), full);
 
     let witness = if full {
-        full_witness(&inputs, ops, foreign_modulus)
+        full_witness(&inputs, ops, foreign_field_modulus)
     } else {
-        witness::create(&inputs, ops, foreign_modulus)
+        witness::create(&inputs, ops, foreign_field_modulus)
     };
 
     let all_rows = witness[0].len();
@@ -532,9 +532,8 @@ fn test_one_minus_one_plus_one() {
 // then tested as 0 - 1 - 1 )
 // TODO: tested as 0 - ( 1 + 1) -> put sign in front of left instead (perhaps in the future we want this)
 fn test_minus_minus() {
-    let foreign_modulus = secp256k1_modulus();
     let neg_one_for =
-        ForeignElement::<PallasField, 3>::from_biguint(One::one()).neg(&foreign_modulus);
+        ForeignElement::<PallasField, 3>::from_biguint(One::one()).neg(&secp256k1_modulus());
     let neg_one = neg_one_for.to_biguint();
     let neg_two = ForeignElement::<PallasField, 3>::from_biguint(BigUint::from_u32(2).unwrap())
         .neg(&secp256k1_modulus());
@@ -785,9 +784,8 @@ fn test_zero_sub_fmax() {
         &vec![FFOps::Sub],
         false,
     );
-    let foreign_modulus = secp256k1_modulus();
     let negated =
-        ForeignElement::<PallasField, 3>::from_biguint(secp256k1_max()).neg(&foreign_modulus);
+        ForeignElement::<PallasField, 3>::from_biguint(secp256k1_max()).neg(&secp256k1_modulus());
     check_result(witness, vec![negated]);
 }
 
@@ -1215,21 +1213,22 @@ fn test_random_chain() {
 fn prove_and_verify(operation_count: usize) {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
+    // Create foreign modulus
+    let foreign_field_modulus = secp256k1_modulus();
+
     // Create circuit
-    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create(0, operation_count);
+    let (mut next_row, mut gates) =
+        CircuitGate::<PallasField>::create(0, operation_count, &foreign_field_modulus);
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
         gates.push(CircuitGate::zero(Wire::for_row(next_row)));
         next_row += 1;
     }
 
-    // Create foreign modulus
-    let foreign_modulus = secp256k1_modulus();
-
     // Create inputs and operations
     let inputs = (0..operation_count + 1)
         .into_iter()
-        .map(|_| BigUint::from_bytes_be(&random_input(rng, foreign_modulus.clone(), true)))
+        .map(|_| BigUint::from_bytes_be(&random_input(rng, foreign_field_modulus.clone(), true)))
         .collect::<Vec<BigUint>>();
     let operations = (0..operation_count)
         .into_iter()
@@ -1237,12 +1236,11 @@ fn prove_and_verify(operation_count: usize) {
         .collect::<Vec<_>>();
 
     // Create witness
-    let witness = witness::create(&inputs, &operations, foreign_modulus.clone());
+    let witness = witness::create(&inputs, &operations, foreign_field_modulus);
 
     TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .foreign_modulus(Some(foreign_modulus))
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>();
 }
@@ -1285,8 +1283,12 @@ fn test_ffadd_no_rc() {
     let operation_count = 3;
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
+    // Create foreign modulus
+    let foreign_mod = secp256k1_modulus();
+
     // Create circuit
-    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create(0, operation_count);
+    let (mut next_row, mut gates) =
+        CircuitGate::<PallasField>::create(0, operation_count, &foreign_mod);
 
     extend_gate_bound_rc(&mut gates);
 
@@ -1296,13 +1298,7 @@ fn test_ffadd_no_rc() {
         next_row += 1;
     }
 
-    // Create foreign modulus
-    let foreign_mod = secp256k1_modulus();
-
-    let cs = ConstraintSystem::create(gates)
-        .foreign_field_modulus(&Some(foreign_mod.clone()))
-        .build()
-        .unwrap();
+    let cs = ConstraintSystem::create(gates).build().unwrap();
 
     // Create inputs and operations
     let inputs = (0..operation_count + 1)
@@ -1373,7 +1369,8 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Create foreign field addition gates
-    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create(0, 1);
+    let (mut next_row, mut gates) =
+        CircuitGate::<G::ScalarField>::create(0, 1, foreign_field_modulus);
 
     let left_input =
         BigUint::from_bytes_be(&random_input(rng, foreign_field_modulus.clone(), true));
@@ -1393,10 +1390,7 @@ where
         next_row += 1;
     }
 
-    let cs = ConstraintSystem::create(gates.clone())
-        .foreign_field_modulus(&Some(foreign_field_modulus.clone()))
-        .build()
-        .unwrap();
+    let cs = ConstraintSystem::create(gates.clone()).build().unwrap();
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
