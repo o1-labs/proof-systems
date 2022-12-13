@@ -519,6 +519,7 @@
 <a href="#519" id="519">519</a>
 <a href="#520" id="520">520</a>
 <a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
@@ -885,12 +886,13 @@
 //~ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
 //~ |   4 | `Zero`        | Zero values, can be reused as generic gate |
 //~
-//~ ```admonition::notice
-//~  We could half the number of rows of the 64-bit XOR gadget by having lookups
-//~  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
-//~  Rough computations show that if we run 8 or more Keccaks in one circuit we should
-//~  use the 8-bit XOR table.
+//~ ```admonish info
+//~ We could halve the number of rows of the 64-bit XOR gadget by having lookups
+//~ for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+//~ Rough computations show that if we run 8 or more Keccaks in one circuit we should
+//~ use the 8-bit XOR table.
 //~ ```
+
 </span><span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>Xor16&lt;F&gt;(PhantomData&lt;F&gt;);
 
