@@ -1084,7 +1084,7 @@ For efficiency, the limbs are constrained differently according to their type.
 
 **Layout:**
 
-This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are layed out and constrained.
+This is how the three 88-bit inputs $v_0, v_1$ and $v_2$ are laid out and constrained.
 
 * `vipj` is the jth 12-bit limb of value $v_i$
 * `vicj` is the jth 2-bit crumb limb of value $v_i$
@@ -1372,10 +1372,7 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 
 * `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
 * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
-
-```admonition::notice
-NB: the native field modulus is obtainable from F, the native field's trait bound below.
-```
+* `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 
 ##### Witness
 
@@ -1396,7 +1393,7 @@ NB: the native field modulus is obtainable from F, the native field's trait boun
 
 ##### Layout
 
-The foreign field multiplication gate's rows are layed out like this
+The foreign field multiplication gate's rows are laid out like this
 
 | col | `ForeignFieldMul`            | `Zero`                    |
 | --- | ---------------------------- | ------------------------- |

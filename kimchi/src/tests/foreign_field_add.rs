@@ -1236,7 +1236,7 @@ fn prove_and_verify(operation_count: usize) {
         .collect::<Vec<_>>();
 
     // Create witness
-    let witness = witness::create(&inputs, &operations, foreign_field_modulus.clone());
+    let witness = witness::create(&inputs, &operations, foreign_field_modulus);
 
     TestFramework::<Vesta>::default()
         .gates(gates)
@@ -1370,7 +1370,7 @@ where
 
     // Create foreign field addition gates
     let (mut next_row, mut gates) =
-        CircuitGate::<G::ScalarField>::create(0, 1, &foreign_field_modulus);
+        CircuitGate::<G::ScalarField>::create(0, 1, foreign_field_modulus);
 
     let left_input =
         BigUint::from_bytes_be(&random_input(rng, foreign_field_modulus.clone(), true));

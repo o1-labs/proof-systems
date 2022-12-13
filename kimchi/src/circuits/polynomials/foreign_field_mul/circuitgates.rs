@@ -52,10 +52,7 @@
 //~
 //~ * `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
 //~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
-//~
-//~ ```admonition::notice
-//~ NB: the native field modulus is obtainable from F, the native field's trait bound below.
-//~ ```
+//~ * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 //~
 //~ ##### Witness
 //~
@@ -76,7 +73,7 @@
 //~
 //~ ##### Layout
 //~
-//~ The foreign field multiplication gate's rows are layed out like this
+//~ The foreign field multiplication gate's rows are laid out like this
 //~
 //~ | col | `ForeignFieldMul`            | `Zero`                    |
 //~ | --- | ---------------------------- | ------------------------- |
