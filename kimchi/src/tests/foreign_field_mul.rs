@@ -88,7 +88,8 @@ where
     EFrSponge: FrSponge<G::ScalarField>,
 {
     // Create foreign field multiplication gates
-    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_foreign_field_mul(0);
+    let (mut next_row, mut gates) =
+        CircuitGate::<G::ScalarField>::create_foreign_field_mul(0, foreign_field_modulus);
 
     // Compute multiplication witness
     let (mut witness, external_checks) =
@@ -106,7 +107,11 @@ where
         //     20-23 multi-range-check (quotient range check)
 
         // Bound addition for multiplication result
-        CircuitGate::extend_single_foreign_field_add(&mut gates, &mut next_row);
+        CircuitGate::extend_single_foreign_field_add(
+            &mut gates,
+            &mut next_row,
+            foreign_field_modulus,
+        );
         gates.connect_cell_pair((1, 0), (2, 0));
         gates.connect_cell_pair((1, 1), (2, 1));
         gates.connect_cell_pair((1, 2), (2, 2));
@@ -164,7 +169,6 @@ where
                 .gates(gates.clone())
                 .witness(witness.clone())
                 .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
-                .foreign_modulus(Some(foreign_field_modulus.clone()))
                 .setup(),
         )
     } else {
@@ -175,10 +179,7 @@ where
         runner.prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
-        ConstraintSystem::create(gates.clone())
-            .foreign_field_modulus(&Some(foreign_field_modulus.clone()))
-            .build()
-            .unwrap()
+        ConstraintSystem::create(gates.clone()).build().unwrap()
     };
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
@@ -225,7 +226,6 @@ where
                 .gates(gates.clone())
                 .witness(witness.clone())
                 .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
-                .foreign_modulus(Some(foreign_field_modulus.clone()))
                 .setup()
                 .prove_and_verify::<EFqSponge, EFrSponge>();
         }
@@ -769,14 +769,14 @@ fn test_nonzero_carry0() {
 // Test with nonzero carry10 (this targets only carry10)
 fn test_nonzero_carry10() {
     // Max modulus
-    let foreign_modulus = BigUint::two().pow(259u32);
+    let foreign_field_modulus = BigUint::two().pow(259u32);
 
     // Maximum quotient
-    let q = &foreign_modulus - BigUint::one();
+    let q = &foreign_field_modulus - BigUint::one();
 
     // Compute operands
-    let a = &foreign_modulus / BigUint::two().pow(5);
-    let b = (&q * &foreign_modulus) / &a;
+    let a = &foreign_field_modulus / BigUint::two().pow(5);
+    let b = (&q * &foreign_field_modulus) / &a;
 
     // Valid witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -785,13 +785,13 @@ fn test_nonzero_carry10() {
         false,
         &a,
         &b,
-        &foreign_modulus,
+        &foreign_field_modulus,
         vec![],
     );
     assert_eq!(result, Ok(()));
     assert_ne!(witness[6][0], PallasField::zero()); // carry10 is definitely not zero
     assert_eq!(
-        &a * &b % &foreign_modulus,
+        &a * &b % &foreign_field_modulus,
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 
@@ -802,7 +802,7 @@ fn test_nonzero_carry10() {
         false,
         &a,
         &b,
-        &foreign_modulus,
+        &foreign_field_modulus,
         vec![((0, 6), PallasField::zero())], // Invalidate carry10
     );
     // The 6th constraint (i.e. C9) should fail
@@ -811,7 +811,7 @@ fn test_nonzero_carry10() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
     );
     assert_eq!(
-        a * b % &foreign_modulus,
+        a * b % &foreign_field_modulus,
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 }
@@ -820,14 +820,14 @@ fn test_nonzero_carry10() {
 // Test with nonzero carry11
 fn test_nonzero_carry11() {
     // Big (rubbish) modulus
-    let foreign_modulus = BigUint::two().pow(259u32) - BigUint::one();
+    let foreign_field_modulus = BigUint::two().pow(259u32) - BigUint::one();
 
     // Maximum quotient
-    let q = &foreign_modulus - BigUint::one();
+    let q = &foreign_field_modulus - BigUint::one();
 
     // Compute operands
-    let a = &foreign_modulus / BigUint::two().pow(4);
-    let b = (&q * &foreign_modulus) / &a;
+    let a = &foreign_field_modulus / BigUint::two().pow(4);
+    let b = (&q * &foreign_field_modulus) / &a;
 
     // Valid witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -836,13 +836,13 @@ fn test_nonzero_carry11() {
         false,
         &a,
         &b,
-        &foreign_modulus,
+        &foreign_field_modulus,
         vec![],
     );
     assert_eq!(result, Ok(()));
     assert_ne!(witness[7][0], PallasField::zero()); // carry11 is definitely not zero
     assert_eq!(
-        &a * &b % &foreign_modulus,
+        &a * &b % &foreign_field_modulus,
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 
@@ -853,7 +853,7 @@ fn test_nonzero_carry11() {
         false,
         &a,
         &b,
-        &foreign_modulus,
+        &foreign_field_modulus,
         vec![((0, 7), PallasField::zero()), ((0, 8), PallasField::zero())], // Invalidate carry11 and make scaled_carry11 match
     );
     // The 6th constraint (i.e. C9) should fail
@@ -862,7 +862,7 @@ fn test_nonzero_carry11() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
     );
     assert_eq!(
-        a * b % &foreign_modulus,
+        a * b % &foreign_field_modulus,
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 }
@@ -1236,7 +1236,7 @@ fn test_random_multiplicands_valid() {
 
 #[test]
 // Test multiplying some random values with foreign modulus smaller than native modulus
-fn test_smaller_foreign_modulus() {
+fn test_smaller_foreign_field_modulus() {
     let foreign_field_modulus = BigUint::two().pow(252u32) - BigUint::one();
 
     let rng = &mut StdRng::from_seed(RNG_SEED);
@@ -1310,7 +1310,7 @@ fn test_custom_constraints_pallas_on_pallas() {
 
 #[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native vesta)
-fn test_custom_constraints_small_foreign_modulus_on_vesta() {
+fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
     test_custom_constraints::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
     );
@@ -1318,7 +1318,7 @@ fn test_custom_constraints_small_foreign_modulus_on_vesta() {
 
 #[test]
 // Tests targeting each custom constraint (foreign modulus smaller than native pallas)
-fn test_custom_constraints_small_foreign_modulus_on_pallas() {
+fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
     test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
     );

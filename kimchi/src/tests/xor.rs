@@ -298,8 +298,7 @@ fn test_bad_xor() {
     for i in 1..=4 {
         witness[COLUMNS - i][0] = PallasField::zero();
     }
-    let index =
-        new_index_for_test_with_lookups(cs.gates, 0, 0, vec![xor::lookup_table()], None, None);
+    let index = new_index_for_test_with_lookups(cs.gates, 0, 0, vec![xor::lookup_table()], None);
     assert_eq!(
         index.cs.gates[0].verify_xor::<Vesta>(0, &witness, &index),
         Err(CircuitGateError::InvalidLookupConstraintSorted(
