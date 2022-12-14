@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/gadget.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>gadget.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-9def1262ebc682c9.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-94f39d4346842c1e.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-c55e1eb52e1886b4.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_add/gadget.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>gadget.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-64f7dca12162a801.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-94f39d4346842c1e.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-a211dbb005fb8161.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -100,144 +100,16 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
-<a href="#103" id="103">103</a>
-<a href="#104" id="104">104</a>
-<a href="#105" id="105">105</a>
-<a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
-<a href="#118" id="118">118</a>
-<a href="#119" id="119">119</a>
-<a href="#120" id="120">120</a>
-<a href="#121" id="121">121</a>
-<a href="#122" id="122">122</a>
-<a href="#123" id="123">123</a>
-<a href="#124" id="124">124</a>
-<a href="#125" id="125">125</a>
-<a href="#126" id="126">126</a>
-<a href="#127" id="127">127</a>
-<a href="#128" id="128">128</a>
-<a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
-<a href="#140" id="140">140</a>
-<a href="#141" id="141">141</a>
-<a href="#142" id="142">142</a>
-<a href="#143" id="143">143</a>
-<a href="#144" id="144">144</a>
-<a href="#145" id="145">145</a>
-<a href="#146" id="146">146</a>
-<a href="#147" id="147">147</a>
-<a href="#148" id="148">148</a>
-<a href="#149" id="149">149</a>
-<a href="#150" id="150">150</a>
-<a href="#151" id="151">151</a>
-<a href="#152" id="152">152</a>
-<a href="#153" id="153">153</a>
-<a href="#154" id="154">154</a>
-<a href="#155" id="155">155</a>
-<a href="#156" id="156">156</a>
-<a href="#157" id="157">157</a>
-<a href="#158" id="158">158</a>
-<a href="#159" id="159">159</a>
-<a href="#160" id="160">160</a>
-<a href="#161" id="161">161</a>
-<a href="#162" id="162">162</a>
-<a href="#163" id="163">163</a>
-<a href="#164" id="164">164</a>
-<a href="#165" id="165">165</a>
-<a href="#166" id="166">166</a>
-<a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
-<a href="#205" id="205">205</a>
-<a href="#206" id="206">206</a>
-<a href="#207" id="207">207</a>
-<a href="#208" id="208">208</a>
-<a href="#209" id="209">209</a>
-<a href="#210" id="210">210</a>
-<a href="#211" id="211">211</a>
-<a href="#212" id="212">212</a>
-<a href="#213" id="213">213</a>
-<a href="#214" id="214">214</a>
-<a href="#215" id="215">215</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
-</span><span class="kw">use </span>std::collections::HashMap;
-
-<span class="kw">use </span>ark_ff::{PrimeField, SquareRootField, Zero};
-<span class="kw">use </span>ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain <span class="kw">as </span>D};
+</span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>o1_utils::foreign_field::BigUintForeignFieldHelpers;
-<span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
-<span class="kw">use </span>std::array;
 
-<span class="kw">use crate</span>::{
-    alphas::Alphas,
-    circuits::{
-        argument::{Argument, ArgumentType},
-        expr::{<span class="self">self</span>, l0_1, Environment},
-        gate::{CircuitGate, CircuitGateError, CircuitGateResult, GateType},
-        polynomial::COLUMNS,
-        wires::Wire,
-    },
-    curve::KimchiCurve,
-    prover_index::ProverIndex,
+<span class="kw">use </span><span class="kw">crate</span>::circuits::{
+    gate::{CircuitGate, GateType},
+    wires::Wire,
 };
-
-<span class="kw">use </span><span class="kw">super</span>::circuitgates::ForeignFieldAdd;
 
 <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Create foreign field addition gate chain without range checks (needs to wire the range check for result bound manually)
@@ -329,104 +201,6 @@
         <span class="kw-2">*</span>curr_row = next_row;
         gates.extend_from_slice(<span class="kw-2">&amp;</span>circuit_gates);
     }
-
-    <span class="doccomment">/// Verifies the foreign field addition gadget
-    </span><span class="kw">pub fn </span>verify_foreign_field_add&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="kw">_</span>: usize,
-        witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
-        index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;,
-    ) -&gt; CircuitGateResult&lt;()&gt; {
-        <span class="kw">if </span>GateType::ForeignFieldAdd != <span class="self">self</span>.typ {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(CircuitGateError::InvalidCircuitGateType(<span class="self">self</span>.typ));
-        }
-
-        <span class="comment">// Pad the witness to domain d1 size
-        </span><span class="kw">let </span>padding_length = index
-            .cs
-            .domain
-            .d1
-            .size
-            .checked_sub(witness[<span class="number">0</span>].len() <span class="kw">as </span>u64)
-            .unwrap();
-        <span class="kw">let </span><span class="kw-2">mut </span>witness = witness.clone();
-        <span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;mut </span>witness {
-            w.extend(std::iter::repeat(F::zero()).take(padding_length <span class="kw">as </span>usize));
-        }
-
-        <span class="comment">// Compute witness polynomial
-        </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;F&gt;; COLUMNS] = array::from_fn(|i| {
-            Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1)
-                .interpolate()
-        });
-
-        <span class="comment">// Compute permutation polynomial
-        </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>StdRng::from_seed([<span class="number">0u8</span>; <span class="number">32</span>]);
-        <span class="kw">let </span>beta = F::rand(rng);
-        <span class="kw">let </span>gamma = F::rand(rng);
-        <span class="kw">let </span>z_poly = index
-            .perm_aggreg(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>beta, <span class="kw-2">&amp;</span>gamma, rng)
-            .map_err(|<span class="kw">_</span>| CircuitGateError::InvalidCopyConstraint(<span class="self">self</span>.typ))<span class="question-mark">?</span>;
-
-        <span class="comment">// Compute witness polynomial evaluations
-        </span><span class="kw">let </span>witness_evals = index.cs.evaluate(<span class="kw-2">&amp;</span>witness_poly, <span class="kw-2">&amp;</span>z_poly);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>index_evals = HashMap::new();
-        index_evals.insert(
-            <span class="self">self</span>.typ,
-            index
-                .column_evaluations
-                .foreign_field_add_selector8
-                .as_ref()
-                .unwrap(),
-        );
-
-        <span class="comment">// Set up the environment
-        </span><span class="kw">let </span>env = {
-            Environment {
-                constants: expr::Constants {
-                    alpha: F::rand(rng),
-                    beta: F::rand(rng),
-                    gamma: F::rand(rng),
-                    joint_combiner: <span class="prelude-val">Some</span>(F::rand(rng)),
-                    endo_coefficient: index.cs.endo,
-                    mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
-                },
-                witness: <span class="kw-2">&amp;</span>witness_evals.d8.this.w,
-                coefficient: <span class="kw-2">&amp;</span>index.column_evaluations.coefficients8,
-                vanishes_on_last_4_rows: <span class="kw-2">&amp;</span>index.cs.precomputations().vanishes_on_last_4_rows,
-                z: <span class="kw-2">&amp;</span>witness_evals.d8.this.z,
-                l0_1: l0_1(index.cs.domain.d1),
-                domain: index.cs.domain,
-                index: index_evals,
-                lookup: <span class="prelude-val">None</span>,
-            }
-        };
-
-        <span class="comment">// Setup powers of alpha
-        </span><span class="kw">let </span><span class="kw-2">mut </span>alphas = Alphas::&lt;F&gt;::default();
-        alphas.register(
-            ArgumentType::Gate(<span class="self">self</span>.typ),
-            ForeignFieldAdd::&lt;F&gt;::CONSTRAINTS,
-        );
-
-        <span class="comment">// Get constraints for this circuit gate
-        </span><span class="kw">let </span>constraints = ForeignFieldAdd::combined_constraints(<span class="kw-2">&amp;</span>alphas);
-
-        <span class="comment">// Verify it against the environment
-        </span><span class="kw">if </span>constraints
-            .evaluations(<span class="kw-2">&amp;</span>env)
-            .interpolate()
-            .divide_by_vanishing_poly(index.cs.domain.d1)
-            .unwrap()
-            .<span class="number">1
-            </span>.is_zero()
-        {
-            <span class="prelude-val">Ok</span>(())
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Err</span>(CircuitGateError::InvalidConstraint(<span class="self">self</span>.typ))
-        }
-    }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (37d7de337 2022-12-12)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0f529f0f4 2022-12-13)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
