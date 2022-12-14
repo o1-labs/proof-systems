@@ -858,7 +858,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     domain as usize,
                     res_domain.0 as usize,
                     res_domain.1,
-                    shift,
+                    Some(shift),
                     Some(x),
                 ),
             },
@@ -901,8 +901,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es_sub,
                 },
             ) => {
-                let es_sub_evals =
-                    to_domain(es_sub, d_sub as usize, d as usize, res_domain.1, s, None);
+                let es_sub_evals = to_domain(
+                    es_sub,
+                    d_sub as usize,
+                    d as usize,
+                    res_domain.1,
+                    Some(s),
+                    None,
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e += es_sub_evals[i];
                 });
@@ -925,7 +931,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     d1 as usize,
                     res_domain.0 as usize,
                     res_domain.1,
-                    s1,
+                    Some(s1),
                     None,
                 );
 
@@ -934,7 +940,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     d2 as usize,
                     res_domain.0 as usize,
                     res_domain.1,
-                    s2,
+                    Some(s2),
                     None,
                 );
 
@@ -1021,8 +1027,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     mut evals,
                 },
             ) => {
-                let es_sub_evals =
-                    to_domain(es_sub, d_sub as usize, d as usize, res_domain.1, s, None);
+                let es_sub_evals = to_domain(
+                    es_sub,
+                    d_sub as usize,
+                    d as usize,
+                    res_domain.1,
+                    Some(s),
+                    None,
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e = es_sub_evals.evals[i] - *e;
                 });
@@ -1039,8 +1051,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es_sub,
                 },
             ) => {
-                let es_sub_evals =
-                    to_domain(es_sub, d_sub as usize, d as usize, res_domain.1, s, None);
+                let es_sub_evals = to_domain(
+                    es_sub,
+                    d_sub as usize,
+                    d as usize,
+                    res_domain.1,
+                    Some(s),
+                    None,
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e -= es_sub_evals.evals[i];
                 });
@@ -1182,8 +1200,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es_sub,
                 },
             ) => {
-                let es_sub_evals =
-                    to_domain(es_sub, d_sub as usize, d as usize, res_domain.1, s, None);
+                let es_sub_evals = to_domain(
+                    es_sub,
+                    d_sub as usize,
+                    d as usize,
+                    res_domain.1,
+                    Some(s),
+                    None,
+                );
                 evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
                     *e *= es_sub_evals.evals[i];
                 });

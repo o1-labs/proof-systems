@@ -631,7 +631,7 @@ impl<G: CommitmentCurve> SRS<G> {
                     plnm.domain().size as usize,
                     domain.size as usize,
                     domain,
-                    0,
+                    None,
                     None,
                 )
                 .evals;
@@ -896,7 +896,7 @@ pub fn to_domain<F: FftField>(
     evals_domain_size: usize,
     target_domain_size: usize,
     target_domain: D<F>,
-    shift: usize,
+    shift: Option<usize>,
     constant: Option<F>,
 ) -> Evaluations<F, D<F>> {
     let scale = evals_domain_size / target_domain_size;
@@ -904,6 +904,7 @@ pub fn to_domain<F: FftField>(
         scale, 0,
         "we can't move to a bigger domain without interpolating and reevaluating the polynomial"
     );
+    let shift = shift.unwrap_or(0);
     let f = |i| {
         if let Some(cst) = constant {
             cst + evals.evals[(scale * i + evals_domain_size * shift) % evals.evals.len()]
