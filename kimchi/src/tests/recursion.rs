@@ -48,7 +48,8 @@ fn test_recursion() {
         RecursionChallenge::new(chals, comm)
     };
 
-    test_runner
+    assert!(test_runner
         .recursion(vec![prev_challenges])
-        .prove_and_verify::<BaseSponge, ScalarSponge>();
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .is_ok());
 }
