@@ -391,15 +391,14 @@ where
 
             ft_eval0 += numerator * denominator;
 
-            let constants = Constants::new(
+            let constants = Constants {
                 alpha,
                 beta,
                 gamma,
-                joint_combiner.as_ref().map(|j| j.1),
-                index.endo,
-                &G::sponge_params().mds,
-                index.foreign_field_modulus.clone(),
-            );
+                joint_combiner: joint_combiner.as_ref().map(|j| j.1),
+                endo_coefficient: index.endo,
+                mds: &G::sponge_params().mds,
+            };
 
             ft_eval0 -= PolishToken::evaluate(
                 &index.linearization.constant_term,
@@ -576,15 +575,14 @@ where
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants from oracles function
-            let constants = Constants::new(
-                oracles.alpha,
-                oracles.beta,
-                oracles.gamma,
-                oracles.joint_combiner.as_ref().map(|j| j.1),
-                index.endo,
-                &G::sponge_params().mds,
-                index.foreign_field_modulus.clone(),
-            );
+            let constants = Constants {
+                alpha: oracles.alpha,
+                beta: oracles.beta,
+                gamma: oracles.gamma,
+                joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
+                endo_coefficient: index.endo,
+                mds: &G::sponge_params().mds,
+            };
 
             for (col, tokens) in &index.linearization.index_terms {
                 let scalar =

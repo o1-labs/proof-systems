@@ -10,7 +10,6 @@ use crate::{
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
-    prover_index::testing::new_index_for_test_with_lookups,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, Zero};
@@ -22,7 +21,7 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::Two;
-use o1_utils::{BigUintHelpers, BitOps, FieldHelpers, RandomField};
+use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -89,13 +88,13 @@ pub(crate) fn check_xor<G: KimchiCurve>(
         for nybble in 0..4 {
             assert_eq!(
                 witness[11 + nybble][xor + ini_row],
-                BigUint::bitxor(&in1[nybble], &in2[nybble]).into()
+                BigUint::bitwise_xor(&in1[nybble], &in2[nybble]).into()
             );
         }
     }
     assert_eq!(
         witness[2][ini_row],
-        BigUint::bitxor(&input1, &input2).into()
+        BigUint::bitwise_xor(&input1, &input2).into()
     );
 }
 
@@ -177,19 +176,20 @@ fn test_prove_and_verify_xor() {
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    TestFramework::<Vesta>::default()
+    assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
-        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+        .is_ok());
 }
 
 #[test]
 // Test a XOR of 64bit whose output is all ones with alternating inputs
 fn test_xor64_alternating() {
-    let input1 = PallasField::from(6510615555426900570u64);
-    let input2 = PallasField::from(11936128518282651045u64);
+    let input1 = PallasField::from(0x5A5A5A5A5A5A5A5Au64);
+    let input2 = PallasField::from(0xA5A5A5A5A5A5A5A5u64);
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input1), Some(input2), Some(64));
     assert_eq!(witness[2][0], PallasField::two_pow(64) - PallasField::one());
@@ -203,16 +203,16 @@ fn test_xor64_alternating() {
 // Test a XOR of 64bit whose inputs are zero. Checks it works fine with non-dense values.
 fn test_xor64_zeros() {
     // forces zero to fit in 64 bits even if it only needs 1 bit
-    let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
+    let zero = PallasField::zero();
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero), Some(zero), Some(64));
-    assert_eq!(witness[2][0], PallasField::from(0));
+    assert_eq!(witness[2][0], zero);
 }
 
 #[test]
 // Test a XOR of 64bit whose inputs are all zero and all one. Checks it works fine with non-dense values.
 fn test_xor64_zero_one() {
-    let zero = PallasField::from_biguint(BigUint::from(0u32)).unwrap();
+    let zero = PallasField::zero();
     let all_ones = all_ones::<Vesta>(64);
     let witness =
         test_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(zero), Some(all_ones), None);
@@ -254,46 +254,80 @@ fn test_xor128_random() {
     test_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, None, Some(128));
 }
 
-#[test]
-// Test that a random XOR of 16 bits fails if the inputs do not decompose correctly
-fn test_bad_decomp() {
-    let (cs, mut witness) =
-        setup_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+fn verify_bad_xor_decomposition<G: KimchiCurve, EFqSponge, EFrSponge>(
+    witness: &mut [Vec<G::ScalarField>; COLUMNS],
+    cs: ConstraintSystem<G::ScalarField>,
+) where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField>,
+{
     // modify by one each of the witness cells individually
     for col in 0..COLUMNS {
         // first three columns make fail the ith+1 constraint
         // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
-        witness[col][0] += PallasField::one();
+        witness[col][0] += G::ScalarField::one();
         assert_eq!(
-            cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
-        witness[col][0] -= PallasField::one();
+        witness[col][0] -= G::ScalarField::one();
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
 
 #[test]
-// Test that a 16-bit XOR gate fails if the witness does not correspond to a XOR operation
-fn test_bad_xor() {
+// Test that a random XOR of 16 bits fails if the inputs do not decompose correctly
+fn test_bad_xor_decompsition() {
     let (cs, mut witness) =
         setup_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+    verify_bad_xor_decomposition::<Vesta, VestaBaseSponge, VestaScalarSponge>(&mut witness, cs);
+}
+
+#[test]
+// Test that a 16-bit XOR gate fails if the witness does not correspond to a XOR operation
+fn test_bad_xor() {
+    let bits = Some(16);
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let input1: PallasField = rng.gen(None, bits);
+    let input2: PallasField = rng.gen(None, bits);
+
+    // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
+    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
+    let bits1 = input1.to_biguint().bitlen();
+    let bits2 = input2.to_biguint().bitlen();
+    let bits = bits.map_or(0, |b| b); // 0 or bits
+    let bits = max(bits, max(bits1, bits2));
+
+    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_xor_gadget(0, bits);
+    // Temporary workaround for lookup-table/domain-size issue
+    for _ in 0..(1 << 13) {
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
+        next_row += 1;
+    }
+
+    let mut witness = xor::create_xor_witness(input1, input2, bits);
+
     // modify the output to be all zero
     witness[2][0] = PallasField::zero();
     for i in 1..=4 {
         witness[COLUMNS - i][0] = PallasField::zero();
     }
-    let index =
-        new_index_for_test_with_lookups(cs.gates, 0, 0, vec![xor::lookup_table()], None, None);
+
     assert_eq!(
-        index.cs.gates[0].verify_xor::<Vesta>(0, &witness, &index),
-        Err(CircuitGateError::InvalidLookupConstraintSorted(
-            GateType::Xor16
+        TestFramework::<Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .lookup_tables(vec![xor::lookup_table()])
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
+        Err(String::from(
+            "the lookup failed to find a match in the table"
         ))
     );
 }

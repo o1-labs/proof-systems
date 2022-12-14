@@ -1,3 +1,4 @@
+mod and;
 mod chacha;
 mod ec;
 mod endomul;
@@ -7,6 +8,7 @@ mod foreign_field_mul;
 mod framework;
 mod generic;
 mod lookup;
+mod not;
 mod poseidon;
 mod range_check;
 mod recursion;

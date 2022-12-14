@@ -16,7 +16,7 @@ pub mod math;
 pub mod serialization;
 
 pub use biguint_helpers::BigUintHelpers;
-pub use bitwise_operations::BitOps;
+pub use bitwise_operations::BitwiseOps;
 pub use chunked_evaluations::ChunkedEvaluations;
 pub use dense_polynomial::ExtendedDensePolynomial;
 pub use evaluations::ExtendedEvaluations;

@@ -285,6 +285,14 @@ impl<F: PrimeField> ExternalChecks<F> {
         }
     }
 
+    /// Extend the witness with external compact multi range_checks
+    pub fn extend_witness_compact_multi_range_checks(&self, witness: &mut [Vec<F>; COLUMNS]) {
+        for [v01, v2] in self.compact_multi_ranges.clone() {
+            range_check::witness::extend_multi_compact(witness, v01, v2)
+        }
+    }
+
+    /// Extend the witness with external bound addition
     pub fn extend_witness_bound_addition(
         &self,
         witness: &mut [Vec<F>; COLUMNS],

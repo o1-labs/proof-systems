@@ -145,9 +145,10 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    TestFramework::<Vesta>::default()
+    assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify::<BaseSponge, ScalarSponge>();
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .is_ok());
 }

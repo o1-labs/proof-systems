@@ -22,7 +22,6 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use num_bigint::BigUint;
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -161,9 +160,6 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
 
-    /// Foreign field modulus
-    pub foreign_field_modulus: Option<BigUint>,
-
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [F; PERMUTS],
@@ -196,7 +192,6 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    foreign_field_modulus: Option<BigUint>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -247,7 +242,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
-            foreign_field_modulus: None,
         }
     }
 
@@ -658,16 +652,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
-    /// Set up the foreign field modulus passed as an optional BigUint
-    /// If not invoked, it is `None` by default.
-    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
-    /// and warns if the foreign modulus being passed is smaller than the native modulus
-    /// because right now we only support foreign modulus that are larger than the native modulus.
-    pub fn foreign_field_modulus(mut self, foreign_field_modulus: &Option<BigUint>) -> Self {
-        self.foreign_field_modulus = foreign_field_modulus.clone();
-        self
-    }
-
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
@@ -747,7 +731,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             public: self.public,
             prev_challenges: self.prev_challenges,
             sid,
-            foreign_field_modulus: self.foreign_field_modulus,
             gates,
             shift: shifts.shifts,
             endo,

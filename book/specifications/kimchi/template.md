@@ -273,6 +273,13 @@ TODO: for each gate describe how to create it?
 
 {sections.xor16}
 
+#### Not
+
+{sections.not_gadget}
+##### And
+
+{sections.and_gadget}
+
 ## Setup
 
 In this section we specify the setup that goes into creating two indexes from a circuit:
