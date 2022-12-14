@@ -242,8 +242,8 @@ fn verify_range_check0_invalid_witness() {
         ),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::RangeCheck0,
-            src: Wire { row: 0, col: 0 },
-            dst: Wire { row: 1, col: 0 }
+            src: Wire { row: 1, col: 2 },
+            dst: Wire { row: 3, col: 6 }
         })
     );
 
