@@ -138,7 +138,7 @@ where
     }
 
     /// Create and verify a proof
-    pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self)
+    pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -147,7 +147,9 @@ where
         let witness = self.0.witness.unwrap();
 
         // verify the circuit satisfiability by the computed witness
-        prover.verify(&witness, &self.0.public_inputs).unwrap();
+        prover
+            .verify(&witness, &self.0.public_inputs)
+            .map_err(|e| format!("{:?}", e))?;
 
         // add the proof to the batch
         let start = Instant::now();
@@ -162,14 +164,16 @@ where
             self.0.recursion,
             None,
         )
-        .unwrap();
+        .map_err(|e| e.to_string())?;
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
-        // verify the proof
+        // verify the proof (propagate any errors)
         let start = Instant::now();
         verify::<G, EFqSponge, EFrSponge>(&group_map, &self.0.verifier_index.unwrap(), &proof)
-            .unwrap();
+            .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+
+        Ok(())
     }
 }
 

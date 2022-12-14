@@ -192,7 +192,7 @@ where
 
     if let Some(runner) = runner {
         // Perform full test that everything is ok before invalidation
-        runner.prove_and_verify::<EFqSponge, EFrSponge>();
+        assert!(runner.prove_and_verify::<EFqSponge, EFrSponge>().is_ok());
     }
 
     if !invalidations.is_empty() {
@@ -222,12 +222,13 @@ where
 
         // Catch plookup failures caused by invalidation of witness
         if full {
-            TestFramework::<G>::default()
+            assert!(TestFramework::<G>::default()
                 .gates(gates.clone())
                 .witness(witness.clone())
                 .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup()
-                .prove_and_verify::<EFqSponge, EFrSponge>();
+                .prove_and_verify::<EFqSponge, EFrSponge>()
+                .is_ok());
         }
     }
 

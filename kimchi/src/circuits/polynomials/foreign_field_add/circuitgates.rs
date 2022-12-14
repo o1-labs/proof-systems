@@ -121,8 +121,8 @@ use std::{array, marker::PhantomData};
 //~ - Copy signs from public input
 //~ - Range check the final bound
 //~
-//~ ```admonition::notice
-//~  TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
+//~ ```admonish info
+//~ TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
 //~ ```
 
 /// Implementation of the foreign field addition gate
