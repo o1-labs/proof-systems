@@ -10,7 +10,6 @@ use crate::{
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
-    prover_index::testing::new_index_for_test_with_lookups,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -176,12 +175,13 @@ fn test_prove_and_verify_xor() {
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    TestFramework::<Vesta>::default()
+    assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
-        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+        .is_ok());
 }
 
 #[test]
@@ -291,18 +291,42 @@ fn test_bad_xor_decompsition() {
 #[test]
 // Test that a 16-bit XOR gate fails if the witness does not correspond to a XOR operation
 fn test_bad_xor() {
-    let (cs, mut witness) =
-        setup_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, Some(16));
+    let bits = Some(16);
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let input1: PallasField = rng.gen(None, bits);
+    let input2: PallasField = rng.gen(None, bits);
+
+    // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
+    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
+    let bits1 = input1.to_biguint().bitlen();
+    let bits2 = input2.to_biguint().bitlen();
+    let bits = bits.map_or(0, |b| b); // 0 or bits
+    let bits = max(bits, max(bits1, bits2));
+
+    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_xor_gadget(0, bits);
+    // Temporary workaround for lookup-table/domain-size issue
+    for _ in 0..(1 << 13) {
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
+        next_row += 1;
+    }
+
+    let mut witness = xor::create_xor_witness(input1, input2, bits);
+
     // modify the output to be all zero
     witness[2][0] = PallasField::zero();
     for i in 1..=4 {
         witness[COLUMNS - i][0] = PallasField::zero();
     }
-    let index = new_index_for_test_with_lookups(cs.gates, 0, 0, vec![xor::lookup_table()], None);
+
     assert_eq!(
-        index.cs.gates[0].verify_xor::<Vesta>(0, &witness, &index),
-        Err(CircuitGateError::InvalidLookupConstraintSorted(
-            GateType::Xor16
+        TestFramework::<Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .lookup_tables(vec![xor::lookup_table()])
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
+        Err(String::from(
+            "the lookup failed to find a match in the table"
         ))
     );
 }

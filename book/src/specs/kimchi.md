@@ -1313,8 +1313,8 @@ the savings of one row and a few constraints of difference.
 - Copy signs from public input
  - Range check the final bound
 
-```admonition::notice
- TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
+```admonish info
+TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
 ```
 
 
@@ -1460,11 +1460,11 @@ to obtain a gadget for 64-bit words XOR:
 |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
 |   4 | `Zero`        | Zero values, can be reused as generic gate |
 
-```admonition::notice
- We could half the number of rows of the 64-bit XOR gadget by having lookups
- for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
- Rough computations show that if we run 8 or more Keccaks in one circuit we should
- use the 8-bit XOR table.
+```admonish info
+We could halve the number of rows of the 64-bit XOR gadget by having lookups
+for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+Rough computations show that if we run 8 or more Keccaks in one circuit we should
+use the 8-bit XOR table.
 ```
 
 

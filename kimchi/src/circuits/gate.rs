@@ -234,19 +234,19 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 self.verify_cairo_gate::<G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_foreign_field_add::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_foreign_field_mul::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_xor::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_rot::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }

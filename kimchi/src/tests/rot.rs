@@ -77,12 +77,13 @@ where
     // Create witness
     let witness = rot::create_witness(word, rot, RotMode::Left);
 
-    TestFramework::<G>::default()
+    assert!(TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![rot::lookup_table()])
         .setup()
-        .prove_and_verify::<EFqSponge, EFrSponge>();
+        .prove_and_verify::<EFqSponge, EFrSponge>()
+        .is_ok());
 }
 
 #[test]
