@@ -1238,11 +1238,12 @@ fn prove_and_verify(operation_count: usize) {
     // Create witness
     let witness = witness::create(&inputs, &operations, foreign_field_modulus);
 
-    TestFramework::<Vesta>::default()
+    assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
-        .prove_and_verify::<BaseSponge, ScalarSponge>();
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .is_ok());
 }
 
 // Prove and verify a randomly generated operation (only ffadd)

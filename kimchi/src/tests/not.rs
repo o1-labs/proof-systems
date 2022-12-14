@@ -275,7 +275,7 @@ fn test_prove_and_verify_not_xor() {
     let witness =
         create_not_witness_checked_length::<PallasField>(rng.gen_field_with_bits(bits), Some(bits));
 
-    TestFramework::<Vesta>::default()
+    assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
@@ -283,7 +283,8 @@ fn test_prove_and_verify_not_xor() {
         ])
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
-        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+        .is_ok());
 }
 
 #[test]
@@ -317,14 +318,15 @@ fn test_prove_and_verify_five_not_gnrc() {
         bits,
     );
 
-    TestFramework::<Vesta>::default()
+    assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
             PallasField::from(2u32).pow(&[bits as u64]) - PallasField::one(),
         ])
         .setup()
-        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>();
+        .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
+        .is_ok());
 }
 
 #[test]
@@ -442,11 +444,16 @@ fn test_bad_not_xor() {
     witness[8][1] = PallasField::zero();
     witness[9][1] = PallasField::zero();
     witness[10][1] = PallasField::zero();
-    let index = new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None);
+
     assert_eq!(
-        index.cs.gates[1].verify_xor::<Vesta>(1, &witness, &index),
-        Err(CircuitGateError::InvalidLookupConstraintSorted(
-            GateType::Xor16
+        TestFramework::<Vesta>::default()
+            .gates(cs.gates)
+            .witness(witness)
+            .lookup_tables(vec![xor::lookup_table()])
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
+        Err(String::from(
+            "the lookup failed to find a match in the table"
         ))
     );
 }
