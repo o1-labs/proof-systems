@@ -319,7 +319,7 @@ fn test_prove_and_verify_five_not_gnrc() {
     assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .public_inputs(vec![PallasField::two_pow(bits) - PallasField::one(),])
+        .public_inputs(vec![PallasField::two_pow(bits as u64) - PallasField::one(),])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .is_ok());
