@@ -296,7 +296,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck => 4,
             LookupPattern::Lookup => 3,
-            LookupPattern::ForeignFieldMul => 2,
+            LookupPattern::ForeignFieldMul => 1,
         }
     }
 
