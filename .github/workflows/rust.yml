@@ -119,3 +119,12 @@ jobs:
       - name: Check that up-to-date specification is checked in
         run: |
           git diff --exit-code
+
+      - name: Activate markdown linter as a problem matcher (Github feature)
+        uses: xt0rted/markdownlint-problem-matcher@v2
+
+      - name: Lint all markdown files in book/src
+        working-directory: ./book
+        run: |
+          npm install -g markdownlint-cli
+          markdownlint src/**/*.md --ignore node_modules
