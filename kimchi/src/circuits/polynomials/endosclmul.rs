@@ -53,11 +53,11 @@ use std::marker::PhantomData;
 //~
 //~ For readability, we define the following variables for the constraints:
 //~
-//~   * `endo` $:=$ `EndoCoefficient`
-//~   * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
-//~   * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
-//~   * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
-//~   * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+//~ * `endo` $:=$ `EndoCoefficient`
+//~ * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
+//~ * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
+//~ * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
+//~ * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
 //~
 //~ These are the 11 constraints that correspond to each EVBSM gate,
 //~ which take care of 4 bits of the scalar within a single EVBSM row:
@@ -104,7 +104,7 @@ use std::marker::PhantomData;
 //~ 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
 //~ 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
 //~ 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
-//~ -
+//~
 //~ 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
 //~ 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
 //~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`

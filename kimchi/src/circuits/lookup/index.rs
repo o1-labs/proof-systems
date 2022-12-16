@@ -381,12 +381,12 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         non_zero_table_id = true;
                     }
 
-                    //~~ - Update the corresponding entries in a table id vector (of size the domain as well)
+                    //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
-                    //~~ - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+                    //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
@@ -394,7 +394,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    //~~ - Fill in any unused columns with 0 (to match the dummy value)
+                    //~~ * Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }

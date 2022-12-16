@@ -77,16 +77,16 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~ are given by
 //~
 //~ `c_func(x)`, defined by
-//~ - `c_func(0) = 0`
-//~ - `c_func(1) = 0`
-//~ - `c_func(2) = -1`
-//~ - `c_func(3) = 1`
+//~ * `c_func(0) = 0`
+//~ * `c_func(1) = 0`
+//~ * `c_func(2) = -1`
+//~ * `c_func(3) = 1`
 //~
 //~ `d_func(x)`, defined by
-//~ - `d_func(0) = -1`
-//~ - `d_func(1) = 1`
-//~ - `d_func(2) = 0`
-//~ - `d_func(3) = 0`
+//~ * `d_func(0) = -1`
+//~ * `d_func(1) = 1`
+//~ * `d_func(2) = 0`
+//~ * `d_func(3) = 0`
 //~
 //~ One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
 //~

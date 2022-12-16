@@ -18,9 +18,11 @@ use super::{
 
 //~ We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
 //~
-//~ The first version of the NOT gadget reuses `Xor16` by making the following observation: __the bitwise NOT operation is equivalent to the
-//~ bitwise XOR operation with the all one words of a certain length__. In other words,
+//~ The first version of the NOT gadget reuses `Xor16` by making the following observation: **the bitwise NOT operation is equivalent to the bitwise XOR operation with the all one words of a certain length**.
+//~ In other words,
+//~
 //~ $$ \neg x = x \oplus 1^* $$
+//~
 //~ where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
 //~ XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
 //~ with $1^*$ is equivalent to bitwise negation (i.e. NOT).

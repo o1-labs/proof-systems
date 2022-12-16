@@ -72,8 +72,8 @@ use CurrOrNext::{Curr, Next};
 //~ `S = (P + (b ? T : −T)) + P`
 //~
 //~ We follow this criteria:
-//~ - If the bit is positive, the sign should be a subtraction
-//~ - If the bit is negative, the sign should be an addition
+//~ * If the bit is positive, the sign should be a subtraction
+//~ * If the bit is negative, the sign should be an addition
 //~
 //~ Then, paraphrasing the above, we will represent this behavior as:
 //~
@@ -97,9 +97,9 @@ use CurrOrNext::{Curr, Next};
 //~ For readability, we define the following 3 variables
 //~ in such a way that $s_2$ can be expressed as `u / t`:
 //~
-//~   * `rx` $:= s_1^2 - x_i - x_t$
-//~   * `t` $:= x_i - $ `rx` $ \iff 2 \cdot x_i - s_1^2 + x_t$
-//~   * `u` $:= 2 \cdot y_i - $ `t` $\cdot s_1 \iff 2 \cdot y_i - s_1 \cdot (2\cdot x_i - s^2_1 + x_t)$
+//~ * `rx` $:= s_1^2 - x_i - x_t$
+//~ * `t` $:= x_i - $ `rx` $ \iff 2 \cdot x_i - s_1^2 + x_t$
+//~ * `u` $:= 2 \cdot y_i - $ `t` $\cdot s_1 \iff 2 \cdot y_i - s_1 \cdot (2\cdot x_i - s^2_1 + x_t)$
 //~
 //~ Next, for each bit in the algorithm, we create the following 4 constraints that derive from the above:
 //~
@@ -123,7 +123,8 @@ use CurrOrNext::{Curr, Next};
 //~ into its binary form (using the double-and-add decomposition) as:
 //~ $$ n' = 2^5 \cdot n + 2^4 \cdot b_0 + 2^3 \cdot b_1 + 2^2 \cdot b_2 + 2^1 \cdot b_3 + b_4$$
 //~ This equation is translated as the constraint:
-//~ * Binary decomposition:
+//~
+//~ Binary decomposition:
 //~ `0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 //~
 

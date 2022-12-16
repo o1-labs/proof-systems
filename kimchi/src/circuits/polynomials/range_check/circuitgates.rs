@@ -13,8 +13,8 @@
 //~   are envisioned to be a common case
 //~
 //~ The values are decomposed into limbs as follows.
-//~ - `L` is a 12-bit lookup (or copy) limb,
-//~ - `C` is a 2-bit "crumb" limb (we call half a nybble a crumb).
+//~ * `L` is a 12-bit lookup (or copy) limb,
+//~ * `C` is a 2-bit "crumb" limb (we call half a nybble a crumb).
 //~
 //~ ```text
 //~         <----6----> <------8------>
