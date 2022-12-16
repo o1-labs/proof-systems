@@ -239,7 +239,7 @@ f' &= -f \mod 2^t \\
 \end{aligned}
 $$
 
-The negated modulus $f'$ becomes part of our constraint system and is not constrained because it is publicly auditable.
+The negated modulus $f'$ becomes part of our gate coefficients and is not constrained because it is publicly auditable.
 
 Using the substitution of the negated modulus, we now must constrain $a \cdot b + q \cdot f' = r \mod 2^t$.
 
@@ -878,7 +878,7 @@ Thus, each bound addition $x + f'$ requires the following witness data
 - $x'_{01}, x'_2$
 - $w_{01}, w_2$
 
-where $f'$ is baked into the constraint system.  The following constraints are needed
+where $f'$ is baked into the gate coefficients.  The following constraints are needed
 
 - $2^{2\ell} \cdot w_{01} = s_{01} - x'_{01}$
 - $2^{\ell} \cdot w_2 = s_2 + w_{01} - x'_2$
@@ -1103,7 +1103,7 @@ Since we need 12 copied values for the constraints, they must span 2 rows.
 
 The $q < f$ bound limbs $q'_0, q'_1$ and $q'_2$ must be in copyable cells so they can be range-checked.  Similarly, the limbs of the operands $a$, $b$ and the result $r$ must all be in copyable cells.  This leaves only 2 remaining copyable cells and, therefore, we cannot compute and output $r' = r + f'$.  It must be deferred to an external `ForeignFieldAdd` gate with the $r$ cells copied as an argument.
 
-NB: the $f$ and $f'$ values are publicly accessible in the constraint system.
+NB: the $f$ and $f'$ values are publicly visible in the gate coefficients.
 
 |            | Curr                                     | Next             |
 | ---------- | ---------------------------------------- | ---------------- |

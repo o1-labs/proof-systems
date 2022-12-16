@@ -2,33 +2,26 @@
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
 use crate::{
-    alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, l0_1, Environment, LookupEnvironment, E},
-        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
+        expr::constraints::ExprOps,
+        gate::{CircuitGate, Connect, GateType},
         lookup::{
             self,
-            lookups::{LookupInfo, LookupsUsed},
             tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
         wires::Wire,
-        witness::{self, ConstantCell, CopyBitsCell, CrumbCell, Variables, WitnessCell},
+        witness::{self, ConstantCell, CopyBitsCell, VariableBitsCell, Variables, WitnessCell},
     },
-    curve::KimchiCurve,
-    prover_index::ProverIndex,
     variable_map,
 };
-use ark_ff::{PrimeField, SquareRootField, Zero};
-use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
-};
-use rand::{rngs::StdRng, SeedableRng};
-use std::{array, collections::HashMap, marker::PhantomData};
+use ark_ff::{PrimeField, SquareRootField};
+use num_bigint::BigUint;
+use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers};
+use std::{array, marker::PhantomData};
 
-pub const GATE_COUNT: usize = 1;
+use super::generic::GenericGateSpec;
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a XOR gadget for `bits` length
@@ -38,7 +31,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
-    pub fn create_xor(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
+    pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut gates = (0..num_xors)
             .map(|i| CircuitGate {
@@ -48,299 +41,17 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             })
             .collect::<Vec<_>>();
         let zero_row = new_row + num_xors;
-        gates.push(CircuitGate {
-            typ: GateType::Generic,
-            wires: Wire::for_row(zero_row),
-            coeffs: vec![F::one()],
-        });
+        gates.push(CircuitGate::create_generic_gadget(
+            Wire::for_row(zero_row),
+            GenericGateSpec::Const(F::zero()),
+            None,
+        ));
         // check fin_in1, fin_in2, fin_out are zero
         gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
         gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
 
         (zero_row + 1, gates)
     }
-
-    /// Verifies the xor gadget
-    pub fn verify_xor<G: KimchiCurve<ScalarField = F>>(
-        &self,
-        _: usize,
-        witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<G>,
-    ) -> CircuitGateResult<()> {
-        if !circuit_gates().contains(&self.typ) {
-            return Err(CircuitGateError::InvalidCircuitGateType(self.typ));
-        }
-
-        // Pad the witness to domain d1 size
-        let padding_length = index
-            .cs
-            .domain
-            .d1
-            .size
-            .checked_sub(witness[0].len() as u64)
-            .unwrap();
-        let mut witness = witness.clone();
-        for w in &mut witness {
-            w.extend(std::iter::repeat(F::zero()).take(padding_length as usize));
-        }
-
-        // Compute witness polynomial
-        let witness_poly: [DensePolynomial<F>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<F, D<F>>::from_vec_and_domain(witness[i].clone(), index.cs.domain.d1)
-                .interpolate()
-        });
-
-        // Compute permutation polynomial
-        let rng = &mut StdRng::from_seed([0u8; 32]);
-        let beta = F::rand(rng);
-        let gamma = F::rand(rng);
-        let z_poly = index
-            .perm_aggreg(&witness, &beta, &gamma, rng)
-            .map_err(|_| CircuitGateError::InvalidCopyConstraint(self.typ))?;
-
-        // Compute witness polynomial evaluations
-        let witness_evals = index.cs.evaluate(&witness_poly, &z_poly);
-
-        let mut index_evals = HashMap::new();
-        index_evals.insert(
-            self.typ,
-            index.column_evaluations.xor_selector8.as_ref().unwrap(),
-        );
-
-        // Set up lookup environment
-        let lcs = index
-            .cs
-            .lookup_constraint_system
-            .as_ref()
-            .ok_or(CircuitGateError::MissingLookupConstraintSystem(self.typ))?;
-
-        let lookup_env_data = set_up_lookup_env_data(
-            self.typ,
-            &index.cs,
-            &witness,
-            &beta,
-            &gamma,
-            &lcs.configuration.lookup_info,
-        )?;
-        let lookup_env = Some(LookupEnvironment {
-            aggreg: &lookup_env_data.aggreg8,
-            sorted: &lookup_env_data.sorted8,
-            selectors: &lcs.lookup_selectors,
-            table: &lookup_env_data.joint_lookup_table_d8,
-            runtime_selector: None,
-            runtime_table: None,
-        });
-
-        // Set up the environment
-        let env = {
-            Environment {
-                constants: expr::Constants {
-                    alpha: F::rand(rng),
-                    beta: F::rand(rng),
-                    gamma: F::rand(rng),
-                    joint_combiner: Some(F::rand(rng)),
-                    endo_coefficient: index.cs.endo,
-                    mds: &G::sponge_params().mds,
-                    foreign_field_modulus: None,
-                },
-                witness: &witness_evals.d8.this.w,
-                coefficient: &index.column_evaluations.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
-                z: &witness_evals.d8.this.z,
-                l0_1: l0_1(index.cs.domain.d1),
-                domain: index.cs.domain,
-                index: index_evals,
-                lookup: lookup_env,
-            }
-        };
-
-        // Setup powers of alpha
-        let mut alphas = Alphas::<F>::default();
-        alphas.register(
-            ArgumentType::Gate(self.typ),
-            circuit_gate_constraint_count::<F>(self.typ),
-        );
-
-        // Get constraints for this circuit gate
-        let constraints = circuit_gate_constraints(self.typ, &alphas);
-
-        // Verify it against the environment
-        if constraints
-            .evaluations(&env)
-            .interpolate()
-            .divide_by_vanishing_poly(index.cs.domain.d1)
-            .unwrap()
-            .1
-            .is_zero()
-        {
-            Ok(())
-        } else {
-            Err(CircuitGateError::InvalidConstraint(self.typ))
-        }
-    }
-}
-
-// Data required by the lookup environment
-struct LookupEnvironmentData<F: PrimeField> {
-    // Aggregation evaluations
-    aggreg8: Evaluations<F, D<F>>,
-    // Sorted evaluations
-    sorted8: Vec<Evaluations<F, D<F>>>,
-    // Combined lookup table
-    joint_lookup_table_d8: Evaluations<F, D<F>>,
-}
-
-// Helper to create the lookup environment data by setting up the joint- and table-id- combiners,
-// computing the dummy lookup value, creating the combined lookup table, computing the sorted plookup
-// evaluations and the plookup aggregation evaluations.
-// Note: This function assumes the cs contains a lookup constraint system.
-fn set_up_lookup_env_data<F: PrimeField>(
-    gate_type: GateType,
-    cs: &ConstraintSystem<F>,
-    witness: &[Vec<F>; COLUMNS],
-    beta: &F,
-    gamma: &F,
-    lookup_info: &LookupInfo,
-) -> CircuitGateResult<LookupEnvironmentData<F>> {
-    let lcs = cs
-        .lookup_constraint_system
-        .as_ref()
-        .ok_or(CircuitGateError::MissingLookupConstraintSystem(gate_type))?;
-
-    let rng = &mut StdRng::from_seed([1u8; 32]);
-
-    // Set up joint-combiner and table-id-combiner
-    let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
-    let joint_combiner = if joint_lookup_used {
-        F::rand(rng)
-    } else {
-        F::zero()
-    };
-    let table_id_combiner: F = if lcs.table_ids8.as_ref().is_some() {
-        joint_combiner.pow([u64::from(lcs.configuration.lookup_info.max_joint_size)])
-    } else {
-        // TODO: just set this to None in case multiple tables are not used
-        F::zero()
-    };
-
-    // Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-    // Warning: This assumes that we always use the XOR table when using lookups.
-    let dummy_lookup_value = lcs
-        .configuration
-        .dummy_lookup
-        .evaluate(&joint_combiner, &table_id_combiner);
-
-    // Compute the lookup table values as the combination of the lookup table entries.
-    let joint_lookup_table_d8 = {
-        let mut evals = Vec::with_capacity(cs.domain.d1.size());
-
-        for idx in 0..(cs.domain.d1.size() * 8) {
-            let table_id = match lcs.table_ids8.as_ref() {
-                Some(table_ids8) => table_ids8.evals[idx],
-                None =>
-                // If there is no `table_ids8` in the constraint system,
-                // every table ID is identically 0.
-                {
-                    F::zero()
-                }
-            };
-
-            let combined_entry = {
-                let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
-
-                lookup::tables::combine_table_entry(
-                    &joint_combiner,
-                    &table_id_combiner,
-                    table_row,
-                    &table_id,
-                )
-            };
-            evals.push(combined_entry);
-        }
-
-        Evaluations::from_vec_and_domain(evals, cs.domain.d8)
-    };
-
-    // Compute the sorted plookup evaluations
-    // TODO: Once we switch to committing using lagrange commitments, `witness` will be consumed when we interpolate,
-    //       so interpolation will have to moved below this.
-    let sorted: Vec<_> = lookup::constraints::sorted(
-        dummy_lookup_value,
-        &joint_lookup_table_d8,
-        cs.domain.d1,
-        &cs.gates,
-        witness,
-        joint_combiner,
-        table_id_combiner,
-        lookup_info,
-    )
-    .map_err(|_| CircuitGateError::InvalidLookupConstraintSorted(gate_type))?;
-
-    // Randomize the last `EVALS` rows in each of the sorted polynomials in order to add zero-knowledge to the protocol.
-    let sorted: Vec<_> = sorted
-        .into_iter()
-        .map(|chunk| lookup::constraints::zk_patch(chunk, cs.domain.d1, rng))
-        .collect();
-
-    let sorted_coeffs: Vec<_> = sorted.iter().map(|e| e.clone().interpolate()).collect();
-    let sorted8 = sorted_coeffs
-        .iter()
-        .map(|v| v.evaluate_over_domain_by_ref(cs.domain.d8))
-        .collect::<Vec<_>>();
-
-    // Compute the plookup aggregation evaluations
-    let aggreg = lookup::constraints::aggregation::<_, F>(
-        dummy_lookup_value,
-        &joint_lookup_table_d8,
-        cs.domain.d1,
-        &cs.gates,
-        witness,
-        &joint_combiner,
-        &table_id_combiner,
-        *beta,
-        *gamma,
-        &sorted,
-        rng,
-        lookup_info,
-    )
-    .map_err(|_| CircuitGateError::InvalidLookupConstraintAggregation(gate_type))?;
-
-    // Precompute different forms of the aggregation polynomial for later
-    let aggreg_coeffs = aggreg.interpolate();
-    // TODO: There's probably a clever way to expand the domain without interpolating
-    let aggreg8 = aggreg_coeffs.evaluate_over_domain_by_ref(cs.domain.d8);
-
-    Ok(LookupEnvironmentData {
-        aggreg8,
-        sorted8,
-        joint_lookup_table_d8,
-    })
-}
-
-/// Get vector of xor circuit gate types
-pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::Xor16]
-}
-
-/// Number of constraints for a given xor gate type
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::Xor16 => Xor16::<F>::CONSTRAINTS,
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get combined constraints for a given xor circuit gate type
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
-    match typ {
-        GateType::Xor16 => Xor16::combined_constraints(alphas),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get the combined constraints for all xor circuit gate types
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    Xor16::combined_constraints(alphas)
 }
 
 /// Get the xor lookup table
@@ -359,7 +70,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate
 //~
-//~ The 4-bit crumbs are assumed to be laid out with `0` column being the least significant crumb.
+//~ The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
@@ -392,12 +103,13 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
 //~ |   4 | `Zero`        | Zero values, can be reused as generic gate |
 //~
-//~ ```admonition::notice
-//~  We could half the number of rows of the 64-bit XOR gadget by having lookups
-//~  for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
-//~  Rough computations show that if we run 8 or more Keccaks in one circuit we should
-//~  use the 8-bit XOR table.
+//~ ```admonish info
+//~ We could halve the number of rows of the 64-bit XOR gadget by having lookups
+//~ for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+//~ Rough computations show that if we run 8 or more Keccaks in one circuit we should
+//~ use the 8-bit XOR table.
 //~ ```
+
 #[derive(Default)]
 pub struct Xor16<F>(PhantomData<F>);
 
@@ -431,11 +143,6 @@ where
 }
 
 // Witness layout
-//   * The values of the crumbs appear with the least significant crumb first
-//     but with big endian ordering of the bits inside the 32/64 element.
-//   * The first column of the XOR row and the first and second columns of the
-//     Zero rows must be instantiated before the rest, otherwise they copy 0.
-//
 fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCell<F>>; COLUMNS]> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
@@ -445,23 +152,24 @@ fn layout<F: PrimeField>(curr_row: usize, bits: usize) -> Vec<[Box<dyn WitnessCe
     layout
 }
 
-fn xor_row<F: PrimeField>(crumb: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+fn xor_row<F: PrimeField>(nybble: usize, curr_row: usize) -> [Box<dyn WitnessCell<F>>; COLUMNS] {
+    let start = nybble * 16;
     [
-        CrumbCell::create("in1", crumb),
-        CrumbCell::create("in2", crumb),
-        CrumbCell::create("out", crumb),
-        CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 0, 12, 16), // Fourth 4-bit crumb of in1
-        CopyBitsCell::create(curr_row, 1, 0, 4), // First 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 4, 8), // Second 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 8, 12), // Third 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 1, 12, 16), // Fourth 4-bit crumb of in2
-        CopyBitsCell::create(curr_row, 2, 0, 4), // First 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 4, 8), // Second 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 8, 12), // Third 4-bit crumb of out
-        CopyBitsCell::create(curr_row, 2, 12, 16), // Fourth 4-bit crumb of out
+        VariableBitsCell::create("in1", start, None),
+        VariableBitsCell::create("in2", start, None),
+        VariableBitsCell::create("out", start, None),
+        CopyBitsCell::create(curr_row, 0, 0, 4), // First 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 4, 8), // Second 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 8, 12), // Third 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 0, 12, 16), // Fourth 4-bit nybble of in1
+        CopyBitsCell::create(curr_row, 1, 0, 4), // First 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 4, 8), // Second 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 8, 12), // Third 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 1, 12, 16), // Fourth 4-bit nybble of in2
+        CopyBitsCell::create(curr_row, 2, 0, 4), // First 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 4, 8), // Second 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 8, 12), // Third 4-bit nybble of out
+        CopyBitsCell::create(curr_row, 2, 12, 16), // Fourth 4-bit nybble of out
     ]
 }
 
@@ -485,7 +193,7 @@ fn zero_row<F: PrimeField>() -> [Box<dyn WitnessCell<F>>; COLUMNS] {
     ]
 }
 
-fn init_xor<F: PrimeField>(
+pub(crate) fn init_xor<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     curr_row: usize,
     bits: usize,
@@ -501,13 +209,21 @@ fn init_xor<F: PrimeField>(
     )
 }
 
-/// Extends the xor rows to the full witness
+/// Extends the Xor rows to the full witness
+/// Panics if the words are larger than the desired bits
 pub fn extend_xor_rows<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     bits: usize,
     words: (F, F, F),
 ) {
-    let xor_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+    let input1_big = words.0.to_biguint();
+    let input2_big = words.1.to_biguint();
+    let output_big = words.2.to_biguint();
+    if bits < input1_big.bitlen() || bits < input2_big.bitlen() || bits < output_big.bitlen() {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let xor_witness: [Vec<F>; COLUMNS] =
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
     let xor_row = witness[0].len();
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
@@ -515,18 +231,25 @@ pub fn extend_xor_rows<F: PrimeField>(
     init_xor(witness, xor_row, bits, words);
 }
 
-/// Create a keccak Xor for up to 128 bits
-/// Input: first input and second input
-pub fn create<F: PrimeField>(input1: u128, input2: u128, bits: usize) -> [Vec<F>; COLUMNS] {
-    let output = input1 ^ input2;
+/// Create a Xor for up to the native length starting at row 0
+/// Input: first input and second input, bits length, current row
+/// Panics if the desired bits is smaller than the inputs length
+pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [Vec<F>; COLUMNS] {
+    let input1_big = input1.to_biguint();
+    let input2_big = input2.to_biguint();
+    if bits < input1_big.bitlen() || bits < input2_big.bitlen() {
+        panic!("Bits must be greater or equal than the inputs length");
+    }
+    let output = BigUint::bitwise_xor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
+
     init_xor(
         &mut xor_witness,
         0,
         bits,
-        (F::from(input1), F::from(input2), F::from(output)),
+        (input1, input2, output.to_field().unwrap()),
     );
 
     xor_witness

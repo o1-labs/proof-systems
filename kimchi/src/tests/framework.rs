@@ -34,7 +34,6 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
     runtime_tables: Vec<RuntimeTable<G::ScalarField>>,
     recursion: Vec<RecursionChallenge<G>>,
-    foreign_modulus: Option<BigUint>,
     num_prev_challenges: usize,
 
     prover_index: Option<ProverIndex<G>>,
@@ -79,12 +78,6 @@ where
     }
 
     #[must_use]
-    pub(crate) fn foreign_modulus(mut self, modulus: Option<BigUint>) -> Self {
-        self.foreign_modulus = modulus;
-        self
-    }
-
-    #[must_use]
     pub(crate) fn runtime_tables_setup(
         mut self,
         runtime_tables_setup: Vec<RuntimeTableCfg<G::ScalarField>>,
@@ -100,7 +93,6 @@ where
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
-        let foreign_modulus_setup = mem::replace(&mut self.foreign_modulus, None);
 
         let index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
@@ -108,7 +100,6 @@ where
             self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
-            foreign_modulus_setup,
         );
         println!(
             "- time to create prover index: {:?}s",
@@ -147,7 +138,7 @@ where
     }
 
     /// Create and verify a proof
-    pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self)
+    pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
@@ -156,7 +147,9 @@ where
         let witness = self.0.witness.unwrap();
 
         // verify the circuit satisfiability by the computed witness
-        prover.verify(&witness, &self.0.public_inputs).unwrap();
+        prover
+            .verify(&witness, &self.0.public_inputs)
+            .map_err(|e| format!("{:?}", e))?;
 
         // add the proof to the batch
         let start = Instant::now();
@@ -171,14 +164,16 @@ where
             self.0.recursion,
             None,
         )
-        .unwrap();
+        .map_err(|e| e.to_string())?;
         println!("- time to create proof: {:?}s", start.elapsed().as_secs());
 
-        // verify the proof
+        // verify the proof (propagate any errors)
         let start = Instant::now();
         verify::<G, EFqSponge, EFrSponge>(&group_map, &self.0.verifier_index.unwrap(), &proof)
-            .unwrap();
+            .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+
+        Ok(())
     }
 }
 

@@ -21,7 +21,11 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr, polynomials::xor};
+use super::{
+    argument::ArgumentWitness,
+    expr,
+    polynomials::{rot, xor},
+};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -112,6 +116,7 @@ pub enum GateType {
     ForeignFieldMul = 19,
     // Gates for Keccak
     Xor16 = 20,
+    Rot64 = 21,
 }
 
 /// Gate error
@@ -229,16 +234,19 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 self.verify_cairo_gate::<G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_foreign_field_add::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_foreign_field_mul::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_xor::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            Rot64 => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -255,15 +263,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants::new(
-            F::one(),
-            F::one(),
-            F::one(),
-            Some(F::one()),
-            cs.endo,
-            &G::sponge_params().mds,
-            cs.foreign_field_modulus.clone(),
-        );
+        let constants = expr::Constants {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: Some(F::one()),
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+        };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
 
@@ -328,6 +335,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env),
+            GateType::Rot64 => rot::Rot64::constraint_checks(&env),
         };
 
         // Check for failed constraints

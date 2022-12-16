@@ -22,7 +22,6 @@ use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
     Radix2EvaluationDomain as D,
 };
-use num_bigint::BigUint;
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -48,6 +47,8 @@ pub struct FeatureFlags<F> {
     pub foreign_field_mul: bool,
     /// XOR gate
     pub xor: bool,
+    /// ROT gate
+    pub rot: bool,
     /// Lookups
     pub lookup_configuration: Option<LookupConfiguration<F>>,
 }
@@ -129,6 +130,10 @@ pub struct ColumnEvaluations<F: PrimeField> {
     /// Xor gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub xor_selector8: Option<E<F, D<F>>>,
+
+    /// Rot gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub rot_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -154,9 +159,6 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// SID polynomial
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub sid: Vec<F>,
-
-    /// Foreign field modulus
-    pub foreign_field_modulus: Option<BigUint>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -190,7 +192,6 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
-    foreign_field_modulus: Option<BigUint>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -241,7 +242,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
-            foreign_field_modulus: None,
         }
     }
 
@@ -567,6 +567,19 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        let rot_selector8 = {
+            if !self.feature_flags.rot {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::Rot64,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.coefficients[i]
@@ -587,6 +600,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_add_selector8,
             foreign_field_mul_selector8,
             xor_selector8,
+            rot_selector8,
         }
     }
 }
@@ -638,16 +652,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
-    /// Set up the foreign field modulus passed as an optional BigUint
-    /// If not invoked, it is `None` by default.
-    /// Panics if the BigUint being passed needs more than 3 limbs of 88 bits each
-    /// and warns if the foreign modulus being passed is smaller than the native modulus
-    /// because right now we only support foreign modulus that are larger than the native modulus.
-    pub fn foreign_field_modulus(mut self, foreign_field_modulus: &Option<BigUint>) -> Self {
-        self.foreign_field_modulus = foreign_field_modulus.clone();
-        self
-    }
-
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
@@ -684,6 +688,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_add: false,
             foreign_field_mul: false,
             xor: false,
+            rot: false,
         };
 
         for gate in &gates {
@@ -696,6 +701,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
+                GateType::Rot64 => feature_flags.rot = true,
                 _ => (),
             }
         }
@@ -725,7 +731,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             public: self.public,
             prev_challenges: self.prev_challenges,
             sid,
-            foreign_field_modulus: self.foreign_field_modulus,
             gates,
             shift: shifts.shifts,
             endo,
