@@ -1,3 +1,5 @@
+use std::ops::Neg;
+
 use crate::{
     auto_clone_array,
     circuits::{
@@ -12,7 +14,7 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::{PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_integer::Integer;
@@ -192,7 +194,7 @@ where
 
     if let Some(runner) = runner {
         // Perform full test that everything is ok before invalidation
-        assert!(runner.prove_and_verify::<EFqSponge, EFrSponge>().is_ok());
+        assert_eq!(runner.prove_and_verify::<EFqSponge, EFrSponge>(), Ok(()));
     }
 
     if !invalidations.is_empty() {
@@ -222,13 +224,32 @@ where
 
         // Catch plookup failures caused by invalidation of witness
         if full {
-            assert!(TestFramework::<G>::default()
+            match TestFramework::<G>::default()
                 .gates(gates.clone())
                 .witness(witness.clone())
                 .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup()
                 .prove_and_verify::<EFqSponge, EFrSponge>()
-                .is_ok());
+            {
+                Err(err_msg) => {
+                    if err_msg == String::from("the lookup failed to find a match in the table") {
+                        return (
+                            Err(CircuitGateError::InvalidLookupConstraint(
+                                GateType::ForeignFieldMul,
+                            )),
+                            witness,
+                        );
+                    } else {
+                        return (
+                            Err(CircuitGateError::InvalidConstraint(
+                                GateType::ForeignFieldMul,
+                            )),
+                            witness,
+                        );
+                    }
+                }
+                Ok(()) => return (Ok(()), witness),
+            }
         }
     }
 
@@ -412,7 +433,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 9), G::ScalarField::from(4u32))], // Invalidate carry0
+            vec![((0, 8), G::ScalarField::from(4u32))], // Invalidate carry0
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -431,7 +452,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 9), G::ScalarField::from(3u32))], // Invalidate carry0
+            vec![((0, 8), G::ScalarField::from(3u32))], // Invalidate carry0
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -442,26 +463,7 @@ where
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
         );
 
-        // Test 5th constraint (C8): invalidate scaled_carry1_hi
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            foreign_field_modulus,
-            vec![((0, 8), G::ScalarField::one())], // Invalidate scaled_carry1_hi
-        );
-        assert_eq!(
-            (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5)),
-        );
-
-        // Test 6th constraint (C9): invalidate first zero check
+        // Test 5th constraint (C7): invalidate first zero check
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -477,12 +479,14 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6)),
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5)),
         );
 
-        // TODO: Test 7th constraint (C10): invalid native modulus check but binary modulus checks ok
+        // Test 6th constraint (C8): invalid native modulus check but binary modulus checks ok
+        //     Triggering constraint C8 is challenging, so this is done with
+        //     the test_native_modulus_constraint() test below
 
-        // Test 8th constraint (C12): invalidate q'_carry01 is boolean
+        // Test 7th constraint (C10): invalidate q'_carry01 is boolean
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -490,7 +494,26 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 13), G::ScalarField::from(2u32))], // Make q'_carry01 non-boolean
+            vec![((0, 12), G::ScalarField::from(2u32))], // Make q'_carry01 non-boolean
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
+        );
+
+        // Test 8th constraint (C11): invalidate first bound addition zero check
+        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((0, 12), G::ScalarField::from(1u32))], // Make q'_carry01 invalid
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -501,7 +524,7 @@ where
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
         );
 
-        // Test 9th constraint (C13): invalidate first bound addition zero check
+        // Test 9th constraint (C12): invalidate q'_carry2 is boolean
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -509,7 +532,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 13), G::ScalarField::from(1u32))], // Make q'_carry01 invalid
+            vec![((0, 13), G::ScalarField::from(2u32))], // Make q'_carry2 non-boolean
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -520,7 +543,7 @@ where
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
         );
 
-        // Test 10th constraint (C14): invalidate q'_carry2 is boolean
+        // Test 10th constraint (C13): invalidate second bound addition zero check
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -528,7 +551,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 14), G::ScalarField::from(2u32))], // Make q'_carry2 non-boolean
+            vec![((0, 13), G::ScalarField::one())], // invalidate q'_carry2
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -537,25 +560,6 @@ where
         assert_eq!(
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
-
-        // Test 11th constraint (C15): invalidate second bound addition zero check
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            foreign_field_modulus,
-            vec![((0, 14), G::ScalarField::one())], // invalidate q'_carry2
-        );
-        assert_eq!(
-            (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 11)),
         );
     }
 }
@@ -752,7 +756,7 @@ fn test_nonzero_carry0() {
             &a,
             &b,
             &secp256k1_modulus(),
-            vec![((0, 9), PallasField::zero())], // Invalidate carry0
+            vec![((0, 8), PallasField::zero())], // Invalidate carry0
         );
         // The 4th constraint (i.e. C5) should fail
         assert_eq!(
@@ -806,10 +810,10 @@ fn test_nonzero_carry10() {
         &foreign_field_modulus,
         vec![((0, 6), PallasField::zero())], // Invalidate carry10
     );
-    // The 6th constraint (i.e. C9) should fail
+    // The 5th constraint (i.e. C7) should fail
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
     assert_eq!(
         a * b % &foreign_field_modulus,
@@ -818,8 +822,8 @@ fn test_nonzero_carry10() {
 }
 
 #[test]
-// Test with nonzero carry11
-fn test_nonzero_carry11() {
+// Test with nonzero carry1_hi
+fn test_nonzero_carry1_hi() {
     // Big (rubbish) modulus
     let foreign_field_modulus = BigUint::two().pow(259u32) - BigUint::one();
 
@@ -841,26 +845,26 @@ fn test_nonzero_carry11() {
         vec![],
     );
     assert_eq!(result, Ok(()));
-    assert_ne!(witness[7][0], PallasField::zero()); // carry11 is definitely not zero
+    assert_ne!(witness[7][0], PallasField::zero()); // carry1_hi is definitely not zero
     assert_eq!(
         &a * &b % &foreign_field_modulus,
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 
-    // Invalid carry11 witness test
+    // Invalid carry1_hi witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
-        false, // Disable copy constraints so we can catch carry11 custom constraint failure
+        false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         false,
         &a,
         &b,
         &foreign_field_modulus,
-        vec![((0, 7), PallasField::zero()), ((0, 8), PallasField::zero())], // Invalidate carry11 and make scaled_carry11 match
+        vec![((0, 7), PallasField::zero())], // Invalidate carry1_hi
     );
-    // The 6th constraint (i.e. C9) should fail
+    // The 5th constraint (i.e. C7) should fail
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
     assert_eq!(
         a * b % &foreign_field_modulus,
@@ -869,8 +873,8 @@ fn test_nonzero_carry11() {
 }
 
 #[test]
-// Test with nonzero second bit of carry11
-fn test_nonzero_second_bit_carry11() {
+// Test with nonzero second bit of carry1_hi
+fn test_nonzero_second_bit_carry1_hi() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let a = rng.gen_biguint_range(
         &(secp256k1_modulus() - BigUint::two().pow(64)),
@@ -889,77 +893,23 @@ fn test_nonzero_second_bit_carry11() {
         vec![],
     );
     assert_eq!(result, Ok(()));
-    assert_eq!(witness[7][0], PallasField::from(2u32)); // carry11 is not zero
+    assert_eq!(witness[7][0], PallasField::from(2u32)); // carry1_hi is not zero
     assert_eq!(
         &a * &b % secp256k1_modulus(),
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 
-    // Invalid carry11 witness test
+    // Invalid carry1_hi witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
-        false, // Disable copy constraints so we can catch carry11 custom constraint failure
+        false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         false,
         &a,
         &b,
         &secp256k1_modulus(),
-        vec![
-            ((0, 7), PallasField::one()),
-            ((0, 8), PallasField::from(512u32)),
-        ], // Invalidate carry11 and make scaled_carry11 match
+        vec![((0, 7), PallasField::one())], // Invalidate carry1_hi
     );
-    // The 6th constraint (i.e. C9) should fail
-    assert_eq!(
-        result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
-    );
-    assert_eq!(
-        a * b % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
-    );
-}
-
-#[test]
-// Test invalid carry11 scaling
-fn test_invalid_carry11_scaling() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    let a = rng.gen_biguint_range(
-        &(secp256k1_modulus() - BigUint::two().pow(64)),
-        &secp256k1_modulus(),
-    );
-    let b = rng.gen_biguint_range(
-        &(secp256k1_modulus() - BigUint::two().pow(128)),
-        &secp256k1_modulus(),
-    );
-
-    // Valid witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
-        true,
-        false,
-        &a,
-        &b,
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
-    assert_eq!(witness[7][0], PallasField::one()); // carry11 is 1
-    assert_eq!(
-        &a * &b % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
-    );
-
-    // Invalid carry11 witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
-        false, // Disable copy constraints so we can catch scaled_carry11 custom constraint failure
-        false,
-        &a,
-        &b,
-        &secp256k1_modulus(),
-        vec![((0, 8), PallasField::from(2u32))], // Invalidate scaled_carry11
-    );
-    // The 5th constraint (i.e. C8) should fail
+    // The 5th constraint (i.e. C7) should fail
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
@@ -971,18 +921,10 @@ fn test_invalid_carry11_scaling() {
 }
 
 #[test]
-#[should_panic]
-// Test invalid carry11 range
-fn test_invalid_carry11_plookup() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    let a = rng.gen_biguint_range(
-        &(secp256k1_modulus() - BigUint::two().pow(96)),
-        &secp256k1_modulus(),
-    );
-    let b = rng.gen_biguint_range(
-        &(secp256k1_modulus() - BigUint::two().pow(96)),
-        &secp256k1_modulus(),
-    );
+// Test invalid carry1_hi range
+fn test_invalid_carry1_hi_plookup() {
+    let a = BigUint::zero();
+    let b = BigUint::zero();
 
     // Valid witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -994,68 +936,40 @@ fn test_invalid_carry11_plookup() {
         &secp256k1_modulus(),
         vec![],
     );
+
     assert_eq!(result, Ok(()));
-    assert_eq!(witness[7][0], PallasField::one()); // carry11 is 1
+    assert_eq!(witness[7][0], PallasField::zero()); // carry1_hi <= 3-bits (valid)
     assert_eq!(
         &a * &b % secp256k1_modulus(),
         [witness[0][1], witness[1][1], witness[2][1]].compose()
     );
 
-    // Invalid carry11 witness test
-    let (_, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        false, // Disable copy constraints so we can catch carry11 plookup failure
-        true,  // Target tests at lookup constraints
-        &a,
-        &b,
-        &secp256k1_modulus(),
-        vec![((0, 7), PallasField::from(2u32).pow(&[12u64]))], // Make carry11 13 bits long
-    );
-    // Above should panic
-}
-
-#[test]
-#[should_panic]
-// Test invalid scaled_carry11 range
-fn test_invalid_scaled_carry11_plookup() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    let a = rng.gen_biguint_range(
-        &(secp256k1_modulus() - BigUint::two().pow(96)),
-        &secp256k1_modulus(),
-    );
-    let b = rng.gen_biguint_range(
-        &(secp256k1_modulus() - BigUint::two().pow(96)),
-        &secp256k1_modulus(),
-    );
-
-    // Valid witness test
+    // Invalid carry1_hi witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false, // positive full checks done as part of negative tests below
-        false,
         true,
-        &a,
-        &b,
-        &secp256k1_modulus(),
-        vec![],
-    );
-    assert_eq!(result, Ok(()));
-    assert_eq!(witness[8][0], PallasField::from(512u32)); // scaled_carry11 is 512
-    assert_eq!(
-        &a * &b % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
-    );
-
-    // Invalid scaled_carry11 witness test
-    let (_, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-        true,
-        false, // Disable copy constraints so we can catch carry11 plookup failure
+        false, // Disable external checks so we can catch carry1_hi plookup failure
         true,  // Target tests at lookup constraints
         &a,
         &b,
         &secp256k1_modulus(),
-        vec![((0, 8), PallasField::from(2u32).pow(&[12u64]))], // Make scaled_carry11 13 bits long
+        vec![
+            // Get 2^L * carry1_hi + carry1_lo to cancel to zero, while everything else is also zero
+            (
+                (0, 6),
+                PallasField::two_to_limb() * PallasField::from(8u32).neg(),
+            ), // carry1_lo
+            ((0, 7), PallasField::from(8u32)), // carry1_hi > 3 bits (invalid)
+        ],
     );
-    // Above should panic
+    assert!(witness[6][0] > PallasField::two_to_limb()); // carry1_lo > two_to_limb()
+                                                         // Note: carry1_lo is invalid, but intentionally not caught because external
+                                                         //       gates are off and carry1_lo is range-checked externally.
+    assert_eq!(
+        result,
+        Err(CircuitGateError::InvalidLookupConstraint(
+            GateType::ForeignFieldMul
+        )),
+    );
 }
 
 #[test]
@@ -1068,7 +982,7 @@ fn test_zero_mul_invalid_quotient() {
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((0, 10), PallasField::one())], // Invalidate q0
+        vec![((0, 9), PallasField::one())], // Invalidate q0
     );
     assert_eq!(
         result,
@@ -1082,7 +996,7 @@ fn test_zero_mul_invalid_quotient() {
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((0, 11), PallasField::one())], // Invalidate q1
+        vec![((0, 10), PallasField::one())], // Invalidate q1
     );
     assert_eq!(
         result,
@@ -1096,11 +1010,11 @@ fn test_zero_mul_invalid_quotient() {
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((0, 12), PallasField::one())], // Invalidate q2
+        vec![((0, 11), PallasField::one())], // Invalidate q2
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -1110,7 +1024,7 @@ fn test_zero_mul_invalid_quotient() {
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((0, 10), PallasField::one())], // Invalidate q0
+        vec![((0, 9), PallasField::one())], // Invalidate q0
     );
     assert_eq!(
         result,
@@ -1124,7 +1038,7 @@ fn test_zero_mul_invalid_quotient() {
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((0, 11), PallasField::one())], // Invalidate q1
+        vec![((0, 10), PallasField::one())], // Invalidate q1
     );
     assert_eq!(
         result,
@@ -1138,11 +1052,11 @@ fn test_zero_mul_invalid_quotient() {
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((0, 12), PallasField::one())], // Invalidate q2
+        vec![((0, 11), PallasField::one())], // Invalidate q2
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
 }
 
@@ -1176,7 +1090,7 @@ fn test_mul_invalid_remainder() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
 }
 
@@ -1196,7 +1110,7 @@ fn test_random_multiplicands_carry1_lo() {
             &left_input,
             &right_input,
             &secp256k1_modulus(),
-            vec![((0, 4), PallasField::one())], // Invalidate carry1_lo
+            vec![((0, 6), PallasField::one())], // Invalidate carry1_lo
         );
         assert_eq!(
             (&left_input * &right_input) % secp256k1_modulus(),
@@ -1204,7 +1118,7 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 2)),
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5)),
         );
     }
 }
@@ -1406,4 +1320,42 @@ fn test_rand_foreign_field_element_with_bound_overflows_7() {
         &BigUint::from(2u32).pow(257),
     )
     .expect("Failed to get element with bound overflow");
+}
+
+#[test]
+fn test_native_modulus_constraint() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let left_input = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(96)),
+        &secp256k1_modulus(),
+    );
+    let right_input = rng.gen_biguint_range(
+        &(secp256k1_modulus() - BigUint::two().pow(96)),
+        &secp256k1_modulus(),
+    );
+
+    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        false,
+        false,
+        false,
+        &left_input,
+        &right_input,
+        &secp256k1_modulus(),
+        vec![
+            // Targeted attack on constraint 6
+            ((0, 7), PallasField::from(8u32)),
+            (
+                (1, 2),
+                PallasField::from_bytes(&[
+                    89, 18, 0, 0, 237, 48, 45, 153, 27, 249, 76, 9, 252, 152, 70, 34, 0, 0, 0, 0,
+                    0, 0, 249, 255, 255, 255, 255, 255, 255, 255, 255, 63,
+                ])
+                .unwrap(),
+            ),
+        ],
+    );
+    assert_eq!(
+        result,
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+    );
 }

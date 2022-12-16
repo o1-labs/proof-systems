@@ -1405,13 +1405,13 @@ The foreign field multiplication gate's rows are laid out like this
 |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
 |   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
-|   8 | `scaled_carry1_hi` (plookup) |                           |
-|   9 | `carry0`                     |                           |
-|  10 | `quotient0`                  |                           |
-|  11 | `quotient1`                  |                           |
-|  12 | `quotient2`                  |                           |
-|  13 | `quotient_bound_carry01`     |                           |
-|  14 | `quotient_bound_carry2`      |                           |
+|   8 | `carry0`                     |                           |
+|   9 | `quotient0`                  |                           |
+|  10 | `quotient1`                  |                           |
+|  11 | `quotient2`                  |                           |
+|  12 | `quotient_bound_carry01`     |                           |
+|  13 | `quotient_bound_carry2`      |                           |
+|  14 |                              |                           |
 
 
 #### Xor

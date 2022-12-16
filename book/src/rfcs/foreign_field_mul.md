@@ -1,6 +1,6 @@
 # Foreign Field Multiplication RFC
 
-This document explains how we constrain foreign field multiplication in Kimchi.
+This document explains how we constrain foreign field multiplication (i.e. non-native field multiplication) in the Kimchi proof system.
 
 **Changelog**
 
@@ -1048,6 +1048,8 @@ To check that $v_{11} \in [0, 2^3)$ (i.e. that $v_{11}$ is at most 3 bits long) 
 - Check $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
 - Check $\mathsf{scaled}_{v_{11}}$ is a 12-bit value with a 12-bit plookup
 
+Kimchi plookup supports optional scaling of the lookup target value as part of the lookup operation.  Thus, we do not require two witness elements, two plookups, nor the $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$ custom constraint.  Instead we can just store $v_{11}$ in the witness and define this as a 12-bit plookup scaled by $2^9$ yielding a 3-bit check.  This eliminates one plookup and reduces the total number of constraints by two.
+
 ### 9. Native modulus constraint
 
 Using the checked native modulus computations we constrain that
@@ -1115,16 +1117,14 @@ NB: the $f$ and $f'$ values are publicly visible in the gate coefficients.
 | 4          | $b_1$ (copy)                             | $q'_2$ (copy)    |
 | 5          | $b_2$ (copy)                             | $p_{10}$  (copy) |
 | 6          | $v_{10}$ (copy)                          | $p_{110}$ (copy) |
-| 7          | $v_{11}$ (plookup)                       | $p_{111}$        |
-| 8          | $\mathsf{scaled}_{v_{11}}$ (plookup)     |                  |
-| 9          | $v_0$                                    |                  |
-| 10         | $q_0$                                    |                  |
-| 11         | $q_1$                                    |                  |
-| 12         | $q_2$                                    |                  |
-| 13         | $q'_{carry01}$                           |                  |
-| 14         | $q'_{carry2}$                            |                  |
-
-where $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$.
+| 7          | $v_{11}$ (scaled plookup)                | $p_{111}$        |
+| 8          | $v_0$                                    |                  |
+| 9          | $q_0$                                    |                  |
+| 10         | $q_1$                                    |                  |
+| 11         | $q_2$                                    |                  |
+| 12         | $q'_{carry01}$                           |                  |
+| 13         | $q'_{carry2}$                            |                  |
+| 14         |                                          |                  |
 
 # Checked computations
 
@@ -1174,20 +1174,18 @@ In total we require the following checks
 6. $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$
 7. $v_0 \in [0, 2^2)$
 8. $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
-9.  $v_{11} \in [0, 2^{12})$
-10. $\mathsf{scaled}_{v_{11}} \in [0, 2^{12})$
-11. $2^9 \cdot v_{11} = \mathsf{scaled}_{v_{11}}$
-12. $v_1 = 2^{\ell} \cdot v_{11} + v_{10}$
-13. $2^{\ell} \cdot v_1 = v_0 + p_{11} + p_2 - r_2$
-14. $a_n \cdot b_n - q_n \cdot f_n = r_n$
-15. $q'_0 \in [0, 2^{\ell})$ `multi-range-check`
-16. $q'_1 \in [0, 2^{\ell})$ `multi-range-check`
-17. $q'_2 \in [0, 2^{\ell})$ `multi-range-check`
-18. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `multi-range-check`
-19. $q'_{carry01} \in [0, 2)$
-20. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
-21. $q'_{carry2} \in [0, 2)$
-22. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+9.  $v_{11} \in [0, 2^{3})$
+10. $v_1 = 2^{\ell} \cdot v_{11} + v_{10}$
+11. $2^{\ell} \cdot v_1 = v_0 + p_{11} + p_2 - r_2$
+12. $a_n \cdot b_n - q_n \cdot f_n = r_n$
+13. $q'_0 \in [0, 2^{\ell})$ `multi-range-check`
+14. $q'_1 \in [0, 2^{\ell})$ `multi-range-check`
+15. $q'_2 \in [0, 2^{\ell})$ `multi-range-check`
+16. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `multi-range-check`
+17. $q'_{carry01} \in [0, 2)$
+18. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
+19. $q'_{carry2} \in [0, 2)$
+20. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
 
 # Constraints
 
@@ -1213,45 +1211,39 @@ Next we have check (8)
 
 **C5:** $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
 
-Up next, checks (9) and (10) are 12-bit range checks
+Up next, checks (9) is a 3-bit range check
 
-**C6:** Plookup $v_{11}$
+**C6:** Plookup $v_{11}$ (12-bit plookup scaled by $2^9$)
 
-**C7:** Plookup $\mathsf{scaled}_{v_{11}}$
+Now checks (10) and (11) can be combined into
 
-Check (11) is part of bounding $v_{11}$ to 3-bits in length
+**C7:**  $2^{\ell} \cdot (v_{11} \cdot 2^{\ell} + v_{10}) = p_2 + p_{11} + v_0 - r_2$
 
-**C8:** $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
+Next, for our use of the CRT, we must constrain that $a \cdot b = q \cdot f + r \mod n$.  Thus, check (12) is
 
-Now checks (12) and (13) can be combined into
-
-**C9:**  $2^{\ell} \cdot (v_{11} \cdot 2^{\ell} + v_{10}) = p_2 + p_{11} + v_0 - r_2$
-
-Next, for our use of the CRT, we must constrain that $a \cdot b = q \cdot f + r \mod n$.  Thus, check (14) is
-
-**C10:** $a_n \cdot b_n - q_n \cdot f_n = r_n$
+**C8:** $a_n \cdot b_n - q_n \cdot f_n = r_n$
 
 Next we must constrain the quotient bound addition.
 
-Checks (15) - (18) are all combined into `multi-range-check` gadget
+Checks (13) - (16) are all combined into `multi-range-check` gadget
 
-**C11:** `multi-range-check` $q'_0, q'_1, q'_2$ and $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
+**C9:** `multi-range-check` $q'_0, q'_1, q'_2$ and $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
 
-Check (19) is a carry bit boolean check
+Check (17) is a carry bit boolean check
 
-**C12:** $q'_{carry01} \cdot (q'_{carry01} - 1)$
+**C10:** $q'_{carry01} \cdot (q'_{carry01} - 1)$
 
-Next, check (20) is
+Next, check (18) is
 
-**C13:** $2^{2\ell} \cdot q'_{carry10} = s_{01} - q'_{01}$
+**C11:** $2^{2\ell} \cdot q'_{carry10} = s_{01} - q'_{01}$
 
-Check (21) is another boolean check
+Check (19) is another boolean check
 
-**C14:** $q'_{carry2} \cdot (q'_{carry2} - 1)$
+**C12:** $q'_{carry2} \cdot (q'_{carry2} - 1)$
 
-Finally, check (22) is
+Finally, check (20) is
 
-**C15:** $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+**C13:** $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
 
 The `Zero` gate has no constraints and is just used to hold values required by the `ForeignFieldMul` gate.
 

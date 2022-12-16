@@ -123,9 +123,6 @@ pub enum GateType {
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitGateError {
     /// Invalid constraint
-    #[error("Invalid circuit gate type {0:?}")]
-    InvalidCircuitGateType(GateType),
-    /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
     /// Invalid constraint with number
@@ -137,18 +134,9 @@ pub enum CircuitGateError {
     /// Disconnected wires
     #[error("Invalid {typ:?} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
     CopyConstraint { typ: GateType, src: Wire, dst: Wire },
-    /// Invalid copy constraint
-    #[error("Invalid {0:?} copy constraint")]
-    InvalidCopyConstraint(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
-    InvalidLookupConstraintSorted(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
-    InvalidLookupConstraintAggregation(GateType),
-    /// Missing lookup constraint system
-    #[error("Failed to get lookup constraint system for {0:?}")]
-    MissingLookupConstraintSystem(GateType),
+    /// Invalid lookup
+    #[error("Invalid {0:?} lookup constraint")]
+    InvalidLookupConstraint(GateType),
     /// Failed to get witness for row
     #[error("Failed to get {0:?} witness for row {1}")]
     FailedToGetWitnessForRow(GateType, usize),
