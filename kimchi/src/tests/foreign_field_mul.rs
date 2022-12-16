@@ -232,7 +232,7 @@ where
                 .prove_and_verify::<EFqSponge, EFrSponge>()
             {
                 Err(err_msg) => {
-                    if err_msg == String::from("the lookup failed to find a match in the table") {
+                    if err_msg == *"the lookup failed to find a match in the table" {
                         return (
                             Err(CircuitGateError::InvalidLookupConstraint(
                                 GateType::ForeignFieldMul,
