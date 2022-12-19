@@ -1282,40 +1282,39 @@ With this idea in mind, the sole carry flag we need is the one located between t
 
 ##### Layout
 
-You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+The sign of the operation (whether it is an addition or a subtraction) is stored in the fourth coefficient as
+a value +1 (for addition) or -1 (for subtraction). The first 3 coefficients are the 3 limbs of the foreign modulus.
+One could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 
-| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
-|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
-|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
-|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
-|   6 | `sign`           (copy) |                         |  1              (check) |                   |
-|   7 | `field_overflow`        |                         |  1              (check) |                   |
-|   8 | `carry`                 |                         | `bound_carry`           |                   |
-|   9 |                         |                         |                         |                   |
-|  10 |                         |                         |                         |                   |
-|  11 |                         |                         |                         |                   |
-|  12 |                         |                         |                         |                   |
-|  13 |                         |                         |                         |                   |
-|  14 |                         |                         |                         |                   |
+| col | `ForeignFieldAdd`        | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ------------------------ | ----------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy)  | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy)  | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy)  | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy)  |                         |  0              (check) |                   |
+|   4 | `right_input_mi` (copy)  |                         |  0              (check) |                   |
+|   5 | `right_input_hi` (copy)  |                         |  2^88           (check) |                   |
+|   6 | `field_overflow` (copy?) |                         |  1              (check) |                   |
+|   7 | `carry`                  |                         | `bound_carry`           |                   |
+|   8 |                          |                         |                         |                   |
+|   9 |                          |                         |                         |                   |
+|  10 |                          |                         |                         |                   |
+|  11 |                          |                         |                         |                   |
+|  12 |                          |                         |                         |                   |
+|  13 |                          |                         |                         |                   |
+|  14 |                          |                         |                         |                   |
 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
-specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+specific parameter structure. Checking that the correct right input, overflow, and overflow are used shall
 be done by copy constraining these values with a public input value. One could have a specific gate
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.
 
 ##### Integration
 
-- Copy signs from public input
+- Copy final overflow bit from public input containing value 1
  - Range check the final bound
 
-```admonish info
-TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
-```
 
 
 #### Foreign Field Multiplication
