@@ -7,6 +7,7 @@ after the constraint system for a circuit has been fixed.
 ## Motivation
 
 This extension should provide us with
+
 * array-style lookups (`arr[i]`, where `arr` and `i` are formed of values in
   the proof witness).
 * the ability to load 'bytecode' using a proof-independent commitment.
@@ -17,6 +18,7 @@ This extension should provide us with
   other proofs.
 
 These goals support 5 major use-cases:
+
 * allow the verifier circuit to support 'custom' or user-specified gates
   - using array indexing, the use of constants and commitments/evaluations can
     be determined by the verifier index, instead of being fixed by the
@@ -36,6 +38,7 @@ These goals support 5 major use-cases:
 ## Detailed design
 
 In order to support the desired goals, we first define 3 types of table:
+
 * **fixed tables** are tables declared as part of the constraint system, and
   are the same for every proof of that circuit.
 * **runtime tables** are tables whose contents are determined at proving time,
@@ -110,17 +113,22 @@ prover may be able to select values in those tables that abuse knowledge of
 For example, the prover could create the appearance that there is a value
 `(x, y, z)` in the table with ID 1 by entering a single value `a` into the
 table with ID 2, by computing
+
 ```
 a =   x
     + y * joint_combiner
     + z * joint_combiner^2
     + -1 * joint_combiner^max_joint_size
 ```
+
 so that the combined contribution with its table ID becomes
+
 ```
 a + 2 * joint_combiner^max_joint_size
 ```
+
 and thus matches exactly the combined value from `(x, y, z)` in the table with ID 1:
+
 ```
 x + y * joint_combiner + z * joint_combiner^2 + 1 * joint_combiner^max_joint_size
 ```
@@ -154,6 +162,7 @@ Form the combined table by concatenating all of these tables
 `FixedTable = t[0] || t[1] || t[2] || ...`
 and store in `TableID` the table ID that the corresponding row came from.
 Then, for every `output_row`, we have
+
 ```
 FixedTable[output_row][col] = t[id][row][col]`
 TableID[output_row] = id
@@ -184,17 +193,20 @@ To specify whether a runtime table entry is applicable in the `i`th row, we use
 a selector polynomial `RuntimeTableSelector`. In order to reduce the polynomial
 degree of later checks, we add a constraint to check that the runtime entry is
 the zero vector wherever the selector is zero:
+
 ```
 RuntimeTableSelector * sum[i=1, X, RuntimeTable(i) * joint_combiner^i]
  = sum[i=1, X, RuntimeTable(i) * joint_combiner^i]
 ```
 
 This gives the combined entry of the fixed and runtime tables as
+
 ```
 sum[i=0, W, FixedTable(i) * joint_combiner^i]
 + sum[i=1, X, RuntimeTable(i) * joint_combiner^i]
 + TableID * joint_combiner^max_joint_size
 ```
+
 where we assume that `RuntimeTableSelector * FixedTable(i) = 0` for
 `1 <= i < W` via our simplifying assumption above. We compute this as a
 polynomial `FixedAndRuntimeTable`, giving its evaluations and openings as part
@@ -221,6 +233,7 @@ each entry.
 In order to compute the lookup multiset inclusion argument, we also need the
 combined table of all 3 table kinds, which we will call `LookupTable`. We can
 calculate the contribution of the side-loaded table for each lookup as
+
 ```
 LookupTable - FixedAndRuntimeTable
 ```
@@ -229,10 +242,12 @@ We will represent the polynomials for the side-loaded tables as
 `SideLoadedTable(i, j)`, where `i` identifies the table, and `j` identifies the
 column within that table. We also include polynomials `SideLoadedCombined(i)`
 in the proof, along with their openings, where
+
 ```
 SideLoadedCombined(i)
   = sum[j=1, ?, SideLoadedTable(i, j) * joint_combiner^(j-1)]
 ```
+
 and check for consistency of the evaluations and openings when verifying the
 proof.
 
@@ -259,12 +274,14 @@ different proofs, even where the 'position' of the same side-loaded table in
 the combined table may vary between proofs. For example, we could consider a
 'folding' circuit `C` which takes 2 side-loaded tables `t_in` and `t_out`,
 where we prove
+
 ```
 C(t_0, t_1)
 C(t_1, t_2)
 C(t_2, t_3)
 ...
 ```
+
 and the 'result' of the fold is the final `t_n`. In each pair of executions in
 the sequence, we find that `t_i` is used as both `t_in` and `t_out`, but we
 would like to expose the same table as the value for each.
@@ -272,9 +289,11 @@ would like to expose the same table as the value for each.
 To achieve this, we use a permutation argument to 'place' the values from each
 side-loaded table at the correct position in the final table. Recall that every
 value
+
 ```
 LookupTable - FixedAndRuntimeTable
 ```
+
 is either 0 (where no side-loaded table contributes a value) or the value of
 some row in `SideLoadedCombined(i) * joint_combiner` from the table `i`.
 
@@ -284,6 +303,7 @@ all other values, we set-up a permutation based upon the side-loaded table
 relevant to each value.
 
 Thus, we build the permutation accumulator
+
 ```
 LookupPermutation
  * ((LookupTable - FixedAndRuntimeTable) * joint_combiner^(-1)
@@ -301,20 +321,25 @@ LookupPermutation
    * (SideLoadedCombined(2) + gamma + x * beta * shift[10])
    * (SideLoadedCombined(3) + gamma + x * beta * shift[11])
 ```
+
 where `shift[0..7]` is the existing `shift` vector used for the witness
 permutation, and the additional values above are chosen so that
 `shift[i] * w^j` are distinct for all `i` and `j`, and `Sigma(_)` are the
 columns representing the permutation. We then assert that
+
 ```
 Lagrange(0)
   * (LookupPermutation * (0 + gamma + beta * zero_sigma)
     - (0 + gamma + beta * shift[len(shift)-1]))
   = 0
 ```
+
 to mix in the contributions for the constant `0` value, and
+
 ```
 Lagrange(n-ZK_ROWS) * (LookupPermutation - 1) = 0
 ```
+
 to ensure that the permuted values cancel.
 
 Note also that the permutation argument allows for interaction **between**
@@ -334,6 +359,7 @@ using the existing argument. By combining the existing `PermutationAggreg` with
 
 Concretely, by involving the original aggregation and the first row of the
 runtime table, we can construct the permutation
+
 ```
 LookupPermutation
  * PermutationAggreg
@@ -355,6 +381,7 @@ LookupPermutation
    * (SideLoadedCombined(3) + gamma + x * beta * shift[11])
    * (RuntimeTable(1) + gamma + x * beta * shift[12])
 ```
+
 to allow interaction between any of the first 7 witness rows and the first row
 of the runtime table. Note that the witness rows can only interact with the
 side-loaded tables when they contain a single entry due to their use of
@@ -364,6 +391,7 @@ depends on this witness.
 In order to check the combined permutation, we remove the final check from the
 existing permutation argument and compute the combined check of both
 permutation arguments:
+
 ```
 Lagrange(n-ZK_ROWS) * (LookupPermutation * PermutationAggreg - 1) = 0
 ```
@@ -371,6 +399,7 @@ Lagrange(n-ZK_ROWS) * (LookupPermutation * PermutationAggreg - 1) = 0
 ### Full list of polynomials and constraints
 
 #### Constants
+
 * `shift[0..14]` (`shift[0..7]` existing)
 * `zero_sigma`
 * `joint_combiner` (existing)
@@ -391,6 +420,7 @@ This results in 2 new polynomials + 1 new polynomial for each column of each
 side-loaded table.
 
 #### Polynomials with per-proof evaluations + openings
+
 * `LookupTable` (existing)
 * `RuntimeTable(i)`
 * `FixedAndRuntimeTable`
@@ -402,21 +432,27 @@ This results in 8 new polynomial evaluations + 1 new evaluation for each column
 of the runtime table.
 
 #### Constraints
+
 * permutation argument (existing, remove `n-ZK_ROWS` check) (elided)
 * lookup argument (existing) (elided)
 * runtime-table consistency
+  
   ```
   RuntimeTableSelector * sum[i=1, X, RuntimeTable(i) * joint_combiner^i]
    = sum[i=1, X, RuntimeTable(i) * joint_combiner^i]
   ```
+  
 * fixed and runtime table evaluation
+  
   ```
   FixedAndRuntimeTable
     = sum[i=0, W, FixedTable(i) * joint_combiner^i]
       + sum[i=1, X, RuntimeTable(i) * joint_combiner^i]
       + TableID * joint_combiner^max_joint_size
   ```
+  
 * lookup permutation argument
+  
   ```
   LookupPermutation
    * PermutationAggreg
@@ -438,14 +474,18 @@ of the runtime table.
      * (SideLoadedCombined(3) + gamma + x * beta * shift[11])
      * (RuntimeTable(1) + gamma + x * beta * shift[12])
   ```
+
 * lookup permutation initializer
+  
   ```
   Lagrange(0)
     * (LookupPermutation * (0 + gamma + beta * zero_sigma)
       - (0 + gamma + beta * shift[len(shift)-1]))
     = 0
   ```
+
 * lookup permutation finalizer
+  
   ```
   Lagrange(n-ZK_ROWS) * (LookupPermutation - 1) = 0
   ```

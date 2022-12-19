@@ -213,7 +213,7 @@ impl<F: PrimeField> CircuitGate<F> {
 //~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
 //~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
 //~
-//~ where the $c_i$ are the [coefficients]().
+//~ where the $c_i$ are the [coefficients](#tables-used-to-describe-a-circuit).
 
 // -------------------------------------------------
 

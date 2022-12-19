@@ -76,7 +76,7 @@ Note: the (0, 0, 0) **entry** is at the very end on purpose (as it will be used 
 The plookup paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
 
 * a **query** tells us what registers, in what order, and scaled by how much, are part of a query
-* a **query selector** tells us which rows are using the query. It is pretty much the same as a [gate selector]().
+* a **query selector** tells us which rows are using the query. It is pretty much the same as a [gate selector](../specs/kimchi#tables-used-to-describe-a-circuit).
 
 Let's go over the first item in this section.
 

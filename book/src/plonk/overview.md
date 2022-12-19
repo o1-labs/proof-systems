@@ -1,6 +1,6 @@
 # Overview
 
-The proof system in Mina is a variant of [PLONK](). To understand PLONK, you can refer to our [series of videos](https://www.youtube.com/watch?v=RUZcam_jrz0&list=PLBJMt6zV1c7Gh9Utg-Vng2V6EYVidTFCC) on the scheme.
+The proof system in Mina is a variant of [PLONK](https://eprint.iacr.org/2019/953.pdf). To understand PLONK, you can refer to our [series of videos](https://www.youtube.com/watch?v=RUZcam_jrz0&list=PLBJMt6zV1c7Gh9Utg-Vng2V6EYVidTFCC) on the scheme.
 In this section we explain our variant, called **kimchi**.
 <!-- TODO: embed each video in their respective category -->
 

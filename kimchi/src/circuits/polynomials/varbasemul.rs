@@ -72,6 +72,7 @@ use CurrOrNext::{Curr, Next};
 //~ `S = (P + (b ? T : −T)) + P`
 //~
 //~ We follow this criteria:
+//~
 //~ * If the bit is positive, the sign should be a subtraction
 //~ * If the bit is negative, the sign should be an addition
 //~

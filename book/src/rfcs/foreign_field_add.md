@@ -30,6 +30,7 @@ b  =  (-------b0-------|-------b1-------|-------b2-------)
 =
 r  =  (-------r0-------|-------r1-------|-------r2-------)  mod(f)
 ```
+
 We will perform the addition in 3 steps, one per limb. Now, when we split long additions in this way, we must be careful with carry bits between limbs. Also, even if $a$ and $b$ are foreign field elements, it could be the case that $a + b$ is already larger than the modulus (such addition could be at most $2f - 2$). But it could also be the case that the subtraction produces an underflow because $a < b$ (with a difference of at most $1 - f$). Thus we will have to consider the more general case. That is,
 
 $$ a + s \cdot b = q \cdot f + r \mod 2^{264}$$
@@ -272,9 +273,11 @@ So far, we have pointed out the following sets of constraints:
 - $0 = c_1 \cdot (c_0 + 1) \cdot (c_1 - 1)$
 
 #### Sign checks
+
 - $0 = (s + 1) \cdot (s - 1)$
 
 #### Overflow checks
+
 - $0 = q \cdot (q - s)$
 
 ## Optimizations

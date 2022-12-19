@@ -30,7 +30,7 @@ The values are in the table below extracted from the Keccak reference
 | y = 4 | 120   | 78    | 210   | 66    | 253   |
 | y = 3 | 21    | 136   | 105   | 45    | 15    |
 
-## Design Approach:
+## Design Approach
 
 The atomic operations are XOR, ROT, NOT, AND. In the sections below, we will describe
 the gates for these operations. Below are some common approaches followed in their design.
@@ -40,6 +40,7 @@ components. A gate for an atomic operation works with those 32-bit components at
 
 Before we describe the specific gate design approaches, below are some constraints in the
 Kimchi framework that dictated those approaches.
+
 * only 4 lookups per row
 * only first 7 columns are available to the permutation polynomial
 

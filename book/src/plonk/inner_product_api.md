@@ -2,7 +2,7 @@
 
 There's a number of useful stuff that we can do on top of a bootleproof-style polynomial commitment. I'll briefly list them here.
 
-### Enforcing an upperbound on the polynomial degree
+## Enforcing an upperbound on the polynomial degree
 
 Imagine that you want to enforce a maximum degree on a committed polynomial. You can do that by asking the prover to shift the coefficients of the polynomial to the right, so much that it becomes impossible to fit them if the polynomial were to be more than the maximum degree we wanted to enforce. This is equivalent to the following:
 
@@ -12,7 +12,7 @@ When the verifier verifies the opening, they will have to right shift the receiv
 
 $$ \text{right\_shift}(f(z)) = z^{n-max} f(z) $$
 
-### Aggregating opening proofs for several polynomials
+## Aggregating opening proofs for several polynomials
 
 Insight:
 
@@ -20,7 +20,7 @@ $$
 \langle \vec{f} + v \cdot \vec{g}, \vec{x}\rangle = f(x) + v \cdot g(x)
 $$
 
-### Aggregating opening proofs for several evaluations
+## Aggregating opening proofs for several evaluations
 
 Insight:
 
@@ -28,7 +28,7 @@ $$
 \langle \vec{f}, \vec{x_1} + u \cdot \vec{x_2}\rangle = f(x_1) + u \cdot f(x_2)
 $$
 
-### Double aggregation
+## Double aggregation
 
 Insight:
 
@@ -38,11 +38,11 @@ $$
 
 Note that this kind of aggregation forces us to provide all combinations of evaluations, some of which might not be needed (for example, $f(x_2)$).
 
-### Splitting a polynomial
+## Splitting a polynomial
 
 If a polynomial is too large to fit in one SRS, you can split it in chuncks of size at most $n$
 
-### Proof of correct commitment to a polynomial
+## Proof of correct commitment to a polynomial
 
 That is useful in HALO. Problem statement: given a commitment $A$, and a polynomial $f$, prove to me that the $A = com(f)$. The proof is simple: 
 

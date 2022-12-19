@@ -93,8 +93,8 @@ question: where does the multiplication of commitment occurs in the pairing-base
 
 https://eprint.iacr.org/2019/953.pdf
 
-![](https://i.imgur.com/26Ux335.jpg)
+![paper excerpt](https://i.imgur.com/26Ux335.jpg)
 
 For completion, the lemma 4.7:
 
-![](https://i.imgur.com/tGU8fD1.png)
+![lemma 4.7](https://i.imgur.com/tGU8fD1.png)

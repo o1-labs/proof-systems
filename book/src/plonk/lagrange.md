@@ -10,6 +10,7 @@ $L_i(x) = 1$ if $x = g^i$, $0$ otherwise.
 
 > Evaluate all Lagrange polynomials at $\tau$ to get the lagrange coefficients.
 > Define the following as
+> 
 > - $H$: The coset we are in, with generator $g$ and offset $h$
 > - $m$: The size of the coset $H$
 > - $Z_H$: The vanishing polynomial for $H$. $Z_H(x) = \prod_{i \in [m]} (x - h \cdot g^i) = x^m - h^m$

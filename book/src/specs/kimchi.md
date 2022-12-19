@@ -457,7 +457,7 @@ The constraints:
 * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
 * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
 
-where the $c_i$ are the [coefficients]().
+where the $c_i$ are the [coefficients](#tables-used-to-describe-a-circuit).
 
 
 #### Poseidon
@@ -496,32 +496,38 @@ We store the 15 round constants $r_i$ required for the 5 rounds (3 per round) in
 |:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
 | r0 | r1 | r2 | r3 | r4 | r5 | r6 | r7 | r8 | r9 | r10 | r11 | r12 | r13 | r14 |
 
+
 The initial state, stored in the first three registers, are not constrained.
 The following 4 states (of 3 field elements), including 1 in the next row,
 are constrained to represent the 5 rounds of permutation.
 Each of the associated 15 registers is associated to a constraint, calculated as:
 
 first round:
+
 * $w_6 - [r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)]$
 * $w_7 - [r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)]$
 * $w_8 - [r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)]$
 
 second round:
+
 * $w_9 - [r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)]$
 * $w_{10} - [r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)]$
 * $w_{11} - [r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)]$
 
 third round:
+
 * $w_{12} - [r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)]$
 * $w_{13} - [r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)]$
 * $w_{14} - [r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)]$
 
 fourth round:
+
 * $w_3 - [r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)]$
 * $w_4 - [r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)]$
 * $w_5 - [r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)]$
 
 fifth round:
+
 * $w_{0, next} - [r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)]$
 * $w_{1, next} - [r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)]$
 * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
@@ -681,15 +687,18 @@ The layout is
 | x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
 
 where
+
 * `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
 * `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
 
 The rest of the values are inaccessible from the permutation argument, but
+
 * `same_x` is a boolean that is true iff `x1 == x2`.
 
 The following constraints are generated:
 
 constraint 1:
+
 * $x_{0} = w_{2} - w_{0}$
 * $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$
 
@@ -747,12 +756,14 @@ every input (thinking of a two-bit input as a number in $\{0, 1, 2, 3\}$), one f
 are given by
 
 `c_func(x)`, defined by
+
 * `c_func(0) = 0`
 * `c_func(1) = 0`
 * `c_func(2) = -1`
 * `c_func(3) = 1`
 
 `d_func(x)`, defined by
+
 * `d_func(0) = -1`
 * `d_func(1) = 1`
 * `d_func(2) = 0`
@@ -761,6 +772,7 @@ are given by
 One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
 
 You can use [`sage`](https://www.sagemath.org/), as
+
 ```ignore
 R = PolynomialRing(QQ, 'x')
 c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
@@ -774,6 +786,7 @@ Then, `c_func` is given by
 ```
 
 and `d_func` is given by
+
 ```ignore
 2/3 * x^3 - 7/2 * x^2 + 29/6 * x - 1 <=> c_func + (-x^2 + 3x - 1)
 ```
@@ -795,6 +808,7 @@ crumb(x)
 = x^4 - 6*x^3 + 11*x^2 - 6*x
 = x *(x^3 - 6*x^2 + 11*x - 6)
 ```
+
 Each iteration performs the following computations
 
 * Update $n$: $\quad n_{i+1} = 2 \cdot n_{i} + x_i$
@@ -810,9 +824,9 @@ Then, after the 8 iterations, we compute expected values of the above operations
 Putting together all of the above, these are the 11 constraints for this gate
 
 * Checking values after the 8 iterations:
-  * Constrain $n$: ` 0 = expected_n8 - n8`
-  * Constrain $a$: ` 0 = expected_a8 - a8`
-  * Constrain $b$: ` 0 = expected_b8 - b8`
+  * Constrain $n$: `0 = expected_n8 - n8`
+  * Constrain $a$: `0 = expected_a8 - a8`
+  * Constrain $b$: `0 = expected_b8 - b8`
 * Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:
   * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`
   * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`
@@ -972,6 +986,7 @@ for the operation $(P±T)+P$:
 `S = (P + (b ? T : −T)) + P`
 
 We follow this criteria:
+
 * If the bit is positive, the sign should be a subtraction
 * If the bit is negative, the sign should be an addition
 
@@ -1807,6 +1822,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	* coefficient commitments
 	* sigma commitments
 	* lookup commitments
+
 #### Batch verification of proofs
 
 Below, we define the steps to verify a number of proofs

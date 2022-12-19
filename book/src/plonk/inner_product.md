@@ -306,7 +306,7 @@ At this point, the protocol requires the sender to send:
 
 But wait... one last thing. In this protocol the prover is revealing $\vec{a'}$, and even if they were not, by revealing $r'$ they might allow someone to recompute $\vec{a'}$... The HALO paper contains a generalized Schnorr protocol to open the commitment without revealing $\vec{a'}$ nor $r'$.
 
-![](https://i.imgur.com/SXKEqIG.png)
+![zero knowledge](https://i.imgur.com/SXKEqIG.png)
 
 --- 
 

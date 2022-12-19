@@ -792,6 +792,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
+    //~
     //~ #### Batch verification of proofs
     //~
     //~ Below, we define the steps to verify a number of proofs

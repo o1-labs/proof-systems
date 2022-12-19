@@ -77,12 +77,14 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~ are given by
 //~
 //~ `c_func(x)`, defined by
+//~
 //~ * `c_func(0) = 0`
 //~ * `c_func(1) = 0`
 //~ * `c_func(2) = -1`
 //~ * `c_func(3) = 1`
 //~
 //~ `d_func(x)`, defined by
+//~
 //~ * `d_func(0) = -1`
 //~ * `d_func(1) = 1`
 //~ * `d_func(2) = 0`
@@ -91,6 +93,7 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~ One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
 //~
 //~ You can use [`sage`](https://www.sagemath.org/), as
+//~
 //~ ```ignore
 //~ R = PolynomialRing(QQ, 'x')
 //~ c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
@@ -104,6 +107,7 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~ ```
 //~
 //~ and `d_func` is given by
+//~
 //~ ```ignore
 //~ 2/3 * x^3 - 7/2 * x^2 + 29/6 * x - 1 <=> c_func + (-x^2 + 3x - 1)
 //~ ```
@@ -125,6 +129,7 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~ = x^4 - 6*x^3 + 11*x^2 - 6*x
 //~ = x *(x^3 - 6*x^2 + 11*x - 6)
 //~ ```
+//~
 //~ Each iteration performs the following computations
 //~
 //~ * Update $n$: $\quad n_{i+1} = 2 \cdot n_{i} + x_i$
@@ -140,9 +145,9 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~ Putting together all of the above, these are the 11 constraints for this gate
 //~
 //~ * Checking values after the 8 iterations:
-//~   * Constrain $n$: ` 0 = expected_n8 - n8`
-//~   * Constrain $a$: ` 0 = expected_a8 - a8`
-//~   * Constrain $b$: ` 0 = expected_b8 - b8`
+//~   * Constrain $n$: `0 = expected_n8 - n8`
+//~   * Constrain $a$: `0 = expected_a8 - a8`
+//~   * Constrain $b$: `0 = expected_b8 - b8`
 //~ * Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:
 //~   * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`
 //~   * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`

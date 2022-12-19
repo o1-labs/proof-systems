@@ -1,6 +1,6 @@
 # Kimchi Backend
 
-![](https://i.imgur.com/KmKU5Pl.jpg)
+![diagram of the code](https://i.imgur.com/KmKU5Pl.jpg)
 
 Underneath the snarky wrapper (in `snarky/checked_runner.rs`) lies what we used to call the `plonk_constraint_system` or `kimchi_backend` in `snarky/constraint_systen.rs`.
 
@@ -134,7 +134,7 @@ This does not lead to a finalized circuit, see the next section to see how that 
 
 (TODO: ideally this should happen in the same step)
 
-## Finalization of the circuit.
+## Finalization of the circuit
 
 So far we've only talked about adding specific constraints to the circuit, but not about how public input are handled.
 
@@ -177,7 +177,7 @@ Another example, is that we use it to assert equality between two cells.
 
 ## Implementation details
 
-There's two aspect of the implementation of the permutation, the first one is a hashmap of equivalence classes, which is used to track all the positions of a variable, the second one is making use of a [union find]() data structure to link variables that are equivalent (we'll talk about that after).
+There's two aspect of the implementation of the permutation, the first one is a hashmap of equivalence classes, which is used to track all the positions of a variable, the second one is making use of a [union find](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) data structure to link variables that are equivalent (we'll talk about that after).
 
 The two data structures are in the kimchi backend's state:
 
@@ -225,7 +225,7 @@ During finalization, all the different cycles are created by looking at all the 
 Sometimes, we know that two variables will have equivalent values due to an `assert_equal()` being called to link them.
 Since we link two variables together, they need to be part of the same cycle, and as such we need to be able to detect that to construct correct cycles.
 
-To do this, we use a [union find]() data structure, which allows us to easily find the unions of equivalent variables.
+To do this, we use a [union find](https://en.wikipedia.org/wiki/Disjoint-set_data_structure) data structure, which allows us to easily find the unions of equivalent variables.
 
 When an `assert_equal()` is called, we link the two variables together using the `union_finds` data structure.
 

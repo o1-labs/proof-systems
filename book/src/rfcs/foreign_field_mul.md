@@ -104,7 +104,7 @@ This section describes important parameters that we require and how they are com
 * *CRT modulus* $2^t \cdot n$
 * *Limb size* in bits $\ell$
 
-#### Choosing $t$
+### Choosing $t$
 
 Under the hood, we constrain $a \cdot b = q \cdot f + r \mod 2^t \cdot n$.  Since this is a multiplication in the foreign field $f$, the maximum size of $q$ and $r$ are $f - 1$, so this means
 
@@ -221,8 +221,8 @@ $$
 
 Therefore, our limb configuration is:
 
-  * Limb size $\ell = 88$ bits
-  * Number of limbs is $3$
+* Limb size $\ell = 88$ bits
+* Number of limbs is $3$
 
 ## Avoiding borrows
 
@@ -310,8 +310,8 @@ $$
 
 We face two challenges
 
-*  Since $p_0, p_1, p_2$ are at least $2^{\ell}$ bits each, the right side of the equation above does not fit in $\mathbb{F}_n$
-*  The subtraction of the remainder's limbs $r_0$ and $r_1$ could require borrowing
+* Since $p_0, p_1, p_2$ are at least $2^{\ell}$ bits each, the right side of the equation above does not fit in $\mathbb{F}_n$
+* The subtraction of the remainder's limbs $r_0$ and $r_1$ could require borrowing
 
 For the moment, let's not worry about the possibility of borrows and instead focus on the first problem.
 
@@ -417,6 +417,7 @@ which is $2\ell + 3$ bits.
 | **Bits** | $2\ell + 2$ | $2\ell + 3$ |
 
 Thus far we have the following constraints
+
 > 2. Composition of $p_{10}$ and $p_{11}$ result in $p_1$
 > 3. Range check $p_{11} \in [0, 2^{\ell + 2})$
 > 4. Range check $p_{10} \in [0, 2^{\ell})$
@@ -432,6 +433,7 @@ We can deal with this non-zero issue by computing carry witness values.
 ## Computing carry witnesses values $v_0$ and $v_1$
 
 Instead of constraining $h_0$ and $h_1$ to zero, there must be satisfying witness $v_0$ and $v_1$ such that the following constraints hold.
+
 > 5. There exists $v_0$ such that $h_0 = v_0 \cdot 2^{2\ell}$
 > 6. There exists $v_1$ such that $h_1 = v_1 \cdot 2^{\ell} - v_0$
 
@@ -454,6 +456,7 @@ Remember we only need to prove the first $3\ell$ bits of $p - r$ are zero, since
 By making the argument with $v_0$ and $v_1$ we are proving that $h_0$ is something where the $2\ell$ least significant bits are all zeros and that $h_1 + v_0$ is something where the $\ell$ are also zeros.  Any nonzero bits after $3\ell$ do not matter, since everything is $\mod 2^t$.
 
 All that remains is to range check $v_0$ and $v_1$
+
 > 7. Range check $v_0 \in [0, 2^2)$
 > 8. Range check $v_1 =\in [0, 2^{\ell + 3})$
 
@@ -493,12 +496,14 @@ which is a contradiction with $x < y$.
 Range checks should be the dominant cost, let's see how many we have.
 
 Range check (3) requires two range checks for $p_{11} = p_{111} \cdot 2^\ell + p_{110}$
- * a) $p_{110} \in [0, 2^\ell)$
- * b) $p_{111} \in [0, 2^2)$
+
+* a) $p_{110} \in [0, 2^\ell)$
+* b) $p_{111} \in [0, 2^2)$
 
 Range check (8) requires two range checks and a decomposition check that is merged in (6).
- * a) $v_{10} \in [0, 2^{\ell})$
- * b) $v_{11} \in [0, 2^3)$
+
+* a) $v_{10} \in [0, 2^{\ell})$
+* b) $v_{11} \in [0, 2^3)$
 
 The range checks on $p_0, p_1$ and $p_2$ follow from the range checks on $a,b$ and $q$.
 
@@ -585,12 +590,14 @@ r &< f^2 - (f - 1) \cdot f = f
 $$
 
 Therefore, to check $q \cdot f + r < 2^t \cdot n$, we need to check
+
 * $q < f$
 * $r < f$
 
 This should come at no surprise, since that is how we parameterized $2^t \cdot n$ earlier on.  Note that by checking $q < f$ we assure correctness, while checking $r < f$ assures our solution is unique (sometimes referred to as canonical).
 
 Next, we must perform the same checks for the left hand side (i.e., $a \cdot b < 2^t \cdot n$).  Since $a$ and $b$ must be less than the foreign field modulus $f$, this means checking
+
 * $a < f$
 * $b < f$
 
@@ -924,7 +931,7 @@ Although $q_1, q_2$ and $q_3$ are not range checked directly, this is safe becau
 6. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$  `multi-range-check`
 7. $q'_{carry01} \in [0, 2)$ `ForeignFieldMul`
 8. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$ `ForeignFieldMul`
-9.  $q_2 \in [0, 2^{\ell})$  `multi-range-check`
+9. $q_2 \in [0, 2^{\ell})$  `multi-range-check`
 10. $s_2 = q_2 + f'_2$ `ForeignFieldMul`
 11. $q'_{carry2} \in [0, 2)$ `ForeignFieldMul`
 12. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$ `ForeignFieldMul`
@@ -968,18 +975,21 @@ Now we collect all of the checks that are required to constrain foreign field mu
 ### 1. Range constrain $a$
 
 If the $a$ operand has not been constrained to $[0, f)$ by any previous foreign field operations, then we constrain it like this
+
 - Compute bound $a' = a + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
 - Range check $a' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
 ### 2. Range constrain $b$
 
 If the $b$ operand has not been constrained to $[0, f)$ by any previous foreign field operations, then we constrain it like this
+
 - Compute bound $b' = b + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
 - Range check $b' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
 ### 3. Range constrain $q$
 
 The quotient $q$ is constrained to $[0, f)$ for each multiplication as part of the multiplication gate
+
 - Compute bound $q' = q + f'$ with  `ForeignFieldMul` constraints
 - Range check $q' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 - Range check $q \ge 0$ `ForeignFieldMul` (implicit by storing `q` in witness)
@@ -987,6 +997,7 @@ The quotient $q$ is constrained to $[0, f)$ for each multiplication as part of t
 ### 4. Range constrain $r$
 
 The remainder $r$ is constrained to $[0, f)$ for each multiplication using an external addition gate.
+
 - Compute bound $r' = r + f'$ with addition gate (2 rows)  `ForeignFieldAdd`
 - Range check $r' \in [0, 2^t)$ (4 rows)  `multi-range-check`
 
@@ -1070,6 +1081,7 @@ Compute and constrain the intermediate sums $s_{01}$ and $s_2$ as:
 Check that $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
 
 Done by (3) above with the  `multi-range-check` on $q'$
+
 - $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$
 - Range check $q'_0 \in [0, 2^\ell)$
 - Range check $q'_1 \in [0, 2^\ell)$
@@ -1099,6 +1111,7 @@ Based on the constraints above, we need the following 12 values copied from the 
 ```
 a0, a1, a2, b0, b1, b2, q0, q1, q2, r0, r1, r2
 ```
+
 Since we need 12 copied values for the constraints, they must span 2 rows.
 
 The $q < f$ bound limbs $q'_0, q'_1$ and $q'_2$ must be in copyable cells so they can be range-checked.  Similarly, the limbs of the operands $a$, $b$ and the result $r$ must all be in copyable cells.  This leaves only 2 remaining copyable cells and, therefore, we cannot compute and output $r' = r + f'$.  It must be deferred to an external `ForeignFieldAdd` gate with the $r$ cells copied as an argument.
@@ -1174,7 +1187,7 @@ In total we require the following checks
 6. $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$
 7. $v_0 \in [0, 2^2)$
 8. $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
-9.  $v_{11} \in [0, 2^{12})$
+9. $v_{11} \in [0, 2^{12})$
 10. $\mathsf{scaled}_{v_{11}} \in [0, 2^{12})$
 11. $2^9 \cdot v_{11} = \mathsf{scaled}_{v_{11}}$
 12. $v_1 = 2^{\ell} \cdot v_{11} + v_{10}$

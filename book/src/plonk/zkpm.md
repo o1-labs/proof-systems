@@ -2,7 +2,7 @@
 
 In PLONK (considered as an interactive oracle proof), the prover sends the verifier several polynomials. They are evaluated at some $k$ points during the course of the protocol. Of course, if we want zero-knowledge, we would require that those evaluations do not reveal anything about the proof's underlying witness.
 
-PLONK as described <a href="https://eprint.iacr.org/2019/953" target="_blank" rel="noopener">here</a> achieves <a href="https://minaprotocol.com/blog/zero-knowledge-proofs-an-intuitive-explanation">zero knowledge</a> by multiplying the polynomials with a small degree polynomial of random coefficients. When PLONK is instantiated with a discrete-log base <a href="https://eprint.iacr.org/2016/263" target="_blank" rel="noopener">Bootle et al type</a> polynomial commitment scheme, the polynomial degrees must be padded to the nearest power of two. As a result, since several of the polynomials in PLONK already have degree equal to a power of two before the zero-knowledge masking, the multiplication with a random polynomial pushes the degree to the next power of two, which hurts efficiency. In order to avoid it, we propose an alternative method of achieving zero knowledge.
+PLONK as described [here](https://eprint.iacr.org/2019/953) achieves [zero knowledge](https://minaprotocol.com/blog/zero-knowledge-proofs-an-intuitive-explanation) by multiplying the polynomials with a small degree polynomial of random coefficients. When PLONK is instantiated with a discrete-log base [Bootle et al type](https://eprint.iacr.org/2016/263) polynomial commitment scheme, the polynomial degrees must be padded to the nearest power of two. As a result, since several of the polynomials in PLONK already have degree equal to a power of two before the zero-knowledge masking, the multiplication with a random polynomial pushes the degree to the next power of two, which hurts efficiency. In order to avoid it, we propose an alternative method of achieving zero knowledge.
 
 ## Zero Knowledge for the Column Polynomials
 
@@ -46,7 +46,7 @@ $ \begin{aligned}  & t(X) = \\
 **Modified permutation checks.** To recall, the permutation check was originally as follows. For all $h \in H$,
 
 * $L_1(h)(Z(h) - 1) = 0$
-*  $Z(h)[(a(h) + \beta h + \gamma)(b(h) + \beta k_1 h + \gamma)(c(h) + \beta k_2 h + \gamma)] \\
+* $Z(h)[(a(h) + \beta h + \gamma)(b(h) + \beta k_1 h + \gamma)(c(h) + \beta k_2 h + \gamma)] \\
   = Z(\omega h)[(a(h) + \beta S_{\sigma1}(h) + \gamma)(b(h) + \beta S_{\sigma2}(h) + \gamma)(c(h) + \beta S_{\sigma3}(h) + \gamma)]$
 
 

@@ -539,7 +539,7 @@ $$(1 + \chalfold_1) \cdot (1 + \chalfold_2) \cdots (1 + \chalfold_k)$$
 Looking at $\hpoly$ it can clearly can be evaluated in $O(k = \log \ell)$ time,
 computing $\vec{\openx}^{(k)}$ therefore takes just $O(\log \ell)$ time!
 
-#### The "Halo Trick"
+### The "Halo Trick"
 
 The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$:
 since it is folded the same way as $\vec{\openx}$. It is not hard to convince one-self (using the same type of argument as above) that:
@@ -766,7 +766,7 @@ Note that the accumulator verifier must be proven (in addition to the Kimchi/Plo
 ## No Cycles of Curves?
 
 Note that the "cycles of curves" (e.g. Pasta cycle) does not show up in this part of the code:
-a <u>separate accumulator</u> is needed for each curve and the final verifier must check both accumulators to deem the combined recursive proof valid.
+a _separate accumulator_ is needed for each curve and the final verifier must check both accumulators to deem the combined recursive proof valid.
 This takes the form of [`passthough` data](passthrough.html) in pickles.
 
 Note however, that the accumulation verifier makes use of both $\GG$-operations and $\FF$-operations,

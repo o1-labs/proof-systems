@@ -15,24 +15,24 @@ We might want to piggy back on the [zcash poseidon spec](https://github.com/C2SP
 
 We define a base sponge, and a scalar sponge. Both must be instantiated when verifying a proof (this is due to recursion-support baked in Kimchi).
 
-External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the [pickles specification](./pickles.md)). 
+External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the [pickles specification](./pickles.md)).
 As such, the sponges they need to instantiate are most likely to be instantiated with:
 
 * Poseidon-Fp for base sponge
-* Poseidon-Fq for the scalar sponge 
+* Poseidon-Fq for the scalar sponge
 
 ### Base Sponge
 
 * `new(params) -> BaseSponge`. Creates a new base sponge.
 * `BaseSponge.absorb(field_element)`. Absorbs a field element by calling the underlying sponge `absorb` function.
 * `BaseSponge.absorb_point(point)`. Absorbs an elliptic curve point. If the point is the point at infinity, absorb two zeros. Otherwise, absorb the x and y coordinates with two calls to `absorb`.
-* `BaseSponge.absorb_scalar(field_element_of_scalar_field)`. Absorbs a scalar. 
+* `BaseSponge.absorb_scalar(field_element_of_scalar_field)`. Absorbs a scalar.
   * If the scalar field is smaller than the base field (e.g. Fp is smaller than Fq), then the scalar is casted to a field element of the base field and absorbed via `absorb`.
   * Otherwise, the value is split between its least significant bit and the rest. Then both values are casted to field elements of the base field and absorbed via `absorb` (the high bits first, then the low bit).
 * `BaseSponge.digest() -> field_element`. The `squeeze` function of the underlying sponge function is called and the first field element is returned.
-* `BaseSponge.digest_scalar() -> field_element_of_scalar_field`. 
-* `BaseSponge.challenge // TODO: specify`. 
-* `BaseSponge.challenge_fq // TODO: specify`. 
+* `BaseSponge.digest_scalar() -> field_element_of_scalar_field`.
+* `BaseSponge.challenge // TODO: specify`.
+* `BaseSponge.challenge_fq // TODO: specify`.
 
 ### Scalar Sponge
 
@@ -164,4 +164,4 @@ We have test vectors contained in [/poseidon/src/tests/test_vectors/kimchi.json]
 * our ocaml implementation: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle/random_oracle.mli
 * relies on random_oracle_input: https://github.com/minaprotocol/mina/blob/develop/src/lib/random_oracle_input/random_oracle_input.ml
 * is instantiated with two types of fields:
-    - https://github.com/minaprotocol/mina/blob/develop/src/nonconsensus/snark_params/snark_params_nonconsensus.ml
+    * https://github.com/minaprotocol/mina/blob/develop/src/nonconsensus/snark_params/snark_params_nonconsensus.ml
