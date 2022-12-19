@@ -23,11 +23,9 @@
 //~ left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
 //~ left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 //~
-//~    product1_lo => p10   product1_hi_0 => p110   product1_hi_1 => p111
-//~      carry0 => v0        carry1_lo => v10          carry1_hi => v11
-//~
-//~                     scaled_carry1_hi => scaled_v11
-//~          quotient_bound0 => q'0       quotient_bound12 => q'12
+//~    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
+//~    carry0 => v0            carry1_lo => v10          carry1_hi => v11
+//~    quotient_bound0 => q'0  quotient_bound12 => q'12
 //~
 //~   quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
 //~ ````
@@ -63,7 +61,6 @@
 //~ * `carry0` := 2 bit carry
 //~ * `carry1_lo` := low 88 bits of `carry1`
 //~ * `carry1_hi` := high 3 bits of `carry1`
-//~ * `scaled_carry1_hi` : = `carry1_hi` scaled by 2^9
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
@@ -85,13 +82,13 @@
 //~ |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 //~ |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
 //~ |   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
-//~ |   8 | `scaled_carry1_hi` (plookup) |                           |
-//~ |   9 | `carry0`                     |                           |
-//~ |  10 | `quotient0`                  |                           |
-//~ |  11 | `quotient1`                  |                           |
-//~ |  12 | `quotient2`                  |                           |
-//~ |  13 | `quotient_bound_carry01`     |                           |
-//~ |  14 | `quotient_bound_carry2`      |                           |
+//~ |   8 | `carry0`                     |                           |
+//~ |   9 | `quotient0`                  |                           |
+//~ |  10 | `quotient1`                  |                           |
+//~ |  11 | `quotient2`                  |                           |
+//~ |  12 | `quotient_bound_carry01`     |                           |
+//~ |  13 | `quotient_bound_carry2`      |                           |
+//~ |  14 |                              |                           |
 //~
 
 use crate::{
@@ -207,7 +204,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 11;
+    const CONSTRAINTS: u32 = 10;
     // DEGREE is 4
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
@@ -239,22 +236,19 @@ where
         let carry1_lo = env.witness_curr(6); // Copied for multi-range-check
         let carry1_hi = env.witness_curr(7); // 12-bit plookup
 
-        // Scaled v11 for smaller range check
-        let scaled_carry1_hi = env.witness_curr(8); // 12-bit plookup
-
         // Carry bits v0
-        let carry0 = env.witness_curr(9);
+        let carry0 = env.witness_curr(8);
 
         // Quotient q
         let quotient = [
+            env.witness_curr(9),
             env.witness_curr(10),
             env.witness_curr(11),
-            env.witness_curr(12),
         ];
 
         // Carry bits for quotient_bound_carry01 and quotient_bound_carry2
-        let quotient_bound_carry01 = env.witness_curr(13);
-        let quotient_bound_carry2 = env.witness_curr(14);
+        let quotient_bound_carry01 = env.witness_curr(12);
+        let quotient_bound_carry2 = env.witness_curr(13);
 
         // Remainder r (a.k.a. result)
         let remainder = [
@@ -334,41 +328,36 @@ where
                     - T::two_to_limb() * remainder[1].clone()),
         );
 
-        // C6: Constrain v11 is 12-bits (done with plookup)
+        // C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
 
-        // C7: Constrain scaled_v11 is 12-bits (done with plookup)
-
-        // C8: Constrain scaled_v11 comes from scaling v11 by 2^9
-        constraints.push(scaled_carry1_hi - T::from(512) * carry1_hi.clone());
-
-        // C9: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
+        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         constraints.push(
             T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
                 - (products(2) + product1_hi + carry0 - remainder[2].clone()),
         );
 
-        // C10: Native modulus constraint a_n * b_n - q_n * f_n = r_n
+        // C8: Native modulus constraint a_n * b_n - q_n * f_n = r_n
         constraints.push(
             left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
         );
 
-        // C11: multi-range-check q0', q1' q2'
+        // C9: multi-range-check q0', q1' q2'
         //      Constrain q'01 = q'0 + 2^L * q'1
         //      Must be done externally with a multi-range-check gadget
         //      configured to constrain q'12
 
-        // C12: Constrain q'_carry01 is boolean
+        // C10: Constrain q'_carry01 is boolean
         constraints.push(quotient_bound_carry01.boolean());
 
-        // C13: Constrain that  2^2L * q'_carry01 = s01 - q'01
+        // C11: Constrain that  2^2L * q'_carry01 = s01 - q'01
         constraints
             .push(T::two_to_2limb() * quotient_bound_carry01.clone() - sum01 + quotient_bound01);
 
-        // C14: Constrain q'_carry2 is boolean
+        // C12: Constrain q'_carry2 is boolean
         constraints.push(quotient_bound_carry2.boolean());
 
-        // C15: Constrain that 2^L * q'_carry2 = s2 + q'_carry01 - q'2
+        // C13: Constrain that 2^L * q'_carry2 = s2 + q'_carry01 - q'2
         constraints.push(
             T::two_to_limb() * quotient_bound_carry2 - sum2 - quotient_bound_carry01
                 + quotient_bound2,

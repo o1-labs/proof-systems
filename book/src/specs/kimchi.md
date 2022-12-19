@@ -1343,11 +1343,9 @@ left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
 left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
-   product1_lo => p10   product1_hi_0 => p110   product1_hi_1 => p111
-     carry0 => v0        carry1_lo => v10          carry1_hi => v11
-
-                    scaled_carry1_hi => scaled_v11
-         quotient_bound0 => q'0       quotient_bound12 => q'12
+   product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
+   carry0 => v0            carry1_lo => v10          carry1_hi => v11
+   quotient_bound0 => q'0  quotient_bound12 => q'12
 
   quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
 ````
@@ -1383,7 +1381,6 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `carry0` := 2 bit carry
 * `carry1_lo` := low 88 bits of `carry1`
 * `carry1_hi` := high 3 bits of `carry1`
-* `scaled_carry1_hi` : = `carry1_hi` scaled by 2^9
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
@@ -1405,13 +1402,13 @@ The foreign field multiplication gate's rows are laid out like this
 |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
 |   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
-|   8 | `scaled_carry1_hi` (plookup) |                           |
-|   9 | `carry0`                     |                           |
-|  10 | `quotient0`                  |                           |
-|  11 | `quotient1`                  |                           |
-|  12 | `quotient2`                  |                           |
-|  13 | `quotient_bound_carry01`     |                           |
-|  14 | `quotient_bound_carry2`      |                           |
+|   8 | `carry0`                     |                           |
+|   9 | `quotient0`                  |                           |
+|  10 | `quotient1`                  |                           |
+|  11 | `quotient2`                  |                           |
+|  12 | `quotient_bound_carry01`     |                           |
+|  13 | `quotient_bound_carry2`      |                           |
+|  14 |                              |                           |
 
 
 #### Xor
