@@ -1211,7 +1211,7 @@ Next we have check (8)
 
 **C5:** $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
 
-Up next, checks (9) is a 3-bit range check
+Up next, check (9) is a 3-bit range check
 
 **C6:** Plookup $v_{11}$ (12-bit plookup scaled by $2^9$)
 
