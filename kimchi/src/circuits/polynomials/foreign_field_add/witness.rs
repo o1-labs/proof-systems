@@ -23,18 +23,15 @@ pub enum FFOps {
     Add,
     /// Subtraction
     Sub,
-    /// Multiplication
-    Mul,
 }
 
 /// Implementation of the FFOps enum
 impl FFOps {
-    /// Returns the sign of the operation as a field element, or zero if it is a multiplication
+    /// Returns the sign of the operation as a field element
     pub fn sign<F: PrimeField>(&self) -> F {
         match self {
             FFOps::Add => F::one(),
             FFOps::Sub => -F::one(),
-            FFOps::Mul => F::zero(),
         }
     }
 }
@@ -51,8 +48,6 @@ fn compute_ffadd_values<F: PrimeField>(
     opcode: FFOps,
     foreign_modulus: &ForeignElement<F, 3>,
 ) -> (ForeignElement<F, 3>, F, F, F) {
-    assert_ne!(opcode, FFOps::Mul);
-
     // Compute bigint version of the inputs
     let left = left_input.to_biguint();
     let right = right_input.to_biguint();

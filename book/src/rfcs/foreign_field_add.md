@@ -201,17 +201,17 @@ with $r_{top} = r_2$ and $c = c_1$.
 
 ## Gadget
 
-The full foreign field addition/subtraction gadget will be composed by: 
+The full foreign field addition/subtraction gadget will be composed of: 
 - $1$ public input row containing the value $1$;
 - $n$ rows with `ForeignFieldAdd` gate type:
   - for the actual $n$ chained additions or subtractions;  
-- $1$ `ForeignFieldAdd` row for the final bound check;
-- $1$ `Zero` row for the final upper bound check.
+- $1$ `ForeignFieldAdd` row for the bound addition;
+- $1$ `Zero` row for the final bound addition.
 - $1$ `RangeCheck` gadget for the first left input of the chain $a_1 := a$;
 - Then, $n$ of the following set of rows:
   - $1$ `RangeCheck` gadget for the $i$-th right input $b_i$;
   - $1$ `RangeCheck` gadget for the $i$-th result which will correspond to the $(i+1)$-th left input of the chain $r_i = a_{i+1}$.
-- $1$ final `RangeCheck` gadget for the upper bound term $u$.
+- $1$ final `RangeCheck` gadget for the bound check $u$.
 
 A total of 20 rows with 15 columns in Kimchi for 1 addition. All ranges below are inclusive.
 
@@ -227,9 +227,30 @@ A total of 20 rows with 15 columns in Kimchi for 1 addition. All ranges below ar
 | 9n+7..9n+10      | `multi-range-check` | $u$     |
 
 
-This mechanism can chain foreign field additions together. Initially, there are $n$ foreign field addition gates, followed by a foreign field addition gate for the upper bound (whose current row corresponds to the next row of the last foreign field addition gate), and an auxiliary `Zero` row that holds the upper bound. At the end, an initial left input range check is performed, which is followed by a $n$ pairs of range check gates for the right input and intermediate result (which become the left input for the next iteration). After the chained inputs checks, a final range check on the upper bound takes place. 
+This mechanism can chain foreign field additions together. Initially, there are $n$ foreign field addition gates, followed by a foreign field addition gate for the bound addition (whose current row corresponds to the next row of the last foreign field addition gate), and an auxiliary `Zero` row that holds the upper bound. At the end, an initial left input range check is performed, which is followed by a $n$ pairs of range check gates for the right input and intermediate result (which become the left input for the next iteration). After the chained inputs checks, a final range check on the bound takes place. 
 
-Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8*n+4)$ less rows is possible, and it follows the next layout (with inclusive ranges):
+For example, chaining the following set of 3 instructions would result in a full gadget with 37 rows:
+
+$$add(add(add(a,b),c),d)$$
+
+| Row(s) | Gate type(s)        | Witness       |
+| ------ | ------------------- | ------------- |
+| 0      | `PublicInput`       | $1$           |
+| 1      | `ForeignFieldAdd`   | $a+b$         |
+| 2      | `ForeignFieldAdd`   | $(a+b)+c$     |
+| 3      | `ForeignFieldAdd`   | $((a+b)+c)+d$ |
+| 4      | `ForeignFieldAdd`   | bound         |
+| 5      | `Zero`              | bound         |
+| 6..9   | `multi-range-check` | $a$           |
+| 10..13 | `multi-range-check` | $b$           |
+| 14..17 | `multi-range-check` | $a+b$         |
+| 18..21 | `multi-range-check` | $c$           |
+| 22..25 | `multi-range-check` | $a+b+c$       |
+| 26..29 | `multi-range-check` | $d$           |
+| 30..33 | `multi-range-check` | $a+b+c+d$     |
+| 34..37 | `multi-range-check` | bound         |
+
+Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8*n+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges): 
 
 | Row(s)   | Gate type(s)                                          | Witness |
 | -------- | ----------------------------------------------------- | ------- |
@@ -239,6 +260,20 @@ Nonetheless, such an exhaustive set of checks are not necessary for completeness
 | n+2      | `Zero`                                                |         |
 | n+3..n+6 | `multi-range-check` for `bound`                       | $u$     |
 
+Otherwise, we would need range checks for each new input of the chain, but none for intermediate results; implying $4\cdot n$ fewer rows. 
+
+| Row(s)          | Gate type(s)                                          | Witness   |
+| --------------- | ----------------------------------------------------- | --------- |
+| 0               | public input row for soundness of bound overflow flag | $1$       |
+| 1..n            | `ForeignFieldAdd`                                     | $a_i+b_i$ |
+| n+1             | `ForeignFieldAdd`                                     |           |
+| n+2             | `Zero`                                                |           |
+| n+3..n+6        | `multi-range-check` for first left input              | $a_1$     |
+| n+7+4i..n+10+4i | `multi-range-check` for $i$-th right input            | $b_i$     |
+| 5n+7..5n+10     | `multi-range-check` for bound                         | $u$       |
+
+
+For more details see the Bound Addition section of the [Foreign Field Multiplication RFC](../rfcs/ffmul.md).
 
 ### Layout
 
@@ -254,8 +289,8 @@ For the full mode of tests of this gate, we need to perform 4 range checks to as
 | 4          | $b_1$ (copy)      |                   |
 | 5          | $b_2$ (copy)      |                   |
 | 6          | $q$               |
-| 7          | $c_0$             |
-| 8          | $c_1$             |
+| 7          | $c$               |
+| 8          |                   |
 | 9          |                   |
 | 10         |                   |
 | 11         |                   |

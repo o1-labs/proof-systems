@@ -13,13 +13,13 @@ use super::witness::FFOps;
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Create foreign field addition gate chain without range checks (needs to wire the range check for result bound manually)
-    ///     Inputs
-    ///         starting row
-    ///         operations to perform
-    ///         modulus of the foreign field
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
+    /// - Inputs
+    ///   - starting row
+    ///   - operations to perform
+    ///   - modulus of the foreign field
+    /// - Outputs tuple (next_row, circuit_gates) where
+    ///   - next_row      - next row after this gate
+    ///   - circuit_gates - vector of circuit gates comprising this gate
     ///
     /// Note that te final structure of the circuit is as follows:
     /// circuit_gates = [
@@ -46,10 +46,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Foreign field addition gates
         // ---------------------------
         // First the single-addition gates
-        for i in 0..num {
-            assert_ne!(opcodes[i], FFOps::Mul);
+        for (i, opcode) in opcodes.iter().enumerate() {
             let mut coeffs = foreign_field_modulus.to_vec();
-            coeffs.push(opcodes[i].sign::<F>());
+            coeffs.push(opcode.sign::<F>());
             circuit_gates.append(&mut vec![CircuitGate {
                 typ: GateType::ForeignFieldAdd,
                 wires: Wire::for_row(next_row + i),
@@ -75,17 +74,18 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     /// Create a single foreign field addition gate. This is used for example in the final bound check.
-    ///     Inputs
-    ///         starting row
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
+    /// - Inputs
+    ///   - starting row
+    ///   - operation to perform
+    ///   - modulus of the foreign field
+    /// - Outputs tuple (next_row, circuit_gates) where
+    ///   - next_row      - next row after this gate
+    ///   - circuit_gates - vector of circuit gates comprising this gate
     pub fn create_single_ffadd(
         start_row: usize,
         operation: FFOps,
         foreign_field_modulus: &BigUint,
     ) -> (usize, Vec<Self>) {
-        assert_ne!(operation, FFOps::Mul);
         let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let mut coeffs = foreign_field_modulus.to_vec();
         coeffs.push(operation.sign::<F>());
@@ -106,6 +106,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     /// Extend a chain of foreign field addition gates. It already wires the public input to the overflow cell.
+    /// - Inputs
+    ///   - gates: vector of gates to extend
+    ///   - pub_row: row of the public input
+    ///   - curr_row: mutable reference to the current row
+    ///   - opcodes: operations to perform
+    ///   - foreign_field_modulus: modulus of the foreign field
     pub fn extend_chain_ffadd(
         gates: &mut Vec<Self>,
         pub_row: usize,

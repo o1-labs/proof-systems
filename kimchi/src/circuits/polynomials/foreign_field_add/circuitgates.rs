@@ -7,7 +7,7 @@ use crate::circuits::{
 };
 use ark_ff::PrimeField;
 use o1_utils::LIMB_COUNT;
-use std::marker::PhantomData;
+use std::{array, marker::PhantomData};
 
 //~ These circuit gates are used to constrain that
 //~
@@ -134,10 +134,10 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 5;
+    const CONSTRAINTS: u32 = 4;
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let foreign_modulus: [T; LIMB_COUNT] = [env.coeff(0), env.coeff(1), env.coeff(2)];
+        let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved
         // this reduces the number of copy constraints needed to check the operation
@@ -163,14 +163,12 @@ where
         let result_mi = env.witness_next(1);
         let result_hi = env.witness_next(2);
 
-        // Field overflow and sign constraints
-        let mut checks = vec![
-            // Sign flag is 1 or -1
-            // NOTE: not sure if we really need to check this, as it is part of the relation
-            (sign.clone() + T::one()) * (sign.clone() - T::one()),
-            // Field overflow bit is 0 or s.
-            field_overflow.clone() * (field_overflow.clone() - sign.clone()),
-        ];
+        // Sign flag is 1 or -1
+        // NOTE: we used to check this because sign was in the witness,
+        // but now it is publicly checkable as part of the relation itself
+
+        // Field overflow flag is 0 or s
+        let mut checks = vec![field_overflow.clone() * (field_overflow.clone() - sign.clone())];
 
         // Constraints to check the carry flag is -1, 0, or 1.
         checks.push(is_carry(&carry));
