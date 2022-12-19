@@ -1293,7 +1293,7 @@ left_input2 =&gt; a2  right_input2 =&gt; b2  quotient2 =&gt; q2  remainder2 =&gt
    carry0 =&gt; v0            carry1_lo =&gt; v10          carry1_hi =&gt; v11
    quotient_bound0 =&gt; q'0  quotient_bound12 =&gt; q'12
 
-  quotient_bound_carry0 =&gt; q'_carry0 quotient_bound_carry12 = q'_carry12
+                   quotient_bound_carry =&gt; q'_carry01
 </code></pre>
 <h5 id="suffixes"><a class="header" href="#suffixes">Suffixes</a></h5>
 <p>The variable names in this code uses descriptive suffixes to convey information about the
@@ -1326,8 +1326,7 @@ would be split into <code>x1_lo_0</code> and <code>x1_lo_1</code>.</p>
 <li><code>product1_hi_0</code> := lowest 88 bits of middle intermediate product’s highest 88 + 2 bits</li>
 <li><code>product1_hi_1</code> := highest 2 bits of middle intermediate product</li>
 <li><code>quotient_bound</code> := quotient bound for checking <code>q &lt; f</code></li>
-<li><code>quotient_bound_carry01</code> := quotient bound addition 1st carry bit</li>
-<li><code>quotient_bound_carry2</code> := quotient bound addition 2nd carry bit</li>
+<li><code>quotient_bound_carry</code> := quotient bound addition carry bit</li>
 </ul>
 <h5 id="layout-1"><a class="header" href="#layout-1">Layout</a></h5>
 <p>The foreign field multiplication gate’s rows are laid out like this</p>
@@ -1339,13 +1338,13 @@ would be split into <code>x1_lo_0</code> and <code>x1_lo_1</code>.</p>
 <tr><td>4</td><td><code>right_input1</code>        (copy)</td><td><code>quotient_bound2</code>  (copy)</td></tr>
 <tr><td>5</td><td><code>right_input2</code>        (copy)</td><td><code>product1_lo</code>      (copy)</td></tr>
 <tr><td>6</td><td><code>carry1_lo</code>           (copy)</td><td><code>product1_hi_0</code>    (copy)</td></tr>
-<tr><td>7</td><td><code>carry1_hi</code>        (plookup)</td><td><code>product1_hi_1</code></td></tr>
+<tr><td>7</td><td><code>carry1_hi</code>        (plookup)</td><td></td></tr>
 <tr><td>8</td><td><code>carry0</code></td><td></td></tr>
 <tr><td>9</td><td><code>quotient0</code></td><td></td></tr>
 <tr><td>10</td><td><code>quotient1</code></td><td></td></tr>
 <tr><td>11</td><td><code>quotient2</code></td><td></td></tr>
-<tr><td>12</td><td><code>quotient_bound_carry01</code></td><td></td></tr>
-<tr><td>13</td><td><code>quotient_bound_carry2</code></td><td></td></tr>
+<tr><td>12</td><td><code>quotient_bound_carry</code></td><td></td></tr>
+<tr><td>13</td><td><code>product1_hi_1</code></td><td></td></tr>
 <tr><td>14</td><td></td><td></td></tr>
 </tbody></table>
 </div>

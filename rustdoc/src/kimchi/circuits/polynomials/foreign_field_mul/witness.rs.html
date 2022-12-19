@@ -301,8 +301,6 @@
 <a href="#301" id="301">301</a>
 <a href="#302" id="302">302</a>
 <a href="#303" id="303">303</a>
-<a href="#304" id="304">304</a>
-<a href="#305" id="305">305</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication witness computation
 
 </span><span class="kw">use crate</span>::{
@@ -318,8 +316,11 @@
 <span class="kw">use </span>num_bigint::BigUint;
 <span class="kw">use </span>num_integer::Integer;
 
-<span class="kw">use </span>o1_utils::foreign_field::{
-    BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+<span class="kw">use </span>o1_utils::{
+    foreign_field::{
+        BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+    },
+    BigUintFieldHelpers,
 };
 <span class="kw">use </span>std::array;
 
@@ -362,8 +363,8 @@
             VariableCell::create(<span class="string">&quot;quotient0&quot;</span>),
             VariableCell::create(<span class="string">&quot;quotient1&quot;</span>),
             VariableCell::create(<span class="string">&quot;quotient2&quot;</span>),
-            VariableCell::create(<span class="string">&quot;quotient_bound_carry01&quot;</span>),
-            VariableCell::create(<span class="string">&quot;quotient_bound_carry2&quot;</span>),
+            VariableCell::create(<span class="string">&quot;quotient_bound_carry&quot;</span>),
+            VariableCell::create(<span class="string">&quot;product1_hi_1&quot;</span>),
             ConstantCell::create(F::zero()),
         ],
         <span class="comment">// Zero row
@@ -376,7 +377,7 @@
             VariableCell::create(<span class="string">&quot;quotient_bound2&quot;</span>),
             VariableCell::create(<span class="string">&quot;product1_lo&quot;</span>), <span class="comment">// Copied for multi-range-check
             </span>VariableCell::create(<span class="string">&quot;product1_hi_0&quot;</span>), <span class="comment">// Copied for multi-range-check
-            </span>VariableCell::create(<span class="string">&quot;product1_hi_1&quot;</span>),
+            </span>ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -442,23 +443,19 @@
     .to_fields()
 }
 
-<span class="kw">fn </span>compute_bound_witness_variables&lt;F: PrimeField&gt;(
+<span class="kw">fn </span>compute_bound_witness_carry&lt;F: PrimeField&gt;(
     sums: <span class="kw-2">&amp;</span>[BigUint; <span class="number">2</span>],  <span class="comment">// [sum01, sum2]
     </span>bound: <span class="kw-2">&amp;</span>[BigUint; <span class="number">2</span>], <span class="comment">// [bound01, bound2]
-</span>) -&gt; [F; <span class="number">2</span>] {
+</span>) -&gt; F {
     <span class="macro">auto_clone_array!</span>(sums);
     <span class="macro">auto_clone_array!</span>(bound);
 
     <span class="comment">// C9: witness data is created by externally by called and multi-range-check gate
 
     // C10-C11: Compute q&#39;_carry01 = (s01 - q&#39;01)/2^2L
-    </span><span class="kw">let </span>(quotient_bound_carry01, <span class="kw">_</span>) = (sums(<span class="number">0</span>) - bound(<span class="number">0</span>)).div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_2limb());
+    </span><span class="kw">let </span>(quotient_bound_carry, <span class="kw">_</span>) = (sums(<span class="number">0</span>) - bound(<span class="number">0</span>)).div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_2limb());
 
-    <span class="comment">// C12-C13: Compute q&#39;_carry2 = (s2 + q&#39;_carry01 - q&#39;2)/2^L
-    </span><span class="kw">let </span>(quotient_bound_carry2, <span class="kw">_</span>) =
-        (sums(<span class="number">1</span>) + quotient_bound_carry01.clone() - bound(<span class="number">1</span>)).div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_limb());
-
-    [quotient_bound_carry01, quotient_bound_carry2].to_fields()
+    quotient_bound_carry.to_field::&lt;F&gt;().unwrap()
 }
 
 <span class="doccomment">/// Create a foreign field multiplication witness
@@ -508,8 +505,8 @@
     external_checks.add_bound_check(<span class="kw-2">&amp;</span>remainder.to_field_limbs());
 
     <span class="comment">// Compute quotient bound addition witness variables
-    </span><span class="kw">let </span>[quotient_bound_carry01, quotient_bound_carry2] =
-        compute_bound_witness_variables(<span class="kw-2">&amp;</span>sums.to_biguints(), <span class="kw-2">&amp;</span>quotient_bound.to_compact_limbs());
+    </span><span class="kw">let </span>quotient_bound_carry =
+        compute_bound_witness_carry(<span class="kw-2">&amp;</span>sums.to_biguints(), <span class="kw-2">&amp;</span>quotient_bound.to_compact_limbs());
 
     <span class="comment">// Extend the witness by two rows for foreign field multiplication
     </span><span class="kw">for </span>w <span class="kw">in </span><span class="kw-2">&amp;mut </span>witness {
@@ -540,15 +537,14 @@
             <span class="string">&quot;quotient0&quot; </span>=&gt; quotient[<span class="number">0</span>],
             <span class="string">&quot;quotient1&quot; </span>=&gt; quotient[<span class="number">1</span>],
             <span class="string">&quot;quotient2&quot; </span>=&gt; quotient[<span class="number">2</span>],
-            <span class="string">&quot;quotient_bound_carry01&quot; </span>=&gt; quotient_bound_carry01,
+            <span class="string">&quot;quotient_bound_carry&quot; </span>=&gt; quotient_bound_carry,
             <span class="string">&quot;remainder0&quot; </span>=&gt; remainder[<span class="number">0</span>],
             <span class="string">&quot;remainder1&quot; </span>=&gt; remainder[<span class="number">1</span>],
             <span class="string">&quot;remainder2&quot; </span>=&gt; remainder[<span class="number">2</span>],
             <span class="string">&quot;quotient_bound01&quot; </span>=&gt; quotient_bound[<span class="number">0</span>],
             <span class="string">&quot;quotient_bound2&quot; </span>=&gt; quotient_bound[<span class="number">1</span>],
             <span class="string">&quot;product1_lo&quot; </span>=&gt; product1_lo,
-            <span class="string">&quot;product1_hi_0&quot; </span>=&gt; product1_hi_0,
-            <span class="string">&quot;quotient_bound_carry2&quot; </span>=&gt; quotient_bound_carry2
+            <span class="string">&quot;product1_hi_0&quot; </span>=&gt; product1_hi_0
         ],
     );
 

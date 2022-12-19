@@ -358,14 +358,6 @@
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication
 
 </span><span class="comment">//~ This gadget is used to constrain that
@@ -395,7 +387,7 @@
 //~    carry0 =&gt; v0            carry1_lo =&gt; v10          carry1_hi =&gt; v11
 //~    quotient_bound0 =&gt; q&#39;0  quotient_bound12 =&gt; q&#39;12
 //~
-//~   quotient_bound_carry0 =&gt; q&#39;_carry0 quotient_bound_carry12 = q&#39;_carry12
+//~                    quotient_bound_carry =&gt; q&#39;_carry01
 //~ ````
 //~
 //~ ##### Suffixes
@@ -433,8 +425,7 @@
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product&#39;s highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
 //~ * `quotient_bound` := quotient bound for checking `q &lt; f`
-//~ * `quotient_bound_carry01` := quotient bound addition 1st carry bit
-//~ * `quotient_bound_carry2` := quotient bound addition 2nd carry bit
+//~ * `quotient_bound_carry` := quotient bound addition carry bit
 //~
 //~ ##### Layout
 //~
@@ -449,13 +440,13 @@
 //~ |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 //~ |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 //~ |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-//~ |   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
+//~ |   7 | `carry1_hi`        (plookup) |                           |
 //~ |   8 | `carry0`                     |                           |
 //~ |   9 | `quotient0`                  |                           |
 //~ |  10 | `quotient1`                  |                           |
 //~ |  11 | `quotient2`                  |                           |
-//~ |  12 | `quotient_bound_carry01`     |                           |
-//~ |  13 | `quotient_bound_carry2`      |                           |
+//~ |  12 | `quotient_bound_carry`       |                           |
+//~ |  13 | `product1_hi_1`              |                           |
 //~ |  14 |                              |                           |
 //~
 
@@ -572,7 +563,7 @@
     </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">10</span>;
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">9</span>;
     <span class="comment">// DEGREE is 4
 
     </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
@@ -614,9 +605,8 @@
             env.witness_curr(<span class="number">11</span>),
         ];
 
-        <span class="comment">// Carry bits for quotient_bound_carry01 and quotient_bound_carry2
-        </span><span class="kw">let </span>quotient_bound_carry01 = env.witness_curr(<span class="number">12</span>);
-        <span class="kw">let </span>quotient_bound_carry2 = env.witness_curr(<span class="number">13</span>);
+        <span class="comment">// Carry bits for quotient_bound_carry and quotient_bound_carry2
+        </span><span class="kw">let </span>quotient_bound_carry = env.witness_curr(<span class="number">12</span>);
 
         <span class="comment">// Remainder r (a.k.a. result)
         </span><span class="kw">let </span>remainder = [
@@ -633,7 +623,7 @@
         <span class="comment">// Decomposition of the middle intermediate product
         </span><span class="kw">let </span>product1_lo = env.witness_next(<span class="number">5</span>); <span class="comment">// Copied for multi-range-check
         </span><span class="kw">let </span>product1_hi_0 = env.witness_next(<span class="number">6</span>); <span class="comment">// Copied for multi-range-check
-        </span><span class="kw">let </span>product1_hi_1 = env.witness_next(<span class="number">7</span>);
+        </span><span class="kw">let </span>product1_hi_1 = env.witness_curr(<span class="number">13</span>);
 
         <span class="comment">// Foreign field modulus limbs
         </span><span class="kw">let </span>foreign_field_modulus = array::from_fn(|i| env.coeff(i));
@@ -716,20 +706,14 @@
         //      configured to constrain q&#39;12
 
         // C10: Constrain q&#39;_carry01 is boolean
-        </span>constraints.push(quotient_bound_carry01.boolean());
+        </span>constraints.push(quotient_bound_carry.boolean());
 
-        <span class="comment">// C11: Constrain that  2^2L * q&#39;_carry01 = s01 - q&#39;01
+        <span class="comment">// C11: Constrain that 2^2L * q&#39;_carry01 = s01 - q&#39;01
         </span>constraints
-            .push(T::two_to_2limb() * quotient_bound_carry01.clone() - sum01 + quotient_bound01);
+            .push(T::two_to_2limb() * quotient_bound_carry.clone() - sum01 + quotient_bound01);
 
-        <span class="comment">// C12: Constrain q&#39;_carry2 is boolean
-        </span>constraints.push(quotient_bound_carry2.boolean());
-
-        <span class="comment">// C13: Constrain that 2^L * q&#39;_carry2 = s2 + q&#39;_carry01 - q&#39;2
-        </span>constraints.push(
-            T::two_to_limb() * quotient_bound_carry2 - sum2 - quotient_bound_carry01
-                + quotient_bound2,
-        );
+        <span class="comment">// C12: Constrain that q&#39;_2 = s2 + q&#39;_carry01
+        </span>constraints.push(quotient_bound2 - sum2 - quotient_bound_carry);
 
         constraints
     }
