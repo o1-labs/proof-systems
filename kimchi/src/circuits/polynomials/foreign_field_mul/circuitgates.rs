@@ -27,7 +27,7 @@
 //~    carry0 => v0            carry1_lo => v10          carry1_hi => v11
 //~    quotient_bound0 => q'0  quotient_bound12 => q'12
 //~
-//~                    quotient_bound_carry01 => q'_carry01
+//~                    quotient_bound_carry => q'_carry01
 //~ ````
 //~
 //~ ##### Suffixes
@@ -65,7 +65,7 @@
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
 //~ * `quotient_bound` := quotient bound for checking `q < f`
-//~ * `quotient_bound_carry01` := quotient bound addition carry bit
+//~ * `quotient_bound_carry` := quotient bound addition carry bit
 //~
 //~ ##### Layout
 //~
@@ -85,7 +85,7 @@
 //~ |   9 | `quotient0`                  |                           |
 //~ |  10 | `quotient1`                  |                           |
 //~ |  11 | `quotient2`                  |                           |
-//~ |  12 | `quotient_bound_carry01`     |                           |
+//~ |  12 | `quotient_bound_carry`       |                           |
 //~ |  13 | `product1_hi_1`              |                           |
 //~ |  14 |                              |                           |
 //~
@@ -245,8 +245,8 @@ where
             env.witness_curr(11),
         ];
 
-        // Carry bits for quotient_bound_carry01 and quotient_bound_carry2
-        let quotient_bound_carry01 = env.witness_curr(12);
+        // Carry bits for quotient_bound_carry and quotient_bound_carry2
+        let quotient_bound_carry = env.witness_curr(12);
 
         // Remainder r (a.k.a. result)
         let remainder = [
@@ -346,14 +346,14 @@ where
         //      configured to constrain q'12
 
         // C10: Constrain q'_carry01 is boolean
-        constraints.push(quotient_bound_carry01.boolean());
+        constraints.push(quotient_bound_carry.boolean());
 
         // C11: Constrain that 2^2L * q'_carry01 = s01 - q'01
         constraints
-            .push(T::two_to_2limb() * quotient_bound_carry01.clone() - sum01 + quotient_bound01);
+            .push(T::two_to_2limb() * quotient_bound_carry.clone() - sum01 + quotient_bound01);
 
         // C12: Constrain that q'_2 = s2 + q'_carry01
-        constraints.push(quotient_bound2 - sum2 - quotient_bound_carry01);
+        constraints.push(quotient_bound2 - sum2 - quotient_bound_carry);
 
         constraints
     }

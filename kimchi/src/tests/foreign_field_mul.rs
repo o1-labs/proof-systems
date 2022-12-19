@@ -486,7 +486,7 @@ where
         //     Triggering constraint C8 is challenging, so this is done with
         //     the test_native_modulus_constraint() test below
 
-        // Test 7th constraint (C10): invalidate q'_carry01 is boolean
+        // Test 7th constraint (C10): invalidate q'_carry is boolean
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -494,7 +494,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 12), G::ScalarField::from(2u32))], // Make q'_carry01 non-boolean
+            vec![((0, 12), G::ScalarField::from(2u32))], // Make q'_carry non-boolean
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -513,7 +513,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 12), G::ScalarField::one())], // Make q'_carry01 invalid
+            vec![((0, 12), G::ScalarField::one())], // Make q'_carry invalid
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -1352,7 +1352,7 @@ fn test_constraint_c12() {
         &BigUint::zero(),
         &secp256k1_modulus(),
         vec![
-            ((0, 12), PallasField::one()), // invalidate q'_carry01
+            ((0, 12), PallasField::one()), // invalidate q'_carry
             (
                 (1, 3),
                 PallasField::from_bytes(&[

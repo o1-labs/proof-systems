@@ -942,7 +942,7 @@ Checks (10) and (11) can be combined into a single constraint $2^{\ell} \cdot q'
 
 Finally, there is one more optimization that we will exploit.  This optimization relies on the observation that for bound addition the second carry bit $q'_{carry2}$ is always zero.  This this may be obscure, so we will prove it by contradiction.  To simplify our work we rename some variables by letting $x_0 = q_{01}$ and $x_1 = q_2$.  Thus, $q'_{carry2}$ being non-zero corresponds to a carry in $x_1 + f'_1$.
 
-> **Proof:** To get an carry in the highest limbs $x_1 + f'_1$ during bound addition, we need
+> **Proof:** To get a carry in the highest limbs $x_1 + f'_1$ during bound addition, we need
 >
 > $$
 > 2^{\ell} < x_1 + \phi_0 + f'_1 \le 2^{\ell} - 1 + \phi_0 + f'_1
