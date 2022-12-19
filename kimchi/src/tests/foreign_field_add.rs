@@ -159,17 +159,17 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Check if a given circuit gate is a given foreign field operation
     pub fn check_ffadd_sign(&self, sign: FFOps) -> Result<(), String> {
         if self.typ != GateType::ForeignFieldAdd {
-            return Err(format!("Gate is not a foreign field add gate"));
+            return Err("Gate is not a foreign field add gate".to_string());
         }
         match sign {
             FFOps::Add => {
                 if self.coeffs[3] != F::one() {
-                    return Err(format!("Gate is not performing addition"));
+                    return Err("Gate is not performing addition".to_string());
                 }
             }
             FFOps::Sub => {
                 if self.coeffs[3] != -F::one() {
-                    return Err(format!("Gate is not performing subtraction"));
+                    return Err("Gate is not performing subtraction".to_string());
                 }
             }
         }
@@ -1097,7 +1097,7 @@ fn test_bad_bound() {
     index.cs.gates[2].coeffs[3] = -PallasField::two();
     assert_eq!(
         index.cs.gates[2].check_ffadd_sign(FFOps::Add),
-        Err(format!("Gate is not performing addition")),
+        Err("Gate is not performing addition".to_string()),
     );
     index.cs.gates[2].coeffs[3] = PallasField::one();
     // Modify overflow to check first the copy constraint and then the ovf constraint
