@@ -1347,7 +1347,7 @@ left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
    carry0 => v0            carry1_lo => v10          carry1_hi => v11
    quotient_bound0 => q'0  quotient_bound12 => q'12
 
-  quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
+                   quotient_bound_carry01 => q'_carry01
 ````
 
 ##### Suffixes
@@ -1385,8 +1385,7 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
 * `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry01` := quotient bound addition 1st carry bit
-* `quotient_bound_carry2` := quotient bound addition 2nd carry bit
+* `quotient_bound_carry01` := quotient bound addition carry bit
 
 ##### Layout
 
@@ -1401,13 +1400,13 @@ The foreign field multiplication gate's rows are laid out like this
 |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-|   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
+|   7 | `carry1_hi`        (plookup) |                           |
 |   8 | `carry0`                     |                           |
 |   9 | `quotient0`                  |                           |
 |  10 | `quotient1`                  |                           |
 |  11 | `quotient2`                  |                           |
 |  12 | `quotient_bound_carry01`     |                           |
-|  13 | `quotient_bound_carry2`      |                           |
+|  13 | `product1_hi_1`              |                           |
 |  14 |                              |                           |
 
 

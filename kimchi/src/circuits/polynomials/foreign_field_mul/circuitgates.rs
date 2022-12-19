@@ -27,7 +27,7 @@
 //~    carry0 => v0            carry1_lo => v10          carry1_hi => v11
 //~    quotient_bound0 => q'0  quotient_bound12 => q'12
 //~
-//~   quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
+//~                    quotient_bound_carry01 => q'_carry01
 //~ ````
 //~
 //~ ##### Suffixes
@@ -65,8 +65,7 @@
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
 //~ * `quotient_bound` := quotient bound for checking `q < f`
-//~ * `quotient_bound_carry01` := quotient bound addition 1st carry bit
-//~ * `quotient_bound_carry2` := quotient bound addition 2nd carry bit
+//~ * `quotient_bound_carry01` := quotient bound addition carry bit
 //~
 //~ ##### Layout
 //~
@@ -81,13 +80,13 @@
 //~ |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 //~ |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 //~ |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-//~ |   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
+//~ |   7 | `carry1_hi`        (plookup) |                           |
 //~ |   8 | `carry0`                     |                           |
 //~ |   9 | `quotient0`                  |                           |
 //~ |  10 | `quotient1`                  |                           |
 //~ |  11 | `quotient2`                  |                           |
 //~ |  12 | `quotient_bound_carry01`     |                           |
-//~ |  13 | `quotient_bound_carry2`      |                           |
+//~ |  13 | `product1_hi_1`              |                           |
 //~ |  14 |                              |                           |
 //~
 
@@ -204,7 +203,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 10;
+    const CONSTRAINTS: u32 = 9;
     // DEGREE is 4
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
@@ -248,7 +247,6 @@ where
 
         // Carry bits for quotient_bound_carry01 and quotient_bound_carry2
         let quotient_bound_carry01 = env.witness_curr(12);
-        let quotient_bound_carry2 = env.witness_curr(13);
 
         // Remainder r (a.k.a. result)
         let remainder = [
@@ -265,7 +263,7 @@ where
         // Decomposition of the middle intermediate product
         let product1_lo = env.witness_next(5); // Copied for multi-range-check
         let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
-        let product1_hi_1 = env.witness_next(7);
+        let product1_hi_1 = env.witness_curr(13);
 
         // Foreign field modulus limbs
         let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
@@ -350,18 +348,12 @@ where
         // C10: Constrain q'_carry01 is boolean
         constraints.push(quotient_bound_carry01.boolean());
 
-        // C11: Constrain that  2^2L * q'_carry01 = s01 - q'01
+        // C11: Constrain that 2^2L * q'_carry01 = s01 - q'01
         constraints
             .push(T::two_to_2limb() * quotient_bound_carry01.clone() - sum01 + quotient_bound01);
 
-        // C12: Constrain q'_carry2 is boolean
-        constraints.push(quotient_bound_carry2.boolean());
-
-        // C13: Constrain that 2^L * q'_carry2 = s2 + q'_carry01 - q'2
-        constraints.push(
-            T::two_to_limb() * quotient_bound_carry2 - sum2 - quotient_bound_carry01
-                + quotient_bound2,
-        );
+        // C12: Constrain that q'_2 = s2 + q'_carry01
+        constraints.push(quotient_bound2 - sum2 - quotient_bound_carry01);
 
         constraints
     }
