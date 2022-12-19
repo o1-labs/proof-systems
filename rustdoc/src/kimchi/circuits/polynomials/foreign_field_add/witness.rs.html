@@ -289,6 +289,11 @@
 <a href="#289" id="289">289</a>
 <a href="#290" id="290">290</a>
 <a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module computes the witness of a foreign field addition circuit.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::expr::constraints::compact_limb;
@@ -314,8 +319,17 @@
     </span>Add,
     <span class="doccomment">/// Subtraction
     </span>Sub,
-    <span class="doccomment">/// Multiplication
-    </span>Mul,
+}
+
+<span class="doccomment">/// Implementation of the FFOps enum
+</span><span class="kw">impl </span>FFOps {
+    <span class="doccomment">/// Returns the sign of the operation as a field element
+    </span><span class="kw">pub fn </span>sign&lt;F: PrimeField&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="kw">match </span><span class="self">self </span>{
+            FFOps::Add =&gt; F::one(),
+            FFOps::Sub =&gt; -F::one(),
+        }
+    }
 }
 
 <span class="comment">// Given a left and right inputs to an addition or subtraction, and a modulus, it computes
@@ -330,8 +344,6 @@
     opcode: FFOps,
     foreign_modulus: <span class="kw-2">&amp;</span>ForeignElement&lt;F, <span class="number">3</span>&gt;,
 ) -&gt; (ForeignElement&lt;F, <span class="number">3</span>&gt;, F, F, F) {
-    <span class="macro">assert_ne!</span>(opcode, FFOps::Mul);
-
     <span class="comment">// Compute bigint version of the inputs
     </span><span class="kw">let </span>left = left_input.to_biguint();
     <span class="kw">let </span>right = right_input.to_biguint();
@@ -406,13 +418,13 @@
     (result, sign, field_overflow, carry_bot)
 }
 
-<span class="doccomment">/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound) starting in zero row
+<span class="doccomment">/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound)
 /// inputs: list of all inputs to the chain of additions/subtractions
 /// opcode: true for addition, false for subtraction
 /// modulus: modulus of the foreign field
-</span><span class="kw">pub fn </span>create&lt;F: PrimeField&gt;(
+</span><span class="kw">pub fn </span>create_chain&lt;F: PrimeField&gt;(
     inputs: <span class="kw-2">&amp;</span>Vec&lt;BigUint&gt;,
-    opcodes: <span class="kw-2">&amp;</span>Vec&lt;FFOps&gt;,
+    opcodes: <span class="kw-2">&amp;</span>[FFOps],
     modulus: BigUint,
 ) -&gt; [Vec&lt;F&gt;; COLUMNS] {
     <span class="kw">let </span>num = inputs.len() - <span class="number">1</span>; <span class="comment">// number of chained additions
@@ -435,14 +447,13 @@
             w.extend(std::iter::repeat(F::zero()).take(<span class="number">1</span>));
         }
         <span class="kw">let </span>right = ForeignElement::from_biguint(inputs[i + <span class="number">1</span>].clone());
-        <span class="kw">let </span>(output, sign, ovf, carry) =
+        <span class="kw">let </span>(output, _sign, ovf, carry) =
             compute_ffadd_values(<span class="kw-2">&amp;</span>left, <span class="kw-2">&amp;</span>right, opcodes[i], <span class="kw-2">&amp;</span>foreign_modulus);
         init_ffadd_row(
             <span class="kw-2">&amp;mut </span>witness,
             i,
             left.limbs,
             [right[LO], right[MI], right[HI]],
-            sign,
             ovf,
             carry,
         );
@@ -459,7 +470,6 @@
     offset: usize,
     left: [F; <span class="number">3</span>],
     right: [F; <span class="number">3</span>],
-    sign: F,
     overflow: F,
     carry: F,
 ) {
@@ -472,10 +482,10 @@
             VariableCell::create(<span class="string">&quot;right_lo&quot;</span>),
             VariableCell::create(<span class="string">&quot;right_mi&quot;</span>),
             VariableCell::create(<span class="string">&quot;right_hi&quot;</span>),
-            VariableCell::create(<span class="string">&quot;sign&quot;</span>),
             VariableCell::create(<span class="string">&quot;overflow&quot;</span>), <span class="comment">// field_overflow
             </span>VariableCell::create(<span class="string">&quot;carry&quot;</span>),    <span class="comment">// carry bit
             </span>ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -488,7 +498,7 @@
         witness,
         offset,
         <span class="kw-2">&amp;</span>witness_shape,
-        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">&quot;left_lo&quot; </span>=&gt; left[LO], <span class="string">&quot;left_mi&quot; </span>=&gt; left[MI], <span class="string">&quot;left_hi&quot; </span>=&gt; left[HI], <span class="string">&quot;right_lo&quot; </span>=&gt; right[LO], <span class="string">&quot;right_mi&quot; </span>=&gt; right[MI], <span class="string">&quot;right_hi&quot; </span>=&gt; right[HI], <span class="string">&quot;sign&quot; </span>=&gt; sign, <span class="string">&quot;overflow&quot; </span>=&gt; overflow, <span class="string">&quot;carry&quot; </span>=&gt; carry],
+        <span class="kw-2">&amp;</span><span class="macro">variable_map!</span>[<span class="string">&quot;left_lo&quot; </span>=&gt; left[LO], <span class="string">&quot;left_mi&quot; </span>=&gt; left[MI], <span class="string">&quot;left_hi&quot; </span>=&gt; left[HI], <span class="string">&quot;right_lo&quot; </span>=&gt; right[LO], <span class="string">&quot;right_mi&quot; </span>=&gt; right[MI], <span class="string">&quot;right_hi&quot; </span>=&gt; right[HI], <span class="string">&quot;overflow&quot; </span>=&gt; overflow, <span class="string">&quot;carry&quot; </span>=&gt; carry],
     );
 }
 
@@ -508,9 +518,9 @@
             ConstantCell::create(F::zero()),        <span class="comment">// 0
             </span>ConstantCell::create(F::zero()),        <span class="comment">// 0
             </span>ConstantCell::create(F::two_to_limb()), <span class="comment">// 2^88
-            </span>ConstantCell::create(F::one()),         <span class="comment">// sign
             </span>ConstantCell::create(F::one()),         <span class="comment">// field_overflow
             </span>VariableCell::create(<span class="string">&quot;carry&quot;</span>),
+            ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),

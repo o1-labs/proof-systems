@@ -100,6 +100,46 @@
 <a href="#100" id="100">100</a>
 <a href="#101" id="101">101</a>
 <a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
 </span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
@@ -107,18 +147,21 @@
 <span class="kw">use </span>o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
-    gate::{CircuitGate, GateType},
+    gate::{CircuitGate, Connect, GateType},
     wires::Wire,
 };
 
+<span class="kw">use </span><span class="kw">super</span>::witness::FFOps;
+
 <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
     <span class="doccomment">/// Create foreign field addition gate chain without range checks (needs to wire the range check for result bound manually)
-    ///     Inputs
-    ///         starting row
-    ///         number of addition gates
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
+    /// - Inputs
+    ///   - starting row
+    ///   - operations to perform
+    ///   - modulus of the foreign field
+    /// - Outputs tuple (next_row, circuit_gates) where
+    ///   - next_row      - next row after this gate
+    ///   - circuit_gates - vector of circuit gates comprising this gate
     ///
     /// Note that te final structure of the circuit is as follows:
     /// circuit_gates = [
@@ -129,31 +172,39 @@
     ///      [n+1]         -&gt; 1 Zero row for bound result
     /// ]
     ///
-    </span><span class="kw">pub fn </span>create(
+    /// INTEGRATION:
+    /// - Wire the range check for result bound manually
+    /// - Connect to public input containing the 1 value for the overflow in the final bound check
+    </span><span class="kw">pub fn </span>create_chain_ffadd(
         start_row: usize,
-        num: usize,
+        opcodes: <span class="kw-2">&amp;</span>[FFOps],
         foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
     ) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
         <span class="kw">let </span>next_row = start_row;
         <span class="kw">let </span>foreign_field_modulus = foreign_field_modulus.to_field_limbs::&lt;F&gt;();
         <span class="kw">let </span><span class="kw-2">mut </span>circuit_gates = <span class="macro">vec!</span>[];
-
-        <span class="comment">// Foreign field addition gates
+        <span class="kw">let </span>num = opcodes.len();
+        <span class="comment">// ---------------------------
+        // Foreign field addition gates
         // ---------------------------
         // First the single-addition gates
-        </span><span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..num {
+        </span><span class="kw">for </span>(i, opcode) <span class="kw">in </span>opcodes.iter().enumerate() {
+            <span class="kw">let </span><span class="kw-2">mut </span>coeffs = foreign_field_modulus.to_vec();
+            coeffs.push(opcode.sign::&lt;F&gt;());
             circuit_gates.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[CircuitGate {
                 typ: GateType::ForeignFieldAdd,
                 wires: Wire::for_row(next_row + i),
-                coeffs: foreign_field_modulus.to_vec(),
+                coeffs,
             }]);
         }
+        <span class="kw">let </span><span class="kw-2">mut </span>final_coeffs = foreign_field_modulus.to_vec();
+        final_coeffs.push(FFOps::Add.sign::&lt;F&gt;());
         <span class="comment">// Then the final bound gate and the zero gate
         </span>circuit_gates.append(<span class="kw-2">&amp;mut </span><span class="macro">vec!</span>[
             CircuitGate {
                 typ: GateType::ForeignFieldAdd,
                 wires: Wire::for_row(next_row + num),
-                coeffs: foreign_field_modulus.to_vec(),
+                coeffs: final_coeffs,
             },
             CircuitGate {
                 typ: GateType::Zero,
@@ -164,22 +215,27 @@
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    <span class="doccomment">/// Create a single foreign field addition gate
-    ///     Inputs
-    ///         starting row
-    ///     Outputs tuple (next_row, circuit_gates) where
-    ///       next_row      - next row after this gate
-    ///       circuit_gates - vector of circuit gates comprising this gate
+    <span class="doccomment">/// Create a single foreign field addition gate. This is used for example in the final bound check.
+    /// - Inputs
+    ///   - starting row
+    ///   - operation to perform
+    ///   - modulus of the foreign field
+    /// - Outputs tuple (next_row, circuit_gates) where
+    ///   - next_row      - next row after this gate
+    ///   - circuit_gates - vector of circuit gates comprising this gate
     </span><span class="kw">pub fn </span>create_single_ffadd(
         start_row: usize,
+        operation: FFOps,
         foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
     ) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
         <span class="kw">let </span>foreign_field_modulus = foreign_field_modulus.to_field_limbs::&lt;F&gt;();
+        <span class="kw">let </span><span class="kw-2">mut </span>coeffs = foreign_field_modulus.to_vec();
+        coeffs.push(operation.sign::&lt;F&gt;());
         <span class="kw">let </span>circuit_gates = <span class="macro">vec!</span>[
             CircuitGate {
                 typ: GateType::ForeignFieldAdd,
                 wires: Wire::for_row(start_row),
-                coeffs: foreign_field_modulus.to_vec(),
+                coeffs,
             },
             CircuitGate {
                 typ: GateType::Zero,
@@ -191,15 +247,39 @@
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    <span class="doccomment">/// Create foreign field addition gate by extending the existing gates
-    </span><span class="kw">pub fn </span>extend_single_foreign_field_add(
+    <span class="doccomment">/// Extend a chain of foreign field addition gates. It already wires the public input to the overflow cell.
+    /// - Inputs
+    ///   - gates: vector of gates to extend
+    ///   - pub_row: row of the public input
+    ///   - curr_row: mutable reference to the current row
+    ///   - opcodes: operations to perform
+    ///   - foreign_field_modulus: modulus of the foreign field
+    </span><span class="kw">pub fn </span>extend_chain_ffadd(
         gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
+        pub_row: usize,
         curr_row: <span class="kw-2">&amp;mut </span>usize,
+        opcodes: <span class="kw-2">&amp;</span>[FFOps],
         foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
     ) {
-        <span class="kw">let </span>(next_row, circuit_gates) = <span class="self">Self</span>::create_single_ffadd(<span class="kw-2">*</span>curr_row, foreign_field_modulus);
+        <span class="kw">let </span>(next_row, add_gates) =
+            <span class="self">Self</span>::create_chain_ffadd(<span class="kw-2">*</span>curr_row, opcodes, foreign_field_modulus);
+        gates.extend_from_slice(<span class="kw-2">&amp;</span>add_gates);
         <span class="kw-2">*</span>curr_row = next_row;
-        gates.extend_from_slice(<span class="kw-2">&amp;</span>circuit_gates);
+        <span class="comment">// check overflow flag is one
+        </span>gates.connect_cell_pair((pub_row, <span class="number">0</span>), (<span class="kw-2">*</span>curr_row - <span class="number">2</span>, <span class="number">6</span>));
+    }
+
+    <span class="doccomment">/// Extend a single foreign field addition gate followed by a zero row containing the result
+    </span><span class="kw">pub fn </span>extend_single_ffadd(
+        gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
+        curr_row: <span class="kw-2">&amp;mut </span>usize,
+        operation: FFOps,
+        foreign_field_modulus: <span class="kw-2">&amp;</span>BigUint,
+    ) {
+        <span class="kw">let </span>(next_row, add_gates) =
+            <span class="self">Self</span>::create_single_ffadd(<span class="kw-2">*</span>curr_row, operation, foreign_field_modulus);
+        <span class="kw-2">*</span>curr_row = next_row;
+        gates.extend_from_slice(<span class="kw-2">&amp;</span>add_gates);
     }
 }
 </code></pre></div>
