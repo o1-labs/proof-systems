@@ -297,8 +297,8 @@ where
 ///
 /// However, this is a contradiction with the definition of our negated foreign field modulus limb f'1 = 2^L - f1.
 ///
-/// TODO: This proof probably means, since they are never used, we can safely remove the witness for the carry bit of
-///       addition of the most significant bound addition limbs and the corresponding constraint.
+/// This proof means that, since they are never used, we can safely remove the witness for the carry bit of
+/// addition of the most significant bound addition limbs and its corresponding boolean constraint.
 pub fn rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     rng: &mut StdRng,
     foreign_field_modulus: &BigUint,
@@ -396,7 +396,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((1, 7), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
+            vec![((0, 13), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -487,7 +487,7 @@ where
         //     Triggering constraint C8 is challenging, so this is done with
         //     the test_native_modulus_constraint() test below
 
-        // Test 7th constraint (C10): invalidate q'_carry01 is boolean
+        // Test 7th constraint (C10): invalidate q'_carry is boolean
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -495,7 +495,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 12), G::ScalarField::from(2u32))], // Make q'_carry01 non-boolean
+            vec![((0, 12), G::ScalarField::from(2u32))], // Make q'_carry non-boolean
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -514,7 +514,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 12), G::ScalarField::from(1u32))], // Make q'_carry01 invalid
+            vec![((0, 12), G::ScalarField::one())], // Make q'_carry invalid
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -525,7 +525,7 @@ where
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
         );
 
-        // Test 9th constraint (C12): invalidate q'_carry2 is boolean
+        // Test 9th constraint (C12): invalidate second bound addition zero check
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -533,7 +533,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 13), G::ScalarField::from(2u32))], // Make q'_carry2 non-boolean
+            vec![((1, 4), G::ScalarField::zero())], // Make quotient_bound2 invalid
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -542,25 +542,6 @@ where
         assert_eq!(
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
-        );
-
-        // Test 10th constraint (C13): invalidate second bound addition zero check
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            foreign_field_modulus,
-            vec![((0, 13), G::ScalarField::one())], // invalidate q'_carry2
-        );
-        assert_eq!(
-            (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
     }
 }
@@ -1135,7 +1116,7 @@ fn test_random_multiplicands_valid() {
 
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
-            false,
+            true,
             false,
             &left_input,
             &right_input,
@@ -1163,7 +1144,7 @@ fn test_smaller_foreign_field_modulus() {
 
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
-            false,
+            true,
             false,
             &left_input,
             &right_input,
@@ -1358,5 +1339,33 @@ fn test_native_modulus_constraint() {
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
+    );
+}
+
+#[test]
+fn test_constraint_c12() {
+    // Attack C12 (i.e. the 9th custom constraint) another way
+    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        false,
+        false,
+        false,
+        &BigUint::zero(),
+        &BigUint::zero(),
+        &secp256k1_modulus(),
+        vec![
+            ((0, 12), PallasField::one()), // invalidate q'_carry
+            (
+                (1, 3),
+                PallasField::from_bytes(&[
+                    210, 3, 0, 0, 238, 48, 45, 153, 27, 249, 76, 9, 252, 152, 70, 34, 0, 0, 0, 0,
+                    0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63,
+                ])
+                .unwrap(),
+            ), // Pacify 8th constraint by getting s01 - q'01 to cancel
+        ],
+    );
+    assert_eq!(
+        result,
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
     );
 }
