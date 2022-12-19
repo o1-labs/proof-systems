@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::{foreign_field_mul, range_check},
+        polynomials::{foreign_field_add::witness::FFOps, foreign_field_mul, range_check},
         wires::Wire,
     },
     curve::KimchiCurve,
@@ -109,9 +109,10 @@ where
         //     20-23 multi-range-check (quotient range check)
 
         // Bound addition for multiplication result
-        CircuitGate::extend_single_foreign_field_add(
+        CircuitGate::extend_single_ffadd(
             &mut gates,
             &mut next_row,
+            FFOps::Add,
             foreign_field_modulus,
         );
         gates.connect_cell_pair((1, 0), (2, 0));

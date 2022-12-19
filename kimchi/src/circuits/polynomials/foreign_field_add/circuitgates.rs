@@ -90,40 +90,39 @@ use std::{array, marker::PhantomData};
 //~
 //~ ##### Layout
 //~
-//~ You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+//~ The sign of the operation (whether it is an addition or a subtraction) is stored in the fourth coefficient as
+//~ a value +1 (for addition) or -1 (for subtraction). The first 3 coefficients are the 3 limbs of the foreign modulus.
+//~ One could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 //~
-//~ | col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-//~ | --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
-//~ |   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
-//~ |   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
-//~ |   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
-//~ |   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
-//~ |   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
-//~ |   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
-//~ |   6 | `sign`           (copy) |                         |  1              (check) |                   |
-//~ |   7 | `field_overflow`        |                         |  1              (check) |                   |
-//~ |   8 | `carry`                 |                         | `bound_carry`           |                   |
-//~ |   9 |                         |                         |                         |                   |
-//~ |  10 |                         |                         |                         |                   |
-//~ |  11 |                         |                         |                         |                   |
-//~ |  12 |                         |                         |                         |                   |
-//~ |  13 |                         |                         |                         |                   |
-//~ |  14 |                         |                         |                         |                   |
+//~ | col | `ForeignFieldAdd`        | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+//~ | --- | ------------------------ | ----------------------- | ----------------------- | ----------------- |
+//~ |   0 | `left_input_lo`  (copy)  | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+//~ |   1 | `left_input_mi`  (copy)  | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+//~ |   2 | `left_input_hi`  (copy)  | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+//~ |   3 | `right_input_lo` (copy)  |                         |  0              (check) |                   |
+//~ |   4 | `right_input_mi` (copy)  |                         |  0              (check) |                   |
+//~ |   5 | `right_input_hi` (copy)  |                         |  2^88           (check) |                   |
+//~ |   6 | `field_overflow` (copy?) |                         |  1              (check) |                   |
+//~ |   7 | `carry`                  |                         | `bound_carry`           |                   |
+//~ |   8 |                          |                         |                         |                   |
+//~ |   9 |                          |                         |                         |                   |
+//~ |  10 |                          |                         |                         |                   |
+//~ |  11 |                          |                         |                         |                   |
+//~ |  12 |                          |                         |                         |                   |
+//~ |  13 |                          |                         |                         |                   |
+//~ |  14 |                          |                         |                         |                   |
 //~
 //~ We reuse the foreign field addition gate for the final bound check since this is an addition with a
-//~ specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+//~ specific parameter structure. Checking that the correct right input, overflow, and overflow are used shall
 //~ be done by copy constraining these values with a public input value. One could have a specific gate
 //~ for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 //~ the savings of one row and a few constraints of difference.
 //~
 //~ ##### Integration
 //~
-//~ - Copy signs from public input
+//~ - Copy final overflow bit from public input containing value 1
 //~ - Range check the final bound
 //~
-//~ ```admonish info
-//~ TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
-//~ ```
 
 /// Implementation of the foreign field addition gate
 /// - Operates on Curr and Next rows.
@@ -135,10 +134,16 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 5;
+    const CONSTRAINTS: u32 = 4;
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
+
+        // stored as coefficient for better correspondance with the relation being proved
+        // this reduces the number of copy constraints needed to check the operation
+        // it also allows the final bound check to copy the overflow bit to be 1
+        // because otherwise it did not fit in the first 7 columns of the row
+        let sign = env.coeff(3);
 
         let left_input_lo = env.witness_curr(0);
         let left_input_mi = env.witness_curr(1);
@@ -149,24 +154,21 @@ where
         let right_input_hi = env.witness_curr(5);
 
         // sign in <7 to be able to check against public input of opcodes
-        let sign = env.witness_curr(6);
-
-        let field_overflow = env.witness_curr(7);
+        let field_overflow = env.witness_curr(6);
 
         // Result carry bits for limb overflows / underflows.
-        let carry = env.witness_curr(8);
+        let carry = env.witness_curr(7);
 
         let result_lo = env.witness_next(0);
         let result_mi = env.witness_next(1);
         let result_hi = env.witness_next(2);
 
-        // Field overflow and sign constraints
-        let mut checks = vec![
-            // Field overflow bit is 0 or s.
-            field_overflow.clone() * (field_overflow.clone() - sign.clone()),
-            // Sign flag is 1 or -1
-            (sign.clone() + T::one()) * (sign.clone() - T::one()),
-        ];
+        // Sign flag is 1 or -1
+        // NOTE: we used to check this because sign was in the witness,
+        // but now it is publicly checkable as part of the relation itself
+
+        // Field overflow flag is 0 or s
+        let mut checks = vec![field_overflow.clone() * (field_overflow.clone() - sign.clone())];
 
         // Constraints to check the carry flag is -1, 0, or 1.
         checks.push(is_carry(&carry));
