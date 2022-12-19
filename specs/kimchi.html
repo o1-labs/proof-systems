@@ -1296,11 +1296,9 @@ variable names used in the code and those of the RFC can be helpful.</p>
 left_input1 =&gt; a1  right_input1 =&gt; b1  quotient1 =&gt; q1  remainder1 =&gt; r1
 left_input2 =&gt; a2  right_input2 =&gt; b2  quotient2 =&gt; q2  remainder2 =&gt; r2
 
-   product1_lo =&gt; p10   product1_hi_0 =&gt; p110   product1_hi_1 =&gt; p111
-     carry0 =&gt; v0        carry1_lo =&gt; v10          carry1_hi =&gt; v11
-
-                    scaled_carry1_hi =&gt; scaled_v11
-         quotient_bound0 =&gt; q'0       quotient_bound12 =&gt; q'12
+   product1_lo =&gt; p10      product1_hi_0 =&gt; p110     product1_hi_1 =&gt; p111
+   carry0 =&gt; v0            carry1_lo =&gt; v10          carry1_hi =&gt; v11
+   quotient_bound0 =&gt; q'0  quotient_bound12 =&gt; q'12
 
   quotient_bound_carry0 =&gt; q'_carry0 quotient_bound_carry12 = q'_carry12
 </code></pre>
@@ -1331,7 +1329,6 @@ would be split into <code>x1_lo_0</code> and <code>x1_lo_1</code>.</p>
 <li><code>carry0</code> := 2 bit carry</li>
 <li><code>carry1_lo</code> := low 88 bits of <code>carry1</code></li>
 <li><code>carry1_hi</code> := high 3 bits of <code>carry1</code></li>
-<li><code>scaled_carry1_hi</code> : = <code>carry1_hi</code> scaled by 2^9</li>
 <li><code>product1_lo</code> := lowest 88 bits of middle intermediate product</li>
 <li><code>product1_hi_0</code> := lowest 88 bits of middle intermediate product’s highest 88 + 2 bits</li>
 <li><code>product1_hi_1</code> := highest 2 bits of middle intermediate product</li>
@@ -1350,13 +1347,13 @@ would be split into <code>x1_lo_0</code> and <code>x1_lo_1</code>.</p>
 <tr><td>5</td><td><code>right_input2</code>        (copy)</td><td><code>product1_lo</code>      (copy)</td></tr>
 <tr><td>6</td><td><code>carry1_lo</code>           (copy)</td><td><code>product1_hi_0</code>    (copy)</td></tr>
 <tr><td>7</td><td><code>carry1_hi</code>        (plookup)</td><td><code>product1_hi_1</code></td></tr>
-<tr><td>8</td><td><code>scaled_carry1_hi</code> (plookup)</td><td></td></tr>
-<tr><td>9</td><td><code>carry0</code></td><td></td></tr>
-<tr><td>10</td><td><code>quotient0</code></td><td></td></tr>
-<tr><td>11</td><td><code>quotient1</code></td><td></td></tr>
-<tr><td>12</td><td><code>quotient2</code></td><td></td></tr>
-<tr><td>13</td><td><code>quotient_bound_carry01</code></td><td></td></tr>
-<tr><td>14</td><td><code>quotient_bound_carry2</code></td><td></td></tr>
+<tr><td>8</td><td><code>carry0</code></td><td></td></tr>
+<tr><td>9</td><td><code>quotient0</code></td><td></td></tr>
+<tr><td>10</td><td><code>quotient1</code></td><td></td></tr>
+<tr><td>11</td><td><code>quotient2</code></td><td></td></tr>
+<tr><td>12</td><td><code>quotient_bound_carry01</code></td><td></td></tr>
+<tr><td>13</td><td><code>quotient_bound_carry2</code></td><td></td></tr>
+<tr><td>14</td><td></td><td></td></tr>
 </tbody></table>
 </div>
 <h4 id="xor"><a class="header" href="#xor">Xor</a></h4>

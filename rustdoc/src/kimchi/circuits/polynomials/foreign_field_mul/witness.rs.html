@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-64f7dca12162a801.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-94f39d4346842c1e.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-a211dbb005fb8161.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/witness.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-54cf78c3b80fc28d.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-8fe2cf7ee64a76fb.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-7aacebe982779e9a.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-29dcc614f7a7b461.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-a211dbb005fb8161.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -303,10 +303,6 @@
 <a href="#303" id="303">303</a>
 <a href="#304" id="304">304</a>
 <a href="#305" id="305">305</a>
-<a href="#306" id="306">306</a>
-<a href="#307" id="307">307</a>
-<a href="#308" id="308">308</a>
-<a href="#309" id="309">309</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication witness computation
 
 </span><span class="kw">use crate</span>::{
@@ -362,13 +358,13 @@
             VariableCell::create(<span class="string">&quot;right_input2&quot;</span>),
             VariableCell::create(<span class="string">&quot;carry1_lo&quot;</span>), <span class="comment">// Copied for multi-range-check
             </span>VariableCell::create(<span class="string">&quot;carry1_hi&quot;</span>), <span class="comment">// 12-bit lookup
-            </span>VariableCell::create(<span class="string">&quot;scaled_carry1_hi&quot;</span>), <span class="comment">// 12-bit lookup
             </span>VariableCell::create(<span class="string">&quot;carry0&quot;</span>),
             VariableCell::create(<span class="string">&quot;quotient0&quot;</span>),
             VariableCell::create(<span class="string">&quot;quotient1&quot;</span>),
             VariableCell::create(<span class="string">&quot;quotient2&quot;</span>),
             VariableCell::create(<span class="string">&quot;quotient_bound_carry01&quot;</span>),
             VariableCell::create(<span class="string">&quot;quotient_bound_carry2&quot;</span>),
+            ConstantCell::create(F::zero()),
         ],
         <span class="comment">// Zero row
         </span>[
@@ -401,7 +397,7 @@
 <span class="kw">fn </span>compute_witness_variables&lt;F: PrimeField&gt;(
     products: <span class="kw-2">&amp;</span>[BigUint; <span class="number">3</span>],
     remainder: <span class="kw-2">&amp;</span>[BigUint; <span class="number">3</span>],
-) -&gt; [F; <span class="number">7</span>] {
+) -&gt; [F; <span class="number">6</span>] {
     <span class="comment">// Numerically this function must work on BigUints or there is something
     // wrong with our approach.  Specifically, BigUint will throw and exception
     // if a subtraction would underflow.
@@ -425,17 +421,15 @@
         - BigUint::two_to_limb() * remainder(<span class="number">1</span>))
     .div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_2limb());
 
-    <span class="comment">// C6-C9: Compute v1 = the top L + 3 bits (p2 + p11 + v0 - r2) / 2^L
+    <span class="comment">// C6-C7: Compute v1 = the top L + 3 bits (p2 + p11 + v0 - r2) / 2^L
     //   N.b. Same as above, to avoid an underflow error, the equation must
     //        sum the intermediate product terms before subtracting the remainder.
     </span><span class="kw">let </span>(carry1, <span class="kw">_</span>) = (products(<span class="number">2</span>) + product1_hi + carry0.clone() - remainder(<span class="number">2</span>))
         .div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_limb());
     <span class="comment">// Compute v10 and v11
     </span><span class="kw">let </span>(carry1_hi, carry1_lo) = carry1.div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_limb());
-    <span class="comment">// Compute the scaled_carry1_hi
-    </span><span class="kw">let </span>scaled_carry1_hi = carry1_hi.clone() * BigUint::from(<span class="number">512u32</span>); <span class="comment">// carr1_hi * 2^9
 
-    // C10: witness data a, b, q, and r already present
+    <span class="comment">// C8: witness data a, b, q, and r already present
 
     </span>[
         product1_lo,
@@ -444,7 +438,6 @@
         carry0,
         carry1_lo,
         carry1_hi,
-        scaled_carry1_hi,
     ]
     .to_fields()
 }
@@ -456,12 +449,12 @@
     <span class="macro">auto_clone_array!</span>(sums);
     <span class="macro">auto_clone_array!</span>(bound);
 
-    <span class="comment">// C11: witness data is created by externally by called and multi-range-check gate
+    <span class="comment">// C9: witness data is created by externally by called and multi-range-check gate
 
-    // C12-C13: Compute q&#39;_carry01 = (s01 - q&#39;01)/2^2L
+    // C10-C11: Compute q&#39;_carry01 = (s01 - q&#39;01)/2^2L
     </span><span class="kw">let </span>(quotient_bound_carry01, <span class="kw">_</span>) = (sums(<span class="number">0</span>) - bound(<span class="number">0</span>)).div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_2limb());
 
-    <span class="comment">// C14-C15: Compute q&#39;_carry2 = (s2 + q&#39;_carry01 - q&#39;2)/2^L
+    <span class="comment">// C12-C13: Compute q&#39;_carry2 = (s2 + q&#39;_carry01 - q&#39;2)/2^L
     </span><span class="kw">let </span>(quotient_bound_carry2, <span class="kw">_</span>) =
         (sums(<span class="number">1</span>) + quotient_bound_carry01.clone() - bound(<span class="number">1</span>)).div_rem(<span class="kw-2">&amp;</span>BigUint::two_to_limb());
 
@@ -499,7 +492,7 @@
     );
 
     <span class="comment">// Compute witness variables
-    </span><span class="kw">let </span>[product1_lo, product1_hi_0, product1_hi_1, carry0, carry1_lo, carry1_hi, scaled_carry1_hi] =
+    </span><span class="kw">let </span>[product1_lo, product1_hi_0, product1_hi_1, carry0, carry1_lo, carry1_hi] =
         compute_witness_variables(<span class="kw-2">&amp;</span>products.to_limbs(), <span class="kw-2">&amp;</span>remainder.to_limbs());
 
     <span class="comment">// Track witness data for external multi-range-check on certain components of intermediate product and carry
@@ -542,7 +535,6 @@
             <span class="string">&quot;right_input2&quot; </span>=&gt; right_input[<span class="number">2</span>],
             <span class="string">&quot;carry1_lo&quot; </span>=&gt; carry1_lo,
             <span class="string">&quot;carry1_hi&quot; </span>=&gt; carry1_hi,
-            <span class="string">&quot;scaled_carry1_hi&quot; </span>=&gt; scaled_carry1_hi,
             <span class="string">&quot;product1_hi_1&quot; </span>=&gt; product1_hi_1,
             <span class="string">&quot;carry0&quot; </span>=&gt; carry0,
             <span class="string">&quot;quotient0&quot; </span>=&gt; quotient[<span class="number">0</span>],
@@ -617,4 +609,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0f529f0f4 2022-12-13)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (d0dc9efff 2022-12-18)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-64f7dca12162a801.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-ebce58d0a40c3431.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-f23faae4a2daf9a6.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-94f39d4346842c1e.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-5cf2e01a42cc9858.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-a211dbb005fb8161.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-54cf78c3b80fc28d.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../../static.files/light-8fe2cf7ee64a76fb.css"><link rel="stylesheet" disabled href="../../../../../static.files/dark-7aacebe982779e9a.css"><link rel="stylesheet" disabled href="../../../../../static.files/ayu-29dcc614f7a7b461.css"><script id="default-settings" ></script><script src="../../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-a211dbb005fb8161.js"></script><noscript><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><div class="width-limiter"><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -366,17 +366,6 @@
 <a href="#366" id="366">366</a>
 <a href="#367" id="367">367</a>
 <a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication
 
 </span><span class="comment">//~ This gadget is used to constrain that
@@ -402,11 +391,9 @@
 //~ left_input1 =&gt; a1  right_input1 =&gt; b1  quotient1 =&gt; q1  remainder1 =&gt; r1
 //~ left_input2 =&gt; a2  right_input2 =&gt; b2  quotient2 =&gt; q2  remainder2 =&gt; r2
 //~
-//~    product1_lo =&gt; p10   product1_hi_0 =&gt; p110   product1_hi_1 =&gt; p111
-//~      carry0 =&gt; v0        carry1_lo =&gt; v10          carry1_hi =&gt; v11
-//~
-//~                     scaled_carry1_hi =&gt; scaled_v11
-//~          quotient_bound0 =&gt; q&#39;0       quotient_bound12 =&gt; q&#39;12
+//~    product1_lo =&gt; p10      product1_hi_0 =&gt; p110     product1_hi_1 =&gt; p111
+//~    carry0 =&gt; v0            carry1_lo =&gt; v10          carry1_hi =&gt; v11
+//~    quotient_bound0 =&gt; q&#39;0  quotient_bound12 =&gt; q&#39;12
 //~
 //~   quotient_bound_carry0 =&gt; q&#39;_carry0 quotient_bound_carry12 = q&#39;_carry12
 //~ ````
@@ -442,7 +429,6 @@
 //~ * `carry0` := 2 bit carry
 //~ * `carry1_lo` := low 88 bits of `carry1`
 //~ * `carry1_hi` := high 3 bits of `carry1`
-//~ * `scaled_carry1_hi` : = `carry1_hi` scaled by 2^9
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product&#39;s highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
@@ -464,13 +450,13 @@
 //~ |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 //~ |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
 //~ |   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
-//~ |   8 | `scaled_carry1_hi` (plookup) |                           |
-//~ |   9 | `carry0`                     |                           |
-//~ |  10 | `quotient0`                  |                           |
-//~ |  11 | `quotient1`                  |                           |
-//~ |  12 | `quotient2`                  |                           |
-//~ |  13 | `quotient_bound_carry01`     |                           |
-//~ |  14 | `quotient_bound_carry2`      |                           |
+//~ |   8 | `carry0`                     |                           |
+//~ |   9 | `quotient0`                  |                           |
+//~ |  10 | `quotient1`                  |                           |
+//~ |  11 | `quotient2`                  |                           |
+//~ |  12 | `quotient_bound_carry01`     |                           |
+//~ |  13 | `quotient_bound_carry2`      |                           |
+//~ |  14 |                              |                           |
 //~
 
 </span><span class="kw">use crate</span>::{
@@ -586,7 +572,7 @@
     </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">11</span>;
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">10</span>;
     <span class="comment">// DEGREE is 4
 
     </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
@@ -618,22 +604,19 @@
         </span><span class="kw">let </span>carry1_lo = env.witness_curr(<span class="number">6</span>); <span class="comment">// Copied for multi-range-check
         </span><span class="kw">let </span>carry1_hi = env.witness_curr(<span class="number">7</span>); <span class="comment">// 12-bit plookup
 
-        // Scaled v11 for smaller range check
-        </span><span class="kw">let </span>scaled_carry1_hi = env.witness_curr(<span class="number">8</span>); <span class="comment">// 12-bit plookup
-
         // Carry bits v0
-        </span><span class="kw">let </span>carry0 = env.witness_curr(<span class="number">9</span>);
+        </span><span class="kw">let </span>carry0 = env.witness_curr(<span class="number">8</span>);
 
         <span class="comment">// Quotient q
         </span><span class="kw">let </span>quotient = [
+            env.witness_curr(<span class="number">9</span>),
             env.witness_curr(<span class="number">10</span>),
             env.witness_curr(<span class="number">11</span>),
-            env.witness_curr(<span class="number">12</span>),
         ];
 
         <span class="comment">// Carry bits for quotient_bound_carry01 and quotient_bound_carry2
-        </span><span class="kw">let </span>quotient_bound_carry01 = env.witness_curr(<span class="number">13</span>);
-        <span class="kw">let </span>quotient_bound_carry2 = env.witness_curr(<span class="number">14</span>);
+        </span><span class="kw">let </span>quotient_bound_carry01 = env.witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>quotient_bound_carry2 = env.witness_curr(<span class="number">13</span>);
 
         <span class="comment">// Remainder r (a.k.a. result)
         </span><span class="kw">let </span>remainder = [
@@ -713,41 +696,36 @@
                     - T::two_to_limb() * remainder[<span class="number">1</span>].clone()),
         );
 
-        <span class="comment">// C6: Constrain v11 is 12-bits (done with plookup)
+        <span class="comment">// C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
 
-        // C7: Constrain scaled_v11 is 12-bits (done with plookup)
-
-        // C8: Constrain scaled_v11 comes from scaling v11 by 2^9
-        </span>constraints.push(scaled_carry1_hi - T::from(<span class="number">512</span>) * carry1_hi.clone());
-
-        <span class="comment">// C9: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
+        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         </span>constraints.push(
             T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
                 - (products(<span class="number">2</span>) + product1_hi + carry0 - remainder[<span class="number">2</span>].clone()),
         );
 
-        <span class="comment">// C10: Native modulus constraint a_n * b_n - q_n * f_n = r_n
+        <span class="comment">// C8: Native modulus constraint a_n * b_n - q_n * f_n = r_n
         </span>constraints.push(
             left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
         );
 
-        <span class="comment">// C11: multi-range-check q0&#39;, q1&#39; q2&#39;
+        <span class="comment">// C9: multi-range-check q0&#39;, q1&#39; q2&#39;
         //      Constrain q&#39;01 = q&#39;0 + 2^L * q&#39;1
         //      Must be done externally with a multi-range-check gadget
         //      configured to constrain q&#39;12
 
-        // C12: Constrain q&#39;_carry01 is boolean
+        // C10: Constrain q&#39;_carry01 is boolean
         </span>constraints.push(quotient_bound_carry01.boolean());
 
-        <span class="comment">// C13: Constrain that  2^2L * q&#39;_carry01 = s01 - q&#39;01
+        <span class="comment">// C11: Constrain that  2^2L * q&#39;_carry01 = s01 - q&#39;01
         </span>constraints
             .push(T::two_to_2limb() * quotient_bound_carry01.clone() - sum01 + quotient_bound01);
 
-        <span class="comment">// C14: Constrain q&#39;_carry2 is boolean
+        <span class="comment">// C12: Constrain q&#39;_carry2 is boolean
         </span>constraints.push(quotient_bound_carry2.boolean());
 
-        <span class="comment">// C15: Constrain that 2^L * q&#39;_carry2 = s2 + q&#39;_carry01 - q&#39;2
+        <span class="comment">// C13: Constrain that 2^L * q&#39;_carry2 = s2 + q&#39;_carry01 - q&#39;2
         </span>constraints.push(
             T::two_to_limb() * quotient_bound_carry2 - sum2 - quotient_bound_carry01
                 + quotient_bound2,
@@ -757,4 +735,4 @@
     }
 }
 </code></pre></div>
-</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0f529f0f4 2022-12-13)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-af96d9e2fc13e081.css" ></div></body></html>
+</section></div></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (d0dc9efff 2022-12-18)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
