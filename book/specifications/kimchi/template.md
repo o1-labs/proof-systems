@@ -269,16 +269,22 @@ TODO: for each gate describe how to create it?
 #### Foreign Field Multiplication
 
 {sections.foreign_field_mul}
+
 #### Xor
 
 {sections.xor16}
 
-#### Not
+##### Xor: Not
 
 {sections.not_gadget}
-##### And
+
+##### Xor: And
 
 {sections.and_gadget}
+
+#### Rotation
+
+{sections.rot64}
 
 ## Setup
 

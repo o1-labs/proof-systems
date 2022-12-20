@@ -83,7 +83,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }
 
-//~ ##### `Rot64` - Constraints for known-length rotation of 64-bit words
+//~ `Rot64` - Constraints for known-length rotation of 64-bit words
 //~
 //~ * This circuit gate is used to constrain that a 64-bit word is rotated by $r < 64$ bits to the "left".
 //~ * The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).

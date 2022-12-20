@@ -20,10 +20,10 @@ use super::{
 //~
 //~ The first version of the NOT gadget reuses `Xor16` by making the following observation: __the bitwise NOT operation is equivalent to the
 //~ bitwise XOR operation with the all one words of a certain length__. In other words,
-//~ $$ \neg x = x \oplus 1^* $$
-//~ where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
+//~ $$\neg x = x \oplus 1^\star$$
+//~ where $1^\star$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
 //~ XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
-//~ with $1^*$ is equivalent to bitwise negation (i.e. NOT).
+//~ with $1^\star$ is equivalent to bitwise negation (i.e. NOT).
 //~
 //~ Then, if we take the XOR gadget with a second input to be the all one word of the same length, that gives us the NOT gadget.
 //~ The correct length can be imposed by having a public input containing the `2^bits - 1` value and wiring it to the second input of the XOR gate.
@@ -41,7 +41,7 @@ use super::{
 //~
 //~ | Row       | `CircuitGate` | Purpose                                                               |
 //~ | --------- | ------------- | --------------------------------------------------------------------- |
-//~ | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
+//~ | pub       | `Generic`     | Leading row with the public $1^\star$ value                               |
 //~ | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
 //~ | i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
 //~
@@ -53,7 +53,7 @@ use super::{
 //~
 //~ | Row | `CircuitGate` | Purpose                                                                       |
 //~ | --- | ------------- | ----------------------------------------------------------------------------- |
-//~ | pub | `Generic`     | Leading row with the public $1^*$ value                                       |
+//~ | pub | `Generic`     | Leading row with the public $1^\star$ value                                       |
 //~ | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 //~
 impl<F: PrimeField> CircuitGate<F> {
