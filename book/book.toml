@@ -1,5 +1,5 @@
 [book]
-authors = ["Izaak Meckler", "Vanishree Rao", "Mathias Hall-Andersen", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Vitaly Zelov"]
+authors = ["Izaak Meckler", "Vanishree Rao", "Mathias Hall-Andersen", "Matthew Ryan", "Joseph Spadavecchia", "David Wong", "Anaïs Querol", "Vitaly Zelov"]
 language = "en"
 multilingual = false
 src = "src"
@@ -30,3 +30,4 @@ command = "mdbook-mermaid"
 [preprocessor.toc]
 command = "mdbook-toc"
 renderer = ["html"]
+
