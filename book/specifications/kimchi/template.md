@@ -270,21 +270,24 @@ TODO: for each gate describe how to create it?
 
 {sections.foreign_field_mul}
 
+#### Rotation
+
+{sections.rot64}
+
 #### Xor
 
 {sections.xor16}
 
-##### Not
+The following two sections, (Not, And), are not really gates but rather gadgets that reuse existing primary gate types.
+
+#### Not
 
 {sections.not_gadget}
 
-##### And
+#### And
 
 {sections.and_gadget}
 
-#### Rotation
-
-{sections.rot64}
 
 ## Setup
 

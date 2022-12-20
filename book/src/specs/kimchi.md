@@ -1410,140 +1410,6 @@ The foreign field multiplication gate's rows are laid out like this
 
 
 
-#### Xor
-
-`Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
-
-* This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
-* The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
-* This gate operates on the `Curr` and `Next` rows.
-
-It uses three different types of constraints
-* copy          - copy to another cell (32-bits)
-* plookup       - xor-table plookup (4-bits)
-* decomposition - the constraints inside the gate
-
-The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
-Given values `in1`, `in2` and `out`, the layout looks like this:
-
-| Column |          `Curr`  |          `Next`  |
-| ------ | ---------------- | ---------------- |
-|      0 | copy     `in1`   | copy     `in1'`  |
-|      1 | copy     `in2`   | copy     `in2'`  |
-|      2 | copy     `out`   | copy     `out'`  |
-|      3 | plookup0 `in1_0` |                  |
-|      4 | plookup1 `in1_1` |                  |
-|      5 | plookup2 `in1_2` |                  |
-|      6 | plookup3 `in1_3` |                  |
-|      7 | plookup0 `in2_0` |                  |
-|      8 | plookup1 `in2_1` |                  |
-|      9 | plookup2 `in2_2` |                  |
-|     10 | plookup3 `in2_3` |                  |
-|     11 | plookup0 `out_0` |                  |
-|     12 | plookup1 `out_1` |                  |
-|     13 | plookup2 `out_2` |                  |
-|     14 | plookup3 `out_3` |                  |
-
-One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
-that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
-to obtain a gadget for 64-bit words XOR:
-
-| Row | `CircuitGate` | Purpose                                    |
-| --- | ------------- | ------------------------------------------ |
-|   0 | `Xor16`       | Xor 2 least significant bytes of the words |
-|   1 | `Xor16`       | Xor next 2 bytes of the words              |
-|   2 | `Xor16`       | Xor next 2 bytes of the words              |
-|   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
-|   4 | `Zero`        | Zero values, can be reused as generic gate |
-
-```admonish info
-We could halve the number of rows of the 64-bit XOR gadget by having lookups
-for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
-Rough computations show that if we run 8 or more Keccaks in one circuit we should
-use the 8-bit XOR table.
-```
-
-
-##### Not
-
-We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
-
- The first version of the NOT gadget reuses `Xor16` by making the following observation: _the bitwise NOT operation is equivalent to the
-bitwise XOR operation with the all one words of a certain length_. In other words,
-$$\neg x = x \oplus 1^\star$$
-where $1^\star$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
-XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
- with $1^\star$ is equivalent to bitwise negation (i.e. NOT).
-
- Then, if we take the XOR gadget with a second input to be the all one word of the same length, that gives us the NOT gadget.
- The correct length can be imposed by having a public input containing the `2^bits - 1` value and wiring it to the second input of the XOR gate.
-This approach needs as many rows as an XOR would need, for a single negation, but it comes with the advantage of making sure the input is of a certain length.
-
-The other approach can be more efficient if we already know the length of the inputs. For example, the input may be the input of a range check gate,
-or the output of a previous XOR gadget (which will be the case in our Keccak usecase).
-In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
-This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
-
-_NOT Layout using XOR_
-
-Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
-follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
-
-| Row       | `CircuitGate` | Purpose                                                               |
-| --------- | ------------- | --------------------------------------------------------------------- |
-| pub       | `Generic`     | Leading row with the public $1^\star$ value                               |
-| i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
-| i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
-
-_NOT Layout using Generic gates_
-
-Here we show the layout of the NOT gadget using the Generic approach. The gadget needs a row with a public input containing the all-one word of the given length, exactly as above.
-Then, one Generic gate reusing the all-one word as left inputs can be used to negate up to two words per row. This approach requires that the input word is known (or constrained)
-to have a given length.
-
-| Row | `CircuitGate` | Purpose                                                                       |
-| --- | ------------- | ----------------------------------------------------------------------------- |
-| pub | `Generic`     | Leading row with the public $1^\star$ value                                       |
-| i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
-
-
-
-##### And
-
-We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
-add an `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
-lookup table that would have the same size as that of the Xor.
-For now, we are willing to pay this small overhead and produce AND gadget as follows:
-
-We observe that we can express bitwise addition as follows:
-$$A + B = (A \oplus B) + 2 \cdot (A \wedge B)$$
-where $\oplus$ is the bitwise XOR operation, $\wedge$ is the bitwise AND operation, and $+$ is the addition operation.
-In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
-Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
-$$A \wedge B = \frac{A + B - (A \oplus B)}{2}$$
-Let us define the following operations for better readability:
-```
-a + b = sum
-a ^ b = xor
-a & b = and
-```
-Then, we can rewrite the above equation as follows:
-$$ 2 \cdot and = sum - xor $$
-which can be expressed as a double generic gate.
-
-Then, our AND gadget for $n$ bytes looks as follows:
-* $n/8$ Xor16 gates
-* 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
-* 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
-
-Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
-* Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
-* Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
-Meaning,
-* the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
-* the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
-
-
 #### Rotation
 
 Rotation of a 64-bit word by a known offset
@@ -1633,6 +1499,143 @@ cause overflows otherwise):
 
 Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
 gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
+
+
+
+#### Xor
+
+`Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+
+* This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
+* The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+* This gate operates on the `Curr` and `Next` rows.
+
+It uses three different types of constraints
+* copy          - copy to another cell (32-bits)
+* plookup       - xor-table plookup (4-bits)
+* decomposition - the constraints inside the gate
+
+The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
+Given values `in1`, `in2` and `out`, the layout looks like this:
+
+| Column |          `Curr`  |          `Next`  |
+| ------ | ---------------- | ---------------- |
+|      0 | copy     `in1`   | copy     `in1'`  |
+|      1 | copy     `in2`   | copy     `in2'`  |
+|      2 | copy     `out`   | copy     `out'`  |
+|      3 | plookup0 `in1_0` |                  |
+|      4 | plookup1 `in1_1` |                  |
+|      5 | plookup2 `in1_2` |                  |
+|      6 | plookup3 `in1_3` |                  |
+|      7 | plookup0 `in2_0` |                  |
+|      8 | plookup1 `in2_1` |                  |
+|      9 | plookup2 `in2_2` |                  |
+|     10 | plookup3 `in2_3` |                  |
+|     11 | plookup0 `out_0` |                  |
+|     12 | plookup1 `out_1` |                  |
+|     13 | plookup2 `out_2` |                  |
+|     14 | plookup3 `out_3` |                  |
+
+One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
+that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
+to obtain a gadget for 64-bit words XOR:
+
+| Row | `CircuitGate` | Purpose                                    |
+| --- | ------------- | ------------------------------------------ |
+|   0 | `Xor16`       | Xor 2 least significant bytes of the words |
+|   1 | `Xor16`       | Xor next 2 bytes of the words              |
+|   2 | `Xor16`       | Xor next 2 bytes of the words              |
+|   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+|   4 | `Zero`        | Zero values, can be reused as generic gate |
+
+```admonish info
+We could halve the number of rows of the 64-bit XOR gadget by having lookups
+for 8 bits at a time, but for now we will use the 4-bit XOR table that we have.
+Rough computations show that if we run 8 or more Keccaks in one circuit we should
+use the 8-bit XOR table.
+```
+
+
+The following two sections, (Not, And), are not really gates but rather gadgets that reuse existing primary gate types.
+
+#### Not
+
+We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
+
+ The first version of the NOT gadget reuses `Xor16` by making the following observation: _the bitwise NOT operation is equivalent to the
+bitwise XOR operation with the all one words of a certain length_. In other words,
+$$\neg x = x \oplus 1^\star$$
+where $1^\star$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
+XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
+ with $1^\star$ is equivalent to bitwise negation (i.e. NOT).
+
+ Then, if we take the XOR gadget with a second input to be the all one word of the same length, that gives us the NOT gadget.
+ The correct length can be imposed by having a public input containing the `2^bits - 1` value and wiring it to the second input of the XOR gate.
+This approach needs as many rows as an XOR would need, for a single negation, but it comes with the advantage of making sure the input is of a certain length.
+
+The other approach can be more efficient if we already know the length of the inputs. For example, the input may be the input of a range check gate,
+or the output of a previous XOR gadget (which will be the case in our Keccak usecase).
+In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
+This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
+
+_NOT Layout using XOR_
+
+Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
+follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
+
+| Row       | `CircuitGate` | Purpose                                                               |
+| --------- | ------------- | --------------------------------------------------------------------- |
+| pub       | `Generic`     | Leading row with the public $1^\star$ value                               |
+| i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
+| i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+
+_NOT Layout using Generic gates_
+
+Here we show the layout of the NOT gadget using the Generic approach. The gadget needs a row with a public input containing the all-one word of the given length, exactly as above.
+Then, one Generic gate reusing the all-one word as left inputs can be used to negate up to two words per row. This approach requires that the input word is known (or constrained)
+to have a given length.
+
+| Row | `CircuitGate` | Purpose                                                                       |
+| --- | ------------- | ----------------------------------------------------------------------------- |
+| pub | `Generic`     | Leading row with the public $1^\star$ value                                       |
+| i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
+
+
+
+#### And
+
+We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
+add an `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
+lookup table that would have the same size as that of the Xor.
+For now, we are willing to pay this small overhead and produce AND gadget as follows:
+
+We observe that we can express bitwise addition as follows:
+$$A + B = (A \oplus B) + 2 \cdot (A \wedge B)$$
+where $\oplus$ is the bitwise XOR operation, $\wedge$ is the bitwise AND operation, and $+$ is the addition operation.
+In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
+Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
+$$A \wedge B = \frac{A + B - (A \oplus B)}{2}$$
+Let us define the following operations for better readability:
+```
+a + b = sum
+a ^ b = xor
+a & b = and
+```
+Then, we can rewrite the above equation as follows:
+$$ 2 \cdot and = sum - xor $$
+which can be expressed as a double generic gate.
+
+Then, our AND gadget for $n$ bytes looks as follows:
+* $n/8$ Xor16 gates
+* 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
+* 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
+
+Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
+* Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
+* Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
+Meaning,
+* the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
+* the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
 
 
