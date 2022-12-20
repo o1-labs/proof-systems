@@ -274,11 +274,11 @@ TODO: for each gate describe how to create it?
 
 {sections.xor16}
 
-##### Xor: Not
+##### Not
 
 {sections.not_gadget}
 
-##### Xor: And
+##### And
 
 {sections.and_gadget}
 

@@ -31,11 +31,11 @@ use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Tw
 //~ Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
 //~ $$A \wedge B = \frac{A + B - (A \oplus B)}{2}$$
 //~ Let us define the following operations for better readability:
-//~ ```
-//~ a + b = sum
+//~```
+//~ a + b = sum
 //~ a ^ b = xor
 //~ a & b = and
-//~ ```
+//~```
 //~ Then, we can rewrite the above equation as follows:
 //~ $$ 2 \cdot and = sum - xor $$
 //~ which can be expressed as a double generic gate.

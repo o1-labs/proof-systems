@@ -25,22 +25,22 @@ use std::{array, marker::PhantomData};
 //~  used in the code and those of the RFC document can be helpful.
 //~
 //~ ```text
-//~     left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  bound_lo -> u0
-//~     left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
-//~     left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
+//~ left_input_lo -> a0  right_input_lo -> b0  result_lo -> r0  bound_lo -> u0
+//~ left_input_mi -> a1  right_input_mi -> b1  result_mi -> r1  bound_mi -> u1
+//~ left_input_hi -> a2  right_input_hi -> b2  result_hi -> r2  bound_hi -> u2
 //~
-//~     field_overflow  -> q
-//~     sign            -> s
-//~     carry_lo        -> c0
-//~     carry_mi        -> c1
-//~     bound_carry_lo  -> k0
-//~     bound_carry_mi  -> k1
+//~ field_overflow  -> q
+//~ sign            -> s
+//~ carry_lo        -> c0
+//~ carry_mi        -> c1
+//~ bound_carry_lo  -> k0
+//~ bound_carry_mi  -> k1
 //~```
 //~
 //~ Note: Our limbs are 88-bit long. We denote with:
-//~  - `lo` the least significant limb (in little-endian, this is from 0 to 87)
-//~  - `mi` the middle limb            (in little-endian, this is from 88 to 175)
-//~  - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
+//~ - `lo` the least significant limb (in little-endian, this is from 0 to 87)
+//~ - `mi` the middle limb            (in little-endian, this is from 88 to 175)
+//~ - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
 //~
 //~ Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
 //~
