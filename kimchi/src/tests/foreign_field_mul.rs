@@ -17,7 +17,6 @@ use ark_ec::AffineCurve;
 use ark_ff::{PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
-use num_integer::Integer;
 use num_traits::One;
 use o1_utils::{
     foreign_field::{
