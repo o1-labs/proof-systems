@@ -104,14 +104,3 @@ pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
 pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::RangeCheck)
 }
-
-#[cfg(test)]
-mod tests {
-    use num_bigint::BigUint;
-
-    fn _biguint_from_hex_le(hex: &str) -> BigUint {
-        let mut bytes = hex::decode(hex).expect("invalid hex");
-        bytes.reverse();
-        BigUint::from_bytes_le(&bytes)
-    }
-}
