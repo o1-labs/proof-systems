@@ -104,17 +104,6 @@
 <a href="#104" id="104">104</a>
 <a href="#105" id="105">105</a>
 <a href="#106" id="106">106</a>
-<a href="#107" id="107">107</a>
-<a href="#108" id="108">108</a>
-<a href="#109" id="109">109</a>
-<a href="#110" id="110">110</a>
-<a href="#111" id="111">111</a>
-<a href="#112" id="112">112</a>
-<a href="#113" id="113">113</a>
-<a href="#114" id="114">114</a>
-<a href="#115" id="115">115</a>
-<a href="#116" id="116">116</a>
-<a href="#117" id="117">117</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module obtains the gates of a foreign field addition circuit.
 
 </span><span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
@@ -220,17 +209,6 @@
 <span class="doccomment">/// Get the foreign field multiplication lookup table
 </span><span class="kw">pub fn </span>lookup_table&lt;F: PrimeField&gt;() -&gt; LookupTable&lt;F&gt; {
     lookup::tables::get_table::&lt;F&gt;(GateLookupTable::RangeCheck)
-}
-
-<span class="attr">#[cfg(test)]
-</span><span class="kw">mod </span>tests {
-    <span class="kw">use </span>num_bigint::BigUint;
-
-    <span class="kw">fn </span>_biguint_from_hex_le(hex: <span class="kw-2">&amp;</span>str) -&gt; BigUint {
-        <span class="kw">let </span><span class="kw-2">mut </span>bytes = hex::decode(hex).expect(<span class="string">&quot;invalid hex&quot;</span>);
-        bytes.reverse();
-        BigUint::from_bytes_le(<span class="kw-2">&amp;</span>bytes)
-    }
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (1d12c3cea 2022-12-20)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
