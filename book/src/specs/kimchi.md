@@ -1030,10 +1030,19 @@ This equation is translated as the constraint:
 
 #### Range Check
 
-The range check gadget is comprised of three circuit gates (`RangeCheck0`, `RangeCheck1`
-and `Zero`) and can perform range checks on three values of up to 88 bits: $v_0, v_1$ and $v_2$.
+The multi range check gadget is comprised of three circuit gates (`RangeCheck0`,
+`RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
+v_1$ and $v_2$) of up to 88 bits each.
 
-Optionally, `RangeCheck0` can be used on its own to perform 64-bit range checks by
+Values can be copied as inputs to the multi range check gadget in two ways.
+  * [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
+    cells of the first 3 rows of the gadget.  In this mode the first gate
+    coefficient is set to `0`.
+  * [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
+    row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
+    In this mode the first gate coefficient is set to `1`.
+
+The `RangeCheck0` gate can also be used on its own to perform 64-bit range checks by
 constraining witness cells 1-2 to zero.
 
 **Byte-order:**
