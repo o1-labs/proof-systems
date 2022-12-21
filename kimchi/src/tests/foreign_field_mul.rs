@@ -1,4 +1,4 @@
-use std::ops::{Neg, Div};
+use std::ops::{Div, Neg};
 
 use crate::{
     auto_clone_array,
