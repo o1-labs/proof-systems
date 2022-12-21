@@ -19,7 +19,7 @@ use o1_utils::{
     },
     BigUintFieldHelpers,
 };
-use std::array;
+use std::{array, ops::Div};
 
 use super::circuitgates;
 
@@ -86,12 +86,14 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     ]
 }
 
+/// Perform integer bound addition computation x' = x + f'
 pub fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
     let x_bound = x + neg_foreign_field_modulus;
     assert!(x_bound < BigUint::binary_modulus());
     x_bound
 }
 
+// Compute witness variables related to foreign field multiplication
 fn compute_witness_variables<F: PrimeField>(
     products: &[BigUint; 3],
     remainder: &[BigUint; 3],
@@ -114,16 +116,16 @@ fn compute_witness_variables<F: PrimeField>(
     // C3-C5: Compute v0 = the top 2 bits of (p0 + 2^L * p10 - r0 - 2^L * r1) / 2^2L
     //   N.b. To avoid an underflow error, the equation must sum the intermediate
     //        product terms before subtracting limbs of the remainder.
-    let (carry0, _) = (products(0) + BigUint::two_to_limb() * product1_lo.clone()
+    let carry0 = (products(0) + BigUint::two_to_limb() * product1_lo.clone()
         - remainder(0)
         - BigUint::two_to_limb() * remainder(1))
-    .div_rem(&BigUint::two_to_2limb());
+    .div(&BigUint::two_to_2limb());
 
     // C6-C7: Compute v1 = the top L + 3 bits (p2 + p11 + v0 - r2) / 2^L
     //   N.b. Same as above, to avoid an underflow error, the equation must
     //        sum the intermediate product terms before subtracting the remainder.
-    let (carry1, _) = (products(2) + product1_hi + carry0.clone() - remainder(2))
-        .div_rem(&BigUint::two_to_limb());
+    let carry1 =
+        (products(2) + product1_hi + carry0.clone() - remainder(2)).div(&BigUint::two_to_limb());
     // Compute v10 and v11
     let (carry1_hi, carry1_lo) = carry1.div_rem(&BigUint::two_to_limb());
 

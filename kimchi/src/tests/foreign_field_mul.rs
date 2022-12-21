@@ -1,4 +1,4 @@
-use std::ops::Neg;
+use std::ops::{Neg, Div};
 
 use crate::{
     auto_clone_array,
@@ -325,7 +325,7 @@ pub fn rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     let x0 = rng.gen_biguint_range(&start, &stop);
 
     // Compute overflow bit
-    let (o0, _) = (x0.clone() + neg_foreign_field_modulus(0)).div_rem(&BigUint::two_to_2limb());
+    let o0 = (x0.clone() + neg_foreign_field_modulus(0)).div(&BigUint::two_to_2limb());
 
     // Compute x1: this means x2 < 2^L - o01 - f'1 AND  x2 < (f - x01)/2^2L
     let (start, stop) = (
