@@ -23,8 +23,17 @@ pub enum FFOps {
     Add,
     /// Subtraction
     Sub,
-    /// Multiplication
-    Mul,
+}
+
+/// Implementation of the FFOps enum
+impl FFOps {
+    /// Returns the sign of the operation as a field element
+    pub fn sign<F: PrimeField>(&self) -> F {
+        match self {
+            FFOps::Add => F::one(),
+            FFOps::Sub => -F::one(),
+        }
+    }
 }
 
 // Given a left and right inputs to an addition or subtraction, and a modulus, it computes
@@ -39,8 +48,6 @@ fn compute_ffadd_values<F: PrimeField>(
     opcode: FFOps,
     foreign_modulus: &ForeignElement<F, 3>,
 ) -> (ForeignElement<F, 3>, F, F, F) {
-    assert_ne!(opcode, FFOps::Mul);
-
     // Compute bigint version of the inputs
     let left = left_input.to_biguint();
     let right = right_input.to_biguint();
@@ -115,13 +122,13 @@ fn compute_ffadd_values<F: PrimeField>(
     (result, sign, field_overflow, carry_bot)
 }
 
-/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound) starting in zero row
+/// Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound)
 /// inputs: list of all inputs to the chain of additions/subtractions
 /// opcode: true for addition, false for subtraction
 /// modulus: modulus of the foreign field
-pub fn create<F: PrimeField>(
+pub fn create_chain<F: PrimeField>(
     inputs: &Vec<BigUint>,
-    opcodes: &Vec<FFOps>,
+    opcodes: &[FFOps],
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
     let num = inputs.len() - 1; // number of chained additions
@@ -144,14 +151,13 @@ pub fn create<F: PrimeField>(
             w.extend(std::iter::repeat(F::zero()).take(1));
         }
         let right = ForeignElement::from_biguint(inputs[i + 1].clone());
-        let (output, sign, ovf, carry) =
+        let (output, _sign, ovf, carry) =
             compute_ffadd_values(&left, &right, opcodes[i], &foreign_modulus);
         init_ffadd_row(
             &mut witness,
             i,
             left.limbs,
             [right[LO], right[MI], right[HI]],
-            sign,
             ovf,
             carry,
         );
@@ -168,7 +174,6 @@ fn init_ffadd_row<F: PrimeField>(
     offset: usize,
     left: [F; 3],
     right: [F; 3],
-    sign: F,
     overflow: F,
     carry: F,
 ) {
@@ -181,9 +186,9 @@ fn init_ffadd_row<F: PrimeField>(
             VariableCell::create("right_lo"),
             VariableCell::create("right_mi"),
             VariableCell::create("right_hi"),
-            VariableCell::create("sign"),
             VariableCell::create("overflow"), // field_overflow
             VariableCell::create("carry"),    // carry bit
+            ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -197,7 +202,7 @@ fn init_ffadd_row<F: PrimeField>(
         witness,
         offset,
         &witness_shape,
-        &variable_map!["left_lo" => left[LO], "left_mi" => left[MI], "left_hi" => left[HI], "right_lo" => right[LO], "right_mi" => right[MI], "right_hi" => right[HI], "sign" => sign, "overflow" => overflow, "carry" => carry],
+        &variable_map!["left_lo" => left[LO], "left_mi" => left[MI], "left_hi" => left[HI], "right_lo" => right[LO], "right_mi" => right[MI], "right_hi" => right[HI], "overflow" => overflow, "carry" => carry],
     );
 }
 
@@ -217,9 +222,9 @@ fn init_bound_rows<F: PrimeField>(
             ConstantCell::create(F::zero()),        // 0
             ConstantCell::create(F::zero()),        // 0
             ConstantCell::create(F::two_to_limb()), // 2^88
-            ConstantCell::create(F::one()),         // sign
             ConstantCell::create(F::one()),         // field_overflow
             VariableCell::create("carry"),
+            ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),

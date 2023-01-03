@@ -1030,10 +1030,19 @@ This equation is translated as the constraint:
 
 #### Range Check
 
-The range check gadget is comprised of three circuit gates (`RangeCheck0`, `RangeCheck1`
-and `Zero`) and can perform range checks on three values of up to 88 bits: $v_0, v_1$ and $v_2$.
+The multi range check gadget is comprised of three circuit gates (`RangeCheck0`,
+`RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
+v_1$ and $v_2$) of up to 88 bits each.
 
-Optionally, `RangeCheck0` can be used on its own to perform 64-bit range checks by
+Values can be copied as inputs to the multi range check gadget in two ways.
+  * [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
+    cells of the first 3 rows of the gadget.  In this mode the first gate
+    coefficient is set to `0`.
+  * [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
+    row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
+    In this mode the first gate coefficient is set to `1`.
+
+The `RangeCheck0` gate can also be used on its own to perform 64-bit range checks by
 constraining witness cells 1-2 to zero.
 
 **Byte-order:**
@@ -1282,40 +1291,39 @@ With this idea in mind, the sole carry flag we need is the one located between t
 
 ##### Layout
 
-You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+The sign of the operation (whether it is an addition or a subtraction) is stored in the fourth coefficient as
+a value +1 (for addition) or -1 (for subtraction). The first 3 coefficients are the 3 limbs of the foreign modulus.
+One could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 
-| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
-|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
-|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
-|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
-|   6 | `sign`           (copy) |                         |  1              (check) |                   |
-|   7 | `field_overflow`        |                         |  1              (check) |                   |
-|   8 | `carry`                 |                         | `bound_carry`           |                   |
-|   9 |                         |                         |                         |                   |
-|  10 |                         |                         |                         |                   |
-|  11 |                         |                         |                         |                   |
-|  12 |                         |                         |                         |                   |
-|  13 |                         |                         |                         |                   |
-|  14 |                         |                         |                         |                   |
+| col | `ForeignFieldAdd`        | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ------------------------ | ----------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy)  | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy)  | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy)  | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy)  |                         |  0              (check) |                   |
+|   4 | `right_input_mi` (copy)  |                         |  0              (check) |                   |
+|   5 | `right_input_hi` (copy)  |                         |  2^88           (check) |                   |
+|   6 | `field_overflow` (copy?) |                         |  1              (check) |                   |
+|   7 | `carry`                  |                         | `bound_carry`           |                   |
+|   8 |                          |                         |                         |                   |
+|   9 |                          |                         |                         |                   |
+|  10 |                          |                         |                         |                   |
+|  11 |                          |                         |                         |                   |
+|  12 |                          |                         |                         |                   |
+|  13 |                          |                         |                         |                   |
+|  14 |                          |                         |                         |                   |
 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
-specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+specific parameter structure. Checking that the correct right input, overflow, and overflow are used shall
 be done by copy constraining these values with a public input value. One could have a specific gate
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.
 
 ##### Integration
 
-- Copy signs from public input
+- Copy final overflow bit from public input containing value 1
  - Range check the final bound
 
-```admonish info
-TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
-```
 
 
 #### Foreign Field Multiplication
@@ -1343,13 +1351,11 @@ left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
 left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
-   product1_lo => p10   product1_hi_0 => p110   product1_hi_1 => p111
-     carry0 => v0        carry1_lo => v10          carry1_hi => v11
+   product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
+   carry0 => v0            carry1_lo => v10          carry1_hi => v11
+   quotient_bound0 => q'0  quotient_bound12 => q'12
 
-                    scaled_carry1_hi => scaled_v11
-         quotient_bound0 => q'0       quotient_bound12 => q'12
-
-  quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
+                   quotient_bound_carry => q'_carry01
 ````
 
 ##### Suffixes
@@ -1383,13 +1389,11 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `carry0` := 2 bit carry
 * `carry1_lo` := low 88 bits of `carry1`
 * `carry1_hi` := high 3 bits of `carry1`
-* `scaled_carry1_hi` : = `carry1_hi` scaled by 2^9
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
 * `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry01` := quotient bound addition 1st carry bit
-* `quotient_bound_carry2` := quotient bound addition 2nd carry bit
+* `quotient_bound_carry` := quotient bound addition carry bit
 
 ##### Layout
 
@@ -1404,14 +1408,14 @@ The foreign field multiplication gate's rows are laid out like this
 |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-|   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
-|   8 | `scaled_carry1_hi` (plookup) |                           |
-|   9 | `carry0`                     |                           |
-|  10 | `quotient0`                  |                           |
-|  11 | `quotient1`                  |                           |
-|  12 | `quotient2`                  |                           |
-|  13 | `quotient_bound_carry01`     |                           |
-|  14 | `quotient_bound_carry2`      |                           |
+|   7 | `carry1_hi`        (plookup) |                           |
+|   8 | `carry0`                     |                           |
+|   9 | `quotient0`                  |                           |
+|  10 | `quotient1`                  |                           |
+|  11 | `quotient2`                  |                           |
+|  12 | `quotient_bound_carry`       |                           |
+|  13 | `product1_hi_1`              |                           |
+|  14 |                              |                           |
 
 
 #### Xor
