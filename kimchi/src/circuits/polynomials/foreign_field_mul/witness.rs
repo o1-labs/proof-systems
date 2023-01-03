@@ -13,10 +13,13 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
 
-use o1_utils::foreign_field::{
-    BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+use o1_utils::{
+    foreign_field::{
+        BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+    },
+    BigUintFieldHelpers,
 };
-use std::array;
+use std::{array, ops::Div};
 
 use super::circuitgates;
 
@@ -53,13 +56,13 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("right_input2"),
             VariableCell::create("carry1_lo"), // Copied for multi-range-check
             VariableCell::create("carry1_hi"), // 12-bit lookup
-            VariableCell::create("scaled_carry1_hi"), // 12-bit lookup
             VariableCell::create("carry0"),
             VariableCell::create("quotient0"),
             VariableCell::create("quotient1"),
             VariableCell::create("quotient2"),
-            VariableCell::create("quotient_bound_carry01"),
-            VariableCell::create("quotient_bound_carry2"),
+            VariableCell::create("quotient_bound_carry"),
+            VariableCell::create("product1_hi_1"),
+            ConstantCell::create(F::zero()),
         ],
         // Zero row
         [
@@ -71,7 +74,7 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("quotient_bound2"),
             VariableCell::create("product1_lo"), // Copied for multi-range-check
             VariableCell::create("product1_hi_0"), // Copied for multi-range-check
-            VariableCell::create("product1_hi_1"),
+            ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -83,16 +86,18 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     ]
 }
 
+/// Perform integer bound addition computation x' = x + f'
 pub fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
     let x_bound = x + neg_foreign_field_modulus;
     assert!(x_bound < BigUint::binary_modulus());
     x_bound
 }
 
+// Compute witness variables related to foreign field multiplication
 fn compute_witness_variables<F: PrimeField>(
     products: &[BigUint; 3],
     remainder: &[BigUint; 3],
-) -> [F; 7] {
+) -> [F; 6] {
     // Numerically this function must work on BigUints or there is something
     // wrong with our approach.  Specifically, BigUint will throw and exception
     // if a subtraction would underflow.
@@ -111,22 +116,20 @@ fn compute_witness_variables<F: PrimeField>(
     // C3-C5: Compute v0 = the top 2 bits of (p0 + 2^L * p10 - r0 - 2^L * r1) / 2^2L
     //   N.b. To avoid an underflow error, the equation must sum the intermediate
     //        product terms before subtracting limbs of the remainder.
-    let (carry0, _) = (products(0) + BigUint::two_to_limb() * product1_lo.clone()
+    let carry0 = (products(0) + BigUint::two_to_limb() * product1_lo.clone()
         - remainder(0)
         - BigUint::two_to_limb() * remainder(1))
-    .div_rem(&BigUint::two_to_2limb());
+    .div(&BigUint::two_to_2limb());
 
-    // C6-C9: Compute v1 = the top L + 3 bits (p2 + p11 + v0 - r2) / 2^L
+    // C6-C7: Compute v1 = the top L + 3 bits (p2 + p11 + v0 - r2) / 2^L
     //   N.b. Same as above, to avoid an underflow error, the equation must
     //        sum the intermediate product terms before subtracting the remainder.
-    let (carry1, _) = (products(2) + product1_hi + carry0.clone() - remainder(2))
-        .div_rem(&BigUint::two_to_limb());
+    let carry1 =
+        (products(2) + product1_hi + carry0.clone() - remainder(2)).div(&BigUint::two_to_limb());
     // Compute v10 and v11
     let (carry1_hi, carry1_lo) = carry1.div_rem(&BigUint::two_to_limb());
-    // Compute the scaled_carry1_hi
-    let scaled_carry1_hi = carry1_hi.clone() * BigUint::from(512u32); // carr1_hi * 2^9
 
-    // C10: witness data a, b, q, and r already present
+    // C8: witness data a, b, q, and r already present
 
     [
         product1_lo,
@@ -135,28 +138,23 @@ fn compute_witness_variables<F: PrimeField>(
         carry0,
         carry1_lo,
         carry1_hi,
-        scaled_carry1_hi,
     ]
     .to_fields()
 }
 
-fn compute_bound_witness_variables<F: PrimeField>(
+fn compute_bound_witness_carry<F: PrimeField>(
     sums: &[BigUint; 2],  // [sum01, sum2]
     bound: &[BigUint; 2], // [bound01, bound2]
-) -> [F; 2] {
+) -> F {
     auto_clone_array!(sums);
     auto_clone_array!(bound);
 
-    // C11: witness data is created by externally by called and multi-range-check gate
+    // C9: witness data is created by externally by called and multi-range-check gate
 
-    // C12-C13: Compute q'_carry01 = (s01 - q'01)/2^2L
-    let (quotient_bound_carry01, _) = (sums(0) - bound(0)).div_rem(&BigUint::two_to_2limb());
+    // C10-C11: Compute q'_carry01 = (s01 - q'01)/2^2L
+    let (quotient_bound_carry, _) = (sums(0) - bound(0)).div_rem(&BigUint::two_to_2limb());
 
-    // C14-C15: Compute q'_carry2 = (s2 + q'_carry01 - q'2)/2^L
-    let (quotient_bound_carry2, _) =
-        (sums(1) + quotient_bound_carry01.clone() - bound(1)).div_rem(&BigUint::two_to_limb());
-
-    [quotient_bound_carry01, quotient_bound_carry2].to_fields()
+    quotient_bound_carry.to_field::<F>().unwrap()
 }
 
 /// Create a foreign field multiplication witness
@@ -190,7 +188,7 @@ pub fn create<F: PrimeField>(
     );
 
     // Compute witness variables
-    let [product1_lo, product1_hi_0, product1_hi_1, carry0, carry1_lo, carry1_hi, scaled_carry1_hi] =
+    let [product1_lo, product1_hi_0, product1_hi_1, carry0, carry1_lo, carry1_hi] =
         compute_witness_variables(&products.to_limbs(), &remainder.to_limbs());
 
     // Track witness data for external multi-range-check on certain components of intermediate product and carry
@@ -206,8 +204,8 @@ pub fn create<F: PrimeField>(
     external_checks.add_bound_check(&remainder.to_field_limbs());
 
     // Compute quotient bound addition witness variables
-    let [quotient_bound_carry01, quotient_bound_carry2] =
-        compute_bound_witness_variables(&sums.to_biguints(), &quotient_bound.to_compact_limbs());
+    let quotient_bound_carry =
+        compute_bound_witness_carry(&sums.to_biguints(), &quotient_bound.to_compact_limbs());
 
     // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
@@ -233,21 +231,19 @@ pub fn create<F: PrimeField>(
             "right_input2" => right_input[2],
             "carry1_lo" => carry1_lo,
             "carry1_hi" => carry1_hi,
-            "scaled_carry1_hi" => scaled_carry1_hi,
             "product1_hi_1" => product1_hi_1,
             "carry0" => carry0,
             "quotient0" => quotient[0],
             "quotient1" => quotient[1],
             "quotient2" => quotient[2],
-            "quotient_bound_carry01" => quotient_bound_carry01,
+            "quotient_bound_carry" => quotient_bound_carry,
             "remainder0" => remainder[0],
             "remainder1" => remainder[1],
             "remainder2" => remainder[2],
             "quotient_bound01" => quotient_bound[0],
             "quotient_bound2" => quotient_bound[1],
             "product1_lo" => product1_lo,
-            "product1_hi_0" => product1_hi_0,
-            "quotient_bound_carry2" => quotient_bound_carry2
+            "product1_hi_0" => product1_hi_0
         ],
     );
 
