@@ -8,7 +8,6 @@ use crate::{
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
-    prover_index::testing::new_index_for_test_with_lookups,
 };
 
 use ark_ec::AffineCurve;
@@ -38,9 +37,9 @@ const RNG_SEED: [u8; 32] = [
     97, 25, 21, 12, 13, 44, 14, 12,
 ];
 
-fn create_test_constraint_system_and<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn create_test_gates_and<G: KimchiCurve, EFqSponge, EFrSponge>(
     bytes: usize,
-) -> ConstraintSystem<G::ScalarField>
+) -> Vec<CircuitGate<G::ScalarField>>
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
@@ -54,7 +53,7 @@ where
         next_row += 1;
     }
 
-    ConstraintSystem::create(gates).build().unwrap()
+    gates
 }
 
 // Manually checks the AND of the witness
@@ -93,7 +92,8 @@ where
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
-    let cs = create_test_constraint_system_and::<G, EFqSponge, EFrSponge>(bytes);
+    let gates = create_test_gates_and::<G, EFqSponge, EFrSponge>(bytes);
+    let cs = ConstraintSystem::create(gates).build().unwrap();
 
     // Initalize inputs
     let input1 = rng.gen(input1, Some(bytes * 8));
@@ -153,12 +153,13 @@ where
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    TestFramework::<G>::default()
+    assert!(TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(vec![and::lookup_table()])
         .setup()
-        .prove_and_verify::<EFqSponge, EFrSponge>();
+        .prove_and_verify::<EFqSponge, EFrSponge>()
+        .is_ok());
 }
 
 #[test]
@@ -334,19 +335,34 @@ fn test_and_bad_decomposition() {
 #[test]
 // Test AND when the decomposition of the inner XOR is incorrect
 fn test_bad_and() {
-    let (cs, mut witness) = setup_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, None, 2);
-    // modify the output to be all zero
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+
+    let bytes = 2;
+    let gates = create_test_gates_and::<Vesta, VestaBaseSponge, VestaScalarSponge>(bytes);
+
+    // Initialize inputs
+    let input1 = rng.gen(None, Some(bytes * 8));
+    let input2 = rng.gen(None, Some(bytes * 8));
+
+    // Create witness
+    let mut witness = and::create_and_witness(input1, input2, bytes);
+
+    // Corrupt the witness: modify the output to be all zero
     witness[2][0] = PallasField::zero();
     for i in 1..=4 {
         witness[COLUMNS - i][0] = PallasField::zero();
     }
     witness[4][2] = PallasField::zero();
-    let index =
-        new_index_for_test_with_lookups(cs.gates, 0, 0, vec![xor::lookup_table()], None, None);
+
     assert_eq!(
-        index.cs.gates[0].verify_xor::<Vesta>(0, &witness, &index),
-        Err(CircuitGateError::InvalidLookupConstraintSorted(
-            GateType::Xor16
+        TestFramework::<Vesta>::default()
+            .gates(gates)
+            .witness(witness)
+            .lookup_tables(vec![xor::lookup_table()])
+            .setup()
+            .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
+        Err(String::from(
+            "Custom { row: 2, err: \"generic: incorrect gate\" }"
         ))
     );
 }

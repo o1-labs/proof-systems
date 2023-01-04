@@ -661,15 +661,14 @@ where
 
             let mds = &G::sponge_params().mds;
             Environment {
-                constants: Constants::new(
+                constants: Constants {
                     alpha,
                     beta,
                     gamma,
-                    lookup_context.joint_combiner,
-                    index.cs.endo,
+                    joint_combiner: lookup_context.joint_combiner,
+                    endo_coefficient: index.cs.endo,
                     mds,
-                    index.cs.foreign_field_modulus.clone(),
-                ),
+                },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,
                 vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,

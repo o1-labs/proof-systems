@@ -123,9 +123,6 @@ pub enum GateType {
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitGateError {
     /// Invalid constraint
-    #[error("Invalid circuit gate type {0:?}")]
-    InvalidCircuitGateType(GateType),
-    /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
     /// Invalid constraint with number
@@ -137,18 +134,9 @@ pub enum CircuitGateError {
     /// Disconnected wires
     #[error("Invalid {typ:?} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
     CopyConstraint { typ: GateType, src: Wire, dst: Wire },
-    /// Invalid copy constraint
-    #[error("Invalid {0:?} copy constraint")]
-    InvalidCopyConstraint(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
-    InvalidLookupConstraintSorted(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
-    InvalidLookupConstraintAggregation(GateType),
-    /// Missing lookup constraint system
-    #[error("Failed to get lookup constraint system for {0:?}")]
-    MissingLookupConstraintSystem(GateType),
+    /// Invalid lookup
+    #[error("Invalid {0:?} lookup constraint")]
+    InvalidLookupConstraint(GateType),
     /// Failed to get witness for row
     #[error("Failed to get {0:?} witness for row {1}")]
     FailedToGetWitnessForRow(GateType, usize),
@@ -234,19 +222,19 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 self.verify_cairo_gate::<G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_foreign_field_add::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_foreign_field_mul::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_xor::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_rot::<G>(row, witness, index)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -263,15 +251,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants::new(
-            F::one(),
-            F::one(),
-            F::one(),
-            Some(F::one()),
-            cs.endo,
-            &G::sponge_params().mds,
-            cs.foreign_field_modulus.clone(),
-        );
+        let constants = expr::Constants {
+            alpha: F::one(),
+            beta: F::one(),
+            gamma: F::one(),
+            joint_combiner: Some(F::one()),
+            endo_coefficient: cs.endo,
+            mds: &G::sponge_params().mds,
+        };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
 

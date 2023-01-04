@@ -389,7 +389,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck => 4,
             LookupPattern::Lookup => 3,
-            LookupPattern::ForeignFieldMul => 2,
+            LookupPattern::ForeignFieldMul => 1,
         }
     }
 
@@ -490,18 +490,17 @@ impl LookupPattern {
                     .collect()
             }
             LookupPattern::ForeignFieldMul => {
-                (7..=8)
-                    .map(|column| {
-                        //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                        //   - - - - - - - L L - -  -  -  -  -
-                        JointLookup {
-                            table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
-                            entry: vec![SingleLookup {
-                                value: vec![(F::one(), curr_row(column))],
-                            }],
-                        }
-                    })
-                    .collect()
+                vec![
+                    //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                    //   - - - - - - - L - - -  -  -  -  -
+                    // Constrain w(7) to 3 bits.
+                    JointLookup {
+                        table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                        entry: vec![SingleLookup {
+                            value: vec![(F::from(2u64).pow(&[9u64]), curr_row(7))],
+                        }],
+                    },
+                ]
             }
         }
     }

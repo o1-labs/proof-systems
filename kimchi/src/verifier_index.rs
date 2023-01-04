@@ -23,7 +23,6 @@ use commitment_dlog::{
     srs::SRS,
 };
 use mina_poseidon::FqSponge;
-use num_bigint::BigUint;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -111,9 +110,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// Range check polynomial commitments
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
-
-    /// Foreign field modulus
-    pub foreign_field_modulus: Option<BigUint>,
 
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -302,7 +298,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
         }
     }
 }
@@ -419,7 +414,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             range_check_comm,
             foreign_field_add_comm,
             foreign_field_mul_comm,
-            foreign_field_modulus: _,
             xor_comm,
             rot_comm,
 

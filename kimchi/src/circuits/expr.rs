@@ -17,11 +17,7 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
-use num_bigint::BigUint;
-use o1_utils::{
-    foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers},
-    FieldHelpers,
-};
+use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
@@ -56,26 +52,6 @@ pub enum ExprError {
     MissingRuntime,
 }
 
-/// Structure to contain foreign field modulus and its negation
-pub struct ForeignFieldModulus {
-    /// Foreign field modulus
-    pub value: BigUint,
-    /// Negated foreign field modulus
-    pub negated: BigUint,
-}
-
-impl ForeignFieldModulus {
-    /// Create a new foreign field modulus structure
-    pub fn new(foreign_field_modulus: BigUint) -> Self {
-        // Store the foreign field modulus f and f negated over the CRT binary field modulus
-        // f' = 2^t - f
-        ForeignFieldModulus {
-            value: foreign_field_modulus.clone(),
-            negated: foreign_field_modulus.negate(),
-        }
-    }
-}
-
 /// The collection of constants required to evaluate an `Expr`.
 pub struct Constants<F: 'static> {
     /// The challenge alpha from the PLONK IOP.
@@ -91,33 +67,6 @@ pub struct Constants<F: 'static> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
-    /// The modulus for foreign field operations
-    pub foreign_field_modulus: Option<ForeignFieldModulus>,
-}
-
-impl<F: 'static> Constants<F> {
-    /// Create constants require to evaluate an `Expr`
-    pub fn new(
-        alpha: F,
-        beta: F,
-        gamma: F,
-        joint_combiner: Option<F>,
-        endo_coefficient: F,
-        mds: &'static Vec<Vec<F>>,
-        foreign_field_modulus: Option<BigUint>,
-    ) -> Self {
-        let foreign_field_modulus = foreign_field_modulus.map(ForeignFieldModulus::new);
-
-        Constants {
-            alpha,
-            beta,
-            gamma,
-            joint_combiner,
-            endo_coefficient,
-            mds,
-            foreign_field_modulus,
-        }
-    }
 }
 
 /// The polynomials specific to the lookup argument.
@@ -325,8 +274,6 @@ pub enum ConstantExpr<F> {
     // separate constant expression types.
     EndoCoefficient,
     Mds { row: usize, col: usize },
-    ForeignFieldModulus(usize),
-    NegForeignFieldModulus(usize),
     Literal(F),
     Pow(Box<ConstantExpr<F>>, u64),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
@@ -348,10 +295,6 @@ impl<F: Copy> ConstantExpr<F> {
                 row: *row,
                 col: *col,
             }),
-            ConstantExpr::ForeignFieldModulus(i) => res.push(PolishToken::ForeignFieldModulus(*i)),
-            ConstantExpr::NegForeignFieldModulus(i) => {
-                res.push(PolishToken::NegForeignFieldModulus(*i))
-            }
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -399,20 +342,6 @@ impl<F: Field> ConstantExpr<F> {
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
-            ForeignFieldModulus(i) => {
-                if let Some(modulus) = &c.foreign_field_modulus {
-                    modulus.value.to_field_limbs::<F>()[*i]
-                } else {
-                    F::zero()
-                }
-            }
-            NegForeignFieldModulus(i) => {
-                if let Some(modulus) = &c.foreign_field_modulus {
-                    modulus.negated.to_field_limbs()[*i]
-                } else {
-                    F::zero()
-                }
-            }
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
             Mul(x, y) => x.value(c) * y.value(c),
@@ -709,8 +638,6 @@ pub enum PolishToken<F> {
         row: usize,
         col: usize,
     },
-    ForeignFieldModulus(usize),
-    NegForeignFieldModulus(usize),
     Literal(F),
     Cell(Variable),
     Dup,
@@ -791,16 +718,6 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
-                ForeignFieldModulus(i) => {
-                    if let Some(modulus) = &c.foreign_field_modulus {
-                        stack.push(modulus.value.to_field_limbs()[*i])
-                    }
-                }
-                NegForeignFieldModulus(i) => {
-                    if let Some(modulus) = &c.foreign_field_modulus {
-                        stack.push(modulus.negated.to_field_limbs()[*i])
-                    }
-                }
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
@@ -2438,8 +2355,6 @@ where
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
-            NegForeignFieldModulus(i) => format!("neg_foreign_field_modulus({i})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
@@ -2460,8 +2375,6 @@ where
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            ForeignFieldModulus(i) => format!("foreign\\_field\\_modulus({i})"),
-            NegForeignFieldModulus(i) => format!("neg\\_foreign\\_field\\_modulus({i})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2482,8 +2395,6 @@ where
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
-            ForeignFieldModulus(i) => format!("foreign_field_modulus({i})"),
-            NegForeignFieldModulus(i) => format!("neg_foreign_field_modulus({i})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha^{}", n),
@@ -2998,7 +2909,6 @@ pub mod test {
                 joint_combiner: None,
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
-                foreign_field_modulus: None,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &index.column_evaluations.coefficients8,

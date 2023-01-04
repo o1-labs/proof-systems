@@ -1,6 +1,6 @@
 # Foreign Field Multiplication RFC
 
-This document explains how we constrain foreign field multiplication in Kimchi.
+This document explains how we constrain foreign field multiplication (i.e. non-native field multiplication) in the Kimchi proof system.
 
 **Changelog**
 
@@ -239,7 +239,7 @@ f' &= -f \mod 2^t \\
 \end{aligned}
 $$
 
-The negated modulus $f'$ becomes part of our constraint system and is not constrained because it is publicly auditable.
+The negated modulus $f'$ becomes part of our gate coefficients and is not constrained because it is publicly auditable.
 
 Using the substitution of the negated modulus, we now must constrain $a \cdot b + q \cdot f' = r \mod 2^t$.
 
@@ -251,42 +251,29 @@ This section explains how we expand our constraints into limbs and then eliminat
 
 We must constrain $a \cdot b + q \cdot f' = r \mod 2^t$ on the limbs, rather than as a whole.  As described above, each foreign field element $x$ is split into three 88-bit limbs: $x_0, x_1, x_2$, where $x_0$ contains the least significant bits and $x_2$ contains the most significant bits and so on.
 
-For clarity, let $X=2^{\ell}$ and $Y=2^{2\ell}$, then expanding the right-hand side into limbs we have
+Expanding the right-hand side into limbs we have
 
 $$
 \begin{aligned}
-&(a_0 + a_1X + a_2Y) \cdot (b_0 + b_1X + b_2Y) +  (q_0 + q_1X + q_2Y) \cdot (f'_0 + f'_1X + f'_2Y) \\
+&(a_0 + a_1 \cdot 2^{\ell} + a_2 \cdot 2^{2\ell}) \cdot (b_0 + b_1 \cdot 2^{\ell} + b_2 \cdot 2^{2\ell}) +  (q_0 + q_1 \cdot 2^{\ell} + q_2 \cdot 2^{2\ell}) \cdot (f'_0 + f'_1 \cdot 2^{\ell} + f'_2 \cdot 2^{2\ell}) \\
 &=\\
-&~~~~~ a_0b_0 + a_0b_1X + a_0b_2Y \\
-&~~~~ + a_1b_0X + a_1b_1X^2 + a_1b_2XY \\
-&~~~~ + a_2b_0Y + a_2b_1XY + a_2b_2Y^2 \\
+&~~~~~ a_0 \cdot b_0 + a_0 \cdot b_1 \cdot 2^{\ell} + a_0 \cdot b_2 \cdot 2^{2\ell} \\
+&~~~~ + a_1 \cdot b_0 \cdot 2^{\ell} + a_1 \cdot b_1 \cdot 2^{2\ell} + a_1 \cdot b_2 \cdot 2^{3\ell} \\
+&~~~~ + a_2 \cdot b_0 \cdot 2^{2\ell} + a_2 \cdot b_1 \cdot 2^{3\ell} + a_2 \cdot b_2 \cdot 2^{4\ell} \\
 &+ \\
-&~~~~~ q_0f'_0 + q_0f'_1X + q_0f'_2Y \\
-&~~~~ + q_1f'_0X + q_1f'_1X^2 + q_1f'_2XY \\
-&~~~~ + q_2f'_0Y + q_2f'_1XY + q_2f'_2Y^2 \\
+&~~~~~ q_0 \cdot f'_0 + q_0 \cdot f'_1 \cdot 2^{\ell} + q_0 \cdot f'_2 \cdot 2^{2\ell} \\
+&~~~~ + q_1 \cdot f'_0 \cdot 2^{\ell} + q_1 \cdot f'_1 \cdot 2^{2\ell} + q_1 \cdot f'_2 \cdot 2^{3\ell} \\
+&~~~~ + q_2 \cdot f'_0 \cdot 2^{2\ell} + q_2 \cdot f'_1 \cdot 2^{3\ell} + q_2 \cdot f'_2 \cdot 2^{4\ell} \\
 &= \\
-&~~~~~ a_0b_0 + q_0f'_0\\
-&~~~~ + X(a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0) \\
-&~~~~ + Y(a_0b_2 + a_2b_0 + q_0f'_2 + q_2f'_0) \\
-&~~~~ + XY(a_1b_2 + a_2b_1 + q_1f'_2 + q_2f'_1) \\
-&~~~~ + X^2(a_1b_1 + q_1f'_1) \\
-&~~~~ + Y^2(a_2b_2 + q_2f'_2).
+&a_0 \cdot b_0 + q_0 \cdot f'_0 \\
+&+ 2^{\ell} \cdot (a_0 \cdot b_1 + a_1 \cdot b_0 + q_0 \cdot f'_1 + q_1 \cdot f'_0) \\
+&+ 2^{2\ell} \cdot (a_0 \cdot b_2 + a_2 \cdot b_0 + q_0 \cdot f'_2 + q_2 \cdot f'_0 + a_1 \cdot b_1 + q_1 \cdot f'_1) \\
+&+ 2^{3\ell} \cdot (a_1 \cdot b_2 + a_2 \cdot b_1 + q_1 \cdot f'_2 + q_2 \cdot f'_1) \\
+&+ 2^{4\ell} \cdot (a_2 \cdot b_2 + q_2 \cdot f'_2) \\
 \end{aligned}
 $$
 
-Notice that $X^2=Y$, so the above simplifies to
-
-$$
-\begin{aligned}
-&a_0b_0 + q_0f'_0 \\
-&+ X(a_0b_1 + a_1b_0 + q_0f'_1 + q_1f'_0) \\
-&+ Y(a_0b_2 + a_2b_0 + q_0f'_2 + q_2f'_0 + a_1b_1 + q_1f'_1) \\
-&+ XY(a_1b_2 + a_2b_1 + q_1f'_2 + q_2f'_1) \\
-&+ Y^2(a_2b_2 + q_2f'_2) \\
-\end{aligned}
-$$
-
-Recall that $t = 264$ and observe that $XY = 2^t$ and $Y^2 = 2^t2^{88}$.  Therefore, the terms with $XY$ or $Y^2$ are a multiple of modulus and, thus, congruent to zero $\mod 2^t$. They can be eliminated and we don't need to compute them.  So we are left with 3 *intermediate products* that we call $p_0, p_1, p_2$:
+Since $t = 3\ell$, the terms scaled by $2^{3\ell}$ and $2^{4\ell}$ are a multiple of the binary modulus and, thus, congruent to zero $\mod 2^t$. They can be eliminated and we don't need to compute them.  So we are left with 3 *intermediate products* that we call $p_0, p_1, p_2$:
 
 | Term  | Scale       | Product                                                  |
 | ----- | ----------- | -------------------------------------------------------- |
@@ -878,7 +865,7 @@ Thus, each bound addition $x + f'$ requires the following witness data
 - $x'_{01}, x'_2$
 - $w_{01}, w_2$
 
-where $f'$ is baked into the constraint system.  The following constraints are needed
+where $f'$ is baked into the gate coefficients.  The following constraints are needed
 
 - $2^{2\ell} \cdot w_{01} = s_{01} - x'_{01}$
 - $2^{\ell} \cdot w_2 = s_2 + w_{01} - x'_2$
@@ -942,7 +929,7 @@ $$
 
 where $q_{01} = q_0 + 2^{\ell} \cdot q_1$ and $f'_{01} = f'_0 + 2^{\ell} \cdot f'_1$.  These do not need to be separate constraints, but are instead part of existing ones.
 
-Checks (10) and (11) can be combined into a single constraint $2^{\ell} \cdot q'_{carry2} = (q_2 + f'_2) + q'_{carry01} - q'_2$.  Similarly, checks (3) - (5) and (8) can be combined into $2^{2\ell} \cdot q'_{carry01} = q_{01} + f'_{01} - q'_{01}$ with $q_{01}$ and $f'_{01}$ further expanded.  The final minimal number of constraints are
+Checks (10) and (11) can be combined into a single constraint $2^{\ell} \cdot q'_{carry2} = (q_2 + f'_2) + q'_{carry01} - q'_2$.  Similarly, checks (3) - (5) and (8) can be combined into $2^{2\ell} \cdot q'_{carry01} = q_{01} + f'_{01} - q'_{01}$ with $q_{01}$ and $f'_{01}$ further expanded.  The reduced constraints are
 
 1. $q_0 \in [0, 2^{\ell})$ `multi-range-check`
 2. $q_1 \in [0, 2^{\ell})$ `multi-range-check`
@@ -953,7 +940,67 @@ Checks (10) and (11) can be combined into a single constraint $2^{\ell} \cdot q'
 7. $q'_{carry2} \in [0, 2)$ `ForeignFieldMul`
 8. $2^{\ell} \cdot q'_{carry2} = s_2 + w_{01} - q'_2$ `ForeignFieldMul`
 
-Since we already needed to range-check $q$ or $q'$, the total number of new constraints added is 5: 4 added to to `ForeignFieldMul` and 1 added to `multi-range-check` gadget for constraining the decomposition of $q'_{01}$.
+Finally, there is one more optimization that we will exploit.  This optimization relies on the observation that for bound addition the second carry bit $q'_{carry2}$ is always zero.  This this may be obscure, so we will prove it by contradiction.  To simplify our work we rename some variables by letting $x_0 = q_{01}$ and $x_1 = q_2$.  Thus, $q'_{carry2}$ being non-zero corresponds to a carry in $x_1 + f'_1$.
+
+> **Proof:** To get a carry in the highest limbs $x_1 + f'_1$ during bound addition, we need
+>
+> $$
+> 2^{\ell} < x_1 + \phi_0 + f'_1 \le 2^{\ell} - 1 + \phi_0 + f'_1
+> $$
+>
+> where $2^{\ell} - 1$ is the maximum possible size of $x_1$ (before it overflows) and $\phi_0$ is the overflow bit from the addition of the least significant limbs $x_0$ and $f'_0$.  This means
+>
+> $$
+> 2^{\ell} - \phi_0 - f'_1 < x_1 < 2^{\ell}
+> $$
+>
+> We cannot allow $x$ to overflow the foreign field, so we also have
+>
+> $$
+> x_1 < (f - x_0)/2^{2\ell}
+> $$
+>
+> Thus,
+>
+> $$
+> 2^{\ell} - \phi_0  - f'_1 < (f - x_0)/2^{2\ell} = f/2^{2\ell} - x_0/2^{2\ell}
+> $$
+>
+> Since $x_0/2^{2\ell} = \phi_0$ we have
+>
+> $$
+> 2^{\ell} - \phi_0 - f'_1 < f/2^{2\ell} - \phi_0
+> $$
+>
+> so
+>
+> $$
+> 2^{\ell} - f'_1 < f/2^{2\ell}
+> $$
+>
+> Notice that $f/2^{2\ell} = f_1$.  Now we have
+>
+> $$
+> 2^{\ell} - f'_1 < f_1 \\
+> \Longleftrightarrow \\
+> f'_1 > 2^{\ell} - f_1
+> $$
+>
+> However, this is a contradiction with the definition of our negated foreign field modulus limb $f'_1 = 2^{\ell} - f_1$. $\blacksquare$
+
+We have proven that $q'_{carry2}$ is always zero, so that allows use to simplify our constraints.  We now have
+
+1. $q_0 \in [0, 2^{\ell})$ `multi-range-check`
+2. $q_1 \in [0, 2^{\ell})$ `multi-range-check`
+3. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$  `multi-range-check`
+4. $q'_{carry01} \in [0, 2)$ `ForeignFieldMul`
+5. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$ `ForeignFieldMul`
+6. $q_2 \in [0, 2^{\ell})$  `multi-range-check`
+7. $q'_2 = s_2 + w_{01}$ `ForeignFieldMul`
+
+In other words, we have eliminated constraint (7) and removed $q'_{carry2}$ from the witness.
+
+Since we already needed to range-check $q$ or $q'$, the total number of new constraints added is 4: 3 added to to `ForeignFieldMul` and 1 added to `multi-range-check` gadget for constraining the decomposition of $q'_{01}$.
 
 This saves 2 rows per multiplication.
 
@@ -1048,6 +1095,8 @@ To check that $v_{11} \in [0, 2^3)$ (i.e. that $v_{11}$ is at most 3 bits long) 
 - Check $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
 - Check $\mathsf{scaled}_{v_{11}}$ is a 12-bit value with a 12-bit plookup
 
+Kimchi plookup supports optional scaling of the lookup target value as part of the lookup operation.  Thus, we do not require two witness elements, two plookups, nor the $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$ custom constraint.  Instead we can just store $v_{11}$ in the witness and define this as a 12-bit plookup scaled by $2^9$ yielding a 3-bit check.  This eliminates one plookup and reduces the total number of constraints by two.
+
 ### 9. Native modulus constraint
 
 Using the checked native modulus computations we constrain that
@@ -1103,7 +1152,7 @@ Since we need 12 copied values for the constraints, they must span 2 rows.
 
 The $q < f$ bound limbs $q'_0, q'_1$ and $q'_2$ must be in copyable cells so they can be range-checked.  Similarly, the limbs of the operands $a$, $b$ and the result $r$ must all be in copyable cells.  This leaves only 2 remaining copyable cells and, therefore, we cannot compute and output $r' = r + f'$.  It must be deferred to an external `ForeignFieldAdd` gate with the $r$ cells copied as an argument.
 
-NB: the $f$ and $f'$ values are publicly accessible in the constraint system.
+NB: the $f$ and $f'$ values are publicly visible in the gate coefficients.
 
 |            | Curr                                     | Next             |
 | ---------- | ---------------------------------------- | ---------------- |
@@ -1115,16 +1164,14 @@ NB: the $f$ and $f'$ values are publicly accessible in the constraint system.
 | 4          | $b_1$ (copy)                             | $q'_2$ (copy)    |
 | 5          | $b_2$ (copy)                             | $p_{10}$  (copy) |
 | 6          | $v_{10}$ (copy)                          | $p_{110}$ (copy) |
-| 7          | $v_{11}$ (plookup)                       | $p_{111}$        |
-| 8          | $\mathsf{scaled}_{v_{11}}$ (plookup)     |                  |
-| 9          | $v_0$                                    |                  |
-| 10         | $q_0$                                    |                  |
-| 11         | $q_1$                                    |                  |
-| 12         | $q_2$                                    |                  |
-| 13         | $q'_{carry01}$                           |                  |
-| 14         | $q'_{carry2}$                            |                  |
-
-where $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$.
+| 7          | $v_{11}$ (scaled plookup)                |                  |
+| 8          | $v_0$                                    |                  |
+| 9          | $q_0$                                    |                  |
+| 10         | $q_1$                                    |                  |
+| 11         | $q_2$                                    |                  |
+| 12         | $q'_{carry01}$                           |                  |
+| 13         | $p_{111}$                                |                  |
+| 14         |                                          |                  |
 
 # Checked computations
 
@@ -1174,20 +1221,17 @@ In total we require the following checks
 6. $p_1 = 2^{\ell} \cdot p_{11} + p_{10}$
 7. $v_0 \in [0, 2^2)$
 8. $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
-9.  $v_{11} \in [0, 2^{12})$
-10. $\mathsf{scaled}_{v_{11}} \in [0, 2^{12})$
-11. $2^9 \cdot v_{11} = \mathsf{scaled}_{v_{11}}$
-12. $v_1 = 2^{\ell} \cdot v_{11} + v_{10}$
-13. $2^{\ell} \cdot v_1 = v_0 + p_{11} + p_2 - r_2$
-14. $a_n \cdot b_n - q_n \cdot f_n = r_n$
-15. $q'_0 \in [0, 2^{\ell})$ `multi-range-check`
-16. $q'_1 \in [0, 2^{\ell})$ `multi-range-check`
-17. $q'_2 \in [0, 2^{\ell})$ `multi-range-check`
-18. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `multi-range-check`
-19. $q'_{carry01} \in [0, 2)$
-20. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
-21. $q'_{carry2} \in [0, 2)$
-22. $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+9.  $v_{11} \in [0, 2^{3})$
+10. $v_1 = 2^{\ell} \cdot v_{11} + v_{10}$
+11. $2^{\ell} \cdot v_1 = v_0 + p_{11} + p_2 - r_2$
+12. $a_n \cdot b_n - q_n \cdot f_n = r_n$
+13. $q'_0 \in [0, 2^{\ell})$ `multi-range-check`
+14. $q'_1 \in [0, 2^{\ell})$ `multi-range-check`
+15. $q'_2 \in [0, 2^{\ell})$ `multi-range-check`
+16. $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$ `multi-range-check`
+17. $q'_{carry01} \in [0, 2)$
+18. $2^{2\ell} \cdot q'_{carry01} = s_{01} - q'_{01}$
+19. $q'_2 = s_2 + q'_{carry01}$
 
 # Constraints
 
@@ -1213,45 +1257,35 @@ Next we have check (8)
 
 **C5:** $2^{2\ell} \cdot v_0 = p_0 + 2^{\ell} \cdot p_{10} - r_0 - 2^{\ell} \cdot r_1$
 
-Up next, checks (9) and (10) are 12-bit range checks
+Up next, check (9) is a 3-bit range check
 
-**C6:** Plookup $v_{11}$
+**C6:** Plookup $v_{11}$ (12-bit plookup scaled by $2^9$)
 
-**C7:** Plookup $\mathsf{scaled}_{v_{11}}$
+Now checks (10) and (11) can be combined into
 
-Check (11) is part of bounding $v_{11}$ to 3-bits in length
+**C7:**  $2^{\ell} \cdot (v_{11} \cdot 2^{\ell} + v_{10}) = p_2 + p_{11} + v_0 - r_2$
 
-**C8:** $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
+Next, for our use of the CRT, we must constrain that $a \cdot b = q \cdot f + r \mod n$.  Thus, check (12) is
 
-Now checks (12) and (13) can be combined into
-
-**C9:**  $2^{\ell} \cdot (v_{11} \cdot 2^{\ell} + v_{10}) = p_2 + p_{11} + v_0 - r_2$
-
-Next, for our use of the CRT, we must constrain that $a \cdot b = q \cdot f + r \mod n$.  Thus, check (14) is
-
-**C10:** $a_n \cdot b_n - q_n \cdot f_n = r_n$
+**C8:** $a_n \cdot b_n - q_n \cdot f_n = r_n$
 
 Next we must constrain the quotient bound addition.
 
-Checks (15) - (18) are all combined into `multi-range-check` gadget
+Checks (13) - (16) are all combined into `multi-range-check` gadget
 
-**C11:** `multi-range-check` $q'_0, q'_1, q'_2$ and $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
+**C9:** `multi-range-check` $q'_0, q'_1, q'_2$ and $q'_{01} = q'_0 + 2^{\ell} \cdot q'_1$.
 
-Check (19) is a carry bit boolean check
+Check (17) is a carry bit boolean check
 
-**C12:** $q'_{carry01} \cdot (q'_{carry01} - 1)$
+**C10:** $q'_{carry01} \cdot (q'_{carry01} - 1)$
 
-Next, check (20) is
+Next, check (18) is
 
-**C13:** $2^{2\ell} \cdot q'_{carry10} = s_{01} - q'_{01}$
+**C11:** $2^{2\ell} \cdot q'_{carry10} = s_{01} - q'_{01}$
 
-Check (21) is another boolean check
+Finally, check (19) is
 
-**C14:** $q'_{carry2} \cdot (q'_{carry2} - 1)$
-
-Finally, check (22) is
-
-**C15:** $2^{\ell} \cdot q'_{carry2} = s_2 + q'_{carry01} - q'_2$
+**C12:** $q'_2 = s_2 + q'_{carry01}$
 
 The `Zero` gate has no constraints and is just used to hold values required by the `ForeignFieldMul` gate.
 

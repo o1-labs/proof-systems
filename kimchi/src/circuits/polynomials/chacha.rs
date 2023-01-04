@@ -582,7 +582,6 @@ mod tests {
             joint_combiner: None,
             endo_coefficient: F::zero(),
             mds: &Vesta::sponge_params().mds,
-            foreign_field_modulus: None,
         };
 
         assert_eq!(
