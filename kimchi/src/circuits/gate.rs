@@ -380,6 +380,20 @@ pub trait Connect {
 
     /// Connects a generic gate cell with zeros to a given row for 64bit range check
     fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
+
+    /// Connects the wires of the range checks in a single foreign field addition
+    /// Inputs:
+    /// - `ffadd_row`: the row of the foreign field addition gate
+    /// - `left_rc`: the first row of the range check for the left input
+    /// - `right_rc`: the first row of the range check for the right input
+    /// - `out_rc`: the first row of the range check for the output of the addition
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    );
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -394,6 +408,39 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self.connect_cell_pair((start_row, 1), (start_row, 2));
         self.connect_cell_pair((start_row, 2), (zero_row, 0));
         self.connect_cell_pair((zero_row, 0), (start_row, 1));
+    }
+
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    ) {
+        if let Some(left_rc) = left_rc {
+            // Copy left_input_lo -> Curr(0)
+            self.connect_cell_pair((left_rc, 0), (ffadd_row, 0));
+            // Copy left_input_mi -> Curr(1)
+            self.connect_cell_pair((left_rc + 1, 0), (ffadd_row, 1));
+            // Copy left_input_hi -> Curr(2)
+            self.connect_cell_pair((left_rc + 2, 0), (ffadd_row, 2));
+        }
+
+        if let Some(right_rc) = right_rc {
+            // Copy right_input_lo -> Curr(3)
+            self.connect_cell_pair((right_rc, 0), (ffadd_row, 3));
+            // Copy right_input_mi -> Curr(4)
+            self.connect_cell_pair((right_rc + 1, 0), (ffadd_row, 4));
+            // Copy right_input_hi -> Curr(5)
+            self.connect_cell_pair((right_rc + 2, 0), (ffadd_row, 5));
+        }
+
+        // Copy result_lo -> Next(0)
+        self.connect_cell_pair((out_rc, 0), (ffadd_row + 1, 0));
+        // Copy result_mi -> Next(1)
+        self.connect_cell_pair((out_rc + 1, 0), (ffadd_row + 1, 1));
+        // Copy result_hi -> Next(2)
+        self.connect_cell_pair((out_rc + 2, 0), (ffadd_row + 1, 2));
     }
 }
 
