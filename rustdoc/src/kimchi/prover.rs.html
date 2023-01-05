@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-64113db173fe9e58.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-8fe2cf7ee64a76fb.css"><link rel="stylesheet" disabled href="../../static.files/dark-7aacebe982779e9a.css"><link rel="stylesheet" disabled href="../../static.files/ayu-29dcc614f7a7b461.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-a211dbb005fb8161.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-9e69e4c014d22d53.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-4a084badb5778746.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1492,7 +1492,6 @@
 <a href="#1492" id="1492">1492</a>
 <a href="#1493" id="1493">1493</a>
 <a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1500,9 +1499,7 @@
         argument::{Argument, ArgumentType},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
-        lookup::{
-            <span class="self">self</span>, lookups::LookupsUsed, runtime_tables::RuntimeTable, tables::combine_table_entry,
-        },
+        lookup::{<span class="self">self</span>, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
@@ -1876,9 +1873,7 @@
             <span class="comment">//~~ - If queries involve a lookup table with multiple columns
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,
             //~~   otherwise set the joint combiner challenge $j&#39;$ to $0$.
-            </span><span class="kw">let </span>joint_lookup_used = <span class="macro">matches!</span>(lcs.configuration.lookup_used, LookupsUsed::Joint);
-
-            <span class="kw">let </span>joint_combiner = <span class="kw">if </span>joint_lookup_used {
+            </span><span class="kw">let </span>joint_combiner = <span class="kw">if </span>lcs.configuration.lookup_info.features.joint_lookup_used {
                 fq_sponge.challenge()
             } <span class="kw">else </span>{
                 G::ScalarField::zero()
@@ -1921,34 +1916,35 @@
                         }
                     };
 
-                    <span class="kw">let </span>combined_entry = <span class="kw">if </span>!lcs.configuration.lookup_info.uses_runtime_tables {
-                        <span class="kw">let </span>table_row = lcs.lookup_table8.iter().map(|e| <span class="kw-2">&amp;</span>e.evals[idx]);
+                    <span class="kw">let </span>combined_entry =
+                        <span class="kw">if </span>!lcs.configuration.lookup_info.features.uses_runtime_tables {
+                            <span class="kw">let </span>table_row = lcs.lookup_table8.iter().map(|e| <span class="kw-2">&amp;</span>e.evals[idx]);
 
-                        combine_table_entry(
-                            <span class="kw-2">&amp;</span>joint_combiner,
-                            <span class="kw-2">&amp;</span>table_id_combiner,
-                            table_row,
-                            <span class="kw-2">&amp;</span>table_id,
-                        )
-                    } <span class="kw">else </span>{
-                        <span class="comment">// if runtime table are used, the second row is modified
-                        </span><span class="kw">let </span>second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
+                            combine_table_entry(
+                                <span class="kw-2">&amp;</span>joint_combiner,
+                                <span class="kw-2">&amp;</span>table_id_combiner,
+                                table_row,
+                                <span class="kw-2">&amp;</span>table_id,
+                            )
+                        } <span class="kw">else </span>{
+                            <span class="comment">// if runtime table are used, the second row is modified
+                            </span><span class="kw">let </span>second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
 
-                        <span class="kw">let </span>table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
-                            <span class="kw">if </span>col == <span class="number">1 </span>{
-                                <span class="kw-2">&amp;</span>second_col.evals[idx]
-                            } <span class="kw">else </span>{
-                                <span class="kw-2">&amp;</span>e.evals[idx]
-                            }
-                        });
+                            <span class="kw">let </span>table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
+                                <span class="kw">if </span>col == <span class="number">1 </span>{
+                                    <span class="kw-2">&amp;</span>second_col.evals[idx]
+                                } <span class="kw">else </span>{
+                                    <span class="kw-2">&amp;</span>e.evals[idx]
+                                }
+                            });
 
-                        combine_table_entry(
-                            <span class="kw-2">&amp;</span>joint_combiner,
-                            <span class="kw-2">&amp;</span>table_id_combiner,
-                            table_row,
-                            <span class="kw-2">&amp;</span>table_id,
-                        )
-                    };
+                            combine_table_entry(
+                                <span class="kw-2">&amp;</span>joint_combiner,
+                                <span class="kw-2">&amp;</span>table_id_combiner,
+                                table_row,
+                                <span class="kw-2">&amp;</span>table_id,
+                            )
+                        };
                     evals.push(combined_entry);
                 }
 
@@ -2268,7 +2264,7 @@
             <span class="comment">// lookup
             </span>{
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                    <span class="kw">let </span>constraints = lookup::constraints::constraints(<span class="kw-2">&amp;</span>lcs.configuration);
+                    <span class="kw">let </span>constraints = lookup::constraints::constraints(<span class="kw-2">&amp;</span>lcs.configuration, <span class="bool-val">false</span>);
                     <span class="kw">let </span>constraints_len = u32::try_from(constraints.len())
                         .expect(<span class="string">&quot;not expecting a large amount of constraints&quot;</span>);
                     <span class="kw">let </span>lookup_alphas =
@@ -2286,7 +2282,9 @@
                             t4 += <span class="kw-2">&amp;</span>eval;
                         } <span class="kw">else if </span>eval.domain().size == t8.domain().size {
                             t8 += <span class="kw-2">&amp;</span>eval;
-                        } <span class="kw">else </span>{
+                        } <span class="kw">else if </span>eval.evals.iter().all(|x| x.is_zero()) {
+                            <span class="comment">// Skip any 0-valued evaluations
+                        </span>} <span class="kw">else </span>{
                             <span class="macro">panic!</span>(<span class="string">&quot;Bad evaluation&quot;</span>)
                         }
 
@@ -2989,4 +2987,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (1d12c3cea 2022-12-20)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (659e169d3 2023-01-04)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>

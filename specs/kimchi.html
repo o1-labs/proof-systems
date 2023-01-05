@@ -1697,7 +1697,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
-    pub lookup_used: LookupsUsed,
+    pub joint_lookup_used: bool,
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]
     pub lookup_table: Vec&lt;PolyComm&lt;G&gt;&gt;,
     #[serde(bound = &quot;PolyComm&lt;G&gt;: Serialize + DeserializeOwned&quot;)]

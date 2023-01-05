@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-64113db173fe9e58.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-8fe2cf7ee64a76fb.css"><link rel="stylesheet" disabled href="../../../static.files/dark-7aacebe982779e9a.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-29dcc614f7a7b461.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-a211dbb005fb8161.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9e69e4c014d22d53.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-4a084badb5778746.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2776,11 +2776,213 @@
 <a href="#2776" id="2776">2776</a>
 <a href="#2777" id="2777">2777</a>
 <a href="#2778" id="2778">2778</a>
+<a href="#2779" id="2779">2779</a>
+<a href="#2780" id="2780">2780</a>
+<a href="#2781" id="2781">2781</a>
+<a href="#2782" id="2782">2782</a>
+<a href="#2783" id="2783">2783</a>
+<a href="#2784" id="2784">2784</a>
+<a href="#2785" id="2785">2785</a>
+<a href="#2786" id="2786">2786</a>
+<a href="#2787" id="2787">2787</a>
+<a href="#2788" id="2788">2788</a>
+<a href="#2789" id="2789">2789</a>
+<a href="#2790" id="2790">2790</a>
+<a href="#2791" id="2791">2791</a>
+<a href="#2792" id="2792">2792</a>
+<a href="#2793" id="2793">2793</a>
+<a href="#2794" id="2794">2794</a>
+<a href="#2795" id="2795">2795</a>
+<a href="#2796" id="2796">2796</a>
+<a href="#2797" id="2797">2797</a>
+<a href="#2798" id="2798">2798</a>
+<a href="#2799" id="2799">2799</a>
+<a href="#2800" id="2800">2800</a>
+<a href="#2801" id="2801">2801</a>
+<a href="#2802" id="2802">2802</a>
+<a href="#2803" id="2803">2803</a>
+<a href="#2804" id="2804">2804</a>
+<a href="#2805" id="2805">2805</a>
+<a href="#2806" id="2806">2806</a>
+<a href="#2807" id="2807">2807</a>
+<a href="#2808" id="2808">2808</a>
+<a href="#2809" id="2809">2809</a>
+<a href="#2810" id="2810">2810</a>
+<a href="#2811" id="2811">2811</a>
+<a href="#2812" id="2812">2812</a>
+<a href="#2813" id="2813">2813</a>
+<a href="#2814" id="2814">2814</a>
+<a href="#2815" id="2815">2815</a>
+<a href="#2816" id="2816">2816</a>
+<a href="#2817" id="2817">2817</a>
+<a href="#2818" id="2818">2818</a>
+<a href="#2819" id="2819">2819</a>
+<a href="#2820" id="2820">2820</a>
+<a href="#2821" id="2821">2821</a>
+<a href="#2822" id="2822">2822</a>
+<a href="#2823" id="2823">2823</a>
+<a href="#2824" id="2824">2824</a>
+<a href="#2825" id="2825">2825</a>
+<a href="#2826" id="2826">2826</a>
+<a href="#2827" id="2827">2827</a>
+<a href="#2828" id="2828">2828</a>
+<a href="#2829" id="2829">2829</a>
+<a href="#2830" id="2830">2830</a>
+<a href="#2831" id="2831">2831</a>
+<a href="#2832" id="2832">2832</a>
+<a href="#2833" id="2833">2833</a>
+<a href="#2834" id="2834">2834</a>
+<a href="#2835" id="2835">2835</a>
+<a href="#2836" id="2836">2836</a>
+<a href="#2837" id="2837">2837</a>
+<a href="#2838" id="2838">2838</a>
+<a href="#2839" id="2839">2839</a>
+<a href="#2840" id="2840">2840</a>
+<a href="#2841" id="2841">2841</a>
+<a href="#2842" id="2842">2842</a>
+<a href="#2843" id="2843">2843</a>
+<a href="#2844" id="2844">2844</a>
+<a href="#2845" id="2845">2845</a>
+<a href="#2846" id="2846">2846</a>
+<a href="#2847" id="2847">2847</a>
+<a href="#2848" id="2848">2848</a>
+<a href="#2849" id="2849">2849</a>
+<a href="#2850" id="2850">2850</a>
+<a href="#2851" id="2851">2851</a>
+<a href="#2852" id="2852">2852</a>
+<a href="#2853" id="2853">2853</a>
+<a href="#2854" id="2854">2854</a>
+<a href="#2855" id="2855">2855</a>
+<a href="#2856" id="2856">2856</a>
+<a href="#2857" id="2857">2857</a>
+<a href="#2858" id="2858">2858</a>
+<a href="#2859" id="2859">2859</a>
+<a href="#2860" id="2860">2860</a>
+<a href="#2861" id="2861">2861</a>
+<a href="#2862" id="2862">2862</a>
+<a href="#2863" id="2863">2863</a>
+<a href="#2864" id="2864">2864</a>
+<a href="#2865" id="2865">2865</a>
+<a href="#2866" id="2866">2866</a>
+<a href="#2867" id="2867">2867</a>
+<a href="#2868" id="2868">2868</a>
+<a href="#2869" id="2869">2869</a>
+<a href="#2870" id="2870">2870</a>
+<a href="#2871" id="2871">2871</a>
+<a href="#2872" id="2872">2872</a>
+<a href="#2873" id="2873">2873</a>
+<a href="#2874" id="2874">2874</a>
+<a href="#2875" id="2875">2875</a>
+<a href="#2876" id="2876">2876</a>
+<a href="#2877" id="2877">2877</a>
+<a href="#2878" id="2878">2878</a>
+<a href="#2879" id="2879">2879</a>
+<a href="#2880" id="2880">2880</a>
+<a href="#2881" id="2881">2881</a>
+<a href="#2882" id="2882">2882</a>
+<a href="#2883" id="2883">2883</a>
+<a href="#2884" id="2884">2884</a>
+<a href="#2885" id="2885">2885</a>
+<a href="#2886" id="2886">2886</a>
+<a href="#2887" id="2887">2887</a>
+<a href="#2888" id="2888">2888</a>
+<a href="#2889" id="2889">2889</a>
+<a href="#2890" id="2890">2890</a>
+<a href="#2891" id="2891">2891</a>
+<a href="#2892" id="2892">2892</a>
+<a href="#2893" id="2893">2893</a>
+<a href="#2894" id="2894">2894</a>
+<a href="#2895" id="2895">2895</a>
+<a href="#2896" id="2896">2896</a>
+<a href="#2897" id="2897">2897</a>
+<a href="#2898" id="2898">2898</a>
+<a href="#2899" id="2899">2899</a>
+<a href="#2900" id="2900">2900</a>
+<a href="#2901" id="2901">2901</a>
+<a href="#2902" id="2902">2902</a>
+<a href="#2903" id="2903">2903</a>
+<a href="#2904" id="2904">2904</a>
+<a href="#2905" id="2905">2905</a>
+<a href="#2906" id="2906">2906</a>
+<a href="#2907" id="2907">2907</a>
+<a href="#2908" id="2908">2908</a>
+<a href="#2909" id="2909">2909</a>
+<a href="#2910" id="2910">2910</a>
+<a href="#2911" id="2911">2911</a>
+<a href="#2912" id="2912">2912</a>
+<a href="#2913" id="2913">2913</a>
+<a href="#2914" id="2914">2914</a>
+<a href="#2915" id="2915">2915</a>
+<a href="#2916" id="2916">2916</a>
+<a href="#2917" id="2917">2917</a>
+<a href="#2918" id="2918">2918</a>
+<a href="#2919" id="2919">2919</a>
+<a href="#2920" id="2920">2920</a>
+<a href="#2921" id="2921">2921</a>
+<a href="#2922" id="2922">2922</a>
+<a href="#2923" id="2923">2923</a>
+<a href="#2924" id="2924">2924</a>
+<a href="#2925" id="2925">2925</a>
+<a href="#2926" id="2926">2926</a>
+<a href="#2927" id="2927">2927</a>
+<a href="#2928" id="2928">2928</a>
+<a href="#2929" id="2929">2929</a>
+<a href="#2930" id="2930">2930</a>
+<a href="#2931" id="2931">2931</a>
+<a href="#2932" id="2932">2932</a>
+<a href="#2933" id="2933">2933</a>
+<a href="#2934" id="2934">2934</a>
+<a href="#2935" id="2935">2935</a>
+<a href="#2936" id="2936">2936</a>
+<a href="#2937" id="2937">2937</a>
+<a href="#2938" id="2938">2938</a>
+<a href="#2939" id="2939">2939</a>
+<a href="#2940" id="2940">2940</a>
+<a href="#2941" id="2941">2941</a>
+<a href="#2942" id="2942">2942</a>
+<a href="#2943" id="2943">2943</a>
+<a href="#2944" id="2944">2944</a>
+<a href="#2945" id="2945">2945</a>
+<a href="#2946" id="2946">2946</a>
+<a href="#2947" id="2947">2947</a>
+<a href="#2948" id="2948">2948</a>
+<a href="#2949" id="2949">2949</a>
+<a href="#2950" id="2950">2950</a>
+<a href="#2951" id="2951">2951</a>
+<a href="#2952" id="2952">2952</a>
+<a href="#2953" id="2953">2953</a>
+<a href="#2954" id="2954">2954</a>
+<a href="#2955" id="2955">2955</a>
+<a href="#2956" id="2956">2956</a>
+<a href="#2957" id="2957">2957</a>
+<a href="#2958" id="2958">2958</a>
+<a href="#2959" id="2959">2959</a>
+<a href="#2960" id="2960">2960</a>
+<a href="#2961" id="2961">2961</a>
+<a href="#2962" id="2962">2962</a>
+<a href="#2963" id="2963">2963</a>
+<a href="#2964" id="2964">2964</a>
+<a href="#2965" id="2965">2965</a>
+<a href="#2966" id="2966">2966</a>
+<a href="#2967" id="2967">2967</a>
+<a href="#2968" id="2968">2968</a>
+<a href="#2969" id="2969">2969</a>
+<a href="#2970" id="2970">2970</a>
+<a href="#2971" id="2971">2971</a>
+<a href="#2972" id="2972">2972</a>
+<a href="#2973" id="2973">2973</a>
+<a href="#2974" id="2974">2974</a>
+<a href="#2975" id="2975">2975</a>
+<a href="#2976" id="2976">2976</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
+        constraints::FeatureFlags,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        lookup::{index::LookupSelectors, lookups::LookupPattern},
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupPattern, LookupPatterns},
+        },
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -2819,8 +3021,8 @@
     <span class="attr">#[error(<span class="string">&quot;Cannot get index evaluation {0:?} (should have been linearized away)&quot;</span>)]
     </span>MissingIndexEvaluation(Column),
 
-    <span class="attr">#[error(<span class="string">&quot;Linearization failed&quot;</span>)]
-    </span>FailedLinearization,
+    <span class="attr">#[error(<span class="string">&quot;Linearization failed (too many unevaluated columns: {0:?}&quot;</span>)]
+    </span>FailedLinearization(Vec&lt;Variable&gt;),
 
     <span class="attr">#[error(<span class="string">&quot;runtime table not available&quot;</span>)]
     </span>MissingRuntime,
@@ -3216,7 +3418,14 @@
     ForeignFieldMul,
     Xor,
     Rot,
-}
+    LookupTables,
+    RuntimeLookupTables,
+    LookupPattern(LookupPattern),
+    <span class="doccomment">/// Enabled if the table width is at least the given number
+    </span>TableWidth(isize), <span class="comment">// NB: isize so that we don&#39;t need to convert for OCaml :(
+    </span><span class="doccomment">/// Enabled if the number of lookups per row is at least the given number
+    </span>LookupsPerRow(isize), <span class="comment">// NB: isize so that we don&#39;t need to convert for OCaml :(
+</span>}
 
 <span class="kw">impl </span>FeatureFlag {
     <span class="kw">fn </span>is_enabled(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
@@ -3247,8 +3456,148 @@
     </span>UnnormalizedLagrangeBasis(i32),
     Pow(Box&lt;Expr&lt;C&gt;&gt;, u64),
     Cache(CacheId, Box&lt;Expr&lt;C&gt;&gt;),
-    <span class="doccomment">/// Expression is conditional on the given feature flag, returns 0 if disabled.
-    </span>EnabledIf(FeatureFlag, Box&lt;Expr&lt;C&gt;&gt;),
+    <span class="doccomment">/// If the feature flag is enabled, return the first expression; otherwise, return the second.
+    </span>IfFeature(FeatureFlag, Box&lt;Expr&lt;C&gt;&gt;, Box&lt;Expr&lt;C&gt;&gt;),
+}
+
+<span class="kw">impl</span>&lt;C: Zero + One + Neg&lt;Output = C&gt; + PartialEq + Clone&gt; Expr&lt;C&gt; {
+    <span class="kw">fn </span>apply_feature_flags_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; (Expr&lt;C&gt;, bool) {
+        <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
+        <span class="kw">match </span><span class="self">self </span>{
+            Constant(<span class="kw">_</span>) | Cell(<span class="kw">_</span>) | VanishesOnLast4Rows | UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; {
+                (<span class="self">self</span>.clone(), <span class="bool-val">false</span>)
+            }
+            Double(c) =&gt; {
+                <span class="kw">let </span>(c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                <span class="kw">if </span>reduce_further &amp;&amp; c_reduced.is_zero() {
+                    (Expr::zero(), <span class="bool-val">true</span>)
+                } <span class="kw">else </span>{
+                    (Double(Box::new(c_reduced)), <span class="bool-val">false</span>)
+                }
+            }
+            Square(c) =&gt; {
+                <span class="kw">let </span>(c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                <span class="kw">if </span>reduce_further &amp;&amp; (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, <span class="bool-val">true</span>)
+                } <span class="kw">else </span>{
+                    (Square(Box::new(c_reduced)), <span class="bool-val">false</span>)
+                }
+            }
+            BinOp(op, c1, c2) =&gt; {
+                <span class="kw">let </span>(c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                <span class="kw">let </span>(c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                <span class="kw">match </span>op {
+                    Op2::Add =&gt; {
+                        <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
+                            <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                                (Expr::zero(), <span class="bool-val">true</span>)
+                            } <span class="kw">else </span>{
+                                (c2_reduced, <span class="bool-val">false</span>)
+                            }
+                        } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                            (c1_reduced, <span class="bool-val">false</span>)
+                        } <span class="kw">else </span>{
+                            (
+                                BinOp(Op2::Add, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                <span class="bool-val">false</span>,
+                            )
+                        }
+                    }
+                    Op2::Sub =&gt; {
+                        <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero() {
+                            <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                                (Expr::zero(), <span class="bool-val">true</span>)
+                            } <span class="kw">else </span>{
+                                (-c2_reduced, <span class="bool-val">false</span>)
+                            }
+                        } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_zero() {
+                            (c1_reduced, <span class="bool-val">false</span>)
+                        } <span class="kw">else </span>{
+                            (
+                                BinOp(Op2::Sub, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                <span class="bool-val">false</span>,
+                            )
+                        }
+                    }
+                    Op2::Mul =&gt; {
+                        <span class="kw">if </span>reduce_further1 &amp;&amp; c1_reduced.is_zero()
+                            || reduce_further2 &amp;&amp; c2_reduced.is_zero()
+                        {
+                            (Expr::zero(), <span class="bool-val">true</span>)
+                        } <span class="kw">else if </span>reduce_further1 &amp;&amp; c1_reduced.is_one() {
+                            <span class="kw">if </span>reduce_further2 &amp;&amp; c2_reduced.is_one() {
+                                (Expr::one(), <span class="bool-val">true</span>)
+                            } <span class="kw">else </span>{
+                                (c2_reduced, <span class="bool-val">false</span>)
+                            }
+                        } <span class="kw">else if </span>reduce_further2 &amp;&amp; c2_reduced.is_one() {
+                            (c1_reduced, <span class="bool-val">false</span>)
+                        } <span class="kw">else </span>{
+                            (
+                                BinOp(Op2::Mul, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                <span class="bool-val">false</span>,
+                            )
+                        }
+                    }
+                }
+            }
+            Pow(c, power) =&gt; {
+                <span class="kw">let </span>(c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                <span class="kw">if </span>reduce_further &amp;&amp; (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, <span class="bool-val">true</span>)
+                } <span class="kw">else </span>{
+                    (Pow(Box::new(c_reduced), <span class="kw-2">*</span>power), <span class="bool-val">false</span>)
+                }
+            }
+            Cache(cache_id, c) =&gt; {
+                <span class="kw">let </span>(c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                <span class="kw">if </span>reduce_further {
+                    (c_reduced, <span class="bool-val">true</span>)
+                } <span class="kw">else </span>{
+                    (Cache(<span class="kw-2">*</span>cache_id, Box::new(c_reduced)), <span class="bool-val">false</span>)
+                }
+            }
+            IfFeature(feature, c1, c2) =&gt; {
+                <span class="kw">let </span>is_enabled = {
+                    <span class="kw">use </span>FeatureFlag::<span class="kw-2">*</span>;
+                    <span class="kw">match </span>feature {
+                        ChaCha =&gt; features.chacha,
+                        RangeCheck =&gt; features.range_check,
+                        ForeignFieldAdd =&gt; features.foreign_field_add,
+                        ForeignFieldMul =&gt; features.foreign_field_mul,
+                        Xor =&gt; features.xor,
+                        Rot =&gt; features.rot,
+                        LookupTables =&gt; {
+                            features.lookup_features.patterns != LookupPatterns::default()
+                        }
+                        RuntimeLookupTables =&gt; features.lookup_features.uses_runtime_tables,
+                        LookupPattern(pattern) =&gt; features.lookup_features.patterns[<span class="kw-2">*</span>pattern],
+                        TableWidth(width) =&gt; features
+                            .lookup_features
+                            .patterns
+                            .into_iter()
+                            .any(|feature| feature.max_joint_size() &gt;= (<span class="kw-2">*</span>width <span class="kw">as </span>u32)),
+                        LookupsPerRow(count) =&gt; features
+                            .lookup_features
+                            .patterns
+                            .into_iter()
+                            .any(|feature| feature.max_lookups_per_row() &gt;= (<span class="kw-2">*</span>count <span class="kw">as </span>usize)),
+                    }
+                };
+                <span class="kw">if </span>is_enabled {
+                    <span class="kw">let </span>(c1_reduced, <span class="kw">_</span>) = c1.apply_feature_flags_inner(features);
+                    (c1_reduced, <span class="bool-val">false</span>)
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>(c2_reduced, <span class="kw">_</span>) = c2.apply_feature_flags_inner(features);
+                    (c2_reduced, <span class="bool-val">true</span>)
+                }
+            }
+        }
+    }
+    <span class="kw">pub fn </span>apply_feature_flags(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; Expr&lt;C&gt; {
+        <span class="kw">let </span>(res, <span class="kw">_</span>) = <span class="self">self</span>.apply_feature_flags_inner(features);
+        res
+    }
 }
 
 <span class="doccomment">/// For efficiency of evaluation, we compile expressions to
@@ -3276,7 +3625,9 @@
     UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
-    <span class="doccomment">/// Skip the given number of tokens if the feature is disabled, and emit a zero instead.
+    <span class="doccomment">/// Skip the given number of tokens if the feature is enabled.
+    </span>SkipIf(FeatureFlag, usize),
+    <span class="doccomment">/// Skip the given number of tokens if the feature is disabled.
     </span>SkipIfNot(FeatureFlag, usize),
 }
 
@@ -3377,6 +3728,12 @@
                     cache.push(x);
                 }
                 Load(i) =&gt; stack.push(cache[<span class="kw-2">*</span>i]),
+                SkipIf(feature, count) =&gt; {
+                    <span class="kw">if </span>feature.is_enabled() {
+                        skip_count = <span class="kw-2">*</span>count;
+                        stack.push(F::zero());
+                    }
+                }
                 SkipIfNot(feature, count) =&gt; {
                     <span class="kw">if </span>!feature.is_enabled() {
                         skip_count = <span class="kw-2">*</span>count;
@@ -3425,7 +3782,7 @@
             }
             Pow(e, d) =&gt; d * e.degree(d1_size),
             Cache(<span class="kw">_</span>, e) =&gt; e.degree(d1_size),
-            EnabledIf(<span class="kw">_</span>, e) =&gt; e.degree(d1_size),
+            IfFeature(<span class="kw">_</span>, e1, e2) =&gt; std::cmp::max(e1.degree(d1_size), e2.degree(d1_size)),
         }
     }
 }
@@ -4071,16 +4428,32 @@
                     }
                 }
             }
-            Expr::EnabledIf(feature, e) =&gt; {
-                <span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
-                res.push(tok);
-                <span class="kw">let </span>len_before = res.len();
-                <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
-                when the feature flag is off. */
-                </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
-                e.to_polish_(<span class="kw-2">&amp;mut </span>cache, res);
-                <span class="kw">let </span>len_after = res.len();
-                res[len_before - <span class="number">1</span>] = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, len_after - len_before);
+            Expr::IfFeature(feature, e1, e2) =&gt; {
+                {
+                    <span class="comment">// True branch
+                    </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
+                    res.push(tok);
+                    <span class="kw">let </span>len_before = res.len();
+                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    when the feature flag is off. */
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
+                    e1.to_polish_(<span class="kw-2">&amp;mut </span>cache, res);
+                    <span class="kw">let </span>len_after = res.len();
+                    res[len_before - <span class="number">1</span>] = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, len_after - len_before);
+                }
+
+                {
+                    <span class="comment">// False branch
+                    </span><span class="kw">let </span>tok = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, <span class="number">0</span>);
+                    res.push(tok);
+                    <span class="kw">let </span>len_before = res.len();
+                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                    when the feature flag is on. */
+                    </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
+                    e2.to_polish_(<span class="kw-2">&amp;mut </span>cache, res);
+                    <span class="kw">let </span>len_after = res.len();
+                    res[len_before - <span class="number">1</span>] = PolishToken::SkipIfNot(<span class="kw-2">*</span>feature, len_after - len_before);
+                }
             }
         }
     }
@@ -4105,7 +4478,11 @@
             BinOp(Op2::Mul, x, y) =&gt; x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) =&gt; x.evaluate_constants_(c) - y.evaluate_constants_(c),
             Cache(id, e) =&gt; Cache(<span class="kw-2">*</span>id, Box::new(e.evaluate_constants_(c))),
-            EnabledIf(feature, e) =&gt; EnabledIf(<span class="kw-2">*</span>feature, Box::new(e.evaluate_constants_(c))),
+            IfFeature(feature, e1, e2) =&gt; IfFeature(
+                <span class="kw-2">*</span>feature,
+                Box::new(e1.evaluate_constants_(c)),
+                Box::new(e2.evaluate_constants_(c)),
+            ),
         }
     }
 
@@ -4153,8 +4530,13 @@
             UnnormalizedLagrangeBasis(i) =&gt; <span class="prelude-val">Ok</span>(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, <span class="kw-2">*</span>i, <span class="kw-2">&amp;</span>pt)),
             Cell(v) =&gt; v.evaluate(evals),
             Cache(<span class="kw">_</span>, e) =&gt; e.evaluate_(d, pt, evals, c),
-            EnabledIf(feature, e) <span class="kw">if </span>feature.is_enabled() =&gt; e.evaluate_(d, pt, evals, c),
-            EnabledIf(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(F::zero()),
+            IfFeature(feature, e1, e2) =&gt; {
+                <span class="kw">if </span>feature.is_enabled() {
+                    e1.evaluate_(d, pt, evals, c)
+                } <span class="kw">else </span>{
+                    e2.evaluate_(d, pt, evals, c)
+                }
+            }
         }
     }
 
@@ -4207,11 +4589,11 @@
             UnnormalizedLagrangeBasis(i) =&gt; <span class="prelude-val">Ok</span>(unnormalized_lagrange_basis(<span class="kw-2">&amp;</span>d, <span class="kw-2">*</span>i, <span class="kw-2">&amp;</span>pt)),
             Cell(v) =&gt; v.evaluate(evals),
             Cache(<span class="kw">_</span>, e) =&gt; e.evaluate(d, pt, evals),
-            EnabledIf(feature, e) =&gt; {
+            IfFeature(feature, e1, e2) =&gt; {
                 <span class="kw">if </span>feature.is_enabled() {
-                    e.evaluate(d, pt, evals)
+                    e1.evaluate(d, pt, evals)
                 } <span class="kw">else </span>{
-                    <span class="prelude-val">Ok</span>(F::zero())
+                    e2.evaluate(d, pt, evals)
                 }
             }
         }
@@ -4378,14 +4760,14 @@
                     }
                 }
             }
-            Expr::EnabledIf(feature, e) =&gt; {
+            Expr::IfFeature(feature, e1, e2) =&gt; {
+                <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
+                when the feature flag is off. */
+                </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
                 <span class="kw">if </span>feature.is_enabled() {
-                    <span class="comment">/* Clone the cache, to make sure we don&#39;t try to access cached statements later
-                    when the feature flag is off. */
-                    </span><span class="kw">let </span><span class="kw-2">mut </span>cache = cache.clone();
-                    <span class="kw">return </span>e.evaluations_helper(<span class="kw-2">&amp;mut </span>cache, d, env);
+                    <span class="kw">return </span>e1.evaluations_helper(<span class="kw-2">&amp;mut </span>cache, d, env);
                 } <span class="kw">else </span>{
-                    EvalResult::Constant(F::zero())
+                    <span class="kw">return </span>e2.evaluations_helper(<span class="kw-2">&amp;mut </span>cache, d, env);
                 }
             }
         };
@@ -4539,7 +4921,7 @@
             VanishesOnLast4Rows =&gt; <span class="bool-val">true</span>,
             UnnormalizedLagrangeBasis(<span class="kw">_</span>) =&gt; <span class="bool-val">true</span>,
             Cache(<span class="kw">_</span>, x) =&gt; x.is_constant(evaluated),
-            EnabledIf(<span class="kw">_</span>, x) =&gt; x.is_constant(evaluated),
+            IfFeature(<span class="kw">_</span>, e1, e2) =&gt; e1.is_constant(evaluated) &amp;&amp; e2.is_constant(evaluated),
         }
     }
 
@@ -4616,14 +4998,23 @@
                 <span class="kw">let </span>x = x.monomials(ev);
                 mul_monomials(<span class="kw-2">&amp;</span>x, <span class="kw-2">&amp;</span>x)
             }
-            EnabledIf(feature, x) =&gt; {
-                <span class="kw">let </span><span class="kw-2">mut </span>monomials = x.monomials(ev);
-                <span class="kw">for </span>expr <span class="kw">in </span>monomials.values_mut() {
-                    <span class="kw">let </span><span class="kw-2">mut </span>unflagged = Expr::zero();
-                    std::mem::swap(expr, <span class="kw-2">&amp;mut </span>unflagged);
-                    <span class="kw-2">*</span>expr = Expr::EnabledIf(<span class="kw-2">*</span>feature, Box::new(unflagged))
+            IfFeature(feature, e1, e2) =&gt; {
+                <span class="kw">let </span><span class="kw-2">mut </span>res = HashMap::new();
+                <span class="kw">let </span>e1_monomials = e1.monomials(ev);
+                <span class="kw">let </span><span class="kw-2">mut </span>e2_monomials = e2.monomials(ev);
+                <span class="kw">for </span>(m, c) <span class="kw">in </span>e1_monomials.into_iter() {
+                    <span class="kw">let </span>else_branch = <span class="kw">match </span>e2_monomials.remove(<span class="kw-2">&amp;</span>m) {
+                        <span class="prelude-val">None </span>=&gt; Expr::zero(),
+                        <span class="prelude-val">Some</span>(c) =&gt; c,
+                    };
+                    <span class="kw">let </span>expr = Expr::IfFeature(<span class="kw-2">*</span>feature, Box::new(c), Box::new(else_branch));
+                    res.insert(m, expr);
                 }
-                monomials
+                <span class="kw">for </span>(m, c) <span class="kw">in </span>e2_monomials.into_iter() {
+                    <span class="kw">let </span>expr = Expr::IfFeature(<span class="kw-2">*</span>feature, Box::new(Expr::zero()), Box::new(c));
+                    res.insert(m, expr);
+                }
+                res
             }
         }
     }
@@ -4694,7 +5085,7 @@
                     </span>}
                 }
             } <span class="kw">else </span>{
-                <span class="kw">return </span><span class="prelude-val">Err</span>(ExprError::FailedLinearization);
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ExprError::FailedLinearization(unevaluated));
             }
         }
         <span class="prelude-val">Ok</span>(Linearization {
@@ -5036,8 +5427,13 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
-            EnabledIf(feature, e) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;enabled_if({:?}, (fun () -&gt; {}))&quot;</span>, feature, e.ocaml(cache))
+            IfFeature(feature, e1, e2) =&gt; {
+                <span class="macro">format!</span>(
+                    <span class="string">&quot;if_feature({:?}, (fun () -&gt; {}), (fun () -&gt; {}))&quot;</span>,
+                    feature,
+                    e1.ocaml(cache),
+                    e2.ocaml(cache)
+                )
             }
         }
     }
@@ -5080,7 +5476,7 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.latex_name()
             }
-            EnabledIf(feature, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, feature),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, feature),
         }
     }
 
@@ -5103,7 +5499,7 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
-            EnabledIf(feature, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, feature),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, feature),
         }
     }
 
@@ -5405,7 +5801,7 @@
 
 <span class="doccomment">/// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 </span><span class="kw">pub mod </span>prologue {
-    <span class="kw">pub use super</span>::{coeff, constant, index, witness, witness_curr, witness_next, E};
+    <span class="kw">pub use super</span>::{coeff, constant, index, witness, witness_curr, witness_next, FeatureFlag, E};
 }
 
 <span class="attr">#[cfg(test)]
@@ -5555,4 +5951,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (1d12c3cea 2022-12-20)" data-search-js="search-444266647c4dba98.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (659e169d3 2023-01-04)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
