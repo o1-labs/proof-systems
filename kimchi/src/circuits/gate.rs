@@ -387,6 +387,8 @@ pub trait Connect {
     /// - `left_rc`: the first row of the range check for the left input
     /// - `right_rc`: the first row of the range check for the right input
     /// - `out_rc`: the first row of the range check for the output of the addition
+    /// Note:
+    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
     fn connect_ffadd_range_checks(
         &mut self,
         ffadd_row: usize,
