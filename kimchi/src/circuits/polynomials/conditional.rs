@@ -2,7 +2,9 @@
 //!
 //! This gate implements at most 2 conditional statements per row
 //!
+//! ```text
 //!     if(b, x, y) = b * x + (1 - b) * y
+//!```
 //!
 //! Layout
 //!
