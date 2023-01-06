@@ -75,3 +75,4 @@ harness = false
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "commitment_dlog/ocaml_types", "mina-poseidon/ocaml_types" ]
 wasm_types = [ "wasm-bindgen" ]
+check_feature_flags = []

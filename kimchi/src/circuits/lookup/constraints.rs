@@ -3,7 +3,7 @@ use crate::{
         expr::{prologue::*, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
-            JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo, LookupsUsed,
+            JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
         },
         wires::COLUMNS,
     },
@@ -338,9 +338,6 @@ where
 #[derive(Clone, Serialize, Deserialize, Debug)]
 #[serde(bound = "F: ark_serialize::CanonicalSerialize + ark_serialize::CanonicalDeserialize")]
 pub struct LookupConfiguration<F> {
-    /// The kind of lookups used
-    pub lookup_used: LookupsUsed,
-
     /// Information about the specific lookups used
     pub lookup_info: LookupInfo,
 
@@ -352,12 +349,30 @@ pub struct LookupConfiguration<F> {
     pub dummy_lookup: JointLookupValue<F>,
 }
 
+impl<F: Zero> LookupConfiguration<F> {
+    pub fn new(lookup_info: LookupInfo) -> LookupConfiguration<F> {
+        // For computational efficiency, we choose the dummy lookup value to be all 0s in table 0.
+        let dummy_lookup = JointLookup {
+            entry: vec![],
+            table_id: F::zero(),
+        };
+
+        LookupConfiguration {
+            lookup_info,
+            dummy_lookup,
+        }
+    }
+}
+
 /// Specifies the lookup constraints as expressions.
 ///
 /// # Panics
 ///
 /// Will panic if single `element` length is bigger than `max_per_row` length.
-pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E<F>> {
+pub fn constraints<F: FftField>(
+    configuration: &LookupConfiguration<F>,
+    generate_feature_flags: bool,
+) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
     //
@@ -385,54 +400,96 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
         // (1 minus the sum of the lookup selectors)
         let non_lookup_indicator = {
             let lookup_indicator = lookup_info
-                .kinds
-                .iter()
-                .map(|spec| column(Column::LookupKindIndex(*spec)))
+                .features
+                .patterns
+                .into_iter()
+                .map(|spec| {
+                    let mut term = column(Column::LookupKindIndex(spec));
+                    if generate_feature_flags {
+                        term = E::IfFeature(
+                            FeatureFlag::LookupPattern(spec),
+                            Box::new(term),
+                            Box::new(E::zero()),
+                        )
+                    }
+                    term
+                })
                 .fold(E::zero(), |acc: E<F>, x| acc + x);
 
             E::one() - lookup_indicator
         };
 
-        let joint_combiner = ConstantExpr::JointCombiner;
-        let table_id_combiner = joint_combiner
-            .clone()
-            .pow(lookup_info.max_joint_size.into());
+        let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
+        let table_id_combiner =
+            // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
+            // needed.
+            (1..lookup_info.max_joint_size).fold(joint_combiner.clone(), |acc, i| {
+                let mut new_term = joint_combiner.clone();
+                if generate_feature_flags {
+                    new_term = E::IfFeature(
+                        FeatureFlag::TableWidth((i + 1) as isize),
+                        Box::new(new_term),
+                        Box::new(E::one()),
+                    );
+                }
+                acc * new_term
+            });
 
         // combine the columns of the dummy lookup row
         let dummy_lookup = {
-            let expr_dummy: JointLookupValue<ConstantExpr<F>> = JointLookup {
+            let expr_dummy: JointLookupValue<E<F>> = JointLookup {
                 entry: configuration
                     .dummy_lookup
                     .entry
                     .iter()
-                    .map(|x| ConstantExpr::Literal(*x))
+                    .map(|x| E::Constant(ConstantExpr::Literal(*x)))
                     .collect(),
-                table_id: ConstantExpr::Literal(configuration.dummy_lookup.table_id),
+                table_id: E::Constant(ConstantExpr::Literal(configuration.dummy_lookup.table_id)),
             };
             expr_dummy.evaluate(&joint_combiner, &table_id_combiner)
+        };
+
+        // (1 + beta)^max_per_row
+        let beta1_per_row: E<F> = {
+            let beta1 = E::Constant(ConstantExpr::one() + ConstantExpr::Beta);
+            // Compute beta1.pow(lookup_info.max_per_row)
+            let mut res = beta1.clone();
+            for i in 1..lookup_info.max_per_row {
+                let mut beta1_used = beta1.clone();
+                if generate_feature_flags {
+                    beta1_used = E::IfFeature(
+                        FeatureFlag::LookupsPerRow((i + 1) as isize),
+                        Box::new(beta1_used),
+                        Box::new(E::one()),
+                    );
+                }
+                res *= beta1_used;
+            }
+            res
         };
 
         // pre-compute the padding dummies we can use depending on the number of lookups to the `max_per_row` lookups
         // each value is also multipled with (1 + beta)^max_per_row
         // as we need to multiply the denominator with this eventually
-        let dummy_padding: Vec<ConstantExpr<F>> = {
-            // v contains the `max_per_row` powers of `beta + dummy` starting with 1
-            // v[i] = (gamma + dummy)^i
-            let mut dummies = vec![ConstantExpr::one()];
-            let dummy = ConstantExpr::Gamma + dummy_lookup;
-            for i in 1..=lookup_info.max_per_row {
-                dummies.push(dummies[i - 1].clone() * dummy.clone());
+        let dummy_padding = |spec_len| {
+            let mut res = E::one();
+            let dummy = E::Constant(ConstantExpr::Gamma) + dummy_lookup.clone();
+            for i in spec_len..lookup_info.max_per_row {
+                let mut dummy_used = dummy.clone();
+                if generate_feature_flags {
+                    dummy_used = E::IfFeature(
+                        FeatureFlag::LookupsPerRow((i + 1) as isize),
+                        Box::new(dummy_used),
+                        Box::new(E::one()),
+                    );
+                }
+                res *= dummy_used;
             }
 
-            // TODO: we can just multiply with (1+beta)^max_per_row at the end for any f_term, it feels weird to do it here
-            // (1 + beta)^max_per_row
-            let beta1_per_row: ConstantExpr<F> =
-                (ConstantExpr::one() + ConstantExpr::Beta).pow(lookup_info.max_per_row as u64);
-
-            dummies
-                .iter()
-                .map(|dummies| dummies.clone() * beta1_per_row.clone())
-                .collect()
+            // NOTE: We multiply by beta1_per_row here instead of at the end, because the
+            // expression framework will fold the constants together rather than multiplying the
+            // whole d8-sized polynomial evaluations by multiple constants.
+            res * beta1_per_row.clone()
         };
 
         // This is set up so that on rows that have lookups, chunk will be equal
@@ -443,21 +500,16 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             assert!(spec.len() <= lookup_info.max_per_row);
 
             // padding is (1+beta)^max_per_rows * (gamma + dummy)^pad
-            let padding_len = lookup_info.max_per_row - spec.len();
-            let padding = dummy_padding[padding_len].clone();
+            let padding = dummy_padding(spec.len());
 
             // padding * \mul (gamma + combined_witnesses)
             let eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
                 .map(|j| {
                     E::Constant(ConstantExpr::Gamma)
-                        + j.evaluate(
-                            &E::Constant(joint_combiner.clone()),
-                            &E::Constant(table_id_combiner.clone()),
-                            &eval,
-                        )
+                        + j.evaluate(&joint_combiner, &table_id_combiner, &eval)
                 })
-                .fold(E::Constant(padding), |acc: E<F>, x| acc * x)
+                .fold(padding, |acc: E<F>, x| acc * x)
         };
 
         // f part of the numerator
@@ -465,9 +517,21 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             let dummy_rows = non_lookup_indicator * f_term(&vec![]);
 
             lookup_info
-                .kinds
-                .iter()
-                .map(|spec| column(Column::LookupKindIndex(*spec)) * f_term(&spec.lookups::<F>()))
+                .features
+                .patterns
+                .into_iter()
+                .map(|spec| {
+                    let mut term =
+                        column(Column::LookupKindIndex(spec)) * f_term(&spec.lookups::<F>());
+                    if generate_feature_flags {
+                        term = E::IfFeature(
+                            FeatureFlag::LookupPattern(spec),
+                            Box::new(term),
+                            Box::new(E::zero()),
+                        )
+                    }
+                    term
+                })
                 .fold(dummy_rows, |acc, x| acc + x)
         };
 
@@ -519,9 +583,17 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
             // gamma * (beta + 1) + sorted[i](x) + beta * sorted[i](x w)
             // or
             // gamma * (beta + 1) + sorted[i](x w) + beta * sorted[i](x)
-            gammabeta1.clone()
+            let mut expr = gammabeta1.clone()
                 + E::cell(Column::LookupSorted(i), s1)
-                + E::beta() * E::cell(Column::LookupSorted(i), s2)
+                + E::beta() * E::cell(Column::LookupSorted(i), s2);
+            if generate_feature_flags {
+                expr = E::IfFeature(
+                    FeatureFlag::LookupsPerRow(i as isize),
+                    Box::new(expr),
+                    Box::new(E::one()),
+                );
+            }
+            expr
         })
         .fold(E::one(), |acc: E<F>, x| acc * x);
 
@@ -552,16 +624,40 @@ pub fn constraints<F: FftField>(configuration: &LookupConfiguration<F>) -> Vec<E
                 // Check compatibility of the first elements
                 0
             };
-            E::UnnormalizedLagrangeBasis(first_or_last)
-                * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)))
+            let mut expr = E::UnnormalizedLagrangeBasis(first_or_last)
+                * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)));
+            if generate_feature_flags {
+                expr = E::IfFeature(
+                    FeatureFlag::LookupsPerRow((i + 1) as isize),
+                    Box::new(expr),
+                    Box::new(E::zero()),
+                )
+            }
+            expr
         })
         .collect();
     res.extend(compatibility_checks);
 
+    // Padding to make sure that the position of the runtime tables constraints is always
+    // consistent.
+    res.extend((lookup_info.max_per_row..4).map(|_| E::zero()));
+
     // if we are using runtime tables, we add:
     // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
-    if configuration.lookup_info.uses_runtime_tables {
-        let rt_constraints = runtime_tables::constraints();
+    if configuration.lookup_info.features.uses_runtime_tables {
+        let mut rt_constraints = runtime_tables::constraints();
+        if generate_feature_flags {
+            for term in rt_constraints.iter_mut() {
+                // Dummy value, to appease the borrow checker.
+                let mut boxed_term = Box::new(constant(F::zero()));
+                std::mem::swap(term, &mut *boxed_term);
+                *term = E::IfFeature(
+                    FeatureFlag::RuntimeLookupTables,
+                    boxed_term,
+                    Box::new(E::zero()),
+                )
+            }
+        }
         res.extend(rt_constraints);
     }
 
