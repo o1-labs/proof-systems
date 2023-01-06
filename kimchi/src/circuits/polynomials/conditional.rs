@@ -172,7 +172,7 @@ pub fn create<F: PrimeField>(x: &[F; 2], y: &[F; 2], b: &[bool; 2]) -> [Vec<F>; 
     witness
 }
 
-/// Extend an existing witness with a multi-range-check gadget for three 88-bit values: v0, v1 and v2
+/// Extend an existing witness with a conditional gate
 pub fn extend<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     x: &[F; 2],
