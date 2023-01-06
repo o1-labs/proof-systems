@@ -52,7 +52,7 @@ use crate::{
     variable_map,
 };
 
-/// Conditional if gate
+/// Conditional gate
 ///    * This gate operates on the Curr row only
 ///    * Can constrain up to two conditional expressions
 #[derive(Default)]

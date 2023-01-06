@@ -53,8 +53,8 @@ where
         wires: Wire::for_row(next_row),
         coeffs: vec![],
     });
-    for col in 0..witness.len() {
-        witness[col].push(G::ScalarField::zero())
+    for col in &mut witness {
+        col.push(G::ScalarField::zero())
     }
 
     let runner = if full {
