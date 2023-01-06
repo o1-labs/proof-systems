@@ -475,7 +475,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            lookup::lookups::{LookupInfo, LookupPattern},
+            lookup::lookups::{LookupFeatures, LookupInfo, LookupPatterns},
             wires::*,
         },
         curve::KimchiCurve,
@@ -508,12 +508,17 @@ mod tests {
 
     #[test]
     fn chacha_linearization() {
-        let lookup_info = LookupInfo::create(
-            [LookupPattern::Xor, LookupPattern::ChaChaFinal]
-                .into_iter()
-                .collect(),
-            false,
-        );
+        let lookup_info = LookupInfo::create(LookupFeatures {
+            patterns: LookupPatterns {
+                xor: true,
+                chacha_final: true,
+                lookup: false,
+                range_check: false,
+                foreign_field_mul: false,
+            },
+            uses_runtime_tables: false,
+            joint_lookup_used: true,
+        });
 
         let evaluated_cols = {
             let mut h = std::collections::HashSet::new();
