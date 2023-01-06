@@ -756,7 +756,7 @@ where
                     (&Xor16::default(), xor_enabled),
                     // Rot gate
                     (&Rot64::default(), rot_enabled),
-                    // If conditional gate
+                    // Conditional gate
                     (&Conditional::default(), conditional_enabled),
                 ]
                 .into_iter()

@@ -169,7 +169,7 @@ fn test_conditional() {
         &x,
         &y,
         &[true, false],
-        vec![((0, 6), ScalarField::from(4u64))],
+        vec![((0, 6), ScalarField::from(4u64))], // Invalidate b
     );
     assert_eq!(
         result,
@@ -184,7 +184,7 @@ fn test_conditional() {
         &x,
         &y,
         &[true, false],
-        vec![((0, 7), ScalarField::from(2u64))],
+        vec![((0, 7), ScalarField::from(2u64))], // Invalidate b1
     );
     assert_eq!(
         result,
@@ -199,7 +199,7 @@ fn test_conditional() {
         &x,
         &y,
         &[true, false],
-        vec![((0, 8), ScalarField::from(2u64))],
+        vec![((0, 8), ScalarField::from(2u64))], // Invalidate b2
     );
     assert_eq!(
         result,
@@ -214,7 +214,7 @@ fn test_conditional() {
         &x,
         &y,
         &[true, false],
-        vec![((0, 0), y[0])],
+        vec![((0, 0), y[0])], // Invalidate r1
     );
     assert_ne!(witness[0][0], witness[1][0]);
     assert_eq!(
@@ -230,7 +230,7 @@ fn test_conditional() {
         &x,
         &y,
         &[true, false],
-        vec![((0, 3), x[1])],
+        vec![((0, 3), x[1])], // Invalidate r2
     );
     assert_ne!(witness[3][0], witness[5][0]);
     assert_eq!(
