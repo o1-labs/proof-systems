@@ -78,6 +78,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     ForeignFieldMul => Some(self.index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.index.xor_comm.as_ref()?),
                     Rot64 => Some(self.index.rot_comm.as_ref()?),
+                    Conditional => Some(self.index.conditional_comm.as_ref()?),
                 }
             }
         }

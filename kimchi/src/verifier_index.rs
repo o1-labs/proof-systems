@@ -130,6 +130,10 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
+    /// If commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub conditional_comm: Option<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -286,6 +290,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .rot_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            conditional_comm: self
+                .column_evaluations
+                .conditional_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
             zkpm: {
@@ -419,6 +428,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             foreign_field_mul_comm,
             xor_comm,
             rot_comm,
+            conditional_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -454,14 +464,17 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&chacha_comm.unshifted);
             }
         }
+
         if let Some(range_check_comm) = range_check_comm {
             for range_check_comm in range_check_comm {
                 fq_sponge.absorb_g(&range_check_comm.unshifted);
             }
         }
+
         if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
             fq_sponge.absorb_g(&foreign_field_mul_comm.unshifted);
         }
+
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }
@@ -472,6 +485,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
         if let Some(rot_comm) = rot_comm {
             fq_sponge.absorb_g(&rot_comm.unshifted);
+        }
+
+        if let Some(conditional_comm) = conditional_comm {
+            fq_sponge.absorb_g(&conditional_comm.unshifted);
         }
 
         // Lookup index; optional

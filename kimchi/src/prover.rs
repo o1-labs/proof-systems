@@ -11,6 +11,7 @@ use crate::{
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
+            conditional::Conditional,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
             foreign_field_add::circuitgates::ForeignFieldAdd,
@@ -662,6 +663,10 @@ where
                 index_evals.insert(GateType::Rot64, selector);
             }
 
+            if let Some(selector) = index.column_evaluations.conditional_selector8.as_ref() {
+                index_evals.insert(GateType::Conditional, selector);
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -724,6 +729,7 @@ where
                     .is_some();
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
+                let conditional_enabled = index.column_evaluations.conditional_selector8.is_some();
 
                 for gate in [
                     (
@@ -753,6 +759,8 @@ where
                     (&Xor16::default(), xor_enabled),
                     // Rot gate
                     (&Rot64::default(), rot_enabled),
+                    // If conditional gate
+                    (&Conditional::default(), conditional_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })

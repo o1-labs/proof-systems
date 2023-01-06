@@ -49,6 +49,8 @@ pub struct FeatureFlags<F> {
     pub xor: bool,
     /// ROT gate
     pub rot: bool,
+    /// Conditional gate
+    pub conditional: bool,
     /// Lookups
     pub lookup_configuration: Option<LookupConfiguration<F>>,
 }
@@ -134,6 +136,10 @@ pub struct ColumnEvaluations<F: PrimeField> {
     /// Rot gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub rot_selector8: Option<E<F, D<F>>>,
+
+    /// If gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub conditional_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -580,6 +586,19 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        let conditional_selector8 = {
+            if !self.feature_flags.conditional {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::Conditional,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.coefficients[i]
@@ -601,6 +620,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_mul_selector8,
             xor_selector8,
             rot_selector8,
+            conditional_selector8,
         }
     }
 }
@@ -689,6 +709,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_mul: false,
             xor: false,
             rot: false,
+            conditional: false,
         };
 
         for gate in &gates {
@@ -702,6 +723,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
                 GateType::Rot64 => feature_flags.rot = true,
+                GateType::Conditional => feature_flags.conditional = true,
                 _ => (),
             }
         }

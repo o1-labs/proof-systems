@@ -438,6 +438,7 @@ pub enum FeatureFlag {
     ForeignFieldMul,
     Xor,
     Rot,
+    Conditional,
 }
 
 impl FeatureFlag {
