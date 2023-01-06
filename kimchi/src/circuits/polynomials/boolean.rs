@@ -47,7 +47,7 @@
 //!   5) (output0 - 1) * output0
 //!   6) (output1 - 1) * output1
 //!   7) coeff0 * (left_input0 AND right_input0) + coeff1 * (left_input0 OR right_input0) = output0
-//!   8) c2 * (left_input1 AND right_input1) + c3 * (left_input1 OR right_input1) = output1
+//!   8) coeff2 * (left_input1 AND right_input1) + coeff3 * (left_input1 OR right_input1) = output1
 //!
 
 use std::{array, marker::PhantomData};
