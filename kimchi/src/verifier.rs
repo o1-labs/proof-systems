@@ -79,6 +79,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     Xor16 => Some(self.index.xor_comm.as_ref()?),
                     Rot64 => Some(self.index.rot_comm.as_ref()?),
                     Conditional => Some(self.index.conditional_comm.as_ref()?),
+                    Boolean => Some(self.index.boolean_comm.as_ref()?),
                 }
             }
         }

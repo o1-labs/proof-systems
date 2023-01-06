@@ -48,6 +48,8 @@ pub struct FeatureFlags {
     pub rot: bool,
     /// Conditional gate
     pub conditional: bool,
+    /// Boolean gate
+    pub boolean: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
 }
@@ -137,6 +139,10 @@ pub struct ColumnEvaluations<F: PrimeField> {
     /// Conditional gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub conditional_selector8: Option<E<F, D<F>>>,
+
+    /// Boolean gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub boolean_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -595,6 +601,19 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
+        let boolean_selector8 = {
+            if !self.feature_flags.boolean {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::Boolean,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                ))
+            }
+        };
+
         // TODO: This doesn't need to be degree 8 but that would require some changes in expr
         let coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.coefficients[i]
@@ -617,6 +636,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             xor_selector8,
             rot_selector8,
             conditional_selector8,
+            boolean_selector8,
         }
     }
 }
@@ -708,6 +728,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             xor: false,
             rot: false,
             conditional: false,
+            boolean: false,
         };
 
         for gate in &gates {
@@ -722,6 +743,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::Xor16 => feature_flags.xor = true,
                 GateType::Rot64 => feature_flags.rot = true,
                 GateType::Conditional => feature_flags.conditional = true,
+                GateType::Boolean => feature_flags.boolean = true,
                 _ => (),
             }
         }

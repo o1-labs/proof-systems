@@ -443,6 +443,7 @@ pub enum FeatureFlag {
     Xor,
     Rot,
     Conditional,
+    Boolean,
     LookupTables,
     RuntimeLookupTables,
     LookupPattern(LookupPattern),
@@ -593,6 +594,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                         Xor => features.xor,
                         Rot => features.rot,
                         Conditional => features.conditional,
+                        Boolean => features.boolean,
                         LookupTables => {
                             features.lookup_features.patterns != LookupPatterns::default()
                         }

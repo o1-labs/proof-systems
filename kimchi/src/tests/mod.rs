@@ -1,4 +1,5 @@
 mod and;
+mod boolean;
 mod chacha;
 mod conditional;
 mod ec;
