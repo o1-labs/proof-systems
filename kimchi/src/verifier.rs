@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         gate::GateType,
-        lookup::{lookups::LookupsUsed, tables::combine_table},
+        lookup::tables::combine_table,
         polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
@@ -156,8 +156,7 @@ where
             //~~ - If it involves queries to a multiple-column lookup table,
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
-            let joint_lookup_used = matches!(l.lookup_used, LookupsUsed::Joint);
-            let joint_combiner = if joint_lookup_used {
+            let joint_combiner = if l.joint_lookup_used {
                 fq_sponge.challenge()
             } else {
                 G::ScalarField::zero()

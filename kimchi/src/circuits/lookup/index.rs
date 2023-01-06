@@ -4,7 +4,7 @@ use crate::circuits::{
     gate::CircuitGate,
     lookup::{
         constraints::LookupConfiguration,
-        lookups::{JointLookup, LookupInfo, LookupPattern},
+        lookups::{LookupInfo, LookupPattern},
         tables::LookupTable,
     },
     polynomials::permutation::ZK_ROWS,
@@ -221,10 +221,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
         match LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {
             None => Ok(None),
             Some(lookup_info) => {
-                let lookup_used = match lookup_info.lookup_used() {
-                    Some(lookup_used) => lookup_used,
-                    None => return Ok(None),
-                };
                 let d1_size = domain.d1.size();
 
                 // The maximum number of entries that can be provided across all tables.
@@ -414,13 +410,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     });
                 }
 
-                // For computational efficiency, we choose the dummy lookup value to be all 0s in
-                // table 0.
-                let dummy_lookup = JointLookup {
-                    entry: vec![],
-                    table_id: F::zero(),
-                };
-
                 //~ 6. Pad the end of the concatened table with the dummy value.
                 lookup_table
                     .iter_mut()
@@ -454,6 +443,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let runtime_tables =
                     runtime_tables.map(|rt| rt.into_iter().map(Into::into).collect());
 
+                let configuration = LookupConfiguration::new(lookup_info);
+
                 Ok(Some(Self {
                     lookup_selectors,
                     lookup_table8,
@@ -463,11 +454,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     runtime_selector,
                     runtime_tables,
                     runtime_table_offset,
-                    configuration: LookupConfiguration {
-                        lookup_used,
-                        lookup_info,
-                        dummy_lookup,
-                    },
+                    configuration,
                 }))
             }
         }
