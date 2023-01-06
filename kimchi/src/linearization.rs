@@ -154,7 +154,11 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
                 expr += conditional_expr();
             }
         } else {
-            expr += Expr::EnabledIf(FeatureFlag::Conditional, Box::new(conditional_expr()));
+            expr += Expr::IfFeature(
+                FeatureFlag::Conditional,
+                Box::new(conditional_expr()),
+                Box::new(Expr::zero()),
+            );
         }
     }
 
@@ -258,6 +262,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
                 foreign_field_mul: true,
                 xor: true,
                 rot: true,
+                conditional: true,
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,
