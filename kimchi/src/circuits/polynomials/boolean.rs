@@ -44,10 +44,8 @@
 //!   2) (left_input1 - 1) * left_input1
 //!   3) (right_input0 - 1) * right_input0
 //!   4) (right_input1 - 1) * right_input1
-//!   5) (output0 - 1) * output0
-//!   6) (output1 - 1) * output1
-//!   7) coeff0 * (left_input0 AND right_input0) + coeff1 * (left_input0 OR right_input0) = output0
-//!   8) coeff2 * (left_input1 AND right_input1) + coeff3 * (left_input1 OR right_input1) = output1
+//!   5) coeff0 * (left_input0 AND right_input0) + coeff1 * (left_input0 OR right_input0) = output0
+//!   6) coeff2 * (left_input1 AND right_input1) + coeff3 * (left_input1 OR right_input1) = output1
 //!
 
 use std::{array, marker::PhantomData};
@@ -86,7 +84,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Boolean);
-    const CONSTRAINTS: u32 = 8;
+    const CONSTRAINTS: u32 = 6;
     // DEGREE is 3
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
@@ -111,12 +109,7 @@ where
             constraints.push(right_input.boolean());
         }
 
-        // C5-C6: outputs are boolean
-        for output in outputs.clone() {
-            constraints.push(output.boolean());
-        }
-
-        // C7-C8: c[i] * (left_input[i] AND right_input[i]) + c[i + 1] * (left_input[i] OR right_input[i]) = output[i]
+        // C5-C6: c[i] * (left_input[i] AND right_input[i]) + c[i + 1] * (left_input[i] OR right_input[i]) = output[i]
         for i in 0..2 {
             constraints.push(
                 boolean_operation(

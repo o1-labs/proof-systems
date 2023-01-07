@@ -401,7 +401,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 7\" }"
+                "Custom { row: 0, err: \"Invalid Boolean constraint: 5\" }"
             ))
         );
 
@@ -422,7 +422,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 8\" }"
+                "Custom { row: 0, err: \"Invalid Boolean constraint: 6\" }"
             ))
         );
     }
