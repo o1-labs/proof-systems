@@ -335,6 +335,13 @@
 <a href="#335" id="335">335</a>
 <a href="#336" id="336">336</a>
 <a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
 </pre><pre class="rust"><code><span class="comment">//~ Rotation of a 64-bit word by a known offset
 
 </span><span class="kw">use super</span>::{generic::GenericGateSpec, range_check::witness::range_check_0_row};
@@ -619,19 +626,42 @@
 }
 
 <span class="doccomment">/// Extends the rot rows to the full witness
-</span><span class="kw">pub fn </span>extend_rot&lt;F: PrimeField&gt;(
+</span><span class="kw">pub fn </span>extend_rot_rows&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
-    word: u64,
-    rot: u32,
-    side: RotMode,
+    word: F,
+    rotated: F,
+    excess: F,
+    shifted: F,
+    bound: F,
 ) {
-    <span class="macro">assert!</span>(rot &lt; <span class="number">64</span>, <span class="string">&quot;Rotation value must be less than 64&quot;</span>);
+    <span class="kw">let </span>rot_row = witness[<span class="number">0</span>].len();
+    <span class="kw">let </span>rot_witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">2</span>]);
+    <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
+        witness[col].extend(rot_witness[col].iter());
+    }
+    init_rot64(witness, rot_row, word, rotated, excess, shifted, bound);
+}
+
+<span class="doccomment">/// Create a rotation witness
+/// Input: word to be rotated, rotation offset, and side of rotation.
+/// Output: witness for rotation word and initial row with all zeros
+</span><span class="kw">pub fn </span>create_witness&lt;F: PrimeField&gt;(word: u64, rot: u32, side: RotMode) -&gt; [Vec&lt;F&gt;; COLUMNS] {
+    <span class="comment">// First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
+    </span><span class="macro">assert!</span>(rot &lt; <span class="number">64</span>, <span class="string">&quot;Rotation value must be less than 64&quot;</span>);
     <span class="macro">assert_ne!</span>(rot, <span class="number">0</span>, <span class="string">&quot;Rotation value must be non-zero&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero()]);
     <span class="kw">let </span>rot = <span class="kw">if </span>side == RotMode::Right {
         <span class="number">64 </span>- rot
     } <span class="kw">else </span>{
         rot
     };
+    create_witness_rot(<span class="kw-2">&amp;mut </span>witness, word, rot);
+    witness
+}
+
+<span class="doccomment">/// Create a rotation witness
+/// Input: word to be rotated, rotation offset,
+</span><span class="kw">fn </span>create_witness_rot&lt;F: PrimeField&gt;(witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS], word: u64, rot: u32) {
     <span class="comment">// Split word into shifted and excess parts to compute the witnesses for rotation as follows
     //          &lt;   64     &gt;  bits
     // word   = [---|------]
@@ -647,30 +677,14 @@
     // Right input of the &quot;FFAdd&quot; for the bound equation
     </span><span class="kw">let </span>bound = <span class="number">2u128</span>.pow(<span class="number">64</span>) - <span class="number">2u128</span>.pow(rot);
 
-    <span class="kw">let </span>rot_row = witness[<span class="number">0</span>].len();
-    <span class="kw">let </span>rot_witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">2</span>]);
-    <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
-        witness[col].extend(rot_witness[col].iter());
-    }
-    init_rot64(
+    extend_rot_rows(
         witness,
-        rot_row,
-        word.into(),
-        rotated.into(),
-        excess.into(),
-        shifted.into(),
-        bound.into(),
+        F::from(word),
+        F::from(rotated),
+        F::from(excess),
+        F::from(shifted),
+        F::from(bound),
     );
-}
-
-<span class="doccomment">/// Create a rotation witness
-/// Input: word to be rotated, rotation offset, and side of rotation.
-/// Output: witness for rotation word and initial row with all zeros
-</span><span class="kw">pub fn </span>create_witness&lt;F: PrimeField&gt;(word: u64, rot: u32, side: RotMode) -&gt; [Vec&lt;F&gt;; COLUMNS] {
-    <span class="comment">// First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
-    </span><span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero()]);
-    extend_rot(<span class="kw-2">&amp;mut </span>witness, word, rot, side);
-    witness
 }
 </code></pre></div>
 </section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (cc47b0699 2023-01-08)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
