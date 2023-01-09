@@ -322,7 +322,7 @@ fn test_extend_xor() {
         next_row += 1;
     }
 
-    let cs = ConstraintSystem::create(gates).build().unwrap();
+    let cs = ConstraintSystem::create(gates).public(2).build().unwrap();
 
     let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
     witness[0][0] = input1;
