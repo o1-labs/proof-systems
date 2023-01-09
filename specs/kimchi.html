@@ -195,6 +195,29 @@
 </li>
 </ul>
 </li>
+<li><a href="#setup">Setup</a>
+<ul>
+<li><a href="#common-index">Common Index</a></li>
+<li><a href="#lookup-index">Lookup Index</a></li>
+<li><a href="#prover-index">Prover Index</a></li>
+<li><a href="#verifier-index">Verifier Index</a></li>
+</ul>
+</li>
+<li><a href="#proof-construction--verification">Proof Construction &amp; Verification</a>
+<ul>
+<li><a href="#proof-structure">Proof Structure</a></li>
+<li><a href="#proof-creation">Proof Creation</a></li>
+<li><a href="#proof-verification">Proof Verification</a>
+<ul>
+<li><a href="#fiat-shamir-argument">Fiat-Shamir argument</a></li>
+<li><a href="#partial-verification">Partial verification</a></li>
+<li><a href="#batch-verification-of-proofs">Batch verification of proofs</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="#optimizations">Optimizations</a></li>
+<li><a href="#security-considerations">Security Considerations</a></li>
 </ul>
 <h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
 <p>There are three main algorithms to kimchi:</p>
@@ -1460,94 +1483,68 @@ Let us define the following operations for better readability:</p>
 <pre><code> a + b = sum
 a ^ b = xor
 a &amp; b = and
-```
-Then, we can rewrite the above equation as follows:
-&lt;span class=&quot;katex-display&quot;&gt;&lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6444em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;⋅&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;an&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;d&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6667em;vertical-align:-0.0833em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;−&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.02778em;&quot;&gt;or&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-which can be expressed as a double generic gate.
-
-Then, our AND gadget for &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;n&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; bytes looks as follows:
-* &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;n&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;/8&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; Xor16 gates
-* 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
-* 1 (double) Generic gate to check sum &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6667em;vertical-align:-0.0833em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;a&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;b&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;m&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and the conjunction equation &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6444em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;⋅&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;an&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;d&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6667em;vertical-align:-0.0833em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;m&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;−&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.02778em;&quot;&gt;or&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-
-Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
-* Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
-* Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
-Meaning,
-* the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
-* the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
-
-
-## Setup
-
-In this section we specify the setup that goes into creating two indexes from a circuit:
-
-* A [*prover index*](#prover-index), necessary for the prover to to create proofs.
-* A [*verifier index*](#verifier-index), necessary for the verifier to verify proofs.
-
-
-&lt;div id=&quot;admonition-note-6&quot; class=&quot;admonition note&quot;&gt;
-&lt;div class=&quot;admonition-title&quot;&gt;
-
-Note
-
-&lt;a class=&quot;admonition-anchor-link&quot; href=&quot;#admonition-note-6&quot;&gt;&lt;/a&gt;
-&lt;/div&gt;
-&lt;div&gt;
-
-The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.
-
-&lt;/div&gt;
-&lt;/div&gt;
-
-As such, the transformation of a circuit into these two indexes can be seen as a compilation step. Note that the prover still needs access to the original circuit to create proofs, as they need to execute it to create the witness (register table).
-
-### Common Index
-
-In this section we describe data that both the prover and the verifier index share.
-
-**`URS` (Uniform Reference String)** The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
-It is used for polynomial commitments, so refer to the [poly-commitment specification](./poly-commitment.md) for more details.
-
-
-&lt;div id=&quot;admonition-note-7&quot; class=&quot;admonition note&quot;&gt;
-&lt;div class=&quot;admonition-title&quot;&gt;
-
-Note
-
-&lt;a class=&quot;admonition-anchor-link&quot; href=&quot;#admonition-note-7&quot;&gt;&lt;/a&gt;
-&lt;/div&gt;
-&lt;div&gt;
-
-Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits ([see zkapps for more details](https://minaprotocol.com/blog/what-are-zkapps)).
-
-&lt;/div&gt;
-&lt;/div&gt;
-
-**`Domain`**. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to `n + ZK_ROWS`, with `n` is the number of gates in the circuit.
-TODO: what if the domain is larger than the URS?
-
-
-&lt;div id=&quot;admonition-ordering-of-elements-in-the-domain&quot; class=&quot;admonition warning&quot;&gt;
-&lt;div class=&quot;admonition-title&quot;&gt;
-
-Ordering of elements in the domain
-
-&lt;a class=&quot;admonition-anchor-link&quot; href=&quot;#admonition-ordering-of-elements-in-the-domain&quot;&gt;&lt;/a&gt;
-&lt;/div&gt;
-&lt;div&gt;
-
-Note that in this specification we always assume that the first element of a domain is &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6444em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;1&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-
-&lt;/div&gt;
-&lt;/div&gt;
-
-**`Shifts`**. As part of the permutation, we need to create `PERMUTS` shifts.
+</code></pre>
+<p>Then, we can rewrite the above equation as follows:
+$$ 2 \cdot and = sum - xor $$
+which can be expressed as a double generic gate.</p>
+<p>Then, our AND gadget for $n$ bytes looks as follows:</p>
+<ul>
+<li>$n/8$ Xor16 gates</li>
+<li>1 (single) Generic gate to check that the final row of the XOR chain is all zeros.</li>
+<li>1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.</li>
+</ul>
+<p>Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):</p>
+<ul>
+<li>Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.</li>
+<li>Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
+Meaning,</li>
+<li>the <code>xor</code> in <code>a ^ b = xor</code> is connected to the <code>xor</code> in <code>2 \cdot and = sum - xor</code></li>
+<li>the <code>sum</code> in <code>a + b = sum</code> is connected to the <code>sum</code> in <code>2 \cdot and = sum - xor</code></li>
+</ul>
+<h2 id="setup"><a class="header" href="#setup">Setup</a></h2>
+<p>In this section we specify the setup that goes into creating two indexes from a circuit:</p>
+<ul>
+<li>A <a href="#prover-index"><em>prover index</em></a>, necessary for the prover to to create proofs.</li>
+<li>A <a href="#verifier-index"><em>verifier index</em></a>, necessary for the verifier to verify proofs.</li>
+</ul>
+<div id="admonition-note-6" class="admonition note">
+<div class="admonition-title">
+<p>Note</p>
+<p><a class="admonition-anchor-link" href="#admonition-note-6"></a></p>
+</div>
+<div>
+<p>The circuit creation part is not specified in this document. It might be specified in a separate document, or we might want to specify how to create the circuit description tables.</p>
+</div>
+</div>
+<p>As such, the transformation of a circuit into these two indexes can be seen as a compilation step. Note that the prover still needs access to the original circuit to create proofs, as they need to execute it to create the witness (register table).</p>
+<h3 id="common-index"><a class="header" href="#common-index">Common Index</a></h3>
+<p>In this section we describe data that both the prover and the verifier index share.</p>
+<p><strong><code>URS</code> (Uniform Reference String)</strong> The URS is a set of parameters that is generated once, and shared between the prover and the verifier.
+It is used for polynomial commitments, so refer to the <a href="./poly-commitment.html">poly-commitment specification</a> for more details.</p>
+<div id="admonition-note-7" class="admonition note">
+<div class="admonition-title">
+<p>Note</p>
+<p><a class="admonition-anchor-link" href="#admonition-note-7"></a></p>
+</div>
+<div>
+<p>Kimchi currently generates the URS based on the circuit, and attach it to the index. So each circuit can potentially be accompanied with a different URS. On the other hand, Mina reuses the same URS for multiple circuits (<a href="https://minaprotocol.com/blog/what-are-zkapps">see zkapps for more details</a>).</p>
+</div>
+</div>
+<p><strong><code>Domain</code></strong>. A domain large enough to contain the circuit and the zero-knowledge rows (used to provide zero-knowledge to the protocol). Specifically, the smallest subgroup in our field that has order greater or equal to <code>n + ZK_ROWS</code>, with <code>n</code> is the number of gates in the circuit.
+TODO: what if the domain is larger than the URS?</p>
+<div id="admonition-ordering-of-elements-in-the-domain" class="admonition warning">
+<div class="admonition-title">
+<p>Ordering of elements in the domain</p>
+<p><a class="admonition-anchor-link" href="#admonition-ordering-of-elements-in-the-domain"></a></p>
+</div>
+<div>
+<p>Note that in this specification we always assume that the first element of a domain is $1$.</p>
+</div>
+</div>
+<p><strong><code>Shifts</code></strong>. As part of the permutation, we need to create <code>PERMUTS</code> shifts.
 To do that, the following logic is followed (in pseudo code):
-(TODO: move shift creation within the permutation section?)
-
-```python
-shifts[0] = 1 # first shift is identity
+(TODO: move shift creation within the permutation section?)</p>
+<pre><code class="language-python">shifts[0] = 1 # first shift is identity
 
 for i in 0..7: # generate 7 shifts
     i = 7
@@ -1563,96 +1560,98 @@ def sample(domain, i):
         i += 1
         shift = Field(Blake2b512(to_be_bytes(i)))
     return shift, i
-```
-
-**`Public`**. This variable simply contains the number of public inputs. (TODO: actually, it's not contained in the verifier index)
-
-The compilation steps to create the common index are as follow:
-
-1. If the circuit is less than 2 gates, abort.
-2. Create a domain for the circuit. That is,
-   compute the smallest subgroup of the field that
-   has order greater or equal to `n + ZK_ROWS` elements.
-3. Pad the circuit: add zero gates to reach the domain size.
-4. sample the `PERMUTS` shifts.
-
-
-### Lookup Index
-
-If lookup is used, the following values are added to the common index:
-
-**`LookupSelectors`**. The list of lookup selectors used. In practice, this tells you which lookup tables are used.
-
-**`TableIds`**. This is a list of table ids used by the Lookup gate.
-
-**`MaxJointSize`**. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.
-
-To create the index, follow these steps:
-
-1. If no lookup is used in the circuit, do not create a lookup index
-2. Get the lookup selectors and lookup tables (TODO: how?)
-3. Concatenate runtime lookup tables with the ones used by gates
-4. Get the highest number of columns `max_table_width`
-   that a lookup table can have.
-5. Create the concatenated table of all the fixed lookup tables.
-   It will be of height the size of the domain,
-   and of width the maximum width of any of the lookup tables.
-   In addition, create an additional column to store all the tables' table IDs.
-
-   For example, if you have a table with ID 0
-
-   |       |       |       |
-   | :---: | :---: | :---: |
-   |   1   |   2   |   3   |
-   |   5   |   6   |   7   |
-   |   0   |   0   |   0   |
-
-   and another table with ID 1
-
-   |       |       |
-   | :---: | :---: |
-   |   8   |   9   |
-
-   the concatenated table in a domain of size 5 looks like this:
-
-   |       |       |       |
-   | :---: | :---: | :---: |
-   |   1   |   2   |   3   |
-   |   5   |   6   |   7   |
-   |   0   |   0   |   0   |
-   |   8   |   9   |   0   |
-   |   0   |   0   |   0   |
-
-   with the table id vector:
-
-   | table id |
-   | :------: |
-   |    0     |
-   |    0     |
-   |    0     |
-   |    1     |
-   |    0     |
-
-   To do this, for each table:
-
-	- Update the corresponding entries in a table id vector (of size the domain as well)
-   with the table ID of the table.
-	- Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
-	- Fill in any unused columns with 0 (to match the dummy value)
-6. Pad the end of the concatened table with the dummy value.
-7. Pad the end of the table id vector with 0s.
-8. pre-compute polynomial and evaluation form for the look up tables
-9. pre-compute polynomial and evaluation form for the table IDs,
-   only if a table with an ID different from zero was used.
-
-
-### Prover Index
-
-Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
-These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
-
-```rs
-pub struct ProverIndex&lt;G: KimchiCurve&gt; {
+</code></pre>
+<p><strong><code>Public</code></strong>. This variable simply contains the number of public inputs. (TODO: actually, it’s not contained in the verifier index)</p>
+<p>The compilation steps to create the common index are as follow:</p>
+<ol>
+<li>If the circuit is less than 2 gates, abort.</li>
+<li>Create a domain for the circuit. That is,
+compute the smallest subgroup of the field that
+has order greater or equal to <code>n + ZK_ROWS</code> elements.</li>
+<li>Pad the circuit: add zero gates to reach the domain size.</li>
+<li>sample the <code>PERMUTS</code> shifts.</li>
+</ol>
+<h3 id="lookup-index"><a class="header" href="#lookup-index">Lookup Index</a></h3>
+<p>If lookup is used, the following values are added to the common index:</p>
+<p><strong><code>LookupSelectors</code></strong>. The list of lookup selectors used. In practice, this tells you which lookup tables are used.</p>
+<p><strong><code>TableIds</code></strong>. This is a list of table ids used by the Lookup gate.</p>
+<p><strong><code>MaxJointSize</code></strong>. This is the maximum number of columns appearing in the lookup tables used by the lookup selectors. For example, the XOR lookup has 3 columns.</p>
+<p>To create the index, follow these steps:</p>
+<ol>
+<li>
+<p>If no lookup is used in the circuit, do not create a lookup index</p>
+</li>
+<li>
+<p>Get the lookup selectors and lookup tables (TODO: how?)</p>
+</li>
+<li>
+<p>Concatenate runtime lookup tables with the ones used by gates</p>
+</li>
+<li>
+<p>Get the highest number of columns <code>max_table_width</code>
+that a lookup table can have.</p>
+</li>
+<li>
+<p>Create the concatenated table of all the fixed lookup tables.
+It will be of height the size of the domain,
+and of width the maximum width of any of the lookup tables.
+In addition, create an additional column to store all the tables’ table IDs.</p>
+<p>For example, if you have a table with ID 0</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center"></th><th style="text-align: center"></th><th style="text-align: center"></th></tr></thead><tbody>
+<tr><td style="text-align: center">1</td><td style="text-align: center">2</td><td style="text-align: center">3</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: center">6</td><td style="text-align: center">7</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
+</tbody></table>
+</div>
+<p>and another table with ID 1</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center"></th><th style="text-align: center"></th></tr></thead><tbody>
+<tr><td style="text-align: center">8</td><td style="text-align: center">9</td></tr>
+</tbody></table>
+</div>
+<p>the concatenated table in a domain of size 5 looks like this:</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center"></th><th style="text-align: center"></th><th style="text-align: center"></th></tr></thead><tbody>
+<tr><td style="text-align: center">1</td><td style="text-align: center">2</td><td style="text-align: center">3</td></tr>
+<tr><td style="text-align: center">5</td><td style="text-align: center">6</td><td style="text-align: center">7</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">8</td><td style="text-align: center">9</td><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">0</td><td style="text-align: center">0</td><td style="text-align: center">0</td></tr>
+</tbody></table>
+</div>
+<p>with the table id vector:</p>
+<div class="table-wrapper"><table><thead><tr><th style="text-align: center">table id</th></tr></thead><tbody>
+<tr><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">0</td></tr>
+<tr><td style="text-align: center">1</td></tr>
+<tr><td style="text-align: center">0</td></tr>
+</tbody></table>
+</div>
+<p>To do this, for each table:</p>
+<ul>
+<li>Update the corresponding entries in a table id vector (of size the domain as well)
+with the table ID of the table.</li>
+<li>Copy the entries from the table to new rows in the corresponding columns of the concatenated table.</li>
+<li>Fill in any unused columns with 0 (to match the dummy value)</li>
+</ul>
+</li>
+<li>
+<p>Pad the end of the concatened table with the dummy value.</p>
+</li>
+<li>
+<p>Pad the end of the table id vector with 0s.</p>
+</li>
+<li>
+<p>pre-compute polynomial and evaluation form for the look up tables</p>
+</li>
+<li>
+<p>pre-compute polynomial and evaluation form for the table IDs,
+only if a table with an ID different from zero was used.</p>
+</li>
+</ol>
+<h3 id="prover-index"><a class="header" href="#prover-index">Prover Index</a></h3>
+<p>Both the prover and the verifier index, besides the common parts described above, are made out of pre-computations which can be used to speed up the protocol.
+These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.</p>
+<pre><code class="language-rs">pub struct ProverIndex&lt;G: KimchiCurve&gt; {
     /// constraints system polynomials
     #[serde(bound = &quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
     pub cs: ConstraintSystem&lt;G::ScalarField&gt;,
@@ -1686,15 +1685,10 @@ pub struct ProverIndex&lt;G: KimchiCurve&gt; {
     #[serde_as(as = &quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;)]
     pub verifier_index_digest: Option&lt;G::BaseField&gt;,
 }
-```
-
-
-### Verifier Index
-
-Same as the prover index, we have a number of pre-computations as part of the verifier index.
-
-```rs
-#[serde_as]
+</code></pre>
+<h3 id="verifier-index"><a class="header" href="#verifier-index">Verifier Index</a></h3>
+<p>Same as the prover index, we have a number of pre-computations as part of the verifier index.</p>
+<pre><code class="language-rs">#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex&lt;G: CommitmentCurve&gt; {
     pub joint_lookup_used: bool,
@@ -1809,16 +1803,11 @@ pub struct VerifierIndex&lt;G: KimchiCurve&gt; {
     #[serde(skip)]
     pub powers_of_alpha: Alphas&lt;G::ScalarField&gt;,
 }
-```
-
-
-## Proof Construction &amp; Verification
-
-Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the [Fiat-Shamir](https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html) transform.
-For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:
-
-```mermaid
-sequenceDiagram
+</code></pre>
+<h2 id="proof-construction--verification"><a class="header" href="#proof-construction--verification">Proof Construction &amp; Verification</a></h2>
+<p>Originally, kimchi is based on an interactive protocol that was transformed into a non-interactive one using the <a href="https://o1-labs.github.io/mina-book/crypto/plonk/fiat_shamir.html">Fiat-Shamir</a> transform.
+For this reason, it can be useful to visualize the high-level interactive protocol before the transformation:</p>
+<pre class="mermaid">sequenceDiagram
     participant Prover
     participant Verifier
 
@@ -1872,17 +1861,12 @@ sequenceDiagram
     Note over Verifier: change of verifier (change of sponge)
 
     Prover-&gt;&gt;Verifier: aggregated evaluation proof (involves more interaction)
-```
-
-The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
-You can find these operations under the [proof creation](#proof-creation) and [proof verification](#proof-verification) algorithms as absorption and squeezing of values with the sponge.
-
-### Proof Structure
-
-A proof consists of the following data structures:
-
-```rs
-/// Evaluations of a polynomial at 2 points
+</pre>
+<p>The Fiat-Shamir transform simulates the verifier messages via a hash function that hashes the transcript of the protocol so far before outputing verifier messages.
+You can find these operations under the <a href="#proof-creation">proof creation</a> and <a href="#proof-verification">proof verification</a> algorithms as absorption and squeezing of values with the sponge.</p>
+<h3 id="proof-structure"><a class="header" href="#proof-structure">Proof Structure</a></h3>
+<p>A proof consists of the following data structures:</p>
+<pre><code class="language-rs">/// Evaluations of a polynomial at 2 points
 #[serde_as]
 #[derive(Copy, Clone, Serialize, Deserialize, Default, Debug)]
 #[cfg_attr(
@@ -2011,289 +1995,440 @@ where
     pub comm: PolyComm&lt;G&gt;,
 }
 
-```
-
-
-The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.
-
-### Proof Creation
-
-To create a proof, the prover expects:
-
-* A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).
-* The (filled) registers table, representing parts of the execution trace of the circuit.
-
-
-&lt;div id=&quot;admonition-note-8&quot; class=&quot;admonition note&quot;&gt;
-&lt;div class=&quot;admonition-title&quot;&gt;
-
-Note
-
-&lt;a class=&quot;admonition-anchor-link&quot; href=&quot;#admonition-note-8&quot;&gt;&lt;/a&gt;
-&lt;/div&gt;
-&lt;div&gt;
-
-The public input is expected to be passed in the first `Public` rows of the registers table.
-
-&lt;/div&gt;
-&lt;/div&gt;
-
-The following constants are set:
-
-* `EVAL_POINTS = 2`. This is the number of points that the prover has to evaluate their polynomials at.
-(&lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; where &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; will be deterministically generated.)
-* `ZK_ROWS = 3`. This is the number of rows that will be randomized to provide zero-knowledgeness.
+</code></pre>
+<p>The following sections specify how a prover creates a proof, and how a verifier validates a number of proofs.</p>
+<h3 id="proof-creation"><a class="header" href="#proof-creation">Proof Creation</a></h3>
+<p>To create a proof, the prover expects:</p>
+<ul>
+<li>A prover index, containing a representation of the circuit (and optionaly pre-computed values to be used in the proof creation).</li>
+<li>The (filled) registers table, representing parts of the execution trace of the circuit.</li>
+</ul>
+<div id="admonition-note-8" class="admonition note">
+<div class="admonition-title">
+<p>Note</p>
+<p><a class="admonition-anchor-link" href="#admonition-note-8"></a></p>
+</div>
+<div>
+<p>The public input is expected to be passed in the first <code>Public</code> rows of the registers table.</p>
+</div>
+</div>
+<p>The following constants are set:</p>
+<ul>
+<li><code>EVAL_POINTS = 2</code>. This is the number of points that the prover has to evaluate their polynomials at.
+($\zeta$ and $\zeta\omega$ where $\zeta$ will be deterministically generated.)</li>
+<li><code>ZK_ROWS = 3</code>. This is the number of rows that will be randomized to provide zero-knowledgeness.
 Note that it only needs to be greater or equal to the number of evaluations (2) in the protocol.
 Yet, it contains one extra row to take into account the last constraint (final value of the permutation accumulator).
-(TODO: treat the final constraint separately so that ZK_ROWS = 2)
-
-The prover then follows the following steps to create the proof:
-
-1. Ensure we have room in the witness for the zero-knowledge rows.
-   We currently expect the witness not to be of the same length as the domain,
-   but instead be of the length of the (smaller) circuit.
-   If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
-   the size of the domain, abort.
-1. Pad the witness columns with Zero gates to make them the same length as the domain.
-   Then, randomize the last `ZK_ROWS` of each columns.
-1. Setup the Fq-Sponge.
-1. Absorb the digest of the VerifierIndex.
-1. Absorb the commitments of the previous challenges with the Fq-sponge.
-1. Compute the negated public input polynomial as
-   the polynomial that evaluates to &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7778em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;−&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;p&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3117em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:0em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;i&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; for the first `public_input_size` values of the domain,
-   and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6444em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;0&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; for the rest.
-1. Commit (non-hiding) to the negated public input polynomial.
-1. Absorb the commitment to the public polynomial with the Fq-Sponge.
-
-   Note: unlike the original PLONK protocol,
-   the prover also provides evaluations of the public polynomial to help the verifier circuit.
-   This is why we need to absorb the commitment to the public polynomial at this point.
-1. Commit to the witness columns by creating `COLUMNS` hidding commitments.
-
-   Note: since the witness is in evaluation form,
-   we can use the `commit_evaluation` optimization.
-1. Absorb the witness commitments with the Fq-Sponge.
-1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-   TODO: why not do this first, and then commit? Why commit from evaluation directly?
-1. If using lookup:
-	- if using runtime table:
-		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
-		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
-		- calculate the contribution to the second column of the lookup table
-		  (the runtime vector)
-	- If queries involve a lookup table with multiple columns
-	  then squeeze the Fq-Sponge to obtain the joint combiner challenge &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;,
-	  otherwise set the joint combiner challenge &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; to &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6444em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;0&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-	- Derive the scalar joint combiner &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.854em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TOOD: specify)
-	- If multiple lookup tables are involved,
-	  set the `table_id_combiner` as the &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1.0191em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.8247em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;i&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6595em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;i&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; the maximum width of any used table.
-	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
-	  Warning: This assumes that we always use the XOR table when using lookups.
-	- Compute the lookup table values as the combination of the lookup table entries.
-	- Compute the sorted evaluations.
-	- Randomize the last `EVALS` rows in each of the sorted polynomials
-	  in order to add zero-knowledge to the protocol.
-	- Commit each of the sorted polynomials.
-	- Absorb each commitments to the sorted polynomials.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05278em;&quot;&gt;β&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.625em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05556em;&quot;&gt;γ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. If using lookup:
-	- Compute the lookup aggregation polynomial.
-	- Commit to the aggregation polynomial.
-	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
-1. Compute the permutation aggregation polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.04398em;&quot;&gt;z&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-1. Commit (hidding) to the permutation aggregation polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.04398em;&quot;&gt;z&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-1. Absorb the permutation aggregation polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.04398em;&quot;&gt;z&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.0037em;&quot;&gt;α&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.0037em;&quot;&gt;α&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.0037em;&quot;&gt;α&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: details)
-1. TODO: instantiate alpha?
-1. Compute the quotient polynomial (the &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6151em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; in &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8333em;vertical-align:-0.15em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07153em;&quot;&gt;Z&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3283em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.0715em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot; style=&quot;margin-right:0.08125em;&quot;&gt;H&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;⋅&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6151em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;).
-   The quotient polynomial is computed by adding all these polynomials together:
-	- the combined constraints for all the gates
-	- the combined constraints for the permutation
-	- TODO: lookup
-	- the negated public polynomial
-   and by then dividing the resulting polynomial with the vanishing polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8333em;vertical-align:-0.15em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07153em;&quot;&gt;Z&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3283em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.0715em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot; style=&quot;margin-right:0.08125em;&quot;&gt;H&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-   TODO: specify the split of the permutation polynomial into perm and bnd?
-1. commit (hiding) to the quotient polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6151em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-   TODO: specify the dummies
-1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: specify)
-1. If lookup is used, evaluate the following polynomials at &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;:
-	- the aggregation polynomial
-	- the sorted polynomials
-	- the table polynonial
-1. Chunk evaluate the following polynomials at both &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;:
-	- &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.5806em;vertical-align:-0.15em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;s&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3117em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:0em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;i&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-	- &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.5806em;vertical-align:-0.15em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.02691em;&quot;&gt;w&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3117em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.0269em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;i&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-	- &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.04398em;&quot;&gt;z&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-	- lookup (TODO)
-	- generic selector
-	- poseidon selector
-
-   By &quot;chunk evaluate&quot; we mean that the evaluation of each polynomial can potentially be a vector of values.
-   This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
-   If a polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; exceeds this size, it must be split into several polynomials like so:
-   &lt;span class=&quot;katex-display&quot;&gt;&lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3011em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;0&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7144em;&quot;&gt;&lt;span style=&quot;top:-3.113em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;n&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3011em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;1&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1.1141em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.8641em;&quot;&gt;&lt;span style=&quot;top:-3.113em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;2&lt;/span&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;n&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3011em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;2&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;+&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.313em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;minner&quot;&gt;⋯&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-
-   And the evaluation of such a polynomial is the following list for &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.5782em;vertical-align:-0.0391em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;∈&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mpunct&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.1667em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;:
-
-   &lt;span class=&quot;katex-display&quot;&gt;&lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3011em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;0&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mpunct&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.1667em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3011em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;1&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mpunct&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.1667em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3011em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;2&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;x&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mpunct&quot;&gt;,&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.1667em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;minner&quot;&gt;…&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-
-   TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-1. Evaluate the same polynomials without chunking them
-   (so that each polynomial should correspond to a single value this time).
-1. Compute the ft polynomial.
-   This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
-1. construct the blinding part of the ft polynomial commitment
-   see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
-1. Evaluate the ft polynomial at &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; only.
-1. Setup the Fr-Sponge
-1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-1. Absorb the previous recursion challenges.
-1. Compute evaluations for the previous recursion challenges.
-1. Evaluate the negated public polynomial (if present) at &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-1. Absorb the unique evaluation of ft: &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-1. Absorb all the polynomial evaluations in &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;:
-	- the public polynomial
-	- z
-	- generic selector
-	- poseidon selector
-	- the 15 register/witness
-	- 6 sigmas evaluations (the last one is not evaluated)
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;v&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fr-Sponge
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;v&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;v&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: specify)
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fr-Sponge
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: specify)
-1. Create a list of all polynomials that will require evaluations
-   (and evaluation proofs) in the protocol.
-   First, include the previous challenges, in case we are in a recursive prover.
-1. Then, include:
-	- the negated public polynomial
-	- the ft polynomial
-	- the permutation aggregation polynomial z polynomial
-	- the generic selector
-	- the poseidon selector
-	- the 15 registers/witness columns
-	- the 6 sigmas
-	- optionally, the runtime table
-1. if using lookup:
-	- add the lookup sorted polynomials
-	- add the lookup aggreg polynomial
-	- add the combined table polynomial
-	- if present, add the runtime table polynomial
-1. Create an aggregated evaluation proof for all of these polynomials at &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;v&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-
-
-### Proof Verification
-
-TODO: we talk about batch verification, but is there an actual batch operation? It seems like we're just verifying an aggregated opening proof
-
-We define two helper algorithms below, used in the batch verification of proofs.
-
-
-#### Fiat-Shamir argument
-
-We run the following algorithm:
-
-1. Setup the Fq-Sponge.
-1. Absorb the digest of the VerifierIndex.
-1. Absorb the commitments of the previous challenges with the Fq-sponge.
-1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
-1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
-1. If lookup is used:
-	- If it involves queries to a multiple-column lookup table,
-	  then squeeze the Fq-Sponge to obtain the joint combiner challenge &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;,
-	  otherwise set the joint combiner challenge &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; to &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6444em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;0&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-	- Derive the scalar joint combiner challenge &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.854em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05724em;&quot;&gt;j&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism.
-	  (TODO: specify endomorphism)
-	- absorb the commitments to the sorted polynomials.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05278em;&quot;&gt;β&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.625em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.05556em;&quot;&gt;γ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-1. Absorb the commitment to the permutation trace with the Fq-Sponge.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.0037em;&quot;&gt;α&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.0037em;&quot;&gt;α&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.0037em;&quot;&gt;α&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: details).
-1. Enforce that the length of the &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6151em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; commitment is of size `PERMUTS`.
-1. Absorb the commitment to the quotient polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.6151em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; into the argument.
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fq-Sponge.
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.9463em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: specify).
-1. Setup the Fr-Sponge.
-1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
-1. Absorb the previous recursion challenges.
-1. Compute evaluations for the previous recursion challenges.
-1. Evaluate the negated public polynomial (if present) at &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-
-   NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-1. Absorb the unique evaluation of ft: &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-1. Absorb all the polynomial evaluations in &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;:
-	- the public polynomial
-	- z
-	- generic selector
-	- poseidon selector
-	- the 15 register/witness
-	- 6 sigmas evaluations (the last one is not evaluated)
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;v&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fr-Sponge.
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;v&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;v&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: specify).
-1. Sample &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; with the Fr-Sponge.
-1. Derive &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.4306em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; from &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;u&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.7519em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;&lt;span class=&quot;mord mtight&quot;&gt;′&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; using the endomorphism (TODO: specify).
-1. Create a list of all polynomials that have an evaluation proof.
-1. Compute the evaluation of &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-
-#### Partial verification
-
-For every proof we want to verify, we defer the proof opening to the very end.
+(TODO: treat the final constraint separately so that ZK_ROWS = 2)</li>
+</ul>
+<p>The prover then follows the following steps to create the proof:</p>
+<ol>
+<li>
+<p>Ensure we have room in the witness for the zero-knowledge rows.
+We currently expect the witness not to be of the same length as the domain,
+but instead be of the length of the (smaller) circuit.
+If we cannot add <code>ZK_ROWS</code> rows to the columns of the witness before reaching
+the size of the domain, abort.</p>
+</li>
+<li>
+<p>Pad the witness columns with Zero gates to make them the same length as the domain.
+Then, randomize the last <code>ZK_ROWS</code> of each columns.</p>
+</li>
+<li>
+<p>Setup the Fq-Sponge.</p>
+</li>
+<li>
+<p>Absorb the digest of the VerifierIndex.</p>
+</li>
+<li>
+<p>Absorb the commitments of the previous challenges with the Fq-sponge.</p>
+</li>
+<li>
+<p>Compute the negated public input polynomial as
+the polynomial that evaluates to $-p_i$ for the first <code>public_input_size</code> values of the domain,
+and $0$ for the rest.</p>
+</li>
+<li>
+<p>Commit (non-hiding) to the negated public input polynomial.</p>
+</li>
+<li>
+<p>Absorb the commitment to the public polynomial with the Fq-Sponge.</p>
+<p>Note: unlike the original PLONK protocol,
+the prover also provides evaluations of the public polynomial to help the verifier circuit.
+This is why we need to absorb the commitment to the public polynomial at this point.</p>
+</li>
+<li>
+<p>Commit to the witness columns by creating <code>COLUMNS</code> hidding commitments.</p>
+<p>Note: since the witness is in evaluation form,
+we can use the <code>commit_evaluation</code> optimization.</p>
+</li>
+<li>
+<p>Absorb the witness commitments with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Compute the witness polynomials by interpolating each <code>COLUMNS</code> of the witness.
+TODO: why not do this first, and then commit? Why commit from evaluation directly?</p>
+</li>
+<li>
+<p>If using lookup:</p>
+<ul>
+<li>if using runtime table:
+<ul>
+<li>check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+we expect the given runtime tables to be sorted as configured, this makes it easier afterwards</li>
+<li>calculate the contribution to the second column of the lookup table
+(the runtime vector)</li>
+</ul>
+</li>
+<li>If queries involve a lookup table with multiple columns
+then squeeze the Fq-Sponge to obtain the joint combiner challenge $j’$,
+otherwise set the joint combiner challenge $j’$ to $0$.</li>
+<li>Derive the scalar joint combiner $j$ from $j’$ using the endomorphism (TOOD: specify)</li>
+<li>If multiple lookup tables are involved,
+set the <code>table_id_combiner</code> as the $j^i$ with $i$ the maximum width of any used table.
+Essentially, this is to add a last column of table ids to the concatenated lookup tables.</li>
+<li>Compute the dummy lookup value as the combination of the last entry of the XOR table (so <code>(0, 0, 0)</code>).
+Warning: This assumes that we always use the XOR table when using lookups.</li>
+<li>Compute the lookup table values as the combination of the lookup table entries.</li>
+<li>Compute the sorted evaluations.</li>
+<li>Randomize the last <code>EVALS</code> rows in each of the sorted polynomials
+in order to add zero-knowledge to the protocol.</li>
+<li>Commit each of the sorted polynomials.</li>
+<li>Absorb each commitments to the sorted polynomials.</li>
+</ul>
+</li>
+<li>
+<p>Sample $\beta$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Sample $\gamma$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>If using lookup:</p>
+<ul>
+<li>Compute the lookup aggregation polynomial.</li>
+<li>Commit to the aggregation polynomial.</li>
+<li>Absorb the commitment to the aggregation polynomial with the Fq-Sponge.</li>
+</ul>
+</li>
+<li>
+<p>Compute the permutation aggregation polynomial $z$.</p>
+</li>
+<li>
+<p>Commit (hidding) to the permutation aggregation polynomial $z$.</p>
+</li>
+<li>
+<p>Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Sample $\alpha’$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Derive $\alpha$ from $\alpha’$ using the endomorphism (TODO: details)</p>
+</li>
+<li>
+<p>TODO: instantiate alpha?</p>
+</li>
+<li>
+<p>Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
+The quotient polynomial is computed by adding all these polynomials together:</p>
+<ul>
+<li>the combined constraints for all the gates</li>
+<li>the combined constraints for the permutation</li>
+<li>TODO: lookup</li>
+<li>the negated public polynomial
+and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
+TODO: specify the split of the permutation polynomial into perm and bnd?</li>
+</ul>
+</li>
+<li>
+<p>commit (hiding) to the quotient polynomial $t$
+TODO: specify the dummies</p>
+</li>
+<li>
+<p>Absorb the the commitment of the quotient polynomial with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Sample $\zeta’$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Derive $\zeta$ from $\zeta’$ using the endomorphism (TODO: specify)</p>
+</li>
+<li>
+<p>If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:</p>
+<ul>
+<li>the aggregation polynomial</li>
+<li>the sorted polynomials</li>
+<li>the table polynonial</li>
+</ul>
+</li>
+<li>
+<p>Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:</p>
+<ul>
+<li>$s_i$</li>
+<li>$w_i$</li>
+<li>$z$</li>
+<li>lookup (TODO)</li>
+<li>generic selector</li>
+<li>poseidon selector</li>
+</ul>
+<p>By “chunk evaluate” we mean that the evaluation of each polynomial can potentially be a vector of values.
+This is because the index’s <code>max_poly_size</code> parameter dictates the maximum size of a polynomial in the protocol.
+If a polynomial $f$ exceeds this size, it must be split into several polynomials like so:
+$$f(x) = f_0(x) + x^n f_1(x) + x^{2n} f_2(x) + \cdots$$</p>
+<p>And the evaluation of such a polynomial is the following list for $x \in {\zeta, \zeta\omega}$:</p>
+<p>$$(f_0(x), f_1(x), f_2(x), \ldots)$$</p>
+<p>TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)</p>
+</li>
+<li>
+<p>Evaluate the same polynomials without chunking them
+(so that each polynomial should correspond to a single value this time).</p>
+</li>
+<li>
+<p>Compute the ft polynomial.
+This is to implement <a href="https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html">Maller’s optimization</a>.</p>
+</li>
+<li>
+<p>construct the blinding part of the ft polynomial commitment
+see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors</p>
+</li>
+<li>
+<p>Evaluate the ft polynomial at $\zeta\omega$ only.</p>
+</li>
+<li>
+<p>Setup the Fr-Sponge</p>
+</li>
+<li>
+<p>Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</p>
+</li>
+<li>
+<p>Absorb the previous recursion challenges.</p>
+</li>
+<li>
+<p>Compute evaluations for the previous recursion challenges.</p>
+</li>
+<li>
+<p>Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.</p>
+</li>
+<li>
+<p>Absorb the unique evaluation of ft: $ft(\zeta\omega)$.</p>
+</li>
+<li>
+<p>Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:</p>
+<ul>
+<li>the public polynomial</li>
+<li>z</li>
+<li>generic selector</li>
+<li>poseidon selector</li>
+<li>the 15 register/witness</li>
+<li>6 sigmas evaluations (the last one is not evaluated)</li>
+</ul>
+</li>
+<li>
+<p>Sample $v’$ with the Fr-Sponge</p>
+</li>
+<li>
+<p>Derive $v$ from $v’$ using the endomorphism (TODO: specify)</p>
+</li>
+<li>
+<p>Sample $u’$ with the Fr-Sponge</p>
+</li>
+<li>
+<p>Derive $u$ from $u’$ using the endomorphism (TODO: specify)</p>
+</li>
+<li>
+<p>Create a list of all polynomials that will require evaluations
+(and evaluation proofs) in the protocol.
+First, include the previous challenges, in case we are in a recursive prover.</p>
+</li>
+<li>
+<p>Then, include:</p>
+<ul>
+<li>the negated public polynomial</li>
+<li>the ft polynomial</li>
+<li>the permutation aggregation polynomial z polynomial</li>
+<li>the generic selector</li>
+<li>the poseidon selector</li>
+<li>the 15 registers/witness columns</li>
+<li>the 6 sigmas</li>
+<li>optionally, the runtime table</li>
+</ul>
+</li>
+<li>
+<p>if using lookup:</p>
+<ul>
+<li>add the lookup sorted polynomials</li>
+<li>add the lookup aggreg polynomial</li>
+<li>add the combined table polynomial</li>
+<li>if present, add the runtime table polynomial</li>
+</ul>
+</li>
+<li>
+<p>Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.</p>
+</li>
+</ol>
+<h3 id="proof-verification"><a class="header" href="#proof-verification">Proof Verification</a></h3>
+<p>TODO: we talk about batch verification, but is there an actual batch operation? It seems like we’re just verifying an aggregated opening proof</p>
+<p>We define two helper algorithms below, used in the batch verification of proofs.</p>
+<h4 id="fiat-shamir-argument"><a class="header" href="#fiat-shamir-argument">Fiat-Shamir argument</a></h4>
+<p>We run the following algorithm:</p>
+<ol>
+<li>
+<p>Setup the Fq-Sponge.</p>
+</li>
+<li>
+<p>Absorb the digest of the VerifierIndex.</p>
+</li>
+<li>
+<p>Absorb the commitments of the previous challenges with the Fq-sponge.</p>
+</li>
+<li>
+<p>Absorb the commitment of the public input polynomial with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Absorb the commitments to the registers / witness columns with the Fq-Sponge.</p>
+</li>
+<li>
+<p>If lookup is used:</p>
+<ul>
+<li>If it involves queries to a multiple-column lookup table,
+then squeeze the Fq-Sponge to obtain the joint combiner challenge $j’$,
+otherwise set the joint combiner challenge $j’$ to $0$.</li>
+<li>Derive the scalar joint combiner challenge $j$ from $j’$ using the endomorphism.
+(TODO: specify endomorphism)</li>
+<li>absorb the commitments to the sorted polynomials.</li>
+</ul>
+</li>
+<li>
+<p>Sample $\beta$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Sample $\gamma$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>If using lookup, absorb the commitment to the aggregation lookup polynomial.</p>
+</li>
+<li>
+<p>Absorb the commitment to the permutation trace with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Sample $\alpha’$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Derive $\alpha$ from $\alpha’$ using the endomorphism (TODO: details).</p>
+</li>
+<li>
+<p>Enforce that the length of the $t$ commitment is of size <code>PERMUTS</code>.</p>
+</li>
+<li>
+<p>Absorb the commitment to the quotient polynomial $t$ into the argument.</p>
+</li>
+<li>
+<p>Sample $\zeta’$ with the Fq-Sponge.</p>
+</li>
+<li>
+<p>Derive $\zeta$ from $\zeta’$ using the endomorphism (TODO: specify).</p>
+</li>
+<li>
+<p>Setup the Fr-Sponge.</p>
+</li>
+<li>
+<p>Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.</p>
+</li>
+<li>
+<p>Absorb the previous recursion challenges.</p>
+</li>
+<li>
+<p>Compute evaluations for the previous recursion challenges.</p>
+</li>
+<li>
+<p>Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.</p>
+<p>NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.</p>
+</li>
+<li>
+<p>Absorb the unique evaluation of ft: $ft(\zeta\omega)$.</p>
+</li>
+<li>
+<p>Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:</p>
+<ul>
+<li>the public polynomial</li>
+<li>z</li>
+<li>generic selector</li>
+<li>poseidon selector</li>
+<li>the 15 register/witness</li>
+<li>6 sigmas evaluations (the last one is not evaluated)</li>
+</ul>
+</li>
+<li>
+<p>Sample $v’$ with the Fr-Sponge.</p>
+</li>
+<li>
+<p>Derive $v$ from $v’$ using the endomorphism (TODO: specify).</p>
+</li>
+<li>
+<p>Sample $u’$ with the Fr-Sponge.</p>
+</li>
+<li>
+<p>Derive $u$ from $u’$ using the endomorphism (TODO: specify).</p>
+</li>
+<li>
+<p>Create a list of all polynomials that have an evaluation proof.</p>
+</li>
+<li>
+<p>Compute the evaluation of $ft(\zeta)$.</p>
+</li>
+</ol>
+<h4 id="partial-verification"><a class="header" href="#partial-verification">Partial verification</a></h4>
+<p>For every proof we want to verify, we defer the proof opening to the very end.
 This allows us to potentially batch verify a number of partially verified proofs.
-Essentially, this steps verifies that &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mrel&quot;&gt;=&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2778em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;∗&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07153em;&quot;&gt;Z&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t vlist-t2&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.3283em;&quot;&gt;&lt;span style=&quot;top:-2.55em;margin-left:-0.0715em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot; style=&quot;margin-right:0.08125em;&quot;&gt;H&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-s&quot;&gt;​&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.15em;&quot;&gt;&lt;span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-
-1. Commit to the negated public input polynomial.
-1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
-1. Combine the chunked polynomials' evaluations
-   (TODO: most likely only the quotient polynomial is chunked)
-   with the right powers of &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord&quot;&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.6644em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;n&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt; and &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mopen&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.07378em;&quot;&gt;ζ&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mbin&quot;&gt;∗&lt;/span&gt;&lt;span class=&quot;mspace&quot; style=&quot;margin-right:0.2222em;&quot;&gt;&lt;/span&gt;&lt;/span&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:1em;vertical-align:-0.25em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.03588em;&quot;&gt;ω&lt;/span&gt;&lt;span class=&quot;mclose&quot;&gt;&lt;span class=&quot;mclose&quot;&gt;)&lt;/span&gt;&lt;span class=&quot;msupsub&quot;&gt;&lt;span class=&quot;vlist-t&quot;&gt;&lt;span class=&quot;vlist-r&quot;&gt;&lt;span class=&quot;vlist&quot; style=&quot;height:0.6644em;&quot;&gt;&lt;span style=&quot;top:-3.063em;margin-right:0.05em;&quot;&gt;&lt;span class=&quot;pstrut&quot; style=&quot;height:2.7em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;sizing reset-size6 size3 mtight&quot;&gt;&lt;span class=&quot;mord mathnormal mtight&quot;&gt;n&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-4. Compute the commitment to the linearized polynomial &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;.
-   To do this, add the constraints of all of the gates, of the permutation,
-   and optionally of the lookup.
-   (See the separate sections in the [constraints](#constraints) section.)
-   Any polynomial should be replaced by its associated commitment,
-   contained in the verifier index or in the proof,
-   unless a polynomial has its evaluation provided by the proof
-   in which case the evaluation should be used in place of the commitment.
-1. Compute the (chuncked) commitment of &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-html&quot; aria-hidden=&quot;true&quot;&gt;&lt;span class=&quot;base&quot;&gt;&lt;span class=&quot;strut&quot; style=&quot;height:0.8889em;vertical-align:-0.1944em;&quot;&gt;&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot; style=&quot;margin-right:0.10764em;&quot;&gt;f&lt;/span&gt;&lt;span class=&quot;mord mathnormal&quot;&gt;t&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;&lt;/span&gt;
-   (see [Maller's optimization](../crypto/plonk/maller_15.html)).
-1. List the polynomial commitments, and their associated evaluations,
-   that are associated to the aggregated evaluation proof in the proof:
-	- recursion
-	- public input commitment
-	- ft commitment (chunks of it)
-	- permutation commitment
-	- index commitments that use the coefficients
-	- witness commitments
-	- coefficient commitments
-	- sigma commitments
-	- lookup commitments
-#### Batch verification of proofs
-
-Below, we define the steps to verify a number of proofs
-(each associated to a [verifier index](#verifier-index)).
-You can, of course, use it to verify a single proof.
-
-1. If there's no proof to verify, the proof validates trivially.
-1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
-1. Validate each proof separately following the [partial verification](#partial-verification) steps.
-1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
-
-
-## Optimizations
-
-* `commit_evaluation`: TODO
-
-## Security Considerations
-
-TODO
-</code></pre>
+Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.</p>
+<ol>
+<li>Commit to the negated public input polynomial.</li>
+<li>Run the <a href="#fiat-shamir-argument">Fiat-Shamir argument</a>.</li>
+<li>Combine the chunked polynomials’ evaluations
+(TODO: most likely only the quotient polynomial is chunked)
+with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.</li>
+<li>Compute the commitment to the linearized polynomial $f$.
+To do this, add the constraints of all of the gates, of the permutation,
+and optionally of the lookup.
+(See the separate sections in the <a href="#constraints">constraints</a> section.)
+Any polynomial should be replaced by its associated commitment,
+contained in the verifier index or in the proof,
+unless a polynomial has its evaluation provided by the proof
+in which case the evaluation should be used in place of the commitment.</li>
+<li>Compute the (chuncked) commitment of $ft$
+(see <a href="../crypto/plonk/maller_15.html">Maller’s optimization</a>).</li>
+<li>List the polynomial commitments, and their associated evaluations,
+that are associated to the aggregated evaluation proof in the proof:
+<ul>
+<li>recursion</li>
+<li>public input commitment</li>
+<li>ft commitment (chunks of it)</li>
+<li>permutation commitment</li>
+<li>index commitments that use the coefficients</li>
+<li>witness commitments</li>
+<li>coefficient commitments</li>
+<li>sigma commitments</li>
+<li>lookup commitments</li>
+</ul>
+</li>
+</ol>
+<h4 id="batch-verification-of-proofs"><a class="header" href="#batch-verification-of-proofs">Batch verification of proofs</a></h4>
+<p>Below, we define the steps to verify a number of proofs
+(each associated to a <a href="#verifier-index">verifier index</a>).
+You can, of course, use it to verify a single proof.</p>
+<ol>
+<li>If there’s no proof to verify, the proof validates trivially.</li>
+<li>Ensure that all the proof’s verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)</li>
+<li>Validate each proof separately following the <a href="#partial-verification">partial verification</a> steps.</li>
+<li>Use the <a href="#polynomial-commitments"><code>PolyCom.verify</code></a> to verify the partially evaluated proofs.</li>
+</ol>
+<h2 id="optimizations"><a class="header" href="#optimizations">Optimizations</a></h2>
+<ul>
+<li><code>commit_evaluation</code>: TODO</li>
+</ul>
+<h2 id="security-considerations"><a class="header" href="#security-considerations">Security Considerations</a></h2>
+<p>TODO</p>
 
                     </main>
 
