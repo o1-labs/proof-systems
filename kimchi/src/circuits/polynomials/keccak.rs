@@ -6,7 +6,10 @@ use ark_ff::{PrimeField, SquareRootField};
 use crate::circuits::{
     gate::{CircuitGate, Connect},
     polynomial::COLUMNS,
-    polynomials::{generic::GenericGateSpec, rot::create_witness_rot},
+    polynomials::{
+        generic::GenericGateSpec,
+        rot::{self, RotMode},
+    },
     wires::Wire,
 };
 
@@ -75,7 +78,7 @@ pub fn create_witness_keccak_rot<F: PrimeField>(state: [[u64; 5]; 5]) -> [Vec<F>
             if rot == 0 {
                 continue;
             }
-            create_witness_rot(&mut witness, state[x][y], rot);
+            rot::extend_rot(&mut witness, state[x][y], rot, RotMode::Left);
         }
     }
     witness
