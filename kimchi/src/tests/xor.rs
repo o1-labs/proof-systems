@@ -48,7 +48,8 @@ fn create_test_constraint_system_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
 {
-    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_xor_gadget(0, bits);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -164,7 +165,8 @@ fn test_prove_and_verify_xor() {
 
     let bits = 64;
     // Create
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -351,7 +353,8 @@ fn test_bad_xor() {
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
-    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_xor_gadget(0, bits);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
         gates.push(CircuitGate::zero(Wire::for_row(next_row)));

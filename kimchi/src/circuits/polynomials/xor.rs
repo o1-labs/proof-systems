@@ -35,9 +35,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// - new row index
     pub fn extend_xor_gadget(gates: &mut Vec<Self>, bits: usize) -> usize {
         let new_row = gates.len();
-        let (_, xor_gates) = Self::create_xor_gadget(new_row, bits);
+        let (_, mut xor_gates) = Self::create_xor_gadget(new_row, bits);
         // extend the whole circuit with the xor gadget
-        gates.extend_from_slice(&xor_gates);
+        gates.append(&mut xor_gates);
 
         // check fin_in1, fin_in2, fin_out are zero
         let zero_row = gates.len() - 1;
