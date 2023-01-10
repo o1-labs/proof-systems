@@ -30,6 +30,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::ProverError,
+    lagrange_basis_evaluations::LagrangeBasisEvaluations,
     plonk_sponge::FrSponge,
     proof::{
         LookupCommitments, LookupEvaluations, PointEvaluations, ProofEvaluations,
@@ -43,8 +44,11 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
 };
-use commitment_dlog::commitment::{
-    absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
+use commitment_dlog::{
+    commitment::{
+        absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
+    },
+    evaluation_proof::DensePolynomialOrEvaluations,
 };
 use itertools::Itertools;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -297,7 +301,9 @@ where
             .for_each(|c| absorb_commitment(&mut fq_sponge, &c.commitment));
 
         //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
+        //~    As mentioned above, we commit using the evaluations form rather than the coefficients
+        //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
+        //~    0 entries and entries that have less-than-full-size field elemnts.)
         let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
@@ -460,6 +466,7 @@ where
                 Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
             };
 
+            // TODO: This interpolation is avoidable.
             let joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
 
             //~~ - Compute the sorted evaluations.
@@ -915,23 +922,30 @@ where
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
+
+        let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
+        let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
+
+        let chunked_evals_for_selector =
+            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
+                zeta: vec![zeta_evals.evaluate_zero_one(p)],
+                zeta_omega: vec![zeta_omega_evals.evaluate_zero_one(p)],
+            };
+
+        let chunked_evals_for_evaluations =
+            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
+                zeta: vec![zeta_evals.evaluate(p)],
+                zeta_omega: vec![zeta_omega_evals.evaluate(p)],
+            };
+
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             s: array::from_fn(|i| {
-                let chunked = index.evaluated_column_coefficients.permutation_coefficients
-                    [0..PERMUTS - 1][i]
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
+                chunked_evals_for_evaluations(
+                    &index.column_evaluations.permutation_coefficients8[i],
+                )
             }),
             coefficients: array::from_fn(|i| {
-                let chunked = index.evaluated_column_coefficients.coefficients[i]
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
+                chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
             }),
             w: array::from_fn(|i| {
                 let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
@@ -950,28 +964,12 @@ where
             },
 
             lookup: lookup_context.eval.take(),
-
-            generic_selector: {
-                let chunked = index
-                    .evaluated_column_coefficients
-                    .generic_selector
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            },
-
-            poseidon_selector: {
-                let chunked = index
-                    .evaluated_column_coefficients
-                    .poseidon_selector
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            },
+            generic_selector: chunked_evals_for_selector(
+                &index.column_evaluations.generic_selector4,
+            ),
+            poseidon_selector: chunked_evals_for_selector(
+                &index.column_evaluations.poseidon_selector8,
+            ),
         };
 
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
@@ -1003,9 +1001,10 @@ where
 
                 // the circuit polynomial
                 let f = {
-                    let (_lin_constant, lin) =
+                    let (_lin_constant, mut lin) =
                         index.linearization.to_polynomial(&env, zeta, &evals);
-                    f + lin
+                    lin += &f;
+                    lin.interpolate()
                 };
 
                 drop(env);
@@ -1114,9 +1113,12 @@ where
             shifted: None,
         };
 
+        let coefficients_form = |p| DensePolynomialOrEvaluations::DensePolynomial(p);
+        let evaluations_form = |e| DensePolynomialOrEvaluations::Evaluations(e, index.cs.domain.d1);
+
         let mut polynomials = polys
             .iter()
-            .map(|(p, d1_size)| (p, None, non_hiding(*d1_size)))
+            .map(|(p, d1_size)| (coefficients_form(p), None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
 
         let fixed_hiding = |d1_size: usize| PolyComm {
@@ -1133,38 +1135,38 @@ where
         //~~ - the 15 registers/witness columns
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
-        polynomials.extend(vec![(&public_poly, None, fixed_hiding(1))]);
-        polynomials.extend(vec![(&ft, None, blinding_ft)]);
-        polynomials.extend(vec![(&z_poly, None, z_comm.blinders)]);
-        polynomials.extend(vec![(
-            &index.evaluated_column_coefficients.generic_selector,
+        polynomials.push((coefficients_form(&public_poly), None, fixed_hiding(1)));
+        polynomials.push((coefficients_form(&ft), None, blinding_ft));
+        polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.generic_selector4),
             None,
             fixed_hiding(1),
-        )]);
-        polynomials.extend(vec![(
-            &index.evaluated_column_coefficients.poseidon_selector,
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.poseidon_selector8),
             None,
             fixed_hiding(1),
-        )]);
+        ));
         polynomials.extend(
             witness_poly
                 .iter()
                 .zip(w_comm.iter())
-                .map(|(w, c)| (w, None, c.blinders.clone()))
+                .map(|(w, c)| (coefficients_form(w), None, c.blinders.clone()))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
             index
-                .evaluated_column_coefficients
-                .coefficients
+                .column_evaluations
+                .coefficients8
                 .iter()
-                .map(|coefficientm| (coefficientm, None, non_hiding(1)))
+                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.evaluated_column_coefficients.permutation_coefficients[0..PERMUTS - 1]
+            index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
                 .iter()
-                .map(|w| (w, None, non_hiding(1)))
+                .map(|w| (evaluations_form(w), None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
 
@@ -1175,13 +1177,17 @@ where
             let sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
 
             for (poly, comm) in sorted_poly.iter().zip(sorted_comms) {
-                polynomials.push((poly, None, comm.blinders.clone()));
+                polynomials.push((coefficients_form(poly), None, comm.blinders.clone()));
             }
 
             //~~ - add the lookup aggreg polynomial
             let aggreg_poly = lookup_context.aggreg_coeffs.as_ref().unwrap();
             let aggreg_comm = lookup_context.aggreg_comm.as_ref().unwrap();
-            polynomials.push((aggreg_poly, None, aggreg_comm.blinders.clone()));
+            polynomials.push((
+                coefficients_form(aggreg_poly),
+                None,
+                aggreg_comm.blinders.clone(),
+            ));
 
             //~~ - add the combined table polynomial
             let table_blinding = if lcs.runtime_selector.is_some() {
@@ -1200,14 +1206,18 @@ where
 
             let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
 
-            polynomials.push((joint_lookup_table, None, table_blinding));
+            polynomials.push((coefficients_form(joint_lookup_table), None, table_blinding));
 
             //~~ - if present, add the runtime table polynomial
             if lcs.runtime_selector.is_some() {
                 let runtime_table_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let runtime_table = lookup_context.runtime_table.as_ref().unwrap();
 
-                polynomials.push((runtime_table, None, runtime_table_comm.blinders.clone()));
+                polynomials.push((
+                    coefficients_form(runtime_table),
+                    None,
+                    runtime_table_comm.blinders.clone(),
+                ));
             }
         }
 
