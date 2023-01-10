@@ -17,7 +17,7 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, GateType},
         polynomial::COLUMNS,
-        polynomials::boolean,
+        polynomials::boolean_op,
         wires::Wire,
     },
     curve::KimchiCurve,
@@ -44,8 +44,8 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let (next_row, mut gates) = CircuitGate::<G::ScalarField>::create_boolean(0, coeffs);
-    let mut witness = boolean::create(
+    let (next_row, mut gates) = CircuitGate::<G::ScalarField>::create_boolean_op(0, coeffs);
+    let mut witness = boolean_op::create(
         &left_inputs[0],
         &right_inputs[0],
         &left_inputs[1],
@@ -152,7 +152,7 @@ fn not_op(value: ScalarField) -> ScalarField {
 }
 
 #[test]
-fn test_boolean() {
+fn test_boolean_op() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     for _ in 0..4 {
@@ -275,7 +275,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 1\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 1\" }"
             ))
         );
 
@@ -296,7 +296,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 2\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 2\" }"
             ))
         );
 
@@ -317,7 +317,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 3\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 3\" }"
             ))
         );
 
@@ -338,7 +338,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 4\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 4\" }"
             ))
         );
 
@@ -359,7 +359,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 5\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 5\" }"
             ))
         );
 
@@ -380,7 +380,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 6\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 6\" }"
             ))
         );
 
@@ -401,7 +401,7 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 5\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 5\" }"
             ))
         );
 
@@ -422,14 +422,14 @@ fn test_boolean() {
         assert_eq!(
             result,
             Err(String::from(
-                "Custom { row: 0, err: \"Invalid Boolean constraint: 6\" }"
+                "Custom { row: 0, err: \"Invalid BooleanOp constraint: 6\" }"
             ))
         );
     }
 }
 
 #[test]
-fn test_boolean_and() {
+fn test_boolean_op_and() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Deterministically generate some random inputs
@@ -445,7 +445,7 @@ fn test_boolean_and() {
     });
 
     let (next_row, mut gates) = CircuitGate::<ScalarField>::create_boolean_and(0);
-    let mut witness = boolean::create_and(
+    let mut witness = boolean_op::create_and(
         &left_inputs[0],
         &right_inputs[0],
         &left_inputs[1],
@@ -479,7 +479,7 @@ fn test_boolean_and() {
 }
 
 #[test]
-fn test_boolean_or() {
+fn test_boolean_op_or() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Deterministically generate some random inputs
@@ -495,7 +495,7 @@ fn test_boolean_or() {
     });
 
     let (next_row, mut gates) = CircuitGate::<ScalarField>::create_boolean_or(0);
-    let mut witness = boolean::create_or(
+    let mut witness = boolean_op::create_or(
         &left_inputs[0],
         &right_inputs[0],
         &left_inputs[1],
@@ -529,7 +529,7 @@ fn test_boolean_or() {
 }
 
 #[test]
-fn test_boolean_xor() {
+fn test_boolean_op_xor() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Deterministically generate some random inputs
@@ -545,7 +545,7 @@ fn test_boolean_xor() {
     });
 
     let (next_row, mut gates) = CircuitGate::<ScalarField>::create_boolean_xor(0);
-    let mut witness = boolean::create_xor(
+    let mut witness = boolean_op::create_xor(
         &left_inputs[0],
         &right_inputs[0],
         &left_inputs[1],

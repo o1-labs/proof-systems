@@ -17,7 +17,7 @@ use crate::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldM
 use crate::circuits::polynomials::poseidon::Poseidon;
 use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::polynomials::{
-    boolean, conditional, generic, permutation, range_check, rot, xor,
+    boolean_op, conditional, generic, permutation, range_check, rot, xor,
 };
 use crate::circuits::{
     constraints::FeatureFlags,
@@ -165,15 +165,15 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let boolean_expr = || boolean::Boolean::combined_constraints(&powers_of_alpha);
+        let boolean_op_expr = || boolean_op::BooleanOp::combined_constraints(&powers_of_alpha);
         if let Some(feature_flags) = feature_flags {
-            if feature_flags.boolean {
-                expr += boolean_expr();
+            if feature_flags.boolean_op {
+                expr += boolean_op_expr();
             }
         } else {
             expr += Expr::IfFeature(
-                FeatureFlag::Boolean,
-                Box::new(boolean_expr()),
+                FeatureFlag::BooleanOp,
+                Box::new(boolean_op_expr()),
                 Box::new(Expr::zero()),
             );
         }
@@ -280,7 +280,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
                 xor: true,
                 rot: true,
                 conditional: true,
-                boolean: true,
+                boolean_op: true,
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,

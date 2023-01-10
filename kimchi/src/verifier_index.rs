@@ -131,9 +131,9 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub conditional_comm: Option<PolyComm<G>>,
 
-    /// Boolean commitments
+    /// Boolean operation commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub boolean_comm: Option<PolyComm<G>>,
+    pub boolean_op_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -296,9 +296,9 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .conditional_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-            boolean_comm: self
+            boolean_op_comm: self
                 .column_evaluations
-                .boolean_selector8
+                .boolean_op_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
@@ -435,7 +435,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             xor_comm,
             rot_comm,
             conditional_comm,
-            boolean_comm,
+            boolean_op_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -498,8 +498,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             fq_sponge.absorb_g(&conditional_comm.unshifted);
         }
 
-        if let Some(boolean_comm) = boolean_comm {
-            fq_sponge.absorb_g(&boolean_comm.unshifted);
+        if let Some(boolean_op_comm) = boolean_op_comm {
+            fq_sponge.absorb_g(&boolean_op_comm.unshifted);
         }
 
         // Lookup index; optional

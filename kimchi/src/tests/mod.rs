@@ -1,5 +1,5 @@
 mod and;
-mod boolean;
+mod boolean_op;
 mod chacha;
 mod conditional;
 mod ec;

@@ -48,8 +48,8 @@ pub struct FeatureFlags {
     pub rot: bool,
     /// Conditional gate
     pub conditional: bool,
-    /// Boolean gate
-    pub boolean: bool,
+    /// Boolean op gate
+    pub boolean_op: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
 }
@@ -142,7 +142,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
 
     /// Boolean gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub boolean_selector8: Option<E<F, D<F>>>,
+    pub boolean_op_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -601,12 +601,12 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let boolean_selector8 = {
-            if !self.feature_flags.boolean {
+        let boolean_op_selector8 = {
+            if !self.feature_flags.boolean_op {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::Boolean,
+                    GateType::BooleanOp,
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -636,7 +636,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             xor_selector8,
             rot_selector8,
             conditional_selector8,
-            boolean_selector8,
+            boolean_op_selector8,
         }
     }
 }
@@ -728,7 +728,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             xor: false,
             rot: false,
             conditional: false,
-            boolean: false,
+            boolean_op: false,
         };
 
         for gate in &gates {
@@ -743,7 +743,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::Xor16 => feature_flags.xor = true,
                 GateType::Rot64 => feature_flags.rot = true,
                 GateType::Conditional => feature_flags.conditional = true,
-                GateType::Boolean => feature_flags.boolean = true,
+                GateType::BooleanOp => feature_flags.boolean_op = true,
                 _ => (),
             }
         }

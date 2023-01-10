@@ -1,5 +1,5 @@
 pub mod and;
-pub mod boolean;
+pub mod boolean_op;
 pub mod chacha;
 pub mod complete_add;
 pub mod conditional;

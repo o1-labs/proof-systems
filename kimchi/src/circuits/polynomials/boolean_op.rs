@@ -1,4 +1,4 @@
-//! Generic boolean gate
+//! Generic boolean operation gate
 //!
 //! This gate constrains at most 2 boolean operations per row, each of the form
 //!
@@ -10,7 +10,7 @@
 //!
 //! Layout
 //!
-//! | col | `Boolean`             |
+//! | col | `BooleanOp`             |
 //! | --- | --------------------- |
 //! |   0 | `left_input0`  (copy) |
 //! |   1 | `right_input0` (copy) |
@@ -73,17 +73,17 @@ fn boolean_operation<F: PrimeField, T: ExprOps<F>>(
     coeff0 * (left_input.clone() * right_input.clone()) + coeff1 * (left_input + right_input)
 }
 
-/// Generic boolean gate
+/// Generic boolean operation gate
 ///    * This gate operates on the Curr row only
-///    * Can constrain up to two boolean expressions
+///    * Can constrain up to two boolean operations
 #[derive(Default)]
-pub struct Boolean<F>(PhantomData<F>);
+pub struct BooleanOp<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Boolean<F>
+impl<F> Argument<F> for BooleanOp<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Boolean);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::BooleanOp);
     const CONSTRAINTS: u32 = 6;
     // DEGREE is 3
 
@@ -126,14 +126,14 @@ where
 }
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
-    /// Create generic boolean gate
+    /// Create generic boolean operation gate
     ///     Inputs the starting row and gate coefficients
     ///     Outputs tuple (next_row, circuit_gates) where
     ///       next_row      - next row after this gate
     ///       circuit_gates - vector of circuit gates comprising this gate
-    pub fn create_boolean(start_row: usize, coeffs: &[F; 4]) -> (usize, Vec<Self>) {
+    pub fn create_boolean_op(start_row: usize, coeffs: &[F; 4]) -> (usize, Vec<Self>) {
         let circuit_gates = vec![CircuitGate {
-            typ: GateType::Boolean,
+            typ: GateType::BooleanOp,
             wires: Wire::for_row(start_row),
             coeffs: coeffs.to_vec(),
         }];
@@ -143,7 +143,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
     /// Create generic boolean gate by extending the existing gates
     pub fn extend_boolean(gates: &mut Vec<Self>, curr_row: &mut usize, coeffs: &[F; 4]) {
-        let (next_row, circuit_gates) = Self::create_boolean(*curr_row, coeffs);
+        let (next_row, circuit_gates) = Self::create_boolean_op(*curr_row, coeffs);
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
     }
@@ -155,7 +155,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///       circuit_gates - vector of circuit gates comprising this gate
     pub fn create_boolean_and(start_row: usize) -> (usize, Vec<Self>) {
         let circuit_gates = vec![CircuitGate {
-            typ: GateType::Boolean,
+            typ: GateType::BooleanOp,
             wires: Wire::for_row(start_row),
             coeffs: vec![F::one(), F::zero(), F::one(), F::zero()],
         }];
@@ -177,7 +177,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///       circuit_gates - vector of circuit gates comprising this gate
     pub fn create_boolean_or(start_row: usize) -> (usize, Vec<Self>) {
         let circuit_gates = vec![CircuitGate {
-            typ: GateType::Boolean,
+            typ: GateType::BooleanOp,
             wires: Wire::for_row(start_row),
             coeffs: vec![-F::one(), F::one(), -F::one(), F::one()],
         }];
@@ -199,7 +199,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///       circuit_gates - vector of circuit gates comprising this gate
     pub fn create_boolean_xor(start_row: usize) -> (usize, Vec<Self>) {
         let circuit_gates = vec![CircuitGate {
-            typ: GateType::Boolean,
+            typ: GateType::BooleanOp,
             wires: Wire::for_row(start_row),
             coeffs: vec![-F::from(2u64), F::one(), -F::from(2u64), F::one()],
         }];
