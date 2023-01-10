@@ -1830,9 +1830,9 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub conditional_comm: Option<PolyComm<G>>,
 
-    /// Boolean commitments
+    /// Boolean operation commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub boolean_comm: Option<PolyComm<G>>,
+    pub boolean_op_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
