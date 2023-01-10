@@ -48,12 +48,28 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         ]
     }
 
+    /// Extend one rotation
+    /// Right now it only creates a Generic gate followed by the Rot64 gates
+    /// It allows to configure left or right rotation.
+    /// INTEGRATION:
+    /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// - same with rotated word
+    pub fn extend_rot(gates: &mut Vec<Self>, rot: u32, side: RotMode) -> usize {
+        let new_row = gates.len();
+        let (_, mut rot_gates) = Self::create_rot(new_row, rot, side);
+        gates.append(&mut rot_gates);
+        // Check that 2 most significant limbs of shifted are zero
+        gates.connect_64bit(new_row, new_row + 2);
+        gates.len()
+    }
+
     /// Create one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
     /// INTEGRATION:
     /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
+    /// - need to check that the 2 most significant limbs of shifted are zero
     pub fn create_rot(new_row: usize, rot: u32, side: RotMode) -> (usize, Vec<Self>) {
         // Initial Generic gate to constrain the output to be zero
         let zero_row = new_row;
@@ -71,8 +87,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         };
         // Append them to the full gates vector
         gates.append(&mut rot64_gates);
-        // Check that 2 most significant limbs of shifted are zero
-        gates.connect_64bit(zero_row, rot_row + 1);
 
         (new_row + gates.len(), gates)
     }

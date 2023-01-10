@@ -41,7 +41,8 @@ fn create_test_constraint_system<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
 {
-    let (mut next_row, mut gates) = { CircuitGate::<G::ScalarField>::create_rot(0, rot, side) };
+    let mut gates = vec![];
+    let mut next_row = { CircuitGate::<G::ScalarField>::extend_rot(&mut gates, rot, side) };
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -62,8 +63,8 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let rot = rng.gen_range(1..64);
     // Create
-    let (mut next_row, mut gates) =
-        CircuitGate::<G::ScalarField>::create_rot(0, rot, RotMode::Left);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<G::ScalarField>::extend_rot(&mut gates, rot, RotMode::Left);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
