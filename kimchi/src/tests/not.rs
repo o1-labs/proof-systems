@@ -60,7 +60,7 @@ where
             None,
         )];
         let next_row =
-            CircuitGate::<G::ScalarField>::extend_not_gadget_checked_length(&mut gates, 0, 1, bits);
+            CircuitGate::<G::ScalarField>::extend_not_gadget_checked_length(&mut gates, 0, bits);
         (next_row, gates)
     };
 
@@ -85,9 +85,8 @@ where
         GenericGateSpec::Pub,
         None,
     )];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(
-        &mut gates, num_nots, 0, 1,
-    );
+    let mut next_row =
+        CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(&mut gates, num_nots, 0);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -260,7 +259,7 @@ fn test_prove_and_verify_not_xor() {
             GenericGateSpec::Pub,
             None,
         )];
-        let next_row = CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, 1, bits);
+        let next_row = CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, bits);
         (next_row, gates)
     };
 
@@ -300,7 +299,7 @@ fn test_prove_and_verify_five_not_gnrc() {
             GenericGateSpec::Pub,
             None,
         )];
-        let next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0, 1);
+        let next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0);
         (next_row, gates)
     };
 

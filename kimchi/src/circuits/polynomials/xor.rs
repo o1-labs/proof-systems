@@ -236,25 +236,16 @@ pub(crate) fn init_xor<F: PrimeField>(
 
 /// Extends the Xor rows to the full witness
 /// Panics if the words are larger than the desired bits
-pub fn extend_xor_rows<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], bits: usize, words: (F, F)) {
-    let input1_big = words.0.to_biguint();
-    let input2_big = words.1.to_biguint();
-    let output_big = BigUint::bitwise_xor(&input1_big, &input2_big);
-    if bits < input1_big.bitlen() || bits < input2_big.bitlen() || bits < output_big.bitlen() {
-        panic!("Bits must be greater or equal than the inputs length");
-    }
-    let xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
-    let xor_row = witness[0].len();
+pub fn extend_xor_witness<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    input1: F,
+    input2: F,
+    bits: usize,
+) {
+    let xor_witness = create_xor_witness(input1, input2, bits);
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
     }
-    init_xor(
-        witness,
-        xor_row,
-        bits,
-        (words.0, words.1, output_big.into()),
-    );
 }
 
 /// Create a Xor for up to the native length starting at row 0

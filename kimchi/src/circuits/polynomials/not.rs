@@ -57,11 +57,15 @@ use super::{
 //~ | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 //~
 impl<F: PrimeField> CircuitGate<F> {
-    /// Creates a bitwise negation gadget with `n` NOT components of some length previously constrained using a generic gate
+    /// Extends a bitwise negation gadget with `n` NOT components of some length previously constrained using a generic gate
     /// (checking that a cell stores `2^bits-1` value). Assumes that the inputs are known to have at most `bits` length.
     /// Starts the gates in the `new_row` position.
     /// Includes:
     /// - ceil(n/2) Double Generic gates to perform the `( 2^(bits) - 1 ) - input` operation for every two inputs in each row
+    /// Input:
+    /// - gates     : full circuit
+    /// - n         : number of negations to perform
+    /// - pub_row   : row containing the public input with the all-one word of the given length
     /// BEWARE:
     /// - If the bit length of the input is not fixed, then it must be constrained somewhere else.
     /// - Otherwise, use the `extend_neg_checked_length` instead (but this one requires about 8 times more rows).
@@ -71,28 +75,28 @@ impl<F: PrimeField> CircuitGate<F> {
         gates: &mut Vec<Self>,
         n: usize,
         pub_row: usize,
-        new_row: usize,
     ) -> usize {
         // taking advantage of double generic gates to negate two words in each row
-        let mut new_row = new_row;
+        let mut new_row = gates.len();
         for _ in 0..(n / 2) {
-            new_row = Self::not_gnrc(gates, pub_row, new_row, true);
+            new_row = Self::extend_not_gnrc(gates, pub_row, new_row, true);
         }
         // odd number of NOTs require one more row to negate the last word only
         if n % 2 == 1 {
-            new_row = Self::not_gnrc(gates, pub_row, new_row, false);
+            new_row = Self::extend_not_gnrc(gates, pub_row, new_row, false);
         }
         new_row
     }
 
-    // Returns a double generic gate for negation for one or two words
+    // Extends a double generic gate for negation for one or two words
     // Input:
+    // - gates          : full ciricuit to which the not will be added
     // - new_row        : row to start the double NOT generic gate
     // - pub_row        : row where the public inputs is stored (the 2^bits - 1) value (in the column 0 of that row)
     // - double_generic : whether to perform two NOTs or only one inside the generic gate
     // Output:
     // - new_row : next row after the double NOT generic gate, corresponds to `new_row+1`
-    fn not_gnrc(
+    fn extend_not_gnrc(
         gates: &mut Vec<Self>,
         pub_row: usize,
         new_row: usize,
@@ -128,13 +132,15 @@ impl<F: PrimeField> CircuitGate<F> {
         new_row + 1
     }
 
-    /// Creates a NOT gadget for `bits` length using Xor gates.
+    /// Extends a NOT gadget for `bits` length using Xor gates.
     /// It implicitly constrains the length of the input to be at most 16 * num_xors bits.
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
     /// Input:
-    /// - new_row : row to start the NOT gadget
+    /// - gates : full circuit
+    /// - pub_row : row containing the public input with the all-one word of the given length
+    /// - bits    : number of bits of the input
     /// Requires:
     /// - 1 initial public input generic gate in `pub_row` to constrain the input to be `2^bits-1`.
     /// INTEGRATION:
@@ -142,10 +148,10 @@ impl<F: PrimeField> CircuitGate<F> {
     pub fn extend_not_gadget_checked_length(
         gates: &mut Vec<Self>,
         pub_row: usize,
-        new_row: usize,
         bits: usize,
     ) -> usize {
         let n = num_xors(bits);
+        let new_row = gates.len();
         let mut not_gates = (0..n)
             .map(|i| CircuitGate {
                 typ: GateType::Xor16,

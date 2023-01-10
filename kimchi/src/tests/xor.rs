@@ -3,7 +3,7 @@ use std::{array, cmp::max};
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError, Connect, GateType},
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
@@ -317,6 +317,9 @@ fn test_extend_xor() {
         ));
     }
     let mut next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
+    // connect public input
+    gates.connect_cell_pair((0, 0), (2, 0));
+    gates.connect_cell_pair((1, 0), (2, 1));
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -329,7 +332,7 @@ fn test_extend_xor() {
     let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
     witness[0][0] = input1;
     witness[0][1] = input2;
-    xor::extend_xor_rows::<Fp>(&mut witness, bits, (input1, input2));
+    xor::extend_xor_witness::<Fp>(&mut witness, input1, input2, bits);
 
     for row in 0..witness[0].len() {
         assert_eq!(
