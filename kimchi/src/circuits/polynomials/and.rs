@@ -66,7 +66,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Output:
     /// - next_row  : next row after this gate
     /// INTEGRATION:
-    /// - If there's any public input for the AND, wire it
+    /// - IF THERE'S ANY PUBLIC INPUT FOR THE AND, DON'T FORGET TO WIRE IT
     pub fn extend_and(gates: &mut Vec<Self>, bytes: usize) -> usize {
         assert!(bytes > 0, "Bytes must be a positive number");
         let xor_row = gates.len();
@@ -86,20 +86,20 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         gates.len()
     }
 
-    /// Creates an AND gadget for `bytes` length.
-    /// The full operation being performed is the following:
-    /// `a AND b = 1/2 * (a + b - (a XOR b))`
-    /// Includes:
-    /// - 1 double Generic gate to perform the AND operation as `a + b = sum` and `2 * and = sum - xor`
-    /// Input:
-    /// - new_row  : row where the AND generic gate starts
-    /// - bytes    : number of bytes of the AND operation
-    /// Outputs tuple (next_row, circuit_gates) where
-    /// - next_row  : next row after this gate
-    /// - gates     : vector of circuit gates comprising the AND double generic gate
-    /// INTEGRATION:
-    /// - connect the wiring from the AND
-    pub fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
+    // Creates an AND gadget for `bytes` length.
+    // The full operation being performed is the following:
+    // `a AND b = 1/2 * (a + b - (a XOR b))`
+    // Includes:
+    // - 1 double Generic gate to perform the AND operation as `a + b = sum` and `2 * and = sum - xor`
+    // Input:
+    // - new_row  : row where the AND generic gate starts
+    // - bytes    : number of bytes of the AND operation
+    // Outputs tuple (next_row, circuit_gates) where
+    // - next_row  : next row after this gate
+    // - gates     : vector of circuit gates comprising the AND double generic gate
+    // INTEGRATION:
+    // - DON'T FORGET TO CONNECT THE WIRING FROM THE AND
+    fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
         assert!(bytes > 0, "Bytes must be a positive number");
 
         // a + b = sum

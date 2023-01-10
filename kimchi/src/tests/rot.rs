@@ -1,9 +1,14 @@
+use std::array;
+
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, GateType},
         polynomial::COLUMNS,
-        polynomials::rot::{self, RotMode},
+        polynomials::{
+            generic::GenericGateSpec,
+            rot::{self, RotMode},
+        },
         wires::Wire,
     },
     curve::KimchiCurve,
@@ -34,6 +39,35 @@ const RNG_SEED: [u8; 32] = [
     89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
 ];
 
+fn create_rot_gadget<G: KimchiCurve>(rot: u32, side: RotMode) -> Vec<CircuitGate<G::ScalarField>>
+where
+    G::BaseField: PrimeField,
+{
+    // gate for the zero value
+    let mut gates = vec![CircuitGate::<G::ScalarField>::create_generic_gadget(
+        Wire::for_row(0),
+        GenericGateSpec::Pub,
+        None,
+    )];
+    CircuitGate::<G::ScalarField>::extend_rot(&mut gates, rot, side, 0);
+    gates
+}
+
+fn create_rot_witness<G: KimchiCurve>(
+    word: u64,
+    rot: u32,
+    side: RotMode,
+) -> [Vec<G::ScalarField>; COLUMNS]
+where
+    G::BaseField: PrimeField,
+{
+    // Include the zero row
+    let mut witness: [Vec<G::ScalarField>; COLUMNS] =
+        array::from_fn(|_| vec![G::ScalarField::from(0u32)]);
+    rot::extend_rot(&mut witness, word, rot, side);
+    witness
+}
+
 fn create_test_constraint_system<G: KimchiCurve, EFqSponge, EFrSponge>(
     rot: u32,
     side: RotMode,
@@ -41,13 +75,12 @@ fn create_test_constraint_system<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
 {
-    let mut gates = vec![];
-    let mut next_row = { CircuitGate::<G::ScalarField>::extend_rot(&mut gates, rot, side) };
+    // gate for the zero value
+    let mut gates = create_rot_gadget::<G>(rot, side);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
+        gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
     }
 
     ConstraintSystem::create(gates).build().unwrap()
@@ -63,20 +96,18 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let rot = rng.gen_range(1..64);
     // Create
-    let mut gates = vec![];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_rot(&mut gates, rot, RotMode::Left);
+    let mut gates = create_rot_gadget::<G>(rot, RotMode::Left);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
+        gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
     }
 
     // Create input
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
 
     // Create witness
-    let witness = rot::create_witness(word, rot, RotMode::Left);
+    let witness = create_rot_witness::<G>(word, rot, RotMode::Left);
 
     assert!(TestFramework::<G>::default()
         .gates(gates)
@@ -124,7 +155,8 @@ where
     EFrSponge: FrSponge<G::ScalarField>,
 {
     let cs = create_test_constraint_system::<G, EFqSponge, EFrSponge>(rot, side);
-    let witness = rot::create_witness(word, rot, side);
+
+    let witness = create_rot_witness::<G>(word, rot, side);
 
     if side == RotMode::Left {
         assert_eq!(G::ScalarField::from(word.rotate_left(rot)), witness[1][1]);
@@ -153,7 +185,7 @@ fn test_rot_random() {
 fn test_zero_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    rot::create_witness::<PallasField>(word, 0, RotMode::Left);
+    create_rot_witness::<Vesta>(word, 0, RotMode::Left);
 }
 
 #[should_panic]
@@ -162,7 +194,7 @@ fn test_zero_rot() {
 fn test_large_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    rot::create_witness::<PallasField>(word, 64, RotMode::Left);
+    create_rot_witness::<Vesta>(word, 64, RotMode::Left);
 }
 
 #[test]

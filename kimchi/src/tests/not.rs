@@ -1,15 +1,11 @@
-use std::cmp::max;
+use std::{array, cmp::max};
 
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, GateType},
         polynomial::COLUMNS,
-        polynomials::{
-            generic::GenericGateSpec,
-            not::{create_not_witness_checked_length, create_not_witness_unchecked_length},
-            xor::{self},
-        },
+        polynomials::{generic::GenericGateSpec, not, xor},
         wires::Wire,
     },
     curve::KimchiCurve,
@@ -45,6 +41,36 @@ const RNG_SEED: [u8; 32] = [
     211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
     89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
 ];
+
+// Creates as many negations as the number of inputs. The inputs must fit in the native field.
+// We start at the row 0 using generic gates to perform the negations.
+// Input: a vector of words to be negated, and the number of bits (all the same)
+// Panics if the bits length is too small for the inputs
+fn create_not_witness_unchecked_length<F: PrimeField>(
+    inputs: &[F],
+    bits: usize,
+) -> [Vec<F>; COLUMNS] {
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
+    witness[0][0] = F::from(2u8).pow(&[bits as u64]) - F::one();
+    not::extend_not_witness_unchecked_length(&mut witness, inputs, bits);
+    witness
+}
+
+// Create a Not witness for less than 255 bits (native field) starting at row 0
+// Input: first input and optional bit length
+// If `bits` is not provided, the negation is performed using the length of the `input` in bits.
+// If `bits` is provided, the negation takes the maximum length between `bits` and that of `input`.
+fn create_not_witness_checked_length<F: PrimeField>(
+    input: F,
+    bits: Option<usize>,
+) -> [Vec<F>; COLUMNS] {
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
+    let input_big = input.to_biguint();
+    let real_bits = max(input_big.bitlen(), bits.unwrap_or(0));
+    witness[0][0] = F::from(2u8).pow(&[real_bits as u64]) - F::one();
+    not::extend_not_witness_checked_length(&mut witness, input, bits);
+    witness
+}
 
 // Constraint system for Not gadget using Xor16
 fn create_test_constraint_system_not_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
