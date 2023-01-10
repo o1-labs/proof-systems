@@ -1480,13 +1480,7 @@ fn test_ffadd_finalization() {
 
         let mut curr_row = num_inputs;
         // Foreign field addition and bound check
-        CircuitGate::<Fp>::extend_chain_ffadd(
-            &mut gates,
-            0,
-            &mut curr_row,
-            operation,
-            &modulus.clone(),
-        );
+        CircuitGate::<Fp>::extend_chain_ffadd(&mut gates, 0, &mut curr_row, operation, &modulus);
 
         // Extend rangechecks of left input, right input, result, and bound
         for _ in 0..4 {
