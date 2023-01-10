@@ -5,10 +5,7 @@ use crate::{
     alphas::Alphas,
     circuits::{
         expr::{Linearization, PolishToken},
-        lookup::{
-            index::LookupSelectors,
-            lookups::{LookupInfo, LookupsUsed},
-        },
+        lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::{
             permutation::{zk_polynomial, zk_w3},
             range_check,
@@ -41,7 +38,7 @@ use std::{
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
-    pub lookup_used: LookupsUsed,
+    pub joint_lookup_used: bool,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -181,7 +178,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .lookup_constraint_system
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
-                    lookup_used: cs.configuration.lookup_used,
+                    joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
                     lookup_info: cs.configuration.lookup_info.clone(),
                     lookup_selectors: cs
                         .lookup_selectors
@@ -479,7 +476,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         // Lookup index; optional
 
         if let Some(LookupVerifierIndex {
-            lookup_used: _,
+            joint_lookup_used: _,
             lookup_info: _,
             lookup_table,
             table_ids,

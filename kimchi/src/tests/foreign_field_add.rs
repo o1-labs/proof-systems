@@ -254,41 +254,15 @@ fn full_circuit<F: PrimeField + SquareRootField>(
     // Connect the num FFAdd gates with the range-check cells
     for i in 0..num {
         let ffadd_row = i + 1;
-        let left_row = num + 3 + 8 * i;
-        let right_row = num + 7 + 8 * i;
-        let out_row = num + 11 + 8 * i;
-
-        // Copy left_input_lo -> Curr(0)
-        gates.connect_cell_pair((left_row, 0), (ffadd_row, 0));
-        // Copy left_input_mi -> Curr(1)
-        gates.connect_cell_pair((left_row + 1, 0), (ffadd_row, 1));
-        // Copy left_input_hi -> Curr(2)
-        gates.connect_cell_pair((left_row + 2, 0), (ffadd_row, 2));
-
-        // Copy right_input_lo -> Curr(3)
-        gates.connect_cell_pair((right_row, 0), (ffadd_row, 3));
-        // Copy right_input_mi -> Curr(4)
-        gates.connect_cell_pair((right_row + 1, 0), (ffadd_row, 4));
-        // Copy right_input_hi -> Curr(5)
-        gates.connect_cell_pair((right_row + 2, 0), (ffadd_row, 5));
-
-        // Copy result_lo -> Next(0)
-        gates.connect_cell_pair((out_row, 0), (ffadd_row + 1, 0));
-        // Copy result_mi -> Next(1)
-        gates.connect_cell_pair((out_row + 1, 0), (ffadd_row + 1, 1));
-        // Copy result_hi -> Next(2)
-        gates.connect_cell_pair((out_row + 2, 0), (ffadd_row + 1, 2));
+        let left_rc = num + 3 + 8 * i;
+        let right_rc = num + 7 + 8 * i;
+        let out_rc = num + 11 + 8 * i;
+        gates.connect_ffadd_range_checks(ffadd_row, Some(left_rc), Some(right_rc), out_rc);
     }
     // Connect final bound gate to range-check cells
-    let final_row = num + 2;
-    let bound_row = 9 * num + 7;
-    // Copy bound_lo -> Next(3)
-    gates.connect_cell_pair((bound_row, 0), (final_row, 0));
-    // Copy bound_mi -> Next(4)
-    gates.connect_cell_pair((bound_row + 1, 0), (final_row, 1));
-    // Copy bound_hi -> Next(5)
-    gates.connect_cell_pair((bound_row + 2, 0), (final_row, 2));
-
+    let check_row = num + 1;
+    let bound_rc = 9 * num + 7;
+    gates.connect_ffadd_range_checks(check_row, None, None, bound_rc);
     (next_row, gates)
 }
 
@@ -1338,12 +1312,10 @@ fn prove_and_verify_50() {
 
 // Extends a gate with the final bound range check
 fn extend_gate_bound_rc(gates: &mut Vec<CircuitGate<PallasField>>) -> usize {
-    let bound_row = gates.len() - 1;
+    let bound_row = gates.len() - 2;
     let mut new_row = gates.len();
     CircuitGate::extend_multi_range_check(gates, &mut new_row);
-    gates.connect_cell_pair((bound_row, 0), (bound_row + 1, 0));
-    gates.connect_cell_pair((bound_row, 1), (bound_row + 2, 0));
-    gates.connect_cell_pair((bound_row, 2), (bound_row + 3, 0));
+    gates.connect_ffadd_range_checks(bound_row, None, None, bound_row + 2);
     new_row
 }
 
