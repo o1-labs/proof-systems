@@ -1,4 +1,4 @@
-use std::{array, cmp::max};
+use std::{array, cmp::max, sync::Arc};
 
 use crate::{
     circuits::{
@@ -13,9 +13,12 @@ use crate::{
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover_index::ProverIndex,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
+use ark_poly::EvaluationDomain;
+use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -34,6 +37,9 @@ type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
+
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const XOR: bool = true;
 
@@ -383,4 +389,81 @@ fn test_bad_xor() {
             "the lookup failed to find a match in the table"
         ))
     );
+}
+
+#[test]
+// Finalization test
+fn test_xor_finalization() {
+    let num_inputs = 2;
+
+    // circuit
+    let gates = {
+        // public inputs
+        let mut gates = vec![];
+        for row in 0..num_inputs {
+            gates.push(CircuitGate::<Fp>::create_generic_gadget(
+                Wire::for_row(row),
+                GenericGateSpec::Pub,
+                None,
+            ));
+        }
+        // 1 XOR of 128 bits. This will create 8 Xor16 gates and a Generic final gate with all zeros.
+        CircuitGate::<Fp>::extend_xor_gadget(&mut gates, 128);
+        // connect public inputs to the inputs of the XOR
+        gates.connect_cell_pair((0, 0), (2, 0));
+        gates.connect_cell_pair((1, 0), (2, 1));
+
+        // Temporary workaround for lookup-table/domain-size issue
+        for _ in 0..(1 << 13) {
+            gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
+        }
+        gates
+    };
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); num_inputs]);
+
+        // initialize the 2 inputs
+        let input1 = 0xDC811727DAF22EC15927D6AA275F406Bu128;
+        let input2 = 0xA4F4417AF072DF9016A1EAB458DA80D1u128;
+        cols[0][0] = input1.into();
+        cols[0][1] = input2.into();
+
+        xor::extend_xor_witness::<Fp>(&mut cols, input1.into(), input2.into(), 128);
+        cols
+    };
+
+    let index = {
+        let cs = ConstraintSystem::create(gates.clone())
+            .public(num_inputs)
+            .build()
+            .unwrap();
+        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+    };
+
+    for row in 0..witness[0].len() {
+        assert_eq!(
+            index.cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &index.cs,
+                &witness[0][0..index.cs.public]
+            ),
+            Ok(())
+        );
+    }
+
+    assert!(TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness.clone())
+        .public_inputs(vec![witness[0][0], witness[0][1]])
+        .setup()
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .is_ok());
 }

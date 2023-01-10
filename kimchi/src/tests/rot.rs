@@ -1,9 +1,10 @@
-use std::array;
+use std::{array, sync::Arc};
 
+use super::framework::TestFramework;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError, Connect, GateType},
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
@@ -13,11 +14,12 @@ use crate::{
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover_index::ProverIndex,
 };
-
-use super::framework::TestFramework;
 use ark_ec::AffineCurve;
-use ark_ff::{One, PrimeField};
+use ark_ff::{One, PrimeField, Zero};
+use ark_poly::EvaluationDomain;
+use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -33,6 +35,9 @@ type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
+
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const RNG_SEED: [u8; 32] = [
     211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
@@ -291,4 +296,83 @@ fn test_bad_constraints() {
             dst: Wire { row: 0, col: 0 }
         })
     );
+}
+
+#[test]
+// Finalization test
+fn test_rot_finalization() {
+    // Includes the actual input of the rotation and a row with the zero value
+    let num_inputs = 2;
+    // 1 ROT of 32 to the left
+    let rot = 32;
+    let mode = RotMode::Left;
+
+    // circuit
+    let gates = {
+        let mut gates = vec![];
+        // public inputs
+        for row in 0..num_inputs {
+            gates.push(CircuitGate::<Fp>::create_generic_gadget(
+                Wire::for_row(row),
+                GenericGateSpec::Pub,
+                None,
+            ));
+        }
+        CircuitGate::<Fp>::extend_rot(&mut gates, rot, mode, 1);
+        // connect first public input to the word of the ROT
+        gates.connect_cell_pair((0, 0), (2, 0));
+
+        // Temporary workaround for lookup-table/domain-size issue
+        for _ in 0..(1 << 13) {
+            gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
+        }
+
+        gates
+    };
+
+    // witness
+    let witness = {
+        // create one row for the public word
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
+
+        // initialize the public input containing the word to be rotated
+        let input = 0xDC811727DAF22EC1u64;
+        cols[0][0] = input.into();
+        rot::extend_rot::<Fp>(&mut cols, input, rot, mode);
+
+        cols
+    };
+
+    let index = {
+        let cs = ConstraintSystem::create(gates.clone())
+            .public(num_inputs)
+            .build()
+            .unwrap();
+        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+    };
+
+    for row in 0..witness[0].len() {
+        assert_eq!(
+            index.cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &index.cs,
+                &witness[0][0..index.cs.public]
+            ),
+            Ok(())
+        );
+    }
+
+    assert!(TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness.clone())
+        .public_inputs(vec![witness[0][0], witness[0][1]])
+        .setup()
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .is_ok());
 }
