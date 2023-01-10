@@ -5,9 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
-        lookup::{
-            self, lookups::LookupsUsed, runtime_tables::RuntimeTable, tables::combine_table_entry,
-        },
+        lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
@@ -381,9 +379,7 @@ where
             //~~ - If queries involve a lookup table with multiple columns
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
-            let joint_lookup_used = matches!(lcs.configuration.lookup_used, LookupsUsed::Joint);
-
-            let joint_combiner = if joint_lookup_used {
+            let joint_combiner = if lcs.configuration.lookup_info.features.joint_lookup_used {
                 fq_sponge.challenge()
             } else {
                 G::ScalarField::zero()
@@ -426,34 +422,35 @@ where
                         }
                     };
 
-                    let combined_entry = if !lcs.configuration.lookup_info.uses_runtime_tables {
-                        let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
+                    let combined_entry =
+                        if !lcs.configuration.lookup_info.features.uses_runtime_tables {
+                            let table_row = lcs.lookup_table8.iter().map(|e| &e.evals[idx]);
 
-                        combine_table_entry(
-                            &joint_combiner,
-                            &table_id_combiner,
-                            table_row,
-                            &table_id,
-                        )
-                    } else {
-                        // if runtime table are used, the second row is modified
-                        let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
+                            combine_table_entry(
+                                &joint_combiner,
+                                &table_id_combiner,
+                                table_row,
+                                &table_id,
+                            )
+                        } else {
+                            // if runtime table are used, the second row is modified
+                            let second_col = lookup_context.runtime_second_col_d8.as_ref().unwrap();
 
-                        let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
-                            if col == 1 {
-                                &second_col.evals[idx]
-                            } else {
-                                &e.evals[idx]
-                            }
-                        });
+                            let table_row = lcs.lookup_table8.iter().enumerate().map(|(col, e)| {
+                                if col == 1 {
+                                    &second_col.evals[idx]
+                                } else {
+                                    &e.evals[idx]
+                                }
+                            });
 
-                        combine_table_entry(
-                            &joint_combiner,
-                            &table_id_combiner,
-                            table_row,
-                            &table_id,
-                        )
-                    };
+                            combine_table_entry(
+                                &joint_combiner,
+                                &table_id_combiner,
+                                table_row,
+                                &table_id,
+                            )
+                        };
                     evals.push(combined_entry);
                 }
 
@@ -773,7 +770,7 @@ where
             // lookup
             {
                 if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                    let constraints = lookup::constraints::constraints(&lcs.configuration);
+                    let constraints = lookup::constraints::constraints(&lcs.configuration, false);
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");
                     let lookup_alphas =
@@ -791,6 +788,8 @@ where
                             t4 += &eval;
                         } else if eval.domain().size == t8.domain().size {
                             t8 += &eval;
+                        } else if eval.evals.iter().all(|x| x.is_zero()) {
+                            // Skip any 0-valued evaluations
                         } else {
                             panic!("Bad evaluation")
                         }

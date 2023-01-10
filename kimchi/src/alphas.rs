@@ -324,7 +324,7 @@ mod tests {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
         let index = new_index_for_test::<Vesta>(gates, 0);
         let (_linearization, powers_of_alpha) =
-            expr_linearization(Some(&index.cs.feature_flags), true);
+            expr_linearization::<Fp>(Some(&index.cs.feature_flags), true);
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let spec_path = Path::new(&manifest_dir)

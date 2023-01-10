@@ -1,8 +1,12 @@
 use crate::{
     circuits::{
+        constraints::FeatureFlags,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        lookup::{index::LookupSelectors, lookups::LookupPattern},
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupPattern, LookupPatterns},
+        },
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -41,8 +45,8 @@ pub enum ExprError {
     #[error("Cannot get index evaluation {0:?} (should have been linearized away)")]
     MissingIndexEvaluation(Column),
 
-    #[error("Linearization failed")]
-    FailedLinearization,
+    #[error("Linearization failed (too many unevaluated columns: {0:?}")]
+    FailedLinearization(Vec<Variable>),
 
     #[error("runtime table not available")]
     MissingRuntime,
@@ -438,6 +442,13 @@ pub enum FeatureFlag {
     ForeignFieldMul,
     Xor,
     Rot,
+    LookupTables,
+    RuntimeLookupTables,
+    LookupPattern(LookupPattern),
+    /// Enabled if the table width is at least the given number
+    TableWidth(isize), // NB: isize so that we don't need to convert for OCaml :(
+    /// Enabled if the number of lookups per row is at least the given number
+    LookupsPerRow(isize), // NB: isize so that we don't need to convert for OCaml :(
 }
 
 impl FeatureFlag {
@@ -469,8 +480,148 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
-    /// Expression is conditional on the given feature flag, returns 0 if disabled.
-    EnabledIf(FeatureFlag, Box<Expr<C>>),
+    /// If the feature flag is enabled, return the first expression; otherwise, return the second.
+    IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
+}
+
+impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
+    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
+        use Expr::*;
+        match self {
+            Constant(_) | Cell(_) | VanishesOnLast4Rows | UnnormalizedLagrangeBasis(_) => {
+                (self.clone(), false)
+            }
+            Double(c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && c_reduced.is_zero() {
+                    (Expr::zero(), true)
+                } else {
+                    (Double(Box::new(c_reduced)), false)
+                }
+            }
+            Square(c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, true)
+                } else {
+                    (Square(Box::new(c_reduced)), false)
+                }
+            }
+            BinOp(op, c1, c2) => {
+                let (c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                match op {
+                    Op2::Add => {
+                        if reduce_further1 && c1_reduced.is_zero() {
+                            if reduce_further2 && c2_reduced.is_zero() {
+                                (Expr::zero(), true)
+                            } else {
+                                (c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_zero() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Add, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                    Op2::Sub => {
+                        if reduce_further1 && c1_reduced.is_zero() {
+                            if reduce_further2 && c2_reduced.is_zero() {
+                                (Expr::zero(), true)
+                            } else {
+                                (-c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_zero() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Sub, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                    Op2::Mul => {
+                        if reduce_further1 && c1_reduced.is_zero()
+                            || reduce_further2 && c2_reduced.is_zero()
+                        {
+                            (Expr::zero(), true)
+                        } else if reduce_further1 && c1_reduced.is_one() {
+                            if reduce_further2 && c2_reduced.is_one() {
+                                (Expr::one(), true)
+                            } else {
+                                (c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_one() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Mul, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                }
+            }
+            Pow(c, power) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, true)
+                } else {
+                    (Pow(Box::new(c_reduced), *power), false)
+                }
+            }
+            Cache(cache_id, c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further {
+                    (c_reduced, true)
+                } else {
+                    (Cache(*cache_id, Box::new(c_reduced)), false)
+                }
+            }
+            IfFeature(feature, c1, c2) => {
+                let is_enabled = {
+                    use FeatureFlag::*;
+                    match feature {
+                        ChaCha => features.chacha,
+                        RangeCheck => features.range_check,
+                        ForeignFieldAdd => features.foreign_field_add,
+                        ForeignFieldMul => features.foreign_field_mul,
+                        Xor => features.xor,
+                        Rot => features.rot,
+                        LookupTables => {
+                            features.lookup_features.patterns != LookupPatterns::default()
+                        }
+                        RuntimeLookupTables => features.lookup_features.uses_runtime_tables,
+                        LookupPattern(pattern) => features.lookup_features.patterns[*pattern],
+                        TableWidth(width) => features
+                            .lookup_features
+                            .patterns
+                            .into_iter()
+                            .any(|feature| feature.max_joint_size() >= (*width as u32)),
+                        LookupsPerRow(count) => features
+                            .lookup_features
+                            .patterns
+                            .into_iter()
+                            .any(|feature| feature.max_lookups_per_row() >= (*count as usize)),
+                    }
+                };
+                if is_enabled {
+                    let (c1_reduced, _) = c1.apply_feature_flags_inner(features);
+                    (c1_reduced, false)
+                } else {
+                    let (c2_reduced, _) = c2.apply_feature_flags_inner(features);
+                    (c2_reduced, true)
+                }
+            }
+        }
+    }
+    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C> {
+        let (res, _) = self.apply_feature_flags_inner(features);
+        res
+    }
 }
 
 /// For efficiency of evaluation, we compile expressions to
@@ -498,7 +649,9 @@ pub enum PolishToken<F> {
     UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
-    /// Skip the given number of tokens if the feature is disabled, and emit a zero instead.
+    /// Skip the given number of tokens if the feature is enabled.
+    SkipIf(FeatureFlag, usize),
+    /// Skip the given number of tokens if the feature is disabled.
     SkipIfNot(FeatureFlag, usize),
 }
 
@@ -599,6 +752,12 @@ impl<F: FftField> PolishToken<F> {
                     cache.push(x);
                 }
                 Load(i) => stack.push(cache[*i]),
+                SkipIf(feature, count) => {
+                    if feature.is_enabled() {
+                        skip_count = *count;
+                        stack.push(F::zero());
+                    }
+                }
                 SkipIfNot(feature, count) => {
                     if !feature.is_enabled() {
                         skip_count = *count;
@@ -647,7 +806,7 @@ impl<C> Expr<C> {
             }
             Pow(e, d) => d * e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
-            EnabledIf(_, e) => e.degree(d1_size),
+            IfFeature(_, e1, e2) => std::cmp::max(e1.degree(d1_size), e2.degree(d1_size)),
         }
     }
 }
@@ -1293,16 +1452,32 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                     }
                 }
             }
-            Expr::EnabledIf(feature, e) => {
-                let tok = PolishToken::SkipIfNot(*feature, 0);
-                res.push(tok);
-                let len_before = res.len();
-                /* Clone the cache, to make sure we don't try to access cached statements later
-                when the feature flag is off. */
-                let mut cache = cache.clone();
-                e.to_polish_(&mut cache, res);
-                let len_after = res.len();
-                res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+            Expr::IfFeature(feature, e1, e2) => {
+                {
+                    // True branch
+                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    res.push(tok);
+                    let len_before = res.len();
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is off. */
+                    let mut cache = cache.clone();
+                    e1.to_polish_(&mut cache, res);
+                    let len_after = res.len();
+                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                }
+
+                {
+                    // False branch
+                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    res.push(tok);
+                    let len_before = res.len();
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is on. */
+                    let mut cache = cache.clone();
+                    e2.to_polish_(&mut cache, res);
+                    let len_after = res.len();
+                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                }
             }
         }
     }
@@ -1327,7 +1502,11 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
-            EnabledIf(feature, e) => EnabledIf(*feature, Box::new(e.evaluate_constants_(c))),
+            IfFeature(feature, e1, e2) => IfFeature(
+                *feature,
+                Box::new(e1.evaluate_constants_(c)),
+                Box::new(e2.evaluate_constants_(c)),
+            ),
         }
     }
 
@@ -1375,8 +1554,13 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
-            EnabledIf(feature, e) if feature.is_enabled() => e.evaluate_(d, pt, evals, c),
-            EnabledIf(_, _) => Ok(F::zero()),
+            IfFeature(feature, e1, e2) => {
+                if feature.is_enabled() {
+                    e1.evaluate_(d, pt, evals, c)
+                } else {
+                    e2.evaluate_(d, pt, evals, c)
+                }
+            }
         }
     }
 
@@ -1429,11 +1613,11 @@ impl<F: FftField> Expr<F> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
-            EnabledIf(feature, e) => {
+            IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
-                    e.evaluate(d, pt, evals)
+                    e1.evaluate(d, pt, evals)
                 } else {
-                    Ok(F::zero())
+                    e2.evaluate(d, pt, evals)
                 }
             }
         }
@@ -1600,14 +1784,14 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
-            Expr::EnabledIf(feature, e) => {
+            Expr::IfFeature(feature, e1, e2) => {
+                /* Clone the cache, to make sure we don't try to access cached statements later
+                when the feature flag is off. */
+                let mut cache = cache.clone();
                 if feature.is_enabled() {
-                    /* Clone the cache, to make sure we don't try to access cached statements later
-                    when the feature flag is off. */
-                    let mut cache = cache.clone();
-                    return e.evaluations_helper(&mut cache, d, env);
+                    return e1.evaluations_helper(&mut cache, d, env);
                 } else {
-                    EvalResult::Constant(F::zero())
+                    return e2.evaluations_helper(&mut cache, d, env);
                 }
             }
         };
@@ -1761,7 +1945,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             VanishesOnLast4Rows => true,
             UnnormalizedLagrangeBasis(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
-            EnabledIf(_, x) => x.is_constant(evaluated),
+            IfFeature(_, e1, e2) => e1.is_constant(evaluated) && e2.is_constant(evaluated),
         }
     }
 
@@ -1838,14 +2022,23 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let x = x.monomials(ev);
                 mul_monomials(&x, &x)
             }
-            EnabledIf(feature, x) => {
-                let mut monomials = x.monomials(ev);
-                for expr in monomials.values_mut() {
-                    let mut unflagged = Expr::zero();
-                    std::mem::swap(expr, &mut unflagged);
-                    *expr = Expr::EnabledIf(*feature, Box::new(unflagged))
+            IfFeature(feature, e1, e2) => {
+                let mut res = HashMap::new();
+                let e1_monomials = e1.monomials(ev);
+                let mut e2_monomials = e2.monomials(ev);
+                for (m, c) in e1_monomials.into_iter() {
+                    let else_branch = match e2_monomials.remove(&m) {
+                        None => Expr::zero(),
+                        Some(c) => c,
+                    };
+                    let expr = Expr::IfFeature(*feature, Box::new(c), Box::new(else_branch));
+                    res.insert(m, expr);
                 }
-                monomials
+                for (m, c) in e2_monomials.into_iter() {
+                    let expr = Expr::IfFeature(*feature, Box::new(Expr::zero()), Box::new(c));
+                    res.insert(m, expr);
+                }
+                res
             }
         }
     }
@@ -1916,7 +2109,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                     }
                 }
             } else {
-                return Err(ExprError::FailedLinearization);
+                return Err(ExprError::FailedLinearization(unevaluated));
             }
         }
         Ok(Linearization {
@@ -2258,8 +2451,13 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
-            EnabledIf(feature, e) => {
-                format!("enabled_if({:?}, (fun () -> {}))", feature, e.ocaml(cache))
+            IfFeature(feature, e1, e2) => {
+                format!(
+                    "if_feature({:?}, (fun () -> {}), (fun () -> {}))",
+                    feature,
+                    e1.ocaml(cache),
+                    e2.ocaml(cache)
+                )
             }
         }
     }
@@ -2302,7 +2500,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.latex_name()
             }
-            EnabledIf(feature, _) => format!("{:?}", feature),
+            IfFeature(feature, _, _) => format!("{:?}", feature),
         }
     }
 
@@ -2325,7 +2523,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
-            EnabledIf(feature, _) => format!("{:?}", feature),
+            IfFeature(feature, _, _) => format!("{:?}", feature),
         }
     }
 
@@ -2627,7 +2825,7 @@ pub use auto_clone_array;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, E};
+    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, FeatureFlag, E};
 }
 
 #[cfg(test)]
