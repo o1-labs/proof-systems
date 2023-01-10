@@ -143,9 +143,7 @@ where
 
         // Result/remainder bound multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((3, 0), (16, 0));
-        gates.connect_cell_pair((3, 1), (17, 0));
-        gates.connect_cell_pair((3, 2), (18, 0));
+        gates.connect_ffadd_range_checks(2, None, None, 16);
         // Witness updated below
 
         // Add witness for external multi-range checks (product1_lo, product1_hi_0, carry1_lo and result)

@@ -282,42 +282,19 @@ fn init_rot64<F: PrimeField>(
 }
 
 /// Extends the rot rows to the full witness
-pub fn extend_rot_rows<F: PrimeField>(
+pub fn extend_rot<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    word: F,
-    rotated: F,
-    excess: F,
-    shifted: F,
-    bound: F,
+    word: u64,
+    rot: u32,
+    side: RotMode,
 ) {
-    let rot_row = witness[0].len();
-    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 2]);
-    for col in 0..COLUMNS {
-        witness[col].extend(rot_witness[col].iter());
-    }
-    init_rot64(witness, rot_row, word, rotated, excess, shifted, bound);
-}
-
-/// Create a rotation witness
-/// Input: word to be rotated, rotation offset, and side of rotation.
-/// Output: witness for rotation word and initial row with all zeros
-pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: RotMode) -> [Vec<F>; COLUMNS] {
-    // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
     assert!(rot < 64, "Rotation value must be less than 64");
     assert_ne!(rot, 0, "Rotation value must be non-zero");
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
     let rot = if side == RotMode::Right {
         64 - rot
     } else {
         rot
     };
-    create_witness_rot(&mut witness, word, rot);
-    witness
-}
-
-/// Create a rotation witness
-/// Input: word to be rotated, rotation offset,
-fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: u64, rot: u32) {
     // Split word into shifted and excess parts to compute the witnesses for rotation as follows
     //          <   64     >  bits
     // word   = [---|------]
@@ -333,12 +310,28 @@ fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: u64,
     // Right input of the "FFAdd" for the bound equation
     let bound = 2u128.pow(64) - 2u128.pow(rot);
 
-    extend_rot_rows(
+    let rot_row = witness[0].len();
+    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 2]);
+    for col in 0..COLUMNS {
+        witness[col].extend(rot_witness[col].iter());
+    }
+    init_rot64(
         witness,
-        F::from(word),
-        F::from(rotated),
-        F::from(excess),
-        F::from(shifted),
-        F::from(bound),
+        rot_row,
+        word.into(),
+        rotated.into(),
+        excess.into(),
+        shifted.into(),
+        bound.into(),
     );
+}
+
+/// Create a rotation witness
+/// Input: word to be rotated, rotation offset, and side of rotation.
+/// Output: witness for rotation word and initial row with all zeros
+pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: RotMode) -> [Vec<F>; COLUMNS] {
+    // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
+    extend_rot(&mut witness, word, rot, side);
+    witness
 }
