@@ -120,17 +120,16 @@ mod tests {
         let x = Fp::rand(rng);
         let evaluator = LagrangeBasisEvaluations::new(domain, x);
 
-        let expected: Vec<_> = (0..n)
+        let expected = (0..n)
             .map(|i| {
                 let mut lagrange_i = vec![Fp::zero(); n];
                 lagrange_i[i] = Fp::one();
                 Evaluations::from_vec_and_domain(lagrange_i, domain)
                     .interpolate()
                     .evaluate(&x)
-            })
-            .collect();
+            });
 
-        for (i, expected) in expected.into_iter().enumerate() {
+        for (i, expected) in expected.enumerate() {
             if evaluator.evals[i] != expected {
                 panic!(
                     "{}, {}: {} != {}",
