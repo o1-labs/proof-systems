@@ -15,6 +15,7 @@ pub mod bench;
 pub mod circuits;
 pub mod curve;
 pub mod error;
+pub mod lagrange_basis_evaluations;
 pub mod linearization;
 pub mod oracles;
 pub mod plonk_sponge;

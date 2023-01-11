@@ -1,10 +1,10 @@
 use crate::{
     commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve, Evaluation, PolyComm},
-    evaluation_proof::OpeningProof,
+    evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
     srs::SRS,
 };
 use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -164,10 +164,15 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         }
 
         // create aggregated evaluation proof
-        let mut polynomials = vec![];
+        #[allow(clippy::type_complexity)]
+        let mut polynomials: Vec<(
+            DensePolynomialOrEvaluations<Fp, Radix2EvaluationDomain<Fp>>,
+            Option<usize>,
+            PolyComm<_>,
+        )> = vec![];
         for c in &commitments {
             polynomials.push((
-                &c.poly,
+                DensePolynomialOrEvaluations::DensePolynomial(&c.poly),
                 c.eval_commit.commit.bound,
                 c.chunked_blinding.clone(),
             ));
@@ -177,7 +182,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         let evalmask = Fp::rand(&mut rng);
 
         let timer = Instant::now();
-        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
+        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
             &group_map,
             &polynomials,
             &eval_points.clone(),

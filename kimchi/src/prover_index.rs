@@ -3,7 +3,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        constraints::{ColumnEvaluations, ConstraintSystem, EvaluatedColumnCoefficients},
+        constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
     },
     curve::KimchiCurve,
@@ -40,9 +40,6 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-
-    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
     pub column_evaluations: ColumnEvaluations<G::ScalarField>,
@@ -90,7 +87,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             powers_of_alpha,
             srs,
             max_poly_size,
-            evaluated_column_coefficients,
             column_evaluations,
             verifier_index: None,
             verifier_index_digest: None,

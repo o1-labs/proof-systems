@@ -60,6 +60,7 @@ use ark_poly::{Polynomial, UVPolynomial};
 use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
+use rayon::prelude::*;
 use std::array;
 
 /// Number of constraints produced by the argument.
@@ -331,7 +332,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         beta: F,
         gamma: F,
         alphas: impl Iterator<Item = F>,
-    ) -> DensePolynomial<F> {
+    ) -> Evaluations<F, D<F>> {
         //~
         //~ The linearization:
         //~
@@ -339,7 +340,14 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~
         let zkpm_zeta = self.cs.precomputations().zkpm.evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        self.evaluated_column_coefficients.permutation_coefficients[PERMUTS - 1].scale(scalar)
+        let evals8 = &self.column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
+        const STRIDE: usize = 8;
+        let n = evals8.len() / STRIDE;
+        let evals = (0..n)
+            .into_par_iter()
+            .map(|i| scalar * evals8[STRIDE * i])
+            .collect();
+        Evaluations::from_vec_and_domain(evals, D::new(n).unwrap())
     }
 }
 
