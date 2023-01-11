@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-04897efae0a76fcd.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1492,6 +1492,16 @@
 <a href="#1492" id="1492">1492</a>
 <a href="#1493" id="1493">1493</a>
 <a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1522,6 +1532,7 @@
     },
     curve::KimchiCurve,
     error::ProverError,
+    lagrange_basis_evaluations::LagrangeBasisEvaluations,
     plonk_sponge::FrSponge,
     proof::{
         LookupCommitments, LookupEvaluations, PointEvaluations, ProofEvaluations,
@@ -1535,8 +1546,11 @@
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain <span class="kw">as </span>D, UVPolynomial,
 };
-<span class="kw">use </span>commitment_dlog::commitment::{
-    absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
+<span class="kw">use </span>commitment_dlog::{
+    commitment::{
+        absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
+    },
+    evaluation_proof::DensePolynomialOrEvaluations,
 };
 <span class="kw">use </span>itertools::Itertools;
 <span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -1789,7 +1803,9 @@
             .for_each(|c| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>c.commitment));
 
         <span class="comment">//~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    TODO: why not do this first, and then commit? Why commit from evaluation directly?
+        //~    As mentioned above, we commit using the evaluations form rather than the coefficients
+        //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
+        //~    0 entries and entries that have less-than-full-size field elemnts.)
         </span><span class="kw">let </span>witness_poly: [DensePolynomial&lt;G::ScalarField&gt;; COLUMNS] = array::from_fn(|i| {
             Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
                 witness[i].clone(),
@@ -1951,7 +1967,8 @@
                 Evaluations::from_vec_and_domain(evals, index.cs.domain.d8)
             };
 
-            <span class="kw">let </span>joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
+            <span class="comment">// TODO: This interpolation is avoidable.
+            </span><span class="kw">let </span>joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
 
             <span class="comment">//~~ - Compute the sorted evaluations.
             // TODO: Once we switch to committing using lagrange commitments,
@@ -2408,23 +2425,30 @@
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-        </span><span class="kw">let </span>chunked_evals = ProofEvaluations::&lt;PointEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; {
+
+        </span><span class="kw">let </span>zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
+        <span class="kw">let </span>zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
+
+        <span class="kw">let </span>chunked_evals_for_selector =
+            |p: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;| PointEvaluations {
+                zeta: <span class="macro">vec!</span>[zeta_evals.evaluate_boolean(p)],
+                zeta_omega: <span class="macro">vec!</span>[zeta_omega_evals.evaluate_boolean(p)],
+            };
+
+        <span class="kw">let </span>chunked_evals_for_evaluations =
+            |p: <span class="kw-2">&amp;</span>Evaluations&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;| PointEvaluations {
+                zeta: <span class="macro">vec!</span>[zeta_evals.evaluate(p)],
+                zeta_omega: <span class="macro">vec!</span>[zeta_omega_evals.evaluate(p)],
+            };
+
+        <span class="kw">let </span>chunked_evals = ProofEvaluations::&lt;PointEvaluations&lt;Vec&lt;G::ScalarField&gt;&gt;&gt; {
             s: array::from_fn(|i| {
-                <span class="kw">let </span>chunked = index.evaluated_column_coefficients.permutation_coefficients
-                    [<span class="number">0</span>..PERMUTS - <span class="number">1</span>][i]
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
+                chunked_evals_for_evaluations(
+                    <span class="kw-2">&amp;</span>index.column_evaluations.permutation_coefficients8[i],
+                )
             }),
             coefficients: array::from_fn(|i| {
-                <span class="kw">let </span>chunked = index.evaluated_column_coefficients.coefficients[i]
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
+                chunked_evals_for_evaluations(<span class="kw-2">&amp;</span>index.column_evaluations.coefficients8[i])
             }),
             w: array::from_fn(|i| {
                 <span class="kw">let </span>chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
@@ -2443,28 +2467,12 @@
             },
 
             lookup: lookup_context.eval.take(),
-
-            generic_selector: {
-                <span class="kw">let </span>chunked = index
-                    .evaluated_column_coefficients
-                    .generic_selector
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            },
-
-            poseidon_selector: {
-                <span class="kw">let </span>chunked = index
-                    .evaluated_column_coefficients
-                    .poseidon_selector
-                    .to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            },
+            generic_selector: chunked_evals_for_selector(
+                <span class="kw-2">&amp;</span>index.column_evaluations.generic_selector4,
+            ),
+            poseidon_selector: chunked_evals_for_selector(
+                <span class="kw-2">&amp;</span>index.column_evaluations.poseidon_selector8,
+            ),
         };
 
         <span class="kw">let </span>zeta_to_srs_len = zeta.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]);
@@ -2496,9 +2504,10 @@
 
                 <span class="comment">// the circuit polynomial
                 </span><span class="kw">let </span>f = {
-                    <span class="kw">let </span>(_lin_constant, lin) =
+                    <span class="kw">let </span>(_lin_constant, <span class="kw-2">mut </span>lin) =
                         index.linearization.to_polynomial(<span class="kw-2">&amp;</span>env, zeta, <span class="kw-2">&amp;</span>evals);
-                    f + lin
+                    lin += <span class="kw-2">&amp;</span>f;
+                    lin.interpolate()
                 };
 
                 drop(env);
@@ -2607,9 +2616,12 @@
             shifted: <span class="prelude-val">None</span>,
         };
 
+        <span class="kw">let </span>coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
+        <span class="kw">let </span>evaluations_form = |e| DensePolynomialOrEvaluations::Evaluations(e, index.cs.domain.d1);
+
         <span class="kw">let </span><span class="kw-2">mut </span>polynomials = polys
             .iter()
-            .map(|(p, d1_size)| (p, <span class="prelude-val">None</span>, non_hiding(<span class="kw-2">*</span>d1_size)))
+            .map(|(p, d1_size)| (coefficients_form(p), <span class="prelude-val">None</span>, non_hiding(<span class="kw-2">*</span>d1_size)))
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
 
         <span class="kw">let </span>fixed_hiding = |d1_size: usize| PolyComm {
@@ -2626,38 +2638,38 @@
         //~~ - the 15 registers/witness columns
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
-        </span>polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>public_poly, <span class="prelude-val">None</span>, fixed_hiding(<span class="number">1</span>))]);
-        polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>ft, <span class="prelude-val">None</span>, blinding_ft)]);
-        polynomials.extend(<span class="macro">vec!</span>[(<span class="kw-2">&amp;</span>z_poly, <span class="prelude-val">None</span>, z_comm.blinders)]);
-        polynomials.extend(<span class="macro">vec!</span>[(
-            <span class="kw-2">&amp;</span>index.evaluated_column_coefficients.generic_selector,
+        </span>polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>public_poly), <span class="prelude-val">None</span>, fixed_hiding(<span class="number">1</span>)));
+        polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>ft), <span class="prelude-val">None</span>, blinding_ft));
+        polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>z_poly), <span class="prelude-val">None</span>, z_comm.blinders));
+        polynomials.push((
+            evaluations_form(<span class="kw-2">&amp;</span>index.column_evaluations.generic_selector4),
             <span class="prelude-val">None</span>,
             fixed_hiding(<span class="number">1</span>),
-        )]);
-        polynomials.extend(<span class="macro">vec!</span>[(
-            <span class="kw-2">&amp;</span>index.evaluated_column_coefficients.poseidon_selector,
+        ));
+        polynomials.push((
+            evaluations_form(<span class="kw-2">&amp;</span>index.column_evaluations.poseidon_selector8),
             <span class="prelude-val">None</span>,
             fixed_hiding(<span class="number">1</span>),
-        )]);
+        ));
         polynomials.extend(
             witness_poly
                 .iter()
                 .zip(w_comm.iter())
-                .map(|(w, c)| (w, <span class="prelude-val">None</span>, c.blinders.clone()))
+                .map(|(w, c)| (coefficients_form(w), <span class="prelude-val">None</span>, c.blinders.clone()))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
         polynomials.extend(
             index
-                .evaluated_column_coefficients
-                .coefficients
+                .column_evaluations
+                .coefficients8
                 .iter()
-                .map(|coefficientm| (coefficientm, <span class="prelude-val">None</span>, non_hiding(<span class="number">1</span>)))
+                .map(|coefficientm| (evaluations_form(coefficientm), <span class="prelude-val">None</span>, non_hiding(<span class="number">1</span>)))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
         polynomials.extend(
-            index.evaluated_column_coefficients.permutation_coefficients[<span class="number">0</span>..PERMUTS - <span class="number">1</span>]
+            index.column_evaluations.permutation_coefficients8[<span class="number">0</span>..PERMUTS - <span class="number">1</span>]
                 .iter()
-                .map(|w| (w, <span class="prelude-val">None</span>, non_hiding(<span class="number">1</span>)))
+                .map(|w| (evaluations_form(w), <span class="prelude-val">None</span>, non_hiding(<span class="number">1</span>)))
                 .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;(),
         );
 
@@ -2668,13 +2680,17 @@
             <span class="kw">let </span>sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
 
             <span class="kw">for </span>(poly, comm) <span class="kw">in </span>sorted_poly.iter().zip(sorted_comms) {
-                polynomials.push((poly, <span class="prelude-val">None</span>, comm.blinders.clone()));
+                polynomials.push((coefficients_form(poly), <span class="prelude-val">None</span>, comm.blinders.clone()));
             }
 
             <span class="comment">//~~ - add the lookup aggreg polynomial
             </span><span class="kw">let </span>aggreg_poly = lookup_context.aggreg_coeffs.as_ref().unwrap();
             <span class="kw">let </span>aggreg_comm = lookup_context.aggreg_comm.as_ref().unwrap();
-            polynomials.push((aggreg_poly, <span class="prelude-val">None</span>, aggreg_comm.blinders.clone()));
+            polynomials.push((
+                coefficients_form(aggreg_poly),
+                <span class="prelude-val">None</span>,
+                aggreg_comm.blinders.clone(),
+            ));
 
             <span class="comment">//~~ - add the combined table polynomial
             </span><span class="kw">let </span>table_blinding = <span class="kw">if </span>lcs.runtime_selector.is_some() {
@@ -2693,14 +2709,18 @@
 
             <span class="kw">let </span>joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
 
-            polynomials.push((joint_lookup_table, <span class="prelude-val">None</span>, table_blinding));
+            polynomials.push((coefficients_form(joint_lookup_table), <span class="prelude-val">None</span>, table_blinding));
 
             <span class="comment">//~~ - if present, add the runtime table polynomial
             </span><span class="kw">if </span>lcs.runtime_selector.is_some() {
                 <span class="kw">let </span>runtime_table_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 <span class="kw">let </span>runtime_table = lookup_context.runtime_table.as_ref().unwrap();
 
-                polynomials.push((runtime_table, <span class="prelude-val">None</span>, runtime_table_comm.blinders.clone()));
+                polynomials.push((
+                    coefficients_form(runtime_table),
+                    <span class="prelude-val">None</span>,
+                    runtime_table_comm.blinders.clone(),
+                ));
             }
         }
 
@@ -2987,4 +3007,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (cc47b0699 2023-01-08)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>

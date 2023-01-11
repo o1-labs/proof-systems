@@ -1671,9 +1671,6 @@ These pre-computations are optimizations, in the context of normal proofs, but t
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = &quot;EvaluatedColumnCoefficients&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients&lt;G::ScalarField&gt;,
-
     #[serde(bound = &quot;ColumnEvaluations&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;)]
     pub column_evaluations: ColumnEvaluations&lt;G::ScalarField&gt;,
 
@@ -2067,7 +2064,9 @@ we can use the <code>commit_evaluation</code> optimization.</p>
 </li>
 <li>
 <p>Compute the witness polynomials by interpolating each <code>COLUMNS</code> of the witness.
-TODO: why not do this first, and then commit? Why commit from evaluation directly?</p>
+As mentioned above, we commit using the evaluations form rather than the coefficients
+form so we can take advantage of the sparsity of the evaluations (i.e., there are many
+0 entries and entries that have less-than-full-size field elemnts.)</p>
 </li>
 <li>
 <p>If using lookup:</p>

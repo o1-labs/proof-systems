@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Challenges",""],["OpeningProof",""]]};
+window.SIDEBAR_ITEMS = {"enum":[["DensePolynomialOrEvaluations",""]],"struct":[["Challenges",""],["OpeningProof",""]]};
