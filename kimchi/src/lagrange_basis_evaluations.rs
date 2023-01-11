@@ -167,7 +167,7 @@ mod tests {
     }
 
     #[test]
-    fn test_evaluation_zero_one() {
+    fn test_evaluation_boolean() {
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let n = 1 << 1;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
