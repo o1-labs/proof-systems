@@ -1112,7 +1112,7 @@ where
             shifted: None,
         };
 
-        let coefficients_form = |p| DensePolynomialOrEvaluations::DensePolynomial(p);
+        let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
         let evaluations_form = |e| DensePolynomialOrEvaluations::Evaluations(e, index.cs.domain.d1);
 
         let mut polynomials = polys
