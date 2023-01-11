@@ -130,14 +130,14 @@ mod tests {
             })
             .collect();
 
-        for i in 0..n {
-            if evaluator.evals[i] != expected[i] {
+        for (i, expected) in expected.into_iter().enumerate() {
+            if evaluator.evals[i] != expected {
                 panic!(
                     "{}, {}: {} != {}",
                     line!(),
                     i,
                     evaluator.evals[i],
-                    expected[i]
+                    expected
                 );
             }
         }
