@@ -23,7 +23,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
 
     /// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point,
     /// assuming that the given evaluations are either 0 or 1 at every point of the domain.
-    pub fn evaluate_zero_one<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> F {
+    pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> F {
         assert_eq!(p.evals.len() % self.evals.len(), 0);
         let stride = p.evals.len() / self.evals.len();
         let mut result = F::zero();
@@ -189,7 +189,7 @@ mod tests {
 
         let evaluator = LagrangeBasisEvaluations::new(domain, x);
 
-        let y = evaluator.evaluate_zero_one(&evals);
+        let y = evaluator.evaluate_boolean(&evals);
         let expected = evals.interpolate().evaluate(&x);
         assert_eq!(y, expected)
     }

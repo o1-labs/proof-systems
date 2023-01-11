@@ -927,8 +927,8 @@ where
 
         let chunked_evals_for_selector =
             |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate_zero_one(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate_zero_one(p)],
+                zeta: vec![zeta_evals.evaluate_boolean(p)],
+                zeta_omega: vec![zeta_omega_evals.evaluate_boolean(p)],
             };
 
         let chunked_evals_for_evaluations =
