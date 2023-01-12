@@ -217,7 +217,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
 fn layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 1] {
     [
-        // Conditional   row
         [
             VariableCell::create("left_input0"),
             VariableCell::create("right_input0"),
