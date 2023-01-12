@@ -126,25 +126,23 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 }
 
 fn layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 1] {
-    [
-        [
-            VariableCell::create("r1"),
-            VariableCell::create("x1"),
-            VariableCell::create("y1"),
-            VariableCell::create("r2"),
-            VariableCell::create("x2"),
-            VariableCell::create("y2"),
-            VariableCell::create("b"),
-            VariableCell::create("b1"),
-            VariableCell::create("b2"),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-        ],
-    ]
+    [[
+        VariableCell::create("r1"),
+        VariableCell::create("x1"),
+        VariableCell::create("y1"),
+        VariableCell::create("r2"),
+        VariableCell::create("x2"),
+        VariableCell::create("y2"),
+        VariableCell::create("b"),
+        VariableCell::create("b1"),
+        VariableCell::create("b2"),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+    ]]
 }
 
 /// Create an if conditional witness
