@@ -275,9 +275,9 @@ pub fn extend<F: PrimeField>(
     right_input1: &F,
     coeffs: &[F; 4],
 ) {
-    let limbs_witness = create(left_input0, right_input0, left_input1, right_input1, coeffs);
+    let boolean_op_witness = create(left_input0, right_input0, left_input1, right_input1, coeffs);
     for col in 0..COLUMNS {
-        witness[col].extend(limbs_witness[col].iter())
+        witness[col].extend(boolean_op_witness[col].iter())
     }
 }
 
@@ -317,9 +317,9 @@ pub fn extend_and<F: PrimeField>(
     left_input1: &F,
     right_input1: &F,
 ) {
-    let limbs_witness = create_and(left_input0, right_input0, left_input1, right_input1);
+    let boolean_and_witness = create_and(left_input0, right_input0, left_input1, right_input1);
     for col in 0..COLUMNS {
-        witness[col].extend(limbs_witness[col].iter())
+        witness[col].extend(boolean_and_witness[col].iter())
     }
 }
 
@@ -359,9 +359,9 @@ pub fn extend_or<F: PrimeField>(
     left_input1: &F,
     right_input1: &F,
 ) {
-    let limbs_witness = create_or(left_input0, right_input0, left_input1, right_input1);
+    let boolean_or_witness = create_or(left_input0, right_input0, left_input1, right_input1);
     for col in 0..COLUMNS {
-        witness[col].extend(limbs_witness[col].iter())
+        witness[col].extend(boolean_or_witness[col].iter())
     }
 }
 
@@ -401,8 +401,8 @@ pub fn extend_xor<F: PrimeField>(
     left_input1: &F,
     right_input1: &F,
 ) {
-    let limbs_witness = create_xor(left_input0, right_input0, left_input1, right_input1);
+    let boolean_xor_witness = create_xor(left_input0, right_input0, left_input1, right_input1);
     for col in 0..COLUMNS {
-        witness[col].extend(limbs_witness[col].iter())
+        witness[col].extend(boolean_xor_witness[col].iter())
     }
 }
