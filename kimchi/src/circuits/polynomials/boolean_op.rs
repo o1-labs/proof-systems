@@ -142,7 +142,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     /// Create generic boolean gate by extending the existing gates
-    pub fn extend_boolean(gates: &mut Vec<Self>, curr_row: &mut usize, coeffs: &[F; 4]) {
+    pub fn extend_boolean_op(gates: &mut Vec<Self>, curr_row: &mut usize, coeffs: &[F; 4]) {
         let (next_row, circuit_gates) = Self::create_boolean_op(*curr_row, coeffs);
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
