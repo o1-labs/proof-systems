@@ -140,7 +140,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub conditional_selector8: Option<E<F, D<F>>>,
 
-    /// Boolean gate selector over domain d8
+    /// Boolean operation gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub boolean_op_selector8: Option<E<F, D<F>>>,
 }
