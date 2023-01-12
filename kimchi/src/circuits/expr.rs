@@ -444,6 +444,7 @@ pub enum FeatureFlag {
     Rot,
     Conditional,
     BooleanOp,
+    Boolean,
     LookupTables,
     RuntimeLookupTables,
     LookupPattern(LookupPattern),
@@ -595,6 +596,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                         Rot => features.rot,
                         Conditional => features.conditional,
                         BooleanOp => features.boolean_op,
+                        Boolean => features.boolean,
                         LookupTables => {
                             features.lookup_features.patterns != LookupPatterns::default()
                         }

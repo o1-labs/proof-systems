@@ -7,6 +7,7 @@ use crate::{
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
+            boolean::Boolean,
             boolean_op::BooleanOp,
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
@@ -669,6 +670,10 @@ where
                 index_evals.insert(GateType::BooleanOp, selector);
             }
 
+            if let Some(selector) = index.column_evaluations.boolean_selector8.as_ref() {
+                index_evals.insert(GateType::Boolean, selector);
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -733,6 +738,7 @@ where
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
                 let conditional_enabled = index.column_evaluations.conditional_selector8.is_some();
                 let boolean_op_enabled = index.column_evaluations.boolean_op_selector8.is_some();
+                let boolean_enabled = index.column_evaluations.boolean_selector8.is_some();
 
                 for gate in [
                     (
@@ -766,6 +772,8 @@ where
                     (&Conditional::default(), conditional_enabled),
                     // Boolean operation gate
                     (&BooleanOp::default(), boolean_op_enabled),
+                    // Boolean gate
+                    (&Boolean::default(), boolean_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })

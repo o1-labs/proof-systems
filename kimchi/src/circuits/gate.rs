@@ -24,7 +24,7 @@ use thiserror::Error;
 use super::{
     argument::ArgumentWitness,
     expr,
-    polynomials::{boolean_op, conditional, rot, xor},
+    polynomials::{boolean, boolean_op, conditional, rot, xor},
 };
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -119,6 +119,7 @@ pub enum GateType {
     Rot64 = 21,
     Conditional = 22,
     BooleanOp = 23,
+    Boolean = 24,
 }
 
 /// Gate error
@@ -244,6 +245,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             BooleanOp => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
+            Boolean => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -334,6 +338,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::Rot64 => rot::Rot64::constraint_checks(&env),
             GateType::Conditional => conditional::Conditional::constraint_checks(&env),
             GateType::BooleanOp => boolean_op::BooleanOp::constraint_checks(&env),
+            GateType::Boolean => boolean::Boolean::constraint_checks(&env),
         };
 
         // Check for failed constraints
