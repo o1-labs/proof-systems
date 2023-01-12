@@ -180,8 +180,8 @@ pub fn extend<F: PrimeField>(
     y: &[F; 2],
     b: &[bool; 2],
 ) {
-    let limbs_witness = create(x, y, b);
+    let conditional_witness = create(x, y, b);
     for col in 0..COLUMNS {
-        witness[col].extend(limbs_witness[col].iter())
+        witness[col].extend(conditional_witness[col].iter())
     }
 }
