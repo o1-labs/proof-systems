@@ -216,25 +216,23 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 }
 
 fn layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 1] {
-    [
-        [
-            VariableCell::create("left_input0"),
-            VariableCell::create("right_input0"),
-            VariableCell::create("output0"),
-            VariableCell::create("left_input1"),
-            VariableCell::create("right_input1"),
-            VariableCell::create("output1"),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-            ConstantCell::create(F::zero()),
-        ],
-    ]
+    [[
+        VariableCell::create("left_input0"),
+        VariableCell::create("right_input0"),
+        VariableCell::create("output0"),
+        VariableCell::create("left_input1"),
+        VariableCell::create("right_input1"),
+        VariableCell::create("output1"),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+        ConstantCell::create(F::zero()),
+    ]]
 }
 
 /// Create witness for generic boolean gate
