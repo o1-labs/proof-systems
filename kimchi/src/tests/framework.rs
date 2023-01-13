@@ -18,6 +18,10 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use ark_ff::Zero;
+use ark_poly::{
+    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    Radix2EvaluationDomain as D,
+};
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
@@ -124,15 +128,69 @@ where
         TestRunner(self)
     }
 
+    fn zero_selector(selector: &mut E<G::ScalarField, D<G::ScalarField>>) {
+        selector
+            .evals
+            .iter_mut()
+            .for_each(|eval| *eval = G::ScalarField::zero());
+    }
+
     fn zero_gate_selectors(&mut self) {
+        // Zero gate selectors
         match &mut self.prover_index {
             Some(prover_index) => {
-                prover_index
-                    .column_evaluations
-                    .generic_selector4
-                    .evals
-                    .iter_mut()
-                    .for_each(|eval| *eval = G::ScalarField::zero());
+                Self::zero_selector(&mut prover_index.column_evaluations.generic_selector4);
+                Self::zero_selector(&mut prover_index.column_evaluations.poseidon_selector8);
+                Self::zero_selector(&mut prover_index.column_evaluations.complete_add_selector4);
+                Self::zero_selector(&mut prover_index.column_evaluations.mul_selector8);
+                Self::zero_selector(&mut prover_index.column_evaluations.emul_selector8);
+                Self::zero_selector(&mut prover_index.column_evaluations.endomul_scalar_selector8);
+
+                // Chacha optional
+                if let Some(chacha_selectors8) =
+                    &mut prover_index.column_evaluations.chacha_selectors8
+                {
+                    chacha_selectors8.iter_mut().for_each(|selector| {
+                        Self::zero_selector(selector);
+                    })
+                }
+
+                // Range check optional
+                if let Some(range_check_selectors8) =
+                    &mut prover_index.column_evaluations.range_check_selectors8
+                {
+                    range_check_selectors8.iter_mut().for_each(|selector| {
+                        Self::zero_selector(selector);
+                    })
+                }
+
+                // Foreign field addition optional
+                if let Some(foreign_field_add_selector8) =
+                    &mut prover_index.column_evaluations.foreign_field_add_selector8
+                {
+                    Self::zero_selector(foreign_field_add_selector8);
+                }
+
+                // Foreign field multiplication optional
+                if let Some(foreign_field_mul_selector8) =
+                    &mut prover_index.column_evaluations.foreign_field_mul_selector8
+                {
+                    Self::zero_selector(foreign_field_mul_selector8);
+                }
+
+                // Xor optional
+                if let Some(xor_selector8) =
+                    &mut prover_index.column_evaluations.xor_selector8
+                {
+                    Self::zero_selector(xor_selector8);
+                }
+
+                // Rot optional
+                if let Some(rot_selector8) =
+                    &mut prover_index.column_evaluations.rot_selector8
+                {
+                    Self::zero_selector(rot_selector8);
+                }
             }
             None => (),
         }
