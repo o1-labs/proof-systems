@@ -17,6 +17,7 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
+use ark_ff::Zero;
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
@@ -101,7 +102,7 @@ where
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
-        let index = new_index_for_test_with_lookups::<G>(
+        let mut index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -116,7 +117,25 @@ where
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
 
+        if (self.disable_gates_checks) {
+            self.zero_gate_selectors()
+        }
+
         TestRunner(self)
+    }
+
+    fn zero_gate_selectors(&mut self) {
+        match &mut self.prover_index {
+            Some(prover_index) => {
+                prover_index
+                    .column_evaluations
+                    .generic_selector4
+                    .evals
+                    .iter_mut()
+                    .for_each(|eval| *eval = G::ScalarField::zero());
+            }
+            None => (),
+        }
     }
 }
 
