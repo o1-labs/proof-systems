@@ -35,7 +35,7 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     runtime_tables: Vec<RuntimeTable<G::ScalarField>>,
     recursion: Vec<RecursionChallenge<G>>,
     num_prev_challenges: usize,
-    disable_custom_constraints: bool,
+    disable_gates_checks: bool,
 
     prover_index: Option<ProverIndex<G>>,
     verifier_index: Option<VerifierIndex<G>>,
@@ -88,8 +88,8 @@ where
     }
 
     #[must_use]
-    pub(crate) fn disable_custom_constraints(mut self) -> Self {
-        self.disable_custom_constraints = true;
+    pub(crate) fn disable_gates_checks(mut self) -> Self {
+        self.disable_gates_checks = true;
         self
     }
 
