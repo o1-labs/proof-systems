@@ -223,13 +223,19 @@ impl fmt::Display for PubKey {
 }
 
 /// Compressed public keys consist of x-coordinate and y-coordinate parity.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct CompressedPubKey {
     /// X-coordinate
     pub x: BaseField,
 
     /// Parity of y-coordinate
     pub is_odd: bool,
+}
+
+impl fmt::Debug for CompressedPubKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_fmt(format_args!("{}", self.into_address()))
+    }
 }
 
 fn into_address(x: &BaseField, is_odd: bool) -> String {
