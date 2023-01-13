@@ -346,6 +346,7 @@ fn test_rot_finalization() {
     let index = {
         let cs = ConstraintSystem::create(gates.clone())
             .public(num_inputs)
+            .lookup(vec![rot::lookup_table()])
             .build()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());

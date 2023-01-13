@@ -436,6 +436,7 @@ fn test_xor_finalization() {
 
     let index = {
         let cs = ConstraintSystem::create(gates.clone())
+            .lookup(vec![xor::lookup_table()])
             .public(num_inputs)
             .build()
             .unwrap();
