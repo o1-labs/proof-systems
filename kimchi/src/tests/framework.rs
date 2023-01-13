@@ -19,7 +19,7 @@ use crate::{
 use ark_ff::PrimeField;
 use ark_ff::Zero;
 use ark_poly::{
-    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    Evaluations as E,
     Radix2EvaluationDomain as D,
 };
 use commitment_dlog::commitment::CommitmentCurve;
@@ -93,8 +93,8 @@ where
     }
 
     #[must_use]
-    pub(crate) fn disable_gates_checks(mut self) -> Self {
-        self.disable_gates_checks = true;
+    pub(crate) fn disable_gates_checks(mut self, disable_gates_checks: bool) -> Self {
+        self.disable_gates_checks = disable_gates_checks;
         self
     }
 
@@ -106,7 +106,7 @@ where
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
-        let mut index = new_index_for_test_with_lookups::<G>(
+        let index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -121,8 +121,8 @@ where
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
 
-        if (self.disable_gates_checks) {
-            self.zero_gate_selectors()
+        if self.disable_gates_checks {
+            self.zero_gates_selectors()
         }
 
         TestRunner(self)
@@ -135,10 +135,10 @@ where
             .for_each(|eval| *eval = G::ScalarField::zero());
     }
 
-    fn zero_gate_selectors(&mut self) {
-        // Zero gate selectors
+    fn zero_gates_selectors(&mut self) {
         match &mut self.prover_index {
             Some(prover_index) => {
+                // Zero gate selectors
                 Self::zero_selector(&mut prover_index.column_evaluations.generic_selector4);
                 Self::zero_selector(&mut prover_index.column_evaluations.poseidon_selector8);
                 Self::zero_selector(&mut prover_index.column_evaluations.complete_add_selector4);
@@ -179,16 +179,12 @@ where
                 }
 
                 // Xor optional
-                if let Some(xor_selector8) =
-                    &mut prover_index.column_evaluations.xor_selector8
-                {
+                if let Some(xor_selector8) = &mut prover_index.column_evaluations.xor_selector8 {
                     Self::zero_selector(xor_selector8);
                 }
 
                 // Rot optional
-                if let Some(rot_selector8) =
-                    &mut prover_index.column_evaluations.rot_selector8
-                {
+                if let Some(rot_selector8) = &mut prover_index.column_evaluations.rot_selector8 {
                     Self::zero_selector(rot_selector8);
                 }
             }
