@@ -20,7 +20,7 @@ use itertools::Itertools;
 use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Div, Mul, Neg, Sub};
 use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
@@ -287,6 +287,7 @@ pub enum ConstantExpr<F> {
     // having a BinOp constructor :(
     Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
     Mul(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
+    Div(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
     Sub(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
 }
 
@@ -311,6 +312,11 @@ impl<F: Copy> ConstantExpr<F> {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
                 res.push(PolishToken::Mul)
+            }
+            ConstantExpr::Div(x, y) => {
+                x.as_ref().to_polish_(res);
+                y.as_ref().to_polish_(res);
+                res.push(PolishToken::Div)
             }
             ConstantExpr::Sub(x, y) => {
                 x.as_ref().to_polish_(res);
@@ -357,6 +363,7 @@ impl<F: Field> ConstantExpr<F> {
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
             Inv(x) => x.value(c).inverse().unwrap_or_else(F::zero),
             Mul(x, y) => x.value(c) * y.value(c),
+            Div(x, y) => x.value(c) / y.value(c),
             Add(x, y) => x.value(c) + y.value(c),
             Sub(x, y) => x.value(c) - y.value(c),
         }
@@ -427,6 +434,7 @@ impl Cache {
 pub enum Op2 {
     Add,
     Mul,
+    Div,
     Sub,
 }
 
@@ -436,6 +444,7 @@ impl Op2 {
         match self {
             Add => PolishToken::Add,
             Mul => PolishToken::Mul,
+            Div => PolishToken::Div,
             Sub => PolishToken::Sub,
         }
     }
@@ -576,6 +585,26 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                             )
                         }
                     }
+                    Op2::Div => {
+                        if reduce_further1 && c1_reduced.is_zero()
+                            || reduce_further2 && c2_reduced.is_zero()
+                        {
+                            (Expr::zero(), true)
+                        } else if reduce_further1 && c1_reduced.is_one() {
+                            if reduce_further2 && c2_reduced.is_one() {
+                                (Expr::one(), true)
+                            } else {
+                                (c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_one() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Div, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
                 }
             }
             Pow(c, power) => {
@@ -666,6 +695,7 @@ pub enum PolishToken<F> {
     Inv,
     Add,
     Mul,
+    Div,
     Sub,
     VanishesOnLast4Rows,
     UnnormalizedLagrangeBasis(i32),
@@ -768,6 +798,11 @@ impl<F: FftField> PolishToken<F> {
                     let x = stack.pop().ok_or(ExprError::EmptyStack)?;
                     stack.push(x * y);
                 }
+                Div => {
+                    let y = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStack)?;
+                    stack.push(x / y);
+                }
                 Sub => {
                     let y = stack.pop().ok_or(ExprError::EmptyStack)?;
                     let x = stack.pop().ok_or(ExprError::EmptyStack)?;
@@ -826,7 +861,9 @@ impl<C> Expr<C> {
             UnnormalizedLagrangeBasis(_) => d1_size,
             Cell(_) => d1_size,
             Square(x) => 2 * x.degree(d1_size),
-            BinOp(Op2::Mul, x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
+            BinOp(Op2::Mul, x, y) | BinOp(Op2::Div, x, y) => {
+                (*x).degree(d1_size) + (*y).degree(d1_size)
+            }
             BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) => {
                 std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size))
             }
@@ -1421,6 +1458,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
             }
         }
     }
+
+    fn div<'b, 'c>(
+        self,
+        other: EvalResult<'b, F>,
+        res_domain: (Domain, D<F>),
+    ) -> EvalResult<'c, F> {
+        self.mul(other.inverse(res_domain), res_domain)
+    }
 }
 
 fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
@@ -1558,6 +1603,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
             BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
+            BinOp(Op2::Div, x, y) => x.evaluate_constants_(c) / y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
             IfFeature(feature, e1, e2) => IfFeature(
@@ -1601,6 +1647,11 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x * y)
+            }
+            BinOp(Op2::Div, x, y) => {
+                let x = (*x).evaluate_(d, pt, evals, c)?;
+                let y = (*y).evaluate_(d, pt, evals, c)?;
+                Ok(x / y)
             }
             Square(x) => Ok(x.evaluate_(d, pt, evals, c)?.square()),
             BinOp(Op2::Add, x, y) => {
@@ -1666,6 +1717,11 @@ impl<F: FftField> Expr<F> {
                 let x = (*x).evaluate(d, pt, evals)?;
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x * y)
+            }
+            BinOp(Op2::Div, x, y) => {
+                let x = (*x).evaluate(d, pt, evals)?;
+                let y = (*y).evaluate(d, pt, evals)?;
+                Ok(x / y)
             }
             BinOp(Op2::Add, x, y) => {
                 let x = (*x).evaluate(d, pt, evals)?;
@@ -1846,6 +1902,7 @@ impl<F: FftField> Expr<F> {
                 let dom = (d, get_domain(d, env));
                 let f = |x: EvalResult<F>, y: EvalResult<F>| match op {
                     Op2::Mul => x.mul(y, dom),
+                    Op2::Div => x.div(y, dom),
                     Op2::Add => x.add(y, dom),
                     Op2::Sub => x.sub(y, dom),
                 };
@@ -2075,7 +2132,6 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 if self.is_constant(ev) {
                     constant(self.clone())
                 } else {
-                    // Cannot invert unevaluated columns
                     return Err(ExprError::CannotInvert);
                 }
             }
@@ -2112,6 +2168,15 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             BinOp(Op2::Mul, e1, e2) => {
                 let e1 = e1.monomials(ev)?;
                 let e2 = e2.monomials(ev)?;
+                mul_monomials(&e1, &e2)
+            }
+            BinOp(Op2::Div, e1, e2) => {
+                let e1 = e1.monomials(ev)?;
+                let e2 = if e2.is_constant(ev) {
+                    constant(self.clone())
+                } else {
+                    return Err(ExprError::CannotInvert);
+                };
                 mul_monomials(&e1, &e2)
             }
             Square(x) => {
@@ -2303,6 +2368,20 @@ impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     }
 }
 
+impl<F: Field> Div<ConstantExpr<F>> for ConstantExpr<F> {
+    type Output = ConstantExpr<F>;
+    fn div(self, other: Self) -> Self {
+        use ConstantExpr::{Div, Literal};
+        if other.is_one() {
+            return self;
+        }
+        match (self, other) {
+            (Literal(x), Literal(y)) => Literal(x / y),
+            (x, y) => Div(Box::new(x), Box::new(y)),
+        }
+    }
+}
+
 impl<F: Zero> Zero for Expr<F> {
     fn zero() -> Self {
         Expr::Constant(F::zero())
@@ -2384,6 +2463,20 @@ impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
     }
 }
 
+impl<F: Zero + One + PartialEq> Div<Expr<F>> for Expr<F> {
+    type Output = Expr<F>;
+    fn div(self, other: Self) -> Self {
+        if self.is_zero() || other.is_zero() {
+            return Self::zero();
+        }
+
+        if other.is_one() {
+            return self;
+        }
+        Expr::BinOp(Op2::Div, Box::new(self), Box::new(other))
+    }
+}
+
 impl<F> MulAssign<Expr<F>> for Expr<F>
 where
     F: Zero + One + PartialEq + Clone,
@@ -2435,6 +2528,14 @@ impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
     }
 }
 
+impl<F: Field> Div<F> for Expr<ConstantExpr<F>> {
+    type Output = Expr<ConstantExpr<F>>;
+
+    fn div(self, y: F) -> Self::Output {
+        Expr::Constant(ConstantExpr::Literal(y)) / self
+    }
+}
+
 //
 // Display
 //
@@ -2460,6 +2561,7 @@ where
             Inv(x) => format!("inv({})", x.ocaml()),
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
+            Div(x, y) => format!("({} / {})", x.ocaml(), y.ocaml()),
             Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
         }
     }
@@ -2481,6 +2583,7 @@ where
             Inv(x) => format!("{}^{{-1}}", x.latex()),
             Add(x, y) => format!("({} + {})", x.latex(), y.latex()),
             Mul(x, y) => format!("({} \\cdot {})", x.latex(), y.latex()),
+            Div(x, y) => format!("({} / {})", x.latex(), y.latex()),
             Sub(x, y) => format!("({} - {})", x.latex(), y.latex()),
         }
     }
@@ -2502,6 +2605,7 @@ where
             Inv(x) => format!("{}^{{-1}}", x.text()),
             Add(x, y) => format!("({} + {})", x.text(), y.text()),
             Mul(x, y) => format!("({} * {})", x.text(), y.text()),
+            Div(x, y) => format!("({} / {})", x.text(), y.text()),
             Sub(x, y) => format!("({} - {})", x.text(), y.text()),
         }
     }
@@ -2544,6 +2648,7 @@ where
             VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
+            BinOp(Op2::Div, x, y) => format!("({} / {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.ocaml(cache)),
             Inv(x) => format!("inv({})", x.ocaml(cache)),
@@ -2594,6 +2699,7 @@ where
             VanishesOnLast4Rows => "vanishes\\_on\\_last\\_4\\_rows".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
+            BinOp(Op2::Div, x, y) => format!("({} / {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
             Pow(x, d) => format!("{}^{{{d}}}", x.latex(cache)),
             Inv(x) => format!("{}^{{-1}}", x.latex(cache)),
@@ -2618,6 +2724,7 @@ where
             VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
+            BinOp(Op2::Div, x, y) => format!("({} / {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.text(cache)),
             Inv(x) => format!("pow({}, -1)", x.text(cache)),
