@@ -111,6 +111,10 @@ pub struct Environment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
     pub lookup: Option<LookupEnvironment<'a, F>>,
+    /// Additive lookup aggregation evaluations
+    pub additive_lookup_aggregation: Option<&'a Evaluations<F, D<F>>>,
+    /// Additive lookup count evaluations
+    pub additive_lookup_count: Option<&'a Evaluations<F, D<F>>>,
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
@@ -132,6 +136,8 @@ impl<'a, F: FftField> Environment<'a, F> {
                 Some(e) => Some(e),
             },
             Permutation(_) => None,
+            AdditiveLookupAggregation => self.additive_lookup_aggregation,
+            AdditiveLookupCount => self.additive_lookup_count,
         }
     }
 }
@@ -175,6 +181,8 @@ pub enum Column {
     LookupKindIndex(LookupPattern),
     LookupRuntimeSelector,
     LookupRuntimeTable,
+    AdditiveLookupAggregation,
+    AdditiveLookupCount,
     Index(GateType),
     Coefficient(usize),
     Permutation(usize),
@@ -204,6 +212,8 @@ impl Column {
             }
             Column::Coefficient(i) => format!("c_{{{i}}}"),
             Column::Permutation(i) => format!("sigma_{{{i}}}"),
+            Column::AdditiveLookupAggregation => format!("lookup\\_aggreg"),
+            Column::AdditiveLookupCount => format!("lookup\\_counts"),
         }
     }
 
@@ -222,6 +232,8 @@ impl Column {
             }
             Column::Coefficient(i) => format!("c[{i}]"),
             Column::Permutation(i) => format!("sigma_[{i}]"),
+            Column::AdditiveLookupAggregation => format!("lookup\\_aggreg"),
+            Column::AdditiveLookupCount => format!("lookup\\_counts"),
         }
     }
 }
@@ -682,6 +694,12 @@ impl Variable {
                 LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
                     Err(ExprError::MissingIndexEvaluation(self.col))
                 }
+                AdditiveLookupAggregation => evals
+                    .additive_lookup_aggregation
+                    .ok_or(ExprError::MissingIndexEvaluation(AdditiveLookupAggregation)),
+                AdditiveLookupCount => evals
+                    .additive_lookup_count
+                    .ok_or(ExprError::MissingIndexEvaluation(AdditiveLookupCount)),
             }
         }?;
         match self.row {

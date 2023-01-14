@@ -559,10 +559,30 @@ where
             lookup_context.aggreg8 = Some(aggreg8);
         }
 
+        //~ 1. Optionally compute the additive lookup aggregation and count polynomials.
+        let (additive_lookup_aggregation, additive_lookup_count) = { (None, None) };
+
+        let mut commit_hiding_and_absorb = |poly| {
+            let comm = index.srs.commit_evaluations(index.cs.domain.d1, poly, rng);
+            absorb_commitment(&mut fq_sponge, &comm.commitment);
+            comm
+        };
+
+        //~ 1. Commit (hiding) to the additive lookup aggregation polynomial.
+        //~ 1. Absorb the additive lookup aggregation polynomial commitment with the Fq-sponge.
+        let additive_lookup_aggregation_commitment = additive_lookup_aggregation
+            .as_ref()
+            .map(&mut commit_hiding_and_absorb);
+        //~ 1. Commit (hiding) to the additive lookup count polynomial.
+        //~ 1. Absorb the additive lookup count polynomial commitment with the Fq-sponge.
+        let additive_lookup_count_commitment = additive_lookup_count
+            .as_ref()
+            .map(&mut commit_hiding_and_absorb);
+
         //~ 1. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
-        //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
+        //~ 1. Commit (hiding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, None, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
@@ -681,6 +701,8 @@ where
                 domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
+                additive_lookup_aggregation: additive_lookup_aggregation.as_ref(),
+                additive_lookup_count: additive_lookup_count.as_ref(),
             }
         };
 
@@ -969,6 +991,13 @@ where
             poseidon_selector: chunked_evals_for_selector(
                 &index.column_evaluations.poseidon_selector8,
             ),
+
+            additive_lookup_aggregation: additive_lookup_aggregation
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            additive_lookup_count: additive_lookup_count
+                .as_ref()
+                .map(chunked_evals_for_selector),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1246,6 +1275,9 @@ where
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup,
+                additive_lookup_aggregation: additive_lookup_aggregation_commitment
+                    .map(|x| x.commitment),
+                additive_lookup_count: additive_lookup_count_commitment.map(|x| x.commitment),
             },
             proof,
             evals: chunked_evals,

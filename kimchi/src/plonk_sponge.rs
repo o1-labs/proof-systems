@@ -67,6 +67,8 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             lookup,
             generic_selector,
             poseidon_selector,
+            additive_lookup_aggregation,
+            additive_lookup_count,
         } = e;
 
         let mut points = vec![z, generic_selector, poseidon_selector];
@@ -86,6 +88,9 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             sorted.iter().for_each(|s| points.push(s));
             runtime.iter().for_each(|x| points.push(x));
         }
+
+        points.extend(additive_lookup_aggregation.iter());
+        points.extend(additive_lookup_count.iter());
 
         points.into_iter().for_each(|p| {
             self.sponge.absorb(&p.zeta);
