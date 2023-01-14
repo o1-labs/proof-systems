@@ -27,7 +27,7 @@ type Evaluations<Field> = E<Field, D<Field>>;
 //~   * Multiple values in each lookup (via joining, think of it like a tuple)
 //~    `JoinLookup { SingleLookup { }, ..., SingleLookup { } }`
 //~   * Multiple columns combined in linear combination to create each value
-//~    `JointLookup { SingleLookup { value: vec![(a,b), ..., (c, d)] } }`
+//~    `JointLookup { SingleLookup { value: vec![(scale1, col1), ..., (scale2, col2)] } }`
 //~   * Any combination of these
 
 fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
