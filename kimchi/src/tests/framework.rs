@@ -18,10 +18,7 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use ark_ff::Zero;
-use ark_poly::{
-    Evaluations as E,
-    Radix2EvaluationDomain as D,
-};
+use ark_poly::{Evaluations as E, Radix2EvaluationDomain as D};
 use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
@@ -106,7 +103,7 @@ where
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
-        let index = new_index_for_test_with_lookups::<G>(
+        let mut index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -118,12 +115,12 @@ where
             start.elapsed().as_secs()
         );
 
+        if self.disable_gates_checks {
+            Self::zero_gates_selectors(&mut index);
+        }
+
         self.verifier_index = Some(index.verifier_index());
         self.prover_index = Some(index);
-
-        if self.disable_gates_checks {
-            self.zero_gates_selectors()
-        }
 
         TestRunner(self)
     }
@@ -135,60 +132,67 @@ where
             .for_each(|eval| *eval = G::ScalarField::zero());
     }
 
-    fn zero_gates_selectors(&mut self) {
-        match &mut self.prover_index {
-            Some(prover_index) => {
-                // Zero gate selectors
-                Self::zero_selector(&mut prover_index.column_evaluations.generic_selector4);
-                Self::zero_selector(&mut prover_index.column_evaluations.poseidon_selector8);
-                Self::zero_selector(&mut prover_index.column_evaluations.complete_add_selector4);
-                Self::zero_selector(&mut prover_index.column_evaluations.mul_selector8);
-                Self::zero_selector(&mut prover_index.column_evaluations.emul_selector8);
-                Self::zero_selector(&mut prover_index.column_evaluations.endomul_scalar_selector8);
+    fn is_selector_zero(selector: &E<G::ScalarField, D<G::ScalarField>>) -> bool {
+        selector.evals.iter().fold(true, |is_zero, eval| {
+            is_zero && *eval == G::ScalarField::zero()
+        })
+    }
 
-                // Chacha optional
-                if let Some(chacha_selectors8) =
-                    &mut prover_index.column_evaluations.chacha_selectors8
-                {
-                    chacha_selectors8.iter_mut().for_each(|selector| {
-                        Self::zero_selector(selector);
-                    })
-                }
+    fn zero_gates_selectors(prover_index: &mut ProverIndex<G>) {
+        prover_index
+            .column_evaluations
+            .coefficients8
+            .iter_mut()
+            .for_each(|selector| {
+                Self::zero_selector(selector);
+            });
 
-                // Range check optional
-                if let Some(range_check_selectors8) =
-                    &mut prover_index.column_evaluations.range_check_selectors8
-                {
-                    range_check_selectors8.iter_mut().for_each(|selector| {
-                        Self::zero_selector(selector);
-                    })
-                }
+        // Zero gate selectors
+        Self::zero_selector(&mut prover_index.column_evaluations.generic_selector4);
+        Self::zero_selector(&mut prover_index.column_evaluations.poseidon_selector8);
+        Self::zero_selector(&mut prover_index.column_evaluations.complete_add_selector4);
+        Self::zero_selector(&mut prover_index.column_evaluations.mul_selector8);
+        Self::zero_selector(&mut prover_index.column_evaluations.emul_selector8);
+        Self::zero_selector(&mut prover_index.column_evaluations.endomul_scalar_selector8);
 
-                // Foreign field addition optional
-                if let Some(foreign_field_add_selector8) =
-                    &mut prover_index.column_evaluations.foreign_field_add_selector8
-                {
-                    Self::zero_selector(foreign_field_add_selector8);
-                }
+        // Chacha optional
+        if let Some(chacha_selectors8) = &mut prover_index.column_evaluations.chacha_selectors8 {
+            chacha_selectors8.iter_mut().for_each(|selector| {
+                Self::zero_selector(selector);
+            })
+        }
 
-                // Foreign field multiplication optional
-                if let Some(foreign_field_mul_selector8) =
-                    &mut prover_index.column_evaluations.foreign_field_mul_selector8
-                {
-                    Self::zero_selector(foreign_field_mul_selector8);
-                }
+        // Range check optional
+        if let Some(range_check_selectors8) =
+            &mut prover_index.column_evaluations.range_check_selectors8
+        {
+            range_check_selectors8.iter_mut().for_each(|selector| {
+                Self::zero_selector(selector);
+            })
+        }
 
-                // Xor optional
-                if let Some(xor_selector8) = &mut prover_index.column_evaluations.xor_selector8 {
-                    Self::zero_selector(xor_selector8);
-                }
+        // Foreign field addition optional
+        if let Some(foreign_field_add_selector8) =
+            &mut prover_index.column_evaluations.foreign_field_add_selector8
+        {
+            Self::zero_selector(foreign_field_add_selector8);
+        }
 
-                // Rot optional
-                if let Some(rot_selector8) = &mut prover_index.column_evaluations.rot_selector8 {
-                    Self::zero_selector(rot_selector8);
-                }
-            }
-            None => (),
+        // Foreign field multiplication optional
+        if let Some(foreign_field_mul_selector8) =
+            &mut prover_index.column_evaluations.foreign_field_mul_selector8
+        {
+            Self::zero_selector(foreign_field_mul_selector8);
+        }
+
+        // Xor optional
+        if let Some(xor_selector8) = &mut prover_index.column_evaluations.xor_selector8 {
+            Self::zero_selector(xor_selector8);
+        }
+
+        // Rot optional
+        if let Some(rot_selector8) = &mut prover_index.column_evaluations.rot_selector8 {
+            Self::zero_selector(rot_selector8);
         }
     }
 }
@@ -226,10 +230,14 @@ where
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
 
-        // verify the circuit satisfiability by the computed witness
-        prover
-            .verify(&witness, &self.0.public_inputs)
-            .map_err(|e| format!("{:?}", e))?;
+        if !self.0.disable_gates_checks {
+            println!("Framework verify witness");
+            // Verify the circuit satisfiability by the computed witness, baring plookups.
+            // This is also done by ProverProof::create_recursive::(), but only for development builds
+            prover
+                .verify(&witness, &self.0.public_inputs)
+                .map_err(|e| format!("{:?}", e))?;
+        }
 
         // add the proof to the batch
         let start = Instant::now();
