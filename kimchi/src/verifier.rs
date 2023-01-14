@@ -56,6 +56,10 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     .as_ref()?,
             ),
             LookupRuntimeTable => None,
+            AdditiveLookupAggregation => {
+                self.proof.commitments.additive_lookup_aggregation.as_ref()
+            }
+            AdditiveLookupCount => self.proof.commitments.additive_lookup_count.as_ref(),
             Index(t) => {
                 use GateType::*;
                 match t {

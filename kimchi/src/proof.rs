@@ -76,6 +76,10 @@ pub struct ProofEvaluations<Evals> {
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the additive lookup aggregation
+    pub additive_lookup_aggregation: Option<Evals>,
+    /// evaluation of the additive lookup counts
+    pub additive_lookup_count: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -104,6 +108,10 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub t_comm: PolyComm<G>,
     /// Commitments related to the lookup argument
     pub lookup: Option<LookupCommitments<G>>,
+    /// Commitment to the additive lookup aggregation
+    pub additive_lookup_aggregation: Option<PolyComm<G>>,
+    /// Commitment to the additive lookup counts
+    pub additive_lookup_count: Option<PolyComm<G>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
@@ -209,6 +217,8 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup,
             generic_selector,
             poseidon_selector,
+            additive_lookup_aggregation,
+            additive_lookup_count,
         } = self;
         ProofEvaluations {
             w: w.map(f),
@@ -218,6 +228,8 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup: lookup.map(|x| LookupEvaluations::map(x, f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
+            additive_lookup_aggregation: additive_lookup_aggregation.map(f),
+            additive_lookup_count: additive_lookup_count.map(f),
         }
     }
 
@@ -230,6 +242,8 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup,
             generic_selector,
             poseidon_selector,
+            additive_lookup_aggregation,
+            additive_lookup_count,
         } = self;
         ProofEvaluations {
             w: [
@@ -271,6 +285,8 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup: lookup.as_ref().map(|l| l.map_ref(f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
+            additive_lookup_aggregation: additive_lookup_aggregation.as_ref().map(f),
+            additive_lookup_count: additive_lookup_count.as_ref().map(f),
         }
     }
 }
@@ -289,6 +305,10 @@ impl<F> ProofEvaluations<F> {
             && evals
                 .iter()
                 .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
+        let has_additive_lookup_aggregation = evals
+            .iter()
+            .all(|e| e.additive_lookup_aggregation.is_some());
+        let has_additive_lookup_count = evals.iter().all(|e| e.additive_lookup_count.is_some());
 
         ProofEvaluations {
             generic_selector: array::from_fn(|i| &evals[i].generic_selector),
@@ -313,6 +333,20 @@ impl<F> ProofEvaluations<F> {
                         None
                     },
                 })
+            } else {
+                None
+            },
+            additive_lookup_aggregation: if has_additive_lookup_aggregation {
+                Some(array::from_fn(|i| {
+                    evals[i].additive_lookup_aggregation.as_ref().unwrap()
+                }))
+            } else {
+                None
+            },
+            additive_lookup_count: if has_additive_lookup_count {
+                Some(array::from_fn(|i| {
+                    evals[i].additive_lookup_count.as_ref().unwrap()
+                }))
             } else {
                 None
             },
@@ -384,6 +418,8 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             lookup: None,
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
+            additive_lookup_aggregation: None,
+            additive_lookup_count: None,
         }
     }
 }
@@ -413,6 +449,8 @@ impl<F> ProofEvaluations<F> {
             Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),
+            Column::AdditiveLookupAggregation => Some(self.additive_lookup_aggregation.as_ref()?),
+            Column::AdditiveLookupCount => Some(self.additive_lookup_count.as_ref()?),
         }
     }
 }
