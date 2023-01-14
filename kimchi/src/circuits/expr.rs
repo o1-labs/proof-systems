@@ -50,6 +50,12 @@ pub enum ExprError {
 
     #[error("runtime table not available")]
     MissingRuntime,
+
+    #[error("Cannot invert an unevaluated column")]
+    CannotInvert,
+
+    #[error("Cannot divide by zero")]
+    DivideByZero,
 }
 
 /// The collection of constants required to evaluate an `Expr`.
@@ -276,6 +282,7 @@ pub enum ConstantExpr<F> {
     Mds { row: usize, col: usize },
     Literal(F),
     Pow(Box<ConstantExpr<F>>, u64),
+    Inv(Box<ConstantExpr<F>>),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
     // having a BinOp constructor :(
     Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
@@ -315,6 +322,10 @@ impl<F: Copy> ConstantExpr<F> {
                 x.to_polish_(res);
                 res.push(PolishToken::Pow(*n))
             }
+            ConstantExpr::Inv(x) => {
+                x.as_ref().to_polish_(res);
+                res.push(PolishToken::Inv)
+            }
         }
     }
 }
@@ -344,6 +355,7 @@ impl<F: Field> ConstantExpr<F> {
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow(&[*p as u64]),
+            Inv(x) => x.value(c).inverse().unwrap_or_else(F::zero),
             Mul(x, y) => x.value(c) * y.value(c),
             Add(x, y) => x.value(c) + y.value(c),
             Sub(x, y) => x.value(c) - y.value(c),
@@ -479,6 +491,7 @@ pub enum Expr<C> {
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
+    Inv(Box<Expr<C>>),
     Cache(CacheId, Box<Expr<C>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
     IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
@@ -573,6 +586,14 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                     (Pow(Box::new(c_reduced), *power), false)
                 }
             }
+            Inv(c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, true)
+                } else {
+                    (Inv(Box::new(c_reduced)), false)
+                }
+            }
             Cache(cache_id, c) => {
                 let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
                 if reduce_further {
@@ -642,6 +663,7 @@ pub enum PolishToken<F> {
     Cell(Variable),
     Dup,
     Pow(u64),
+    Inv,
     Add,
     Mul,
     Sub,
@@ -732,6 +754,10 @@ impl<F: FftField> PolishToken<F> {
                     let i = stack.len() - 1;
                     stack[i] = stack[i].pow(&[*n as u64]);
                 }
+                Inv => {
+                    let i = stack.len() - 1;
+                    stack[i].inverse_in_place();
+                }
                 Add => {
                     let y = stack.pop().ok_or(ExprError::EmptyStack)?;
                     let x = stack.pop().ok_or(ExprError::EmptyStack)?;
@@ -805,6 +831,7 @@ impl<C> Expr<C> {
                 std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size))
             }
             Pow(e, d) => d * e.degree(d1_size),
+            Inv(e) => e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
             IfFeature(_, e1, e2) => std::cmp::max(e1.degree(d1_size), e2.degree(d1_size)),
         }
@@ -1263,6 +1290,32 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
+    fn inverse<'b>(self, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
+        use EvalResult::*;
+        match self {
+            Constant(x) => Constant(x.inverse().unwrap_or_else(F::zero)),
+            Evals { domain, mut evals } => {
+                ark_ff::batch_inversion(&mut evals.evals);
+                Evals { domain, evals }
+            }
+            SubEvals {
+                evals,
+                domain: d,
+                shift: s,
+            } => {
+                let scale = (d as usize) / (res_domain.0 as usize);
+                assert!(scale != 0);
+                let mut res = EvalResult::init(res_domain, |i| {
+                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
+                });
+                if let Evals { domain: _, evals } = &mut res {
+                    ark_ff::batch_inversion(&mut evals.evals);
+                };
+                res
+            }
+        }
+    }
+
     fn mul<'b, 'c>(
         self,
         other: EvalResult<'b, F>,
@@ -1422,6 +1475,10 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 x.to_polish_(cache, res);
                 res.push(PolishToken::Pow(*d))
             }
+            Expr::Inv(x) => {
+                x.to_polish_(cache, res);
+                res.push(PolishToken::Inv)
+            }
             Expr::Constant(c) => {
                 c.to_polish_(res);
             }
@@ -1493,6 +1550,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         match self {
             Double(x) => x.evaluate_constants_(c).double(),
             Pow(x, d) => x.evaluate_constants_(c).pow(*d),
+            Inv(x) => x.evaluate_constants_(c).inverse(),
             Square(x) => x.evaluate_constants_(c).square(),
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
@@ -1534,6 +1592,11 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
             Constant(x) => Ok(x.value(c)),
             Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow(&[*p as u64])),
+            Inv(x) => {
+                let mut res = x.evaluate_(d, pt, evals, c)?;
+                res.inverse_in_place().ok_or(ExprError::DivideByZero)?;
+                Ok(res)
+            }
             BinOp(Op2::Mul, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
@@ -1592,6 +1655,11 @@ impl<F: FftField> Expr<F> {
         match self {
             Constant(x) => Ok(*x),
             Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow(&[*p as u64])),
+            Inv(x) => {
+                let mut res = x.evaluate(d, pt, evals)?;
+                res.inverse_in_place().ok_or(ExprError::DivideByZero)?;
+                Ok(res)
+            }
             Double(x) => x.evaluate(d, pt, evals).map(|x| x.double()),
             Square(x) => x.evaluate(d, pt, evals).map(|x| x.square()),
             BinOp(Op2::Mul, x, y) => {
@@ -1739,6 +1807,15 @@ impl<F: FftField> Expr<F> {
                     Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
                     Either::Right(id) => {
                         id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env)))
+                    }
+                }
+            }
+            Expr::Inv(x) => {
+                let x = x.evaluations_helper(cache, d, env);
+                match x {
+                    Either::Left(x) => x.inverse((d, get_domain(d, env))),
+                    Either::Right(id) => {
+                        id.get_from(cache).unwrap().inverse((d, get_domain(d, env)))
                     }
                 }
             }
@@ -1908,6 +1985,12 @@ impl<F: One> Expr<F> {
     }
 }
 
+impl<F> Expr<F> {
+    pub fn inverse(self) -> Self {
+        Expr::Inv(Box::new(self))
+    }
+}
+
 type Monomials<F> = HashMap<Vec<Variable>, Expr<F>>;
 
 fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
@@ -1937,6 +2020,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         use Expr::*;
         match self {
             Pow(x, _) => x.is_constant(evaluated),
+            Inv(x) => x.is_constant(evaluated),
             Square(x) => x.is_constant(evaluated),
             Constant(_) => true,
             Cell(v) => evaluated.contains(&v.col),
@@ -1949,7 +2033,10 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         }
     }
 
-    fn monomials(&self, ev: &HashSet<Column>) -> HashMap<Vec<Variable>, Expr<F>> {
+    fn monomials(
+        &self,
+        ev: &HashSet<Column>,
+    ) -> Result<HashMap<Vec<Variable>, Expr<F>>, ExprError> {
         let sing = |v: Vec<Variable>, c: Expr<F>| {
             let mut h = HashMap::new();
             h.insert(v, c);
@@ -1958,16 +2045,17 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         let constant = |e: Expr<F>| sing(vec![], e);
         use Expr::*;
 
+        // TODO: This is expensive to do recursively on every node. Delete.
         if self.is_constant(ev) {
-            return constant(self.clone());
+            return Ok(constant(self.clone()));
         }
 
-        match self {
+        let res = match self {
             Pow(x, d) => {
                 // Run the multiplication logic with square and multiply
                 let mut acc = sing(vec![], Expr::<F>::one());
                 let mut acc_is_one = true;
-                let x = x.monomials(ev);
+                let x = x.monomials(ev)?;
 
                 for i in (0..u64::BITS).rev() {
                     if !acc_is_one {
@@ -1983,17 +2071,25 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 }
                 acc
             }
-            Double(e) => {
-                HashMap::from_iter(e.monomials(ev).into_iter().map(|(m, c)| (m, c.double())))
+            Inv(_) => {
+                if self.is_constant(ev) {
+                    constant(self.clone())
+                } else {
+                    // Cannot invert unevaluated columns
+                    return Err(ExprError::CannotInvert);
+                }
             }
-            Cache(_, e) => e.monomials(ev),
+            Double(e) => {
+                HashMap::from_iter(e.monomials(ev)?.into_iter().map(|(m, c)| (m, c.double())))
+            }
+            Cache(_, e) => e.monomials(ev)?,
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
             VanishesOnLast4Rows => constant(VanishesOnLast4Rows),
             Constant(c) => constant(Constant(c.clone())),
             Cell(var) => sing(vec![*var], Constant(F::one())),
             BinOp(Op2::Add, e1, e2) => {
-                let mut res = e1.monomials(ev);
-                for (m, c) in e2.monomials(ev) {
+                let mut res = e1.monomials(ev)?;
+                for (m, c) in e2.monomials(ev)? {
                     let v = match res.remove(&m) {
                         None => c,
                         Some(v) => v + c,
@@ -2003,8 +2099,8 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 res
             }
             BinOp(Op2::Sub, e1, e2) => {
-                let mut res = e1.monomials(ev);
-                for (m, c) in e2.monomials(ev) {
+                let mut res = e1.monomials(ev)?;
+                for (m, c) in e2.monomials(ev)? {
                     let v = match res.remove(&m) {
                         None => -c, // Expr::constant(F::one()) * c,
                         Some(v) => v - c,
@@ -2014,18 +2110,18 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 res
             }
             BinOp(Op2::Mul, e1, e2) => {
-                let e1 = e1.monomials(ev);
-                let e2 = e2.monomials(ev);
+                let e1 = e1.monomials(ev)?;
+                let e2 = e2.monomials(ev)?;
                 mul_monomials(&e1, &e2)
             }
             Square(x) => {
-                let x = x.monomials(ev);
+                let x = x.monomials(ev)?;
                 mul_monomials(&x, &x)
             }
             IfFeature(feature, e1, e2) => {
                 let mut res = HashMap::new();
-                let e1_monomials = e1.monomials(ev);
-                let mut e2_monomials = e2.monomials(ev);
+                let e1_monomials = e1.monomials(ev)?;
+                let mut e2_monomials = e2.monomials(ev)?;
                 for (m, c) in e1_monomials.into_iter() {
                     let else_branch = match e2_monomials.remove(&m) {
                         None => Expr::zero(),
@@ -2040,7 +2136,8 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 }
                 res
             }
-        }
+        };
+        Ok(res)
     }
 
     /// There is an optimization in PLONK called "linearization" in which a certain
@@ -2075,7 +2172,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     ) -> Result<Linearization<Expr<F>>, ExprError> {
         let mut res: HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term: Expr<F> = Self::zero();
-        let monomials = self.monomials(&evaluated);
+        let monomials = self.monomials(&evaluated)?;
 
         for (m, c) in monomials {
             let (evaluated, mut unevaluated): (Vec<_>, _) =
@@ -2360,6 +2457,7 @@ where
                 Alpha => format!("alpha_pow({n})"),
                 x => format!("pow({}, {n})", x.ocaml()),
             },
+            Inv(x) => format!("inv({})", x.ocaml()),
             Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
             Mul(x, y) => format!("({} * {})", x.ocaml(), y.ocaml()),
             Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
@@ -2378,11 +2476,12 @@ where
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
-                x => format!("{}^{n}", x.ocaml()),
+                x => format!("{}^{n}", x.latex()),
             },
-            Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
-            Mul(x, y) => format!("({} \\cdot {})", x.ocaml(), y.ocaml()),
-            Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
+            Inv(x) => format!("{}^{{-1}}", x.latex()),
+            Add(x, y) => format!("({} + {})", x.latex(), y.latex()),
+            Mul(x, y) => format!("({} \\cdot {})", x.latex(), y.latex()),
+            Sub(x, y) => format!("({} - {})", x.latex(), y.latex()),
         }
     }
 
@@ -2400,6 +2499,7 @@ where
                 Alpha => format!("alpha^{}", n),
                 x => format!("{}^{n}", x.text()),
             },
+            Inv(x) => format!("{}^{{-1}}", x.text()),
             Add(x, y) => format!("({} + {})", x.text(), y.text()),
             Mul(x, y) => format!("({} * {})", x.text(), y.text()),
             Sub(x, y) => format!("({} - {})", x.text(), y.text()),
@@ -2446,6 +2546,7 @@ where
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.ocaml(cache)),
+            Inv(x) => format!("inv({})", x.ocaml(cache)),
             Square(x) => format!("square({})", x.ocaml(cache)),
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
@@ -2495,6 +2596,7 @@ where
             BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
             Pow(x, d) => format!("{}^{{{d}}}", x.latex(cache)),
+            Inv(x) => format!("{}^{{-1}}", x.latex(cache)),
             Square(x) => format!("({})^2", x.latex(cache)),
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
@@ -2518,6 +2620,7 @@ where
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
             Pow(x, d) => format!("pow({}, {d})", x.text(cache)),
+            Inv(x) => format!("pow({}, -1)", x.text(cache)),
             Square(x) => format!("square({})", x.text(cache)),
             Cache(id, e) => {
                 cache.insert(*id, e.as_ref().clone());
