@@ -389,7 +389,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck => 4,
             LookupPattern::Lookup => 3,
-            LookupPattern::ForeignFieldMul => 2,
+            LookupPattern::ForeignFieldMul => 1,
         }
     }
 
@@ -398,7 +398,8 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal => 3,
             LookupPattern::Lookup => 2,
-            LookupPattern::ForeignFieldMul | LookupPattern::RangeCheck => 1,
+            LookupPattern::ForeignFieldMul => 2,
+            LookupPattern::RangeCheck => 1,
         }
     }
 
