@@ -1,4 +1,4 @@
-use std::ops::{Div, Neg};
+use std::ops::Div;
 
 use crate::{
     auto_clone_array,
@@ -192,11 +192,9 @@ where
     }
 
     if let Some(runner) = runner {
-        println!("Running full (valid target) test");
         // Perform full test that everything is ok before invalidation
         assert_eq!(runner.prove_and_verify::<EFqSponge, EFrSponge>(), Ok(()));
     }
-    println!("Done");
 
     if !invalidations.is_empty() {
         for ((row, col), mut value) in invalidations {
@@ -211,7 +209,6 @@ where
         }
 
         if !disable_gates_checks {
-            println!("Witness verification");
             // Check witness verification fails
             // When targeting the plookup constraints the invalidated values would cause custom constraint
             // failures, so we want to suppress these witness verification checks when doing plookup tests.
@@ -226,7 +223,6 @@ where
 
         // Run test on invalid witness
         if full {
-            println!("Running full (invalid target) test");
             match TestFramework::<G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
@@ -244,7 +240,6 @@ where
                             witness,
                         );
                     } else {
-                        println!("err_msg = {}", err_msg);
                         return (
                             Err(CircuitGateError::InvalidConstraint(
                                 GateType::ForeignFieldMul,
@@ -913,7 +908,7 @@ fn test_invalid_carry1_hi_plookup() {
     let b = BigUint::zero();
 
     // Invalid carry1_hi witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false, // Disable external checks so we can catch carry1_hi plookup failure
         true,  // Target tests at lookup constraints only
@@ -921,17 +916,9 @@ fn test_invalid_carry1_hi_plookup() {
         &b,
         &secp256k1_modulus(),
         vec![
-            // // Get 2^L * carry1_hi + carry1_lo to cancel to zero, while everything else is also zero
-            // (
-            //     (0, 6),
-            //     PallasField::two_to_limb() * PallasField::from(8u32).neg(),
-            // ), // carry1_lo
             ((0, 7), PallasField::from(8u32)), // carry1_hi > 3 bits (invalid)
         ],
     );
-    // assert!(witness[6][0] > PallasField::two_to_limb()); // carry1_lo > two_to_limb()
-    //                                                      // Note: carry1_lo is invalid, but intentionally not caught because external
-    //                                                      //       gates are off and carry1_lo is range-checked externally.
     assert_eq!(
         result,
         Err(CircuitGateError::InvalidLookupConstraint(

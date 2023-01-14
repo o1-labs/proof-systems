@@ -146,70 +146,6 @@ where
         )
     }
 
-    fn is_selector_zero(selector: &Evaluations<G::ScalarField, D<G::ScalarField>>) -> bool {
-        selector.evals.iter().fold(true, |is_zero, eval| {
-            is_zero && *eval == G::ScalarField::zero()
-        })
-    }
-
-    fn is_gates_check_disabled(index: &ProverIndex<G>) -> bool {
-        index
-            .column_evaluations
-            .coefficients8
-            .iter()
-            .fold(true, |is_zero, selector| {
-                is_zero && Self::is_selector_zero(selector)
-            })
-            && Self::is_selector_zero(&index.column_evaluations.generic_selector4)
-            && Self::is_selector_zero(&index.column_evaluations.poseidon_selector8)
-            && Self::is_selector_zero(&index.column_evaluations.complete_add_selector4)
-            && Self::is_selector_zero(&index.column_evaluations.mul_selector8)
-            && Self::is_selector_zero(&index.column_evaluations.emul_selector8)
-            && Self::is_selector_zero(&index.column_evaluations.endomul_scalar_selector8)
-            && if let Some(chacha_selectors8) = &index.column_evaluations.chacha_selectors8 {
-                chacha_selectors8.iter().fold(true, |is_zero, selector| {
-                    is_zero && Self::is_selector_zero(selector)
-                })
-            } else {
-                true
-            }
-            && if let Some(range_check_selectors8) =
-                &index.column_evaluations.range_check_selectors8
-            {
-                range_check_selectors8
-                    .iter()
-                    .fold(true, |is_zero, selector| {
-                        is_zero && Self::is_selector_zero(selector)
-                    })
-            } else {
-                true
-            }
-            && if let Some(foreign_field_add_selector8) =
-                &index.column_evaluations.foreign_field_add_selector8
-            {
-                Self::is_selector_zero(foreign_field_add_selector8)
-            } else {
-                true
-            }
-            && if let Some(foreign_field_mul_selector8) =
-                &index.column_evaluations.foreign_field_mul_selector8
-            {
-                Self::is_selector_zero(foreign_field_mul_selector8)
-            } else {
-                true
-            }
-            && if let Some(xor_selector8) = &index.column_evaluations.xor_selector8 {
-                Self::is_selector_zero(xor_selector8)
-            } else {
-                true
-            }
-            && if let Some(rot_selector8) = &index.column_evaluations.rot_selector8 {
-                Self::is_selector_zero(rot_selector8)
-            } else {
-                true
-            }
-    }
-
     /// This function constructs prover's recursive zk-proof from the witness & the `ProverIndex` against SRS instance
     ///
     /// # Errors
@@ -243,8 +179,7 @@ where
 
         // Verify the circuit satisfiability by the computed witness (baring plookup constraints)
         // Catch mistakes before proof generation.
-        if !Self::is_gates_check_disabled(index) && cfg!(debug_assertions) {
-            println!("Verifying witness");
+        if cfg!(debug_assertions) && !index.cs.disable_gates_checks {
             let public = witness[0][0..index.cs.public].to_vec();
             index.verify(&witness, &public).expect("incorrect witness");
         }
