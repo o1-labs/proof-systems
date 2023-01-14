@@ -493,12 +493,19 @@ impl LookupPattern {
                 vec![
                     //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
                     //   - - - - - - - L - - -  -  -  -  -
-                    // Constrain w(7) to 3 bits.
+                    //    * Constrain w(7) to 12-bits
+                    //    * Constrain 2^9 * w(7) to 12-bits
+                    //    => w(7) is 3-bits
                     JointLookup {
                         table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
-                        entry: vec![SingleLookup {
-                            value: vec![(F::from(2u64).pow(&[9u64]), curr_row(7))],
-                        }],
+                        entry: vec![
+                            SingleLookup {
+                                value: vec![(F::one(), curr_row(7))],
+                            },
+                            SingleLookup {
+                                value: vec![(F::from(2u64).pow(&[9u64]), curr_row(7))],
+                            },
+                        ],
                     },
                 ]
             }
