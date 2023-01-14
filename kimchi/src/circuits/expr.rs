@@ -20,7 +20,7 @@ use itertools::Itertools;
 use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::ops::{Add, AddAssign, Mul, Neg, Sub, SubAssign};
 use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
@@ -2317,6 +2317,15 @@ impl<F: Zero> Sub<Expr<F>> for Expr<F> {
             return self;
         }
         Expr::BinOp(Op2::Sub, Box::new(self), Box::new(other))
+    }
+}
+
+impl<F: Zero + Clone> SubAssign<Expr<F>> for Expr<F> {
+    fn sub_assign(&mut self, other: Self) {
+        if other.is_zero() {
+            return;
+        }
+        *self = Expr::BinOp(Op2::Sub, Box::new(self.clone()), Box::new(other));
     }
 }
 
