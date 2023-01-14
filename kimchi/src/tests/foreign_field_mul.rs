@@ -14,7 +14,7 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_traits::One;
@@ -919,6 +919,62 @@ fn test_invalid_carry1_hi_plookup() {
             ((0, 7), PallasField::from(8u32)), // carry1_hi > 3 bits (invalid)
         ],
     );
+    assert_eq!(
+        result,
+        Err(CircuitGateError::InvalidLookupConstraint(
+            GateType::ForeignFieldMul
+        )),
+    );
+}
+
+#[test]
+fn test_invalid_wraparound_carry1_hi_plookup() {
+    let a = BigUint::zero();
+    let b = BigUint::zero();
+
+    // Sanity check wraparound values
+    let two_to_9 = PallasField::from(2u32).pow(&[9]);
+    // Wraparound (exploit) value x s.t. x >= 2^12 AND 2^9 * x < 2^12
+    // (credit to querolita for computing the real instances of this value for these test cases!)
+    let wraparound_0 = two_to_9.inverse().expect("failed to get inverse");
+    for i in 0..8 {
+        let wraparound_i = wraparound_0 + PallasField::from(i);
+        assert!(wraparound_i >= PallasField::from(2u32).pow(&[12u64]));
+        assert!(two_to_9 * wraparound_i < PallasField::from(2u32).pow(&[12u64]));
+        // Wraparound!!!
+    }
+    // edge case: x - 1 is not a wraparound value
+    assert!(wraparound_0 - PallasField::one() >= PallasField::from(2u32).pow(&[12u64]));
+    assert!(
+        two_to_9 * (wraparound_0 - PallasField::one()) >= PallasField::from(2u32).pow(&[12u64])
+    );
+    // edge case: x + 8 is not a wraparound value
+    assert!(wraparound_0 + PallasField::from(8) >= PallasField::from(2u32).pow(&[12u64]));
+    assert!(
+        two_to_9 * (wraparound_0 + PallasField::from(8)) >= PallasField::from(2u32).pow(&[12u64])
+    );
+
+    // Invalid carry1_hi witness that causes wrap around to something less than 3-bits
+    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        true,
+        false, // Disable external checks so we can catch carry1_hi plookup failure
+        true,  // Target tests at lookup constraints only
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![
+            // Invalidate carry1_hi by wrapping
+            // carry1_hi > 12 bits > 3 bits, but wraps around < 12-bits when scaled by 2^9
+            (
+                (0, 7),
+                PallasField::from(512u32) // wraparound_0 + 1
+                    .inverse()
+                    .expect("failed to get inverse"),
+            ),
+        ],
+    );
+    assert!(witness[7][0] >= PallasField::from(2u32).pow(&[12u64]));
+    assert!(two_to_9 * witness[7][0] < PallasField::from(2u32).pow(&[12u64]));
     assert_eq!(
         result,
         Err(CircuitGateError::InvalidLookupConstraint(
