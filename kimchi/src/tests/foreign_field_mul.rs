@@ -191,6 +191,7 @@ where
         }
     }
 
+    println!("witness[7][0] = {}", witness[7][0].to_biguint());
     if let Some(runner) = runner {
         // Perform full test that everything is ok before invalidation
         assert_eq!(runner.prove_and_verify::<EFqSponge, EFrSponge>(), Ok(()));
@@ -681,7 +682,7 @@ fn test_max_native_multiplicands() {
 fn test_max_foreign_multiplicands() {
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
-        true,
+        false,
         false,
         &secp256k1_max(),
         &secp256k1_max(),
