@@ -201,6 +201,17 @@ where
             absorb_commitment(&mut fq_sponge, &l.aggreg);
         });
 
+        //~ 1. Absorb the additive lookup aggregation polynomial commitment with the Fq-sponge.
+        //~ 1. Absorb the additive lookup count polynomial commitment with the Fq-sponge.
+        for comm in self
+            .commitments
+            .additive_lookup_aggregation
+            .iter()
+            .chain(self.commitments.additive_lookup_count.iter())
+        {
+            absorb_commitment(&mut fq_sponge, comm);
+        }
+
         //~ 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &self.commitments.z_comm);
 
