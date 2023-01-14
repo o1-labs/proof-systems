@@ -573,6 +573,8 @@ mod tests {
                 table: rand_eval(),
                 runtime: None,
             }),
+            additive_lookup_aggregation: None,
+            additive_lookup_count: None,
         };
 
         let constants = Constants {

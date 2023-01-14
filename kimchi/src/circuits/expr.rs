@@ -2935,6 +2935,8 @@ pub mod test {
             domain: index.cs.domain,
             index: HashMap::new(),
             lookup: None,
+            additive_lookup_aggregation: None,
+            additive_lookup_count: None,
         };
 
         // this should panic as we don't have a domain large enough
