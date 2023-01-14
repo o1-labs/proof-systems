@@ -17,6 +17,19 @@ use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
+//~ Lookups patterns are extremely flexible and can be configured in a number of ways.
+//~ Every type of lookup is a JointLookup -- to create a single lookup your create a
+//~ JointLookup that contains one SingleLookup.
+//~
+//~ Generally, the patterns of lookups possible are
+//~   * Multiple lookups per row
+//~    `JointLookup { }, ...,  JointLookup { }`
+//~   * Multiple values in each lookup (via joining, think of it like a tuple)
+//~    `JoinLookup { SingleLookup { }, ..., SingleLookup { } }`
+//~   * Multiple columns combined in linear combination to create each value
+//~    `JointLookup { SingleLookup { value: vec![(a,b), ..., (c, d)] } }`
+//~   * Any combination of these
+
 fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     kinds
         .into_iter()
