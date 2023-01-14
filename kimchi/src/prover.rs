@@ -177,8 +177,9 @@ where
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
-        // double-check the witness
-        if cfg!(debug_assertions) {
+        // Verify the circuit satisfiability by the computed witness (baring plookup constraints)
+        // Catch mistakes before proof generation.
+        if cfg!(debug_assertions) && !index.cs.disable_gates_checks {
             let public = witness[0][0..index.cs.public].to_vec();
             index.verify(&witness, &public).expect("incorrect witness");
         }

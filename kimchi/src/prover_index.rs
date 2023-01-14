@@ -151,6 +151,7 @@ pub mod testing {
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
+        disable_gates_checks: bool,
     ) -> ProverIndex<G>
     where
         G::BaseField: PrimeField,
@@ -162,6 +163,7 @@ pub mod testing {
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
+            .disable_gates_checks(disable_gates_checks)
             .build()
             .unwrap();
         let mut srs = SRS::<G>::create(cs.domain.d1.size());
@@ -180,6 +182,6 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None)
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
     }
 }
