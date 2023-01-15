@@ -7,6 +7,7 @@ use crate::{
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
+            additive_lookup,
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
@@ -560,7 +561,28 @@ where
         }
 
         //~ 1. Optionally compute the additive lookup aggregation and count polynomials.
-        let (additive_lookup_aggregation, additive_lookup_count) = { (None, None) };
+        let (additive_lookup_aggregation, additive_lookup_count) =
+            if let Some(lcs) = &index.cs.lookup_constraint_system {
+                let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
+                let (aggreg, count) = additive_lookup::compute_aggregations(
+                    &joint_lookup_table_d8,
+                    index.cs.domain.d1,
+                    &index.cs.gates,
+                    &witness,
+                    lookup_context.joint_combiner.unwrap(),
+                    lookup_context.table_id_combiner.unwrap(),
+                    &lcs.configuration.lookup_info,
+                    beta,
+                    rng,
+                )?;
+                let aggreg = aggreg
+                    .interpolate()
+                    .evaluate_over_domain(index.cs.domain.d8);
+                let count = count.interpolate().evaluate_over_domain(index.cs.domain.d8);
+                (Some(aggreg), Some(count))
+            } else {
+                (None, None)
+            };
 
         let mut commit_hiding_and_absorb = |poly| {
             let comm = index.srs.commit_evaluations(index.cs.domain.d1, poly, rng);

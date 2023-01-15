@@ -30,6 +30,9 @@ pub enum ProverError {
 
     #[error("wrong number of custom blinders given: {0}")]
     WrongBlinders(CommitmentError),
+
+    #[error("Division by zero: {0}")]
+    DivisionByZero(&'static str),
 }
 
 /// Errors that can arise when verifying a proof
