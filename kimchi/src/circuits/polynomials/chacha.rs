@@ -575,6 +575,7 @@ mod tests {
             }),
             additive_lookup_aggregation: None,
             additive_lookup_count: None,
+            additive_lookup_inverses: None,
         };
 
         let constants = Constants {

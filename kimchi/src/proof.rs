@@ -80,6 +80,8 @@ pub struct ProofEvaluations<Evals> {
     pub additive_lookup_aggregation: Option<Evals>,
     /// evaluation of the additive lookup counts
     pub additive_lookup_count: Option<Evals>,
+    /// evaluation of the additive lookup inverses
+    pub additive_lookup_inverses: Option<Vec<Evals>>,
 }
 
 /// Commitments linked to the lookup feature
@@ -112,6 +114,8 @@ pub struct ProverCommitments<G: AffineCurve> {
     pub additive_lookup_aggregation: Option<PolyComm<G>>,
     /// Commitment to the additive lookup counts
     pub additive_lookup_count: Option<PolyComm<G>>,
+    /// Commitments to the additive lookup inverses
+    pub additive_lookup_inverses: Option<Vec<PolyComm<G>>>,
 }
 
 /// The proof that the prover creates from a [ProverIndex](super::prover_index::ProverIndex) and a `witness`.
@@ -219,6 +223,7 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector,
             additive_lookup_aggregation,
             additive_lookup_count,
+            additive_lookup_inverses,
         } = self;
         ProofEvaluations {
             w: w.map(f),
@@ -230,6 +235,8 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector: f(poseidon_selector),
             additive_lookup_aggregation: additive_lookup_aggregation.map(f),
             additive_lookup_count: additive_lookup_count.map(f),
+            additive_lookup_inverses: additive_lookup_inverses
+                .map(|x| x.into_iter().map(f).collect()),
         }
     }
 
@@ -244,6 +251,7 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector,
             additive_lookup_aggregation,
             additive_lookup_count,
+            additive_lookup_inverses,
         } = self;
         ProofEvaluations {
             w: [
@@ -287,6 +295,9 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector: f(poseidon_selector),
             additive_lookup_aggregation: additive_lookup_aggregation.as_ref().map(f),
             additive_lookup_count: additive_lookup_count.as_ref().map(f),
+            additive_lookup_inverses: additive_lookup_inverses
+                .as_ref()
+                .map(|x| x.iter().map(f).collect()),
         }
     }
 }
@@ -309,6 +320,8 @@ impl<F> ProofEvaluations<F> {
             .iter()
             .all(|e| e.additive_lookup_aggregation.is_some());
         let has_additive_lookup_count = evals.iter().all(|e| e.additive_lookup_count.is_some());
+        let has_additive_lookup_inverses =
+            evals.iter().all(|e| e.additive_lookup_inverses.is_some());
 
         ProofEvaluations {
             generic_selector: array::from_fn(|i| &evals[i].generic_selector),
@@ -347,6 +360,18 @@ impl<F> ProofEvaluations<F> {
                 Some(array::from_fn(|i| {
                     evals[i].additive_lookup_count.as_ref().unwrap()
                 }))
+            } else {
+                None
+            },
+            additive_lookup_inverses: if has_additive_lookup_inverses {
+                let size = evals
+                    .iter()
+                    .map(|eval| eval.additive_lookup_inverses.as_ref().unwrap().len())
+                    .min()
+                    .unwrap_or(0);
+                Some(Vec::from_iter((0..size).map(|i| {
+                    array::from_fn(|j| &evals[j].additive_lookup_inverses.as_ref().unwrap()[i])
+                })))
             } else {
                 None
             },
@@ -420,6 +445,7 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             poseidon_selector: pt(F::zero(), F::zero()),
             additive_lookup_aggregation: None,
             additive_lookup_count: None,
+            additive_lookup_inverses: None,
         }
     }
 }
@@ -451,6 +477,7 @@ impl<F> ProofEvaluations<F> {
             Column::Permutation(i) => Some(&self.s[i]),
             Column::AdditiveLookupAggregation => Some(self.additive_lookup_aggregation.as_ref()?),
             Column::AdditiveLookupCount => Some(self.additive_lookup_count.as_ref()?),
+            Column::AdditiveLookupInverse(i) => Some(&self.additive_lookup_inverses.as_ref()?[i]),
         }
     }
 }

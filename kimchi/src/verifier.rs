@@ -60,6 +60,12 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                 self.proof.commitments.additive_lookup_aggregation.as_ref()
             }
             AdditiveLookupCount => self.proof.commitments.additive_lookup_count.as_ref(),
+            AdditiveLookupInverse(i) => self
+                .proof
+                .commitments
+                .additive_lookup_inverses
+                .as_ref()
+                .map(|x| &x[i]),
             Index(t) => {
                 use GateType::*;
                 match t {
@@ -201,13 +207,45 @@ where
             absorb_commitment(&mut fq_sponge, &l.aggreg);
         });
 
+        if let Some(lookup_index) = index.lookup_index.as_ref() {
+            if let Some(inverses) = self.commitments.additive_lookup_inverses.as_ref() {
+                if inverses.len() < lookup_index.lookup_info.max_per_row {
+                    return Err(VerifyError::MissingCommitment(
+                        Column::AdditiveLookupInverse(lookup_index.lookup_info.max_per_row - 1),
+                    ));
+                }
+            } else {
+                return Err(VerifyError::MissingCommitment(
+                    Column::AdditiveLookupInverse(0),
+                ));
+            }
+            if let Some(inverses) = self.evals.additive_lookup_inverses.as_ref() {
+                if inverses.len() < lookup_index.lookup_info.max_per_row {
+                    return Err(VerifyError::MissingEvaluation(
+                        Column::AdditiveLookupInverse(lookup_index.lookup_info.max_per_row - 1),
+                    ));
+                }
+            } else {
+                return Err(VerifyError::MissingEvaluation(
+                    Column::AdditiveLookupInverse(0),
+                ));
+            }
+        }
+
         //~ 1. Absorb the additive lookup aggregation polynomial commitment with the Fq-sponge.
         //~ 1. Absorb the additive lookup count polynomial commitment with the Fq-sponge.
+        //~ 1. Absorb the additive lookup inverses polynomials commitments with the Fq-sponge.
         for comm in self
             .commitments
             .additive_lookup_aggregation
             .iter()
             .chain(self.commitments.additive_lookup_count.iter())
+            .chain(
+                self.commitments
+                    .additive_lookup_inverses
+                    .iter()
+                    .flat_map(|x| x.iter()),
+            )
         {
             absorb_commitment(&mut fq_sponge, comm);
         }

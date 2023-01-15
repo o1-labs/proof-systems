@@ -115,6 +115,8 @@ pub struct Environment<'a, F: FftField> {
     pub additive_lookup_aggregation: Option<&'a Evaluations<F, D<F>>>,
     /// Additive lookup count evaluations
     pub additive_lookup_count: Option<&'a Evaluations<F, D<F>>>,
+    /// Additive lookup inverses evaluations
+    pub additive_lookup_inverses: Option<&'a Vec<Evaluations<F, D<F>>>>,
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
@@ -138,6 +140,7 @@ impl<'a, F: FftField> Environment<'a, F> {
             Permutation(_) => None,
             AdditiveLookupAggregation => self.additive_lookup_aggregation,
             AdditiveLookupCount => self.additive_lookup_count,
+            AdditiveLookupInverse(i) => self.additive_lookup_inverses.as_ref().map(|x| &x[*i]),
         }
     }
 }
@@ -183,6 +186,7 @@ pub enum Column {
     LookupRuntimeTable,
     AdditiveLookupAggregation,
     AdditiveLookupCount,
+    AdditiveLookupInverse(usize),
     Index(GateType),
     Coefficient(usize),
     Permutation(usize),
@@ -214,6 +218,7 @@ impl Column {
             Column::Permutation(i) => format!("sigma_{{{}}}", i),
             Column::AdditiveLookupAggregation => format!("lookup\\_aggreg"),
             Column::AdditiveLookupCount => format!("lookup\\_counts"),
+            Column::AdditiveLookupInverse(i) => format!("lookup\\_inverse_{{{}}}", i),
         }
     }
 
@@ -234,6 +239,7 @@ impl Column {
             Column::Permutation(i) => format!("sigma_[{}]", i),
             Column::AdditiveLookupAggregation => format!("lookup\\_aggreg"),
             Column::AdditiveLookupCount => format!("lookup\\_counts"),
+            Column::AdditiveLookupInverse(i) => format!("lookup\\_inverse_[{}]", i),
         }
     }
 }
@@ -698,6 +704,11 @@ impl Variable {
                 AdditiveLookupCount => evals
                     .additive_lookup_count
                     .ok_or(ExprError::MissingIndexEvaluation(AdditiveLookupCount)),
+                AdditiveLookupInverse(i) => evals
+                    .additive_lookup_inverses
+                    .as_ref()
+                    .map(|x| x[i])
+                    .ok_or(ExprError::MissingIndexEvaluation(AdditiveLookupInverse(i))),
             }
         }?;
         match self.row {
@@ -2947,6 +2958,7 @@ pub mod test {
             lookup: None,
             additive_lookup_aggregation: None,
             additive_lookup_count: None,
+            additive_lookup_inverses: None,
         };
 
         // this should panic as we don't have a domain large enough
