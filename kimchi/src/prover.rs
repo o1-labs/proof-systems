@@ -561,10 +561,14 @@ where
         }
 
         //~ 1. Optionally compute the additive lookup aggregation and count polynomials.
-        let (additive_lookup_aggregation, additive_lookup_count) =
+        let (additive_lookup_aggregation, additive_lookup_count, additive_lookup_inverses) =
             if let Some(lcs) = &index.cs.lookup_constraint_system {
                 let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
-                let (count, aggreg) = additive_lookup::compute_aggregations(
+                let additive_lookup::ComputedColumns {
+                    counts,
+                    aggregation,
+                    inverses,
+                } = additive_lookup::compute_aggregations(
                     &joint_lookup_table_d8,
                     index.cs.domain.d1,
                     &index.cs.gates,
@@ -575,13 +579,15 @@ where
                     beta,
                     rng,
                 )?;
-                let aggreg = aggreg
+                let aggregation = aggregation
                     .interpolate()
                     .evaluate_over_domain(index.cs.domain.d8);
-                let count = count.interpolate().evaluate_over_domain(index.cs.domain.d8);
-                (Some(aggreg), Some(count))
+                let counts = counts
+                    .interpolate()
+                    .evaluate_over_domain(index.cs.domain.d8);
+                (Some(aggregation), Some(counts), Some(inverses))
             } else {
-                (None, None)
+                (None, None, None)
             };
 
         let mut commit_hiding_and_absorb = |poly| {
@@ -600,6 +606,11 @@ where
         let additive_lookup_count_commitment = additive_lookup_count
             .as_ref()
             .map(&mut commit_hiding_and_absorb);
+        //~ 1. Commit (hiding) to the additive lookup inverses polynomials.
+        //~ 1. Absorb the additive lookup inverses polynomials commitments with the Fq-sponge.
+        let additive_lookup_inverses_commitment: Option<Vec<_>> = additive_lookup_inverses
+            .as_ref()
+            .map(|x| x.iter().map(&mut commit_hiding_and_absorb).collect());
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
@@ -725,6 +736,7 @@ where
                 lookup: lookup_env,
                 additive_lookup_aggregation: additive_lookup_aggregation.as_ref(),
                 additive_lookup_count: additive_lookup_count.as_ref(),
+                additive_lookup_inverses: additive_lookup_inverses.as_ref(),
             }
         };
 
@@ -1052,6 +1064,9 @@ where
             additive_lookup_count: additive_lookup_count
                 .as_ref()
                 .map(chunked_evals_for_evaluations),
+            additive_lookup_inverses: additive_lookup_inverses
+                .as_ref()
+                .map(|x| x.iter().map(chunked_evals_for_evaluations).collect()),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1332,6 +1347,8 @@ where
                 additive_lookup_aggregation: additive_lookup_aggregation_commitment
                     .map(|x| x.commitment),
                 additive_lookup_count: additive_lookup_count_commitment.map(|x| x.commitment),
+                additive_lookup_inverses: additive_lookup_inverses_commitment
+                    .map(|x| x.into_iter().map(|x| x.commitment).collect()),
             },
             proof,
             evals: chunked_evals,

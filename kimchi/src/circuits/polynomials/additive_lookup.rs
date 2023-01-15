@@ -160,6 +160,12 @@ pub fn constraints<F: FftField>(
     res
 }
 
+pub struct ComputedColumns<F> {
+    pub counts: F,
+    pub aggregation: F,
+    pub inverses: Vec<F>,
+}
+
 /// Compute the aggregation and counts polynomials
 #[allow(clippy::too_many_arguments)]
 pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
@@ -172,13 +178,13 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
     lookup_info: &LookupInfo,
     beta: F,
     rng: &mut R,
-) -> Result<(Evaluations<F, D<F>>, Evaluations<F, D<F>>), ProverError> {
+) -> Result<ComputedColumns<Evaluations<F, D<F>>>, ProverError> {
     let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
 
-    let mut aggregations = Vec::with_capacity(d1.size());
+    let mut aggregation = Vec::with_capacity(d1.size());
 
-    aggregations.push(F::zero());
+    aggregation.push(F::zero());
 
     let mut counts_map = {
         let mut counts: HashMap<F, usize> = HashMap::new();
@@ -210,7 +216,7 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
                     ),
                 )?;
             }
-            aggregations.push(lookup_contributions)
+            aggregation.push(lookup_contributions)
         }
 
         counts
@@ -228,24 +234,28 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
         if let Some((_, lookup_count)) = counts_map.remove_entry(lookup_value) {
             let lookup_count = F::from(lookup_count as u64);
             counts.push(lookup_count);
-            let aggregation = aggregations[i];
-            aggregations[i + 1] += aggregation - lookup_count / (beta + lookup_value);
+            let prev_aggregation = aggregation[i];
+            aggregation[i + 1] += prev_aggregation - lookup_count / (beta + lookup_value);
         } else {
             counts.push(F::zero());
-            let aggregation = aggregations[i];
-            aggregations[i + 1] += aggregation;
+            let prev_aggregation = aggregation[i];
+            aggregation[i + 1] += prev_aggregation;
         }
     }
 
     let counts = zk_patch(counts, d1, rng);
-    let aggregations = zk_patch(aggregations, d1, rng);
+    let aggregation = zk_patch(aggregation, d1, rng);
 
     if !counts_map.is_empty() {
         return Err(ProverError::ValueNotInTable);
     }
 
-    assert_eq!(F::zero(), aggregations[0]);
-    assert_eq!(F::zero(), aggregations[lookup_rows]);
+    assert_eq!(F::zero(), aggregation[0]);
+    assert_eq!(F::zero(), aggregation[lookup_rows]);
 
-    Ok((counts, aggregations))
+    Ok(ComputedColumns {
+        counts,
+        aggregation,
+        inverses: vec![],
+    })
 }
