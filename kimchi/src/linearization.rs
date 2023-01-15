@@ -325,6 +325,9 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         h.insert(LookupAggreg);
         h.insert(LookupTable);
 
+        h.insert(AdditiveLookupAggregation);
+        h.insert(AdditiveLookupCount);
+
         // the runtime lookup polynomials
         if lookup_info.features.uses_runtime_tables {
             h.insert(LookupRuntimeTable);
