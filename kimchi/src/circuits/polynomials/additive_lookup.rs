@@ -105,20 +105,23 @@ pub fn constraints<F: FftField>(
             })
     };
 
-    let table_contributions = {
-        E::cell(Column::AdditiveLookupCount, Curr)
-            / (E::Constant(ConstantExpr::Beta) + E::cell(Column::LookupTable, Curr))
-    };
-
     // aggregation[i] = aggregation[i-1] + lookups - table
-    let aggreg_equation = {
-        let mut res = E::cell(Column::AdditiveLookupAggregation, Next)
-            - E::cell(Column::AdditiveLookupAggregation, Curr)
-            + table_contributions;
+    // Therefore
+    // table = aggregation[i-1] - aggregation[i] + lookups
+    let expected_table = {
+        let mut res = E::cell(Column::AdditiveLookupAggregation, Curr)
+            - E::cell(Column::AdditiveLookupAggregation, Next);
         if let Some(lookup_contributions) = lookup_contributions {
-            res -= lookup_contributions;
+            res += lookup_contributions;
         }
         res
+    };
+
+    // table = count / (beta + table_entry)
+    // (beta + table_entry) * table = count
+    let aggreg_equation = {
+        (E::Constant(ConstantExpr::Beta) + E::cell(Column::LookupTable, Curr)) * expected_table
+            - E::cell(Column::AdditiveLookupCount, Curr)
     };
 
     let final_lookup_row: i32 = -(ZK_ROWS as i32) - 1;
