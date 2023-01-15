@@ -1,13 +1,20 @@
-use crate::circuits::{
-    expr::{prologue::*, Column, ConstantExpr},
-    gate::CurrOrNext::*,
-    lookup::{
-        constraints::LookupConfiguration,
-        lookups::{JointLookupSpec, LocalPosition},
-        runtime_tables,
+use crate::{
+    circuits::{
+        expr::{prologue::*, Column, ConstantExpr},
+        gate::{CircuitGate, CurrOrNext::*},
+        lookup::{
+            constraints::{zk_patch, LookupConfiguration},
+            lookups::{JointLookupSpec, LocalPosition, LookupInfo},
+            runtime_tables,
+        },
+        wires::COLUMNS,
     },
+    error::ProverError,
 };
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{FftField, One, PrimeField, Zero};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
+use rand::Rng;
+use std::collections::HashMap;
 
 pub const ZK_ROWS: usize = 3;
 
@@ -148,4 +155,89 @@ pub fn constraints<F: FftField>(
     }
 
     res
+}
+
+/// Compute the aggregation and counts polynomials
+#[allow(clippy::too_many_arguments)]
+pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
+    joint_lookup_table_d8: &Evaluations<F, D<F>>,
+    d1: D<F>,
+    gates: &[CircuitGate<F>],
+    witness: &[Vec<F>; COLUMNS],
+    joint_combiner: F,
+    table_id_combiner: F,
+    lookup_info: &LookupInfo,
+    beta: F,
+    rng: &mut R,
+) -> Result<(Evaluations<F, D<F>>, Evaluations<F, D<F>>), ProverError> {
+    let n = d1.size();
+    let lookup_rows = n - ZK_ROWS - 1;
+
+    let mut aggregations = Vec::with_capacity(d1.size());
+
+    let mut counts_map = {
+        let mut counts: HashMap<F, usize> = HashMap::new();
+
+        let by_row = lookup_info.by_row(gates);
+
+        for (i, row) in by_row
+            .iter()
+            .enumerate()
+            // avoid zk rows
+            .take(lookup_rows)
+        {
+            let spec = row;
+            let mut lookup_contributions = F::zero();
+            for joint_lookup in spec.iter() {
+                let eval = |pos: LocalPosition| -> F {
+                    let row = match pos.row {
+                        Curr => i,
+                        Next => i + 1,
+                    };
+                    witness[pos.column][row]
+                };
+                let joint_lookup_evaluation =
+                    joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
+                *counts.entry(joint_lookup_evaluation).or_insert(0) += 1;
+                lookup_contributions -= (beta + joint_lookup_evaluation).inverse().ok_or(
+                    ProverError::DivisionByZero(
+                        "Could not invert one of the joint lookup evaluations",
+                    ),
+                )?;
+            }
+            aggregations.push(lookup_contributions)
+        }
+
+        counts
+    };
+
+    let mut counts = Vec::with_capacity(d1.size());
+    let mut running_aggregation = F::zero();
+
+    for (i, lookup_value) in joint_lookup_table_d8
+        .evals
+        .iter()
+        .step_by(8)
+        .take(lookup_rows)
+        .enumerate()
+    {
+        if let Some((_, lookup_count)) = counts_map.remove_entry(lookup_value) {
+            let lookup_count = F::from(lookup_count as u64);
+            counts.push(lookup_count);
+            aggregations[i] += running_aggregation + lookup_count / (beta + lookup_value);
+        } else {
+            counts.push(F::zero());
+        }
+
+        running_aggregation += aggregations[i];
+    }
+
+    let counts = zk_patch(counts, d1, rng);
+    let aggregations = zk_patch(aggregations, d1, rng);
+
+    if counts_map.is_empty() {
+        Ok((counts, aggregations))
+    } else {
+        Err(ProverError::ValueNotInTable)
+    }
 }
