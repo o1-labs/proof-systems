@@ -28,6 +28,7 @@ pub enum ArgumentType {
     Permutation,
     /// The lookup argument
     Lookup,
+    AdditiveLookup,
 }
 
 /// The argument environment is used to specify how the argument's constraints are

@@ -113,7 +113,7 @@ pub fn constraints<F: FftField>(
     // aggregation[i] = aggregation[i-1] + lookups - table
     let aggreg_equation = {
         let mut res = E::cell(Column::AdditiveLookupAggregation, Next)
-            - E::cell(Column::AdditiveLookupAggregation, Next)
+            - E::cell(Column::AdditiveLookupAggregation, Curr)
             + table_contributions;
         if let Some(lookup_contributions) = lookup_contributions {
             res -= lookup_contributions;
@@ -175,6 +175,8 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
 
     let mut aggregations = Vec::with_capacity(d1.size());
 
+    aggregations.push(F::zero());
+
     let mut counts_map = {
         let mut counts: HashMap<F, usize> = HashMap::new();
 
@@ -199,7 +201,7 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
                 let joint_lookup_evaluation =
                     joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
                 *counts.entry(joint_lookup_evaluation).or_insert(0) += 1;
-                lookup_contributions -= (beta + joint_lookup_evaluation).inverse().ok_or(
+                lookup_contributions += (beta + joint_lookup_evaluation).inverse().ok_or(
                     ProverError::DivisionByZero(
                         "Could not invert one of the joint lookup evaluations",
                     ),
@@ -212,7 +214,6 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
     };
 
     let mut counts = Vec::with_capacity(d1.size());
-    let mut running_aggregation = F::zero();
 
     for (i, lookup_value) in joint_lookup_table_d8
         .evals
@@ -224,20 +225,24 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
         if let Some((_, lookup_count)) = counts_map.remove_entry(lookup_value) {
             let lookup_count = F::from(lookup_count as u64);
             counts.push(lookup_count);
-            aggregations[i] += running_aggregation + lookup_count / (beta + lookup_value);
+            let aggregation = aggregations[i];
+            aggregations[i + 1] += aggregation - lookup_count / (beta + lookup_value);
         } else {
             counts.push(F::zero());
+            let aggregation = aggregations[i];
+            aggregations[i + 1] += aggregation;
         }
-
-        running_aggregation += aggregations[i];
     }
 
     let counts = zk_patch(counts, d1, rng);
     let aggregations = zk_patch(aggregations, d1, rng);
 
-    if counts_map.is_empty() {
-        Ok((counts, aggregations))
-    } else {
-        Err(ProverError::ValueNotInTable)
+    if !counts_map.is_empty() {
+        return Err(ProverError::ValueNotInTable);
     }
+
+    assert_eq!(F::zero(), aggregations[0]);
+    assert_eq!(F::zero(), aggregations[lookup_rows]);
+
+    Ok((counts, aggregations))
 }
