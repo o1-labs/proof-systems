@@ -564,7 +564,7 @@ where
         let (additive_lookup_aggregation, additive_lookup_count) =
             if let Some(lcs) = &index.cs.lookup_constraint_system {
                 let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
-                let (aggreg, count) = additive_lookup::compute_aggregations(
+                let (count, aggreg) = additive_lookup::compute_aggregations(
                     &joint_lookup_table_d8,
                     index.cs.domain.d1,
                     &index.cs.gates,
@@ -846,6 +846,38 @@ where
                         }
 
                         check_constraint!(index, format!("lookup constraint #{ii}"), eval);
+                    }
+                }
+            }
+
+            // additive lookup
+            {
+                if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
+                    let constraints = additive_lookup::constraints(&lcs.configuration, false);
+                    let constraints_len = u32::try_from(constraints.len())
+                        .expect("not expecting a large amount of constraints");
+                    let lookup_alphas =
+                        all_alphas.get_alphas(ArgumentType::AdditiveLookup, constraints_len);
+
+                    // as lookup constraints are computed with the expression framework,
+                    // each of them can result in Evaluations of different domains
+                    for (ii, (constraint, alpha_pow)) in
+                        constraints.into_iter().zip_eq(lookup_alphas).enumerate()
+                    {
+                        let mut eval = constraint.evaluations(&env);
+                        eval.evals.par_iter_mut().for_each(|x| *x *= alpha_pow);
+
+                        if eval.domain().size == t4.domain().size {
+                            t4 += &eval;
+                        } else if eval.domain().size == t8.domain().size {
+                            t8 += &eval;
+                        } else if eval.evals.iter().all(|x| x.is_zero()) {
+                            // Skip any 0-valued evaluations
+                        } else {
+                            panic!("Bad evaluation")
+                        }
+
+                        check_constraint!(index, format!("additive lookup constraint #{ii}"), eval);
                     }
                 }
             }

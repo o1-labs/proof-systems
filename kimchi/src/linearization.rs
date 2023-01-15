@@ -8,6 +8,7 @@ use crate::circuits::lookup::{
     lookups::{LookupFeatures, LookupInfo, LookupPatterns},
 };
 use crate::circuits::polynomials::{
+    additive_lookup,
     chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
@@ -180,19 +181,36 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         if feature_flags.lookup_features.patterns != LookupPatterns::default() {
             let lookup_configuration =
                 LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
-            let constraints = lookup::constraints::constraints(&lookup_configuration, false);
 
-            // note: the number of constraints depends on the lookup configuration,
-            // specifically the presence of runtime tables.
-            let constraints_len = u32::try_from(constraints.len())
-                .expect("we always expect a relatively low amount of constraints");
+            {
+                let constraints = lookup::constraints::constraints(&lookup_configuration, false);
 
-            powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
+                // note: the number of constraints depends on the lookup configuration,
+                // specifically the presence of runtime tables.
+                let constraints_len = u32::try_from(constraints.len())
+                    .expect("we always expect a relatively low amount of constraints");
 
-            let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
-            let combined = Expr::combine_constraints(alphas, constraints);
+                powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
 
-            expr += combined;
+                let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
+                let combined = Expr::combine_constraints(alphas, constraints);
+
+                expr += combined;
+            }
+
+            {
+                let constraints = additive_lookup::constraints(&lookup_configuration, false);
+                let constraints_len = u32::try_from(constraints.len())
+                    .expect("we always expect a relatively low amount of constraints");
+
+                powers_of_alpha.register(ArgumentType::AdditiveLookup, constraints_len);
+
+                let alphas =
+                    powers_of_alpha.get_exponents(ArgumentType::AdditiveLookup, constraints_len);
+                let combined = Expr::combine_constraints(alphas, constraints);
+
+                expr += combined;
+            }
         }
     } else {
         let all_features = LookupFeatures {
@@ -207,23 +225,44 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
             joint_lookup_used: true,
         };
         let lookup_configuration = LookupConfiguration::new(LookupInfo::create(all_features));
-        let constraints = lookup::constraints::constraints(&lookup_configuration, true);
 
-        // note: the number of constraints depends on the lookup configuration,
-        // specifically the presence of runtime tables.
-        let constraints_len = u32::try_from(constraints.len())
-            .expect("we always expect a relatively low amount of constraints");
+        {
+            let constraints = lookup::constraints::constraints(&lookup_configuration, true);
 
-        powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
+            // note: the number of constraints depends on the lookup configuration,
+            // specifically the presence of runtime tables.
+            let constraints_len = u32::try_from(constraints.len())
+                .expect("we always expect a relatively low amount of constraints");
 
-        let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
-        let combined = Expr::IfFeature(
-            FeatureFlag::LookupTables,
-            Box::new(Expr::combine_constraints(alphas, constraints)),
-            Box::new(Expr::zero()),
-        );
+            powers_of_alpha.register(ArgumentType::Lookup, constraints_len);
 
-        expr += combined;
+            let alphas = powers_of_alpha.get_exponents(ArgumentType::Lookup, constraints_len);
+            let combined = Expr::IfFeature(
+                FeatureFlag::LookupTables,
+                Box::new(Expr::combine_constraints(alphas, constraints)),
+                Box::new(Expr::zero()),
+            );
+
+            expr += combined;
+        }
+
+        {
+            let constraints = additive_lookup::constraints(&lookup_configuration, true);
+            let constraints_len = u32::try_from(constraints.len())
+                .expect("we always expect a relatively low amount of constraints");
+
+            powers_of_alpha.register(ArgumentType::AdditiveLookup, constraints_len);
+
+            let alphas =
+                powers_of_alpha.get_exponents(ArgumentType::AdditiveLookup, constraints_len);
+            let combined = Expr::IfFeature(
+                FeatureFlag::LookupTables,
+                Box::new(Expr::combine_constraints(alphas, constraints)),
+                Box::new(Expr::zero()),
+            );
+
+            expr += combined;
+        }
     }
 
     // the generic gate must be associated with alpha^0
