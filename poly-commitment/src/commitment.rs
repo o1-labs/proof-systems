@@ -898,7 +898,7 @@ mod tests {
     use super::*;
 
     use crate::srs::SRS;
-    use ark_poly::{Polynomial, UVPolynomial};
+    use ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
     use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
     use mina_poseidon::sponge::DefaultFqSponge;
@@ -1005,9 +1005,21 @@ mod tests {
         let sponge =
             DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
-        let polys = vec![
-            (&poly1, None, commitment.blinders),
-            (&poly2, Some(upperbound), bounded_commitment.blinders),
+        let polys: Vec<(
+            DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
+            Option<usize>,
+            PolyComm<_>,
+        )> = vec![
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(&poly1),
+                None,
+                commitment.blinders,
+            ),
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(&poly2),
+                Some(upperbound),
+                bounded_commitment.blinders,
+            ),
         ];
         let elm = vec![Fp::rand(rng), Fp::rand(rng)];
 

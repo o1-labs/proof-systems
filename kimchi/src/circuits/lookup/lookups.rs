@@ -17,6 +17,19 @@ use strum_macros::EnumIter;
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
+//~ Lookups patterns are extremely flexible and can be configured in a number of ways.
+//~ Every type of lookup is a JointLookup -- to create a single lookup your create a
+//~ JointLookup that contains one SingleLookup.
+//~
+//~ Generally, the patterns of lookups possible are
+//~   * Multiple lookups per row
+//~    `JointLookup { }, ...,  JointLookup { }`
+//~   * Multiple values in each lookup (via joining, think of it like a tuple)
+//~    `JoinLookup { SingleLookup { }, ..., SingleLookup { } }`
+//~   * Multiple columns combined in linear combination to create each value
+//~    `JointLookup { SingleLookup { value: vec![(scale1, col1), ..., (scale2, col2)] } }`
+//~   * Any combination of these
+
 fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     kinds
         .into_iter()
@@ -389,7 +402,7 @@ impl LookupPattern {
         match self {
             LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck => 4,
             LookupPattern::Lookup => 3,
-            LookupPattern::ForeignFieldMul => 1,
+            LookupPattern::ForeignFieldMul => 2,
         }
     }
 
@@ -493,7 +506,15 @@ impl LookupPattern {
                 vec![
                     //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
                     //   - - - - - - - L - - -  -  -  -  -
-                    // Constrain w(7) to 3 bits.
+                    //    * Constrain w(7) to 12-bits
+                    //    * Constrain 2^9 * w(7) to 12-bits
+                    //    => w(7) is 3-bits
+                    JointLookup {
+                        table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                        entry: vec![SingleLookup {
+                            value: vec![(F::one(), curr_row(7))],
+                        }],
+                    },
                     JointLookup {
                         table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
                         entry: vec![SingleLookup {

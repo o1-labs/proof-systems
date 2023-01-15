@@ -21,13 +21,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///   - next_row      - next row after this gate
     ///   - circuit_gates - vector of circuit gates comprising this gate
     ///
-    /// Note that te final structure of the circuit is as follows:
+    /// Note that the final structure of the circuit is as follows:
     /// circuit_gates = [
     ///      {
-    ///        [i] ->      -> 1 ForeignFieldAdd row
+    ///        (i) ->      -> 1 ForeignFieldAdd row
     ///      } * num times
-    ///      [n]           -> 1 ForeignFieldAdd row (this is where the final result goes)
-    ///      [n+1]         -> 1 Zero row for bound result
+    ///      (n)           -> 1 ForeignFieldAdd row (this is where the final result goes)
+    ///      (n+1)         -> 1 Zero row for bound result
     /// ]
     ///
     /// INTEGRATION:

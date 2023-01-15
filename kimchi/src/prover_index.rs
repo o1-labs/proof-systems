@@ -3,7 +3,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        constraints::{ColumnEvaluations, ConstraintSystem, EvaluatedColumnCoefficients},
+        constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
     },
     curve::KimchiCurve,
@@ -40,9 +40,6 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-
-    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
     pub column_evaluations: ColumnEvaluations<G::ScalarField>,
@@ -90,7 +87,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             powers_of_alpha,
             srs,
             max_poly_size,
-            evaluated_column_coefficients,
             column_evaluations,
             verifier_index: None,
             verifier_index_digest: None,
@@ -155,6 +151,7 @@ pub mod testing {
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
+        disable_gates_checks: bool,
     ) -> ProverIndex<G>
     where
         G::BaseField: PrimeField,
@@ -166,6 +163,7 @@ pub mod testing {
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
+            .disable_gates_checks(disable_gates_checks)
             .build()
             .unwrap();
         let mut srs = SRS::<G>::create(cs.domain.d1.size());
@@ -184,6 +182,6 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None)
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
     }
 }

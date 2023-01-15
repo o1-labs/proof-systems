@@ -409,7 +409,8 @@ fn test_bad_not_gnrc() {
         })
     );
     witness[0][1] += PallasField::one();
-    let index = new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None);
+    let index =
+        new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None, false);
     assert_eq!(
         index.cs.gates[1].verify::<Vesta>(1, &witness, &index, &[]),
         Err(("generic: incorrect gate").to_string())
