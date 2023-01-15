@@ -1048,10 +1048,10 @@ where
 
             additive_lookup_aggregation: additive_lookup_aggregation
                 .as_ref()
-                .map(chunked_evals_for_selector),
+                .map(chunked_evals_for_evaluations),
             additive_lookup_count: additive_lookup_count
                 .as_ref()
-                .map(chunked_evals_for_selector),
+                .map(chunked_evals_for_evaluations),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
