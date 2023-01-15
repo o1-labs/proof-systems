@@ -585,6 +585,10 @@ where
                 let counts = counts
                     .interpolate()
                     .evaluate_over_domain(index.cs.domain.d8);
+                let inverses: Vec<_> = inverses
+                    .into_iter()
+                    .map(|x| x.interpolate().evaluate_over_domain(index.cs.domain.d8))
+                    .collect();
                 (Some(aggregation), Some(counts), Some(inverses))
             } else {
                 (None, None, None)
