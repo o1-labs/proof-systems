@@ -1712,9 +1712,6 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
-
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
     pub column_evaluations: ColumnEvaluations<G::ScalarField>,
 
@@ -2103,7 +2100,9 @@ The prover then follows the following steps to create the proof:
    we can use the `commit_evaluation` optimization.
 1. Absorb the witness commitments with the Fq-Sponge.
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-   TODO: why not do this first, and then commit? Why commit from evaluation directly?
+   As mentioned above, we commit using the evaluations form rather than the coefficients
+   form so we can take advantage of the sparsity of the evaluations (i.e., there are many
+   0 entries and entries that have less-than-full-size field elemnts.)
 1. If using lookup:
 	- if using runtime table:
 		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index

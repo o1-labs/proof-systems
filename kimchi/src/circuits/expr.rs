@@ -1839,7 +1839,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         env: &Environment<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-    ) -> (F, DensePolynomial<F>) {
+    ) -> (F, Evaluations<F, D<F>>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
         let mut res = vec![F::zero(); n];
@@ -1853,7 +1853,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
                 .enumerate()
                 .for_each(|(i, r)| *r += c * e.evals[scale * i]);
         });
-        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
+        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1);
         (
             PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, cs).unwrap(),
             p,
