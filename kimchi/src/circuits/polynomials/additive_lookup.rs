@@ -46,7 +46,7 @@ pub fn constraints<F: FftField>(
 
     // The contributions given by each lookup pattern.
     let lookup_contributions = {
-        let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
+        let joint_combiner: E<F> = E::Constant(ConstantExpr::JointCombiner);
         let table_id_combiner =
             // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
             // needed.
@@ -69,14 +69,9 @@ pub fn constraints<F: FftField>(
         let f_term = |spec: &Vec<JointLookupSpec<_>>| {
             assert!(spec.len() <= lookup_info.max_per_row);
 
-            // padding * \mul (gamma + combined_witnesses)
-            let eval = |pos: LocalPosition| witness(pos.column, pos.row);
             spec.iter()
-                .map(|j| {
-                    (E::Constant(ConstantExpr::Beta)
-                        + j.evaluate(&joint_combiner, &table_id_combiner, &eval))
-                    .inverse()
-                })
+                .enumerate()
+                .map(|(i, _)| column(Column::AdditiveLookupInverse(i)))
                 .fold(None, |acc: Option<E<F>>, x| match acc {
                     Some(acc) => Some(acc + x),
                     None => Some(x),
