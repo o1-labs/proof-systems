@@ -321,6 +321,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     if let Some(lookup_info) = lookup_info {
         for i in 0..=lookup_info.max_per_row {
             h.insert(LookupSorted(i));
+            h.insert(AdditiveLookupInverse(i));
         }
         h.insert(LookupAggreg);
         h.insert(LookupTable);
