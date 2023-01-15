@@ -184,6 +184,8 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
 
     let mut aggregation = Vec::with_capacity(d1.size());
 
+    let mut inverses = vec![Vec::with_capacity(d1.size()); lookup_info.max_per_row];
+
     aggregation.push(F::zero());
 
     let mut counts_map = {
@@ -199,7 +201,8 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
         {
             let spec = row;
             let mut lookup_contributions = F::zero();
-            for joint_lookup in spec.iter() {
+            let num_lookups = spec.len();
+            for (j, joint_lookup) in spec.iter().enumerate() {
                 let eval = |pos: LocalPosition| -> F {
                     let row = match pos.row {
                         Curr => i,
@@ -210,11 +213,16 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
                 let joint_lookup_evaluation =
                     joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
                 *counts.entry(joint_lookup_evaluation).or_insert(0) += 1;
-                lookup_contributions += (beta + joint_lookup_evaluation).inverse().ok_or(
+                let inverse = (beta + joint_lookup_evaluation).inverse().ok_or(
                     ProverError::DivisionByZero(
                         "Could not invert one of the joint lookup evaluations",
                     ),
                 )?;
+                inverses[j].push(inverse);
+                lookup_contributions += inverse;
+            }
+            for j in num_lookups..lookup_info.max_per_row {
+                inverses[j].push(F::zero());
             }
             aggregation.push(lookup_contributions)
         }
@@ -246,6 +254,8 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
     let counts = zk_patch(counts, d1, rng);
     let aggregation = zk_patch(aggregation, d1, rng);
 
+    let inverses = inverses.into_iter().map(|x| zk_patch(x, d1, rng)).collect();
+
     if !counts_map.is_empty() {
         return Err(ProverError::ValueNotInTable);
     }
@@ -256,6 +266,6 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
     Ok(ComputedColumns {
         counts,
         aggregation,
-        inverses: vec![],
+        inverses,
     })
 }
