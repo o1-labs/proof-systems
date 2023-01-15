@@ -13,7 +13,7 @@ use ark_ec::{
     AffineCurve, ProjectiveCurve, SWModelParameters,
 };
 use ark_ff::{
-    BigInteger, FftField, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
+    BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
 };
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
@@ -22,6 +22,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::evaluations::to_domain;
 use o1_utils::math;
 use o1_utils::ExtendedDensePolynomial as _;
 use rand_core::{CryptoRng, RngCore};
@@ -884,36 +885,6 @@ pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
         res += &(x * y);
     }
     res
-}
-
-/// Cast the evaluations in specfic domain size to the smaller domain size.
-///
-/// ## Panics
-///
-/// Panics if `evals_domain_size` is smaller than `target_domain_size`.
-pub fn to_domain<F: FftField>(
-    evals: &Evaluations<F, D<F>>,
-    evals_domain_size: usize,
-    target_domain_size: usize,
-    target_domain: D<F>,
-    shift: Option<usize>,
-    constant: Option<F>,
-) -> Evaluations<F, D<F>> {
-    let scale = evals_domain_size / target_domain_size;
-    assert_ne!(
-        scale, 0,
-        "we can't move to a bigger domain without interpolating and reevaluating the polynomial"
-    );
-    let shift = shift.unwrap_or(0);
-    let f = |i| {
-        if let Some(cst) = constant {
-            cst + evals.evals[(scale * i + evals_domain_size * shift) % evals.evals.len()]
-        } else {
-            evals.evals[(scale * i + evals_domain_size * shift) % evals.evals.len()]
-        }
-    };
-    let new_evals = (0..target_domain.size()).into_par_iter().map(f).collect();
-    Evaluations::from_vec_and_domain(new_evals, target_domain)
 }
 
 //

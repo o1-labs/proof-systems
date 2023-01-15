@@ -1,7 +1,7 @@
 //! This adds a few utility functions for the [Evaluations] arkworks type.
 
 use ark_ff::FftField;
-use ark_poly::{Evaluations, Radix2EvaluationDomain};
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use rayon::prelude::*;
 
 /// An extension for the [Evaluations] type.
@@ -53,4 +53,34 @@ impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDoma
         result.evals.append(&mut tail);
         result
     }
+}
+
+/// Cast the evaluations in specfic domain size to the smaller domain size.
+///
+/// ## Panics
+///
+/// Panics if `evals_domain_size` is smaller than `target_domain_size`.
+pub fn to_domain<F: FftField>(
+    evals: &Evaluations<F, Radix2EvaluationDomain<F>>,
+    evals_domain_size: usize,
+    target_domain_size: usize,
+    target_domain: Radix2EvaluationDomain<F>,
+    shift: Option<usize>,
+    constant: Option<F>,
+) -> Evaluations<F, Radix2EvaluationDomain<F>> {
+    let scale = evals_domain_size / target_domain_size;
+    assert_ne!(
+        scale, 0,
+        "we can't move to a bigger domain without interpolating and reevaluating the polynomial"
+    );
+    let shift = shift.unwrap_or(0);
+    let f = |i| {
+        if let Some(cst) = constant {
+            cst + evals.evals[(scale * i + evals_domain_size * shift) % evals.evals.len()]
+        } else {
+            evals.evals[(scale * i + evals_domain_size * shift) % evals.evals.len()]
+        }
+    };
+    let new_evals = (0..target_domain.size()).into_par_iter().map(f).collect();
+    Evaluations::from_vec_and_domain(new_evals, target_domain)
 }

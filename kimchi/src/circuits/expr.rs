@@ -16,9 +16,8 @@ use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
-use commitment_dlog::commitment::to_domain;
 use itertools::Itertools;
-use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
+use o1_utils::{evaluations::to_domain, foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
