@@ -398,21 +398,21 @@ sequenceDiagram
 
     Verifier->>Prover: zeta
 
-    Note over Prover,Verifier: Prover provides helper evaluations
+    Note over Verifier: change of verifier (change of sponge)
 
-    Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
-    Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
-    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
+    opt recursion
+        Prover->>Verifier: recursion challenges
+    end
 
     Note over Prover,Verifier: Prover provides needed evaluations for the linearization
 
-    Note over Verifier: change of verifier (change of sponge)
-
-    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
-    Prover->>Verifier: the 15 registers w_i(zeta) & w_i(zeta * omega)
-    Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
-
     Prover->>Verifier: ft(zeta * omega)
+    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
+
+    Prover->>Verifier: the 15 registers w_i(zeta) & w_i(zeta * omega)
+    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
+    Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
+    Prover->>Verifier: the 15 coefficients c_i(zeta) & c_i(zeta * omega)
 
     opt lookup
         Prover->>Verifier: sorted(zeta) & sorted(zeta * omega)
@@ -420,9 +420,12 @@ sequenceDiagram
         Prover->>Verifier: table(zeta) & table(zeta * omega)
     end
 
+    Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
+    Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
+
     Note over Prover,Verifier: Batch verification of evaluation proofs
 
-    Verifier->>Prover: u, v
+    Verifier->>Prover: v, u
 
     Note over Verifier: change of verifier (change of sponge)
 
