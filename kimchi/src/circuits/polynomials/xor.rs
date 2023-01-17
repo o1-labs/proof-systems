@@ -24,16 +24,44 @@ use std::{array, marker::PhantomData};
 use super::generic::GenericGateSpec;
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+    /// Extends a XOR gadget for `bits` length to a circuit
+    /// Includes:
+    /// - num_xors Xor16 gates
+    /// - 1 Generic gate to constrain the final row to be zero with itself
+    /// Input:
+    /// - gates     : vector of circuit gates
+    /// - bits      : length of the XOR gadget
+    /// Output:
+    /// - new row index
+    pub fn extend_xor_gadget(gates: &mut Vec<Self>, bits: usize) -> usize {
+        let new_row = gates.len();
+        let (_, mut xor_gates) = Self::create_xor_gadget(new_row, bits);
+        // extend the whole circuit with the xor gadget
+        gates.append(&mut xor_gates);
+
+        // check fin_in1, fin_in2, fin_out are zero
+        let zero_row = gates.len() - 1;
+        gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
+        gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
+
+        gates.len()
+    }
+
     /// Creates a XOR gadget for `bits` length
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    /// Input:
+    /// - new_row   : row to start the XOR gadget
+    /// - bits      : number of bits in the XOR
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
+    /// Warning:
+    /// - don't forget to check that the final row is all zeros as in `extend_xor_gadget`
     pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
-        let mut gates = (0..num_xors)
+        let mut xor_gates = (0..num_xors)
             .map(|i| CircuitGate {
                 typ: GateType::Xor16,
                 wires: Wire::for_row(new_row + i),
@@ -41,16 +69,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             })
             .collect::<Vec<_>>();
         let zero_row = new_row + num_xors;
-        gates.push(CircuitGate::create_generic_gadget(
+        xor_gates.push(CircuitGate::create_generic_gadget(
             Wire::for_row(zero_row),
             GenericGateSpec::Const(F::zero()),
             None,
         ));
-        // check fin_in1, fin_in2, fin_out are zero
-        gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
-        gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
 
-        (zero_row + 1, gates)
+        (new_row + xor_gates.len(), xor_gates)
     }
 }
 
@@ -211,24 +236,16 @@ pub(crate) fn init_xor<F: PrimeField>(
 
 /// Extends the Xor rows to the full witness
 /// Panics if the words are larger than the desired bits
-pub fn extend_xor_rows<F: PrimeField>(
+pub fn extend_xor_witness<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
+    input1: F,
+    input2: F,
     bits: usize,
-    words: (F, F, F),
 ) {
-    let input1_big = words.0.to_biguint();
-    let input2_big = words.1.to_biguint();
-    let output_big = words.2.to_biguint();
-    if bits < input1_big.bitlen() || bits < input2_big.bitlen() || bits < output_big.bitlen() {
-        panic!("Bits must be greater or equal than the inputs length");
-    }
-    let xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
-    let xor_row = witness[0].len();
+    let xor_witness = create_xor_witness(input1, input2, bits);
     for col in 0..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
     }
-    init_xor(witness, xor_row, bits, words);
 }
 
 /// Create a Xor for up to the native length starting at row 0

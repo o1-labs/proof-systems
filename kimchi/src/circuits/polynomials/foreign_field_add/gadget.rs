@@ -30,9 +30,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///      (n+1)         -> 1 Zero row for bound result
     /// ]
     ///
-    /// INTEGRATION:
+    /// Warning:
     /// - Wire the range check for result bound manually
     /// - Connect to public input containing the 1 value for the overflow in the final bound check
+    /// - If the inputs of the addition come from public input, wire it as well
     pub fn create_chain_ffadd(
         start_row: usize,
         opcodes: &[FFOps],
@@ -105,7 +106,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         (start_row + circuit_gates.len(), circuit_gates)
     }
 
-    /// Extend a chain of foreign field addition gates. It already wires the public input to the overflow cell.
+    /// Extend a chain of foreign field addition gates. It already wires 1 value to the overflow cell.
     /// - Inputs
     ///   - gates: vector of gates to extend
     ///   - pub_row: row of the public input
