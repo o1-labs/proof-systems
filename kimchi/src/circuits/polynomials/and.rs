@@ -65,8 +65,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// - bytes    : number of bytes of the AND operation
     /// Output:
     /// - next_row  : next row after this gate
-    /// INTEGRATION:
-    /// - IF THERE'S ANY PUBLIC INPUT FOR THE AND, DON'T FORGET TO WIRE IT
+    /// Warning:
+    /// - if there's any public input for the and, don't forget to wire it
     pub fn extend_and(gates: &mut Vec<Self>, bytes: usize) -> usize {
         assert!(bytes > 0, "Bytes must be a positive number");
         let xor_row = gates.len();
@@ -97,8 +97,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     // Outputs tuple (next_row, circuit_gates) where
     // - next_row  : next row after this gate
     // - gates     : vector of circuit gates comprising the AND double generic gate
-    // INTEGRATION:
-    // - DON'T FORGET TO CONNECT THE WIRING FROM THE AND
+    // Warning:
+    // - don't forget to connect the wiring from the and
     fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
         assert!(bytes > 0, "Bytes must be a positive number");
 

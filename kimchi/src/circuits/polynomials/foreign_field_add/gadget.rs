@@ -30,7 +30,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///      [n+1]         -> 1 Zero row for bound result
     /// ]
     ///
-    /// INTEGRATION:
+    /// Warning:
     /// - Wire the range check for result bound manually
     /// - Connect to public input containing the 1 value for the overflow in the final bound check
     /// - If the inputs of the addition come from public input, wire it as well

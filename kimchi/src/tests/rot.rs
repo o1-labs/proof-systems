@@ -68,7 +68,7 @@ where
 {
     // Include the zero row
     let mut witness: [Vec<G::ScalarField>; COLUMNS] =
-        array::from_fn(|_| vec![G::ScalarField::from(0u32)]);
+        array::from_fn(|_| vec![G::ScalarField::zero()]);
     rot::extend_rot(&mut witness, word, rot, side);
     witness
 }
@@ -302,7 +302,7 @@ fn test_bad_constraints() {
 // Finalization test
 fn test_rot_finalization() {
     // Includes the actual input of the rotation and a row with the zero value
-    let num_inputs = 2;
+    let num_public_inputs = 2;
     // 1 ROT of 32 to the left
     let rot = 32;
     let mode = RotMode::Left;
@@ -311,7 +311,7 @@ fn test_rot_finalization() {
     let gates = {
         let mut gates = vec![];
         // public inputs
-        for row in 0..num_inputs {
+        for row in 0..num_public_inputs {
             gates.push(CircuitGate::<Fp>::create_generic_gadget(
                 Wire::for_row(row),
                 GenericGateSpec::Pub,
@@ -345,7 +345,7 @@ fn test_rot_finalization() {
 
     let index = {
         let cs = ConstraintSystem::create(gates.clone())
-            .public(num_inputs)
+            .public(num_public_inputs)
             .lookup(vec![rot::lookup_table()])
             .build()
             .unwrap();

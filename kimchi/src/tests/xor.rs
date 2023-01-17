@@ -307,7 +307,7 @@ fn test_extend_xor() {
     let input1: PallasField = rng.gen(None, bits);
     let input2: PallasField = rng.gen(None, bits);
 
-    // If user specified a concrete number of bits, use that (if they are sufficient to hold both inputs)
+    // If one specifies a concrete number of bits, use that (if they are sufficient to hold both inputs)
     // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
     let bits1 = input1.to_biguint().bitlen();
     let bits2 = input2.to_biguint().bitlen();
@@ -425,12 +425,12 @@ fn test_xor_finalization() {
         let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); num_inputs]);
 
         // initialize the 2 inputs
-        let input1 = 0xDC811727DAF22EC15927D6AA275F406Bu128;
-        let input2 = 0xA4F4417AF072DF9016A1EAB458DA80D1u128;
-        cols[0][0] = input1.into();
-        cols[0][1] = input2.into();
+        let input1 = 0xDC811727DAF22EC15927D6AA275F406Bu128.into();
+        let input2 = 0xA4F4417AF072DF9016A1EAB458DA80D1u128.into();
+        cols[0][0] = input1;
+        cols[0][1] = input2;
 
-        xor::extend_xor_witness::<Fp>(&mut cols, input1.into(), input2.into(), 128);
+        xor::extend_xor_witness::<Fp>(&mut cols, input1, input2, 128);
         cols
     };
 

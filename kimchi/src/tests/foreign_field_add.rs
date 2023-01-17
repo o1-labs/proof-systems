@@ -1461,7 +1461,7 @@ where
 // Finalization test
 fn test_ffadd_finalization() {
     // Includes a row to store value 1
-    let num_inputs = 1;
+    let num_public_inputs = 1;
     let operation = &[FFOps::Add];
     let modulus = BigUint::from_bytes_be(&[
         0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF,
@@ -1470,6 +1470,14 @@ fn test_ffadd_finalization() {
     ]);
 
     // circuit
+    // [0]       -> Public input row to store the value 1
+    // [1]       -> 1 ForeignFieldAdd row
+    // [2]       -> 1 ForeignFieldAdd row for final bound
+    // [3]       -> 1 Zero row for bound result
+    // [4..=7]   -> 1 Multi RangeCheck for left input
+    // [8..=11]  -> 1 Multi RangeCheck for right input
+    // [12..=15] -> 1 Multi RangeCheck for result
+    // [16..=19] -> 1 Multi RangeCheck for bound check
     let gates = {
         // Public input row
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
@@ -1478,7 +1486,7 @@ fn test_ffadd_finalization() {
             None,
         )];
 
-        let mut curr_row = num_inputs;
+        let mut curr_row = num_public_inputs;
         // Foreign field addition and bound check
         CircuitGate::<Fp>::extend_chain_ffadd(&mut gates, 0, &mut curr_row, operation, &modulus);
 
@@ -1506,8 +1514,8 @@ fn test_ffadd_finalization() {
         let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 1]);
         witness[0][0] = Fp::one();
         // create inputs to the addition
-        let left = modulus.clone() - BigUint::from_bytes_be(&[1]);
-        let right = modulus.clone() - BigUint::from_bytes_be(&[1]);
+        let left = modulus.clone() - BigUint::one();
+        let right = modulus.clone() - BigUint::one();
         // create a chain of 1 addition
         let add_witness = witness::create_chain::<Fp>(&vec![left, right], operation, modulus);
         for col in 0..COLUMNS {
@@ -1528,7 +1536,7 @@ fn test_ffadd_finalization() {
     let index = {
         let cs = ConstraintSystem::create(gates.clone())
             .lookup(vec![range_check::gadget::lookup_table()])
-            .public(num_inputs)
+            .public(num_public_inputs)
             .build()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());

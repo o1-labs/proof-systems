@@ -52,14 +52,17 @@ fn create_not_witness_unchecked_length<F: PrimeField>(
 ) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
     witness[0][0] = F::from(2u8).pow(&[bits as u64]) - F::one();
-    not::extend_not_witness_unchecked_length(&mut witness, inputs, bits);
+    let result = not::extend_not_witness_unchecked_length(&mut witness, inputs, bits);
+    if let Err(e) = result {
+        panic!("{}", e);
+    }
     witness
 }
 
 // Create a Not witness for less than 255 bits (native field) starting at row 0
 // Input: first input and optional bit length
 // If `bits` is not provided, the negation is performed using the length of the `input` in bits.
-// If `bits` is provided, the negation takes the maximum length between `bits` and that of `input`.
+// If `bits` is provided, the negation takes the maximum length of `bits` and `input`.
 fn create_not_witness_checked_length<F: PrimeField>(
     input: F,
     bits: Option<usize>,

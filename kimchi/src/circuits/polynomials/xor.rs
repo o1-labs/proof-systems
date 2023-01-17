@@ -57,8 +57,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
-    /// INTEGRATION:
-    /// - DON'T FORGET TO CHECK THAT THE FINAL ROW IS ALL ZEROS AS IN `extend_xor_gadget`
+    /// Warning:
+    /// - don't forget to check that the final row is all zeros as in `extend_xor_gadget`
     pub fn create_xor_gadget(new_row: usize, bits: usize) -> (usize, Vec<Self>) {
         let num_xors = num_xors(bits);
         let mut xor_gates = (0..num_xors)

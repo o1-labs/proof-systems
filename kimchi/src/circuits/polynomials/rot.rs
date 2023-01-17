@@ -56,8 +56,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// - rot : the rotation offset
     /// - side : the rotation side
     /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
-    /// INTEGRATION:
-    /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// Warning:
+    /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
     pub fn extend_rot(gates: &mut Vec<Self>, rot: u32, side: RotMode, zero_row: usize) -> usize {
         let (new_row, mut rot_gates) = Self::create_rot(gates.len(), rot, side);
@@ -73,7 +73,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Input:
     /// - rot : the rotation offset
     /// - side : the rotation side
-    /// INTEGRATION:
+    /// Warning:
     /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
     /// - need to check that the 2 most significant limbs of shifted are zero
@@ -298,8 +298,8 @@ fn init_rot64<F: PrimeField>(
 /// - word: 64-bit word to be rotated
 /// - rot:  rotation offset
 /// - side: side of the rotation, either left or right
-/// INTEGRATION:
-/// - DON'T FORGET TO INCLUDE A PUBLIC INPUT ROW WITH ZERO VALUE
+/// Warning:
+/// - don't forget to include a public input row with zero value
 pub fn extend_rot<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     word: u64,
