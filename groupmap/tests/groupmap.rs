@@ -13,13 +13,9 @@ fn test_group_map_on_curve() {
 }
 
 fn first_xy(xs: &[Fq; 3]) -> (Fq, Fq) {
-    for x in xs.iter() {
-        match groupmap::get_y::<G>(*x) {
-            Some(y) => return (*x, y),
-            None => (),
-        }
-    }
-    panic!("get_xy")
+    xs.iter()
+        .find_map(|x| groupmap::get_y::<G>(*x).map(|y| (*x, y)))
+        .expect("get_xy")
 }
 
 #[test]
