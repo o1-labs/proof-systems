@@ -3,15 +3,20 @@ use std::array;
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::CircuitGate,
-    polynomials::keccak::{self, ROT_TAB},
+    polynomials::keccak::{self, ROT_TAB, STATE_WIDTH},
     wires::Wire,
 };
 use ark_ec::AffineCurve;
 use mina_curves::pasta::{Fp, Pallas, Vesta};
-use rand::Rng;
+use rand::{rngs::StdRng, Rng, SeedableRng};
 
 //use super::framework::TestFramework;
 type PallasField = <Pallas as AffineCurve>::BaseField;
+
+const RNG_SEED: [u8; 32] = [
+    0, 131, 43, 175, 229, 252, 206, 26, 67, 193, 86, 160, 1, 90, 131, 86, 168, 4, 95, 50, 48, 9,
+    192, 13, 250, 215, 172, 130, 24, 164, 162, 221,
+];
 
 fn create_test_constraint_system() -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_keccak(0) };
@@ -57,4 +62,24 @@ fn test_keccak_table() {
             rot += 1;
         }
     }
+}
+
+#[test]
+// Test rounds of Keccak
+fn test_keccak_rounds() {
+    // hash the 0 bit
+    let hash = keccak::keccak_hash(&[false]);
+    for byte in hash {
+        print!("{:02x}", byte);
+    }
+    println!();
+}
+
+#[test]
+// Test if converters work fine
+fn test_from() {
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let bits: Vec<bool> = (0..STATE_WIDTH).map(|_| rng.gen_range(0..2) != 0).collect();
+    let converted = keccak::from_state_to_bits(keccak::from_bits_to_state(&bits));
+    assert_eq!(bits, converted);
 }
