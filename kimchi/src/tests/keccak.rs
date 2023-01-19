@@ -3,11 +3,12 @@ use std::array;
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::CircuitGate,
-    polynomials::keccak::{self, ROT_TAB, STATE_WIDTH},
+    polynomials::keccak::{self, ROT_TAB, STATE},
     wires::Wire,
 };
 use ark_ec::AffineCurve;
 use mina_curves::pasta::{Fp, Pallas, Vesta};
+use num_bigint::BigUint;
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 //use super::framework::TestFramework;
@@ -68,7 +69,8 @@ fn test_keccak_table() {
 // Test rounds of Keccak
 fn test_keccak_rounds() {
     // hash the 0 bit
-    let hash = keccak::keccak_hash(&[false]);
+    let hash = keccak::keccak_eth(&[0x00]);
+    println!();
     for byte in hash {
         print!("{:02x}", byte);
     }
@@ -79,7 +81,21 @@ fn test_keccak_rounds() {
 // Test if converters work fine
 fn test_from() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
-    let bits: Vec<bool> = (0..STATE_WIDTH).map(|_| rng.gen_range(0..2) != 0).collect();
-    let converted = keccak::from_state_to_bits(keccak::from_bits_to_state(&bits));
-    assert_eq!(bits, converted);
+    let bytes = (0..STATE / 8)
+        .map(|_| rng.gen_range(0..=255))
+        .collect::<Vec<u8>>();
+    let converted = keccak::from_state_to_le(keccak::from_le_to_state(&bytes));
+    assert_eq!(bytes, converted);
+}
+
+#[test]
+// Check that the padding is added in little endian
+fn test_padding() {
+    let message = 0x01;
+    // 0x01 0x01 0x00 ... 0x00 0x80
+    let padded = keccak::pad(&[message], 1088);
+    let number = BigUint::from_bytes_be(&padded);
+    let desired =
+        BigUint::from(2u8).pow(1080) + BigUint::from(2u8).pow(1072) + BigUint::from(2u32.pow(7));
+    assert_eq!(number, desired)
 }
