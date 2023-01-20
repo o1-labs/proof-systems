@@ -21,6 +21,20 @@ pub trait ExtendedEvaluations<F: FftField> {
 
     /// Convert the evaluations in a specific domain to a smaller domain.
     ///
+    /// # Warning
+    ///
+    /// To ensure that the target domain is large enough for the polynomial,
+    /// the caller must provide the degree of the polynomial as well.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the `target_domain` is larger than the current domain size,
+    /// or if the degree of the polynomial is too large for the target domain.
+    ///
+    fn to_domain(&self, degree: usize, target_domain: Radix2EvaluationDomain<F>) -> Self;
+
+    /// Convert the evaluations in a specific domain to a smaller domain.
+    ///
     /// Optionally allows:
     ///
     /// - a constant to be added (to the polynomial in evaluation form)
@@ -49,12 +63,11 @@ pub trait ExtendedEvaluations<F: FftField> {
     /// Panics if the `target_domain` is larger than the current domain size,
     /// or if the degree of the polynomial is too large for the target domain.
     ///
-    fn to_domain(
+    fn to_domain_ext(
         &self,
         degree: usize,
         target_domain: Radix2EvaluationDomain<F>,
-        circuit_domain: Radix2EvaluationDomain<F>,
-        shift: Option<usize>,
+        shift_within_circuit_domain: Option<(usize, Radix2EvaluationDomain<F>)>,
         constant: Option<F>,
     ) -> Self;
 }
@@ -93,18 +106,20 @@ impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDoma
         result
     }
 
-    fn to_domain(
+    fn to_domain(&self, degree: usize, target_domain: Radix2EvaluationDomain<F>) -> Self {
+        self.to_domain_ext(degree, target_domain, None, None)
+    }
+
+    fn to_domain_ext(
         &self,
         degree: usize,
         target_domain: Radix2EvaluationDomain<F>,
-        circuit_domain: Radix2EvaluationDomain<F>,
-        shift: Option<usize>,
+        shift_within_circuit_domain: Option<(usize, Radix2EvaluationDomain<F>)>,
         constant: Option<F>,
-    ) -> Evaluations<F, Radix2EvaluationDomain<F>> {
+    ) -> Self {
         let domain_size = self.domain().size(); // e.g. d8
         let target_size = target_domain.size(); // e.g. d4
         let scale = domain_size / target_size;
-        let scale_from_circuit = domain_size / circuit_domain.size();
 
         // sanity checks
         if cfg!(debug_assertions) {
@@ -123,29 +138,40 @@ impl<F: FftField> ExtendedEvaluations<F> for Evaluations<F, Radix2EvaluationDoma
             );
 
             assert_eq!(
-                target_size % circuit_domain.size(),
-                0,
-                "target domain must be a multiple of the circuit domain"
-            );
-            assert_eq!(
-                self.domain().group_gen.pow(&[scale_from_circuit as u64]),
-                circuit_domain.group_gen,
-                "the circuit domain must be a subgroup of the current domain"
-            );
-
-            assert_eq!(
                 self.domain().group_gen.pow(&[scale as u64]),
                 target_domain.group_gen,
                 "the target domain must be a subgroup of the current domain"
             );
         }
 
+        // shift
+        let shift = if let Some((shift, circuit_domain)) = shift_within_circuit_domain {
+            let scale_from_circuit = domain_size / circuit_domain.size();
+
+            // sanity checks
+            if cfg!(debug_assertions) {
+                assert_eq!(
+                    target_size % circuit_domain.size(),
+                    0,
+                    "target domain must be a multiple of the circuit domain"
+                );
+                assert_eq!(
+                    self.domain().group_gen.pow(&[scale_from_circuit as u64]),
+                    circuit_domain.group_gen,
+                    "the circuit domain must be a subgroup of the current domain"
+                );
+            }
+
+            shift * scale_from_circuit
+        } else {
+            0
+        };
+
         // get new evals
-        let shift = shift.unwrap_or(0);
         let cst = constant.unwrap_or_else(F::zero);
         let f = |i| {
             // for example, to go from d8 to d4, you collect every 2nd element
-            let idx = (scale * i + scale_from_circuit * shift) % self.evals.len();
+            let idx = (scale * i + shift) % self.evals.len();
             cst + self.evals[idx]
         };
         let new_evals = (0..target_size).into_par_iter().map(f).collect();
@@ -172,21 +198,21 @@ mod tests {
         let evals_d8 = poly.evaluate_over_domain_by_ref(d8);
 
         // check normal conversaion
-        let evals_d4 = evals_d8.to_domain(poly.degree(), d4, d4, None, None);
+        let evals_d4 = evals_d8.to_domain_ext(poly.degree(), d4, None, None);
         assert_eq!(evals_d4.interpolate(), poly);
 
         // check with constants
-        let evals_d4 = evals_d8.to_domain(poly.degree(), d4, d4, None, Some(F::from(0u8)));
+        let evals_d4 = evals_d8.to_domain_ext(poly.degree(), d4, None, Some(F::from(0u8)));
         assert_eq!(evals_d4.interpolate(), poly);
 
-        let evals_d4 = evals_d8.to_domain(poly.degree(), d4, d4, None, Some(F::from(10u8)));
+        let evals_d4 = evals_d8.to_domain_ext(poly.degree(), d4, None, Some(F::from(10u8)));
         assert_eq!(
             evals_d4.interpolate(),
             &poly + &DensePolynomial::from_coefficients_slice(&[10.into()])
         );
 
         // check with shift (poly(x) -> poly(x * w^2))
-        let evals_d4 = evals_d8.to_domain(poly.degree(), d4, d4, Some(2), Some(F::from(0u8)));
+        let evals_d4 = evals_d8.to_domain_ext(poly.degree(), d4, Some((2, d4)), Some(F::from(0u8)));
         let gen_coeffs = (0..poly.coeffs.len())
             .into_iter()
             .map(|i| d4.group_gen.pow(&[i as u64 * 2]));
@@ -210,6 +236,6 @@ mod tests {
         let poly = DensePolynomial::from_coefficients_vec(coeffs);
         let evals_d8 = poly.evaluate_over_domain_by_ref(d8);
 
-        let _evals_d4 = evals_d8.to_domain(poly.degree(), d4, d4, None, None);
+        let _evals_d4 = evals_d8.to_domain_ext(poly.degree(), d4, None, None);
     }
 }
