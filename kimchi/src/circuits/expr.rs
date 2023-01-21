@@ -17,7 +17,11 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
-use o1_utils::{evaluations::to_domain, foreign_field::ForeignFieldHelpers, FieldHelpers};
+use o1_utils::{
+    evaluations::{self, ExtendedEvaluations},
+    foreign_field::ForeignFieldHelpers,
+    FieldHelpers,
+};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
@@ -974,13 +978,6 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         )
     }
 
-    fn init<G: Sync + Send + Fn(usize) -> F>(res_domain: (Domain, D<F>), g: G) -> Self {
-        Self::Evals {
-            domain: res_domain.0,
-            evals: Self::init_(res_domain, g),
-        }
-    }
-
     fn add<'b, 'c>(
         self,
         other: EvalResult<'b, F>,
@@ -1011,13 +1008,10 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => Evals {
                 domain: res_domain.0,
-                evals: to_domain(
-                    evals,
-                    domain as usize,
-                    res_domain.0 as usize,
+                evals: evals.to_subdomain_unsafe(
                     res_domain.1,
-                    Some(shift),
-                    Some(x),
+                    (domain as usize) * shift,
+                    |eval, _| x + eval,
                 ),
             },
             (
@@ -1059,12 +1053,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es_sub,
                 },
             ) => {
-                let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e += es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
-                });
-                Evals { evals, domain: d }
+                evals =
+                    es_sub.to_subdomain_unsafe(evals.domain(), (d_sub as usize) * s, |eval, i| {
+                        evals.evals[i] + eval
+                    });
+                Evals { domain: d, evals }
             }
             (
                 SubEvals {
@@ -1078,23 +1071,14 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es2,
                 },
             ) => {
-                let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
-                let n = res_domain.1.size();
-                let v: Vec<_> = (0..n)
-                    .into_par_iter()
-                    .map(|i| {
-                        es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                            + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
-                    })
-                    .collect();
-
                 Evals {
                     domain: res_domain.0,
-                    evals: Evaluations::<F, D<F>>::from_vec_and_domain(v, res_domain.1),
+                    evals: es1.to_subdomain_unsafe(res_domain.1, (d1 as usize) * s1, |eval, i| {
+                        eval + es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    }),
                 }
             }
         }
@@ -1123,13 +1107,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     shift: s,
                 },
                 Constant(x),
-            ) => {
-                let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
-                EvalResult::init(res_domain, |i| {
-                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()] - x
-                })
-            }
+            ) => Evals {
+                domain: res_domain.0,
+                evals: evals
+                    .to_subdomain_unsafe(res_domain.1, (d as usize) * s, |eval, _| eval - x),
+            },
             (
                 Constant(x),
                 SubEvals {
@@ -1137,13 +1119,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     domain: d,
                     shift: s,
                 },
-            ) => {
-                let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
-                EvalResult::init(res_domain, |i| {
-                    x - evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
-                })
-            }
+            ) => Evals {
+                domain: res_domain.0,
+                evals: evals
+                    .to_subdomain_unsafe(res_domain.1, (d as usize) * s, |eval, _| x - eval),
+            },
             (
                 Evals {
                     domain: d1,
@@ -1172,12 +1152,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     mut evals,
                 },
             ) => {
-                let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e = es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()] - *e;
-                });
-                Evals { evals, domain: d }
+                evals =
+                    es_sub.to_subdomain_unsafe(evals.domain(), (d_sub as usize) * s, |eval, i| {
+                        eval - evals.evals[i]
+                    });
+
+                Evals { domain: d, evals }
             }
             (
                 Evals {
@@ -1190,12 +1170,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es_sub,
                 },
             ) => {
-                let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e -= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
-                });
-                Evals { evals, domain: d }
+                evals =
+                    es_sub.to_subdomain_unsafe(evals.domain(), (d_sub as usize) * s, |eval, i| {
+                        evals.evals[i] - eval
+                    });
+
+                Evals { domain: d, evals }
             }
             (
                 SubEvals {
@@ -1209,15 +1189,15 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es2,
                 },
             ) => {
-                let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
-                EvalResult::init(res_domain, |i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                        - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
-                })
+                Evals {
+                    domain: res_domain.0,
+                    evals: es1.to_subdomain_unsafe(res_domain.1, (d1 as usize) * s1, |eval, i| {
+                        eval - es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    }),
+                }
             }
         }
     }
@@ -1249,13 +1229,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 evals,
                 domain: d,
                 shift: s,
-            } => {
-                let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
-                EvalResult::init(res_domain, |i| {
-                    evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()].square()
-                })
-            }
+            } => Evals {
+                domain: res_domain.0,
+                evals: evals
+                    .to_subdomain_unsafe(res_domain.1, (d as usize) * s, |eval, _| eval.square()),
+            },
         }
     }
 
@@ -1287,13 +1265,11 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     domain: d,
                     shift: s,
                 },
-            ) => {
-                let scale = (d as usize) / (res_domain.0 as usize);
-                assert!(scale != 0);
-                EvalResult::init(res_domain, |i| {
-                    x * evals.evals[(scale * i + (d as usize) * s) % evals.evals.len()]
-                })
-            }
+            ) => Evals {
+                domain: res_domain.0,
+                evals: evals
+                    .to_subdomain_unsafe(res_domain.1, (d as usize) * s, |eval, _| x * eval),
+            },
             (
                 Evals {
                     domain: d1,
@@ -1333,12 +1309,12 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es_sub,
                 },
             ) => {
-                let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
-                evals.evals.par_iter_mut().enumerate().for_each(|(i, e)| {
-                    *e *= es_sub.evals[(scale * i + (d_sub as usize) * s) % es_sub.evals.len()];
-                });
-                Evals { evals, domain: d }
+                evals =
+                    es_sub.to_subdomain_unsafe(evals.domain(), (d_sub as usize) * s, |eval, i| {
+                        evals.evals[i] * eval
+                    });
+
+                Evals { domain: d, evals }
             }
             (
                 SubEvals {
@@ -1352,15 +1328,15 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                     evals: es2,
                 },
             ) => {
-                let scale1 = (d1 as usize) / (res_domain.0 as usize);
-                assert!(scale1 != 0);
                 let scale2 = (d2 as usize) / (res_domain.0 as usize);
                 assert!(scale2 != 0);
 
-                EvalResult::init(res_domain, |i| {
-                    es1.evals[(scale1 * i + (d1 as usize) * s1) % es1.evals.len()]
-                        * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
-                })
+                Evals {
+                    domain: res_domain.0,
+                    evals: es1.to_subdomain_unsafe(res_domain.1, (d1 as usize) * s1, |eval, i| {
+                        eval * es2.evals[(scale2 * i + (d2 as usize) * s2) % es2.evals.len()]
+                    }),
+                }
             }
         }
     }
@@ -1650,14 +1626,11 @@ impl<F: FftField> Expr<F> {
                 evals,
                 domain: d_sub,
                 shift: s,
-            } => {
-                let res_domain = get_domain(d, env);
-                let scale = (d_sub as usize) / (d as usize);
-                assert!(scale != 0);
-                EvalResult::init_((d, res_domain), |i| {
-                    evals.evals[(scale * i + (d_sub as usize) * s) % evals.evals.len()]
-                })
-            }
+            } => evals.to_subdomain_unsafe(
+                get_domain(d, env),
+                (d_sub as usize) * s,
+                evaluations::identity_fn,
+            ),
         }
     }
 
@@ -1869,6 +1842,9 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> (F, DensePolynomial<F>) {
+        println!("FOOO");
+        println!("here = {}", line!());
+
         let cs = &env.constants;
         let n = env.domain.d1.size();
         let mut res = vec![F::zero(); n];

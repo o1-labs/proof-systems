@@ -1,5 +1,5 @@
-//! This module implements Dlog-based polynomial commitment schema.
-//! The folowing functionality is implemented
+//! This module implements Dlog-based polynomial commitment scheme.
+//! The following functionality is implemented
 //!
 //! 1. Commit to polynomial with its max degree
 //! 2. Open polynomial commitment batch at the given evaluation point and scaling factor scalar
@@ -22,7 +22,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::evaluations::to_domain;
+use o1_utils::evaluations::{self, ExtendedEvaluations};
 use o1_utils::math;
 use o1_utils::ExtendedDensePolynomial as _;
 use rand_core::{CryptoRng, RngCore};
@@ -627,16 +627,8 @@ impl<G: CommitmentCurve> SRS<G> {
         };
         match domain.size.cmp(&plnm.domain().size) {
             std::cmp::Ordering::Less => {
-                let v = to_domain(
-                    plnm,
-                    plnm.domain().size as usize,
-                    domain.size as usize,
-                    domain,
-                    None,
-                    None,
-                )
-                .evals;
-                commit_evaluations(&v, basis)
+                let v = plnm.to_subdomain_unsafe(domain, 0, evaluations::identity_fn);
+                commit_evaluations(&v.evals, basis)
             }
             std::cmp::Ordering::Equal => commit_evaluations(&plnm.evals, basis),
             std::cmp::Ordering::Greater => {
