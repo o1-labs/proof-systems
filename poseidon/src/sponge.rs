@@ -142,7 +142,12 @@ macro_rules! debug_sponge {
                 "debug_sponge: {} {:?} {}",
                 $name,
                 $sponge.sponge_state,
-                $sponge.state.iter().map(|f| { f.to_hex() }).collect::<Vec<String>>().join(" "),
+                $sponge
+                    .state
+                    .iter()
+                    .map(|f| { f.to_hex() })
+                    .collect::<Vec<String>>()
+                    .join(" "),
             );
         }
     };
