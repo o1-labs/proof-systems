@@ -3,6 +3,9 @@ use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
+#[cfg(all(feature = "debug_sponge", debug_assertions))]
+use o1_utils::FieldHelpers;
+
 pub use crate::FqSponge;
 
 pub const CHALLENGE_LENGTH_IN_LIMBS: usize = 2;
@@ -129,6 +132,22 @@ where
     }
 }
 
+// Insert code to print sponge trace only when non-release build and
+// "debug_sponge" feature is enabled.
+macro_rules! debug_sponge {
+    ($name:expr, $sponge:expr) => {
+        #[cfg(all(feature = "debug_sponge", debug_assertions))]
+        {
+            println!(
+                "debug_sponge: {} {:?} {}",
+                $name,
+                $sponge.sponge_state,
+                $sponge.state.iter().map(|f| { f.to_hex() }).collect::<Vec<String>>().join(" "),
+            );
+        }
+    };
+}
+
 impl<P: SWModelParameters, SC: SpongeConstants>
     FqSponge<P::BaseField, GroupAffine<P>, P::ScalarField> for DefaultFqSponge<P, SC>
 where
@@ -136,13 +155,16 @@ where
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
 {
     fn new(params: &'static ArithmeticSpongeParams<P::BaseField>) -> DefaultFqSponge<P, SC> {
+        let sponge = ArithmeticSponge::new(params);
+        debug_sponge!("new", sponge);
         DefaultFqSponge {
-            sponge: ArithmeticSponge::new(params),
+            sponge,
             last_squeezed: vec![],
         }
     }
 
     fn absorb_g(&mut self, g: &[GroupAffine<P>]) {
+        debug_sponge!("absorb_g", self.sponge);
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
@@ -157,12 +179,14 @@ where
     }
 
     fn absorb_fq(&mut self, x: &[P::BaseField]) {
+        debug_sponge!("absorb_fq", self.sponge);
         self.last_squeezed = vec![];
 
         self.sponge.absorb(x)
     }
 
     fn absorb_fr(&mut self, x: &[P::ScalarField]) {
+        debug_sponge!("absorb_fr", self.sponge);
         self.last_squeezed = vec![];
 
         x.iter().for_each(|x| {
@@ -195,6 +219,7 @@ where
     }
 
     fn digest(mut self) -> P::ScalarField {
+        debug_sponge!("digest", self.sponge);
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
         // Returns zero for values that are too large.
         // This means that there is a bias for the value zero (in one of the curve).
@@ -206,14 +231,17 @@ where
     }
 
     fn digest_fq(mut self) -> P::BaseField {
+        debug_sponge!("digest_fq", self.sponge);
         self.squeeze_field()
     }
 
     fn challenge(&mut self) -> P::ScalarField {
+        debug_sponge!("challenge", self.sponge);
         self.squeeze(CHALLENGE_LENGTH_IN_LIMBS)
     }
 
     fn challenge_fq(&mut self) -> P::BaseField {
+        debug_sponge!("challenge_fq", self.sponge);
         self.squeeze_field()
     }
 }
