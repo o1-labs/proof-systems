@@ -8,7 +8,6 @@ use crate::{
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::range_check,
         wires::*,
     },
     curve::KimchiCurve,
@@ -36,8 +35,10 @@ use std::sync::Arc;
 pub struct FeatureFlags {
     /// ChaCha gates
     pub chacha: bool,
-    /// Range check gates
-    pub range_check: bool,
+    /// RangeCheck0 gate
+    pub range_check0: bool,
+    /// RangeCheck1 gate
+    pub range_check1: bool,
     /// Foreign field addition gate
     pub foreign_field_add: bool,
     /// Foreign field multiplication gate
@@ -112,9 +113,13 @@ pub struct ColumnEvaluations<F: PrimeField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar_selector8: E<F, D<F>>,
 
-    /// Range check gate selector over domain d8
-    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; range_check::gadget::GATE_COUNT]>")]
-    pub range_check_selectors8: Option<[E<F, D<F>>; range_check::gadget::GATE_COUNT]>,
+    /// RangeCheck0 gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub range_check0_selector8: Option<E<F, D<F>>>,
+
+    /// RangeCheck1 gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub range_check1_selector8: Option<E<F, D<F>>>,
 
     /// Foreign field addition gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -519,27 +524,33 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        // Range check constraint selector polynomials
-        let range_check_selectors8 = {
-            if !self.feature_flags.range_check {
+        // RangeCheck0 constraint selector polynomials
+        let range_check0_selector8 = {
+            if !self.feature_flags.range_check0 {
                 None
             } else {
-                Some([
-                    selector_polynomial(
-                        GateType::RangeCheck0,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                        self.disable_gates_checks,
-                    ),
-                    selector_polynomial(
-                        GateType::RangeCheck1,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                        self.disable_gates_checks,
-                    ),
-                ])
+                Some(selector_polynomial(
+                    GateType::RangeCheck0,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                    self.disable_gates_checks,
+                ))
+            }
+        };
+
+        // RangeCheck1 constraint selector polynomials
+        let range_check1_selector8 = {
+            if !self.feature_flags.range_check1 {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::RangeCheck1,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                    self.disable_gates_checks,
+                ))
             }
         };
 
@@ -617,7 +628,8 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             emul_selector8,
             chacha_selectors8,
             endomul_scalar_selector8,
-            range_check_selectors8,
+            range_check0_selector8,
+            range_check1_selector8,
             foreign_field_add_selector8,
             foreign_field_mul_selector8,
             xor_selector8,
@@ -712,7 +724,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let mut feature_flags = FeatureFlags {
             chacha: false,
-            range_check: false,
+            range_check0: false,
+            range_check1: false,
             lookup_features,
             foreign_field_add: false,
             foreign_field_mul: false,
@@ -726,7 +739,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 | GateType::ChaCha1
                 | GateType::ChaCha2
                 | GateType::ChaChaFinal => feature_flags.chacha = true,
-                GateType::RangeCheck0 | GateType::RangeCheck1 => feature_flags.range_check = true,
+                GateType::RangeCheck0 => feature_flags.range_check0 = true,
+                GateType::RangeCheck1 => feature_flags.range_check1 = true,
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
