@@ -1803,9 +1803,13 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    /// Range check polynomial commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
+    /// RangeCheck0 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check0_comm: Option<PolyComm<G>>,
+
+    /// RangeCheck1 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check1_comm: Option<PolyComm<G>>,
 
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]

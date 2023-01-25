@@ -16,10 +16,7 @@ use crate::{
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check::{
-                self,
-                circuitgates::{RangeCheck0, RangeCheck1},
-            },
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
             varbasemul::VarbaseMul,
             xor::Xor16,
@@ -629,13 +626,12 @@ where
                     }
                 });
 
-            if let Some(polys) = &index.column_evaluations.range_check_selectors8 {
-                index_evals.extend(
-                    range_check::gadget::circuit_gates()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, gate_type)| (*gate_type, &polys[i])),
-                );
+            if let Some(selector) = &index.column_evaluations.range_check0_selector8.as_ref() {
+                index_evals.insert(GateType::RangeCheck0, selector);
+            }
+
+            if let Some(selector) = &index.column_evaluations.range_check1_selector8.as_ref() {
+                index_evals.insert(GateType::RangeCheck1, selector);
             }
 
             if let Some(selector) = index
@@ -718,7 +714,10 @@ where
                 use crate::circuits::argument::DynArgument;
 
                 let chacha_enabled = index.column_evaluations.chacha_selectors8.is_some();
-                let range_check_enabled = index.column_evaluations.range_check_selectors8.is_some();
+                let range_check0_enabled =
+                    index.column_evaluations.range_check0_selector8.is_some();
+                let range_check1_enabled =
+                    index.column_evaluations.range_check1_selector8.is_some();
                 let foreign_field_addition_enabled = index
                     .column_evaluations
                     .foreign_field_add_selector8
@@ -745,8 +744,8 @@ where
                     (&ChaCha2::default(), chacha_enabled),
                     (&ChaChaFinal::default(), chacha_enabled),
                     // Range check gates
-                    (&RangeCheck0::default(), range_check_enabled),
-                    (&RangeCheck1::default(), range_check_enabled),
+                    (&RangeCheck0::default(), range_check0_enabled),
+                    (&RangeCheck1::default(), range_check1_enabled),
                     // Foreign field addition gate
                     (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
                     // Foreign field multiplication gate
