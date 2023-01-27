@@ -132,14 +132,51 @@ where
     }
 }
 
-// Insert code to print sponge trace only when non-release build and
+// Debugging macros -- these only insert code when non-release build and
 // "debug_sponge" feature is enabled.
 macro_rules! debug_sponge {
     ($name:expr, $sponge:expr) => {
         #[cfg(all(feature = "debug_sponge", debug_assertions))]
         {
+            // No input
+            debug_sponge_print_state!($name, $sponge);
+        }
+    };
+    ($name:expr, Field, $input:expr, $sponge:expr) => {
+        #[cfg(all(feature = "debug_sponge", debug_assertions))]
+        {
+            // Field input
+            debug_sponge_print_state!($name, $sponge);
+
+            $input
+                .iter()
+                .for_each(|f| println!("debug_sponge: {} input field {}", $name, f.to_hex()));
+        }
+    };
+    ($name:expr, GroupAffine, $input:expr, $sponge:expr) => {
+        #[cfg(all(feature = "debug_sponge", debug_assertions))]
+        {
+            // GroupAffine input
+            debug_sponge_print_state!($name, $sponge);
+
+            $input.iter().for_each(|point| {
+                println!(
+                    "debug_sponge: {} input point ({}, {})",
+                    $name,
+                    point.x.to_hex(),
+                    point.y.to_hex()
+                )
+            });
+        }
+    };
+}
+#[cfg(all(feature = "debug_sponge", debug_assertions))]
+macro_rules! debug_sponge_print_state {
+    ($name:expr, $sponge:expr) => {
+        #[cfg(all(feature = "debug_sponge", debug_assertions))]
+        {
             println!(
-                "debug_sponge: {} {:?} {}",
+                "debug_sponge: {} state {:?} {}",
                 $name,
                 $sponge.sponge_state,
                 $sponge
@@ -169,7 +206,7 @@ where
     }
 
     fn absorb_g(&mut self, g: &[GroupAffine<P>]) {
-        debug_sponge!("absorb_g", self.sponge);
+        debug_sponge!("absorb_g", GroupAffine, g, self.sponge);
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
@@ -184,14 +221,15 @@ where
     }
 
     fn absorb_fq(&mut self, x: &[P::BaseField]) {
-        debug_sponge!("absorb_fq", self.sponge);
+        debug_sponge!("absorb_fq", Field, x, self.sponge);
+
         self.last_squeezed = vec![];
 
         self.sponge.absorb(x)
     }
 
     fn absorb_fr(&mut self, x: &[P::ScalarField]) {
-        debug_sponge!("absorb_fr", self.sponge);
+        debug_sponge!("absorb_fr", Field, x, self.sponge);
         self.last_squeezed = vec![];
 
         x.iter().for_each(|x| {
