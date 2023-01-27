@@ -7,7 +7,6 @@ use crate::{
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
-            chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
@@ -617,14 +616,6 @@ where
                 EndoMulScalar,
                 &index.column_evaluations.endomul_scalar_selector8,
             );
-            [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
-                .iter()
-                .enumerate()
-                .for_each(|(i, g)| {
-                    if let Some(c) = &index.column_evaluations.chacha_selectors8 {
-                        index_evals.insert(*g, &c[i]);
-                    }
-                });
 
             if let Some(selector) = &index.column_evaluations.range_check0_selector8.as_ref() {
                 index_evals.insert(GateType::RangeCheck0, selector);
@@ -713,7 +704,6 @@ where
             {
                 use crate::circuits::argument::DynArgument;
 
-                let chacha_enabled = index.column_evaluations.chacha_selectors8.is_some();
                 let range_check0_enabled =
                     index.column_evaluations.range_check0_selector8.is_some();
                 let range_check1_enabled =
@@ -738,11 +728,6 @@ where
                     (&EndosclMul::default(), true),
                     (&EndomulScalar::default(), true),
                     (&Poseidon::default(), true),
-                    // Chacha gates
-                    (&ChaCha0::default(), chacha_enabled),
-                    (&ChaCha1::default(), chacha_enabled),
-                    (&ChaCha2::default(), chacha_enabled),
-                    (&ChaChaFinal::default(), chacha_enabled),
                     // Range check gates
                     (&RangeCheck0::default(), range_check0_enabled),
                     (&RangeCheck1::default(), range_check1_enabled),

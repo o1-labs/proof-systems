@@ -25,10 +25,10 @@ The following tables are created to describe the circuit:
 The columns of the tables list the gates, while the rows are the length of the circuit.
 For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
 
-|  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |
-| :---: | :-----: | :------: | :---------: | :--------: | :-----: | :-----------: | :-----: | :-----: | :-----: | :---------: |
-|   0   |    1    |    0     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
-|   1   |    0    |    1     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
+|  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar |
+| :---: | :-----: | :------: | :---------: | :--------: | :-----: | :-----------: |
+|   0   |    1    |    0     |      0      |     0      |    0    |       0       |
+|   1   |    0    |    1     |      0      |     0      |    0    |       0       |
 
 **Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates.
 Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how).
@@ -328,10 +328,6 @@ Similarly to the generic gate, each values taking part in a lookup can be scaled
 The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user's perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.
 
-```admonish
-For now, the Chacha gates are the only gates making use of lookups.
-```
-
 Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup feature.
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
@@ -370,8 +366,6 @@ will translate into a scalar multiplication by 0, which is free.
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
 | 1, r3 | 1, r7 | 1, r11 | -   | 1, r4 | 1, r8 | 1, r12 | -   | 1, r5 | 1, r9 | 1, r13 | -   | 1, r6 | 1, r10 | 1, r14 |
-
-**ChaChaFinalSelector**. Performs 4 different queries to the XOR lookup table. (TODO: specify the layout)
 
 #### Producing the sorted table as the prover
 
@@ -527,149 +521,6 @@ fifth round:
 * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
 
 where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
-
-
-#### Chacha
-
-There are four chacha constraint types, corresponding to the four lines in each quarter round.
-
-```
-a += b; d ^= a; d <<<= 16;
-c += d; b ^= c; b <<<= 12;
-a += b; d ^= a; d <<<= 8;
-c += d; b ^= c; b <<<= 7;
-```
-
-or, written without mutation, (and where `+` is mod $2^32$),
-
-```
-a'  = a + b ; d' = (d ⊕ a') <<< 16;
-c'  = c + d'; b' = (b ⊕ c') <<< 12;
-a'' = a' + b'; d'' = (d' ⊕ a') <<< 8;
-c'' = c' + d''; b'' = (c'' ⊕ b') <<< 7;
-```
-
-We lay each line as two rows.
-
-Each line has the form
-
-```
-x += z; y ^= x; y <<<= k
-```
-
-or without mutation,
-
-```
-x' = x + z; y' = (y ⊕ x') <<< k
-```
-
-which we abbreviate as
-
-L(x, x', y, y', z, k)
-
-In general, such a line will be laid out as the two rows
-
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
-| x' | y' | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
-
-where A_i indicates the i^th nybble (four-bit chunk) of the value A.
-
-$(x+z)_8$ is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).
-
-So the first line `L(a, a', d, d', b, 8)` for example becomes the two rows
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| a | d | b | (d^a')_0 | (d^a')_1 | (d^a')_2 | (d^a')_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |
-| a' | d' | (a+b)_8 | (d^a')_4 | (d^a')_5 | (d^a')_6 | (d^a')_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |
-
-along with the equations
-
-* $(a+b)_8^2 = (a+b)_8$ (booleanity check)
-* $a' = \sum_{i = 0}^7 (2^4)^i (a+b)_i$
-* $a + b = 2^{32} (a+b)_8 + a'$
-* $d = \sum_{i = 0}^7 (2^4)^i d_i$
-* $d' = \sum_{i = 0}^7 (2^4)^{(i + 4) \mod 8} (a+b)_i$
-
-The $(i + 4) \mod 8$ rotates the nybbles left by 4, which means bit-rotating by $4 \times 4 = 16$ as desired.
-
-The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.
-We accomplish this as follows.
-
-Let's say we want to rotate the nybbles $A_0, \cdots, A_7$ left by 7.
-First we'll rotate left by 4 to get
-
-$$A_7, A_0, A_1, \cdots, A_6$$
-
-Rename these as
-$$B_0, \cdots, B_7$$
-
-We now want to left-rotate each $B_i$ by 3.
-
-Let $b_i$ be the low bit of $B_i$.
-Then, the low 3 bits of $B_i$ are
-$(B_i - b_i) / 2$.
-
-The result will thus be
-
-* $2^3 b_0 + (B_7 - b_7)/2$
-* $2^3 b_1 + (B_0 - b_0)/2$
-* $2^3 b_2 + (B_1 - b_1)/2$
-* $\cdots$
-* $2^3 b_7 + (B_6 - b_6)/2$
-
-or re-writing in terms of our original nybbles $A_i$,
-
-* $2^3 a_7 + (A_6 - a_6)/2$
-* $2^3 a_0 + (A_7 - a_7)/2$
-* $2^3 a_1 + (A_0 - a_0)/2$
-* $2^3 a_2 + (A_1 - a_1)/2$
-* $2^3 a_3 + (A_2 - a_2)/2$
-* $2^3 a_4 + (A_3 - a_3)/2$
-* $2^3 a_5 + (A_4 - a_4)/2$
-* $2^3 a_6 + (A_5 - a_5)/2$
-
-For neatness, letting $(x, y, z) = (c', b', d'')$, the first 2 rows for the final line will be:
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
-| x' | _ | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
-
-but then we also need to perform the bit-rotate by 1.
-
-For this we'll add an additional 2 rows. It's probably possible to do it with just 1,
-but I think we'd have to change our plookup setup somehow, or maybe expand the number of columns,
-or allow access to the previous row.
-
-Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| y' | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | lo((y^x')_0) | lo((y^x')_1) | lo((y^x')_2) | lo((y^x')_3) |
-| _ | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | lo((y^x')_4) | lo((y^x')_5) | lo((y^x')_6) | lo((y^x')_7) |
-
-On each of them we'll do the plookups
-
-```
-((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR
-((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR
-((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR
-((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR
-```
-
-which checks that $(y^{x'})_i - lo((y^{x'})_i)$ is a nybble,
-which guarantees that the low bit is computed correctly.
-
-There is no need to check nybbleness of $(y^x')_i$ because those will be constrained to
-be equal to the copies of those values from previous rows, which have already been
-constrained for nybbleness (by the lookup in the XOR table).
-
-And we'll check that y' is the sum of the shifted nybbles.
-
 
 
 #### Elliptic Curve Addition
@@ -1798,10 +1649,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     /// endoscalar multiplication scalar computation selector polynomial commitment
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub endomul_scalar_comm: PolyComm<G>,
-
-    /// Chacha polynomial commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
     /// RangeCheck0 polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]

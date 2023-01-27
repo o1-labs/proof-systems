@@ -44,7 +44,6 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
 )]
 pub struct LookupPatterns {
     pub xor: bool,
-    pub chacha_final: bool,
     pub lookup: bool,
     pub range_check: bool,
     pub foreign_field_mul: bool,
@@ -58,7 +57,6 @@ impl IntoIterator for LookupPatterns {
         // Destructor pattern to make sure we add new lookup patterns.
         let LookupPatterns {
             xor,
-            chacha_final,
             lookup,
             range_check,
             foreign_field_mul,
@@ -68,9 +66,6 @@ impl IntoIterator for LookupPatterns {
 
         if xor {
             patterns.push(LookupPattern::Xor)
-        }
-        if chacha_final {
-            patterns.push(LookupPattern::ChaChaFinal)
         }
         if lookup {
             patterns.push(LookupPattern::Lookup)
@@ -91,7 +86,6 @@ impl std::ops::Index<LookupPattern> for LookupPatterns {
     fn index(&self, index: LookupPattern) -> &Self::Output {
         match index {
             LookupPattern::Xor => &self.xor,
-            LookupPattern::ChaChaFinal => &self.chacha_final,
             LookupPattern::Lookup => &self.lookup,
             LookupPattern::RangeCheck => &self.range_check,
             LookupPattern::ForeignFieldMul => &self.foreign_field_mul,
@@ -103,7 +97,6 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
             LookupPattern::Xor => &mut self.xor,
-            LookupPattern::ChaChaFinal => &mut self.chacha_final,
             LookupPattern::Lookup => &mut self.lookup,
             LookupPattern::RangeCheck => &mut self.range_check,
             LookupPattern::ForeignFieldMul => &mut self.foreign_field_mul,
@@ -390,7 +383,6 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
 )]
 pub enum LookupPattern {
     Xor,
-    ChaChaFinal,
     Lookup,
     RangeCheck,
     ForeignFieldMul,
@@ -400,7 +392,7 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::Xor | LookupPattern::ChaChaFinal | LookupPattern::RangeCheck => 4,
+            LookupPattern::Xor | LookupPattern::RangeCheck => 4,
             LookupPattern::Lookup => 3,
             LookupPattern::ForeignFieldMul => 2,
         }
@@ -409,7 +401,7 @@ impl LookupPattern {
     /// Returns the maximum number of values that are used in any vector lookup in this pattern.
     pub fn max_joint_size(&self) -> u32 {
         match self {
-            LookupPattern::Xor | LookupPattern::ChaChaFinal => 3,
+            LookupPattern::Xor => 3,
             LookupPattern::Lookup => 2,
             LookupPattern::ForeignFieldMul | LookupPattern::RangeCheck => 1,
         }
@@ -446,25 +438,6 @@ impl LookupPattern {
                         JointLookup {
                             table_id: LookupTableID::Constant(XOR_TABLE_ID),
                             entry: vec![l(left), l(right), l(output)],
-                        }
-                    })
-                    .collect()
-            }
-            LookupPattern::ChaChaFinal => {
-                let one_half = F::from(2u64).inverse().unwrap();
-                let neg_one_half = -one_half;
-                (0..4)
-                    .map(|i| {
-                        let nybble = curr_row(1 + i);
-                        let low_bit = curr_row(5 + i);
-                        // Check
-                        // XOR((nybble - low_bit)/2, (nybble - low_bit)/2) = 0.
-                        let x = SingleLookup {
-                            value: vec![(one_half, nybble), (neg_one_half, low_bit)],
-                        };
-                        JointLookup {
-                            table_id: LookupTableID::Constant(XOR_TABLE_ID),
-                            entry: vec![x.clone(), x, SingleLookup { value: vec![] }],
                         }
                     })
                     .collect()
@@ -529,7 +502,7 @@ impl LookupPattern {
     /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
     pub fn table(&self) -> Option<GateLookupTable> {
         match self {
-            LookupPattern::Xor | LookupPattern::ChaChaFinal => Some(GateLookupTable::Xor),
+            LookupPattern::Xor => Some(GateLookupTable::Xor),
             LookupPattern::Lookup => None,
             LookupPattern::RangeCheck => Some(GateLookupTable::RangeCheck),
             LookupPattern::ForeignFieldMul => Some(GateLookupTable::RangeCheck),
@@ -541,8 +514,6 @@ impl LookupPattern {
         use CurrOrNext::{Curr, Next};
         use GateType::*;
         match (gate_type, curr_or_next) {
-            (ChaCha0 | ChaCha1 | ChaCha2, Curr | Next) => Some(LookupPattern::Xor),
-            (ChaChaFinal, Curr | Next) => Some(LookupPattern::ChaChaFinal),
             (Lookup, Curr) => Some(LookupPattern::Lookup),
             (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) | (Rot64, Curr) => {
                 Some(LookupPattern::RangeCheck)
@@ -556,15 +527,9 @@ impl LookupPattern {
 
 impl GateType {
     /// Which lookup-patterns should be applied on which rows.
-    /// Currently there is only the lookup pattern used in the `ChaCha` rows, and it
-    /// is applied to each `ChaCha` row and its successor.
-    ///
-    /// See circuits/kimchi/src/polynomials/chacha.rs for an explanation of
-    /// how these work.
     pub fn lookup_kinds() -> Vec<LookupPattern> {
         vec![
             LookupPattern::Xor,
-            LookupPattern::ChaChaFinal,
             LookupPattern::Lookup,
             LookupPattern::RangeCheck,
             LookupPattern::ForeignFieldMul,
