@@ -149,7 +149,7 @@ see later, opening proofs for vector commitments is an interesting topic and the
 
 ## Polynomial commitments
 
-To construct SNARKs we use use polynomial commitments. A **polynomial commitment scheme**  for a field $F$ (or it could even be a ring) is a way of committing to a polynomial $f \in F[x]$ to get a commitment $c$, in such a way that for any $\alpha \in F$, you can provide $y = f(\alpha)$, along with an "opening proof" $\pi$ that proves that the polynomial committed to in $c$ equals $y$ when evaluated at $\alpha$.
+To construct SNARKs we use polynomial commitments. A **polynomial commitment scheme**  for a field $F$ (or it could even be a ring) is a way of committing to a polynomial $f \in F[x]$ to get a commitment $c$, in such a way that for any $\alpha \in F$, you can provide $y = f(\alpha)$, along with an "opening proof" $\pi$ that proves that the polynomial committed to in $c$ equals $y$ when evaluated at $\alpha$.
 
 In other words, it is a type of commitment $C$, a type of randomness $R$, a type of opening proof $P$ along with algorithms
 
