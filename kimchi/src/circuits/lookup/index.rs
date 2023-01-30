@@ -7,7 +7,7 @@ use crate::circuits::{
         lookups::{LookupInfo, LookupPattern},
         tables::LookupTable,
     },
-    polynomials::permutation::ZK_ROWS,
+    polynomials::permutation::{PERM_FINAL_ACC, ZK_ROWS},
 };
 use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{
@@ -227,7 +227,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
                 // because the row before is used to assert that the lookup argument's final
                 // product is 1, we cannot use those rows to store any values.
-                let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
+                let max_num_entries = d1_size - ((ZK_ROWS + PERM_FINAL_ACC) as usize) - 1;
 
                 //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
                 let (lookup_selectors, gate_lookup_tables) =
@@ -270,7 +270,11 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             );
 
                             // although the last ZK_ROWS are fine
-                            for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
+                            for e in evals
+                                .iter_mut()
+                                .rev()
+                                .take((ZK_ROWS + PERM_FINAL_ACC) as usize)
+                            {
                                 *e = F::zero();
                             }
 
