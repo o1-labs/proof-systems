@@ -437,7 +437,8 @@ impl Op2 {
 )]
 pub enum FeatureFlag {
     ChaCha,
-    RangeCheck,
+    RangeCheck0,
+    RangeCheck1,
     ForeignFieldAdd,
     ForeignFieldMul,
     Xor,
@@ -586,7 +587,8 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                     use FeatureFlag::*;
                     match feature {
                         ChaCha => features.chacha,
-                        RangeCheck => features.range_check,
+                        RangeCheck0 => features.range_check0,
+                        RangeCheck1 => features.range_check1,
                         ForeignFieldAdd => features.foreign_field_add,
                         ForeignFieldMul => features.foreign_field_mul,
                         Xor => features.xor,
