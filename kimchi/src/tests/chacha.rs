@@ -37,7 +37,7 @@ fn chacha_prover() {
     let rows_per_chacha = 20 * 4 * 10;
     let n_lower_bound = rows_per_chacha * num_chachas;
     let max_size = 1 << math::ceil_log2(n_lower_bound);
-    println!("{} {}", n_lower_bound, max_size);
+    println!("{n_lower_bound} {max_size}");
 
     let s0: Vec<u32> = vec![
         0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, 0x03020100, 0x07060504, 0x0b0a0908,
@@ -89,7 +89,7 @@ fn chacha_prover() {
 
     let start = Instant::now();
     match verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
+        Err(error) => panic!("Failure verifying the prover's proofs in batch: {error}"),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
         }

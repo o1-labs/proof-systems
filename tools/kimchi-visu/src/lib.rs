@@ -124,7 +124,7 @@ pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::S
 
     let rendered = tt
         .render("circuit", &context)
-        .unwrap_or_else(|e| panic!("template file can't be rendered: {}", e));
+        .unwrap_or_else(|e| panic!("template file can't be rendered: {e}"));
 
     let mut file = File::create(html_output).unwrap_or_else(|e| panic!("{e}"));
     write!(&mut file, "{rendered}").expect("couldn't write the file on disk");

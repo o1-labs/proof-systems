@@ -152,10 +152,10 @@ impl<F: PrimeField> CircuitGate<F> {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
                     if x != F::zero() {
-                        return Err(format!("Bad endo equation {}", i));
+                        return Err(format!("Bad endo equation {i}"));
                     }
                 }
-                Err(e) => return Err(format!("evaluation failed: {}", e)),
+                Err(e) => return Err(format!("evaluation failed: {e}")),
             }
         }
 
