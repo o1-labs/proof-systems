@@ -945,9 +945,7 @@ fn test_invalid_wraparound_carry1_hi_plookup() {
     }
     // edge case: x - 1 is not a wraparound value
     assert!(wraparound_0 - PallasField::one() >= PallasField::from(2u32).pow([12u64]));
-    assert!(
-        two_to_9 * (wraparound_0 - PallasField::one()) >= PallasField::from(2u32).pow([12u64])
-    );
+    assert!(two_to_9 * (wraparound_0 - PallasField::one()) >= PallasField::from(2u32).pow([12u64]));
     // edge case: x + 8 is not a wraparound value
     assert!(wraparound_0 + PallasField::from(8) >= PallasField::from(2u32).pow([12u64]));
     assert!(

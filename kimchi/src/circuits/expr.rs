@@ -983,11 +983,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn add<'c>(
-        self,
-        other: EvalResult<'_, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn add<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x + y),
@@ -1106,11 +1102,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn sub<'c>(
-        self,
-        other: EvalResult<'_, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn sub<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
@@ -1265,11 +1257,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn mul<'c>(
-        self,
-        other: EvalResult<'_, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn mul<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x * y),
