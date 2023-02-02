@@ -18,6 +18,21 @@
 - [Polynomial commitments](./plonk/polynomial_commitments.md)
   - [Inner product argument](./plonk/inner_product.md)
   - [Different functionnalities](./plonk/inner_product_api.md)
+- [Two Party Computation](./fundamentals/zkbook_2pc/overview.md)
+  - [Garbled Circuits](./fundamentals/zkbook_2pc/gc.md)
+    - [Basics](./fundamentals/zkbook_2pc/basics.md)
+    - [Point and Permute](./fundamentals/zkbook_2pc/pap.md)
+    - [Free XOR](./fundamentals/zkbook_2pc/freexor.md)
+    - [Row Reduction](./fundamentals/zkbook_2pc/row_red.md)
+    - [Half Gate](./fundamentals/zkbook_2pc/halfgate.md)
+    - [Full Description](./fundamentals/zkbook_2pc/fulldesc.md)
+    - [Fixed-Key-AES Hashes](./fundamentals/zkbook_2pc/fkaes.md)
+
+  - [Oblivious Transfer](./fundamentals/zkbook_2pc/ot.md)
+    - [Base OT](./fundamentals/zkbook_2pc/baseot.md)
+    - [OT Extension](./fundamentals/zkbook_2pc/ote.md)
+
+  - [Full Protocol](./fundamentals/zkbook_2pc/2pc.md)
 
 # Proof systems
 
