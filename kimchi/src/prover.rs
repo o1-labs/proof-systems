@@ -47,7 +47,7 @@ use commitment_dlog::{
 };
 use itertools::Itertools;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::ExtendedDensePolynomial as _;
+use o1_utils::{fast_msm::msm::MultiScalarMultiplication, ExtendedDensePolynomial as _};
 use rayon::prelude::*;
 use std::array;
 use std::collections::HashMap;
@@ -115,7 +115,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve + MultiScalarMultiplication> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {

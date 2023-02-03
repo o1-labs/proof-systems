@@ -9,8 +9,8 @@
 use crate::srs::endos;
 use crate::{error::CommitmentError, srs::SRS};
 use ark_ec::{
-    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
-    AffineCurve, ProjectiveCurve, SWModelParameters,
+    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, AffineCurve, ProjectiveCurve,
+    SWModelParameters,
 };
 use ark_ff::{
     BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
@@ -22,6 +22,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use core::ops::{Add, Sub};
 use groupmap::{BWParameters, GroupMap};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::fast_msm::msm::MultiScalarMultiplication;
 use o1_utils::math;
 use o1_utils::ExtendedDensePolynomial as _;
 use rand_core::{CryptoRng, RngCore};
@@ -206,7 +207,7 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
     }
 }
 
-impl<C: AffineCurve> PolyComm<C> {
+impl<C: AffineCurve + MultiScalarMultiplication> PolyComm<C> {
     pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
         PolyComm {
             unshifted: self
@@ -231,26 +232,24 @@ impl<C: AffineCurve> PolyComm<C> {
             return Self::new(vec![C::zero()], None);
         }
 
-        let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
-
         let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
         let mut unshifted = Vec::with_capacity(unshifted_size);
 
         for chunk in 0..unshifted_size {
             let (points, scalars): (Vec<_>, Vec<_>) = com
                 .iter()
-                .zip(&all_scalars)
+                .zip(elm)
                 // get rid of scalars that don't have an associated chunk
                 .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
-            let chunk_msm = VariableBaseMSM::multi_scalar_mul::<C>(&points, &scalars);
-            unshifted.push(chunk_msm.into_affine());
+            let chunk_msm = C::msm(&points, &scalars);
+            unshifted.push(chunk_msm);
         }
 
         let mut shifted_pairs = com
             .iter()
-            .zip(all_scalars)
+            .zip(elm)
             // get rid of commitments without a `shifted` part
             .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
             .peekable();
@@ -259,7 +258,7 @@ impl<C: AffineCurve> PolyComm<C> {
             None
         } else {
             let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
-            Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+            Some(C::msm(&points, &scalars))
         };
 
         Self::new(unshifted, shifted)
@@ -517,7 +516,7 @@ where
     pub opening: &'a OpeningProof<G>,
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G: CommitmentCurve + MultiScalarMultiplication> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
         &self,
@@ -574,16 +573,14 @@ impl<G: CommitmentCurve> SRS<G> {
         let basis_len = self.g.len();
         let coeffs_len = plnm.coeffs.len();
 
-        let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
-
         // chunk while commiting
         let mut unshifted = vec![];
         if is_zero {
             unshifted.push(G::zero());
         } else {
-            coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
-                let chunk = VariableBaseMSM::multi_scalar_mul(&self.g, coeffs_chunk);
-                unshifted.push(chunk.into_affine());
+            plnm.chunks(self.g.len()).for_each(|coeffs_chunk| {
+                let chunk = G::msm(&self.g, coeffs_chunk);
+                unshifted.push(chunk);
             });
         }
 
@@ -600,11 +597,8 @@ impl<G: CommitmentCurve> SRS<G> {
                     None
                 } else {
                     // we shift the last chunk to the right as proof of the degree bound
-                    let shifted = VariableBaseMSM::multi_scalar_mul(
-                        &self.g[basis_len - (max % basis_len)..],
-                        &coeffs[start..],
-                    );
-                    Some(shifted.into_affine())
+                    let shifted = G::msm(&self.g[basis_len - (max % basis_len)..], &plnm[start..]);
+                    Some(shifted)
                 }
             }
         };
@@ -866,8 +860,7 @@ impl<G: CommitmentCurve> SRS<G> {
         }
 
         // verify the equation
-        let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
-        VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()
+        G::msm(&points, &scalars).is_zero()
     }
 }
 

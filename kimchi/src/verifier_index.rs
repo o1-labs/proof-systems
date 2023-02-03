@@ -20,6 +20,7 @@ use commitment_dlog::{
     srs::SRS,
 };
 use mina_poseidon::FqSponge;
+use o1_utils::fast_msm::msm::MultiScalarMultiplication;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -153,7 +154,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<G: KimchiCurve> ProverIndex<G> {
+impl<G: KimchiCurve + MultiScalarMultiplication> ProverIndex<G> {
     /// Produces the [`VerifierIndex`] from the prover's [`ProverIndex`].
     ///
     /// # Panics

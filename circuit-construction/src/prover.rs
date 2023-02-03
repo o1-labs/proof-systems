@@ -13,6 +13,7 @@ use kimchi::{
     prover_index::ProverIndex,
 };
 use mina_poseidon::FqSponge;
+use o1_utils::fast_msm::msm::MultiScalarMultiplication;
 use std::array;
 
 /// Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof.
@@ -30,7 +31,7 @@ pub fn prove<G, H, EFqSponge, EFrSponge>(
 where
     H: FnMut(&mut WitnessGenerator<G::ScalarField>, Vec<Var<G::ScalarField>>),
     G::BaseField: PrimeField,
-    G: KimchiCurve,
+    G: KimchiCurve + MultiScalarMultiplication,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {

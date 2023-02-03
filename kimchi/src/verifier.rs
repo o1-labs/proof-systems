@@ -24,6 +24,7 @@ use commitment_dlog::commitment::{
     absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::fast_msm::msm::MultiScalarMultiplication;
 use rand::thread_rng;
 
 /// The result of a proof verification.
@@ -786,7 +787,7 @@ pub fn batch_verify<G, EFqSponge, EFrSponge>(
     proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
 ) -> Result<()>
 where
-    G: KimchiCurve,
+    G: KimchiCurve + MultiScalarMultiplication,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,

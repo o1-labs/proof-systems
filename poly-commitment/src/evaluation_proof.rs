@@ -1,10 +1,11 @@
 use crate::srs::SRS;
 use crate::{commitment::*, srs::endos};
-use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::fast_msm::msm::MultiScalarMultiplication;
 use o1_utils::math;
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
@@ -71,7 +72,10 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
     }
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+impl<G> SRS<G>
+where
+    G: CommitmentCurve + MultiScalarMultiplication,
+{
     /// This function opens polynomial commitments in batch
     ///     plnms: batch of polynomials to open commitments for with, optionally, max degrees
     ///     elm: evaluation point vector to open the commitments at
@@ -253,25 +257,15 @@ impl<G: CommitmentCurve> SRS<G> {
             let rand_l = <G::ScalarField as UniformRand>::rand(rng);
             let rand_r = <G::ScalarField as UniformRand>::rand(rng);
 
-            let l = VariableBaseMSM::multi_scalar_mul(
+            let l = G::msm(
                 &[&g[0..n], &[self.h, u]].concat(),
-                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_repr())
-                    .collect::<Vec<_>>(),
-            )
-            .into_affine();
+                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]].concat(),
+            );
 
-            let r = VariableBaseMSM::multi_scalar_mul(
+            let r = G::msm(
                 &[&g[n..], &[self.h, u]].concat(),
-                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_repr())
-                    .collect::<Vec<_>>(),
-            )
-            .into_affine();
+                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]].concat(),
+            );
 
             lr.push((l, r));
             blinders.push((rand_l, rand_r));

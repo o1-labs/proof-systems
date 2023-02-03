@@ -1,5 +1,6 @@
 use ark_ff::{FftField, One, Zero};
 use commitment_dlog::PolyComm;
+use o1_utils::fast_msm::msm::MultiScalarMultiplication;
 use serde::{Deserialize, Serialize};
 
 pub mod range_check;
@@ -111,6 +112,7 @@ pub fn combine_table<G>(
     runtime_vector: Option<&PolyComm<G>>,
 ) -> PolyComm<G>
 where
+    G: MultiScalarMultiplication,
     G: commitment_dlog::commitment::CommitmentCurve,
 {
     assert!(!columns.is_empty());
