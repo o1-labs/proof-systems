@@ -5,8 +5,10 @@ use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 /// Fast MSM implementations using GPU-acceleration.
 //#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 pub mod msm {
+    use ark_ec::msm::VariableBaseMSM;
     use ark_ec::AffineCurve;
-    use ark_ff::ToBytes as _;
+    use ark_ec::ProjectiveCurve;
+    use ark_ff::{PrimeField, ToBytes as _};
     use ark_serialize::CanonicalDeserialize;
     use mina_curves::pasta::curves::pallas::LegacyPallas;
     use mina_curves::pasta::curves::vesta::LegacyVesta;
@@ -16,6 +18,15 @@ pub mod msm {
     use pasta_curves::group::Curve;
 
     use super::*;
+
+    //
+    // Constants
+    //
+
+    /// Below this length, use the arkworks implementation.
+    /// This is because the arkworks implementation is faster for smaller MSM lengths.
+    /// See the benchmarks in `utils/benches/msm.rs`.
+    const GPU_THRESHOLD: usize = 128;
 
     //
     // Traits for scalars
@@ -171,40 +182,63 @@ pub mod msm {
     // MSM
     //
 
+    /// The arkworks implementation of the MSM algorithm (not GPU-accelerated).
+    fn cpu_msm<G: AffineCurve>(points: &[G], scalars: &[G::ScalarField]) -> G {
+        VariableBaseMSM::multi_scalar_mul(
+            &points,
+            &scalars.iter().map(|x| x.into_repr()).collect::<Vec<_>>(),
+        )
+        .into_affine()
+    }
+
     /// TKTK
     // TODO: bonus point if you can move the logic to a default impl
     pub trait MultiScalarMultiplication: ToOtherAffine {
-        /// MSM implementation
-        fn msm(bases: &[Self], scalars: &[Self::ScalarField]) -> Self;
+        /// The GPU-accelerated MSM implementation.
+        /// Do not use this, use [Self::msm] instead.
+        fn gpu_msm(points: &[Self], scalars: &[Self::ScalarField]) -> Self;
+
+        /// The main MSM API. Uses the GPU-accelerated implementation if the MSM is large enough.
+        fn msm(points: &[Self], scalars: &[Self::ScalarField]) -> Self {
+            assert_eq!(
+                points.len(),
+                scalars.len(),
+                "points and scalars must have the same length"
+            );
+
+            // don't use the GPU-accelerated implementation for small MSMs.
+            if points.len() < GPU_THRESHOLD {
+                return cpu_msm(points, scalars);
+            }
+
+            // MSM
+            Self::gpu_msm(&points, &scalars)
+        }
     }
 
     impl MultiScalarMultiplication for Pallas {
-        fn msm(bases: &[Self], scalars: &[Self::ScalarField]) -> Self {
-            assert_eq!(
-                bases.len(),
-                scalars.len(),
-                "bases and scalars must have the same length"
-            );
-
+        fn gpu_msm(points: &[Self], scalars: &[Self::ScalarField]) -> Self {
             // convert arkworks points/scalars to pasta_curves types
-            let points: Vec<_> = bases.iter().map(ToOtherAffine::to_other).collect();
+            let points: Vec<_> = points.iter().map(ToOtherAffine::to_other).collect();
             let scalars: Vec<_> = scalars.iter().map(ToOtherScalar::to_other).collect();
 
-            let res = pasta_msm::pallas(&points, &scalars);
+            let res = pasta_msm::pallas(&points, &scalars).to_affine();
 
-            Pallas::from_other(&res.to_affine())
+            // convert back
+            Self::from_other(&res)
         }
     }
 
     impl MultiScalarMultiplication for Vesta {
-        fn msm(bases: &[Self], scalars: &[Self::ScalarField]) -> Self {
+        fn gpu_msm(points: &[Self], scalars: &[Self::ScalarField]) -> Self {
             // convert arkworks points/scalars to pasta_curves types
-            let points: Vec<_> = bases.iter().map(ToOtherAffine::to_other).collect();
+            let points: Vec<_> = points.iter().map(ToOtherAffine::to_other).collect();
             let scalars: Vec<_> = scalars.iter().map(ToOtherScalar::to_other).collect();
 
-            let res = pasta_msm::vesta(&points, &scalars);
+            let res = pasta_msm::vesta(&points, &scalars).to_affine();
 
-            Vesta::from_other(&res.to_affine())
+            // convert back
+            Self::from_other(&res)
         }
     }
 
@@ -253,13 +287,13 @@ pub mod msm {
     }
 
     impl MultiScalarMultiplication for LegacyVesta {
-        fn msm(_bases: &[Self], _scalars: &[Self::ScalarField]) -> Self {
+        fn gpu_msm(_points: &[Self], _scalars: &[Self::ScalarField]) -> Self {
             unreachable!()
         }
     }
 
     impl MultiScalarMultiplication for LegacyPallas {
-        fn msm(_bases: &[Self], _scalars: &[Self::ScalarField]) -> Self {
+        fn gpu_msm(_points: &[Self], _scalars: &[Self::ScalarField]) -> Self {
             unreachable!()
         }
     }
@@ -274,9 +308,7 @@ pub mod msm {
         use std::ops::Mul;
 
         use super::*;
-        use ark_ec::msm::VariableBaseMSM;
-        use ark_ec::ProjectiveCurve as _;
-        use ark_ff::{FftField, PrimeField};
+        use ark_ff::FftField;
         use ark_std::{test_rng, UniformRand};
 
         //
@@ -414,18 +446,26 @@ pub mod msm {
         // Test that MSM works
         //
 
+        fn create_scalars_and_points<G: MultiScalarMultiplication>(
+            len: usize,
+        ) -> (Vec<G::ScalarField>, Vec<G>) {
+            let mut scalars = Vec::with_capacity(len);
+            let mut points = Vec::with_capacity(len);
+            for _ in 0..len {
+                scalars.push(G::ScalarField::rand(&mut test_rng()));
+                points.push(G::Projective::rand(&mut test_rng()).into_affine());
+            }
+            (scalars, points)
+        }
+
         fn test_msm_generic<G: MultiScalarMultiplication>() {
-            let scalars = vec![G::ScalarField::from(2u64), G::ScalarField::from(3u8)];
-            let points = vec![G::prime_subgroup_generator(), G::prime_subgroup_generator()];
+            let (scalars, points) = create_scalars_and_points::<Vesta>(GPU_THRESHOLD + 1);
 
-            let res = VariableBaseMSM::multi_scalar_mul(
-                &points,
-                &scalars.iter().map(|x| x.into_repr()).collect::<Vec<_>>(),
-            );
+            let res = cpu_msm(&points, &scalars);
 
-            let other_res = G::msm(&points, &scalars);
+            let other_res = Vesta::msm(&points, &scalars);
 
-            assert_eq!(res.into_affine(), other_res);
+            assert_eq!(res, other_res);
         }
 
         #[test]

@@ -1,3 +1,14 @@
+//!
+//! You can run this benchmark like so:
+//!
+//! ```ignore
+//! cargo criterion -p o1-utils --bench msm
+//! ```
+//!
+//! It will show you the performance of the arkworks (CPU) and supra (GPU) MSM impls,
+//! using different vector lengths.
+//!
+
 use ark_ec::{msm::VariableBaseMSM, ProjectiveCurve};
 use ark_ff::PrimeField;
 use ark_std::{test_rng, UniformRand};
@@ -32,7 +43,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("supra msm of length 20", |b| {
         b.iter(|| {
-            let _ = black_box(Vesta::msm(black_box(&points), black_box(&scalars)));
+            let _ = black_box(Vesta::gpu_msm(black_box(&points), black_box(&scalars)));
         })
     });
 
@@ -50,7 +61,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("supra msm of length 128", |b| {
         b.iter(|| {
-            let _ = black_box(Vesta::msm(black_box(&points), black_box(&scalars)));
+            let _ = black_box(Vesta::gpu_msm(black_box(&points), black_box(&scalars)));
         })
     });
 
@@ -68,7 +79,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("supra msm of length 200", |b| {
         b.iter(|| {
-            let _ = black_box(Vesta::msm(black_box(&points), black_box(&scalars)));
+            let _ = black_box(Vesta::gpu_msm(black_box(&points), black_box(&scalars)));
         })
     });
 
@@ -86,7 +97,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("supra msm of length 400", |b| {
         b.iter(|| {
-            let _ = black_box(Vesta::msm(black_box(&points), black_box(&scalars)));
+            let _ = black_box(Vesta::gpu_msm(black_box(&points), black_box(&scalars)));
         })
     });
 }
