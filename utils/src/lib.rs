@@ -9,12 +9,12 @@ pub mod chunked_evaluations;
 pub mod chunked_polynomial;
 pub mod dense_polynomial;
 pub mod evaluations;
+pub mod fast_msm;
 pub mod field_helpers;
 pub mod foreign_field;
 pub mod hasher;
 pub mod math;
 pub mod serialization;
-pub mod fast_msm;
 
 pub use biguint_helpers::BigUintHelpers;
 pub use bitwise_operations::BitwiseOps;
