@@ -1,17 +1,27 @@
 //! Routes to the best available MSM implementation.
 
-use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+use ark_ec::msm::VariableBaseMSM;
+use ark_ec::AffineCurve;
+use ark_ec::ProjectiveCurve;
+use ark_ff::PrimeField;
 
-/// Fast MSM implementations using GPU-acceleration.
-//#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+/// The arkworks implementation of the MSM algorithm (not GPU-accelerated).
+fn cpu_msm<G: AffineCurve>(points: &[G], scalars: &[G::ScalarField]) -> G {
+    VariableBaseMSM::multi_scalar_mul(
+        &points,
+        &scalars.iter().map(|x| x.into_repr()).collect::<Vec<_>>(),
+    )
+    .into_affine()
+}
+
+/// Fast MSM implementation using GPU-acceleration.
+#[cfg(feature = "gpu")]
 pub mod msm {
-    use ark_ec::msm::VariableBaseMSM;
-    use ark_ec::AffineCurve;
-    use ark_ec::ProjectiveCurve;
-    use ark_ff::{PrimeField, ToBytes as _};
+    use ark_ff::ToBytes as _;
     use ark_serialize::CanonicalDeserialize;
     use mina_curves::pasta::curves::pallas::LegacyPallas;
     use mina_curves::pasta::curves::vesta::LegacyVesta;
+    use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
     use pasta_curves::arithmetic::CurveAffine;
     use pasta_curves::group::ff::PrimeField as _;
     use pasta_curves::group::prime::PrimeCurveAffine;
@@ -181,15 +191,6 @@ pub mod msm {
     //
     // MSM
     //
-
-    /// The arkworks implementation of the MSM algorithm (not GPU-accelerated).
-    fn cpu_msm<G: AffineCurve>(points: &[G], scalars: &[G::ScalarField]) -> G {
-        VariableBaseMSM::multi_scalar_mul(
-            &points,
-            &scalars.iter().map(|x| x.into_repr()).collect::<Vec<_>>(),
-        )
-        .into_affine()
-    }
 
     /// TKTK
     // TODO: bonus point if you can move the logic to a default impl
@@ -476,22 +477,23 @@ pub mod msm {
     }
 }
 
-// #[cfg(not(any(target_arch = "x86_64", target_arch = "aarch64")))]
-// pub mod msm {
-//     use super::*;
+/// Non-GPU optimized MSM implementation.
+/// See feature `gpu` for more details.
+#[cfg(not(feature = "gpu"))]
+pub mod msm {
+    use super::*;
 
-//     pub fn pallas_msm(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInt]) -> Self {
+    /// The multi-scalar multiplication for any [AffineCurve].
+    pub trait MultiScalarMultiplication: AffineCurve {
+        /// The main MSM API. Will panic if the two given slices have different lengths.
+        fn msm(points: &[Self], scalars: &[Self::ScalarField]) -> Self {
+            assert_eq!(
+                points.len(),
+                scalars.len(),
+                "points and scalars must have the same length"
+            );
 
-// VariableBaseMSM::multi_scalar_mul(
-//     &[&g[0..n], &[self.h, u]].concat(),
-//     &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]]
-//         .concat()
-//         .iter()
-//         .map(|x| x.into_repr())
-//         .collect::<Vec<_>>(),
-// )
-// .into_affine();
-
-//         VariableBaseMSM::multi_scalar_mul();
-//     }
-// }
+            cpu_msm(points, scalars)
+        }
+    }
+}
