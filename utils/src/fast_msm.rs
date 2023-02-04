@@ -10,7 +10,6 @@ pub mod msm {
     use ark_serialize::CanonicalDeserialize;
     use mina_curves::pasta::curves::pallas::LegacyPallas;
     use mina_curves::pasta::curves::vesta::LegacyVesta;
-    use pasta_curves::arithmetic::CurveAffine;
     use pasta_curves::group::prime::PrimeCurveAffine;
     use pasta_curves::group::Curve;
     use pasta_curves::group::{ff::PrimeField as _, GroupEncoding};
@@ -179,6 +178,12 @@ pub mod msm {
 
     impl MultiScalarMultiplication for Pallas {
         fn msm(bases: &[Self], scalars: &[Self::ScalarField]) -> Self {
+            assert_eq!(
+                bases.len(),
+                scalars.len(),
+                "bases and scalars must have the same length"
+            );
+
             // convert arkworks points/scalars to pasta_curves types
             let points: Vec<_> = bases.iter().map(ToOtherAffine::to_other).collect();
             let scalars: Vec<_> = scalars.iter().map(ToOtherScalar::to_other).collect();
@@ -232,11 +237,6 @@ pub mod msm {
             unreachable!()
         }
     }
-
-    // /// Do we need this function now?
-    // pub fn fast_msm<G: MultiScalarMultiplication>(bases: &[G], scalars: &[G::ScalarField]) -> G {
-    //     G::msm(&bases, &scalars)
-    // }
 
     //
     // Sanity checks

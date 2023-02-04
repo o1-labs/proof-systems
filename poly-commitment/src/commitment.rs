@@ -579,7 +579,7 @@ impl<G: CommitmentCurve + MultiScalarMultiplication> SRS<G> {
             unshifted.push(G::zero());
         } else {
             plnm.chunks(self.g.len()).for_each(|coeffs_chunk| {
-                let chunk = G::msm(&self.g, coeffs_chunk);
+                let chunk = G::msm(&self.g[..coeffs_chunk.len()], coeffs_chunk);
                 unshifted.push(chunk);
             });
         }
