@@ -6,11 +6,12 @@ use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 //#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 pub mod msm {
     use ark_ec::AffineCurve;
-    use ark_ff::ToBytes as _;
-    use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
+    use ark_ff::{BigInteger, PrimeField, ToBytes as _};
+    use ark_serialize::CanonicalDeserialize;
     use mina_curves::pasta::curves::pallas::LegacyPallas;
     use mina_curves::pasta::curves::vesta::LegacyVesta;
-    use pasta_curves::arithmetic::FieldExt;
+    use pasta_curves::arithmetic::CurveAffine;
+    use pasta_curves::group::prime::PrimeCurveAffine;
     use pasta_curves::group::Curve;
     use pasta_curves::group::{ff::PrimeField as _, GroupEncoding};
 
@@ -22,9 +23,9 @@ pub mod msm {
 
     /// TKTK
     // TODO: bonus point if you can have default implementations hold the logic here
-    pub trait ToOtherScalar {
+    pub trait ToOtherScalar: ark_ff::PrimeField {
         /// The other curve's type
-        type Other: FieldExt + pasta_curves::group::ff::Field;
+        type Other: pasta_curves::group::ff::PrimeField + pasta_curves::group::ff::Field;
 
         /// The conversion to that type
         fn to_other(&self) -> Self::Other;
@@ -37,12 +38,12 @@ pub mod msm {
         type Other = pasta_curves::vesta::Scalar;
 
         fn to_other(&self) -> Self::Other {
-            let mut bytes = [0u8; 64];
+            let mut bytes = [0u8; 32];
             // arkwork points to bytes
             self.write(&mut bytes[..]).unwrap();
 
             // TODO: use our own helper
-            Self::Other::from_bytes_wide(&bytes)
+            Self::Other::from_repr(bytes).unwrap()
         }
 
         fn from_other(other: &Self::Other) -> Self {
@@ -55,12 +56,12 @@ pub mod msm {
         type Other = pasta_curves::pallas::Scalar;
 
         fn to_other(&self) -> Self::Other {
-            let mut bytes = [0u8; 64];
+            let mut bytes = [0u8; 32];
             // arkwork points to bytes
             self.write(&mut bytes[..]).unwrap();
 
             // TODO: use our own helper
-            Self::Other::from_bytes_wide(&bytes)
+            Self::Other::from_repr(bytes).unwrap()
         }
 
         fn from_other(other: &Self::Other) -> Self {
@@ -73,130 +74,95 @@ pub mod msm {
     // Traits for elliptic curve affine points
     //
 
-    /// TKTK
-    // TODO: bonus point if you can have default implementations hold the logic here
+    /// This is a trait to convert points from the arkwork's [AffineCurve] library to points on the [pasta_curves] library.
+    /// Unfortunately, the serializations are different, with the arkworks one being non-standard.
+    ///
+    /// The arkworks one uses a 33-byte representation, with the last byte only used for a set of flags:
+    /// - the MSB (1 << 7) is set if the y coordinate is greater than -y (as bigints)
+    /// - the second MSB (1 << 6) is set if the point is at infinity
+    ///
+    /// On the other hand, the pasta_curves library uses a 32-byte representation,
+    /// with the MSB of the last byte set if the y coordinate is odd.
+    ///
+    /// Because the two libraries don't expose the functions we need to perform the conversion efficiently,
+    /// we resort to deserializing twice, once with the flag set to 0 and once with the flag set to 1.
+    /// Ideally, we should fix the serialization of arkworks.
     pub trait ToOtherAffine: AffineCurve {
         /// The other curve's type.
-        type Other;
+        type Other: pasta_curves::arithmetic::CurveAffine<Repr = [u8; 32]>;
+
+        /// Returns true if the y coordinate of this point is odd.
+        /// This is useful for serializing the point in a format the other library understands.
+        fn y_coord_is_odd(&self) -> bool;
 
         /// The conversion to that type.
-        fn to_other(&self) -> Self::Other;
+        fn to_other(self: &Self) -> Self::Other {
+            if self.is_zero() {
+                return Self::Other::identity();
+            }
+
+            let mut bytes = vec![];
+            self.serialize(&mut bytes).unwrap();
+
+            if self.y_coord_is_odd() {
+                bytes[31] |= 1 << 7
+            }
+
+            let bytes: [u8; 32] = bytes[..32].try_into().unwrap();
+
+            if cfg!(debug_assertions) {
+                let res = Self::Other::from_bytes(&bytes).unwrap();
+                let res2 = Self::Other::from_bytes_unchecked(&bytes).unwrap();
+                assert_eq!(res, res2);
+                res2
+            } else {
+                Self::Other::from_bytes_unchecked(&bytes).unwrap()
+            }
+        }
 
         /// The conversion back from that type.
-        fn from_other(other: &Self::Other) -> Self;
+        fn from_other(other: &Self::Other) -> Self {
+            // the point at infinity is represent by the point (0, 0) in the other library
+            if other.is_identity().into() {
+                return Self::zero();
+            }
+
+            let mut bytes = other.to_bytes().to_vec();
+
+            let y_is_odd = bytes[31] >> 7 == 1;
+
+            // remove other lib flag as arkworks doesn't understand it
+            // (arkworks flag is an extra byte (`bytes[32]`), which we set to 0 for now)
+            bytes[31] &= 0b0111_1111;
+            bytes.push(0);
+
+            // try deserializing with the y flag set to 0
+            if let Ok(x) = Self::deserialize(&*bytes) {
+                // check if y is as expected, if so return
+                if x.y_coord_is_odd() == y_is_odd {
+                    return x;
+                }
+            }
+
+            // otherwise set the y flag to 1 and try again
+            bytes[32] = 128;
+            Self::deserialize(&*bytes).unwrap()
+        }
     }
 
     impl ToOtherAffine for Pallas {
         type Other = pasta_curves::pallas::Affine;
 
-        fn to_other(&self) -> Self::Other {
-            // we base this code on the assumption that the odd bit is in the last byte
-            assert_eq!(self.serialized_size(), 33);
-
-            // the other library encodes it in the MSB of the last byte instead:
-            //
-            // ```
-            // fn to_bytes(&self) -> [u8; 32] {
-            //     if bool::from(self.is_identity()) {
-            //         [0; 32]
-            //     } else {
-            //         let (x, y) = (self.x, self.y);
-            //         let sign = y.is_odd().unwrap_u8() << 7;
-            //         let mut xbytes = x.to_repr();
-            //         xbytes[31] |= sign;
-            //         xbytes
-            //     }
-            // }
-            // ```
-
-            let mut bytes = vec![];
-            self.serialize(&mut bytes).unwrap();
-
-            let is_odd = if bytes[32] == 1 { 1 << 7 } else { 0 };
-            bytes[32] |= is_odd;
-
-            let bytes: [u8; 32] = bytes[..32].try_into().unwrap();
-
-            if cfg!(debug_assertions) {
-                let res = pasta_curves::pallas::Affine::from_bytes(&bytes).unwrap();
-                let res2 = pasta_curves::pallas::Affine::from_bytes_unchecked(&bytes).unwrap();
-                assert_eq!(res, res2);
-                res2
-            } else {
-                pasta_curves::pallas::Affine::from_bytes_unchecked(&bytes).unwrap()
-            }
-        }
-
-        fn from_other(other: &Self::Other) -> Self {
-            let mut bytes = other.to_bytes().to_vec();
-
-            // as commented in the other function, the last byte's MSB contains the odd bit.
-            // arkworks expects it to be in an extra byte.
-            if bytes[31] >> 7 == 1 {
-                bytes[31] &= 0b0111_1111;
-                bytes.push(1);
-            } else {
-                bytes.push(0);
-            }
-
-            Pallas::deserialize(&*bytes).unwrap()
+        fn y_coord_is_odd(&self) -> bool {
+            self.y.into_repr().is_odd()
         }
     }
 
     impl ToOtherAffine for Vesta {
         type Other = pasta_curves::vesta::Affine;
 
-        fn to_other(&self) -> Self::Other {
-            // we base this code on the assumption that the odd bit is in the last byte
-            assert_eq!(self.serialized_size(), 33);
-
-            // the other library encodes it in the MSB of the last byte instead:
-            //
-            // ```
-            // fn to_bytes(&self) -> [u8; 32] {
-            //     if bool::from(self.is_identity()) {
-            //         [0; 32]
-            //     } else {
-            //         let (x, y) = (self.x, self.y);
-            //         let sign = y.is_odd().unwrap_u8() << 7;
-            //         let mut xbytes = x.to_repr();
-            //         xbytes[31] |= sign;
-            //         xbytes
-            //     }
-            // }
-            // ```
-
-            let mut bytes = vec![];
-            self.serialize(&mut bytes).unwrap();
-
-            let is_odd = if bytes[32] == 1 { 1 << 7 } else { 0 };
-            bytes[32] |= is_odd;
-
-            let bytes: [u8; 32] = bytes[..32].try_into().unwrap();
-
-            if cfg!(debug_assertions) {
-                let res = pasta_curves::vesta::Affine::from_bytes(&bytes).unwrap();
-                let res2 = pasta_curves::vesta::Affine::from_bytes_unchecked(&bytes).unwrap();
-                assert_eq!(res, res2);
-                res2
-            } else {
-                pasta_curves::vesta::Affine::from_bytes_unchecked(&bytes).unwrap()
-            }
-        }
-
-        fn from_other(other: &Self::Other) -> Self {
-            let mut bytes = other.to_bytes().to_vec();
-
-            // as commented in the other function, the last byte's MSB contains the odd bit.
-            // arkworks expects it to be in an extra byte.
-            if bytes[31] >> 7 == 1 {
-                bytes[31] &= 0b0111_1111;
-                bytes.push(1);
-            } else {
-                bytes.push(0);
-            }
-
-            Vesta::deserialize(&*bytes).unwrap()
+        fn y_coord_is_odd(&self) -> bool {
+            self.y.into_repr().is_odd()
         }
     }
 
@@ -242,24 +208,16 @@ pub mod msm {
     impl ToOtherAffine for LegacyVesta {
         type Other = pasta_curves::vesta::Affine;
 
-        fn to_other(&self) -> Self::Other {
-            unreachable!()
-        }
-
-        fn from_other(_other: &Self::Other) -> Self {
-            unreachable!()
+        fn y_coord_is_odd(&self) -> bool {
+            self.y.into_repr().is_odd()
         }
     }
 
     impl ToOtherAffine for LegacyPallas {
         type Other = pasta_curves::pallas::Affine;
 
-        fn to_other(&self) -> Self::Other {
-            unreachable!()
-        }
-
-        fn from_other(_other: &Self::Other) -> Self {
-            unreachable!()
+        fn y_coord_is_odd(&self) -> bool {
+            self.y.into_repr().is_odd()
         }
     }
 
@@ -290,11 +248,10 @@ pub mod msm {
         use std::ops::Mul;
 
         use super::*;
+        use ark_ec::msm::VariableBaseMSM;
         use ark_ec::ProjectiveCurve as _;
-        use ark_ec::{msm::VariableBaseMSM, AffineCurve};
         use ark_ff::{FftField, PrimeField};
         use ark_std::{test_rng, UniformRand};
-        use pasta_curves::arithmetic::FieldExt;
 
         //
         // Test that scalar conversion works
@@ -314,7 +271,8 @@ pub mod msm {
                 println!("one: {one}");
 
                 // same with other
-                let one2 = other_fq.pow(&[0u64, 0, 0, 4]);
+                use pasta_curves::group::ff::Field;
+                let one2 = other_fq.pow_vartime(&[0u64, 0, 0, 4]);
                 println!("one: {:?}", one2);
                 // TODO: not sure how to check that the other is one too
             }
@@ -342,21 +300,64 @@ pub mod msm {
         // Test that point conversion works
         //
 
-        // TODO: make a generic test like the tests around
-        #[test]
-        fn test_arkworks_pasta_point_conversion() {
-            // generate random arkworks pallas point
-            let x = Pallas::prime_subgroup_generator();
-            let y = x.mul(Fq::from(2u64));
-
+        fn test_generic_point_conversion<G: ToOtherAffine, F: ToOtherScalar>()
+        where
+            for<'a> G::Other: Mul<
+                &'a F::Other,
+                Output = <G::Other as pasta_curves::arithmetic::CurveAffine>::CurveExt,
+            >,
+        {
+            // x
+            let x = G::prime_subgroup_generator();
             let other_x = x.to_other();
-            let other_y = other_x.mul(&Fq::from(2u64).to_other());
-            let other_y_bis = other_x.mul(&pasta_curves::Fq::from(2u64));
+            assert_eq!(x, G::from_other(&other_x));
+
+            println!("x: {x}");
+
+            // for vesta: (1, 0x1943666ea922ae6b13b64e3aae89754cacce3a7f298ba20c4e4389b9b0276a62)
+            // for pallas: (1, 0x1b74b5a30a12937c53dfa9f06378ee548f655bd4333d477119cf7a23caed2abb)
+            dbg!(other_x);
+
+            // y = x * 2
+            let y = x.mul(G::ScalarField::from(2u64));
+            let temp = F::from(2u64).to_other();
+            let other_y = other_x.mul(&temp);
+
+            let other_y_bis = other_x.mul(&F::Other::from(2u64));
+            let other_y_from_conv = y.into_affine().to_other();
+
+            println!("debug: {}", y.into_affine()); // correct
+            dbg!(other_y.to_affine()); // correct
+            dbg!(other_y_from_conv);
 
             assert_eq!(other_y, other_y_bis);
+            assert_eq!(other_y_from_conv, other_y.to_affine()); // TODO: why is this not equal?
 
-            let y_back = Pallas::from_other(&other_y.to_affine());
-            assert_eq!(y, y_back);
+            let y_back = G::from_other(&other_y.to_affine());
+            dbg!(y_back);
+            assert_eq!(y.into_affine(), y_back);
+
+            // the zero point
+            let zero = G::zero();
+            let other_zero = zero.to_other();
+
+            // check that it is indeed zero
+            let should_be_x = zero + x;
+            assert_eq!(should_be_x, x);
+
+            let should_be_x_as_well = other_zero + other_x;
+            assert_eq!(should_be_x_as_well.to_affine(), other_x);
+
+            dbg!(other_zero);
+            let zero_back = G::from_other(&other_zero);
+            assert!(zero_back.is_zero());
+            assert_eq!(zero, zero_back);
+        }
+
+        #[test]
+        fn test_point_conversions() {
+            test_generic_point_conversion::<Pallas, Fq>();
+            test_generic_point_conversion::<Vesta, Fp>();
         }
 
         //
