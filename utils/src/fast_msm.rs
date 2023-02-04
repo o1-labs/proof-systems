@@ -4,6 +4,9 @@ use ark_ec::msm::VariableBaseMSM;
 use ark_ec::AffineCurve;
 use ark_ec::ProjectiveCurve;
 use ark_ff::PrimeField;
+use mina_curves::pasta::curves::pallas::LegacyPallas;
+use mina_curves::pasta::curves::vesta::LegacyVesta;
+use mina_curves::pasta::{Pallas, Vesta};
 
 /// The arkworks implementation of the MSM algorithm (not GPU-accelerated).
 fn cpu_msm<G: AffineCurve>(points: &[G], scalars: &[G::ScalarField]) -> G {
@@ -19,9 +22,7 @@ fn cpu_msm<G: AffineCurve>(points: &[G], scalars: &[G::ScalarField]) -> G {
 pub mod msm {
     use ark_ff::ToBytes as _;
     use ark_serialize::CanonicalDeserialize;
-    use mina_curves::pasta::curves::pallas::LegacyPallas;
-    use mina_curves::pasta::curves::vesta::LegacyVesta;
-    use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
+    use mina_curves::pasta::{Fp, Fq};
     use pasta_curves::arithmetic::CurveAffine;
     use pasta_curves::group::ff::PrimeField as _;
     use pasta_curves::group::prime::PrimeCurveAffine;
@@ -496,4 +497,9 @@ pub mod msm {
             cpu_msm(points, scalars)
         }
     }
+
+    impl MultiScalarMultiplication for Vesta {}
+    impl MultiScalarMultiplication for Pallas {}
+    impl MultiScalarMultiplication for LegacyVesta {}
+    impl MultiScalarMultiplication for LegacyPallas {}
 }
