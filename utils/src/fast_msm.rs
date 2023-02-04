@@ -10,6 +10,7 @@ pub mod msm {
     use ark_serialize::CanonicalDeserialize;
     use mina_curves::pasta::curves::pallas::LegacyPallas;
     use mina_curves::pasta::curves::vesta::LegacyVesta;
+    use pasta_curves::arithmetic::CurveAffine;
     use pasta_curves::group::prime::PrimeCurveAffine;
     use pasta_curves::group::Curve;
     use pasta_curves::group::{ff::PrimeField as _, GroupEncoding};
@@ -88,11 +89,22 @@ pub mod msm {
     /// Ideally, we should fix the serialization of arkworks.
     pub trait ToOtherAffine: AffineCurve {
         /// The other curve's type.
-        type Other: pasta_curves::arithmetic::CurveAffine<Repr = [u8; 32]>;
+        type Other: CurveAffine<Repr = [u8; 32]>;
 
         /// Returns true if the y coordinate of this point is odd.
         /// This is useful for serializing the point in a format the other library understands.
-        fn y_coord_is_odd(&self) -> bool;
+        fn get_other_coords(
+            &self,
+        ) -> (
+            <Self::Other as CurveAffine>::Base,
+            <Self::Other as CurveAffine>::Base,
+        );
+
+        /// Creates a new point from two x coordinates from the other library
+        fn new_xy(
+            x: &<Self::Other as CurveAffine>::Base,
+            y: &<Self::Other as CurveAffine>::Base,
+        ) -> Self;
 
         /// The conversion to that type.
         fn to_other(self: &Self) -> Self::Other {
@@ -100,23 +112,8 @@ pub mod msm {
                 return Self::Other::identity();
             }
 
-            let mut bytes = vec![];
-            self.serialize(&mut bytes).unwrap();
-
-            if self.y_coord_is_odd() {
-                bytes[31] |= 1 << 7
-            }
-
-            let bytes: [u8; 32] = bytes[..32].try_into().unwrap();
-
-            if cfg!(debug_assertions) {
-                let res = Self::Other::from_bytes(&bytes).unwrap();
-                let res2 = Self::Other::from_bytes_unchecked(&bytes).unwrap();
-                assert_eq!(res, res2);
-                res2
-            } else {
-                Self::Other::from_bytes_unchecked(&bytes).unwrap()
-            }
+            let (x, y) = self.get_other_coords();
+            Self::Other::from_xy(x, y).unwrap()
         }
 
         /// The conversion back from that type.
@@ -126,42 +123,58 @@ pub mod msm {
                 return Self::zero();
             }
 
-            let mut bytes = other.to_bytes().to_vec();
+            let coords = other.coordinates().unwrap();
+            let (x, y) = (coords.x(), coords.y());
 
-            let y_is_odd = bytes[31] >> 7 == 1;
-
-            // remove other lib flag as arkworks doesn't understand it
-            // (arkworks flag is an extra byte (`bytes[32]`), which we set to 0 for now)
-            bytes[31] &= 0b0111_1111;
-            bytes.push(0);
-
-            // try deserializing with the y flag set to 0
-            if let Ok(x) = Self::deserialize(&*bytes) {
-                // check if y is as expected, if so return
-                if x.y_coord_is_odd() == y_is_odd {
-                    return x;
-                }
-            }
-
-            // otherwise set the y flag to 1 and try again
-            bytes[32] = 128;
-            Self::deserialize(&*bytes).unwrap()
+            Self::new_xy(x, y)
         }
     }
 
     impl ToOtherAffine for Pallas {
         type Other = pasta_curves::pallas::Affine;
 
-        fn y_coord_is_odd(&self) -> bool {
-            self.y.into_repr().is_odd()
+        fn new_xy(
+            x: &<Self::Other as CurveAffine>::Base,
+            y: &<Self::Other as CurveAffine>::Base,
+        ) -> Self {
+            Self::new(
+                Self::BaseField::from_other(x),
+                Self::BaseField::from_other(y),
+                false,
+            )
+        }
+
+        fn get_other_coords(
+            &self,
+        ) -> (
+            <Self::Other as CurveAffine>::Base,
+            <Self::Other as CurveAffine>::Base,
+        ) {
+            (self.x.to_other(), self.y.to_other())
         }
     }
 
     impl ToOtherAffine for Vesta {
         type Other = pasta_curves::vesta::Affine;
 
-        fn y_coord_is_odd(&self) -> bool {
-            self.y.into_repr().is_odd()
+        fn new_xy(
+            x: &<Self::Other as CurveAffine>::Base,
+            y: &<Self::Other as CurveAffine>::Base,
+        ) -> Self {
+            Self::new(
+                Self::BaseField::from_other(x),
+                Self::BaseField::from_other(y),
+                false,
+            )
+        }
+
+        fn get_other_coords(
+            &self,
+        ) -> (
+            <Self::Other as CurveAffine>::Base,
+            <Self::Other as CurveAffine>::Base,
+        ) {
+            (self.x.to_other(), self.y.to_other())
         }
     }
 
@@ -213,16 +226,40 @@ pub mod msm {
     impl ToOtherAffine for LegacyVesta {
         type Other = pasta_curves::vesta::Affine;
 
-        fn y_coord_is_odd(&self) -> bool {
-            self.y.into_repr().is_odd()
+        fn get_other_coords(
+            &self,
+        ) -> (
+            <Self::Other as CurveAffine>::Base,
+            <Self::Other as CurveAffine>::Base,
+        ) {
+            unreachable!();
+        }
+
+        fn new_xy(
+            x: &<Self::Other as CurveAffine>::Base,
+            y: &<Self::Other as CurveAffine>::Base,
+        ) -> Self {
+            unreachable!()
         }
     }
 
     impl ToOtherAffine for LegacyPallas {
         type Other = pasta_curves::pallas::Affine;
 
-        fn y_coord_is_odd(&self) -> bool {
-            self.y.into_repr().is_odd()
+        fn get_other_coords(
+            &self,
+        ) -> (
+            <Self::Other as CurveAffine>::Base,
+            <Self::Other as CurveAffine>::Base,
+        ) {
+            unreachable!();
+        }
+
+        fn new_xy(
+            x: &<Self::Other as CurveAffine>::Base,
+            y: &<Self::Other as CurveAffine>::Base,
+        ) -> Self {
+            unreachable!()
         }
     }
 
