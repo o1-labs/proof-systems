@@ -2,7 +2,7 @@
 //! You can run this benchmark like so:
 //!
 //! ```ignore
-//! cargo criterion -p o1-utils --bench msm
+//! cargo criterion -p o1-utils --bench msm --features gpu
 //! ```
 //!
 //! It will show you the performance of the arkworks (CPU) and supra (GPU) MSM impls,
