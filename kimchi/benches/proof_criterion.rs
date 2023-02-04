@@ -17,6 +17,18 @@ pub fn bench_proof_creation(c: &mut Criterion) {
         |b| b.iter(|| black_box(ctx.create_proof())),
     );
 
+    let ctx = BenchmarkCtx::new(1 << 16);
+    group.bench_function(
+        format!("proof creation (SRS size 2^{})", ctx.srs_size()),
+        |b| b.iter(|| black_box(ctx.create_proof())),
+    );
+
+    let ctx = BenchmarkCtx::new(1 << 18);
+    group.bench_function(
+        format!("proof creation (SRS size 2^{})", ctx.srs_size()),
+        |b| b.iter(|| black_box(ctx.create_proof())),
+    );
+
     let proof = ctx.create_proof();
 
     group.sample_size(100).sampling_mode(SamplingMode::Auto);

@@ -9,7 +9,7 @@ To bench kimchi, we have two types of benchmark engines.
 [Criterion](https://bheisler.github.io/criterion.rs/) is used to benchmark time:
 
 ```console
-$ cargo criterion -p kimchi --bench proof_criterion
+$ cargo criterion -p kimchi --bench proof_criterion --features gpu
 ```
 
 The result will appear in `target/criterion/single\ proof/report/index.html` and look like this:
@@ -21,7 +21,7 @@ Note that it only does 10 passes. To have more accurate statistics, remove the `
 The other benchmark uses [iai](https://github.com/bheisler/iai) to perform precise one-shot benchmarking. This is useful in CI, for example, where typical benchmarks are affected by the load of the host running CI.
 
 ```console
-$ cargo bench -p kimchi --bench proof_iai
+$ cargo bench -p kimchi --bench proof_iai --features gpu
 ```
 
 It will look like this:
