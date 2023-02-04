@@ -36,9 +36,10 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    let (scalars, points) = create_scalars_and_points::<Vesta>(100);
+    let (scalars, points) = create_scalars_and_points::<Vesta>(128);
+    let scalars_repr: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
 
-    c.bench_function("arkworks msm of length 100", |b| {
+    c.bench_function("arkworks msm of length 128", |b| {
         b.iter(|| {
             let _ = black_box(VariableBaseMSM::multi_scalar_mul(
                 black_box(&points),
@@ -47,7 +48,43 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("supra msm of length 100", |b| {
+    c.bench_function("supra msm of length 128", |b| {
+        b.iter(|| {
+            let _ = black_box(Vesta::msm(black_box(&points), black_box(&scalars)));
+        })
+    });
+
+    let (scalars, points) = create_scalars_and_points::<Vesta>(200);
+    let scalars_repr: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
+
+    c.bench_function("arkworks msm of length 200", |b| {
+        b.iter(|| {
+            let _ = black_box(VariableBaseMSM::multi_scalar_mul(
+                black_box(&points),
+                black_box(&scalars_repr),
+            ));
+        })
+    });
+
+    c.bench_function("supra msm of length 200", |b| {
+        b.iter(|| {
+            let _ = black_box(Vesta::msm(black_box(&points), black_box(&scalars)));
+        })
+    });
+
+    let (scalars, points) = create_scalars_and_points::<Vesta>(400);
+    let scalars_repr: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
+
+    c.bench_function("arkworks msm of length 400", |b| {
+        b.iter(|| {
+            let _ = black_box(VariableBaseMSM::multi_scalar_mul(
+                black_box(&points),
+                black_box(&scalars_repr),
+            ));
+        })
+    });
+
+    c.bench_function("supra msm of length 400", |b| {
         b.iter(|| {
             let _ = black_box(Vesta::msm(black_box(&points), black_box(&scalars)));
         })
