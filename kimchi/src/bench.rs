@@ -17,7 +17,7 @@ use crate::{
     },
     proof::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
-    verifier::batch_verify,
+    verifier::{batch_verify, BatchedProof},
     verifier_index::VerifierIndex,
 };
 
@@ -94,14 +94,13 @@ impl BenchmarkCtx {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()
-            .map(|(proof, public)| (proof, public))
+            .map(|(proof, public)| BatchedProof {
+                verifier_index: &self.verifier_index,
+                proof,
+                public_input: public,
+            })
             .collect();
-        batch_verify::<Vesta, BaseSponge, ScalarSponge>(
-            &self.group_map,
-            &self.verifier_index,
-            &batch,
-        )
-        .unwrap();
+        batch_verify::<Vesta, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
     }
 }
 

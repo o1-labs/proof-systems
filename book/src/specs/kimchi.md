@@ -2312,6 +2312,7 @@ Below, we define the steps to verify a number of proofs
 You can, of course, use it to verify a single proof.
 
 1. If there's no proof to verify, the proof validates trivially.
+1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
 
