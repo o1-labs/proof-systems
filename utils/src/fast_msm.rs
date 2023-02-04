@@ -6,14 +6,14 @@ use mina_curves::pasta::{Fp, Fq, Pallas, Vesta};
 //#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 pub mod msm {
     use ark_ec::AffineCurve;
-    use ark_ff::{BigInteger, PrimeField, ToBytes as _};
+    use ark_ff::ToBytes as _;
     use ark_serialize::CanonicalDeserialize;
     use mina_curves::pasta::curves::pallas::LegacyPallas;
     use mina_curves::pasta::curves::vesta::LegacyVesta;
     use pasta_curves::arithmetic::CurveAffine;
+    use pasta_curves::group::ff::PrimeField as _;
     use pasta_curves::group::prime::PrimeCurveAffine;
     use pasta_curves::group::Curve;
-    use pasta_curves::group::{ff::PrimeField as _, GroupEncoding};
 
     use super::*;
 
@@ -75,18 +75,7 @@ pub mod msm {
     //
 
     /// This is a trait to convert points from the arkwork's [AffineCurve] library to points on the [pasta_curves] library.
-    /// Unfortunately, the serializations are different, with the arkworks one being non-standard.
-    ///
-    /// The arkworks one uses a 33-byte representation, with the last byte only used for a set of flags:
-    /// - the MSB (1 << 7) is set if the y coordinate is greater than -y (as bigints)
-    /// - the second MSB (1 << 6) is set if the point is at infinity
-    ///
-    /// On the other hand, the pasta_curves library uses a 32-byte representation,
-    /// with the MSB of the last byte set if the y coordinate is odd.
-    ///
-    /// Because the two libraries don't expose the functions we need to perform the conversion efficiently,
-    /// we resort to deserializing twice, once with the flag set to 0 and once with the flag set to 1.
-    /// Ideally, we should fix the serialization of arkworks.
+    /// It is designed a certain way due to the two libraries not exposing convenient functions from their traits.
     pub trait ToOtherAffine: AffineCurve {
         /// The other curve's type.
         type Other: CurveAffine<Repr = [u8; 32]>;
@@ -236,8 +225,8 @@ pub mod msm {
         }
 
         fn new_xy(
-            x: &<Self::Other as CurveAffine>::Base,
-            y: &<Self::Other as CurveAffine>::Base,
+            _x: &<Self::Other as CurveAffine>::Base,
+            _y: &<Self::Other as CurveAffine>::Base,
         ) -> Self {
             unreachable!()
         }
@@ -256,8 +245,8 @@ pub mod msm {
         }
 
         fn new_xy(
-            x: &<Self::Other as CurveAffine>::Base,
-            y: &<Self::Other as CurveAffine>::Base,
+            _x: &<Self::Other as CurveAffine>::Base,
+            _y: &<Self::Other as CurveAffine>::Base,
         ) -> Self {
             unreachable!()
         }
