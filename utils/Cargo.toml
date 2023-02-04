@@ -37,5 +37,10 @@ pasta_curves = { version = ">=0.3.1, <=0.4", features = ["repr-c"] }
 [dev-dependencies]
 ark-ec = { version = "0.3.0", features = [ "parallel" ] }
 ark-std = "0.3.0"
+criterion = "0.3"
 num-bigint = { version = "0.4.3", features = ["rand"] }
 secp256k1 = "0.24.2"
+
+[[bench]]
+name = "msm"
+harness = false
