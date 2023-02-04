@@ -475,6 +475,29 @@ pub mod msm {
             test_msm_generic::<Pallas>();
             test_msm_generic::<Vesta>();
         }
+
+        //
+        // Sketchy bench for large MSMs
+        //
+
+        // you can run this with `cargo test --release --package o1-utils --features gpu -- --ignored large_msm --nocapture`
+        #[test]
+        #[ignore]
+        fn large_msm() {
+            // simulates a 2^18 URS for commitments
+            let (scalars, points) = create_scalars_and_points::<Vesta>(1 << 18);
+            println!("running MSM of size {}", scalars.len());
+
+            let start = std::time::Instant::now();
+            let _ = cpu_msm(&points, &scalars);
+            let end = std::time::Instant::now();
+            println!("cpu msm took: {:?}", end - start);
+
+            let start = std::time::Instant::now();
+            let _ = Vesta::msm(&points, &scalars);
+            let end = std::time::Instant::now();
+            println!("gpu msm took: {:?}", end - start);
+        }
     }
 }
 
