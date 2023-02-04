@@ -489,14 +489,18 @@ pub mod msm {
             println!("running MSM of size {}", scalars.len());
 
             let start = std::time::Instant::now();
-            let _ = cpu_msm(&points, &scalars);
+            for _ in 0..100 {
+                let _ = cpu_msm(&points, &scalars);
+            }
             let end = std::time::Instant::now();
-            println!("cpu msm took: {:?}", end - start);
+            println!("100 cpu msm took: {:?}", end - start);
 
             let start = std::time::Instant::now();
-            let _ = Vesta::msm(&points, &scalars);
+            for _ in 0..100 {
+                let _ = Vesta::msm(&points, &scalars);
+            }
             let end = std::time::Instant::now();
-            println!("gpu msm took: {:?}", end - start);
+            println!("100 gpu msm took: {:?}", end - start);
         }
     }
 }
