@@ -307,51 +307,75 @@ pub mod msm {
                 Output = <G::Other as pasta_curves::arithmetic::CurveAffine>::CurveExt,
             >,
         {
-            // x
-            let x = G::prime_subgroup_generator();
-            let other_x = x.to_other();
-            assert_eq!(x, G::from_other(&other_x));
+            // test with our pasta generator
+            {
+                let x = G::prime_subgroup_generator();
+                let other_x = x.to_other();
+                assert_eq!(x, G::from_other(&other_x));
 
-            println!("x: {x}");
+                println!("x: {x}");
 
-            // for vesta: (1, 0x1943666ea922ae6b13b64e3aae89754cacce3a7f298ba20c4e4389b9b0276a62)
-            // for pallas: (1, 0x1b74b5a30a12937c53dfa9f06378ee548f655bd4333d477119cf7a23caed2abb)
-            dbg!(other_x);
+                // for vesta: (1, 0x1943666ea922ae6b13b64e3aae89754cacce3a7f298ba20c4e4389b9b0276a62)
+                // for pallas: (1, 0x1b74b5a30a12937c53dfa9f06378ee548f655bd4333d477119cf7a23caed2abb)
+                dbg!(other_x);
 
-            // y = x * 2
-            let y = x.mul(G::ScalarField::from(2u64));
-            let temp = F::from(2u64).to_other();
-            let other_y = other_x.mul(&temp);
+                // y = x * 2
+                let y = x.mul(G::ScalarField::from(2u64));
+                let temp = F::from(2u64).to_other();
+                let other_y = other_x.mul(&temp);
 
-            let other_y_bis = other_x.mul(&F::Other::from(2u64));
-            let other_y_from_conv = y.into_affine().to_other();
+                let other_y_bis = other_x.mul(&F::Other::from(2u64));
+                let other_y_from_conv = y.into_affine().to_other();
 
-            println!("debug: {}", y.into_affine()); // correct
-            dbg!(other_y.to_affine()); // correct
-            dbg!(other_y_from_conv);
+                println!("debug: {}", y.into_affine());
+                dbg!(other_y.to_affine());
+                dbg!(other_y_from_conv);
 
-            assert_eq!(other_y, other_y_bis);
-            assert_eq!(other_y_from_conv, other_y.to_affine()); // TODO: why is this not equal?
+                assert_eq!(other_y, other_y_bis);
+                assert_eq!(other_y_from_conv, other_y.to_affine());
 
-            let y_back = G::from_other(&other_y.to_affine());
-            dbg!(y_back);
-            assert_eq!(y.into_affine(), y_back);
+                let y_back = G::from_other(&other_y.to_affine());
+                dbg!(y_back);
+                assert_eq!(y.into_affine(), y_back);
+            }
 
-            // the zero point
-            let zero = G::zero();
-            let other_zero = zero.to_other();
+            // test the zero point
+            {
+                let zero = G::zero();
+                let other_zero = zero.to_other();
 
-            // check that it is indeed zero
-            let should_be_x = zero + x;
-            assert_eq!(should_be_x, x);
+                let x = G::prime_subgroup_generator();
+                let other_x = x.to_other();
 
-            let should_be_x_as_well = other_zero + other_x;
-            assert_eq!(should_be_x_as_well.to_affine(), other_x);
+                // check that it is indeed zero
+                let should_be_x = zero + x;
+                assert_eq!(should_be_x, x);
 
-            dbg!(other_zero);
-            let zero_back = G::from_other(&other_zero);
-            assert!(zero_back.is_zero());
-            assert_eq!(zero, zero_back);
+                let should_be_x_as_well = other_zero + other_x;
+                assert_eq!(should_be_x_as_well.to_affine(), other_x);
+
+                // check the conversion back
+                dbg!(other_zero);
+                let zero_back = G::from_other(&other_zero);
+                assert!(zero_back.is_zero());
+                assert_eq!(zero, zero_back);
+            }
+
+            // test with a random value
+            {
+                let x = G::Projective::rand(&mut test_rng()).into_affine();
+                let y = G::Projective::rand(&mut test_rng()).into_affine();
+                let res = x + y;
+
+                let other_x = x.to_other();
+                let other_y = y.to_other();
+                let other_res = res.to_other();
+                let r = other_x + other_y;
+                assert_eq!(r.to_affine(), other_res);
+
+                let res_back = G::from_other(&other_res);
+                assert_eq!(res, res_back);
+            }
         }
 
         #[test]
