@@ -17,7 +17,7 @@ use crate::{
     },
     proof::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
-    verifier::{batch_verify, BatchedProof},
+    verifier::{batch_verify, Context},
     verifier_index::VerifierIndex,
 };
 
@@ -90,11 +90,11 @@ impl BenchmarkCtx {
         )
     }
 
-    pub fn batch_verification(&self, batch: Vec<(ProverProof<Vesta>, Vec<Fp>)>) {
+    pub fn batch_verification(&self, batch: &[(ProverProof<Vesta>, Vec<Fp>)]) {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()
-            .map(|(proof, public)| BatchedProof {
+            .map(|(proof, public)| Context {
                 verifier_index: &self.verifier_index,
                 proof,
                 public_input: public,
@@ -124,7 +124,7 @@ mod tests {
 
         // proof verified in 1.710 ms
         let start = Instant::now();
-        ctx.batch_verification(vec![(proof, public_input)]);
+        ctx.batch_verification(&vec![(proof, public_input)]);
         println!("proof verified in {}", start.elapsed().as_millis());
     }
 }
