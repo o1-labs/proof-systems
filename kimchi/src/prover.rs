@@ -228,7 +228,7 @@ where
         //~    and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
         let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            public.clone(),
+            public,
             index.cs.domain.d1,
         )
         .interpolate();
@@ -1254,7 +1254,6 @@ where
             proof,
             evals: chunked_evals,
             ft_eval1,
-            public,
             prev_challenges,
         })
     }
@@ -1278,7 +1277,6 @@ pub mod caml {
         // OCaml doesn't have sized arrays, so we have to convert to a tuple..
         pub evals: CamlProofEvaluations<CamlF>,
         pub ft_eval1: CamlF,
-        pub public: Vec<CamlF>,
         pub prev_challenges: Vec<CamlRecursionChallenge<CamlG, CamlF>>, //Vec<(Vec<CamlF>, CamlPolyComm<CamlG>)>,
     }
 
@@ -1479,7 +1477,6 @@ pub mod caml {
                 proof: pp.proof.into(),
                 evals: pp.evals.into(),
                 ft_eval1: pp.ft_eval1.into(),
-                public: pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
             }
         }
@@ -1496,7 +1493,6 @@ pub mod caml {
                 proof: caml_pp.proof.into(),
                 evals: caml_pp.evals.into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
-                public: caml_pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()

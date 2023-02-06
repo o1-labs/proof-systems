@@ -25,3 +25,24 @@ Windows development can be done using [Windows Subsystem for Linux (WSL)](https:
 * Install and open WSL
 * Within WSL, install OCaml using your distro's package manager. For example: `apt install opam`
 * Within WSL, navigate to the project directory and run `cargo test`. If there are no failures then everything is set up correctly.
+
+## Development
+
+To run tests:
+```bash
+cargo test --all-features --release
+```
+
+Takes about 5-8 minutes on a MacBook Pro (2019, 8-Core Intel Core i9, 32GB RAM). Without `--release`, more than an hour.
+
+To scan for lints:
+```bash
+cargo clippy --all-features --tests --all-targets -- -D warnings
+```
+
+Finally, to check formatting:
+```bash
+cargo fmt
+```
+
+These are enforced by GitHub PR checks, so be sure to have any errors produced by the above tools fixed before pushing the code to your pull request branch. Refer to `.github/workflows` for all PR checks.

@@ -59,6 +59,7 @@ pub mod caml {
         lgr_comm: Vec<PolyComm<G>>,
         index: VerifierIndex<G>,
         proof: ProverProof<G>,
+        public_input: &[G::ScalarField],
     ) -> Result<CamlOracles<CamlF>, VerifyError>
     where
         G: KimchiCurve,
@@ -67,14 +68,15 @@ pub mod caml {
         EFrSponge: FrSponge<G::ScalarField>,
         CamlF: From<G::ScalarField>,
     {
-        let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(proof.public.len()).collect();
+        let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(public_input.len()).collect();
         let lgr_comm_refs: Vec<_> = lgr_comm.iter().collect();
 
-        let negated_public: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+        let negated_public: Vec<_> = public_input.iter().map(|s| -*s).collect();
 
         let p_comm = PolyComm::<G>::multi_scalar_mul(&lgr_comm_refs, &negated_public);
 
-        let oracles_result = proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm)?;
+        let oracles_result =
+            proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm, public_input)?;
 
         let (mut sponge, combined_inner_product, public_evals, digest, oracles) = (
             oracles_result.fq_sponge,
