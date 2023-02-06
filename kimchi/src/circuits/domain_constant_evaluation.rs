@@ -2,7 +2,7 @@
 
 use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::polynomials::permutation::zk_polynomial;
-use crate::circuits::polynomials::permutation::{PERM_FINAL_ACC, ZK_ROWS};
+use crate::circuits::polynomials::permutation::ZK_ROWS;
 use ark_ff::FftField;
 use ark_poly::EvaluationDomain;
 use ark_poly::UVPolynomial;
@@ -48,7 +48,7 @@ impl<F: FftField> DomainConstantEvaluations<F> {
         let vanishes_on_last_4_rows =
             vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
 
-        assert!(domain.d1.size > ZK_ROWS + PERM_FINAL_ACC);
+        assert!(domain.d1.size > ZK_ROWS);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
         let zkpm = zk_polynomial(domain.d1);

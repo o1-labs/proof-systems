@@ -23,8 +23,12 @@ use super::runtime_tables;
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
-/// The number of random values to append to columns for zero-knowledge.
-pub const EVALS: usize = 2;
+/// The number of points that are evaluated in the protocol (zeta and zeta * omega).
+pub const EVALS: u64 = 2;
+
+/// The number of rows that are added to a witness/circuit in order to provide zero-knowledge.
+/// We might actually only need `EVALS` but let's be double safe.
+pub const ZK_ROWS: u64 = EVALS + 1;
 
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
@@ -39,9 +43,9 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 ) -> Evaluations<F, D<F>> {
     let n = d.size();
     let k = e.len();
-    assert!(k <= n - (EVALS + 1));
-    e.extend((0..((n - (EVALS + 1)) - k)).map(|_| F::zero()));
-    e.extend((0..(EVALS + 1)).map(|_| F::rand(rng)));
+    assert!(k <= n - (ZK_ROWS as usize));
+    e.extend((0..((n - (ZK_ROWS as usize)) - k)).map(|_| F::zero()));
+    e.extend((0..(ZK_ROWS as usize)).map(|_| F::rand(rng)));
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
@@ -102,7 +106,7 @@ pub fn sorted<F: PrimeField>(
     let n = d1.size();
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
-    let lookup_rows = n - (EVALS + 1) - 1;
+    let lookup_rows = n - (ZK_ROWS as usize) - 1;
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
@@ -246,7 +250,7 @@ where
     F: PrimeField,
 {
     let n = d1.size();
-    let lookup_rows = n - (EVALS + 1) - 1;
+    let lookup_rows = n - (ZK_ROWS as usize) - 1;
     let beta1: F = F::one() + beta;
     let gammabeta1 = gamma * beta1;
     let mut lookup_aggreg = vec![F::one()];
@@ -322,7 +326,7 @@ where
 
     // check that the final evaluation is equal to 1
     if cfg!(debug_assertions) {
-        let final_val = res.evals[d1.size() - ((EVALS + 1) + 1)];
+        let final_val = res.evals[d1.size() - ((ZK_ROWS as usize) + 1)];
         if final_val != F::one() {
             panic!("aggregation incorrect: {}", final_val);
         }
@@ -601,7 +605,7 @@ pub fn constraints<F: FftField>(
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    let final_lookup_row: i32 = -((EVALS + 1) as i32) - 1;
+    let final_lookup_row: i32 = -((ZK_ROWS as usize) as i32) - 1;
 
     let mut res = vec![
         // the accumulator except for the last 4 rows
@@ -686,7 +690,7 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
     let n = d1.size();
-    let lookup_rows = n - (EVALS + 1) - 1;
+    let lookup_rows = n - (ZK_ROWS as usize) - 1;
 
     // Check that the (desnakified) sorted table is
     // 1. Sorted

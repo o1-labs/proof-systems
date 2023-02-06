@@ -14,7 +14,7 @@ use crate::{
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
-            permutation::{PERM_FINAL_ACC, ZK_ROWS},
+            permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
@@ -191,7 +191,7 @@ where
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        if length_padding < (ZK_ROWS + PERM_FINAL_ACC) as usize {
+        if length_padding < (ZK_ROWS) as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
 
@@ -206,7 +206,7 @@ where
             w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
-            for row in w.iter_mut().rev().take((ZK_ROWS + PERM_FINAL_ACC) as usize) {
+            for row in w.iter_mut().rev().take((ZK_ROWS) as usize) {
                 *row = <G::ScalarField as UniformRand>::rand(rng);
             }
         }
@@ -343,11 +343,7 @@ where
                     }
 
                     // zero-knowledge
-                    for e in evals
-                        .iter_mut()
-                        .rev()
-                        .take((ZK_ROWS + PERM_FINAL_ACC) as usize)
-                    {
+                    for e in evals.iter_mut().rev().take((ZK_ROWS) as usize) {
                         *e = <G::ScalarField as UniformRand>::rand(rng);
                     }
 
