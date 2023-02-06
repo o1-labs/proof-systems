@@ -22,7 +22,7 @@ pub fn bench_proof_creation(c: &mut Criterion) {
     group.sample_size(100).sampling_mode(SamplingMode::Auto);
     group.bench_function(
         format!("proof verification (SRS size 2^{})", ctx.srs_size()),
-        |b| b.iter(|| ctx.batch_verification(black_box(&vec![proof_and_public.clone()]))),
+        |b| b.iter(|| ctx.batch_verification(black_box(vec![proof_and_public.clone()]))),
     );
 }
 
