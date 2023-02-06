@@ -142,31 +142,13 @@ macro_rules! debug_sponge {
             debug_sponge_print_state!($name, $sponge);
         }
     };
-    ($name:expr, Field, $input:expr, $sponge:expr) => {
+    ($name:expr, $input:expr, $sponge:expr) => {
         #[cfg(all(feature = "debug_sponge", debug_assertions))]
         {
             // Field input
             debug_sponge_print_state!($name, $sponge);
 
-            $input
-                .iter()
-                .for_each(|f| println!("debug_sponge: {} input field {}", $name, f.to_hex()));
-        }
-    };
-    ($name:expr, GroupAffine, $input:expr, $sponge:expr) => {
-        #[cfg(all(feature = "debug_sponge", debug_assertions))]
-        {
-            // GroupAffine input
-            debug_sponge_print_state!($name, $sponge);
-
-            $input.iter().for_each(|point| {
-                println!(
-                    "debug_sponge: {} input point ({}, {})",
-                    $name,
-                    point.x.to_hex(),
-                    point.y.to_hex()
-                )
-            });
+            println!("debug_sponge: {} input {}", $name, $input.to_hex());
         }
     };
 }
@@ -206,30 +188,34 @@ where
     }
 
     fn absorb_g(&mut self, g: &[GroupAffine<P>]) {
-        debug_sponge!("absorb_g", GroupAffine, g, self.sponge);
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
                 // absorb a fake point (0, 0)
                 let zero = P::BaseField::zero();
-                self.sponge.absorb(&[zero, zero]);
+                debug_sponge!("absorb", zero, self.sponge);
+                self.sponge.absorb(&[zero]);
+                debug_sponge!("absorb", zero, self.sponge);
+                self.sponge.absorb(&[zero]);
             } else {
+                debug_sponge!("absorb", g.x, self.sponge);
                 self.sponge.absorb(&[g.x]);
+                debug_sponge!("absorb", g.y, self.sponge);
                 self.sponge.absorb(&[g.y]);
             }
         }
     }
 
     fn absorb_fq(&mut self, x: &[P::BaseField]) {
-        debug_sponge!("absorb_fq", Field, x, self.sponge);
-
         self.last_squeezed = vec![];
 
-        self.sponge.absorb(x)
+        for fe in x {
+            debug_sponge!("absorb", fe, self.sponge);
+            self.sponge.absorb(&[*fe])
+        }
     }
 
     fn absorb_fr(&mut self, x: &[P::ScalarField]) {
-        debug_sponge!("absorb_fr", Field, x, self.sponge);
         self.last_squeezed = vec![];
 
         x.iter().for_each(|x| {
@@ -239,10 +225,12 @@ where
             if <P::ScalarField as PrimeField>::Params::MODULUS
                 < <P::BaseField as PrimeField>::Params::MODULUS.into()
             {
-                self.sponge.absorb(&[P::BaseField::from_repr(
+                let fe = P::BaseField::from_repr(
                     <P::BaseField as PrimeField>::BigInt::from_bits_le(&bits),
                 )
-                .expect("padding code has a bug")]);
+                .expect("padding code has a bug");
+                debug_sponge!("absorb", fe, self.sponge);
+                self.sponge.absorb(&[fe]);
             } else {
                 let low_bit = if bits[0] {
                     P::BaseField::one()
@@ -255,14 +243,16 @@ where
                 )
                 .expect("padding code has a bug");
 
+                debug_sponge!("absorb", high_bits, self.sponge);
                 self.sponge.absorb(&[high_bits]);
+                debug_sponge!("absorb", low_bit, self.sponge);
                 self.sponge.absorb(&[low_bit]);
             }
         });
     }
 
     fn digest(mut self) -> P::ScalarField {
-        debug_sponge!("digest", self.sponge);
+        debug_sponge!("squeeze", self.sponge);
         let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
         // Returns zero for values that are too large.
         // This means that there is a bias for the value zero (in one of the curve).
@@ -274,17 +264,17 @@ where
     }
 
     fn digest_fq(mut self) -> P::BaseField {
-        debug_sponge!("digest_fq", self.sponge);
+        debug_sponge!("squeeze", self.sponge);
         self.squeeze_field()
     }
 
     fn challenge(&mut self) -> P::ScalarField {
-        debug_sponge!("challenge", self.sponge);
+        debug_sponge!("squeeze", self.sponge);
         self.squeeze(CHALLENGE_LENGTH_IN_LIMBS)
     }
 
     fn challenge_fq(&mut self) -> P::BaseField {
-        debug_sponge!("challenge_fq", self.sponge);
+        debug_sponge!("squeeze", self.sponge);
         self.squeeze_field()
     }
 }
