@@ -7,8 +7,8 @@ fn bench_proof_creation() {
 
 fn bench_proof_creation_and_verification() {
     let ctx = BenchmarkCtx::new(1 << 14);
-    let proof_and_public = ctx.create_proof();
-    ctx.batch_verification(vec![proof_and_public]);
+    let proof = ctx.create_proof();
+    ctx.batch_verification(vec![proof]);
 }
 
 iai::main!(bench_proof_creation, bench_proof_creation_and_verification);

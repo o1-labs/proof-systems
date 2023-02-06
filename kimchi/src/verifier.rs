@@ -18,7 +18,6 @@ use crate::{
     proof::{PointEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
-use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
@@ -105,7 +104,6 @@ where
         &self,
         index: &VerifierIndex<G>,
         public_comm: &PolyComm<G>,
-        public_input: &Vec<G::ScalarField>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
@@ -273,12 +271,12 @@ where
         all_alphas.instantiate(alpha);
 
         // compute Lagrange base evaluation denominators
-        let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
+        let w: Vec<_> = index.domain.elements().take(self.public.len()).collect();
 
         let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
 
         w.iter()
-            .take(public_input.len())
+            .take(self.public.len())
             .for_each(|w| zeta_minus_x.push(zetaw - w));
 
         ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
@@ -286,12 +284,13 @@ where
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        let public_evals = if public_input.is_empty() {
+        let public_evals = if self.public.is_empty() {
             [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         } else {
             [
                 vec![
-                    (public_input
+                    (self
+                        .public
                         .iter()
                         .zip(zeta_minus_x.iter())
                         .zip(index.domain.elements())
@@ -301,9 +300,10 @@ where
                         * index.domain.size_inv,
                 ],
                 vec![
-                    (public_input
+                    (self
+                        .public
                         .iter()
-                        .zip(zeta_minus_x[public_input.len()..].iter())
+                        .zip(zeta_minus_x[self.public.len()..].iter())
                         .zip(index.domain.elements())
                         .map(|((p, l), w)| -*l * p * w)
                         .fold(G::ScalarField::zero(), |x, y| x + y))
@@ -477,7 +477,6 @@ where
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
     index: &VerifierIndex<G>,
     proof: &'a ProverProof<G>,
-    public_input: &'a Vec<<G as AffineCurve>::ScalarField>,
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
     G: KimchiCurve,
@@ -499,13 +498,13 @@ where
             proof.prev_challenges.len(),
         ));
     }
-    if public_input.len() != index.public {
+    if proof.public.len() != index.public {
         return Err(VerifyError::IncorrectPubicInputLength(index.public));
     }
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
-        if public_input.len() != index.public {
+        if proof.public.len() != index.public {
             return Err(VerifyError::IncorrectPubicInputLength(index.public));
         }
         let lgr_comm = index
@@ -514,7 +513,7 @@ where
             .get(&index.domain.size())
             .expect("pre-computed committed lagrange bases not found");
         let com: Vec<_> = lgr_comm.iter().take(index.public).collect();
-        let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
+        let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
         let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
         index
             .srs()
@@ -540,7 +539,7 @@ where
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(index, &public_comm, public_input)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(index, &public_comm)?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
@@ -763,7 +762,6 @@ pub fn verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     verifier_index: &VerifierIndex<G>,
     proof: &ProverProof<G>,
-    public_input: &Vec<G::ScalarField>,
 ) -> Result<()>
 where
     G: KimchiCurve,
@@ -771,23 +769,13 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let proofs = vec![BatchedProof {
-        verifier_index,
-        proof,
-        public_input,
-    }];
+    let proofs = vec![(verifier_index, proof)];
     batch_verify::<G, EFqSponge, EFrSponge>(group_map, &proofs)
-}
-
-/// Struct equivalent of tuple (verifier index, Plonk proof, public input)
-pub struct BatchedProof<'a, G: KimchiCurve> {
-    pub verifier_index: &'a VerifierIndex<G>,
-    pub proof: &'a ProverProof<G>,
-    pub public_input: &'a Vec<G::ScalarField>,
 }
 
 /// This function verifies the batch of zk-proofs
 ///     proofs: vector of Plonk proofs
+///     index: `VerifierIndex`
 ///     RETURN: verification status
 ///
 /// # Errors
@@ -795,7 +783,7 @@ pub struct BatchedProof<'a, G: KimchiCurve> {
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 pub fn batch_verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    proofs: &Vec<BatchedProof<G>>,
+    proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
 ) -> Result<()>
 where
     G: KimchiCurve,
@@ -817,36 +805,22 @@ where
 
     //~ 1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
-    let srs = &proofs[0].verifier_index.srs();
-    for BatchedProof {
-        verifier_index,
-        proof: _,
-        public_input: _,
-    } in proofs.iter()
-    {
-        if verifier_index.srs().g.len() != srs.g.len() {
+    let srs = &proofs[0].0.srs();
+    for (index, _) in proofs.iter() {
+        if index.srs().g.len() != srs.g.len() {
             return Err(VerifyError::DifferentSRS);
         }
 
         // also make sure that the SRS is not smaller than the domain size
-        if verifier_index.srs().max_degree() < verifier_index.domain.size() {
+        if index.srs().max_degree() < index.domain.size() {
             return Err(VerifyError::SRSTooSmall);
         }
     }
 
     //~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
     let mut batch = vec![];
-    for BatchedProof {
-        verifier_index,
-        proof,
-        public_input,
-    } in proofs
-    {
-        batch.push(to_batch::<G, EFqSponge, EFrSponge>(
-            verifier_index,
-            proof,
-            public_input,
-        )?);
+    for (index, proof) in proofs {
+        batch.push(to_batch::<G, EFqSponge, EFrSponge>(index, proof)?);
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
