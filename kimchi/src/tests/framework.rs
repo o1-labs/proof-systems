@@ -180,8 +180,13 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge>(&group_map, &self.0.verifier_index.unwrap(), &proof)
-            .map_err(|e| e.to_string())?;
+        verify::<G, EFqSponge, EFrSponge>(
+            &group_map,
+            &self.0.verifier_index.unwrap(),
+            &proof,
+            &self.0.public_inputs,
+        )
+        .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
 
         Ok(())

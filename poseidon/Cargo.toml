@@ -37,3 +37,4 @@ ark-serialize = "0.3.0"
 [features]
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", ]
+debug_sponge = []

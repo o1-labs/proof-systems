@@ -79,6 +79,7 @@ fn chacha_prover() {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
     let start = Instant::now();
+    let public_input = witness[0][0..index.cs.public].to_vec();
     let proof =
         ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
@@ -88,7 +89,12 @@ fn chacha_prover() {
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
-    match verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
+    match verify::<Vesta, BaseSponge, ScalarSponge>(
+        &group_map,
+        &verifier_index,
+        &proof,
+        &public_input,
+    ) {
         Err(error) => panic!("Failure verifying the prover's proofs in batch: {error}"),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
