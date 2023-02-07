@@ -148,7 +148,12 @@ macro_rules! debug_sponge {
             // Field input
             debug_sponge_print_state!($name, $sponge);
 
-            println!("debug_sponge: {} input {}", $name, $input.to_hex());
+            println!(
+                "debug_sponge: id{} {} input {}",
+                $sponge.id,
+                $name,
+                $input.to_hex()
+            );
         }
     };
 }
@@ -156,7 +161,8 @@ macro_rules! debug_sponge {
 macro_rules! debug_sponge_print_state {
     ($name:expr, $sponge:expr) => {
         println!(
-            "debug_sponge: {} state {:?} {}",
+            "debug_sponge: id{} {} state {:?} {}",
+            $sponge.id,
             $name,
             $sponge.sponge_state,
             $sponge
