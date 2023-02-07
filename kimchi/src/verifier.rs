@@ -15,7 +15,7 @@ use crate::{
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{PointEvaluations, ProverProof, RecursionChallenge},
+    proof::{PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
@@ -480,6 +480,42 @@ where
     }
 }
 
+fn check_proof_evals_len<G>(proof: &ProverProof<G>)
+where
+    G: KimchiCurve,
+    G::BaseField: PrimeField,
+{
+    let ProofEvaluations {
+        w,
+        z,
+        s,
+        coefficients,
+        lookup,
+        generic_selector,
+        poseidon_selector,
+    } = &proof.evals;
+
+    let check_eval_len = |eval: &PointEvaluations<Vec<_>>| {
+        assert!(eval.zeta.len() == 1);
+        assert!(eval.zeta_omega.len() == 1);
+    };
+
+    w.iter().for_each(check_eval_len);
+    s.iter().for_each(check_eval_len);
+    coefficients.iter().for_each(check_eval_len);
+    if let Some(lookup) = lookup {
+        lookup.sorted.iter().for_each(check_eval_len);
+        check_eval_len(&lookup.aggreg);
+        check_eval_len(&lookup.table);
+        if let Some(runtime) = &lookup.runtime {
+            check_eval_len(runtime);
+        }
+    }
+    check_eval_len(z);
+    check_eval_len(generic_selector);
+    check_eval_len(poseidon_selector);
+}
+
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
     verifier_index: &VerifierIndex<G>,
     proof: &'a ProverProof<G>,
@@ -510,6 +546,8 @@ where
             verifier_index.public,
         ));
     }
+
+    check_proof_evals_len(proof);
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
