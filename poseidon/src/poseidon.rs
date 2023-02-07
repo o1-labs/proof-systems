@@ -87,7 +87,7 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
             params,
             constants: std::marker::PhantomData,
             #[cfg(feature = "debug_sponge")]
-            id: COUNTER.fetch_add(1, SeqCst)
+            id: COUNTER.fetch_add(1, SeqCst),
         }
     }
 
