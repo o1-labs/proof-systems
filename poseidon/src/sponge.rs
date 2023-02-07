@@ -135,31 +135,32 @@ where
 // Debugging macros -- these only insert code when non-release build and
 // "debug_sponge" feature is enabled.
 macro_rules! debug_sponge {
-    ($name:expr, $sponge:expr) => {
+    ($op:expr, $sponge:expr) => {
         #[cfg(all(feature = "debug_sponge", debug_assertions))]
         {
             // No input
-            debug_sponge_print_state!($name, $sponge);
+            debug_sponge_print_state!($op, $sponge);
         }
     };
-    ($name:expr, $input:expr, $sponge:expr) => {
+    ($op:expr, $input:expr, $sponge:expr) => {
         #[cfg(all(feature = "debug_sponge", debug_assertions))]
         {
             // Field input
-            debug_sponge_print_state!($name, $sponge);
+            debug_sponge_print_state!($op, $sponge);
 
-            println!("debug_sponge: {} input {}", $name, $input.to_hex());
+            println!("debug_sponge: id{} {} input {}", $sponge.id, $op, $input.to_hex());
         }
     };
 }
 #[cfg(all(feature = "debug_sponge", debug_assertions))]
 macro_rules! debug_sponge_print_state {
-    ($name:expr, $sponge:expr) => {
+    ($op:expr, $sponge:expr) => {
         #[cfg(all(feature = "debug_sponge", debug_assertions))]
         {
             println!(
-                "debug_sponge: {} state {:?} {}",
-                $name,
+                "debug_sponge: id{} {} state {:?} {}",
+                $sponge.id,
+                $op,
                 $sponge.sponge_state,
                 $sponge
                     .state

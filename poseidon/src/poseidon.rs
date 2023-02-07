@@ -1,5 +1,8 @@
 //! This module implements Poseidon Hash Function primitive
 
+use std::sync::atomic::AtomicU64;
+use std::sync::atomic::Ordering::SeqCst;
+
 use crate::constants::SpongeConstants;
 use crate::permutation::{full_round, poseidon_block_cipher};
 use ark_ff::Field;
@@ -49,6 +52,7 @@ pub struct ArithmeticSponge<F: Field, SC: SpongeConstants> {
     pub state: Vec<F>,
     params: &'static ArithmeticSpongeParams<F>,
     pub constants: std::marker::PhantomData<SC>,
+    pub id: u64,
 }
 
 impl<F: Field, SC: SpongeConstants> ArithmeticSponge<F, SC> {
@@ -72,12 +76,15 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
             state.push(F::zero());
         }
 
+        static COUNTER: AtomicU64 = AtomicU64::new(0);
+
         ArithmeticSponge {
             state,
             rate,
             sponge_state: SpongeState::Absorbed(0),
             params,
             constants: std::marker::PhantomData,
+            id: COUNTER.fetch_add(1, SeqCst)
         }
     }
 
