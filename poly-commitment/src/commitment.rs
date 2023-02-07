@@ -745,6 +745,7 @@ impl<G: CommitmentCurve> SRS<G> {
                     .collect();
                 combined_inner_product(evaluation_points, polyscale, evalscale, &es, self.g.len())
             };
+            println!("combined inner product0 verifier = {}", combined_inner_product0);
 
             sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
 
@@ -818,27 +819,44 @@ impl<G: CommitmentCurve> SRS<G> {
                 scalars.push(rand_base_i_c_i * u);
             }
 
+            let mut combined_poly = G::Projective::zero();
+            let print_g = |s: &str, g: G::Projective| {
+                match g.into_affine().to_coordinates() {
+                    None => println!("v term zero"),
+                    Some((x,y)) => println!("{}: {}, {}", s, x, y)
+                }
+            };
+
+
             // TERM
             // sum_j evalscale^j (sum_i polyscale^i f_i) (elm_j)
             // == sum_j sum_i evalscale^j polyscale^i f_i(elm_j)
             // == sum_i polyscale^i sum_j evalscale^j f_i(elm_j)
             {
                 let mut xi_i = G::ScalarField::one();
+                let mut i = 0;
 
                 for Evaluation {
                     commitment,
                     degree_bound,
-                    ..
+                    evaluations: es,
                 } in evaluations
                     .iter()
                     .filter(|x| !x.commitment.unshifted.is_empty())
                 {
+                    println!("test {}, {}", es.len(), es[0].len());
                     // iterating over the polynomial segments
                     for comm_ch in &commitment.unshifted {
                         scalars.push(rand_base_i_c_i * xi_i);
                         points.push(*comm_ch);
 
+                        print_g("v term unscaled", comm_ch.into_projective());
+                        print_g("v term", comm_ch.mul(xi_i));
+                        println!("v term eval {}", es[0][0]);
+                        combined_poly += comm_ch.mul(xi_i);
+
                         xi_i *= *polyscale;
+                        i += 1;
                     }
 
                     if let Some(_m) = degree_bound {
@@ -848,7 +866,11 @@ impl<G: CommitmentCurve> SRS<G> {
                                 scalars.push(rand_base_i_c_i * xi_i);
                                 points.push(comm_ch);
 
+                                print_g("v term", comm_ch.mul(xi_i));
+                                combined_poly += comm_ch.mul(xi_i);
+
                                 xi_i *= *polyscale;
+                                i += 1;
                             }
                         }
                     }

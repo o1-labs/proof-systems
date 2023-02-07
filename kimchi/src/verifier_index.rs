@@ -4,7 +4,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        expr::{Linearization, PolishToken},
+        expr::{Expr, ConstantExpr},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::{
             permutation::{zk_polynomial, zk_w3},
@@ -14,6 +14,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::VerifierIndexError,
+    linearization::constraints_expr,
     prover_index::ProverIndex,
 };
 use ark_ff::{One, PrimeField};
@@ -145,7 +146,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
+    pub constraints_expr: Expr<ConstantExpr<G::ScalarField>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
@@ -199,6 +200,10 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 })
         };
 
+        let (constraints_expr, powers_of_alpha) = constraints_expr(Some(&self.cs.feature_flags), true);
+        // TODO: Just use this instead of cloning from the prover index
+        assert_eq!(powers_of_alpha, self.powers_of_alpha);
+
         // TODO: Switch to commit_evaluations for all index polys
         VerifierIndex {
             domain,
@@ -213,54 +218,55 @@ impl<G: KimchiCurve> ProverIndex<G> {
             },
 
             sigma_comm: array::from_fn(|i| {
+                mask_fixed(
                 self.srs.commit_evaluations_non_hiding(
                     domain,
                     &self.column_evaluations.permutation_coefficients8[i],
-                )
+                ))
             }),
             coefficients_comm: array::from_fn(|i| {
+                mask_fixed(
                 self.srs.commit_evaluations_non_hiding(
                     domain,
                     &self.column_evaluations.coefficients8[i],
-                )
+                ))
             }),
             generic_comm: mask_fixed(
                 self.srs.commit_evaluations_non_hiding(
                     domain,
                     &self.column_evaluations.generic_selector4,
-                ),
-            ),
+                )),
 
             psm_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.poseidon_selector8,
             )),
 
-            complete_add_comm: self.srs.commit_evaluations_non_hiding(
+            complete_add_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.complete_add_selector4,
-            ),
-            mul_comm: self
+            )),
+            mul_comm: mask_fixed(self
                 .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
-            emul_comm: self
+                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8)),
+            emul_comm: mask_fixed(self
                 .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
+                .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8)),
 
-            endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
+            endomul_scalar_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.endomul_scalar_selector8,
-            ),
+            )),
 
             chacha_comm: self
                 .column_evaluations
                 .chacha_selectors8
                 .as_ref()
-                .map(|c| array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i]))),
+                .map(|c| array::from_fn(|i| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, &c[i])))),
 
             range_check_comm: self.column_evaluations.range_check_selectors8.as_ref().map(
                 |evals8| {
-                    array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &evals8[i]))
+                    array::from_fn(|i| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, &evals8[i])))
                 },
             ),
 
@@ -268,23 +274,23 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .column_evaluations
                 .foreign_field_add_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+                .map(|eval8| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, eval8))),
 
             foreign_field_mul_comm: self
                 .column_evaluations
                 .foreign_field_mul_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+                .map(|eval8| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, eval8))),
             xor_comm: self
                 .column_evaluations
                 .xor_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+                .map(|eval8| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, eval8))),
             rot_comm: self
                 .column_evaluations
                 .rot_selector8
                 .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+                .map(|eval8| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, eval8))),
 
             shift: self.cs.shift,
             zkpm: {
@@ -299,7 +305,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             },
             endo: self.cs.endo,
             lookup_index,
-            linearization: self.linearization.clone(),
+            constraints_expr,
         }
     }
 }
@@ -427,7 +433,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             w: _,
             endo: _,
 
-            linearization: _,
+            constraints_expr: _,
             powers_of_alpha: _,
         } = &self;
 

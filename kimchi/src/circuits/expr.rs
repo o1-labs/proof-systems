@@ -31,7 +31,7 @@ use CurrOrNext::{Curr, Next};
 
 use self::constraints::ExprOps;
 
-#[derive(Debug, Error)]
+#[derive(Clone, Debug, Error)]
 pub enum ExprError {
     #[error("Empty stack")]
     EmptyStack,
@@ -283,6 +283,12 @@ pub enum ConstantExpr<F> {
     Sub(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
 }
 
+impl<C> Default for ConstantExpr<C> {
+    fn default() -> Self {
+        ConstantExpr::Alpha
+    }
+}
+
 impl<F: Copy> ConstantExpr<F> {
     fn to_polish_(&self, res: &mut Vec<PolishToken<F>>) {
         match self {
@@ -484,6 +490,12 @@ pub enum Expr<C> {
     IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
 }
 
+impl<C: Default> Default for Expr<C> {
+    fn default() -> Self {
+        Expr::Constant(C::default())
+    }
+}
+
 impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
     fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
         use Expr::*;
@@ -666,6 +678,7 @@ impl Variable {
                 .lookup
                 .as_ref()
                 .ok_or(ExprError::LookupShouldNotBeUsed);
+            let err = ExprError::MissingIndexEvaluation(self.col);
             match self.col {
                 Witness(i) => Ok(evals.w[i]),
                 Z => Ok(evals.z),
@@ -675,9 +688,24 @@ impl Variable {
                 LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
                 Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
                 Index(GateType::Generic) => Ok(evals.generic_selector),
+                Index(GateType::CompleteAdd) => Ok(evals.complete_add_selector),
+                Index(GateType::VarBaseMul) => Ok(evals.mul_selector),
+                Index(GateType::EndoMul) => Ok(evals.emul_selector),
+                Index(GateType::EndoMulScalar) => Ok(evals.emul_scalar_selector),
+                Index(GateType::ChaCha0) => Ok(l?.chacha.ok_or(err)?[0]),
+                Index(GateType::ChaCha1) => Ok(l?.chacha.ok_or(err)?[1]),
+                Index(GateType::ChaCha2) => Ok(l?.chacha.ok_or(err)?[2]),
+                Index(GateType::ChaChaFinal) => Ok(l?.chacha.ok_or(err)?[3]),
+                Index(GateType::RangeCheck0) => Ok(l?.range_check.ok_or(err)?[0]),
+                Index(GateType::RangeCheck1) => Ok(l?.range_check.ok_or(err)?[1]),
+                Index(GateType::ForeignFieldAdd) => l?.foreign_field_add.ok_or(err),
+                Index(GateType::ForeignFieldMul) => l?.foreign_field_mul.ok_or(err),
+                Index(GateType::Xor16) => l?.xor16.ok_or(err),
+                Index(GateType::Rot64) => l?.rot64.ok_or(err),
                 Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
-                LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
+                LookupKindIndex(i) =>  l?.patterns[i].ok_or(err),
+                LookupRuntimeSelector | Index(_) => {
                     Err(ExprError::MissingIndexEvaluation(self.col))
                 }
             }
@@ -727,7 +755,7 @@ impl<F: FftField> PolishToken<F> {
                 Cell(v) => match v.evaluate(evals) {
                     Ok(x) => stack.push(x),
                     Err(e) => return Err(e),
-                },
+                    },
                 Pow(n) => {
                     let i = stack.len() - 1;
                     stack[i] = stack[i].pow(&[*n as u64]);
@@ -1569,6 +1597,70 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         self.evaluate_constants_(&env.constants)
     }
 
+}
+
+impl<F: FftField + PrimeField> Expr<ConstantExpr<F>> {
+    /// Evaluate an expression as a field element against the constants.
+    pub fn evaluate__(
+        &self,
+        d: D<F>,
+        pt: F,
+        evals: &ProofEvaluations<PointEvaluations<F>>,
+        c: &Constants<F>,
+    ) -> Result<F, ExprError> {
+        use Expr::*;
+        let res =
+            match self {
+                Double(x) => x.evaluate__(d, pt, evals, c).map(|x| x.double()),
+                Constant(x) => Ok(x.value(c)),
+                Pow(x, p) => {
+                    println!("Pow {}", p);
+                    Ok(x.evaluate__(d, pt, evals, c)?.pow(&[*p as u64]))
+                },
+                BinOp(Op2::Mul, x, y) => {
+                    println!("Op Mul");
+                    let x = (*x).evaluate__(d, pt, evals, c)?;
+                    let y = (*y).evaluate__(d, pt, evals, c)?;
+                    Ok(x * y)
+                }
+                Square(x) => {
+                    println!("Square");
+                    Ok(x.evaluate__(d, pt, evals, c)?.square())
+                },
+                BinOp(Op2::Add, x, y) => {
+                    println!("Op Add");
+                    let x = (*x).evaluate__(d, pt, evals, c)?;
+                    let y = (*y).evaluate__(d, pt, evals, c)?;
+                    Ok(x + y)
+                }
+                BinOp(Op2::Sub, x, y) => {
+                    println!("Sub");
+                    let x = (*x).evaluate__(d, pt, evals, c)?;
+                    let y = (*y).evaluate__(d, pt, evals, c)?;
+                    Ok(x - y)
+                }
+                VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
+                UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
+                Cell(v) => {
+                    println!("Cell {:?}", v.col);
+                    v.evaluate(evals)
+                },
+                Cache(_, e) => e.evaluate_(d, pt, evals, c),
+                IfFeature(feature, e1, e2) => {
+                    if feature.is_enabled() {
+                        e1.evaluate__(d, pt, evals, c)
+                    } else {
+                        e2.evaluate__(d, pt, evals, c)
+                    }
+                }
+            };
+        let x = res?;
+        println!("res {}", x);
+        Ok(x)
+    }
+}
+
+impl<F: FftField + PrimeField> Expr<ConstantExpr<F>> {
     /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
@@ -1622,7 +1714,9 @@ impl<F: FftField> Expr<F> {
             }
         }
     }
+}
 
+impl<F: FftField + PrimeField> Expr<F> {
     /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
         let d1_size = env.domain.d1.size;
@@ -1677,11 +1771,14 @@ impl<F: FftField> Expr<F> {
         let dom = (d, get_domain(d, env));
 
         let res: EvalResult<'a, F> = match self {
-            Expr::Square(x) => match x.evaluations_helper(cache, d, env) {
+            Expr::Square(x) => {
+                println!("Square");
+                match x.evaluations_helper(cache, d, env) {
                 Either::Left(x) => x.square(dom),
                 Either::Right(id) => id.get_from(cache).unwrap().square(dom),
-            },
+            }},
             Expr::Double(x) => {
+                println!("Double");
                 let x = x.evaluations_helper(cache, d, env);
                 let res = match x {
                     Either::Left(x) => {
@@ -1734,6 +1831,7 @@ impl<F: FftField> Expr<F> {
                 }
             },
             Expr::Pow(x, p) => {
+                println!("Pow {}", p);
                 let x = x.evaluations_helper(cache, d, env);
                 match x {
                     Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
@@ -1753,6 +1851,7 @@ impl<F: FftField> Expr<F> {
                 evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env),
             },
             Expr::Cell(Variable { col, row }) => {
+                println!("Cell {:?}", col);
                 let evals: &'a Evaluations<F, D<F>> = {
                     match env.get_column(col) {
                         None => return Either::Left(EvalResult::Constant(F::zero())),
@@ -1766,6 +1865,7 @@ impl<F: FftField> Expr<F> {
                 }
             }
             Expr::BinOp(op, e1, e2) => {
+                println!("Op {:?}", op);
                 let dom = (d, get_domain(d, env));
                 let f = |x: EvalResult<F>, y: EvalResult<F>| match op {
                     Op2::Mul => x.mul(y, dom),
@@ -1795,6 +1895,40 @@ impl<F: FftField> Expr<F> {
                 }
             }
         };
+        use ark_ff::BigInteger;
+        use ark_poly::{
+            univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
+            Radix2EvaluationDomain as D, UVPolynomial,
+        };
+
+        let zeta_buf = [113, 218, 77, 10, 129, 18, 125, 71, 54, 148, 61, 162, 86, 131, 121, 143, 215, 66, 82, 81, 140, 105, 133, 29, 236, 248, 35, 130, 209, 174, 228, 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+        use ark_serialize::CanonicalDeserialize;
+        let zeta = F::deserialize(&zeta_buf[..]).unwrap();
+        {
+            match &res {
+                EvalResult::Constant(x) => println!("res {}", x),
+                EvalResult::Evals { domain: _, evals } =>
+                    println!("res {}", evals.interpolate_by_ref().evaluate(&zeta)),
+                EvalResult::SubEvals { domain, evals, shift } => {
+                    let dom = (d, get_domain(d, env));
+                    match EvalResult::Constant(F::one()).mul(EvalResult::SubEvals { domain: domain.clone(), evals, shift: *shift }, dom) {
+                        EvalResult::Evals { domain: _, evals } => {
+                            let p = evals.interpolate_by_ref();
+                            print!("e: [");
+                            for c in p.coeffs.iter() {
+                                print!("{}, ", c)
+                            }
+                            println!("]");
+                            println!("res {}", p.evaluate(&zeta))
+                        },
+                        _ => {
+                            println!("TODO");
+                        }
+                    }
+                }
+            };
+        }
+
         Either::Left(res)
     }
 }

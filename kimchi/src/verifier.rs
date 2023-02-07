@@ -273,6 +273,27 @@ where
         // compute Lagrange base evaluation denominators
         let w: Vec<_> = index.domain.elements().take(self.public.len()).collect();
 
+        let (zeta_minus_x, zeta_minus_1_inv, zeta_minus_w3_inv, vanishing_poly_zeta_inv) = {
+            let mut to_invert: Vec<G::ScalarField> = 
+                w.iter().map(|w| zeta - w)
+                .chain(w.iter().take(self.public.len()).map(|w| zetaw - w))
+                .collect();
+            /*
+            w.iter()
+                .take(self.public.len())
+                .for_each(|w| to_invert.push(zetaw - w)); */
+
+            let n = to_invert.len();
+
+            to_invert.push(zeta - G::ScalarField::one());
+            to_invert.push(zeta - index.w());
+            to_invert.push(zeta1 - G::ScalarField::one());
+
+            ark_ff::fields::batch_inversion::<G::ScalarField>(&mut to_invert);
+            (to_invert[0..n].to_vec(), to_invert[n], to_invert[n + 1], to_invert[n + 2])
+        };
+
+        /*
         let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
 
         w.iter()
@@ -280,6 +301,7 @@ where
             .for_each(|w| zeta_minus_x.push(zetaw - w));
 
         ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
+        */
 
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
@@ -321,6 +343,10 @@ where
         //~~ - z
         //~~ - generic selector
         //~~ - poseidon selector
+        //~~ - complete add selector
+        //~~ - mul selector
+        //~~ - emul selector
+        //~~ - emul scalar selector
         //~~ - the 15 register/witness
         //~~ - 6 sigmas evaluations (the last one is not evaluated)
         fr_sponge.absorb_multiple(&public_evals[0]);
@@ -343,8 +369,16 @@ where
 
         let evals = self.evals.combine(&powers_of_eval_points_for_chunks);
 
+        println!("evals w[7] {}", evals.w[7].zeta);
+        println!("evals generic {}", evals.generic_selector.zeta);
+        println!("evals poseidon {}", evals.poseidon_selector.zeta);
+        println!("evals complete_add {}", evals.complete_add_selector.zeta);
+        println!("evals mul {}", evals.mul_selector.zeta);
+        println!("evals emul {}", evals.emul_selector.zeta);
+        println!("evals emul_scalar {}", evals.emul_scalar_selector.zeta);
+
         //~ 1. Compute the evaluation of $ft(\zeta)$.
-        let ft_eval0 = {
+        let ft_eval0: G::ScalarField = {
             let zkp = index.zkpm().evaluate(&zeta);
             let zeta1m1 = zeta1 - G::ScalarField::one();
 
@@ -367,19 +401,25 @@ where
                 .zip(evals.s.iter())
                 .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
                 .fold(init, |x, y| x * y);
+            
+            println!("ft_eval0 {}: {}", line!(), ft_eval0);
+
+            ft_eval0 -= {
+                let a = evals
+                .w
+                .iter()
+                .zip(index.shift.iter())
+                .map(|(w, s)| (beta * zeta * s) + w.zeta + gamma)
+                .fold(alpha0 * zkp * evals.z.zeta, |x, y| x * y);
+                println!("a {}: {}", line!(), a);
+                a
+            };
 
             ft_eval0 -= if public_evals[0].is_empty() {
                 G::ScalarField::zero()
             } else {
                 public_evals[0][0]
             };
-
-            ft_eval0 -= evals
-                .w
-                .iter()
-                .zip(index.shift.iter())
-                .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
-                .fold(alpha0 * zkp * evals.z.zeta, |x, y| x * y);
 
             let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
@@ -388,6 +428,7 @@ where
             let denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
             let denominator = denominator.inverse().expect("negligible probability");
 
+                println!("b {}: {}", line!(), numerator * denominator);
             ft_eval0 += numerator * denominator;
 
             let constants = Constants {
@@ -398,8 +439,11 @@ where
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
             };
+            // println!("v linearization {:?}", index.linearization);
 
-            ft_eval0 -= PolishToken::evaluate(
+            /*
+            ft_eval0 -= {
+                let a = PolishToken::evaluate(
                 &index.linearization.constant_term,
                 index.domain,
                 zeta,
@@ -407,11 +451,102 @@ where
                 &constants,
             )
             .unwrap();
+                println!("v constant_term {}", a);
+                a
+            }; */
 
-            ft_eval0
+            let ft_eval_0 = G::ScalarField::zero();
+
+            /*
+            let mut all_alphas = index.powers_of_alpha.clone();
+            all_alphas.instantiate(alpha);
+            use crate::circuits::argument::Argument;
+            PolishToken::evaluate(
+                crate::circuits::polynomials::complete_add::CompleteAdd::<_>::
+                combined_constraints(&all_alphas)
+            );
+            */
+
+            // t_eval0 = (perm_part + expr_part) / z_H(zeta) 
+            let expr_part: G::ScalarField = {
+                /*
+                let lookup_features = crate::circuits::lookup::lookups::LookupFeatures::from_gates::<G::ScalarField>(
+                    &vec![], false);
+                let feature_flags = crate::circuits::constraints::FeatureFlags {
+                    chacha: false,
+                    range_check: false,
+                    lookup_features,
+                    foreign_field_add: false,
+                    foreign_field_mul: false,
+                    xor: false,
+                    rot: false,
+                }; */
+
+                evals.lookup.iter().for_each(|l| {
+                    println!("verifier range check {}", l.range_check.is_some());
+                });
+
+                println!("expr = {:?}", index.constraints_expr);
+                // let (constraints_expr, powers_of_alpha) = crate::linearization::constraints_expr(Some(&feature_flags), true);
+                index.constraints_expr.evaluate__(
+                    index.domain,
+                    zeta,
+                    &evals,
+                    &constants).unwrap()
+            };
+            /*
+            let expr_part = PolishToken::evaluate(
+                &index.constraints_expr,
+                index.domain,
+                zeta,
+                &evals,
+                &constants,
+            )
+            .unwrap(); */
+
+            let (perm, bnd) = {
+                let unpermuted = evals
+                    .w
+                    .iter()
+                    .zip(index.shift.iter())
+                    .map(|(w, s)| (beta * zeta * s) + w.zeta + gamma)
+                    .fold(evals.z.zeta, |x, y| x * y);
+                let permuted = evals
+                    .w
+                    .iter()
+                    .zip(evals.s.iter())
+                    .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
+                    .fold(evals.z.zeta_omega, |x, y| x * y);
+                let perm = alpha0 * zkp * (unpermuted - permuted);
+                {
+                    println!("v: z - 1 = {}", evals.z.zeta - G::ScalarField::one());
+                    println!("v: zeta_minus_1_inv = {}", zeta_minus_1_inv);
+                    println!("v: zeta_minus_w3_inv = {}", zeta_minus_w3_inv);
+                    println!("v: bnd eq1 {}",
+                           (evals.z.zeta - G::ScalarField::one()) * zeta_minus_1_inv);
+                    println!("v: bnd eq2 {}",
+                           (evals.z.zeta - G::ScalarField::one()) * zeta_minus_w3_inv);
+                }
+                let bnd = (evals.z.zeta - G::ScalarField::one()) * (alpha1 * zeta_minus_1_inv + alpha2 * zeta_minus_w3_inv);
+                println!("V zeta {}", zeta);
+                println!("V bnd {}", bnd);
+                println!("V perm {}", perm);
+                (perm, bnd)
+            };
+
+            println!("V expr {}", expr_part);
+
+            let public_input_part = if public_evals[0].is_empty() {
+                G::ScalarField::zero()
+            } else {
+                public_evals[0][0]
+            };
+
+            (perm + expr_part + public_input_part) * vanishing_poly_zeta_inv + bnd
         };
 
         let combined_inner_product = {
+            println!("v ft_evals {} {}", ft_eval0, self.ft_eval1);
             let ft_eval0 = vec![ft_eval0];
             let ft_eval1 = vec![self.ft_eval1];
 
@@ -424,11 +559,15 @@ where
                 Column::Z,
                 Column::Index(GateType::Generic),
                 Column::Index(GateType::Poseidon),
+                Column::Index(GateType::CompleteAdd),
+                Column::Index(GateType::VarBaseMul),
+                Column::Index(GateType::EndoMul),
+                Column::Index(GateType::EndoMulScalar),
             ]
             .into_iter()
             .chain((0..COLUMNS).map(Column::Witness))
             .chain((0..COLUMNS).map(Column::Coefficient))
-            .chain((0..PERMUTS - 1).map(Column::Permutation))
+            .chain((0..PERMUTS).map(Column::Permutation))
             {
                 es.push((
                     {
@@ -444,6 +583,8 @@ where
 
             combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
         };
+
+        println!("combined inner product verifier = {}", combined_inner_product);
 
         let oracles = RandomOracles {
             joint_combiner,
@@ -563,7 +704,7 @@ where
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
         let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
-        let mut scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(
+        let scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(
             &evals,
             oracles.beta,
             oracles.gamma,
@@ -583,6 +724,7 @@ where
                 mds: &G::sponge_params().mds,
             };
 
+            /*
             for (col, tokens) in &index.linearization.index_terms {
                 let scalar =
                     PolishToken::evaluate(tokens, index.domain, oracles.zeta, &evals, &constants)
@@ -595,7 +737,7 @@ where
                         .get_column(col)
                         .ok_or(VerifyError::MissingCommitment(col))?,
                 );
-            }
+            } */
         }
 
         // MSM
@@ -606,9 +748,10 @@ where
     //~    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
     let ft_comm = {
         let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
-        let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
-        let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
-        &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - G::ScalarField::one())
+        // let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
+        let chunked_t_comm = proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
+        chunked_t_comm
+        // &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - G::ScalarField::one())
     };
 
     //~ 1. List the polynomial commitments, and their associated evaluations,
@@ -642,6 +785,10 @@ where
         //~~ - index commitments that use the coefficients
         Column::Index(GateType::Generic),
         Column::Index(GateType::Poseidon),
+        Column::Index(GateType::CompleteAdd),
+        Column::Index(GateType::VarBaseMul),
+        Column::Index(GateType::EndoMul),
+        Column::Index(GateType::EndoMulScalar),
     ]
     .into_iter()
     //~~ - witness commitments
@@ -649,7 +796,7 @@ where
     //~~ - coefficient commitments
     .chain((0..COLUMNS).map(Column::Coefficient))
     //~~ - sigma commitments
-    .chain((0..PERMUTS - 1).map(Column::Permutation))
+    .chain((0..PERMUTS).map(Column::Permutation))
     //~~ - lookup commitments
     .chain(
         index
@@ -710,35 +857,55 @@ where
                 runtime,
             )
         };
+        
+        let mk_eval = |c: PolyComm<G>, e: &PointEvaluations<Vec<G::ScalarField>>| Evaluation {
+            commitment: c.clone(),
+            evaluations: vec![e.zeta.clone(), e.zeta_omega.clone()],
+            degree_bound: None,
+        };
 
         // add evaluation of the table polynomial
-        evaluations.push(Evaluation {
-            commitment: table_comm,
-            evaluations: vec![
-                lookup_eval.table.zeta.clone(),
-                lookup_eval.table.zeta_omega.clone(),
-            ],
-            degree_bound: None,
-        });
+        evaluations.push(mk_eval(table_comm, &lookup_eval.table));
 
-        // add evaluation of the runtime table polynomial
-        if li.runtime_tables_selector.is_some() {
-            let runtime = lookup_comms
-                .runtime
-                .as_ref()
-                .ok_or(VerifyError::IncorrectRuntimeProof)?;
-            let runtime_eval = lookup_eval
-                .runtime
-                .as_ref()
-                .map(|x| x.map_ref(&|x| x.clone()))
-                .ok_or(VerifyError::IncorrectRuntimeProof)?;
-
-            evaluations.push(Evaluation {
-                commitment: runtime.clone(),
-                evaluations: vec![runtime_eval.zeta, runtime_eval.zeta_omega],
-                degree_bound: None,
-            });
+        // Used to check that both the commitments and the evaluations are
+        // both present or both not present.
+        fn both<'a, A, B>(x: &'a Option<A>, y: &'a Option<B>) -> Result<Option<(&'a A, &'a B)>> {
+            match (x.as_ref(), y.as_ref()) {
+                (Some(x), Some(y)) => Ok(Some((x,y))),
+                (None, None) => Ok(None),
+                _ => Err(VerifyError::IncorrectRuntimeProof)
+            }
         }
+
+        let add_single = |es: &mut Vec<_>, c: &Option<PolyComm<G>>, e: &Option<PointEvaluations<_>>| -> Result<()> {
+            es.extend(
+                // Check the commitment and the evaluation are either both there
+                // or both not there
+                both(c, e)?
+                // This is iter on an Option. So, add nothing in the "None" case.
+                .iter()
+                .map(|(c, e)| mk_eval((*c).clone(), e)));
+            Ok(())
+        };
+        
+        add_single(&mut evaluations, &lookup_comms.runtime, &lookup_eval.runtime)?;
+
+        evaluations.extend(
+            both(&index.chacha_comm, &lookup_eval.chacha)?
+            .iter()
+            .flat_map(|(cs, es)| cs.iter().zip(es.iter()))
+            .map(|(c, e)| mk_eval(c.clone(), e)));
+
+        evaluations.extend(
+            both(&index.range_check_comm, &lookup_eval.range_check)?
+            .iter()
+            .flat_map(|(cs, es)| cs.iter().zip(es.iter()))
+            .map(|(c, e)| mk_eval(c.clone(), e)));
+
+        add_single(&mut evaluations, &index.foreign_field_add_comm, &lookup_eval.foreign_field_add)?;
+        add_single(&mut evaluations, &index.foreign_field_mul_comm, &lookup_eval.foreign_field_mul)?;
+        add_single(&mut evaluations, &index.xor_comm, &lookup_eval.xor16)?;
+        add_single(&mut evaluations, &index.rot_comm, &lookup_eval.rot64)?;
     }
 
     // prepare for the opening proof verification

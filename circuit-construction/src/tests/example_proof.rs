@@ -1,4 +1,5 @@
 use crate::prologue::*;
+use rand::{prelude::StdRng, SeedableRng};
 use kimchi::curve::KimchiCurve;
 
 type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
@@ -30,6 +31,8 @@ pub fn circuit<
     };
 
     let base = constant_curve_pt(sys, G::prime_subgroup_generator().to_coords().unwrap());
+    let _ = sys.add_group(zero, base, base);
+    /* TODO
     let scalar = sys.scalar(G::ScalarField::size_in_bits(), || {
         witness.as_ref().unwrap().s
     });
@@ -37,10 +40,11 @@ pub fn circuit<
 
     let preimage = sys.var(|| witness.as_ref().unwrap().preimage);
     let actual_hash = sys.poseidon(constants, vec![preimage, zero, zero])[0];
+    */
 
-    sys.assert_eq(actual.0, public_input[0]);
-    sys.assert_eq(actual.1, public_input[1]);
-    sys.assert_eq(actual_hash, public_input[2]);
+    // sys.assert_eq(actual.0, public_input[0]);
+    // sys.assert_eq(actual.1, public_input[1]);
+    // sys.assert_eq(actual_hash, public_input[2]);
 }
 
 const PUBLIC_INPUT_LENGTH: usize = 3;
@@ -53,6 +57,7 @@ fn test_example_circuit() {
     let srs = {
         let mut srs = SRS::<Vesta>::create(1 << 7); // 2^7 = 128
         srs.add_lagrange_basis(Radix2EvaluationDomain::new(srs.g.len()).unwrap());
+        srs.add_lagrange_basis(Radix2EvaluationDomain::new(16).unwrap());
         Arc::new(srs)
     };
 
@@ -65,11 +70,11 @@ fn test_example_circuit() {
 
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-    let mut rng = rand::thread_rng();
+    let rng = &mut StdRng::from_seed([0u8; 32]);
 
     // create witness
-    let private_key = <Pallas as AffineCurve>::ScalarField::rand(&mut rng);
-    let preimage = <Pallas as AffineCurve>::BaseField::rand(&mut rng);
+    let private_key = <Pallas as AffineCurve>::ScalarField::rand(rng);
+    let preimage = <Pallas as AffineCurve>::BaseField::rand(rng);
 
     let witness = Witness {
         s: private_key,

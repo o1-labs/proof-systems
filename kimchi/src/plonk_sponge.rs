@@ -67,9 +67,18 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             lookup,
             generic_selector,
             poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            emul_scalar_selector,
         } = e;
 
-        let mut points = vec![z, generic_selector, poseidon_selector];
+        let mut points = vec![z, generic_selector, poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            emul_scalar_selector,
+        ];
         w.iter().for_each(|w_i| points.push(w_i));
         coefficients.iter().for_each(|c_i| points.push(c_i));
         s.iter().for_each(|s_i| points.push(s_i));
@@ -80,11 +89,29 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
                 aggreg,
                 table,
                 runtime,
+                patterns,
+                chacha,
+                range_check,
+                foreign_field_add,
+                foreign_field_mul,
+                xor16,
+                rot64,
             } = l;
             points.push(aggreg);
             points.push(table);
-            sorted.iter().for_each(|s| points.push(s));
-            runtime.iter().for_each(|x| points.push(x));
+            points.extend(sorted.iter());
+            points.extend(runtime.iter());
+            points.extend(patterns.xor.iter());
+            points.extend(patterns.chacha_final.iter());
+            points.extend(patterns.lookup.iter());
+            points.extend(patterns.range_check.iter());
+            points.extend(patterns.ffmul.iter());
+            points.extend(chacha.iter().flatten());
+            points.extend(range_check.iter().flatten());
+            points.extend(foreign_field_add.iter());
+            points.extend(foreign_field_mul.iter());
+            points.extend(xor16.iter());
+            points.extend(rot64.iter());
         }
 
         points.into_iter().for_each(|p| {

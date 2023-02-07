@@ -475,7 +475,7 @@ mod tests {
         alphas::Alphas,
         circuits::{
             expr::{Column, Constants, PolishToken},
-            lookup::lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+            lookup::{index::LookupSelectors, lookups::{LookupFeatures, LookupInfo, LookupPatterns}},
             wires::*,
         },
         curve::KimchiCurve,
@@ -534,6 +534,10 @@ mod tests {
             h.insert(Column::LookupTable);
             h.insert(Column::Index(GateType::Poseidon));
             h.insert(Column::Index(GateType::Generic));
+            h.insert(Column::Index(GateType::CompleteAdd));
+            h.insert(Column::Index(GateType::VarBaseMul));
+            h.insert(Column::Index(GateType::EndoMul));
+            h.insert(Column::Index(GateType::EndoMulScalar));
             h
         };
         let mut alphas = Alphas::<F>::default();
@@ -565,6 +569,10 @@ mod tests {
             coefficients: array::from_fn(|_| rand_eval()),
             generic_selector: PointEvaluations::default(),
             poseidon_selector: PointEvaluations::default(),
+            complete_add_selector: PointEvaluations::default(),
+            mul_selector: PointEvaluations::default(),
+            emul_selector: PointEvaluations::default(),
+            emul_scalar_selector: PointEvaluations::default(),
             lookup: Some(LookupEvaluations {
                 sorted: (0..(lookup_info.max_per_row + 1))
                     .map(|_| rand_eval())
@@ -572,6 +580,13 @@ mod tests {
                 aggreg: rand_eval(),
                 table: rand_eval(),
                 runtime: None,
+                patterns: LookupSelectors::default(),
+                chacha: None,
+                range_check: None,
+                foreign_field_add: None,
+                foreign_field_mul: None,
+                xor16: None,
+                rot64: None,
             }),
         };
 

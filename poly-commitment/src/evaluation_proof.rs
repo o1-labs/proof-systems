@@ -139,6 +139,18 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut omega = G::ScalarField::zero();
             let mut scale = G::ScalarField::one();
 
+            let print_g = |s: &str, g: G::Projective| {
+                match g.into_affine().to_coordinates() {
+                    None => println!("p term zero"),
+                    Some((x,y)) => println!("{}: {}, {}", s, x, y)
+                }
+            };
+            let zeta_buf = [113, 218, 77, 10, 129, 18, 125, 71, 54, 148, 61, 162, 86, 131, 121, 143, 215, 66, 82, 81, 140, 105, 133, 29, 236, 248, 35, 130, 209, 174, 228, 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            use ark_serialize::CanonicalDeserialize;
+            use ark_poly::{Polynomial};
+            let zeta = G::ScalarField::deserialize(&zeta_buf[..]).unwrap();
+            println!("zeta in evaluation_proof {}", zeta);
+
             // iterating over polynomials in the batch
             for (p_i, degree_bound, omegas) in plnms {
                 match p_i {
@@ -152,6 +164,16 @@ impl<G: CommitmentCurve> SRS<G> {
                                 *x += scale * evals[i * stride];
                             });
                         assert_eq!(omegas.unshifted.len(), 1);
+                        {
+                            let p = evals_i.interpolate_by_ref();
+
+                            let g_unscaled = self.commit_non_hiding(&p, None).unshifted[0] + self.h.mul(omegas.unshifted[0]).into_affine();
+                            print_g("p term unscaled", g_unscaled.into_projective());
+                            print_g("p term", g_unscaled.mul(scale));
+                            println!("p term eval {}", p.evaluate(&zeta));
+                        }
+                        /*
+                        */
                         omega += &(omegas.unshifted[0] * scale);
                         scale *= &polyscale;
                     }
@@ -169,6 +191,16 @@ impl<G: CommitmentCurve> SRS<G> {
                                 [offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
                             // always mixing in the unshifted segments
                             plnm.add_unshifted(scale, segment);
+
+                            {
+                                let p = DensePolynomial::from_coefficients_vec(segment.to_vec());
+                                let g_unscaled = self.commit_non_hiding(&p, None).unshifted[0] + self.h.mul(omegas.unshifted[j]).into_affine();
+                                print_g("p term unscaled", g_unscaled.into_projective());
+                                print_g("p term", g_unscaled.mul(scale));
+                                println!("p term eval {}", p.evaluate(&zeta));
+                            }
+                        /*
+                        */
 
                             omega += &(omegas.unshifted[j] * scale);
                             scale *= &polyscale;
@@ -226,6 +258,7 @@ impl<G: CommitmentCurve> SRS<G> {
             .map(|(a, b)| *a * b)
             .fold(G::ScalarField::zero(), |acc, x| acc + x);
 
+        println!("combined inner product prover = {}", combined_inner_product);
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();

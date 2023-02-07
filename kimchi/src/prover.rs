@@ -1,11 +1,13 @@
 //! This module implements prover's zk-proof primitive.
 
+        use ark_serialize::{CanonicalSerialize, CanonicalDeserialize};
+        use ark_ff::BigInteger;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
         expr::{l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
-        lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
+        lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry, lookups::LookupPattern, index::LookupSelectors},
         polynomials::{
             chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
@@ -175,7 +177,9 @@ where
         let (_, endo_r) = G::endos();
 
         // TODO: rng should be passed as arg
-        let rng = &mut rand::rngs::OsRng;
+        let rng_must_restore_before_merge = &mut rand::rngs::OsRng;
+        use rand::prelude::SeedableRng;
+        let rng = &mut rand::rngs::StdRng::from_seed([2u8; 32]);
 
         // double-check the witness
         if cfg!(debug_assertions) {
@@ -687,7 +691,19 @@ where
             }
         };
 
+        let mut bnd_delete_me = DensePolynomial::zero();
+        let mut perm_delete_me = DensePolynomial::zero();
+        let mut expr_delete_me = DensePolynomial::zero();
+
         let quotient_poly = {
+            /*
+            let zeta_buf = [140, 82, 247, 253, 135, 131, 121, 239, 66, 45, 6, 95, 188, 154, 180, 39, 111, 218, 94, 174, 255, 245, 182, 3, 144, 138, 1, 74, 151, 106, 150, 59, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            let zeta = G::ScalarField::deserialize(&zeta_buf[..]).unwrap();
+            let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d8, zeta);
+            let zeta_evals4 = LagrangeBasisEvaluations::new(index.cs.domain.d4, zeta);
+            println!("zeta {}", zeta);
+            */
+
             // generic
             let mut t4 = {
                 let generic_constraint = generic::Generic::combined_constraints(&all_alphas);
@@ -699,9 +715,11 @@ where
 
                     check_constraint!(index, gen_minus_pub);
                 }
+                // println!("generic part eval: {}", zeta_evals4.evaluate(&generic4));
 
                 generic4
             };
+
             // permutation
             let (mut t8, bnd) = {
                 let alphas =
@@ -709,6 +727,8 @@ where
                 let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
 
                 check_constraint!(index, perm);
+                bnd_delete_me = bnd.clone();
+                perm_delete_me = perm.interpolate_by_ref();
 
                 (perm, bnd)
             };
@@ -761,11 +781,21 @@ where
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
                 {
+                    match gate.argument_type() {
+                        ArgumentType::Gate(GateType::CompleteAdd) => {
+                        },
+                        _ => ()
+                    }
+                    println!("combining gate {:?}", gate.argument_type());
                     let constraint = gate.combined_constraints(&all_alphas);
                     let eval = constraint.evaluations(&env);
+                    // println!("{:?}", constraint);
+                    println!("zero? {}", eval.evals.iter().all(|x| x.is_zero()));
                     if eval.domain().size == t4.domain().size {
+        //                println!("{:?} part eval {}", gate.argument_type(), zeta_evals4.evaluate(&eval));
                         t4 += &eval;
                     } else if eval.domain().size == t8.domain().size {
+         //               println!("{:?} part eval {}", gate.argument_type(), zeta_evals.evaluate(&eval));
                         t8 += &eval;
                     } else {
                         panic!("Bad evaluation")
@@ -808,6 +838,9 @@ where
 
             // public polynomial
             let mut f = t4.interpolate() + t8.interpolate();
+            {
+                expr_delete_me = &f - &perm_delete_me;
+            }
             f += &public_poly;
 
             // divide contributions with vanishing polynomial
@@ -854,11 +887,35 @@ where
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         let zeta = zeta_chal.to_field(endo_r);
 
+        let mut buf = [0u8; 64];
+        zeta.serialize(&mut buf[..]);
+        println!("zeta buf = {:?}", buf);
+
+        println!("zeta = {}", zeta);
+        println!("P bnd(zeta) = {}", bnd_delete_me.evaluate(&zeta));
+        println!("P perm(zeta) = {}", perm_delete_me.evaluate(&zeta));
+        println!("P expr(zeta) = {}", expr_delete_me.evaluate(&zeta));
+
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
 
+        let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
+        let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
+
+        let chunked_evals_for_selector =
+            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
+                zeta: vec![zeta_evals.evaluate_zero_one(p)],
+                zeta_omega: vec![zeta_omega_evals.evaluate_zero_one(p)],
+            };
+
+        let chunked_evals_for_evaluations =
+            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
+                zeta: vec![zeta_evals.evaluate(p)],
+                zeta_omega: vec![zeta_omega_evals.evaluate(p)],
+            };
+
         //~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-        if index.cs.lookup_constraint_system.is_some() {
+        if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ - the aggregation polynomial
             let aggreg = lookup_context
                 .aggreg_coeffs
@@ -893,6 +950,7 @@ where
                     zeta: joint_table.evaluate_chunks(zeta),
                     zeta_omega: joint_table.evaluate_chunks(zeta_omega),
                 },
+                patterns: lcs.lookup_selectors.as_ref().map(chunked_evals_for_selector),
                 runtime: lookup_context.runtime_table.as_ref().map(|runtime_table| {
                     let runtime_table = runtime_table.to_chunked_polynomial(index.max_poly_size);
                     PointEvaluations {
@@ -900,6 +958,20 @@ where
                         zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
                     }
                 }),
+                chacha: index.column_evaluations.chacha_selectors8.as_ref().map(|cs| {
+                    array::from_fn(|i| chunked_evals_for_selector(&cs[i]))
+                }),
+                range_check: index.column_evaluations.range_check_selectors8.as_ref().map(|cs| {
+                    array::from_fn(|i| chunked_evals_for_selector(&cs[i]))
+                }),
+                foreign_field_add: index.column_evaluations.foreign_field_add_selector8.as_ref()
+                    .map(|c| chunked_evals_for_selector(c)),
+                foreign_field_mul: index.column_evaluations.foreign_field_mul_selector8.as_ref()
+                    .map(|c| chunked_evals_for_selector(c)),
+                xor16: index.column_evaluations.xor_selector8.as_ref()
+                    .map(|c| chunked_evals_for_selector(c)),
+                rot64: index.column_evaluations.rot_selector8.as_ref()
+                    .map(|c| chunked_evals_for_selector(c)),
             })
         }
 
@@ -922,20 +994,10 @@ where
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 
-        let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
-        let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
-
-        let chunked_evals_for_selector =
-            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate_zero_one(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate_zero_one(p)],
-            };
-
-        let chunked_evals_for_evaluations =
-            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate(p)],
-            };
+        println!("w[7](zeta) {}", witness_poly[7].evaluate(&zeta));
+        print!("w[7]: [");
+        witness_poly[7].coeffs.iter().for_each(|c| print!("{}, ", c));
+        println!("]");
 
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             s: array::from_fn(|i| {
@@ -969,6 +1031,25 @@ where
             poseidon_selector: chunked_evals_for_selector(
                 &index.column_evaluations.poseidon_selector8,
             ),
+            complete_add_selector:  {
+                let p = index.column_evaluations.complete_add_selector4.interpolate_by_ref();
+                PointEvaluations {
+                    zeta: vec![p.evaluate(&zeta)],
+                    zeta_omega: vec![p.evaluate(&zeta_omega)],
+                }
+            }
+                /* chunked_evals_for_selector(
+                &index.column_evaluations.complete_add_selector4,
+            )*/,
+            mul_selector: chunked_evals_for_selector(
+                &index.column_evaluations.mul_selector8,
+            ),
+            emul_selector: chunked_evals_for_selector(
+                &index.column_evaluations.emul_selector8,
+            ),
+            emul_scalar_selector: chunked_evals_for_selector(
+                &index.column_evaluations.endomul_scalar_selector8,
+            ),
         };
 
         let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
@@ -986,8 +1067,9 @@ where
         };
 
         //~ 1. Compute the ft polynomial.
-        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+        //~    This is to implement [Maller's optimization](https://o1-labs.github.io/proof-systems/plonk/maller.html).
         let ft: DensePolynomial<G::ScalarField> = {
+            /*
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
                 // that we can drop the coefficient forms of the index polynomials from
@@ -1000,11 +1082,23 @@ where
 
                 // the circuit polynomial
                 let f = {
+                    // println!("p linearization {:?}", index.linearization);
                     let (_lin_constant, mut lin) =
                         index.linearization.to_polynomial(&env, zeta, &evals);
+                    {
+                        let mut is_zero = true;
+                        for x in lin.evals.iter() {
+                            if ! x.is_zero() {
+                                is_zero = false;
+                            }
+                        }
+                        println!("lin is zero {}", is_zero);
+                    };
+                    assert!(lin.evals.iter().all(|x| x.is_zero()));
                     lin += &f;
                     lin.interpolate()
                 };
+                println!("perm_lnrz(zeta) = {}", f.evaluate(&zeta));
 
                 drop(env);
 
@@ -1012,13 +1106,18 @@ where
                 f.to_chunked_polynomial(index.max_poly_size)
                     .linearize(zeta_to_srs_len)
             };
+            println!("prover f perm part {}", f_chunked.evaluate(&zeta)); */
 
             let t_chunked = quotient_poly
                 .to_chunked_polynomial(index.max_poly_size)
                 .linearize(zeta_to_srs_len);
 
-            &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
+            println!("prover t part {}", t_chunked.evaluate(&zeta));
+
+            t_chunked
         };
+
+        println!("prover actual ft eval0 {}", ft.evaluate(&zeta));
 
         //~ 1. construct the blinding part of the ft polynomial commitment
         //~    see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
@@ -1029,7 +1128,7 @@ where
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
                 unshifted: vec![
-                    blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
+                    blinding_t,
                 ],
                 shifted: None,
             }
@@ -1119,6 +1218,7 @@ where
             .iter()
             .map(|(p, d1_size)| (coefficients_form(p), None, non_hiding(*d1_size)))
             .collect::<Vec<_>>();
+        println!("polynomials.len {}: {}", line!(), polynomials.len());
 
         let fixed_hiding = |d1_size: usize| PolyComm {
             unshifted: vec![G::ScalarField::one(); d1_size],
@@ -1135,18 +1235,20 @@ where
         //~~ - the 6 sigmas
         //~~ - optionally, the runtime table
         polynomials.push((coefficients_form(&public_poly), None, fixed_hiding(1)));
+        println!("polynomials.len {}: {}", line!(), polynomials.len());
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
+        println!("polynomials.len {}: {}", line!(), polynomials.len());
         polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.generic_selector4),
-            None,
-            fixed_hiding(1),
-        ));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.poseidon_selector8),
-            None,
-            fixed_hiding(1),
-        ));
+        println!("polynomials.len {}: {}", line!(), polynomials.len());
+        {
+            let c = &index.column_evaluations;
+            polynomials.extend(
+                [&c.generic_selector4, &c.poseidon_selector8, 
+                &c.complete_add_selector4, &c.mul_selector8, &c.emul_selector8, &c.endomul_scalar_selector8]
+                .map(|e| (evaluations_form(e), None, fixed_hiding(1)))
+            )
+        }
+        println!("polynomials.len {}: {}", line!(), polynomials.len());
         polynomials.extend(
             witness_poly
                 .iter()
@@ -1154,18 +1256,19 @@ where
                 .map(|(w, c)| (coefficients_form(w), None, c.blinders.clone()))
                 .collect::<Vec<_>>(),
         );
+        println!("polynomials.len {}: {}", line!(), polynomials.len());
         polynomials.extend(
             index
                 .column_evaluations
                 .coefficients8
                 .iter()
-                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(1)))
+                .map(|coefficientm| (evaluations_form(coefficientm), None, fixed_hiding(1)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
+            index.column_evaluations.permutation_coefficients8
                 .iter()
-                .map(|w| (evaluations_form(w), None, non_hiding(1)))
+                .map(|w| (evaluations_form(w), None, fixed_hiding(1)))
                 .collect::<Vec<_>>(),
         );
 
@@ -1218,6 +1321,25 @@ where
                     runtime_table_comm.blinders.clone(),
                 ));
             }
+            
+            //~~ - if present, add the various selectors that use lookups
+            polynomials.extend(
+                index.column_evaluations.chacha_selectors8.iter()
+                .flatten()
+                .map(|e| (evaluations_form(e), None, fixed_hiding(1))));
+            polynomials.extend(
+                index.column_evaluations.range_check_selectors8.iter()
+                .flatten()
+                .map(|e| (evaluations_form(e), None, fixed_hiding(1))));
+            polynomials.extend(
+                index.column_evaluations.foreign_field_add_selector8.iter()
+                .map(|e| (evaluations_form(e), None, fixed_hiding(1))));
+            polynomials.extend(
+                index.column_evaluations.foreign_field_mul_selector8.iter()
+                .map(|e| (evaluations_form(e), None, fixed_hiding(1))));
+            polynomials.extend(
+                index.column_evaluations.xor_selector8.iter()
+                .map(|e| (evaluations_form(e), None, fixed_hiding(1))));
         }
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
@@ -1239,6 +1361,10 @@ where
                 sorted: s.iter().map(|c| c.commitment.clone()).collect(),
                 runtime: lookup_context.runtime_table_comm.map(|x| x.commitment),
             });
+        
+        chunked_evals.lookup.iter().for_each(|l| {
+            println!("range check {}", l.range_check.is_some());
+        });
 
         Ok(Self {
             commitments: ProverCommitments {

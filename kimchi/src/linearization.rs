@@ -21,7 +21,7 @@ use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
-    wires::COLUMNS,
+    wires::{PERMUTS, COLUMNS},
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
@@ -272,6 +272,11 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         h.insert(Coefficient(i));
     }
 
+    // the permutation polynomials
+    for i in 0..PERMUTS {
+        h.insert(Permutation(i));
+    }
+
     let lookup_info = if feature_flags.lookup_features.patterns == LookupPatterns::default() {
         None
     } else {
@@ -300,6 +305,15 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the generic selector polynomial
     h.insert(Index(GateType::Generic));
+
+    // the complete add selector polynomial
+    h.insert(Index(GateType::CompleteAdd));
+    // the scalar mul selector polynomial
+    h.insert(Index(GateType::VarBaseMul));
+    // the endoscalar mul selector polynomial
+    h.insert(Index(GateType::EndoMul));
+    // the endoscalar mul scalar selector polynomial
+    h.insert(Index(GateType::EndoMulScalar));
 
     h
 }

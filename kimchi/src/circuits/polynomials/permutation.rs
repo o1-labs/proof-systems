@@ -303,11 +303,28 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
                 return Err(ProverError::Permutation("first division rest"));
             }
 
+
             // accumulator end := (z(x) - 1) / (x - sid[n-3])
             let denominator = DensePolynomial::from_coefficients_slice(&[
                 -self.cs.sid[self.cs.domain.d1.size() - 3],
                 F::one(),
             ]);
+            {
+                let zeta_buf = [229, 3, 216, 174, 158, 69, 152, 137, 184, 152, 229, 179, 158, 254, 14, 226, 250, 178, 113, 94, 80, 100, 32, 203, 188, 119, 149, 113, 0, 214, 227, 43, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+                let zeta = F::deserialize(&zeta_buf[..]).unwrap();
+                println!("zeta in perm {}", zeta);
+                let z_minus_1_zeta = z_minus_1.evaluate(&zeta);
+                let x_minus_1 = DensePolynomial::from_coefficients_slice(&[-F::one(), F::one()]);
+                let zeta_minus_1_inv = x_minus_1.evaluate(&zeta).inverse().unwrap();
+                let zeta_minus_w3_inv = denominator.evaluate(&zeta).inverse().unwrap();
+                        println!("p: z - 1 = {}", z_minus_1_zeta);
+                        println!("p: zeta_minus_1_inv = {}", zeta_minus_1_inv);
+                        println!("p: zeta_minus_w3_inv = {}", zeta_minus_w3_inv);
+                        println!("p: bnd eq1 {}",
+                            z_minus_1_zeta * zeta_minus_1_inv);
+                        println!("p: bnd eq2 {}",
+                            z_minus_1_zeta * zeta_minus_w3_inv);
+            }
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
                 &z_minus_1.into(),
                 &denominator.into(),
@@ -387,7 +404,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let res =
             e.w.iter()
                 .zip(e.s.iter())
-                .map(|(w, s)| gamma + (beta * s.zeta) + w.zeta)
+                .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
                 .fold(init, |x, y| x * y);
         -res
     }

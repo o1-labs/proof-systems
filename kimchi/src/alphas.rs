@@ -38,7 +38,7 @@ use std::{
 /// See [Self::default] to create one,
 /// and [Self::register] to register a new mapping.
 /// Once you know the alpha value, you can convert this type to a [Alphas].
-#[derive(Debug, Default, Serialize, Deserialize, Clone)]
+#[derive(PartialEq, Eq, Debug, Default, Serialize, Deserialize, Clone)]
 pub struct Alphas<F> {
     /// The next power of alpha to use
     /// the end result will be [1, alpha^{next_power - 1}]
