@@ -148,7 +148,12 @@ macro_rules! debug_sponge {
             // Field input
             debug_sponge_print_state!($name, $sponge);
 
-            println!("debug_sponge: id{} {} input {}", $sponge.id, $name, $input.to_hex());
+            println!(
+                "debug_sponge: id{} {} input {}",
+                $sponge.id,
+                $name,
+                $input.to_hex()
+            );
         }
     };
 }
