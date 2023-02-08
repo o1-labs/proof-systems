@@ -494,11 +494,11 @@ mod tests {
             write!(f, "[")?;
             for x in self.0.iter() {
                 match x {
-                    PolishToken::Literal(a) => write!(f, "{}, ", a)?,
+                    PolishToken::Literal(a) => write!(f, "{a}, ")?,
                     PolishToken::Add => write!(f, "+, ")?,
                     PolishToken::Mul => write!(f, "*, ")?,
                     PolishToken::Sub => write!(f, "-, ")?,
-                    x => write!(f, "{:?}, ", x)?,
+                    x => write!(f, "{x:?}, ")?,
                 }
             }
             write!(f, "]")?;
@@ -527,7 +527,7 @@ mod tests {
                 h.insert(Column::Witness(i));
             }
             for i in 0..(lookup_info.max_per_row + 1) {
-                h.insert(Column::LookupSorted(i as usize));
+                h.insert(Column::LookupSorted(i));
             }
             h.insert(Column::Z);
             h.insert(Column::LookupAggreg);
@@ -599,15 +599,15 @@ mod tests {
             .zip(linearized_polish.index_terms.iter())
             .for_each(|((c1, e1), (c2, e2))| {
                 assert_eq!(c1, c2);
-                println!("{:?} ?", c1);
+                println!("{c1:?} ?");
                 let x1 = e1.evaluate_(d, pt, &eval, &constants).unwrap();
                 let x2 = PolishToken::evaluate(e2, d, pt, &eval, &constants).unwrap();
                 if x1 != x2 {
                     println!("e1: {}", e1.ocaml_str());
                     println!("e2: {}", Polish(e2.clone()));
-                    println!("Polish evaluation differed for {:?}: {} != {}", c1, x1, x2);
+                    println!("Polish evaluation differed for {c1:?}: {x1} != {x2}");
                 } else {
-                    println!("{:?} OK", c1);
+                    println!("{c1:?} OK");
                 }
             });
 

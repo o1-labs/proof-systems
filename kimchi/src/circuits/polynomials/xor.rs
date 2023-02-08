@@ -260,7 +260,7 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [
     let output = BigUint::bitwise_xor(&input1_big, &input2_big);
 
     let mut xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits) as usize]);
+        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits)]);
 
     init_xor(
         &mut xor_witness,

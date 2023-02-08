@@ -248,12 +248,12 @@ where
         fr_sponge.absorb(&prev_challenge_digest);
 
         // prepare some often used values
-        let zeta1 = zeta.pow(&[n]);
+        let zeta1 = zeta.pow([n]);
         let zetaw = zeta * index.domain.group_gen;
         let evaluation_points = [zeta, zetaw];
         let powers_of_eval_points_for_chunks = PointEvaluations {
-            zeta: zeta.pow(&[index.max_poly_size as u64]),
-            zeta_omega: zetaw.pow(&[index.max_poly_size as u64]),
+            zeta: zeta.pow([index.max_poly_size as u64]),
+            zeta_omega: zetaw.pow([index.max_poly_size as u64]),
         };
 
         //~ 1. Compute evaluations for the previous recursion challenges.
@@ -314,7 +314,7 @@ where
                         .map(|((p, l), w)| -*l * p * w)
                         .fold(G::ScalarField::zero(), |x, y| x + y))
                         * index.domain.size_inv
-                        * (zetaw.pow(&[n as u64]) - G::ScalarField::one()),
+                        * (zetaw.pow([n]) - G::ScalarField::one()),
                 ],
             ]
         };
@@ -625,7 +625,7 @@ where
     //~ 1. Compute the (chuncked) commitment of $ft$
     //~    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
     let ft_comm = {
-        let zeta_to_srs_len = oracles.zeta.pow(&[verifier_index.max_poly_size as u64]);
+        let zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size as u64]);
         let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
         let chunked_t_comm = &proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
         &chunked_f_comm - &chunked_t_comm.scale(zeta_to_domain_size - G::ScalarField::one())

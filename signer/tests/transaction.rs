@@ -113,7 +113,7 @@ impl Transaction {
     pub fn set_memo_str(mut self, memo: &str) -> Self {
         self.memo[0] = 0x01;
         self.memo[1] = std::cmp::min(memo.len(), MEMO_BYTES - 2) as u8;
-        let memo = format!("{:\0<32}", memo); // Pad user-supplied memo with zeros
+        let memo = format!("{memo:\0<32}"); // Pad user-supplied memo with zeros
         self.memo[2..]
             .copy_from_slice(&memo.as_bytes()[..std::cmp::min(memo.len(), MEMO_BYTES - 2)]);
         // Anything beyond MEMO_BYTES is truncated

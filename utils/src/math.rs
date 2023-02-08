@@ -39,7 +39,7 @@ mod tests {
         ];
         for (d, expected_res) in tests.iter() {
             let res = ceil_log2(*d);
-            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
+            println!("ceil(log2({d})) = {res}, expected = {expected_res}");
             assert!(res == *expected_res)
         }
     }

@@ -159,7 +159,7 @@ where
             //       not sure why we do it here
             prover
                 .verify(&witness, &self.0.public_inputs)
-                .map_err(|e| format!("{:?}", e))?;
+                .map_err(|e| format!("{e:?}"))?;
         }
 
         // add the proof to the batch
@@ -206,7 +206,7 @@ where
         let mut line = "| ".to_string();
         for col in cols {
             let bigint: BigUint = col[row].into();
-            write!(line, "{} | ", bigint).unwrap();
+            write!(line, "{bigint} | ").unwrap();
         }
         println!("{line}");
     }

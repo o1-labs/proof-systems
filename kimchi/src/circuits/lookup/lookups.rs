@@ -221,7 +221,7 @@ impl LookupInfo {
         let mut update_selector = |lookup_pattern, i| {
             let selector = selector_values[lookup_pattern]
                 .as_mut()
-                .expect(&*format!("has selector for {:?}", lookup_pattern));
+                .unwrap_or_else(|| panic!("has selector for {lookup_pattern:?}"));
             selector[i] = F::one();
         };
 
@@ -518,7 +518,7 @@ impl LookupPattern {
                     JointLookup {
                         table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
                         entry: vec![SingleLookup {
-                            value: vec![(F::from(2u64).pow(&[9u64]), curr_row(7))],
+                            value: vec![(F::from(2u64).pow([9u64]), curr_row(7))],
                         }],
                     },
                 ]

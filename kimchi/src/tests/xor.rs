@@ -68,7 +68,7 @@ where
 
 // Returns the all ones BigUint of bits length
 pub(crate) fn all_ones<G: KimchiCurve>(bits: usize) -> G::ScalarField {
-    G::ScalarField::from(2u128).pow(&[bits as u64]) - G::ScalarField::one()
+    G::ScalarField::from(2u128).pow([bits as u64]) - G::ScalarField::one()
 }
 
 // Returns a given nybble of 4 bits
