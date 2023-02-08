@@ -1,18 +1,24 @@
-use std::cmp::max;
+use std::{array, cmp::max, sync::Arc};
 
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::xor::{self},
+        polynomials::{
+            generic::GenericGateSpec,
+            xor::{self},
+        },
         wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover_index::ProverIndex,
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
+use ark_poly::EvaluationDomain;
+use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -32,6 +38,9 @@ type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+
 const XOR: bool = true;
 
 const RNG_SEED: [u8; 32] = [
@@ -45,7 +54,8 @@ fn create_test_constraint_system_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
 {
-    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_xor_gadget(0, bits);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -58,7 +68,7 @@ where
 
 // Returns the all ones BigUint of bits length
 pub(crate) fn all_ones<G: KimchiCurve>(bits: usize) -> G::ScalarField {
-    G::ScalarField::from(2u128).pow(&[bits as u64]) - G::ScalarField::one()
+    G::ScalarField::from(2u128).pow([bits as u64]) - G::ScalarField::one()
 }
 
 // Returns a given nybble of 4 bits
@@ -161,7 +171,8 @@ fn test_prove_and_verify_xor() {
 
     let bits = 64;
     // Create
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_xor_gadget(0, bits);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -289,7 +300,55 @@ fn test_bad_xor_decompsition() {
 }
 
 #[test]
-// Test that a 16-bit XOR gate fails if the witness does not correspond to a XOR operation
+// Tests that the extend xor function works as expected
+fn test_extend_xor() {
+    let bits = Some(16);
+    let rng = &mut StdRng::from_seed(RNG_SEED);
+    let input1: PallasField = rng.gen(None, bits);
+    let input2: PallasField = rng.gen(None, bits);
+
+    // If one specifies a concrete number of bits, use that (if they are sufficient to hold both inputs)
+    // Otherwise, use the max number of bits required to hold both inputs (if only one, the other is zero)
+    let bits1 = input1.to_biguint().bitlen();
+    let bits2 = input2.to_biguint().bitlen();
+    let bits = bits.map_or(0, |b| b); // 0 or bits
+    let bits = max(bits, max(bits1, bits2));
+
+    let mut gates = vec![];
+    for row in 0..2 {
+        gates.push(CircuitGate::<Fp>::create_generic_gadget(
+            Wire::for_row(row),
+            GenericGateSpec::Pub,
+            None,
+        ));
+    }
+    let mut next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
+    // connect public input
+    gates.connect_cell_pair((0, 0), (2, 0));
+    gates.connect_cell_pair((1, 0), (2, 1));
+
+    // Temporary workaround for lookup-table/domain-size issue
+    for _ in 0..(1 << 13) {
+        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
+        next_row += 1;
+    }
+
+    let cs = ConstraintSystem::create(gates).public(2).build().unwrap();
+
+    let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
+    witness[0][0] = input1;
+    witness[0][1] = input2;
+    xor::extend_xor_witness::<Fp>(&mut witness, input1, input2, bits);
+
+    for row in 0..witness[0].len() {
+        assert_eq!(
+            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
+            Ok(())
+        );
+    }
+}
+
+#[test]
 fn test_bad_xor() {
     let bits = Some(16);
     let rng = &mut StdRng::from_seed(RNG_SEED);
@@ -303,7 +362,8 @@ fn test_bad_xor() {
     let bits = bits.map_or(0, |b| b); // 0 or bits
     let bits = max(bits, max(bits1, bits2));
 
-    let (mut next_row, mut gates) = CircuitGate::<PallasField>::create_xor_gadget(0, bits);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
         gates.push(CircuitGate::zero(Wire::for_row(next_row)));
@@ -329,4 +389,82 @@ fn test_bad_xor() {
             "the lookup failed to find a match in the table"
         ))
     );
+}
+
+#[test]
+// Finalization test
+fn test_xor_finalization() {
+    let num_inputs = 2;
+
+    // circuit
+    let gates = {
+        // public inputs
+        let mut gates = vec![];
+        for row in 0..num_inputs {
+            gates.push(CircuitGate::<Fp>::create_generic_gadget(
+                Wire::for_row(row),
+                GenericGateSpec::Pub,
+                None,
+            ));
+        }
+        // 1 XOR of 128 bits. This will create 8 Xor16 gates and a Generic final gate with all zeros.
+        CircuitGate::<Fp>::extend_xor_gadget(&mut gates, 128);
+        // connect public inputs to the inputs of the XOR
+        gates.connect_cell_pair((0, 0), (2, 0));
+        gates.connect_cell_pair((1, 0), (2, 1));
+
+        // Temporary workaround for lookup-table/domain-size issue
+        for _ in 0..(1 << 13) {
+            gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
+        }
+        gates
+    };
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); num_inputs]);
+
+        // initialize the 2 inputs
+        let input1 = 0xDC811727DAF22EC15927D6AA275F406Bu128.into();
+        let input2 = 0xA4F4417AF072DF9016A1EAB458DA80D1u128.into();
+        cols[0][0] = input1;
+        cols[0][1] = input2;
+
+        xor::extend_xor_witness::<Fp>(&mut cols, input1, input2, 128);
+        cols
+    };
+
+    let index = {
+        let cs = ConstraintSystem::create(gates.clone())
+            .lookup(vec![xor::lookup_table()])
+            .public(num_inputs)
+            .build()
+            .unwrap();
+        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+    };
+
+    for row in 0..witness[0].len() {
+        assert_eq!(
+            index.cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &index.cs,
+                &witness[0][0..index.cs.public]
+            ),
+            Ok(())
+        );
+    }
+
+    assert!(TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness.clone())
+        .public_inputs(vec![witness[0][0], witness[0][1]])
+        .setup()
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .is_ok());
 }

@@ -1095,7 +1095,7 @@ To check that $v_{11} \in [0, 2^3)$ (i.e. that $v_{11}$ is at most 3 bits long) 
 - Check $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
 - Check $\mathsf{scaled}_{v_{11}}$ is a 12-bit value with a 12-bit plookup
 
-Kimchi plookup supports optional scaling of the lookup target value as part of the lookup operation.  Thus, we do not require two witness elements, two plookups, nor the $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$ custom constraint.  Instead we can just store $v_{11}$ in the witness and define this as a 12-bit plookup scaled by $2^9$ yielding a 3-bit check.  This eliminates one plookup and reduces the total number of constraints by two.
+Kimchi's plookup implementation is extremely flexible and supports optional scaling of the lookup target value as part of the lookup operation.  Thus, we do not require two witness elements, two lookup columns, nor the $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$ custom constraint.  Instead we can just store $v_{11}$ in the witness and define this column as a "joint lookup" comprised of one 12-bit plookup on the original cell value and another 12-bit plookup on the cell value scaled by $2^9$, thus, yielding a 3-bit check.  This eliminates one plookup column and reduces the total number of constraints.
 
 ### 9. Native modulus constraint
 

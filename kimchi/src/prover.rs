@@ -18,10 +18,7 @@ use crate::{
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check::{
-                self,
-                circuitgates::{RangeCheck0, RangeCheck1},
-            },
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
             varbasemul::VarbaseMul,
             xor::Xor16,
@@ -181,8 +178,9 @@ where
         use rand::prelude::SeedableRng;
         let rng = &mut rand::rngs::StdRng::from_seed([2u8; 32]);
 
-        // double-check the witness
-        if cfg!(debug_assertions) {
+        // Verify the circuit satisfiability by the computed witness (baring plookup constraints)
+        // Catch mistakes before proof generation.
+        if cfg!(debug_assertions) && !index.cs.disable_gates_checks {
             let public = witness[0][0..index.cs.public].to_vec();
             index.verify(&witness, &public).expect("incorrect witness");
         }
@@ -234,7 +232,7 @@ where
         //~    and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
         let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            public.clone(),
+            public,
             index.cs.domain.d1,
         )
         .interpolate();
@@ -632,13 +630,12 @@ where
                     }
                 });
 
-            if let Some(polys) = &index.column_evaluations.range_check_selectors8 {
-                index_evals.extend(
-                    range_check::gadget::circuit_gates()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, gate_type)| (*gate_type, &polys[i])),
-                );
+            if let Some(selector) = &index.column_evaluations.range_check0_selector8.as_ref() {
+                index_evals.insert(GateType::RangeCheck0, selector);
+            }
+
+            if let Some(selector) = &index.column_evaluations.range_check1_selector8.as_ref() {
+                index_evals.insert(GateType::RangeCheck1, selector);
             }
 
             if let Some(selector) = index
@@ -737,7 +734,10 @@ where
                 use crate::circuits::argument::DynArgument;
 
                 let chacha_enabled = index.column_evaluations.chacha_selectors8.is_some();
-                let range_check_enabled = index.column_evaluations.range_check_selectors8.is_some();
+                let range_check0_enabled =
+                    index.column_evaluations.range_check0_selector8.is_some();
+                let range_check1_enabled =
+                    index.column_evaluations.range_check1_selector8.is_some();
                 let foreign_field_addition_enabled = index
                     .column_evaluations
                     .foreign_field_add_selector8
@@ -764,8 +764,8 @@ where
                     (&ChaCha2::default(), chacha_enabled),
                     (&ChaChaFinal::default(), chacha_enabled),
                     // Range check gates
-                    (&RangeCheck0::default(), range_check_enabled),
-                    (&RangeCheck1::default(), range_check_enabled),
+                    (&RangeCheck0::default(), range_check0_enabled),
+                    (&RangeCheck1::default(), range_check1_enabled),
                     // Foreign field addition gate
                     (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
                     // Foreign field multiplication gate
@@ -1052,9 +1052,9 @@ where
             ),
         };
 
-        let zeta_to_srs_len = zeta.pow(&[index.max_poly_size as u64]);
-        let zeta_omega_to_srs_len = zeta_omega.pow(&[index.max_poly_size as u64]);
-        let zeta_to_domain_size = zeta.pow(&[d1_size as u64]);
+        let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
+        let zeta_omega_to_srs_len = zeta_omega.pow([index.max_poly_size as u64]);
+        let zeta_to_domain_size = zeta.pow([d1_size as u64]);
 
         //~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
@@ -1211,7 +1211,7 @@ where
             shifted: None,
         };
 
-        let coefficients_form = |p| DensePolynomialOrEvaluations::DensePolynomial(p);
+        let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
         let evaluations_form = |e| DensePolynomialOrEvaluations::Evaluations(e, index.cs.domain.d1);
 
         let mut polynomials = polys
@@ -1376,7 +1376,6 @@ where
             proof,
             evals: chunked_evals,
             ft_eval1,
-            public,
             prev_challenges,
         })
     }
@@ -1589,42 +1588,43 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<ProverProof<G>> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)> for CamlProverProof<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: ProverProof<G>) -> Self {
+        fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
             Self {
-                commitments: pp.commitments.into(),
-                proof: pp.proof.into(),
-                evals: pp.evals.into(),
-                ft_eval1: pp.ft_eval1.into(),
-                public: pp.public.into_iter().map(Into::into).collect(),
-                prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
+                commitments: pp.0.commitments.into(),
+                proof: pp.0.proof.into(),
+                evals: pp.0.evals.into(),
+                ft_eval1: pp.0.ft_eval1.into(),
+                public: pp.1.into_iter().map(Into::into).collect(),
+                prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
             }
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for ProverProof<G>
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
     where
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> ProverProof<G> {
-            ProverProof {
+        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> (ProverProof<G>, Vec<G::ScalarField>) {
+            let proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
                 evals: caml_pp.evals.into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
-                public: caml_pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()
                     .map(Into::into)
                     .collect(),
-            }
+            };
+
+            (proof, caml_pp.public.into_iter().map(Into::into).collect())
         }
     }
 }

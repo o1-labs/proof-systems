@@ -45,7 +45,8 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_and(0, bytes);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -138,7 +139,8 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Create
-    let (mut next_row, mut gates) = CircuitGate::<G::ScalarField>::create_and(0, bytes);
+    let mut gates = vec![];
+    let mut next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {

@@ -37,7 +37,7 @@ fn chacha_prover() {
     let rows_per_chacha = 20 * 4 * 10;
     let n_lower_bound = rows_per_chacha * num_chachas;
     let max_size = 1 << math::ceil_log2(n_lower_bound);
-    println!("{} {}", n_lower_bound, max_size);
+    println!("{n_lower_bound} {max_size}");
 
     let s0: Vec<u32> = vec![
         0x61707865, 0x3320646e, 0x79622d32, 0x6b206574, 0x03020100, 0x07060504, 0x0b0a0908,
@@ -79,6 +79,7 @@ fn chacha_prover() {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
     let start = Instant::now();
+    let public_input = witness[0][0..index.cs.public].to_vec();
     let proof =
         ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index).unwrap();
     println!("{}{:?}", "Prover time: ".yellow(), start.elapsed());
@@ -88,8 +89,13 @@ fn chacha_prover() {
     println!("{}{:?}", "Verifier index time: ".yellow(), start.elapsed());
 
     let start = Instant::now();
-    match verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index, &proof) {
-        Err(error) => panic!("Failure verifying the prover's proofs in batch: {}", error),
+    match verify::<Vesta, BaseSponge, ScalarSponge>(
+        &group_map,
+        &verifier_index,
+        &proof,
+        &public_input,
+    ) {
+        Err(error) => panic!("Failure verifying the prover's proofs in batch: {error}"),
         Ok(_) => {
             println!("{}{:?}", "Verifier time: ".yellow(), start.elapsed());
         }

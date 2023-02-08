@@ -23,7 +23,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
 
     /// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point,
     /// assuming that the given evaluations are either 0 or 1 at every point of the domain.
-    pub fn evaluate_zero_one<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> F {
+    pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> F {
         assert_eq!(p.evals.len() % self.evals.len(), 0);
         let stride = p.evals.len() / self.evals.len();
         let mut result = F::zero();
@@ -120,25 +120,17 @@ mod tests {
         let x = Fp::rand(rng);
         let evaluator = LagrangeBasisEvaluations::new(domain, x);
 
-        let expected: Vec<_> = (0..n)
-            .map(|i| {
-                let mut lagrange_i = vec![Fp::zero(); n];
-                lagrange_i[i] = Fp::one();
-                Evaluations::from_vec_and_domain(lagrange_i, domain)
-                    .interpolate()
-                    .evaluate(&x)
-            })
-            .collect();
+        let expected = (0..n).map(|i| {
+            let mut lagrange_i = vec![Fp::zero(); n];
+            lagrange_i[i] = Fp::one();
+            Evaluations::from_vec_and_domain(lagrange_i, domain)
+                .interpolate()
+                .evaluate(&x)
+        });
 
-        for i in 0..n {
-            if evaluator.evals[i] != expected[i] {
-                panic!(
-                    "{}, {}: {} != {}",
-                    line!(),
-                    i,
-                    evaluator.evals[i],
-                    expected[i]
-                );
+        for (i, expected) in expected.enumerate() {
+            if evaluator.evals[i] != expected {
+                panic!("{}, {}: {} != {}", line!(), i, evaluator.evals[i], expected);
             }
         }
     }
@@ -167,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn test_evaluation_zero_one() {
+    fn test_evaluation_boolean() {
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let n = 1 << 1;
         let domain = Radix2EvaluationDomain::new(n).unwrap();
@@ -189,7 +181,7 @@ mod tests {
 
         let evaluator = LagrangeBasisEvaluations::new(domain, x);
 
-        let y = evaluator.evaluate_zero_one(&evals);
+        let y = evaluator.evaluate_boolean(&evals);
         let expected = evals.interpolate().evaluate(&x);
         assert_eq!(y, expected)
     }

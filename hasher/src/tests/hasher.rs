@@ -41,7 +41,7 @@ fn test_vectors(test_vector_file: &str, hasher: &mut dyn Hasher<TestVector>) {
     // read test vectors from given file
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("../poseidon/src/tests/test_vectors");
-    path.push(&test_vector_file);
+    path.push(test_vector_file);
 
     let file = File::open(&path).expect("couldn't open test vector file");
     let test_vectors: TestVectors =

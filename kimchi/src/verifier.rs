@@ -18,6 +18,7 @@ use crate::{
     proof::{PointEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
+use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use commitment_dlog::commitment::{
@@ -30,8 +31,14 @@ use rand::thread_rng;
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
 pub struct Context<'a, G: KimchiCurve> {
-    proof: &'a ProverProof<G>,
-    index: &'a VerifierIndex<G>,
+    /// The [VerifierIndex] associated to the proof
+    pub verifier_index: &'a VerifierIndex<G>,
+
+    /// The proof to verify
+    pub proof: &'a ProverProof<G>,
+
+    /// The public input used in the creation of the proof
+    pub public_input: &'a [G::ScalarField],
 }
 
 impl<'a, G: KimchiCurve> Context<'a, G> {
@@ -39,17 +46,17 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
         use Column::*;
         match col {
             Witness(i) => Some(&self.proof.commitments.w_comm[i]),
-            Coefficient(i) => Some(&self.index.coefficients_comm[i]),
-            Permutation(i) => Some(&self.index.sigma_comm[i]),
+            Coefficient(i) => Some(&self.verifier_index.coefficients_comm[i]),
+            Permutation(i) => Some(&self.verifier_index.sigma_comm[i]),
             Z => Some(&self.proof.commitments.z_comm),
             LookupSorted(i) => Some(&self.proof.commitments.lookup.as_ref()?.sorted[i]),
             LookupAggreg => Some(&self.proof.commitments.lookup.as_ref()?.aggreg),
             LookupKindIndex(i) => {
-                Some(self.index.lookup_index.as_ref()?.lookup_selectors[i].as_ref()?)
+                Some(self.verifier_index.lookup_index.as_ref()?.lookup_selectors[i].as_ref()?)
             }
             LookupTable => None,
             LookupRuntimeSelector => Some(
-                self.index
+                self.verifier_index
                     .lookup_index
                     .as_ref()?
                     .runtime_tables_selector
@@ -60,24 +67,24 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                 use GateType::*;
                 match t {
                     Zero => None,
-                    Generic => Some(&self.index.generic_comm),
+                    Generic => Some(&self.verifier_index.generic_comm),
                     Lookup => None,
-                    CompleteAdd => Some(&self.index.complete_add_comm),
-                    VarBaseMul => Some(&self.index.mul_comm),
-                    EndoMul => Some(&self.index.emul_comm),
-                    EndoMulScalar => Some(&self.index.endomul_scalar_comm),
-                    Poseidon => Some(&self.index.psm_comm),
-                    ChaCha0 => Some(&self.index.chacha_comm.as_ref()?[0]),
-                    ChaCha1 => Some(&self.index.chacha_comm.as_ref()?[1]),
-                    ChaCha2 => Some(&self.index.chacha_comm.as_ref()?[2]),
-                    ChaChaFinal => Some(&self.index.chacha_comm.as_ref()?[3]),
+                    CompleteAdd => Some(&self.verifier_index.complete_add_comm),
+                    VarBaseMul => Some(&self.verifier_index.mul_comm),
+                    EndoMul => Some(&self.verifier_index.emul_comm),
+                    EndoMulScalar => Some(&self.verifier_index.endomul_scalar_comm),
+                    Poseidon => Some(&self.verifier_index.psm_comm),
+                    ChaCha0 => Some(&self.verifier_index.chacha_comm.as_ref()?[0]),
+                    ChaCha1 => Some(&self.verifier_index.chacha_comm.as_ref()?[1]),
+                    ChaCha2 => Some(&self.verifier_index.chacha_comm.as_ref()?[2]),
+                    ChaChaFinal => Some(&self.verifier_index.chacha_comm.as_ref()?[3]),
                     CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
-                    RangeCheck0 => Some(&self.index.range_check_comm.as_ref()?[0]),
-                    RangeCheck1 => Some(&self.index.range_check_comm.as_ref()?[1]),
-                    ForeignFieldAdd => Some(self.index.foreign_field_add_comm.as_ref()?),
-                    ForeignFieldMul => Some(self.index.foreign_field_mul_comm.as_ref()?),
-                    Xor16 => Some(self.index.xor_comm.as_ref()?),
-                    Rot64 => Some(self.index.rot_comm.as_ref()?),
+                    RangeCheck0 => Some(self.verifier_index.range_check0_comm.as_ref()?),
+                    RangeCheck1 => Some(self.verifier_index.range_check1_comm.as_ref()?),
+                    ForeignFieldAdd => Some(self.verifier_index.foreign_field_add_comm.as_ref()?),
+                    ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
+                    Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
+                    Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
                 }
             }
         }
@@ -104,6 +111,7 @@ where
         &self,
         index: &VerifierIndex<G>,
         public_comm: &PolyComm<G>,
+        public_input: &[G::ScalarField],
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
@@ -240,12 +248,12 @@ where
         fr_sponge.absorb(&prev_challenge_digest);
 
         // prepare some often used values
-        let zeta1 = zeta.pow(&[n]);
+        let zeta1 = zeta.pow([n]);
         let zetaw = zeta * index.domain.group_gen;
         let evaluation_points = [zeta, zetaw];
         let powers_of_eval_points_for_chunks = PointEvaluations {
-            zeta: zeta.pow(&[index.max_poly_size as u64]),
-            zeta_omega: zetaw.pow(&[index.max_poly_size as u64]),
+            zeta: zeta.pow([index.max_poly_size as u64]),
+            zeta_omega: zetaw.pow([index.max_poly_size as u64]),
         };
 
         //~ 1. Compute evaluations for the previous recursion challenges.
@@ -271,7 +279,7 @@ where
         all_alphas.instantiate(alpha);
 
         // compute Lagrange base evaluation denominators
-        let w: Vec<_> = index.domain.elements().take(self.public.len()).collect();
+        let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
 
         let (zeta_minus_x, zeta_minus_1_inv, zeta_minus_w3_inv, vanishing_poly_zeta_inv) = {
             let mut to_invert: Vec<G::ScalarField> = 
@@ -297,7 +305,7 @@ where
         let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
 
         w.iter()
-            .take(self.public.len())
+            .take(public_input.len())
             .for_each(|w| zeta_minus_x.push(zetaw - w));
 
         ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
@@ -306,13 +314,12 @@ where
         //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        let public_evals = if self.public.is_empty() {
+        let public_evals = if public_input.is_empty() {
             [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
         } else {
             [
                 vec![
-                    (self
-                        .public
+                    (public_input
                         .iter()
                         .zip(zeta_minus_x.iter())
                         .zip(index.domain.elements())
@@ -322,15 +329,14 @@ where
                         * index.domain.size_inv,
                 ],
                 vec![
-                    (self
-                        .public
+                    (public_input
                         .iter()
-                        .zip(zeta_minus_x[self.public.len()..].iter())
+                        .zip(zeta_minus_x[public_input.len()..].iter())
                         .zip(index.domain.elements())
                         .map(|((p, l), w)| -*l * p * w)
                         .fold(G::ScalarField::zero(), |x, y| x + y))
                         * index.domain.size_inv
-                        * (zetaw.pow(&[n as u64]) - G::ScalarField::one()),
+                        * (zetaw.pow([n]) - G::ScalarField::one()),
                 ],
             ]
         };
@@ -616,8 +622,9 @@ where
 }
 
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
-    index: &VerifierIndex<G>,
+    verifier_index: &VerifierIndex<G>,
     proof: &'a ProverProof<G>,
+    public_input: &'a [<G as AffineCurve>::ScalarField],
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
     G: KimchiCurve,
@@ -633,30 +640,34 @@ where
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
-    if proof.prev_challenges.len() != index.prev_challenges {
+    if proof.prev_challenges.len() != verifier_index.prev_challenges {
         return Err(VerifyError::IncorrectPrevChallengesLength(
-            index.prev_challenges,
+            verifier_index.prev_challenges,
             proof.prev_challenges.len(),
         ));
     }
-    if proof.public.len() != index.public {
-        return Err(VerifyError::IncorrectPubicInputLength(index.public));
+    if public_input.len() != verifier_index.public {
+        return Err(VerifyError::IncorrectPubicInputLength(
+            verifier_index.public,
+        ));
     }
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
-        if proof.public.len() != index.public {
-            return Err(VerifyError::IncorrectPubicInputLength(index.public));
+        if public_input.len() != verifier_index.public {
+            return Err(VerifyError::IncorrectPubicInputLength(
+                verifier_index.public,
+            ));
         }
-        let lgr_comm = index
+        let lgr_comm = verifier_index
             .srs()
             .lagrange_bases
-            .get(&index.domain.size())
+            .get(&verifier_index.domain.size())
             .expect("pre-computed committed lagrange bases not found");
-        let com: Vec<_> = lgr_comm.iter().take(index.public).collect();
-        let elm: Vec<_> = proof.public.iter().map(|s| -*s).collect();
+        let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
+        let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
         let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
-        index
+        verifier_index
             .srs()
             .mask_custom(
                 public_comm,
@@ -680,14 +691,18 @@ where
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(index, &public_comm)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, public_input)?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
     let evals = proof.evals.combine(&powers_of_eval_points_for_chunks);
 
-    let context = Context { proof, index };
+    let context = Context {
+        verifier_index,
+        proof,
+        public_input,
+    };
 
     //~ 4. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
@@ -699,12 +714,12 @@ where
     //~    in which case the evaluation should be used in place of the commitment.
     let f_comm = {
         // the permutation is written manually (not using the expr framework)
-        let zkp = index.zkpm().evaluate(&oracles.zeta);
+        let zkp = verifier_index.zkpm().evaluate(&oracles.zeta);
 
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
-        let mut commitments = vec![&index.sigma_comm[PERMUTS - 1]];
-        let scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(
+        let mut commitments = vec![&verifier_index.sigma_comm[PERMUTS - 1]];
+        let mut scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(
             &evals,
             oracles.beta,
             oracles.gamma,
@@ -720,7 +735,7 @@ where
                 beta: oracles.beta,
                 gamma: oracles.gamma,
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
-                endo_coefficient: index.endo,
+                endo_coefficient: verifier_index.endo,
                 mds: &G::sponge_params().mds,
             };
 
@@ -747,7 +762,7 @@ where
     //~ 1. Compute the (chuncked) commitment of $ft$
     //~    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
     let ft_comm = {
-        let zeta_to_srs_len = oracles.zeta.pow(&[index.max_poly_size as u64]);
+        let zeta_to_srs_len = oracles.zeta.pow(&[verifier_index.max_poly_size as u64]);
         // let chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
         let chunked_t_comm = proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
         chunked_t_comm
@@ -799,7 +814,7 @@ where
     .chain((0..PERMUTS).map(Column::Permutation))
     //~~ - lookup commitments
     .chain(
-        index
+        verifier_index
             .lookup_index
             .as_ref()
             .map(|li| {
@@ -826,7 +841,7 @@ where
         });
     }
 
-    if let Some(li) = &index.lookup_index {
+    if let Some(li) = &verifier_index.lookup_index {
         let lookup_comms = proof
             .commitments
             .lookup
@@ -909,7 +924,7 @@ where
     }
 
     // prepare for the opening proof verification
-    let evaluation_points = vec![oracles.zeta, oracles.zeta * index.domain.group_gen];
+    let evaluation_points = vec![oracles.zeta, oracles.zeta * verifier_index.domain.group_gen];
     Ok(BatchEvaluationProof {
         sponge: fq_sponge,
         evaluations,
@@ -929,6 +944,7 @@ pub fn verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     verifier_index: &VerifierIndex<G>,
     proof: &ProverProof<G>,
+    public_input: &[G::ScalarField],
 ) -> Result<()>
 where
     G: KimchiCurve,
@@ -936,13 +952,16 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
-    let proofs = vec![(verifier_index, proof)];
+    let proofs = vec![Context {
+        verifier_index,
+        proof,
+        public_input,
+    }];
     batch_verify::<G, EFqSponge, EFrSponge>(group_map, &proofs)
 }
 
 /// This function verifies the batch of zk-proofs
 ///     proofs: vector of Plonk proofs
-///     index: `VerifierIndex`
 ///     RETURN: verification status
 ///
 /// # Errors
@@ -950,7 +969,7 @@ where
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 pub fn batch_verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    proofs: &[(&VerifierIndex<G>, &ProverProof<G>)],
+    proofs: &[Context<G>],
 ) -> Result<()>
 where
     G: KimchiCurve,
@@ -972,22 +991,31 @@ where
 
     //~ 1. Ensure that all the proof's verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
-    let srs = &proofs[0].0.srs();
-    for (index, _) in proofs.iter() {
-        if index.srs().g.len() != srs.g.len() {
+    let srs = proofs[0].verifier_index.srs();
+    for &Context { verifier_index, .. } in proofs {
+        if verifier_index.srs().g.len() != srs.g.len() {
             return Err(VerifyError::DifferentSRS);
         }
 
         // also make sure that the SRS is not smaller than the domain size
-        if index.srs().max_degree() < index.domain.size() {
+        if verifier_index.srs().max_degree() < verifier_index.domain.size() {
             return Err(VerifyError::SRSTooSmall);
         }
     }
 
     //~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
     let mut batch = vec![];
-    for (index, proof) in proofs {
-        batch.push(to_batch::<G, EFqSponge, EFrSponge>(index, proof)?);
+    for &Context {
+        verifier_index,
+        proof,
+        public_input,
+    } in proofs
+    {
+        batch.push(to_batch::<G, EFqSponge, EFrSponge>(
+            verifier_index,
+            proof,
+            public_input,
+        )?);
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.

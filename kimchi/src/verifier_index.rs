@@ -6,10 +6,7 @@ use crate::{
     circuits::{
         expr::{Expr, ConstantExpr},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
-        polynomials::{
-            permutation::{zk_polynomial, zk_w3},
-            range_check,
-        },
+        polynomials::permutation::{zk_polynomial, zk_w3},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -108,9 +105,13 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub chacha_comm: Option<[PolyComm<G>; 4]>,
 
-    /// Range check polynomial commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
+    /// RangeCheck0 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check0_comm: Option<PolyComm<G>>,
+
+    /// RangeCheck1 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check1_comm: Option<PolyComm<G>>,
 
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -264,11 +265,17 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|c| array::from_fn(|i| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, &c[i])))),
 
-            range_check_comm: self.column_evaluations.range_check_selectors8.as_ref().map(
-                |evals8| {
-                    array::from_fn(|i| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, &evals8[i])))
-                },
-            ),
+            range_check0_comm: self
+                .column_evaluations
+                .range_check0_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+
+            range_check1_comm: self
+                .column_evaluations
+                .range_check1_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             foreign_field_add_comm: self
                 .column_evaluations
@@ -419,7 +426,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
             // Optional gates
             chacha_comm,
-            range_check_comm,
+            range_check0_comm,
+            range_check1_comm,
             foreign_field_add_comm,
             foreign_field_mul_comm,
             xor_comm,
@@ -459,14 +467,19 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 fq_sponge.absorb_g(&chacha_comm.unshifted);
             }
         }
-        if let Some(range_check_comm) = range_check_comm {
-            for range_check_comm in range_check_comm {
-                fq_sponge.absorb_g(&range_check_comm.unshifted);
-            }
+
+        if let Some(range_check0_comm) = range_check0_comm {
+            fq_sponge.absorb_g(&range_check0_comm.unshifted);
         }
+
+        if let Some(range_check1_comm) = range_check1_comm {
+            fq_sponge.absorb_g(&range_check1_comm.unshifted);
+        }
+
         if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
             fq_sponge.absorb_g(&foreign_field_mul_comm.unshifted);
         }
+
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }

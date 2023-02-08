@@ -25,12 +25,8 @@ jobs:
       - name: Build the mdbook
         run: |
           cd book
-          cargo install mdbook
-          cargo install mdbook-katex
-          cargo install mdbook-admonish
-          cargo install mdbook-mermaid
-          cargo install mdbook-toc
-          mdbook build
+          make deps
+          make build
 
       - name: Arrange website folder hierarchy
         run: |

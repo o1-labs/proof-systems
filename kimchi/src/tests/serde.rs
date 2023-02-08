@@ -34,7 +34,7 @@ mod tests {
     fn test_rmp_serde() {
         let ctx = BenchmarkCtx::new(1 << 4);
 
-        let proof = ctx.create_proof();
+        let (proof, public_input) = ctx.create_proof();
 
         // small check of proof being serializable
         // serialize a proof
@@ -45,7 +45,7 @@ mod tests {
         let de_pf: ProverProof<Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
-        ctx.batch_verification(vec![de_pf]);
+        ctx.batch_verification(&vec![(de_pf, public_input)]);
     }
 
     #[test]
@@ -85,8 +85,13 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index_deserialize, &proof)
-            .unwrap();
+        verify::<Vesta, BaseSponge, ScalarSponge>(
+            &group_map,
+            &verifier_index_deserialize,
+            &proof,
+            &public,
+        )
+        .unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
     }
 }
