@@ -15,7 +15,9 @@ use crate::{
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge},
+    proof::{
+        LookupEvaluations, PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge,
+    },
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
@@ -480,7 +482,10 @@ where
     }
 }
 
-fn check_proof_evals_len<G>(proof: &ProverProof<G>)
+/// Enforce the length of evaluations inside [`Proof`].
+/// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
+/// The length value is prone to future change.
+fn check_proof_evals_len<G>(proof: &ProverProof<G>) -> Result<()>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
@@ -495,25 +500,44 @@ where
         poseidon_selector,
     } = &proof.evals;
 
-    let check_eval_len = |eval: &PointEvaluations<Vec<_>>| {
-        assert!(eval.zeta.len() == 1);
-        assert!(eval.zeta_omega.len() == 1);
+    let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
+        if eval.zeta.len().is_one() && eval.zeta_omega.len().is_one() {
+            Ok(())
+        } else {
+            Err(VerifyError::IncorrectEvaluationsLength)
+        }
     };
 
-    w.iter().for_each(check_eval_len);
-    s.iter().for_each(check_eval_len);
-    coefficients.iter().for_each(check_eval_len);
-    if let Some(lookup) = lookup {
-        lookup.sorted.iter().for_each(check_eval_len);
-        check_eval_len(&lookup.aggreg);
-        check_eval_len(&lookup.table);
-        if let Some(runtime) = &lookup.runtime {
-            check_eval_len(runtime);
+    for w_i in w {
+        check_eval_len(w_i)?;
+    }
+    check_eval_len(z)?;
+    for s_i in s {
+        check_eval_len(s_i)?;
+    }
+    for coeff in coefficients {
+        check_eval_len(coeff)?;
+    }
+    if let Some(LookupEvaluations {
+        sorted,
+        aggreg,
+        table,
+        runtime,
+    }) = lookup
+    {
+        for sorted_i in sorted {
+            check_eval_len(sorted_i)?;
+        }
+        check_eval_len(&aggreg)?;
+        check_eval_len(&table)?;
+        if let Some(runtime) = &runtime {
+            check_eval_len(runtime)?;
         }
     }
-    check_eval_len(z);
-    check_eval_len(generic_selector);
-    check_eval_len(poseidon_selector);
+    check_eval_len(generic_selector)?;
+    check_eval_len(poseidon_selector)?;
+
+    Ok(())
 }
 
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
@@ -547,7 +571,8 @@ where
         ));
     }
 
-    check_proof_evals_len(proof);
+    //~ Check the lengh of evaluations inside the proof.
+    check_proof_evals_len(proof)?;
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
