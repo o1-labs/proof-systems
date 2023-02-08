@@ -2833,8 +2833,8 @@ pub mod test {
         prover_index::ProverIndex,
     };
     use ark_ff::UniformRand;
-    use commitment_dlog::srs::{endos, SRS};
     use mina_curves::pasta::{Fp, Pallas, Vesta};
+    use poly_commitment::srs::{endos, SRS};
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
     use std::sync::Arc;
@@ -2845,7 +2845,7 @@ pub mod test {
         // w0 * w1
         let mut expr: E<Fp> = E::zero();
         expr += witness_curr(0);
-        poly_commitment_curr(1);
+        expr *= witness_curr(1);
 
         // since none of w0 or w1 is evaluated this should panic
         let evaluated = HashSet::new();
