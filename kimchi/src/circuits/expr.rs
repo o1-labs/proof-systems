@@ -2845,7 +2845,7 @@ pub mod test {
         // w0 * w1
         let mut expr: E<Fp> = E::zero();
         expr += witness_curr(0);
-        expr *= witness_curr(1);
+        poly_commitment_curr(1);
 
         // since none of w0 or w1 is evaluated this should panic
         let evaluated = HashSet::new();

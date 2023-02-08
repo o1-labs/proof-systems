@@ -3,8 +3,8 @@
 //! we hope to be able to remove this code in the future.
 
 use crate::{alphas::Alphas, circuits::scalars::RandomOracles, proof::PointEvaluations};
-use commitment_dlog::commitment::{CommitmentCurve, PolyComm};
 use mina_poseidon::FqSponge;
+use poly_commitment::commitment::{CommitmentCurve, PolyComm};
 
 /// The result of running the oracle protocol
 pub struct OraclesResult<G, EFqSponge>
@@ -38,7 +38,7 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use ark_ff::PrimeField;
-    use commitment_dlog::commitment::shift_scalar;
+    use poly_commitment::commitment::shift_scalar;
 
     use crate::{
         circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,

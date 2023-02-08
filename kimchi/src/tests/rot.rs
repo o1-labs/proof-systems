@@ -19,7 +19,6 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -27,6 +26,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use o1_utils::Two;
+use poly_commitment::srs::{endos, SRS};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;

@@ -17,10 +17,10 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
-use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
+use poly_commitment::commitment::CommitmentCurve;
 use std::{fmt::Write, mem, time::Instant};
 
 // aliases

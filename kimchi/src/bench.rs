@@ -1,6 +1,5 @@
 use std::array;
 
-use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::{BWParameters, GroupMap};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -8,6 +7,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
+use poly_commitment::commitment::CommitmentCurve;
 
 use crate::{
     circuits::{
