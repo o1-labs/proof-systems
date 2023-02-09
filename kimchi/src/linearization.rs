@@ -27,14 +27,14 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
-use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
+use ark_ff::{FftField, PrimeField, Zero};
 
 /// Get the expresion of constraints.
 ///
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-pub fn constraints_expr<F: PrimeField + SquareRootField>(
+pub fn constraints_expr<F: PrimeField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
@@ -227,7 +227,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-pub fn linearization_columns<F: FftField + SquareRootField>(
+pub fn linearization_columns<F: FftField>(
     feature_flags: Option<&FeatureFlags>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
@@ -309,7 +309,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
-pub fn expr_linearization<F: PrimeField + SquareRootField>(
+pub fn expr_linearization<F: PrimeField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {

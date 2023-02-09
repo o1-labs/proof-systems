@@ -2,8 +2,8 @@ use crate::circuits::{
     gate::{CircuitGate, GateType},
     wires::*,
 };
-use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+use ark_ec::{AffineRepr, CurveGroup};
+use ark_ff::{Field, One, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -11,6 +11,7 @@ use mina_poseidon::{
 };
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
+use std::ops::Mul;
 
 use super::framework::TestFramework;
 
@@ -40,35 +41,35 @@ fn ec_test() {
     let rng = &mut StdRng::from_seed([0; 32]);
 
     let ps = {
-        let p = Other::prime_subgroup_generator()
-            .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+        let p = Other::generator()
+            .into_group()
+            .mul(<Other as AffineRepr>::ScalarField::rand(rng))
             .into_affine();
         let mut res = vec![];
         let mut acc = p;
         for _ in 0..num_additions {
             res.push(acc);
-            acc = acc + p;
+            acc = (acc + p).into();
         }
         res
     };
 
     let qs = {
-        let q = Other::prime_subgroup_generator()
-            .into_projective()
-            .mul(<Other as AffineCurve>::ScalarField::rand(rng).into_repr())
+        let q = Other::generator()
+            .into_group()
+            .mul(<Other as AffineRepr>::ScalarField::rand(rng))
             .into_affine();
         let mut res = vec![];
         let mut acc = q;
         for _ in 0..num_additions {
             res.push(acc);
-            acc = acc + q;
+            acc = (acc + q).into();
         }
         res
     };
 
     for &p in ps.iter().take(num_doubles) {
-        let p2 = p + p;
+        let p2 = (p + p).into_affine();
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = 3 * x1^2
@@ -96,7 +97,7 @@ fn ec_test() {
         let p = ps[i];
         let q = qs[i];
 
-        let pq = p + q;
+        let pq = (p + q).into_affine();
         let (x1, y1) = (p.x, p.y);
         let (x2, y2) = (q.x, q.y);
         // (x2 - x1) * s = y2 - y1
@@ -122,7 +123,7 @@ fn ec_test() {
     for &p in ps.iter().take(num_infs) {
         let q = -p;
 
-        let p2 = p + p;
+        let p2 = (p + p).into_affine();
         let (x1, y1) = (p.x, p.y);
         let x1_squared = x1.square();
         // 2 * s * y1 = -3 * x1^2

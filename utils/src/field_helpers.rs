@@ -1,6 +1,6 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
-use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
+use ark_ff::{BigInteger, Field, PrimeField};
 use num_bigint::{BigUint, RandBigInt};
 use rand::rngs::StdRng;
 use std::ops::Neg;
@@ -109,6 +109,14 @@ pub trait FieldHelpers<F> {
     /// Create a new field element from this field elements bits
     fn bits_to_field(&self, start: usize, end: usize) -> Result<F>;
 
+    /// Field size in bits
+    fn size_in_bits() -> usize
+    where
+        F: PrimeField,
+    {
+        F::MODULUS_BIT_SIZE as usize
+    }
+
     /// Field size in bytes
     fn size_in_bytes() -> usize
     where
@@ -122,18 +130,18 @@ pub trait FieldHelpers<F> {
     where
         F: PrimeField,
     {
-        BigUint::from_bytes_le(&F::Params::MODULUS.to_bytes_le())
+        BigUint::from_bytes_le(&F::MODULUS.to_bytes_le())
     }
 }
 
 impl<F: Field> FieldHelpers<F> for F {
     fn from_bytes(bytes: &[u8]) -> Result<F> {
-        F::deserialize(&mut &*bytes).map_err(|_| FieldHelpersError::DeserializeBytes)
+        F::deserialize_compressed(&mut &*bytes).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     fn from_hex(hex: &str) -> Result<F> {
         let bytes: Vec<u8> = hex::decode(hex).map_err(|_| FieldHelpersError::DecodeHex)?;
-        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
+        F::deserialize_compressed(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     fn from_bits(bits: &[bool]) -> Result<F> {
@@ -145,12 +153,12 @@ impl<F: Field> FieldHelpers<F> for F {
                 bytes
             });
 
-        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
+        F::deserialize_compressed(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     fn to_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = vec![];
-        self.serialize(&mut bytes)
+        self.serialize_compressed(&mut bytes)
             .expect("Failed to serialize field");
 
         bytes
@@ -200,13 +208,13 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ark_ec::CurveConfig;
 
-    use ark_ec::AffineCurve;
     use ark_ff::One;
-    use mina_curves::pasta::Pallas as CurvePoint;
+    use mina_curves::pasta::pallas::PallasConfig;
 
     /// Base field element type
-    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    pub type BaseField = <PallasConfig as CurveConfig>::BaseField;
 
     #[test]
     fn field_hex() {
@@ -328,7 +336,7 @@ mod tests {
         let field_zero = BaseField::from(0u32);
 
         assert_eq!(
-            BigUint::from_bytes_be(&field_zero.into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(&field_zero.to_bytes()),
             BigUint::from_bytes_be(&be_zero_32bytes)
         );
 

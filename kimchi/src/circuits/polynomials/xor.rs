@@ -16,14 +16,14 @@ use crate::{
     },
     variable_map,
 };
-use ark_ff::{PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers};
 use std::{array, marker::PhantomData};
 
 use super::generic::GenericGateSpec;
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Extends a XOR gadget for `bits` length to a circuit
     /// Includes:
     /// - num_xors Xor16 gates

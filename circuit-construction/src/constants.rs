@@ -1,4 +1,4 @@
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::Field;
 use kimchi::curve::KimchiCurve;
 use mina_curves::pasta::{Fp, Fq, Pallas as PallasAffine, Vesta as VestaAffine};
@@ -20,9 +20,7 @@ pub struct Constants<F: Field + 'static> {
 /// Will panic if `PallasAffine::prime_subgroup_generator()` returns None.
 pub fn fp_constants() -> Constants<Fp> {
     let (endo_q, _endo_r) = endos::<PallasAffine>();
-    let base = PallasAffine::prime_subgroup_generator()
-        .to_coordinates()
-        .unwrap();
+    let base = PallasAffine::generator().to_coordinates().unwrap();
     Constants {
         poseidon: VestaAffine::sponge_params(),
         endo: endo_q,
@@ -37,9 +35,7 @@ pub fn fp_constants() -> Constants<Fp> {
 /// Will panic if `VestaAffine::prime_subgroup_generator()` returns None.
 pub fn fq_constants() -> Constants<Fq> {
     let (endo_q, _endo_r) = endos::<VestaAffine>();
-    let base = VestaAffine::prime_subgroup_generator()
-        .to_coordinates()
-        .unwrap();
+    let base = VestaAffine::generator().to_coordinates().unwrap();
     Constants {
         poseidon: PallasAffine::sponge_params(),
         endo: endo_q,

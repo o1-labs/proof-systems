@@ -67,10 +67,10 @@ mod tests {
 
     use super::*;
 
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use ark_ff::{Field, One, Zero};
     use mina_curves::pasta::Pallas;
-    type PallasField = <Pallas as AffineCurve>::BaseField;
+    type PallasField = <Pallas as AffineRepr>::BaseField;
 
     #[test]
     fn zero_layout() {

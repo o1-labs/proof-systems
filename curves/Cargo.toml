@@ -10,10 +10,12 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-ark-ec = { version = "0.3.0", features = ["parallel"] }
-ark-ff = { version = "0.3.0", features = ["parallel", "asm"] }
+ark-pallas = { version = "0.4.0", default-features = false, features = [ "scalar_field", "base_field" ] }
+ark-ec = { version = "0.4.0", features = ["parallel"] }
+ark-ff = { version = "0.4.0", features = ["parallel", "asm"] }
+ark-std = { version = "0.4.0", features = ["parallel"] }
 
 [dev-dependencies]
-rand = { version = "0.8.0", default-features = false }
-ark-algebra-test-templates = "0.3.0"
-ark-std = "0.3.0"
+ark-relations = { version = "0.4.0", default-features = false }
+ark-serialize = { version = "0.4.0", default-features = false }
+ark-algebra-test-templates = { version = "0.4.0", default-features = false }

@@ -15,7 +15,7 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::Wire,
 };
-use ark_ff::{PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Two};
 
@@ -52,7 +52,7 @@ use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Tw
 //~ * the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
 //~ * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Extends an AND gadget for `bytes` length.
     /// The full operation being performed is the following:
     /// `a AND b = 1/2 * (a + b - (a XOR b))`

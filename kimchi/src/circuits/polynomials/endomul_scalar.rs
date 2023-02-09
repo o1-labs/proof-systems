@@ -227,7 +227,7 @@ pub fn gen_witness<F: PrimeField + std::fmt::Display>(
     let bits_per_row = 2 * crumbs_per_row;
     assert_eq!(num_bits % bits_per_row, 0);
 
-    let bits_lsb: Vec<_> = BitIteratorLE::new(scalar.into_repr())
+    let bits_lsb: Vec<_> = BitIteratorLE::new(scalar.into_bigint())
         .take(num_bits)
         .collect();
     let bits_msb: Vec<_> = bits_lsb.iter().rev().collect();
@@ -338,7 +338,7 @@ mod tests {
         let f1 = c_func;
 
         let f2 = |x: F| -> F {
-            let bits_le = x.into_repr().to_bits_le();
+            let bits_le = x.into_bigint().to_bits_le();
             let b0 = bits_le[0];
             let b1 = bits_le[1];
 
@@ -370,7 +370,7 @@ mod tests {
         let f1 = d_func;
 
         let f2 = |x: F| -> F {
-            let bits_le = x.into_repr().to_bits_le();
+            let bits_le = x.into_bigint().to_bits_le();
             let b0 = bits_le[0];
             let b1 = bits_le[1];
 

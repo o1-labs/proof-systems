@@ -10,11 +10,11 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-ff = { version = "0.4.0", features = [ "parallel", "asm" ] }
 num-bigint = { version = "0.4.0" }
 serde_json = { version = "1.0" }
 hex = { version = "0.4" }
-ark-serialize = { version = "0.3.0" }
+ark-serialize = { version = "0.4.0" }
 rand = "0.8.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_with = "1.10.0"

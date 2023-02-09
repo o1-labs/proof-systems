@@ -5,7 +5,6 @@
 
 use bitvec::{prelude::*, view::AsBits};
 
-use ark_ff::PrimeField;
 use mina_curves::pasta::{Fp, Fq};
 use o1_utils::FieldHelpers;
 

@@ -375,14 +375,14 @@ fn biguint_to_limbs(x: &BigUint, limb_bits: usize) -> Vec<BigUint> {
 mod tests {
     use super::*;
     use crate::field_helpers::FieldHelpers;
-    use ark_ec::AffineCurve;
+    use ark_ec::CurveConfig;
     use ark_ff::One;
-    use mina_curves::pasta::Pallas as CurvePoint;
+    use mina_curves::pasta::pallas::PallasConfig;
     use num_bigint::RandBigInt;
     use rand::{rngs::StdRng, SeedableRng};
 
     /// Base field element type
-    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    pub type BaseField = <PallasConfig as CurveConfig>::BaseField;
 
     const RNG_SEED: [u8; 32] = [
         12, 31, 143, 75, 29, 255, 206, 26, 67, 193, 86, 160, 1, 90, 131, 221, 86, 168, 4, 95, 50,

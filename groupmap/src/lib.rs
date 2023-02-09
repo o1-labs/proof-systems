@@ -19,8 +19,8 @@
 //! WB19: Riad S. Wahby and Dan Boneh, Fast and simple constant-time hashing to the BLS12-381 elliptic curve. <https://eprint.iacr.org/2019/403>
 //!
 
-use ark_ec::models::SWModelParameters;
-use ark_ff::{Field, One, SquareRootField, Zero};
+use ark_ec::models::short_weierstrass::SWCurveConfig;
+use ark_ff::{Field, One, Zero};
 
 pub trait GroupMap<F> {
     fn setup() -> Self;
@@ -29,7 +29,7 @@ pub trait GroupMap<F> {
 }
 
 #[derive(Clone, Copy)]
-pub struct BWParameters<G: SWModelParameters> {
+pub struct BWParameters<G: SWCurveConfig> {
     u: G::BaseField,
     fu: G::BaseField,
     sqrt_neg_three_u_squared_minus_u_over_2: G::BaseField,
@@ -38,7 +38,7 @@ pub struct BWParameters<G: SWModelParameters> {
 }
 
 /// returns the right-hand side of the Short Weierstrass curve equation for a given x
-fn curve_eqn<G: SWModelParameters>(x: G::BaseField) -> G::BaseField {
+fn curve_eqn<G: SWCurveConfig>(x: G::BaseField) -> G::BaseField {
     let mut res = x;
     res *= &x; // x^2
     res += &G::COEFF_A; // x^2 + A
@@ -61,7 +61,7 @@ fn find_first<A, K: Field, F: Fn(K) -> Option<A>>(start: K, f: F) -> A {
 }
 
 /// ?
-fn potential_xs_helper<G: SWModelParameters>(
+fn potential_xs_helper<G: SWCurveConfig>(
     params: &BWParameters<G>,
     t2: G::BaseField,
     alpha: G::BaseField,
@@ -89,10 +89,7 @@ fn potential_xs_helper<G: SWModelParameters>(
 }
 
 /// ?
-fn potential_xs<G: SWModelParameters>(
-    params: &BWParameters<G>,
-    t: G::BaseField,
-) -> [G::BaseField; 3] {
+fn potential_xs<G: SWCurveConfig>(params: &BWParameters<G>, t: G::BaseField) -> [G::BaseField; 3] {
     let t2 = t.square();
     let mut alpha_inv = t2;
     alpha_inv += &params.fu;
@@ -108,12 +105,12 @@ fn potential_xs<G: SWModelParameters>(
 
 /// returns the y-coordinate if x is a valid point on the curve, otherwise None
 /// TODO: what about sign?
-pub fn get_y<G: SWModelParameters>(x: G::BaseField) -> Option<G::BaseField> {
+pub fn get_y<G: SWCurveConfig>(x: G::BaseField) -> Option<G::BaseField> {
     let fx = curve_eqn::<G>(x);
     fx.sqrt()
 }
 
-fn get_xy<G: SWModelParameters>(
+fn get_xy<G: SWCurveConfig>(
     params: &BWParameters<G>,
     t: G::BaseField,
 ) -> (G::BaseField, G::BaseField) {
@@ -126,7 +123,7 @@ fn get_xy<G: SWModelParameters>(
     panic!("get_xy")
 }
 
-impl<G: SWModelParameters> GroupMap<G::BaseField> for BWParameters<G> {
+impl<G: SWCurveConfig> GroupMap<G::BaseField> for BWParameters<G> {
     fn setup() -> Self {
         assert!(G::COEFF_A.is_zero());
 

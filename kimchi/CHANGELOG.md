@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- Upgrade to arkworks 0.4.0
 - Upgrade to Rust 1.67.0
 - Remove unneeded ChaCha gates
 

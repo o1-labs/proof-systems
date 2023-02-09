@@ -92,9 +92,10 @@ impl PubKey {
         }
 
         let x = BaseField::from_bytes(x_bytes).map_err(|_| PubKeyError::XCoordinateBytes)?;
-        let mut pt = CurvePoint::get_point_from_x(x, y_parity).ok_or(PubKeyError::XCoordinate)?;
+        let mut pt =
+            CurvePoint::get_point_from_x_unchecked(x, y_parity).ok_or(PubKeyError::XCoordinate)?;
 
-        if pt.y.into_repr().is_even() == y_parity {
+        if pt.y.into_bigint().is_even() == y_parity {
             pt.y = pt.y.neg();
         }
 
@@ -121,14 +122,14 @@ impl PubKey {
         let point = self.0;
         CompressedPubKey {
             x: point.x,
-            is_odd: point.y.into_repr().is_odd(),
+            is_odd: point.y.into_bigint().is_odd(),
         }
     }
 
     /// Serialize public key into corresponding Mina address
     pub fn into_address(&self) -> String {
         let point = self.point();
-        into_address(&point.x, point.y.into_repr().is_odd())
+        into_address(&point.x, point.y.into_bigint().is_odd())
     }
 }
 

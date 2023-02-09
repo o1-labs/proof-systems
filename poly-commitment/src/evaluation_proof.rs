@@ -1,8 +1,10 @@
 use crate::srs::SRS;
 use crate::{commitment::*, srs::endos};
-use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
+use ark_ec::scalar_mul::variable_base::VariableBaseMSM;
+use ark_ec::AffineRepr;
+use ark_ec::CurveGroup;
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::math;
@@ -253,23 +255,15 @@ impl<G: CommitmentCurve> SRS<G> {
             let rand_l = <G::ScalarField as UniformRand>::rand(rng);
             let rand_r = <G::ScalarField as UniformRand>::rand(rng);
 
-            let l = VariableBaseMSM::multi_scalar_mul(
+            let l = G::Group::msm_unchecked(
                 &[&g[0..n], &[self.h, u]].concat(),
-                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_repr())
-                    .collect::<Vec<_>>(),
+                &[&a[n..], &[rand_l, inner_prod(a_hi, b_lo)]].concat(),
             )
             .into_affine();
 
-            let r = VariableBaseMSM::multi_scalar_mul(
+            let r = G::Group::msm_unchecked(
                 &[&g[n..], &[self.h, u]].concat(),
-                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]]
-                    .concat()
-                    .iter()
-                    .map(|x| x.into_repr())
-                    .collect::<Vec<_>>(),
+                &[&a[0..n], &[rand_r, inner_prod(a_lo, b_hi)]].concat(),
             )
             .into_affine();
 
@@ -327,9 +321,8 @@ impl<G: CommitmentCurve> SRS<G> {
         let d = <G::ScalarField as UniformRand>::rand(rng);
         let r_delta = <G::ScalarField as UniformRand>::rand(rng);
 
-        let delta = ((g0.into_projective() + (u.mul(b0))).into_affine().mul(d)
-            + self.h.mul(r_delta))
-        .into_affine();
+        let delta = ((g0.into_group() + (u.mul(b0))).into_affine().mul(d) + self.h.mul(r_delta))
+            .into_affine();
 
         sponge.absorb_g(&[delta]);
         let c = ScalarChallenge(sponge.challenge()).to_field(&endo_r);
@@ -350,7 +343,7 @@ impl<G: CommitmentCurve> SRS<G> {
 #[serde_as]
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct OpeningProof<G: AffineCurve> {
+pub struct OpeningProof<G: AffineRepr> {
     /// vector of rounds of L & R commitments
     #[serde_as(as = "Vec<(o1_utils::serialization::SerdeAs, o1_utils::serialization::SerdeAs)>")]
     pub lr: Vec<(G, G)>,
@@ -369,7 +362,7 @@ pub struct Challenges<F> {
     pub chal_inv: Vec<F>,
 }
 
-impl<G: AffineCurve> OpeningProof<G> {
+impl<G: AffineRepr> OpeningProof<G> {
     pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         sponge: &mut EFqSponge,

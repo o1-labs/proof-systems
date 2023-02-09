@@ -1,6 +1,6 @@
 //! This module obtains the gates of a foreign field addition circuit.
 
-use ark_ff::{PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
@@ -11,7 +11,7 @@ use crate::circuits::{
 
 use super::witness::FFOps;
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Create foreign field addition gate chain without range checks (needs to wire the range check for result bound manually)
     /// - Inputs
     ///   - starting row

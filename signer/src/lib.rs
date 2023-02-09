@@ -7,6 +7,7 @@ pub mod schnorr;
 pub mod seckey;
 pub mod signature;
 
+use ark_ec::CurveConfig;
 use mina_hasher::{DomainParameter, Hashable};
 
 pub use keypair::Keypair;
@@ -15,16 +16,17 @@ pub use schnorr::Schnorr;
 pub use seckey::SecKey;
 pub use signature::Signature;
 
-use ark_ec::AffineCurve;
+/// Affine curve config type
+use mina_curves::pasta::PallasConfig;
 
 /// Affine curve point type
 pub use mina_curves::pasta::Pallas as CurvePoint;
 
 /// Base field element type
-pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+pub type BaseField = <PallasConfig as CurveConfig>::BaseField;
 
 /// Scalar field element type
-pub type ScalarField = <CurvePoint as AffineCurve>::ScalarField;
+pub type ScalarField = <PallasConfig as CurveConfig>::ScalarField;
 
 /// Mina network (or blockchain) identifier
 #[derive(Debug, Clone)]

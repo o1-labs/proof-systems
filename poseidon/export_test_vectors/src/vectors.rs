@@ -78,8 +78,8 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
             .into_iter()
             .map(|elem| {
                 let mut input_bytes = vec![];
-                elem.into_repr()
-                    .serialize(&mut input_bytes)
+                elem.into_bigint()
+                    .serialize_compressed(&mut input_bytes)
                     .expect("canonical serialiation should work");
                 match mode {
                     Mode::Hex => hex::encode(&input_bytes),
@@ -89,8 +89,8 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
             .collect();
         let mut output_bytes = vec![];
         output
-            .into_repr()
-            .serialize(&mut output_bytes)
+            .into_bigint()
+            .serialize_compressed(&mut output_bytes)
             .expect("canonical serialization should work");
 
         // add vector

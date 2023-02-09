@@ -1,7 +1,7 @@
-use ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
+use ark_ec::{short_weierstrass::Affine, CurveConfig};
 use mina_curves::pasta::curves::{
-    pallas::{LegacyPallasParameters, PallasParameters},
-    vesta::{LegacyVestaParameters, VestaParameters},
+    pallas::{LegacyPallasConfig, PallasConfig},
+    vesta::{LegacyVestaConfig, VestaConfig},
 };
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
@@ -25,8 +25,8 @@ pub trait KimchiCurve: CommitmentCurve {
     fn endos() -> &'static (Self::BaseField, Self::ScalarField);
 }
 
-impl KimchiCurve for GroupAffine<VestaParameters> {
-    type OtherCurve = GroupAffine<PallasParameters>;
+impl KimchiCurve for Affine<VestaConfig> {
+    type OtherCurve = Affine<PallasConfig>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fp_kimchi::static_params()
@@ -34,15 +34,15 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
         static VESTA_ENDOS: Lazy<(
-            <VestaParameters as ModelParameters>::BaseField,
-            <VestaParameters as ModelParameters>::ScalarField,
-        )> = Lazy::new(endos::<GroupAffine<VestaParameters>>);
+            <VestaConfig as CurveConfig>::BaseField,
+            <VestaConfig as CurveConfig>::ScalarField,
+        )> = Lazy::new(endos::<Affine<VestaConfig>>);
         &VESTA_ENDOS
     }
 }
 
-impl KimchiCurve for GroupAffine<PallasParameters> {
-    type OtherCurve = GroupAffine<VestaParameters>;
+impl KimchiCurve for Affine<PallasConfig> {
+    type OtherCurve = Affine<VestaConfig>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fq_kimchi::static_params()
@@ -50,9 +50,9 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
         static PALLAS_ENDOS: Lazy<(
-            <PallasParameters as ModelParameters>::BaseField,
-            <PallasParameters as ModelParameters>::ScalarField,
-        )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
+            <PallasConfig as CurveConfig>::BaseField,
+            <PallasConfig as CurveConfig>::ScalarField,
+        )> = Lazy::new(endos::<Affine<PallasConfig>>);
         &PALLAS_ENDOS
     }
 }
@@ -61,25 +61,25 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
 // legacy curves
 //
 
-impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
-    type OtherCurve = GroupAffine<LegacyPallasParameters>;
+impl KimchiCurve for Affine<LegacyVestaConfig> {
+    type OtherCurve = Affine<LegacyPallasConfig>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fp_legacy::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        GroupAffine::<VestaParameters>::endos()
+        Affine::<VestaConfig>::endos()
     }
 }
-impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
-    type OtherCurve = GroupAffine<LegacyVestaParameters>;
+impl KimchiCurve for Affine<LegacyPallasConfig> {
+    type OtherCurve = Affine<LegacyVestaConfig>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
         mina_poseidon::pasta::fq_legacy::static_params()
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        GroupAffine::<PallasParameters>::endos()
+        Affine::<PallasConfig>::endos()
     }
 }

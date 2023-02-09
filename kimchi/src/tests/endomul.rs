@@ -4,7 +4,7 @@ use crate::circuits::{
     wires::*,
 };
 use crate::tests::framework::TestFramework;
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -14,6 +14,7 @@ use mina_poseidon::{
 use poly_commitment::srs::endos;
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
+use std::ops::Mul;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -56,22 +57,22 @@ fn endomul_test() {
 
     // let start = Instant::now();
     for i in 0..num_scalars {
-        let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_repr())
+        let bits_lsb: Vec<_> = BitIteratorLE::new(F::rand(rng).into_bigint())
             .take(num_bits)
             .collect();
-        let x = <Other as AffineCurve>::ScalarField::from_repr(
+        let x = <Other as AffineRepr>::ScalarField::from_bigint(
             <F as PrimeField>::BigInt::from_bits_le(&bits_lsb[..]),
         )
         .unwrap();
 
         let x_scalar = ScalarChallenge(x).to_field(&endo_r);
 
-        let base = Other::prime_subgroup_generator();
+        let base = Other::generator();
         // let g = Other::prime_subgroup_generator().into_projective();
         let acc0 = {
-            let t = Other::new(endo_q * base.x, base.y, false);
+            let t = Other::new(endo_q * base.x, base.y);
             let p = t + base;
-            let acc = p + p;
+            let acc = (p + p).into_affine();
             (acc.x, acc.y)
         };
 
@@ -87,27 +88,24 @@ fn endomul_test() {
         );
 
         let expected = {
-            let t = Other::prime_subgroup_generator();
-            let mut acc = Other::new(acc0.0, acc0.1, false);
+            let t = Other::generator();
+            let mut acc = Other::new(acc0.0, acc0.1);
             for i in (0..(num_bits / 2)).rev() {
                 let b2i = F::from(bits_lsb[2 * i] as u64);
                 let b2i1 = F::from(bits_lsb[2 * i + 1] as u64);
                 let xq = (F::one() + ((endo_q - F::one()) * b2i1)) * t.x;
                 let yq = (b2i.double() - F::one()) * t.y;
-                acc = acc + (acc + Other::new(xq, yq, false));
+                acc = (acc + (acc + Other::new(xq, yq))).into();
             }
             acc
         };
         assert_eq!(
             expected,
-            Other::prime_subgroup_generator()
-                .into_projective()
-                .mul(x_scalar.into_repr())
-                .into_affine()
+            Other::generator().into_group().mul(x_scalar).into_affine()
         );
 
         assert_eq!((expected.x, expected.y), res.acc);
-        assert_eq!(x.into_repr(), res.n.into_repr());
+        assert_eq!(x.into_bigint(), res.n.into_bigint());
     }
 
     assert!(TestFramework::<Vesta>::default()

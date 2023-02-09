@@ -9,7 +9,7 @@ use crate::{
     verifier::verify,
     verifier_index::VerifierIndex,
 };
-use ark_ec::short_weierstrass_jacobian::GroupAffine;
+use ark_ec::short_weierstrass::Affine;
 use ark_ff::Zero;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -73,11 +73,11 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>> =
+        let mut verifier_index_deserialize: VerifierIndex<Affine<VestaParameters>> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
-        let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
+        let mut srs = SRS::<Affine<VestaParameters>>::create(verifier_index.max_poly_size);
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;

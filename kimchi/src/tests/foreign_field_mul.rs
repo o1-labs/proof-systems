@@ -13,7 +13,7 @@ use crate::{
     plonk_sponge::FrSponge,
     tests::framework::TestFramework,
 };
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
@@ -34,8 +34,8 @@ use mina_poseidon::{
 use num_bigint::RandBigInt;
 use rand::{rngs::StdRng, SeedableRng};
 
-type PallasField = <Pallas as AffineCurve>::BaseField;
-type VestaField = <Vesta as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineRepr>::BaseField;
+type VestaField = <Vesta as AffineRepr>::BaseField;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;

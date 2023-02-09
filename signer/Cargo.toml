@@ -17,8 +17,8 @@ mina-curves = { path = "../curves", version = "0.1.0" }
 mina-hasher = { path = "../hasher", version = "0.1.0" }
 o1-utils = { path = "../utils", version = "0.1.0" }
 
-ark-ec = { version = "0.3.0", features = [ "parallel" ] }
-ark-ff = { version = "0.3.0", features = [ "parallel", "asm" ] }
+ark-ec = { version = "0.4.0", features = [ "parallel" ] }
+ark-ff = { version = "0.4.0", features = [ "parallel", "asm" ] }
 
 rand = "0.8.0"
 blake2 = "0.10.0"

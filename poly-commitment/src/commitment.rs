@@ -6,29 +6,34 @@
 //!     producing the batched opening proof
 //! 3. Verify batch of batched opening proofs
 
-use crate::srs::endos;
-use crate::{error::CommitmentError, srs::SRS};
+use core::ops::{Add, Sub};
+use std::fmt::Debug;
+
+use std::iter::Iterator;
+use std::ops::AddAssign;
+
 use ark_ec::{
-    models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
-    AffineCurve, ProjectiveCurve, SWModelParameters,
+    models::short_weierstrass::Affine as SWJAffine, models::short_weierstrass::SWCurveConfig,
+    scalar_mul::variable_base::VariableBaseMSM, AffineRepr, CurveGroup,
 };
-use ark_ff::{
-    BigInteger, Field, FpParameters, One, PrimeField, SquareRootField, UniformRand, Zero,
-};
+use ark_ff::{BigInteger, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-use core::ops::{Add, Sub};
-use groupmap::{BWParameters, GroupMap};
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::math;
-use o1_utils::ExtendedDensePolynomial as _;
+
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::iter::Iterator;
+
+use groupmap::{BWParameters, GroupMap};
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::math;
+use o1_utils::ExtendedDensePolynomial as _;
+
+use crate::srs::endos;
+use crate::{error::CommitmentError, srs::SRS};
 
 use super::evaluation_proof::*;
 
@@ -137,16 +142,16 @@ impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
 /// ```
 ///
 /// in the other case.
-pub fn shift_scalar<G: AffineCurve>(x: G::ScalarField) -> G::ScalarField
+pub fn shift_scalar<G: AffineRepr>(x: G::ScalarField) -> G::ScalarField
 where
     G::BaseField: PrimeField,
 {
-    let n1 = <G::ScalarField as PrimeField>::Params::MODULUS;
+    let n1 = <G::ScalarField as PrimeField>::MODULUS;
     let n2 = <G::ScalarField as PrimeField>::BigInt::from_bits_le(
-        &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
+        &<G::BaseField as PrimeField>::MODULUS.to_bits_le()[..],
     );
     let two: G::ScalarField = (2u64).into();
-    let two_pow = two.pow([<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
+    let two_pow = two.pow([<G::ScalarField as PrimeField>::MODULUS_BIT_SIZE as u64]);
     if n1 < n2 {
         (x - (two_pow + G::ScalarField::one())) / two
     } else {
@@ -154,7 +159,7 @@ where
     }
 }
 
-impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, 'b, C: AffineRepr> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -163,7 +168,7 @@ impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
         let n2 = other.unshifted.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                self.unshifted[i] + other.unshifted[i]
+                (self.unshifted[i] + other.unshifted[i]).into()
             } else if i < n1 {
                 self.unshifted[i]
             } else {
@@ -171,16 +176,16 @@ impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
             };
             unshifted.push(pt);
         }
-        let shifted = match (self.shifted, other.shifted) {
+        let shifted: Option<C> = match (self.shifted, other.shifted) {
             (None, _) => other.shifted,
             (_, None) => self.shifted,
-            (Some(p1), Some(p2)) => Some(p1 + p2),
+            (Some(p1), Some(p2)) => Some((p1 + p2).into()),
         };
         PolyComm { unshifted, shifted }
     }
 }
 
-impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, 'b, C: AffineRepr> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -188,8 +193,8 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
         let n1 = self.unshifted.len();
         let n2 = other.unshifted.len();
         for i in 0..std::cmp::max(n1, n2) {
-            let pt = if i < n1 && i < n2 {
-                self.unshifted[i] + (-other.unshifted[i])
+            let pt: <<C as AffineRepr>::Group as CurveGroup>::Affine = if i < n1 && i < n2 {
+                From::from(self.unshifted[i].into_group() - other.unshifted[i].into_group())
             } else if i < n1 {
                 self.unshifted[i]
             } else {
@@ -200,13 +205,13 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
         let shifted = match (self.shifted, other.shifted) {
             (None, _) => other.shifted,
             (_, None) => self.shifted,
-            (Some(p1), Some(p2)) => Some(p1 + (-p2)),
+            (Some(p1), Some(p2)) => Some(From::from(p1.into_group() - p2.into_group())),
         };
         PolyComm { unshifted, shifted }
     }
 }
 
-impl<C: AffineCurve> PolyComm<C> {
+impl<C: AffineRepr> PolyComm<C> {
     pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
         PolyComm {
             unshifted: self
@@ -231,7 +236,7 @@ impl<C: AffineCurve> PolyComm<C> {
             return Self::new(vec![C::zero()], None);
         }
 
-        let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
+        let all_scalars: Vec<_> = elm.to_vec();
 
         let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
         let mut unshifted = Vec::with_capacity(unshifted_size);
@@ -244,7 +249,7 @@ impl<C: AffineCurve> PolyComm<C> {
                 .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
-            let chunk_msm = VariableBaseMSM::multi_scalar_mul::<C>(&points, &scalars);
+            let chunk_msm = C::Group::msm_unchecked(&points, &scalars);
             unshifted.push(chunk_msm.into_affine());
         }
 
@@ -259,7 +264,7 @@ impl<C: AffineCurve> PolyComm<C> {
             None
         } else {
             let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
-            Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
+            Some(C::Group::msm_unchecked(&points, &scalars).into_affine())
         };
 
         Self::new(unshifted, shifted)
@@ -315,18 +320,13 @@ pub fn pows<F: Field>(d: usize, x: F) -> Vec<F> {
     res
 }
 
-pub fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSponge<Fq, G, Fr>>(
+pub fn squeeze_prechallenge<Fq: Field, G, Fr: Field, EFqSponge: FqSponge<Fq, G, Fr>>(
     sponge: &mut EFqSponge,
 ) -> ScalarChallenge<Fr> {
     ScalarChallenge(sponge.challenge())
 }
 
-pub fn squeeze_challenge<
-    Fq: Field,
-    G,
-    Fr: PrimeField + SquareRootField,
-    EFqSponge: FqSponge<Fq, G, Fr>,
->(
+pub fn squeeze_challenge<Fq: Field, G, Fr: PrimeField + Field, EFqSponge: FqSponge<Fq, G, Fr>>(
     endo_r: &Fr,
     sponge: &mut EFqSponge,
 ) -> Fr {
@@ -336,7 +336,7 @@ pub fn squeeze_challenge<
 pub fn absorb_commitment<
     Fq: Field,
     G: Clone,
-    Fr: PrimeField + SquareRootField,
+    Fr: PrimeField + Field,
     EFqSponge: FqSponge<Fq, G, Fr>,
 >(
     sponge: &mut EFqSponge,
@@ -348,11 +348,11 @@ pub fn absorb_commitment<
     }
 }
 
-/// A useful trait extending AffineCurve for commitments.
-/// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
+/// A useful trait extending Affine for commitments.
+/// Unfortunately, we can't specify that `Affine<BaseField : PrimeField>`,
 /// so usage of this traits must manually bind `G::BaseField: PrimeField`.
-pub trait CommitmentCurve: AffineCurve {
-    type Params: SWModelParameters;
+pub trait CommitmentCurve: AffineRepr {
+    type Config: SWCurveConfig;
     type Map: GroupMap<Self::BaseField>;
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
@@ -384,11 +384,11 @@ pub trait CommitmentCurve: AffineCurve {
     }
 }
 
-impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P>
+impl<P: SWCurveConfig + Clone> CommitmentCurve for SWJAffine<P>
 where
     P::BaseField: PrimeField,
 {
-    type Params = P;
+    type Config = P;
     type Map = BWParameters<P>;
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)> {
@@ -400,7 +400,7 @@ where
     }
 
     fn of_coordinates(x: P::BaseField, y: P::BaseField) -> SWJAffine<P> {
-        SWJAffine::<P>::new(x, y, false)
+        SWJAffine::<P>::new(x, y)
     }
 
     fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
@@ -427,7 +427,7 @@ where
     }
 }
 
-pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField) -> G {
+pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineRepr>::BaseField) -> G {
     let (x, y) = m.to_group(t);
     G::of_coordinates(x, y)
 }
@@ -486,7 +486,7 @@ pub fn combined_inner_product<F: PrimeField>(
 /// Contains the evaluation of a polynomial commitment at a set of points.
 pub struct Evaluation<G>
 where
-    G: AffineCurve,
+    G: AffineRepr,
 {
     /// The commitment of the polynomial being evaluated
     pub commitment: PolyComm<G>,
@@ -502,7 +502,7 @@ where
 // TODO: I think we should really change this name to something more correct
 pub struct BatchEvaluationProof<'a, G, EFqSponge>
 where
-    G: AffineCurve,
+    G: AffineRepr,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
 {
     pub sponge: EFqSponge,
@@ -549,7 +549,7 @@ impl<G: CommitmentCurve> SRS<G> {
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
             .map(|(g, b)| {
                 let mut g_masked = self.h.mul(b);
-                g_masked.add_assign_mixed(&g);
+                g_masked.add_assign(&g);
                 g_masked.into_affine()
             });
         Ok(BlindedCommitment {
@@ -574,15 +574,15 @@ impl<G: CommitmentCurve> SRS<G> {
         let basis_len = self.g.len();
         let coeffs_len = plnm.coeffs.len();
 
-        let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
+        // let coeffs: Vec<_> = plnm.iter().map(|c| c.into_bigint()).collect();
 
         // chunk while commiting
         let mut unshifted = vec![];
         if is_zero {
             unshifted.push(G::zero());
         } else {
-            coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
-                let chunk = VariableBaseMSM::multi_scalar_mul(&self.g, coeffs_chunk);
+            plnm.chunks(self.g.len()).for_each(|plnm_chunk| {
+                let chunk = G::Group::msm_unchecked(&self.g, plnm_chunk);
                 unshifted.push(chunk.into_affine());
             });
         }
@@ -600,9 +600,9 @@ impl<G: CommitmentCurve> SRS<G> {
                     None
                 } else {
                     // we shift the last chunk to the right as proof of the degree bound
-                    let shifted = VariableBaseMSM::multi_scalar_mul(
+                    let shifted = G::Group::msm_unchecked(
                         &self.g[basis_len - (max % basis_len)..],
-                        &coeffs[start..],
+                        &plnm[start..],
                     );
                     Some(shifted.into_affine())
                 }
@@ -866,8 +866,7 @@ impl<G: CommitmentCurve> SRS<G> {
         }
 
         // verify the equation
-        let scalars: Vec<_> = scalars.iter().map(|x| x.into_repr()).collect();
-        VariableBaseMSM::multi_scalar_mul(&points, &scalars) == G::Projective::zero()
+        G::Group::msm_unchecked(&points, scalars.as_slice()) == G::Group::zero()
     }
 }
 
@@ -885,15 +884,18 @@ pub fn inner_prod<F: Field>(xs: &[F], ys: &[F]) -> F {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::array;
 
-    use crate::srs::SRS;
-    use ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
-    use mina_curves::pasta::{Fp, Vesta as VestaG};
+    use ark_poly::{DenseUVPolynomial, Polynomial, Radix2EvaluationDomain};
+    use rand::{rngs::StdRng, SeedableRng};
+
+    use mina_curves::pasta::{vesta::Affine as VestaG, Fp};
     use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
     use mina_poseidon::sponge::DefaultFqSponge;
-    use rand::{rngs::StdRng, SeedableRng};
-    use std::array;
+
+    use crate::srs::SRS;
+
+    use super::*;
 
     #[test]
     fn test_lagrange_commitments() {
@@ -1089,20 +1091,20 @@ pub mod caml {
 
     impl<G, CamlG> From<PolyComm<G>> for CamlPolyComm<CamlG>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlG: From<G>,
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
-                shifted: polycomm.shifted.map(Into::into),
+                unshifted: polycomm.unshifted.into_iter().map(From::from).collect(),
+                shifted: polycomm.shifted.map(From::from),
             }
         }
     }
 
     impl<'a, G, CamlG> From<&'a PolyComm<G>> for CamlPolyComm<CamlG>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlG: From<G> + From<&'a G>,
     {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
@@ -1115,7 +1117,7 @@ pub mod caml {
 
     impl<G, CamlG> From<CamlPolyComm<CamlG>> for PolyComm<G>
     where
-        G: AffineCurve + From<CamlG>,
+        G: AffineRepr + From<CamlG>,
     {
         fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
@@ -1127,7 +1129,7 @@ pub mod caml {
 
     impl<'a, G, CamlG> From<&'a CamlPolyComm<CamlG>> for PolyComm<G>
     where
-        G: AffineCurve + From<&'a CamlG> + From<CamlG>,
+        G: AffineRepr + From<&'a CamlG> + From<CamlG>,
     {
         fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
@@ -1151,7 +1153,7 @@ pub mod caml {
 
     impl<G, CamlF, CamlG> From<OpeningProof<G>> for CamlOpeningProof<CamlG, CamlF>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
@@ -1160,19 +1162,19 @@ pub mod caml {
                 lr: opening_proof
                     .lr
                     .into_iter()
-                    .map(|(g1, g2)| (g1.into(), g2.into()))
+                    .map(|(g1, g2)| (From::from(g1), From::from(g2)))
                     .collect(),
-                delta: opening_proof.delta.into(),
-                z1: opening_proof.z1.into(),
-                z2: opening_proof.z2.into(),
-                sg: opening_proof.sg.into(),
+                delta: From::from(opening_proof.delta),
+                z1: From::from(opening_proof.z1),
+                z2: From::from(opening_proof.z2),
+                sg: From::from(opening_proof.sg),
             }
         }
     }
 
     impl<G, CamlF, CamlG> From<CamlOpeningProof<CamlG, CamlF>> for OpeningProof<G>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlG: Into<G>,
         CamlF: Into<G::ScalarField>,
     {
