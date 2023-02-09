@@ -39,15 +39,15 @@ use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
 };
-use commitment_dlog::{
+use itertools::Itertools;
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::ExtendedDensePolynomial as _;
+use poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
     evaluation_proof::DensePolynomialOrEvaluations,
 };
-use itertools::Itertools;
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::ExtendedDensePolynomial as _;
 use rayon::prelude::*;
 use std::array;
 use std::collections::HashMap;
@@ -1260,7 +1260,7 @@ pub mod caml {
     use super::*;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
-    use commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+    use poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
     //
     // CamlProverProof<CamlG, CamlF>

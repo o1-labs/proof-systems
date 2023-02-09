@@ -9,6 +9,12 @@ You can read more about this project on the [Kimchi book](https://o1-labs.github
 
 [See here for the rust documentation](https://o1-labs.github.io/proof-systems/rustdoc).
 
+## User Warning
+
+This project comes as is. We provide no guarantee of stability or support, as the crates closely follow the needs of the [Mina]([https://](https://github.com/minaprotocol/mina)) project.
+
+If you use this project in a production environment, it is your responsibility to perform a security audit to ensure that the software meets your requirements.
+
 ## Performance
 
 At the time of this writing:

@@ -18,7 +18,6 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -27,6 +26,7 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
+use poly_commitment::srs::{endos, SRS};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;

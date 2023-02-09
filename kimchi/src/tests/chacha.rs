@@ -12,7 +12,6 @@ use crate::{
 };
 use ark_ff::Zero;
 use colored::Colorize;
-use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -20,6 +19,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
+use poly_commitment::commitment::CommitmentCurve;
 use std::array;
 use std::time::Instant;
 

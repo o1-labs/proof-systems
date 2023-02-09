@@ -2833,8 +2833,8 @@ pub mod test {
         prover_index::ProverIndex,
     };
     use ark_ff::UniformRand;
-    use commitment_dlog::srs::{endos, SRS};
     use mina_curves::pasta::{Fp, Pallas, Vesta};
+    use poly_commitment::srs::{endos, SRS};
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
     use std::sync::Arc;

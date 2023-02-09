@@ -18,7 +18,6 @@ pub mod prologue {
     pub use ark_ec::{AffineCurve, ProjectiveCurve};
     pub use ark_ff::{FftField, PrimeField, UniformRand};
     pub use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
-    pub use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
     pub use groupmap::GroupMap;
     pub use kimchi::verifier::verify;
     pub use mina_curves::pasta::{
@@ -29,5 +28,6 @@ pub mod prologue {
         poseidon::{ArithmeticSponge, Sponge},
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+    pub use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
     pub use std::sync::Arc;
 }

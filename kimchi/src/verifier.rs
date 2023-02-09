@@ -21,10 +21,10 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
-use commitment_dlog::commitment::{
+use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use poly_commitment::commitment::{
     absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
-use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use rand::thread_rng;
 
 /// The result of a proof verification.
