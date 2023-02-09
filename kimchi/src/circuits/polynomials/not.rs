@@ -43,7 +43,7 @@ use super::{
 //~ | --------- | ------------- | --------------------------------------------------------------------- |
 //~ | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
 //~ | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
-//~ | i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+//~ | i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 //~
 //~ ** NOT Layout using Generic gates **
 //~

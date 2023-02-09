@@ -126,7 +126,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ |   1 | `Xor16`       | Xor next 2 bytes of the words              |
 //~ |   2 | `Xor16`       | Xor next 2 bytes of the words              |
 //~ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
-//~ |   4 | `Zero`        | Zero values, can be reused as generic gate |
+//~ |   4 | `Generic`     | Zero values, can be reused as generic gate |
 //~
 //~ ```admonish info
 //~ We could halve the number of rows of the 64-bit XOR gadget by having lookups
