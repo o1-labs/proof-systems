@@ -11,8 +11,8 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::SRS;
 use mina_poseidon::FqSponge;
+use poly_commitment::srs::SRS;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -138,7 +138,7 @@ pub mod testing {
         lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
     };
     use ark_ff::{PrimeField, SquareRootField};
-    use commitment_dlog::srs::endos;
+    use poly_commitment::srs::endos;
 
     /// Create new index for lookups.
     ///

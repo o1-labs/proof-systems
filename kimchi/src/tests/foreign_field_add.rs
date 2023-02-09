@@ -19,7 +19,6 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, SquareRootField, Zero};
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::FqSponge;
 use mina_poseidon::{
@@ -32,6 +31,7 @@ use o1_utils::{
     foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers, Two,
 };
+use poly_commitment::srs::{endos, SRS};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::array;
 use std::sync::Arc;

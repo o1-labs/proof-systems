@@ -5,13 +5,13 @@ use crate::proof::RecursionChallenge;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
 use ark_poly::UVPolynomial;
-use commitment_dlog::commitment::b_poly_coefficients;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
+use poly_commitment::commitment::b_poly_coefficients;
 use rand::prelude::*;
 use std::array;
 

@@ -11,13 +11,13 @@ use crate::{
 };
 use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ff::Zero;
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
 use std::array;
 use std::time::Instant;
 

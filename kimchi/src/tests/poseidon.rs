@@ -31,10 +31,10 @@ const N_LOWER_BOUND: usize = (POS_ROWS_PER_HASH + 1) * NUM_POS; // Plonk domain 
 #[test]
 fn test_poseidon() {
     let max_size = 1 << math::ceil_log2(N_LOWER_BOUND);
-    println!("max_size = {}", max_size);
-    println!("rounds per hash = {}", ROUNDS_PER_HASH);
-    println!("rounds per row = {}", ROUNDS_PER_ROW);
-    println!(" number of rows for poseidon ={}", POS_ROWS_PER_HASH);
+    println!("max_size = {max_size}");
+    println!("rounds per hash = {ROUNDS_PER_HASH}");
+    println!("rounds per row = {ROUNDS_PER_ROW}");
+    println!(" number of rows for poseidon ={POS_ROWS_PER_HASH}");
     assert_eq!(ROUNDS_PER_HASH % ROUNDS_PER_ROW, 0);
 
     //let round_constants = mina_poseidon::pasta::fp_kimchi::params().round_constants;

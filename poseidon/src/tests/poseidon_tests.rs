@@ -33,7 +33,7 @@ where
     // read test vectors from given file
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     path.push("src/tests/test_vectors");
-    path.push(&test_vector_file);
+    path.push(test_vector_file);
     let file = File::open(&path).expect("couldn't open test vector file");
     let test_vectors: TestVectors =
         serde_json::from_reader(file).expect("couldn't deserialize test vector file");
