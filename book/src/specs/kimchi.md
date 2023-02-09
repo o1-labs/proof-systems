@@ -2279,6 +2279,7 @@ For every proof we want to verify, we defer the proof opening to the very end.
 This allows us to potentially batch verify a number of partially verified proofs.
 Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 
+1. Check the lengh of evaluations inside the proof.
 1. Commit to the negated public input polynomial.
 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
 1. Combine the chunked polynomials' evaluations

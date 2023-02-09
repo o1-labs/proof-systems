@@ -44,7 +44,7 @@ pub enum VerifyError {
     #[error("the previous challenges have an unexpected length (expected {0}, got {1})")]
     IncorrectPrevChallengesLength(usize, usize),
 
-    #[error("the evaluation is of an unexpected size")]
+    #[error("proof malformed: an evaluation was of the incorrect size (all evaluations are expected to be of length 1)")]
     IncorrectEvaluationsLength,
 
     #[error("the opening proof failed to verify")]

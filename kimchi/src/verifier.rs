@@ -528,8 +528,8 @@ where
         for sorted_i in sorted {
             check_eval_len(sorted_i)?;
         }
-        check_eval_len(&aggreg)?;
-        check_eval_len(&table)?;
+        check_eval_len(aggreg)?;
+        check_eval_len(table)?;
         if let Some(runtime) = &runtime {
             check_eval_len(runtime)?;
         }
@@ -571,7 +571,7 @@ where
         ));
     }
 
-    //~ Check the lengh of evaluations inside the proof.
+    //~ 1. Check the lengh of evaluations inside the proof.
     check_proof_evals_len(proof)?;
 
     //~ 1. Commit to the negated public input polynomial.
