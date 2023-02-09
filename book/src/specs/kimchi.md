@@ -2032,10 +2032,6 @@ pub struct ProverProof<G: AffineCurve> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 
-    /// The public input
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub public: Vec<G::ScalarField>,
-
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<RecursionChallenge<G>>,
 }

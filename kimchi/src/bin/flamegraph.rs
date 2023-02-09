@@ -18,15 +18,15 @@ fn main() {
         Some("prove") => {
             let ctx = BenchmarkCtx::new(1 << 14);
             loop {
-                let proof = ctx.create_proof();
-                black_box(proof);
+                let proof_and_public = ctx.create_proof();
+                black_box(proof_and_public);
             }
         }
         Some("verify") => {
             let ctx = BenchmarkCtx::new(1 << 4);
-            let proof = ctx.create_proof();
+            let proof_and_public = ctx.create_proof();
             loop {
-                ctx.batch_verification(black_box(vec![proof.clone()]));
+                ctx.batch_verification(black_box(&vec![proof_and_public.clone()]));
             }
         }
         _ => panic!("you must provide an argument (prove or verify)"),

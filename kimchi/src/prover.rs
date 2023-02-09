@@ -228,7 +228,7 @@ where
         //~    and $0$ for the rest.
         let public = witness[0][0..index.cs.public].to_vec();
         let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            public.clone(),
+            public,
             index.cs.domain.d1,
         )
         .interpolate();
@@ -1250,7 +1250,6 @@ where
             proof,
             evals: chunked_evals,
             ft_eval1,
-            public,
             prev_challenges,
         })
     }
@@ -1463,42 +1462,43 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<ProverProof<G>> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)> for CamlProverProof<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: ProverProof<G>) -> Self {
+        fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
             Self {
-                commitments: pp.commitments.into(),
-                proof: pp.proof.into(),
-                evals: pp.evals.into(),
-                ft_eval1: pp.ft_eval1.into(),
-                public: pp.public.into_iter().map(Into::into).collect(),
-                prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
+                commitments: pp.0.commitments.into(),
+                proof: pp.0.proof.into(),
+                evals: pp.0.evals.into(),
+                ft_eval1: pp.0.ft_eval1.into(),
+                public: pp.1.into_iter().map(Into::into).collect(),
+                prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
             }
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for ProverProof<G>
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
     where
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> ProverProof<G> {
-            ProverProof {
+        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> (ProverProof<G>, Vec<G::ScalarField>) {
+            let proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
                 evals: caml_pp.evals.into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
-                public: caml_pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()
                     .map(Into::into)
                     .collect(),
-            }
+            };
+
+            (proof, caml_pp.public.into_iter().map(Into::into).collect())
         }
     }
 }
