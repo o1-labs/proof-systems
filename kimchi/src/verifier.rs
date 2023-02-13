@@ -723,6 +723,23 @@ where
     .chain((0..COLUMNS).map(Column::Coefficient))
     //~~ - sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
+    //~~ - additive lookup commitments
+    .chain(
+        verifier_index
+            .lookup_index
+            .as_ref()
+            .map(|li| {
+                // add evaluations of sorted polynomials
+                [
+                    Column::AdditiveLookupAggregation,
+                    Column::AdditiveLookupCount,
+                ]
+                .into_iter()
+                .chain((0..li.lookup_info.max_per_row).map(Column::AdditiveLookupInverse))
+            })
+            .into_iter()
+            .flatten(),
+    )
     //~~ - lookup commitments
     .chain(
         verifier_index

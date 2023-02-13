@@ -1270,6 +1270,52 @@ where
                 .map(|w| (evaluations_form(w), None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
+        polynomials.extend(additive_lookup_aggregation.as_ref().iter().map(
+            |additive_lookup_aggregation| {
+                (
+                    evaluations_form(&additive_lookup_aggregation),
+                    None,
+                    additive_lookup_aggregation_commitment
+                        .as_ref()
+                        .unwrap()
+                        .blinders
+                        .clone(),
+                )
+            },
+        ));
+        polynomials.extend(
+            additive_lookup_count
+                .as_ref()
+                .iter()
+                .map(|additive_lookup_count| {
+                    (
+                        evaluations_form(&additive_lookup_count),
+                        None,
+                        additive_lookup_count_commitment
+                            .as_ref()
+                            .unwrap()
+                            .blinders
+                            .clone(),
+                    )
+                }),
+        );
+        polynomials.extend(
+            additive_lookup_inverses
+                .as_ref()
+                .iter()
+                .map(|inverses| {
+                    inverses.iter().enumerate().map(|(idx, inverses)| {
+                        (
+                            evaluations_form(&inverses),
+                            None,
+                            additive_lookup_inverses_commitment.as_ref().unwrap()[idx]
+                                .blinders
+                                .clone(),
+                        )
+                    })
+                })
+                .flatten(),
+        );
 
         //~ 1. if using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
