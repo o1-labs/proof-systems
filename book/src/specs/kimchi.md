@@ -1462,7 +1462,7 @@ to obtain a gadget for 64-bit words XOR:
 |   1 | `Xor16`       | Xor next 2 bytes of the words              |
 |   2 | `Xor16`       | Xor next 2 bytes of the words              |
 |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
-|   4 | `Zero`        | Zero values, can be reused as generic gate |
+|   4 | `Generic`     | Zero values, can be reused as generic gate |
 
 ```admonish info
 We could halve the number of rows of the 64-bit XOR gadget by having lookups
@@ -1501,7 +1501,7 @@ follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\c
 | --------- | ------------- | --------------------------------------------------------------------- |
 | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
 | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
-| i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+| i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 
 ** NOT Layout using Generic gates **
 

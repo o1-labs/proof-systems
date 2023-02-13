@@ -38,7 +38,7 @@ impl BitwiseOps for BigUint {
         // pad if needed / desired
         // first get the number of bits of the input,
         // take into account that BigUint::bits() returns 0 if the input is 0
-        let in_bits = input.bitlen() as usize;
+        let in_bits = input.bitlen();
         let bits = max(in_bits, bits.unwrap_or(0));
         // build vector of bits in little endian (least significant bit in position 0)
         let mut bit_vec = vec![];

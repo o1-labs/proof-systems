@@ -6,12 +6,12 @@ use crate::circuits::{
 use crate::tests::framework::TestFramework;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-use commitment_dlog::srs::endos;
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
+use poly_commitment::srs::endos;
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 

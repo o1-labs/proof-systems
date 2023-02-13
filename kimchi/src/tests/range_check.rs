@@ -31,14 +31,14 @@ use std::array;
 use std::sync::Arc;
 
 use crate::{prover_index::ProverIndex, verifier::verify};
-use commitment_dlog::{
-    commitment::CommitmentCurve,
-    srs::{endos, SRS},
-};
 use groupmap::GroupMap;
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use poly_commitment::{
+    commitment::CommitmentCurve,
+    srs::{endos, SRS},
 };
 
 use super::framework::TestFramework;

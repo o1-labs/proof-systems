@@ -1,6 +1,6 @@
 //! This module implements the [`ProverError`] type.
 
-use commitment_dlog::error::CommitmentError;
+use poly_commitment::error::CommitmentError;
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
