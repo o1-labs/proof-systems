@@ -11,7 +11,7 @@ use crate::{
     },
     error::ProverError,
 };
-use ark_ff::{FftField, One, PrimeField, Zero};
+use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;
 use std::collections::HashMap;
@@ -46,22 +46,6 @@ pub fn constraints<F: FftField>(
 
     // The contributions given by each lookup pattern.
     let lookup_contributions = {
-        let joint_combiner: E<F> = E::Constant(ConstantExpr::JointCombiner);
-        let table_id_combiner =
-            // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
-            // needed.
-            (1..lookup_info.max_joint_size).fold(joint_combiner.clone(), |acc, i| {
-                let mut new_term = joint_combiner.clone();
-                if generate_feature_flags {
-                    new_term = E::IfFeature(
-                        FeatureFlag::TableWidth((i + 1) as isize),
-                        Box::new(new_term),
-                        Box::new(E::one()),
-                    );
-                }
-                acc * new_term
-            });
-
         // This is set up so that on rows that have lookups, chunk will be equal
         // to the product over all lookups `f` in that row of `gamma + f`
         // and
