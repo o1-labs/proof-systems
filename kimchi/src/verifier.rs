@@ -571,7 +571,7 @@ where
         ));
     }
 
-    //~ 1. Check the lengh of evaluations inside the proof.
+    //~ 1. Check the length of evaluations inside the proof.
     check_proof_evals_len(proof)?;
 
     //~ 1. Commit to the negated public input polynomial.
