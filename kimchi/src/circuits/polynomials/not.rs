@@ -43,7 +43,7 @@ use super::{
 //~ | --------- | ------------- | --------------------------------------------------------------------- |
 //~ | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
 //~ | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
-//~ | i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+//~ | i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 //~
 //~ ** NOT Layout using Generic gates **
 //~
@@ -198,7 +198,7 @@ pub fn extend_not_witness_checked_length<F: PrimeField>(
         bits,
         (
             F::from_biguint(&input).unwrap(),
-            F::from(2u8).pow(&[bits as u64]) - F::one(),
+            F::from(2u8).pow([bits as u64]) - F::one(),
             F::from_biguint(&output).unwrap(),
         ),
     );
@@ -233,7 +233,7 @@ pub fn extend_not_witness_unchecked_length<F: PrimeField>(
             ))?;
         }
     }
-    let all_ones = F::from(2u8).pow(&[bits as u64]) - F::one();
+    let all_ones = F::from(2u8).pow([bits as u64]) - F::one();
     let rows = (inputs.len() as f64 / 2.0).ceil() as usize;
     let mut not_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); rows]);
     for (i, input) in inputs.iter().enumerate().step_by(2) {

@@ -3,7 +3,7 @@ use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
 use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
 
-#[cfg(all(feature = "debug_sponge", debug_assertions))]
+#[cfg(feature = "debug_sponge")]
 use o1_utils::FieldHelpers;
 
 pub use crate::FqSponge;
@@ -136,39 +136,42 @@ where
 // "debug_sponge" feature is enabled.
 macro_rules! debug_sponge {
     ($name:expr, $sponge:expr) => {
-        #[cfg(all(feature = "debug_sponge", debug_assertions))]
+        #[cfg(feature = "debug_sponge")]
         {
             // No input
             debug_sponge_print_state!($name, $sponge);
         }
     };
     ($name:expr, $input:expr, $sponge:expr) => {
-        #[cfg(all(feature = "debug_sponge", debug_assertions))]
+        #[cfg(feature = "debug_sponge")]
         {
             // Field input
             debug_sponge_print_state!($name, $sponge);
 
-            println!("debug_sponge: {} input {}", $name, $input.to_hex());
+            println!(
+                "debug_sponge: id{} {} input {}",
+                $sponge.id,
+                $name,
+                $input.to_hex()
+            );
         }
     };
 }
-#[cfg(all(feature = "debug_sponge", debug_assertions))]
+#[cfg(feature = "debug_sponge")]
 macro_rules! debug_sponge_print_state {
     ($name:expr, $sponge:expr) => {
-        #[cfg(all(feature = "debug_sponge", debug_assertions))]
-        {
-            println!(
-                "debug_sponge: {} state {:?} {}",
-                $name,
-                $sponge.sponge_state,
-                $sponge
-                    .state
-                    .iter()
-                    .map(|f| { f.to_hex() })
-                    .collect::<Vec<String>>()
-                    .join(" "),
-            );
-        }
+        println!(
+            "debug_sponge: id{} {} state {:?} {}",
+            $sponge.id,
+            $name,
+            $sponge.sponge_state,
+            $sponge
+                .state
+                .iter()
+                .map(|f| { f.to_hex() })
+                .collect::<Vec<String>>()
+                .join(" "),
+        );
     };
 }
 

@@ -51,7 +51,7 @@ fn create_not_witness_unchecked_length<F: PrimeField>(
     bits: usize,
 ) -> [Vec<F>; COLUMNS] {
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
-    witness[0][0] = F::from(2u8).pow(&[bits as u64]) - F::one();
+    witness[0][0] = F::from(2u8).pow([bits as u64]) - F::one();
     let result = not::extend_not_witness_unchecked_length(&mut witness, inputs, bits);
     if let Err(e) = result {
         panic!("{}", e);
@@ -70,7 +70,7 @@ fn create_not_witness_checked_length<F: PrimeField>(
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
     let input_big = input.to_biguint();
     let real_bits = max(input_big.bitlen(), bits.unwrap_or(0));
-    witness[0][0] = F::from(2u8).pow(&[real_bits as u64]) - F::one();
+    witness[0][0] = F::from(2u8).pow([real_bits as u64]) - F::one();
     not::extend_not_witness_checked_length(&mut witness, input, bits);
     witness
 }
@@ -307,7 +307,7 @@ fn test_prove_and_verify_not_xor() {
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
-            PallasField::from(2u32).pow(&[bits as u64]) - PallasField::one(),
+            PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
         ])
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
@@ -350,7 +350,7 @@ fn test_prove_and_verify_five_not_gnrc() {
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
-            PallasField::from(2u32).pow(&[bits as u64]) - PallasField::one(),
+            PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
         ])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()

@@ -242,7 +242,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 }
             }
             Err(x) => {
-                println!("{:?}", x);
+                println!("{x:?}");
                 Err(format!("Failed to evaluate {:?} constraint", self.typ))
             }
         }

@@ -18,7 +18,6 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -27,6 +26,7 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
+use poly_commitment::srs::{endos, SRS};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -68,7 +68,7 @@ where
 
 // Returns the all ones BigUint of bits length
 pub(crate) fn all_ones<G: KimchiCurve>(bits: usize) -> G::ScalarField {
-    G::ScalarField::from(2u128).pow(&[bits as u64]) - G::ScalarField::one()
+    G::ScalarField::from(2u128).pow([bits as u64]) - G::ScalarField::one()
 }
 
 // Returns a given nybble of 4 bits

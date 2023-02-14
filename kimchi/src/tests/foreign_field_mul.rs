@@ -933,25 +933,23 @@ fn test_invalid_wraparound_carry1_hi_plookup() {
     let b = BigUint::zero();
 
     // Sanity check wraparound values
-    let two_to_9 = PallasField::from(2u32).pow(&[9]);
+    let two_to_9 = PallasField::from(2u32).pow([9]);
     // Wraparound (exploit) value x s.t. x >= 2^12 AND 2^9 * x < 2^12
     // (credit to querolita for computing the real instances of this value for these test cases!)
     let wraparound_0 = two_to_9.inverse().expect("failed to get inverse");
     for i in 0..8 {
         let wraparound_i = wraparound_0 + PallasField::from(i);
-        assert!(wraparound_i >= PallasField::from(2u32).pow(&[12u64]));
-        assert!(two_to_9 * wraparound_i < PallasField::from(2u32).pow(&[12u64]));
+        assert!(wraparound_i >= PallasField::from(2u32).pow([12u64]));
+        assert!(two_to_9 * wraparound_i < PallasField::from(2u32).pow([12u64]));
         // Wraparound!!!
     }
     // edge case: x - 1 is not a wraparound value
-    assert!(wraparound_0 - PallasField::one() >= PallasField::from(2u32).pow(&[12u64]));
-    assert!(
-        two_to_9 * (wraparound_0 - PallasField::one()) >= PallasField::from(2u32).pow(&[12u64])
-    );
+    assert!(wraparound_0 - PallasField::one() >= PallasField::from(2u32).pow([12u64]));
+    assert!(two_to_9 * (wraparound_0 - PallasField::one()) >= PallasField::from(2u32).pow([12u64]));
     // edge case: x + 8 is not a wraparound value
-    assert!(wraparound_0 + PallasField::from(8) >= PallasField::from(2u32).pow(&[12u64]));
+    assert!(wraparound_0 + PallasField::from(8) >= PallasField::from(2u32).pow([12u64]));
     assert!(
-        two_to_9 * (wraparound_0 + PallasField::from(8)) >= PallasField::from(2u32).pow(&[12u64])
+        two_to_9 * (wraparound_0 + PallasField::from(8)) >= PallasField::from(2u32).pow([12u64])
     );
 
     // Invalid carry1_hi witness that causes wrap around to something less than 3-bits
@@ -973,8 +971,8 @@ fn test_invalid_wraparound_carry1_hi_plookup() {
             ),
         ],
     );
-    assert!(witness[7][0] >= PallasField::from(2u32).pow(&[12u64]));
-    assert!(two_to_9 * witness[7][0] < PallasField::from(2u32).pow(&[12u64]));
+    assert!(witness[7][0] >= PallasField::from(2u32).pow([12u64]));
+    assert!(two_to_9 * witness[7][0] < PallasField::from(2u32).pow([12u64]));
     assert_eq!(
         result,
         Err(CircuitGateError::InvalidLookupConstraint(

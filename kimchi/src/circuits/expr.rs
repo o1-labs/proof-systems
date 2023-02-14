@@ -157,9 +157,9 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
 // Compute the ith unnormalized lagrange basis
 fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
     let omega_i = if i < 0 {
-        domain.group_gen.pow(&[-i as u64]).inverse().unwrap()
+        domain.group_gen.pow([-i as u64]).inverse().unwrap()
     } else {
-        domain.group_gen.pow(&[i as u64])
+        domain.group_gen.pow([i as u64])
     };
     domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
 }
@@ -193,17 +193,17 @@ impl Column {
         match self {
             Column::Witness(i) => format!("w_{{{i}}}"),
             Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s_{{{}}}", i),
+            Column::LookupSorted(i) => format!("s_{{{i}}}"),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k_{{{:?}}}", i),
+            Column::LookupKindIndex(i) => format!("k_{{{i:?}}}"),
             Column::LookupRuntimeSelector => "rts".to_string(),
             Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {
-                format!("{:?}", gate)
+                format!("{gate:?}")
             }
-            Column::Coefficient(i) => format!("c_{{{}}}", i),
-            Column::Permutation(i) => format!("sigma_{{{}}}", i),
+            Column::Coefficient(i) => format!("c_{{{i}}}"),
+            Column::Permutation(i) => format!("sigma_{{{i}}}"),
         }
     }
 
@@ -211,17 +211,17 @@ impl Column {
         match self {
             Column::Witness(i) => format!("w[{i}]"),
             Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s[{}]", i),
+            Column::LookupSorted(i) => format!("s[{i}]"),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k[{:?}]", i),
+            Column::LookupKindIndex(i) => format!("k[{i:?}]"),
             Column::LookupRuntimeSelector => "rts".to_string(),
             Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {
-                format!("{:?}", gate)
+                format!("{gate:?}")
             }
-            Column::Coefficient(i) => format!("c[{}]", i),
-            Column::Permutation(i) => format!("sigma_[{}]", i),
+            Column::Coefficient(i) => format!("c[{i}]"),
+            Column::Permutation(i) => format!("sigma_[{i}]"),
         }
     }
 }
@@ -327,7 +327,7 @@ impl<F: Field> ConstantExpr<F> {
         }
         use ConstantExpr::*;
         match self {
-            Literal(x) => Literal(x.pow(&[p])),
+            Literal(x) => Literal(x.pow([p])),
             x => Pow(Box::new(x), p),
         }
     }
@@ -343,7 +343,7 @@ impl<F: Field> ConstantExpr<F> {
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
-            Pow(x, p) => x.value(c).pow(&[*p as u64]),
+            Pow(x, p) => x.value(c).pow([*p]),
             Mul(x, y) => x.value(c) * y.value(c),
             Add(x, y) => x.value(c) + y.value(c),
             Sub(x, y) => x.value(c) - y.value(c),
@@ -362,9 +362,9 @@ pub struct Cache {
 }
 
 impl CacheId {
-    fn get_from<'a, 'b, F: FftField>(
+    fn get_from<'b, F: FftField>(
         &self,
-        cache: &'b HashMap<CacheId, EvalResult<'a, F>>,
+        cache: &'b HashMap<CacheId, EvalResult<'_, F>>,
     ) -> Option<EvalResult<'b, F>> {
         cache.get(self).map(|e| match e {
             EvalResult::Constant(x) => EvalResult::Constant(*x),
@@ -436,7 +436,6 @@ impl Op2 {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 pub enum FeatureFlag {
-    ChaCha,
     RangeCheck0,
     RangeCheck1,
     ForeignFieldAdd,
@@ -586,7 +585,6 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                 let is_enabled = {
                     use FeatureFlag::*;
                     match feature {
-                        ChaCha => features.chacha,
                         RangeCheck0 => features.range_check0,
                         RangeCheck1 => features.range_check1,
                         ForeignFieldAdd => features.foreign_field_add,
@@ -732,7 +730,7 @@ impl<F: FftField> PolishToken<F> {
                 },
                 Pow(n) => {
                     let i = stack.len() - 1;
-                    stack[i] = stack[i].pow(&[*n as u64]);
+                    stack[i] = stack[i].pow([*n]);
                 }
                 Add => {
                     let y = stack.pop().ok_or(ExprError::EmptyStack)?;
@@ -921,14 +919,14 @@ fn unnormalized_lagrange_evals<F: FftField>(
     let ii = i as u64;
     assert!(ii < n);
     let omega = d1.group_gen;
-    let omega_i = omega.pow(&[ii]);
-    let omega_minus_i = omega.pow(&[n - ii]);
+    let omega_i = omega.pow([ii]);
+    let omega_minus_i = omega.pow([n - ii]);
 
     // Write res_domain = < omega_k > with
     // |res_domain| = k * |H|
 
     // omega_k^0, ..., omega_k^k
-    let omega_k_n_pows = pows(res_domain.group_gen.pow(&[n]), k);
+    let omega_k_n_pows = pows(res_domain.group_gen.pow([n]), k);
     let omega_k_pows = pows(res_domain.group_gen, k);
 
     let mut evals: Vec<F> = {
@@ -983,11 +981,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn add<'b, 'c>(
-        self,
-        other: EvalResult<'b, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn add<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x + y),
@@ -1106,11 +1100,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn sub<'b, 'c>(
-        self,
-        other: EvalResult<'b, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn sub<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
@@ -1265,11 +1255,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn mul<'b, 'c>(
-        self,
-        other: EvalResult<'b, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn mul<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x * y),
@@ -1535,7 +1521,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
             Constant(x) => Ok(x.value(c)),
-            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow(&[*p as u64])),
+            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow([*p])),
             BinOp(Op2::Mul, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
@@ -1572,7 +1558,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
     }
 }
@@ -1593,7 +1579,7 @@ impl<F: FftField> Expr<F> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
-            Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow(&[*p as u64])),
+            Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow([*p])),
             Double(x) => x.evaluate(d, pt, evals).map(|x| x.double()),
             Square(x) => x.evaluate(d, pt, evals).map(|x| x.square()),
             BinOp(Op2::Mul, x, y) => {
@@ -1626,7 +1612,7 @@ impl<F: FftField> Expr<F> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
         let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
@@ -1852,7 +1838,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
             let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
             let e = env
                 .get_column(idx)
-                .unwrap_or_else(|| panic!("Index polynomial {:?} not found", idx));
+                .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
             let scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -1882,7 +1868,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
             let c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();
             let e = env
                 .get_column(idx)
-                .unwrap_or_else(|| panic!("Index polynomial {:?} not found", idx));
+                .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
             let scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -2399,7 +2385,7 @@ where
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("alpha^{}", n),
+                Alpha => format!("alpha^{n}"),
                 x => format!("{}^{n}", x.text()),
             },
             Add(x, y) => format!("({} + {})", x.text(), y.text()),
@@ -2502,7 +2488,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.latex_name()
             }
-            IfFeature(feature, _, _) => format!("{:?}", feature),
+            IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
 
@@ -2525,7 +2511,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
-            IfFeature(feature, _, _) => format!("{:?}", feature),
+            IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
 
@@ -2845,8 +2831,8 @@ pub mod test {
         prover_index::ProverIndex,
     };
     use ark_ff::UniformRand;
-    use commitment_dlog::srs::{endos, SRS};
     use mina_curves::pasta::{Fp, Pallas, Vesta};
+    use poly_commitment::srs::{endos, SRS};
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
     use std::sync::Arc;

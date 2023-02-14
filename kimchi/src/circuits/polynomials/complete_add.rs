@@ -267,7 +267,7 @@ impl<F: PrimeField> CircuitGate<F> {
         ensure_eq!(
             y3,
             expected_y3,
-            format!("y3 wrong {}: (expected {}, got {})", row, expected_y3, y3)
+            format!("y3 wrong {row}: (expected {expected_y3}, got {y3})")
         );
 
         let not_same_y = F::from(u64::from(y1 != y2));
