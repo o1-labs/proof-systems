@@ -33,6 +33,48 @@ jobs:
           toolchain: "1.67.0"
           components: rustfmt, clippy
 
+      #
+      # Coding guidelines
+      #
+
+      - name: Enforce formating
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: -- --check
+
+      - name: Lint (clippy)
+        uses: actions-rs/cargo@v1
+        with:
+          command: clippy
+          args: --all-features --tests --all-targets -- -D warnings
+
+      - name: Run Clippy (beta)
+        uses: actions-rs/clippy-check@v1
+        continue-on-error: true
+        with:
+          name: Clippy (beta)
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --all-targets -- -W clippy::all
+
+      #
+      # Doc & Spec
+      #
+
+      - name: Build the kimchi specification
+        run: |
+          cd book/specifications
+          cd kimchi && make build
+
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications
+          cd poly-commitment && make build
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          git diff --exit-code
+
       # https://github.com/Swatinem/rust-cache
       - name: Cache Rust stuff
         uses: Swatinem/rust-cache@v1
@@ -77,45 +119,3 @@ jobs:
         with:
           command: test
           args: --all-features --release --doc
-
-      #
-      # Coding guidelines
-      #
-
-      - name: Enforce formating
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
-
-      - name: Lint (clippy)
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all-features --tests --all-targets -- -D warnings
-
-      - name: Run Clippy (beta)
-        uses: actions-rs/clippy-check@v1
-        continue-on-error: true
-        with:
-          name: Clippy (beta)
-          token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-features --all-targets -- -W clippy::all
-
-      #
-      # Doc & Spec
-      #
-
-      - name: Build the kimchi specification
-        run: |
-          cd book/specifications
-          cd kimchi && make build
-
-      - name: Build the polynomial commitment specification
-        run: |
-          cd book/specifications
-          cd poly-commitment && make build
-
-      - name: Check that up-to-date specification is checked in
-        run: |
-          git diff --exit-code
