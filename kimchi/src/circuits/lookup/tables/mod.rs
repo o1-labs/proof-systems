@@ -1,5 +1,5 @@
 use ark_ff::{FftField, One, Zero};
-use commitment_dlog::PolyComm;
+use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
 
 pub mod range_check;
@@ -111,7 +111,7 @@ pub fn combine_table<G>(
     runtime_vector: Option<&PolyComm<G>>,
 ) -> PolyComm<G>
 where
-    G: commitment_dlog::commitment::CommitmentCurve,
+    G: poly_commitment::commitment::CommitmentCurve,
 {
     assert!(!columns.is_empty());
 

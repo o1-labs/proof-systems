@@ -30,7 +30,7 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 thiserror = "1.0.30"
 
-commitment_dlog = { path = "../poly-commitment", version = "0.1.0" }
+poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
 groupmap = { path = "../groupmap", version = "0.1.0" }
 mina-curves = { path = "../curves", version = "0.1.0" }
 o1-utils = { path = "../utils", version = "0.1.0" }

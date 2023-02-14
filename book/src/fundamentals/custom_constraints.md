@@ -51,7 +51,7 @@ and maybe
 
   However, often increasing the number of columns allows you to decrease the number of rows required for a given computation. For example, if you can perform one Poseidon hash in 36 rows with 5 total columns, then you can also perform it in 12 (= 36 / 3) rows with 15 (= 5 * 3) total columns.
 
-  **Decreasing the number of rows (even while keeping the total number of table entries the same) is desirable because it reduces the cost of the polynomial commitment opening proof, which is dominated by a factor linear in the number of rows, and barely depends on the the number of columns.**
+  **Decreasing the number of rows (even while keeping the total number of table entries the same) is desirable because it reduces the cost of the polynomial commitment opening proof, which is dominated by a factor linear in the number of rows, and barely depends on the number of columns.**
 
   Increasing the number of columns also increases verifier time, as the verifier must perform one scalar-multiplication and one hash per column. Proof length is also affected by a larger number of columns, as more polynomials need to be committed and sent along to the verifier.
 

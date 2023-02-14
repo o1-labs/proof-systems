@@ -217,7 +217,7 @@ where
         let g: Vec<_> = (0..depth)
             .map(|i| {
                 let mut h = Blake2b512::new();
-                h.update(&(i as u32).to_be_bytes());
+                h.update((i as u32).to_be_bytes());
                 point_of_random_bytes(&m, &h.finalize())
             })
             .collect();
@@ -226,7 +226,7 @@ where
         let [h]: [G; MISC] = array::from_fn(|i| {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
-            h.update(&(i as u32).to_be_bytes());
+            h.update((i as u32).to_be_bytes());
             point_of_random_bytes(&m, &h.finalize())
         });
 

@@ -286,10 +286,7 @@ impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverInd
                 if wire.col >= PERMUTS {
                     return Err(GateError::Custom {
                         row,
-                        err: format!(
-                            "a wire can only be connected to the first {} columns",
-                            PERMUTS
-                        ),
+                        err: format!("a wire can only be connected to the first {PERMUTS} columns"),
                     });
                 }
 

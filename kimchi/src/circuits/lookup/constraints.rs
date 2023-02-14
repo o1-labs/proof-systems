@@ -276,7 +276,7 @@ where
             v.push(v[i - 1] * x);
         }
 
-        let beta1_per_row = beta1.pow(&[max_lookups_per_row as u64]);
+        let beta1_per_row = beta1.pow([max_lookups_per_row as u64]);
         v.iter_mut().for_each(|x| *x *= beta1_per_row);
 
         v
@@ -324,7 +324,7 @@ where
     if cfg!(debug_assertions) {
         let final_val = res.evals[d1.size() - (ZK_ROWS + 1)];
         if final_val != F::one() {
-            panic!("aggregation incorrect: {}", final_val);
+            panic!("aggregation incorrect: {final_val}");
         }
     }
 
@@ -766,13 +766,13 @@ pub fn verify<F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     for (k, v) in &all_lookups {
         let s = sorted_counts.get(k).unwrap_or(&0);
         if v != s {
-            panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
+            panic!("For {k}:\nall_lookups    = {v}\nsorted_lookups = {s}");
         }
     }
     for (k, s) in &sorted_counts {
         let v = all_lookups.get(k).unwrap_or(&0);
         if v != s {
-            panic!("For {}:\nall_lookups    = {}\nsorted_lookups = {}", k, v, s);
+            panic!("For {k}:\nall_lookups    = {v}\nsorted_lookups = {s}");
         }
     }
 }

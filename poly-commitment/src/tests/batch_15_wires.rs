@@ -114,7 +114,7 @@ where
             );
             open += start.elapsed();
 
-            (sponge.clone(), x.clone(), polymask, evalmask, comm, proof)
+            (sponge.clone(), x, polymask, evalmask, comm, proof)
         })
         .collect::<Vec<_>>();
 

@@ -1,7 +1,6 @@
 //! Implements a tool to visualize a circuit as an HTML page.
 
 use ark_ff::PrimeField;
-use commitment_dlog::commitment::CommitmentCurve;
 use kimchi::{
     circuits::{
         argument::Argument,
@@ -13,6 +12,7 @@ use kimchi::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
+use poly_commitment::commitment::CommitmentCurve;
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -116,7 +116,7 @@ pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::S
 
     let rendered = tt
         .render("circuit", &context)
-        .unwrap_or_else(|e| panic!("template file can't be rendered: {}", e));
+        .unwrap_or_else(|e| panic!("template file can't be rendered: {e}"));
 
     let mut file = File::create(html_output).unwrap_or_else(|e| panic!("{e}"));
     write!(&mut file, "{rendered}").expect("couldn't write the file on disk");

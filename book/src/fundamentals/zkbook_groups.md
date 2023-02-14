@@ -14,7 +14,7 @@ I will not touch on the last two too much.
 
 First let's do a quick definition and then some examples.
 
-**Definition.** A group is a set $G$ with a binary operation $* \colon G \times G \to G$, an identity $e \in G$ for that operation, and a inverse map $(\quad)^{-1} \colon G \to G$ such that
+**Definition.** A group is a set $G$ with a binary operation $* \colon G \times G \to G$, an identity $e \in G$ for that operation, and an inverse map $(\quad)^{-1} \colon G \to G$ such that
 
 - $*$ is associative: $x*(y*z) = (x*y)*z$ for all $x, y,z$.
 
