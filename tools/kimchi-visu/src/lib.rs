@@ -5,12 +5,8 @@ use kimchi::{
     circuits::{
         argument::Argument,
         polynomials::{
-            chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
-            complete_add::CompleteAdd,
-            endomul_scalar::EndomulScalar,
-            endosclmul::EndosclMul,
-            poseidon::Poseidon,
-            varbasemul::VarbaseMul,
+            complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
+            poseidon::Poseidon, varbasemul::VarbaseMul,
         },
     },
     curve::KimchiCurve,
@@ -67,10 +63,6 @@ where
     map.insert("VarBaseMul", VarbaseMul::<G::ScalarField>::latex());
     map.insert("EndoMul", EndosclMul::<G::ScalarField>::latex());
     map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::latex());
-    map.insert("ChaCha0", ChaCha0::<G::ScalarField>::latex());
-    map.insert("ChaCha1", ChaCha1::<G::ScalarField>::latex());
-    map.insert("ChaCha2", ChaCha2::<G::ScalarField>::latex());
-    map.insert("ChaChaFinal", ChaChaFinal::<G::ScalarField>::latex());
     map
 }
 
