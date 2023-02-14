@@ -19,6 +19,16 @@ impl Signature {
     pub fn new(rx: BaseField, s: ScalarField) -> Self {
         Self { rx, s }
     }
+
+    /// Dummy signature
+    pub fn dummy() -> Self {
+        use ark_ff::One;
+
+        Self {
+            rx: BaseField::one(),
+            s: ScalarField::one(),
+        }
+    }
 }
 
 impl fmt::Display for Signature {
