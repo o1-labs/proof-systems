@@ -67,14 +67,14 @@ In the case where you would want to use lookups, the following tables would be n
 
 **Lookup selectors**. A lookup selector is used to perform a number of queries in different lookup tables. Any gate can advertise its use of a lookup selector (so a lookup selector can be associated to several gates), and on which rows they want to use them (current and/or next). In cases where a gate need to use lookups in its current row only, and is the only one performing a specific combination of queries, then its gate selector can be used in place of a lookup selector. As with gates, lookup selectors (including gates used as lookup selectors) are mutually exclusives (only one can be used on a given row).
 
-We currently have two lookup selectors:
+For example, suppose we have two lookup selectors:
 
 |  row  | ChaChaQuery | ChaChaFinalQuery |
 | :---: | :---------: | :--------------: |
 |   0   |      0      |        0         |
 |   1   |      1      |        0         |
 
-Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
+Where each applies 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
 For example, the following table describes a query into the XOR table made out of linear combinations of registers (checking that $r_0 \oplus r_2 = 2 \cdot r_1$):
 
 | table_id |   l   |   r   |   o   |
