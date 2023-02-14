@@ -15,7 +15,9 @@ use crate::{
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{PointEvaluations, ProverProof, RecursionChallenge},
+    proof::{
+        LookupEvaluations, PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge,
+    },
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
@@ -476,6 +478,64 @@ where
     }
 }
 
+/// Enforce the length of evaluations inside [`Proof`].
+/// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
+/// The length value is prone to future change.
+fn check_proof_evals_len<G>(proof: &ProverProof<G>) -> Result<()>
+where
+    G: KimchiCurve,
+    G::BaseField: PrimeField,
+{
+    let ProofEvaluations {
+        w,
+        z,
+        s,
+        coefficients,
+        lookup,
+        generic_selector,
+        poseidon_selector,
+    } = &proof.evals;
+
+    let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
+        if eval.zeta.len().is_one() && eval.zeta_omega.len().is_one() {
+            Ok(())
+        } else {
+            Err(VerifyError::IncorrectEvaluationsLength)
+        }
+    };
+
+    for w_i in w {
+        check_eval_len(w_i)?;
+    }
+    check_eval_len(z)?;
+    for s_i in s {
+        check_eval_len(s_i)?;
+    }
+    for coeff in coefficients {
+        check_eval_len(coeff)?;
+    }
+    if let Some(LookupEvaluations {
+        sorted,
+        aggreg,
+        table,
+        runtime,
+    }) = lookup
+    {
+        for sorted_i in sorted {
+            check_eval_len(sorted_i)?;
+        }
+        check_eval_len(aggreg)?;
+        check_eval_len(table)?;
+        if let Some(runtime) = &runtime {
+            check_eval_len(runtime)?;
+        }
+    }
+    check_eval_len(generic_selector)?;
+    check_eval_len(poseidon_selector)?;
+
+    Ok(())
+}
+
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
     verifier_index: &VerifierIndex<G>,
     proof: &'a ProverProof<G>,
@@ -506,6 +566,9 @@ where
             verifier_index.public,
         ));
     }
+
+    //~ 1. Check the length of evaluations inside the proof.
+    check_proof_evals_len(proof)?;
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
