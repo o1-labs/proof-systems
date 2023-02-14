@@ -33,6 +33,34 @@ jobs:
           toolchain: "1.67.0"
           components: rustfmt, clippy
 
+      # https://github.com/Swatinem/rust-cache
+      - name: Cache Rust stuff
+        uses: Swatinem/rust-cache@v1
+
+      #
+      # Doc & Spec
+      #
+
+      - name: Install cargo-spec for specifications
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-spec
+          version: 0.4.1
+
+      - name: Build the kimchi specification
+        run: |
+          cd book/specifications
+          cd kimchi && make build
+
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications
+          cd poly-commitment && make build
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          git diff --exit-code
+
       #
       # Coding guidelines
       #
@@ -58,43 +86,6 @@ jobs:
           args: --all-features --all-targets -- -W clippy::all
 
       #
-      # Doc & Spec
-      #
-
-      - name: Build the kimchi specification
-        run: |
-          cd book/specifications
-          cd kimchi && make build
-
-      - name: Build the polynomial commitment specification
-        run: |
-          cd book/specifications
-          cd poly-commitment && make build
-
-      - name: Check that up-to-date specification is checked in
-        run: |
-          git diff --exit-code
-
-      # https://github.com/Swatinem/rust-cache
-      - name: Cache Rust stuff
-        uses: Swatinem/rust-cache@v1
-
-      - name: Setup OCaml (because of ocaml-gen)
-        run: |
-          sudo apt update
-          sudo apt install -y ocaml
-
-      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
-      - name: Install latest nextest release
-        uses: taiki-e/install-action@nextest
-
-      - name: Install cargo-spec for specifications
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-spec
-          version: 0.4.1
-
-      #
       # Build
       #
 
@@ -107,6 +98,10 @@ jobs:
       #
       # Tests
       #
+
+      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+      - name: Install latest nextest release
+        uses: taiki-e/install-action@nextest
 
       - name: Test with latest nextest release (faster than cargo test)
         uses: actions-rs/cargo@v1
