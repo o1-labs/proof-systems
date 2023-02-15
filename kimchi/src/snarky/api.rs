@@ -2,11 +2,11 @@ use std::marker::PhantomData;
 
 use crate::{
     circuits::{constraints::ConstraintSystem, gate::CircuitGate, polynomial::COLUMNS},
-    commitment_dlog::srs::SRS,
     curve::KimchiCurve,
     groupmap::GroupMap,
     mina_poseidon::FqSponge,
     plonk_sponge::FrSponge,
+    poly_commitment::srs::SRS,
     proof::ProverProof,
     prover_index::ProverIndex,
     verifier::verify,
@@ -14,7 +14,7 @@ use crate::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{PrimeField, Zero as _};
-use commitment_dlog::commitment::CommitmentCurve;
+use poly_commitment::commitment::CommitmentCurve;
 
 use super::{checked_runner::RunState, traits::SnarkyType};
 
@@ -175,12 +175,17 @@ where
         let mut proof = proof;
         let mut public_input = Circuit::PublicInput::value_to_field_elements(&public_input).0;
         public_input.extend(Circuit::PublicOutput::value_to_field_elements(&public_output).0);
-        proof.public = public_input;
 
         // verify the proof
         let group_map = <Circuit::Curve as CommitmentCurve>::Map::setup();
 
-        verify::<Circuit::Curve, EFqSponge, EFrSponge>(&group_map, &self.index, &proof).unwrap()
+        verify::<Circuit::Curve, EFqSponge, EFrSponge>(
+            &group_map,
+            &self.index,
+            &proof,
+            &public_input,
+        )
+        .unwrap()
     }
 }
 
