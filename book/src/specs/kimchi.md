@@ -1411,18 +1411,18 @@ lookup table that would have the same size as that of the Xor.
 For now, we are willing to pay this small overhead and produce AND gadget as follows:
 
 We observe that we can express bitwise addition as follows:
-$$A + B = (A \oplus B) + 2 \cdot (A \& B)$$
+$$A + B = (A \oplus B) + 2 \cdot (A \wedge B)$$
 
-where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
+where $\oplus$ is the bitwise XOR operation, $\wedge$ is the bitwise AND operation, and $+$ is the addition operation.
 In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
 Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
-$$A \& B = \frac{A + B - (A \oplus B)}{2}$$
+$$A \wedge B = \frac{A + B - (A \oplus B)}{2}$$
 Let us define the following operations for better readability:
 
 ```text
  a + b = sum
-a ^ b = xor
-a & b = and
+a x b = xor
+a ^ b = and
 ```
 
 Then, we can rewrite the above equation as follows:
@@ -1441,7 +1441,7 @@ Finally, we connect the wires in the following positions (apart from the ones al
 * Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
 Meaning,
 
-* the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
+* the `xor` in `a x b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
 * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
 
