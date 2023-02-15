@@ -8,6 +8,7 @@ documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
 readme = "README.md"
 edition = "2021"
 license = "Apache-2.0"
+build = "build.rs"
 
 [lib]
 path = "src/lib.rs"
@@ -50,6 +51,9 @@ ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { version = "0.1.0", optional = true }
 
 wasm-bindgen = { version = "0.2.81", optional = true }
+
+[build-dependencies]
+book = { path = "../book", version = "0.1.0"  }
 
 [dev-dependencies]
 proptest = "1.0.0"

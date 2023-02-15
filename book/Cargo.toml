@@ -1,0 +1,12 @@
+[package]
+name = "book"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+make = "0.0.0"
+mdbook = "0.4.22"
+mdbook-admonish = "1.8.0"
+mdbook-katex = "0.2.17"
+mdbook-mermaid = "0.12.2"
+mdbook-toc = "0.10.0"
