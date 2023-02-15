@@ -25,10 +25,10 @@ The following tables are created to describe the circuit:
 The columns of the tables list the gates, while the rows are the length of the circuit.
 For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
 
-|  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |
-| :---: | :-----: | :------: | :---------: | :--------: | :-----: | :-----------: | :-----: | :-----: | :-----: | :---------: |
-|   0   |    1    |    0     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
-|   1   |    0    |    1     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
+|  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar |
+| :---: | :-----: | :------: | :---------: | :--------: | :-----: | :-----------: |
+|   0   |    1    |    0     |      0      |     0      |    0    |       0       |
+|   1   |    0    |    1     |      0      |     0      |    0    |       0       |
 
 **Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates.
 Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how).
@@ -67,14 +67,14 @@ In the case where you would want to use lookups, the following tables would be n
 
 **Lookup selectors**. A lookup selector is used to perform a number of queries in different lookup tables. Any gate can advertise its use of a lookup selector (so a lookup selector can be associated to several gates), and on which rows they want to use them (current and/or next). In cases where a gate need to use lookups in its current row only, and is the only one performing a specific combination of queries, then its gate selector can be used in place of a lookup selector. As with gates, lookup selectors (including gates used as lookup selectors) are mutually exclusives (only one can be used on a given row).
 
-We currently have two lookup selectors:
+For example, suppose we have two lookup selectors:
 
 |  row  | ChaChaQuery | ChaChaFinalQuery |
 | :---: | :---------: | :--------------: |
 |   0   |      0      |        0         |
 |   1   |      1      |        0         |
 
-Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
+Where each applies 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
 For example, the following table describes a query into the XOR table made out of linear combinations of registers (checking that $r_0 \oplus r_2 = 2 \cdot r_1$):
 
 | table_id |   l   |   r   |   o   |
@@ -328,10 +328,6 @@ Similarly to the generic gate, each values taking part in a lookup can be scaled
 The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user's perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.
 
-```admonish
-For now, the Chacha gates are the only gates making use of lookups.
-```
-
 Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup feature.
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
@@ -370,8 +366,6 @@ will translate into a scalar multiplication by 0, which is free.
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
 | 1, r3 | 1, r7 | 1, r11 | -   | 1, r4 | 1, r8 | 1, r12 | -   | 1, r5 | 1, r9 | 1, r13 | -   | 1, r6 | 1, r10 | 1, r14 |
-
-**ChaChaFinalSelector**. Performs 4 different queries to the XOR lookup table. (TODO: specify the layout)
 
 #### Producing the sorted table as the prover
 
@@ -527,149 +521,6 @@ fifth round:
 * $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
 
 where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
-
-
-#### Chacha
-
-There are four chacha constraint types, corresponding to the four lines in each quarter round.
-
-```
-a += b; d ^= a; d <<<= 16;
-c += d; b ^= c; b <<<= 12;
-a += b; d ^= a; d <<<= 8;
-c += d; b ^= c; b <<<= 7;
-```
-
-or, written without mutation, (and where `+` is mod $2^32$),
-
-```
-a'  = a + b ; d' = (d ⊕ a') <<< 16;
-c'  = c + d'; b' = (b ⊕ c') <<< 12;
-a'' = a' + b'; d'' = (d' ⊕ a') <<< 8;
-c'' = c' + d''; b'' = (c'' ⊕ b') <<< 7;
-```
-
-We lay each line as two rows.
-
-Each line has the form
-
-```
-x += z; y ^= x; y <<<= k
-```
-
-or without mutation,
-
-```
-x' = x + z; y' = (y ⊕ x') <<< k
-```
-
-which we abbreviate as
-
-L(x, x', y, y', z, k)
-
-In general, such a line will be laid out as the two rows
-
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
-| x' | y' | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
-
-where A_i indicates the i^th nybble (four-bit chunk) of the value A.
-
-$(x+z)_8$ is special, since we know it is actually at most 1 bit (representing the overflow bit of x + z).
-
-So the first line `L(a, a', d, d', b, 8)` for example becomes the two rows
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| a | d | b | (d^a')_0 | (d^a')_1 | (d^a')_2 | (d^a')_3 | (a+b)_0 | (a+b)_1 | (a+b)_2 | (a+b)_3 | d_0 | d_1 | d_2 | d_3 |
-| a' | d' | (a+b)_8 | (d^a')_4 | (d^a')_5 | (d^a')_6 | (d^a')_7 | (a+b)_4 | (a+b)_5 | (a+b)_6 | (a+b)_7 | d_4 | d_5 | d_6 | d_7 |
-
-along with the equations
-
-* $(a+b)_8^2 = (a+b)_8$ (booleanity check)
-* $a' = \sum_{i = 0}^7 (2^4)^i (a+b)_i$
-* $a + b = 2^{32} (a+b)_8 + a'$
-* $d = \sum_{i = 0}^7 (2^4)^i d_i$
-* $d' = \sum_{i = 0}^7 (2^4)^{(i + 4) \mod 8} (a+b)_i$
-
-The $(i + 4) \mod 8$ rotates the nybbles left by 4, which means bit-rotating by $4 \times 4 = 16$ as desired.
-
-The final line is a bit more complicated as we have to rotate by 7, which is not a multiple of 4.
-We accomplish this as follows.
-
-Let's say we want to rotate the nybbles $A_0, \cdots, A_7$ left by 7.
-First we'll rotate left by 4 to get
-
-$$A_7, A_0, A_1, \cdots, A_6$$
-
-Rename these as
-$$B_0, \cdots, B_7$$
-
-We now want to left-rotate each $B_i$ by 3.
-
-Let $b_i$ be the low bit of $B_i$.
-Then, the low 3 bits of $B_i$ are
-$(B_i - b_i) / 2$.
-
-The result will thus be
-
-* $2^3 b_0 + (B_7 - b_7)/2$
-* $2^3 b_1 + (B_0 - b_0)/2$
-* $2^3 b_2 + (B_1 - b_1)/2$
-* $\cdots$
-* $2^3 b_7 + (B_6 - b_6)/2$
-
-or re-writing in terms of our original nybbles $A_i$,
-
-* $2^3 a_7 + (A_6 - a_6)/2$
-* $2^3 a_0 + (A_7 - a_7)/2$
-* $2^3 a_1 + (A_0 - a_0)/2$
-* $2^3 a_2 + (A_1 - a_1)/2$
-* $2^3 a_3 + (A_2 - a_2)/2$
-* $2^3 a_4 + (A_3 - a_3)/2$
-* $2^3 a_5 + (A_4 - a_4)/2$
-* $2^3 a_6 + (A_5 - a_5)/2$
-
-For neatness, letting $(x, y, z) = (c', b', d'')$, the first 2 rows for the final line will be:
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| x | y | z | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | (x+z)_0 | (x+z)_1 | (x+z)_2 | (x+z)_3 | y_0 | y_1 | y_2 | y_3 |
-| x' | _ | (x+z)_8 | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | (x+z)_4 | (x+z)_5 | (x+z)_6 | (x+z)_7 | y_4 | y_5 | y_6 | y_7 |
-
-but then we also need to perform the bit-rotate by 1.
-
-For this we'll add an additional 2 rows. It's probably possible to do it with just 1,
-but I think we'd have to change our plookup setup somehow, or maybe expand the number of columns,
-or allow access to the previous row.
-
-Let $lo(n)$ be the low bit of the nybble n. The 2 rows will be
-
-| 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 |
-|---|---|---|---|---|---|---|---|---|---|----|----|----|----|----|
-| y' | (y^x')_0 | (y^x')_1 | (y^x')_2 | (y^x')_3 | lo((y^x')_0) | lo((y^x')_1) | lo((y^x')_2) | lo((y^x')_3) |
-| _ | (y^x')_4 | (y^x')_5 | (y^x')_6 | (y^x')_7 | lo((y^x')_4) | lo((y^x')_5) | lo((y^x')_6) | lo((y^x')_7) |
-
-On each of them we'll do the plookups
-
-```
-((cols[1] - cols[5])/2, (cols[1] - cols[5])/2, 0) in XOR
-((cols[2] - cols[6])/2, (cols[2] - cols[6])/2, 0) in XOR
-((cols[3] - cols[7])/2, (cols[3] - cols[7])/2, 0) in XOR
-((cols[4] - cols[8])/2, (cols[4] - cols[8])/2, 0) in XOR
-```
-
-which checks that $(y^{x'})_i - lo((y^{x'})_i)$ is a nybble,
-which guarantees that the low bit is computed correctly.
-
-There is no need to check nybbleness of $(y^x')_i$ because those will be constrained to
-be equal to the copies of those values from previous rows, which have already been
-constrained for nybbleness (by the lookup in the XOR table).
-
-And we'll check that y' is the sum of the shifted nybbles.
-
 
 
 #### Elliptic Curve Addition
@@ -1030,10 +881,19 @@ This equation is translated as the constraint:
 
 #### Range Check
 
-The range check gadget is comprised of three circuit gates (`RangeCheck0`, `RangeCheck1`
-and `Zero`) and can perform range checks on three values of up to 88 bits: $v_0, v_1$ and $v_2$.
+The multi range check gadget is comprised of three circuit gates (`RangeCheck0`,
+`RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
+v_1$ and $v_2$) of up to 88 bits each.
 
-Optionally, `RangeCheck0` can be used on its own to perform 64-bit range checks by
+Values can be copied as inputs to the multi range check gadget in two ways.
+  * [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
+    cells of the first 3 rows of the gadget.  In this mode the first gate
+    coefficient is set to `0`.
+  * [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
+    row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
+    In this mode the first gate coefficient is set to `1`.
+
+The `RangeCheck0` gate can also be used on its own to perform 64-bit range checks by
 constraining witness cells 1-2 to zero.
 
 **Byte-order:**
@@ -1282,40 +1142,39 @@ With this idea in mind, the sole carry flag we need is the one located between t
 
 ##### Layout
 
-You could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
+The sign of the operation (whether it is an addition or a subtraction) is stored in the fourth coefficient as
+a value +1 (for addition) or -1 (for subtraction). The first 3 coefficients are the 3 limbs of the foreign modulus.
+One could lay this out as a double-width gate for chained foreign additions and a final row, e.g.:
 
-| col | `ForeignFieldAdd`       | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
-| --- | ----------------------- | ----------------------- | ----------------------- | ----------------- |
-|   0 | `left_input_lo`  (copy) | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
-|   1 | `left_input_mi`  (copy) | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
-|   2 | `left_input_hi`  (copy) | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
-|   3 | `right_input_lo` (copy) |                         |  0              (check) |                   |
-|   4 | `right_input_mi` (copy) |                         |  0              (check) |                   |
-|   5 | `right_input_hi` (copy) |                         |  2^88           (check) |                   |
-|   6 | `sign`           (copy) |                         |  1              (check) |                   |
-|   7 | `field_overflow`        |                         |  1              (check) |                   |
-|   8 | `carry`                 |                         | `bound_carry`           |                   |
-|   9 |                         |                         |                         |                   |
-|  10 |                         |                         |                         |                   |
-|  11 |                         |                         |                         |                   |
-|  12 |                         |                         |                         |                   |
-|  13 |                         |                         |                         |                   |
-|  14 |                         |                         |                         |                   |
+| col | `ForeignFieldAdd`        | chain `ForeignFieldAdd` | final `ForeignFieldAdd` | final `Zero`      |
+| --- | ------------------------ | ----------------------- | ----------------------- | ----------------- |
+|   0 | `left_input_lo`  (copy)  | `result_lo` (copy)      | `min_result_lo` (copy)  | `bound_lo` (copy) |
+|   1 | `left_input_mi`  (copy)  | `result_mi` (copy)      | `min_result_mi` (copy)  | `bound_mi` (copy) |
+|   2 | `left_input_hi`  (copy)  | `result_hi` (copy)      | `min_result_hi` (copy)  | `bound_hi` (copy) |
+|   3 | `right_input_lo` (copy)  |                         |  0              (check) |                   |
+|   4 | `right_input_mi` (copy)  |                         |  0              (check) |                   |
+|   5 | `right_input_hi` (copy)  |                         |  2^88           (check) |                   |
+|   6 | `field_overflow` (copy?) |                         |  1              (check) |                   |
+|   7 | `carry`                  |                         | `bound_carry`           |                   |
+|   8 |                          |                         |                         |                   |
+|   9 |                          |                         |                         |                   |
+|  10 |                          |                         |                         |                   |
+|  11 |                          |                         |                         |                   |
+|  12 |                          |                         |                         |                   |
+|  13 |                          |                         |                         |                   |
+|  14 |                          |                         |                         |                   |
 
 We reuse the foreign field addition gate for the final bound check since this is an addition with a
-specific parameter structure. Checking that the correct right input, overflow, and sign are used shall
+specific parameter structure. Checking that the correct right input, overflow, and overflow are used shall
 be done by copy constraining these values with a public input value. One could have a specific gate
 for just this check requiring less constrains, but the cost of adding one more selector gate outweights
 the savings of one row and a few constraints of difference.
 
 ##### Integration
 
-- Copy signs from public input
+- Copy final overflow bit from public input containing value 1
  - Range check the final bound
 
-```admonish info
-TODO: move sign to the coefficient so that the bound check can also check that ovf is one.
-```
 
 
 #### Foreign Field Multiplication
@@ -1343,13 +1202,11 @@ left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
 left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
-   product1_lo => p10   product1_hi_0 => p110   product1_hi_1 => p111
-     carry0 => v0        carry1_lo => v10          carry1_hi => v11
+   product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
+   carry0 => v0            carry1_lo => v10          carry1_hi => v11
+   quotient_bound0 => q'0  quotient_bound12 => q'12
 
-                    scaled_carry1_hi => scaled_v11
-         quotient_bound0 => q'0       quotient_bound12 => q'12
-
-  quotient_bound_carry0 => q'_carry0 quotient_bound_carry12 = q'_carry12
+                   quotient_bound_carry => q'_carry01
 ````
 
 ##### Suffixes
@@ -1383,13 +1240,11 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `carry0` := 2 bit carry
 * `carry1_lo` := low 88 bits of `carry1`
 * `carry1_hi` := high 3 bits of `carry1`
-* `scaled_carry1_hi` : = `carry1_hi` scaled by 2^9
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
 * `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry01` := quotient bound addition 1st carry bit
-* `quotient_bound_carry2` := quotient bound addition 2nd carry bit
+* `quotient_bound_carry` := quotient bound addition carry bit
 
 ##### Layout
 
@@ -1404,14 +1259,14 @@ The foreign field multiplication gate's rows are laid out like this
 |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-|   7 | `carry1_hi`        (plookup) | `product1_hi_1`           |
-|   8 | `scaled_carry1_hi` (plookup) |                           |
-|   9 | `carry0`                     |                           |
-|  10 | `quotient0`                  |                           |
-|  11 | `quotient1`                  |                           |
-|  12 | `quotient2`                  |                           |
-|  13 | `quotient_bound_carry01`     |                           |
-|  14 | `quotient_bound_carry2`      |                           |
+|   7 | `carry1_hi`        (plookup) |                           |
+|   8 | `carry0`                     |                           |
+|   9 | `quotient0`                  |                           |
+|  10 | `quotient1`                  |                           |
+|  11 | `quotient2`                  |                           |
+|  12 | `quotient_bound_carry`       |                           |
+|  13 | `product1_hi_1`              |                           |
+|  14 |                              |                           |
 
 
 #### Xor
@@ -1458,7 +1313,7 @@ to obtain a gadget for 64-bit words XOR:
 |   1 | `Xor16`       | Xor next 2 bytes of the words              |
 |   2 | `Xor16`       | Xor next 2 bytes of the words              |
 |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
-|   4 | `Zero`        | Zero values, can be reused as generic gate |
+|   4 | `Generic`     | Zero values, can be reused as generic gate |
 
 ```admonish info
 We could halve the number of rows of the 64-bit XOR gadget by having lookups
@@ -1497,7 +1352,7 @@ follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\c
 | --------- | ------------- | --------------------------------------------------------------------- |
 | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
 | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
-| i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+| i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 
 ** NOT Layout using Generic gates **
 
@@ -1708,9 +1563,6 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
-
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
     pub column_evaluations: ColumnEvaluations<G::ScalarField>,
 
@@ -1733,7 +1585,7 @@ Same as the prover index, we have a number of pre-computations as part of the ve
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
-    pub lookup_used: LookupsUsed,
+    pub joint_lookup_used: bool,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -1798,13 +1650,13 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub endomul_scalar_comm: PolyComm<G>,
 
-    /// Chacha polynomial commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub chacha_comm: Option<[PolyComm<G>; 4]>,
+    /// RangeCheck0 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check0_comm: Option<PolyComm<G>>,
 
-    /// Range check polynomial commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
+    /// RangeCheck1 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check1_comm: Option<PolyComm<G>>,
 
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -1879,21 +1731,21 @@ sequenceDiagram
 
     Verifier->>Prover: zeta
 
-    Note over Prover,Verifier: Prover provides helper evaluations
+    Note over Verifier: change of verifier (change of sponge)
 
-    Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
-    Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
-    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
+    opt recursion
+        Prover->>Verifier: recursion challenges
+    end
 
     Note over Prover,Verifier: Prover provides needed evaluations for the linearization
 
-    Note over Verifier: change of verifier (change of sponge)
-
-    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
-    Prover->>Verifier: the 15 registers w_i(zeta) & w_i(zeta * omega)
-    Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
-
     Prover->>Verifier: ft(zeta * omega)
+    Prover->>Verifier: negated public input p(zeta) & p(zeta * omega)
+
+    Prover->>Verifier: the 15 registers w_i(zeta) & w_i(zeta * omega)
+    Prover->>Verifier: permutation poly z(zeta) & z(zeta * omega)
+    Prover->>Verifier: the 6 sigmas s_i(zeta) & s_i(zeta * omega)
+    Prover->>Verifier: the 15 coefficients c_i(zeta) & c_i(zeta * omega)
 
     opt lookup
         Prover->>Verifier: sorted(zeta) & sorted(zeta * omega)
@@ -1901,9 +1753,12 @@ sequenceDiagram
         Prover->>Verifier: table(zeta) & table(zeta * omega)
     end
 
+    Prover->>Verifier: the generic selector gen(zeta) & gen(zeta * omega)
+    Prover->>Verifier: the poseidon selector pos(zeta) & pos(zeta * omega)
+
     Note over Prover,Verifier: Batch verification of evaluation proofs
 
-    Verifier->>Prover: u, v
+    Verifier->>Prover: v, u
 
     Note over Verifier: change of verifier (change of sponge)
 
@@ -2024,10 +1879,6 @@ pub struct ProverProof<G: AffineCurve> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
 
-    /// The public input
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub public: Vec<G::ScalarField>,
-
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<RecursionChallenge<G>>,
 }
@@ -2099,7 +1950,9 @@ The prover then follows the following steps to create the proof:
    we can use the `commit_evaluation` optimization.
 1. Absorb the witness commitments with the Fq-Sponge.
 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-   TODO: why not do this first, and then commit? Why commit from evaluation directly?
+   As mentioned above, we commit using the evaluations form rather than the coefficients
+   form so we can take advantage of the sparsity of the evaluations (i.e., there are many
+   0 entries and entries that have less-than-full-size field elemnts.)
 1. If using lookup:
 	- if using runtime table:
 		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
@@ -2273,6 +2126,7 @@ For every proof we want to verify, we defer the proof opening to the very end.
 This allows us to potentially batch verify a number of partially verified proofs.
 Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 
+1. Check the length of evaluations inside the proof.
 1. Commit to the negated public input polynomial.
 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).
 1. Combine the chunked polynomials' evaluations

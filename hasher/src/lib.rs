@@ -160,7 +160,7 @@ fn domain_prefix_to_field<F: PrimeField>(prefix: String) -> F {
     const MAX_DOMAIN_STRING_LEN: usize = 20;
     assert!(prefix.len() <= MAX_DOMAIN_STRING_LEN);
     let prefix = &prefix[..std::cmp::min(prefix.len(), MAX_DOMAIN_STRING_LEN)];
-    let mut bytes = format!("{:*<MAX_DOMAIN_STRING_LEN$}", prefix)
+    let mut bytes = format!("{prefix:*<MAX_DOMAIN_STRING_LEN$}")
         .as_bytes()
         .to_vec();
     bytes.resize(F::size_in_bytes(), 0);

@@ -1,8 +1,12 @@
 use crate::{
     circuits::{
+        constraints::FeatureFlags,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
-        lookup::{index::LookupSelectors, lookups::LookupPattern},
+        lookup::{
+            index::LookupSelectors,
+            lookups::{LookupPattern, LookupPatterns},
+        },
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
@@ -41,8 +45,8 @@ pub enum ExprError {
     #[error("Cannot get index evaluation {0:?} (should have been linearized away)")]
     MissingIndexEvaluation(Column),
 
-    #[error("Linearization failed")]
-    FailedLinearization,
+    #[error("Linearization failed (too many unevaluated columns: {0:?}")]
+    FailedLinearization(Vec<Variable>),
 
     #[error("runtime table not available")]
     MissingRuntime,
@@ -153,9 +157,9 @@ pub fn l0_1<F: FftField>(d: D<F>) -> F {
 // Compute the ith unnormalized lagrange basis
 fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F {
     let omega_i = if i < 0 {
-        domain.group_gen.pow(&[-i as u64]).inverse().unwrap()
+        domain.group_gen.pow([-i as u64]).inverse().unwrap()
     } else {
-        domain.group_gen.pow(&[i as u64])
+        domain.group_gen.pow([i as u64])
     };
     domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
 }
@@ -189,17 +193,17 @@ impl Column {
         match self {
             Column::Witness(i) => format!("w_{{{i}}}"),
             Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s_{{{}}}", i),
+            Column::LookupSorted(i) => format!("s_{{{i}}}"),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k_{{{:?}}}", i),
+            Column::LookupKindIndex(i) => format!("k_{{{i:?}}}"),
             Column::LookupRuntimeSelector => "rts".to_string(),
             Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {
-                format!("{:?}", gate)
+                format!("{gate:?}")
             }
-            Column::Coefficient(i) => format!("c_{{{}}}", i),
-            Column::Permutation(i) => format!("sigma_{{{}}}", i),
+            Column::Coefficient(i) => format!("c_{{{i}}}"),
+            Column::Permutation(i) => format!("sigma_{{{i}}}"),
         }
     }
 
@@ -207,17 +211,17 @@ impl Column {
         match self {
             Column::Witness(i) => format!("w[{i}]"),
             Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s[{}]", i),
+            Column::LookupSorted(i) => format!("s[{i}]"),
             Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k[{:?}]", i),
+            Column::LookupKindIndex(i) => format!("k[{i:?}]"),
             Column::LookupRuntimeSelector => "rts".to_string(),
             Column::LookupRuntimeTable => "rt".to_string(),
             Column::Index(gate) => {
-                format!("{:?}", gate)
+                format!("{gate:?}")
             }
-            Column::Coefficient(i) => format!("c[{}]", i),
-            Column::Permutation(i) => format!("sigma_[{}]", i),
+            Column::Coefficient(i) => format!("c[{i}]"),
+            Column::Permutation(i) => format!("sigma_[{i}]"),
         }
     }
 }
@@ -323,7 +327,7 @@ impl<F: Field> ConstantExpr<F> {
         }
         use ConstantExpr::*;
         match self {
-            Literal(x) => Literal(x.pow(&[p])),
+            Literal(x) => Literal(x.pow([p])),
             x => Pow(Box::new(x), p),
         }
     }
@@ -339,7 +343,7 @@ impl<F: Field> ConstantExpr<F> {
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
-            Pow(x, p) => x.value(c).pow(&[*p as u64]),
+            Pow(x, p) => x.value(c).pow([*p]),
             Mul(x, y) => x.value(c) * y.value(c),
             Add(x, y) => x.value(c) + y.value(c),
             Sub(x, y) => x.value(c) - y.value(c),
@@ -358,9 +362,9 @@ pub struct Cache {
 }
 
 impl CacheId {
-    fn get_from<'a, 'b, F: FftField>(
+    fn get_from<'b, F: FftField>(
         &self,
-        cache: &'b HashMap<CacheId, EvalResult<'a, F>>,
+        cache: &'b HashMap<CacheId, EvalResult<'_, F>>,
     ) -> Option<EvalResult<'b, F>> {
         cache.get(self).map(|e| match e {
             EvalResult::Constant(x) => EvalResult::Constant(*x),
@@ -432,12 +436,19 @@ impl Op2 {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 pub enum FeatureFlag {
-    ChaCha,
-    RangeCheck,
+    RangeCheck0,
+    RangeCheck1,
     ForeignFieldAdd,
     ForeignFieldMul,
     Xor,
     Rot,
+    LookupTables,
+    RuntimeLookupTables,
+    LookupPattern(LookupPattern),
+    /// Enabled if the table width is at least the given number
+    TableWidth(isize), // NB: isize so that we don't need to convert for OCaml :(
+    /// Enabled if the number of lookups per row is at least the given number
+    LookupsPerRow(isize), // NB: isize so that we don't need to convert for OCaml :(
 }
 
 impl FeatureFlag {
@@ -469,8 +480,148 @@ pub enum Expr<C> {
     UnnormalizedLagrangeBasis(i32),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
-    /// Expression is conditional on the given feature flag, returns 0 if disabled.
-    EnabledIf(FeatureFlag, Box<Expr<C>>),
+    /// If the feature flag is enabled, return the first expression; otherwise, return the second.
+    IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
+}
+
+impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
+    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
+        use Expr::*;
+        match self {
+            Constant(_) | Cell(_) | VanishesOnLast4Rows | UnnormalizedLagrangeBasis(_) => {
+                (self.clone(), false)
+            }
+            Double(c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && c_reduced.is_zero() {
+                    (Expr::zero(), true)
+                } else {
+                    (Double(Box::new(c_reduced)), false)
+                }
+            }
+            Square(c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, true)
+                } else {
+                    (Square(Box::new(c_reduced)), false)
+                }
+            }
+            BinOp(op, c1, c2) => {
+                let (c1_reduced, reduce_further1) = c1.apply_feature_flags_inner(features);
+                let (c2_reduced, reduce_further2) = c2.apply_feature_flags_inner(features);
+                match op {
+                    Op2::Add => {
+                        if reduce_further1 && c1_reduced.is_zero() {
+                            if reduce_further2 && c2_reduced.is_zero() {
+                                (Expr::zero(), true)
+                            } else {
+                                (c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_zero() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Add, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                    Op2::Sub => {
+                        if reduce_further1 && c1_reduced.is_zero() {
+                            if reduce_further2 && c2_reduced.is_zero() {
+                                (Expr::zero(), true)
+                            } else {
+                                (-c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_zero() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Sub, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                    Op2::Mul => {
+                        if reduce_further1 && c1_reduced.is_zero()
+                            || reduce_further2 && c2_reduced.is_zero()
+                        {
+                            (Expr::zero(), true)
+                        } else if reduce_further1 && c1_reduced.is_one() {
+                            if reduce_further2 && c2_reduced.is_one() {
+                                (Expr::one(), true)
+                            } else {
+                                (c2_reduced, false)
+                            }
+                        } else if reduce_further2 && c2_reduced.is_one() {
+                            (c1_reduced, false)
+                        } else {
+                            (
+                                BinOp(Op2::Mul, Box::new(c1_reduced), Box::new(c2_reduced)),
+                                false,
+                            )
+                        }
+                    }
+                }
+            }
+            Pow(c, power) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further && (c_reduced.is_zero() || c_reduced.is_one()) {
+                    (c_reduced, true)
+                } else {
+                    (Pow(Box::new(c_reduced), *power), false)
+                }
+            }
+            Cache(cache_id, c) => {
+                let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
+                if reduce_further {
+                    (c_reduced, true)
+                } else {
+                    (Cache(*cache_id, Box::new(c_reduced)), false)
+                }
+            }
+            IfFeature(feature, c1, c2) => {
+                let is_enabled = {
+                    use FeatureFlag::*;
+                    match feature {
+                        RangeCheck0 => features.range_check0,
+                        RangeCheck1 => features.range_check1,
+                        ForeignFieldAdd => features.foreign_field_add,
+                        ForeignFieldMul => features.foreign_field_mul,
+                        Xor => features.xor,
+                        Rot => features.rot,
+                        LookupTables => {
+                            features.lookup_features.patterns != LookupPatterns::default()
+                        }
+                        RuntimeLookupTables => features.lookup_features.uses_runtime_tables,
+                        LookupPattern(pattern) => features.lookup_features.patterns[*pattern],
+                        TableWidth(width) => features
+                            .lookup_features
+                            .patterns
+                            .into_iter()
+                            .any(|feature| feature.max_joint_size() >= (*width as u32)),
+                        LookupsPerRow(count) => features
+                            .lookup_features
+                            .patterns
+                            .into_iter()
+                            .any(|feature| feature.max_lookups_per_row() >= (*count as usize)),
+                    }
+                };
+                if is_enabled {
+                    let (c1_reduced, _) = c1.apply_feature_flags_inner(features);
+                    (c1_reduced, false)
+                } else {
+                    let (c2_reduced, _) = c2.apply_feature_flags_inner(features);
+                    (c2_reduced, true)
+                }
+            }
+        }
+    }
+    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C> {
+        let (res, _) = self.apply_feature_flags_inner(features);
+        res
+    }
 }
 
 /// For efficiency of evaluation, we compile expressions to
@@ -498,7 +649,9 @@ pub enum PolishToken<F> {
     UnnormalizedLagrangeBasis(i32),
     Store,
     Load(usize),
-    /// Skip the given number of tokens if the feature is disabled, and emit a zero instead.
+    /// Skip the given number of tokens if the feature is enabled.
+    SkipIf(FeatureFlag, usize),
+    /// Skip the given number of tokens if the feature is disabled.
     SkipIfNot(FeatureFlag, usize),
 }
 
@@ -577,7 +730,7 @@ impl<F: FftField> PolishToken<F> {
                 },
                 Pow(n) => {
                     let i = stack.len() - 1;
-                    stack[i] = stack[i].pow(&[*n as u64]);
+                    stack[i] = stack[i].pow([*n]);
                 }
                 Add => {
                     let y = stack.pop().ok_or(ExprError::EmptyStack)?;
@@ -599,6 +752,12 @@ impl<F: FftField> PolishToken<F> {
                     cache.push(x);
                 }
                 Load(i) => stack.push(cache[*i]),
+                SkipIf(feature, count) => {
+                    if feature.is_enabled() {
+                        skip_count = *count;
+                        stack.push(F::zero());
+                    }
+                }
                 SkipIfNot(feature, count) => {
                     if !feature.is_enabled() {
                         skip_count = *count;
@@ -647,7 +806,7 @@ impl<C> Expr<C> {
             }
             Pow(e, d) => d * e.degree(d1_size),
             Cache(_, e) => e.degree(d1_size),
-            EnabledIf(_, e) => e.degree(d1_size),
+            IfFeature(_, e1, e2) => std::cmp::max(e1.degree(d1_size), e2.degree(d1_size)),
         }
     }
 }
@@ -760,14 +919,14 @@ fn unnormalized_lagrange_evals<F: FftField>(
     let ii = i as u64;
     assert!(ii < n);
     let omega = d1.group_gen;
-    let omega_i = omega.pow(&[ii]);
-    let omega_minus_i = omega.pow(&[n - ii]);
+    let omega_i = omega.pow([ii]);
+    let omega_minus_i = omega.pow([n - ii]);
 
     // Write res_domain = < omega_k > with
     // |res_domain| = k * |H|
 
     // omega_k^0, ..., omega_k^k
-    let omega_k_n_pows = pows(res_domain.group_gen.pow(&[n]), k);
+    let omega_k_n_pows = pows(res_domain.group_gen.pow([n]), k);
     let omega_k_pows = pows(res_domain.group_gen, k);
 
     let mut evals: Vec<F> = {
@@ -822,11 +981,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn add<'b, 'c>(
-        self,
-        other: EvalResult<'b, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn add<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x + y),
@@ -945,11 +1100,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn sub<'b, 'c>(
-        self,
-        other: EvalResult<'b, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn sub<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x - y),
@@ -1104,11 +1255,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn mul<'b, 'c>(
-        self,
-        other: EvalResult<'b, F>,
-        res_domain: (Domain, D<F>),
-    ) -> EvalResult<'c, F> {
+    fn mul<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x * y),
@@ -1293,16 +1440,32 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                     }
                 }
             }
-            Expr::EnabledIf(feature, e) => {
-                let tok = PolishToken::SkipIfNot(*feature, 0);
-                res.push(tok);
-                let len_before = res.len();
-                /* Clone the cache, to make sure we don't try to access cached statements later
-                when the feature flag is off. */
-                let mut cache = cache.clone();
-                e.to_polish_(&mut cache, res);
-                let len_after = res.len();
-                res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+            Expr::IfFeature(feature, e1, e2) => {
+                {
+                    // True branch
+                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    res.push(tok);
+                    let len_before = res.len();
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is off. */
+                    let mut cache = cache.clone();
+                    e1.to_polish_(&mut cache, res);
+                    let len_after = res.len();
+                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                }
+
+                {
+                    // False branch
+                    let tok = PolishToken::SkipIfNot(*feature, 0);
+                    res.push(tok);
+                    let len_before = res.len();
+                    /* Clone the cache, to make sure we don't try to access cached statements later
+                    when the feature flag is on. */
+                    let mut cache = cache.clone();
+                    e2.to_polish_(&mut cache, res);
+                    let len_after = res.len();
+                    res[len_before - 1] = PolishToken::SkipIfNot(*feature, len_after - len_before);
+                }
             }
         }
     }
@@ -1327,7 +1490,11 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
             BinOp(Op2::Sub, x, y) => x.evaluate_constants_(c) - y.evaluate_constants_(c),
             Cache(id, e) => Cache(*id, Box::new(e.evaluate_constants_(c))),
-            EnabledIf(feature, e) => EnabledIf(*feature, Box::new(e.evaluate_constants_(c))),
+            IfFeature(feature, e1, e2) => IfFeature(
+                *feature,
+                Box::new(e1.evaluate_constants_(c)),
+                Box::new(e2.evaluate_constants_(c)),
+            ),
         }
     }
 
@@ -1354,7 +1521,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
             Constant(x) => Ok(x.value(c)),
-            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow(&[*p as u64])),
+            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow([*p])),
             BinOp(Op2::Mul, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
@@ -1375,8 +1542,13 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
-            EnabledIf(feature, e) if feature.is_enabled() => e.evaluate_(d, pt, evals, c),
-            EnabledIf(_, _) => Ok(F::zero()),
+            IfFeature(feature, e1, e2) => {
+                if feature.is_enabled() {
+                    e1.evaluate_(d, pt, evals, c)
+                } else {
+                    e2.evaluate_(d, pt, evals, c)
+                }
+            }
         }
     }
 
@@ -1386,7 +1558,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
     }
 }
@@ -1407,7 +1579,7 @@ impl<F: FftField> Expr<F> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
-            Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow(&[*p as u64])),
+            Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow([*p])),
             Double(x) => x.evaluate(d, pt, evals).map(|x| x.double()),
             Square(x) => x.evaluate(d, pt, evals).map(|x| x.square()),
             BinOp(Op2::Mul, x, y) => {
@@ -1429,18 +1601,18 @@ impl<F: FftField> Expr<F> {
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
-            EnabledIf(feature, e) => {
+            IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
-                    e.evaluate(d, pt, evals)
+                    e1.evaluate(d, pt, evals)
                 } else {
-                    Ok(F::zero())
+                    e2.evaluate(d, pt, evals)
                 }
             }
         }
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
         let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
@@ -1600,14 +1772,14 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
-            Expr::EnabledIf(feature, e) => {
+            Expr::IfFeature(feature, e1, e2) => {
+                /* Clone the cache, to make sure we don't try to access cached statements later
+                when the feature flag is off. */
+                let mut cache = cache.clone();
                 if feature.is_enabled() {
-                    /* Clone the cache, to make sure we don't try to access cached statements later
-                    when the feature flag is off. */
-                    let mut cache = cache.clone();
-                    return e.evaluations_helper(&mut cache, d, env);
+                    return e1.evaluations_helper(&mut cache, d, env);
                 } else {
-                    EvalResult::Constant(F::zero())
+                    return e2.evaluations_helper(&mut cache, d, env);
                 }
             }
         };
@@ -1658,7 +1830,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
         env: &Environment<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-    ) -> (F, DensePolynomial<F>) {
+    ) -> (F, Evaluations<F, D<F>>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
         let mut res = vec![F::zero(); n];
@@ -1666,13 +1838,13 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
             let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
             let e = env
                 .get_column(idx)
-                .unwrap_or_else(|| panic!("Index polynomial {:?} not found", idx));
+                .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
             let scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
                 .for_each(|(i, r)| *r += c * e.evals[scale * i]);
         });
-        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
+        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1);
         (
             PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, cs).unwrap(),
             p,
@@ -1696,7 +1868,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
             let c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();
             let e = env
                 .get_column(idx)
-                .unwrap_or_else(|| panic!("Index polynomial {:?} not found", idx));
+                .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
             let scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -1761,7 +1933,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             VanishesOnLast4Rows => true,
             UnnormalizedLagrangeBasis(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
-            EnabledIf(_, x) => x.is_constant(evaluated),
+            IfFeature(_, e1, e2) => e1.is_constant(evaluated) && e2.is_constant(evaluated),
         }
     }
 
@@ -1838,14 +2010,23 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                 let x = x.monomials(ev);
                 mul_monomials(&x, &x)
             }
-            EnabledIf(feature, x) => {
-                let mut monomials = x.monomials(ev);
-                for expr in monomials.values_mut() {
-                    let mut unflagged = Expr::zero();
-                    std::mem::swap(expr, &mut unflagged);
-                    *expr = Expr::EnabledIf(*feature, Box::new(unflagged))
+            IfFeature(feature, e1, e2) => {
+                let mut res = HashMap::new();
+                let e1_monomials = e1.monomials(ev);
+                let mut e2_monomials = e2.monomials(ev);
+                for (m, c) in e1_monomials.into_iter() {
+                    let else_branch = match e2_monomials.remove(&m) {
+                        None => Expr::zero(),
+                        Some(c) => c,
+                    };
+                    let expr = Expr::IfFeature(*feature, Box::new(c), Box::new(else_branch));
+                    res.insert(m, expr);
                 }
-                monomials
+                for (m, c) in e2_monomials.into_iter() {
+                    let expr = Expr::IfFeature(*feature, Box::new(Expr::zero()), Box::new(c));
+                    res.insert(m, expr);
+                }
+                res
             }
         }
     }
@@ -1916,7 +2097,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
                     }
                 }
             } else {
-                return Err(ExprError::FailedLinearization);
+                return Err(ExprError::FailedLinearization(unevaluated));
             }
         }
         Ok(Linearization {
@@ -2204,7 +2385,7 @@ where
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
-                Alpha => format!("alpha^{}", n),
+                Alpha => format!("alpha^{n}"),
                 x => format!("{}^{n}", x.text()),
             },
             Add(x, y) => format!("({} + {})", x.text(), y.text()),
@@ -2258,8 +2439,13 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
-            EnabledIf(feature, e) => {
-                format!("enabled_if({:?}, (fun () -> {}))", feature, e.ocaml(cache))
+            IfFeature(feature, e1, e2) => {
+                format!(
+                    "if_feature({:?}, (fun () -> {}), (fun () -> {}))",
+                    feature,
+                    e1.ocaml(cache),
+                    e2.ocaml(cache)
+                )
             }
         }
     }
@@ -2302,7 +2488,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.latex_name()
             }
-            EnabledIf(feature, _) => format!("{:?}", feature),
+            IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
 
@@ -2325,7 +2511,7 @@ where
                 cache.insert(*id, e.as_ref().clone());
                 id.var_name()
             }
-            EnabledIf(feature, _) => format!("{:?}", feature),
+            IfFeature(feature, _, _) => format!("{feature:?}"),
         }
     }
 
@@ -2627,7 +2813,7 @@ pub use auto_clone_array;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
-    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, E};
+    pub use super::{coeff, constant, index, witness, witness_curr, witness_next, FeatureFlag, E};
 }
 
 #[cfg(test)]
@@ -2645,8 +2831,8 @@ pub mod test {
         prover_index::ProverIndex,
     };
     use ark_ff::UniformRand;
-    use commitment_dlog::srs::{endos, SRS};
     use mina_curves::pasta::{Fp, Pallas, Vesta};
+    use poly_commitment::srs::{endos, SRS};
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
     use std::sync::Arc;

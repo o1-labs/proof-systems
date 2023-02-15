@@ -1,6 +1,6 @@
 //~ Rotation of a 64-bit word by a known offset
 
-use super::{generic::GenericGateSpec, range_check::witness::range_check_0_row};
+use super::range_check::witness::range_check_0_row;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
@@ -48,33 +48,44 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         ]
     }
 
+    /// Extend one rotation
+    /// Right now it only creates a Generic gate followed by the Rot64 gates
+    /// It allows to configure left or right rotation.
+    /// Input:
+    /// - gates : the full circuit
+    /// - rot : the rotation offset
+    /// - side : the rotation side
+    /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
+    /// Warning:
+    /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// - same with rotated word
+    pub fn extend_rot(gates: &mut Vec<Self>, rot: u32, side: RotMode, zero_row: usize) -> usize {
+        let (new_row, mut rot_gates) = Self::create_rot(gates.len(), rot, side);
+        gates.append(&mut rot_gates);
+        // Check that 2 most significant limbs of shifted are zero
+        gates.connect_64bit(zero_row, new_row - 1);
+        gates.len()
+    }
+
     /// Create one rotation
     /// Right now it only creates a Generic gate followed by the Rot64 gates
     /// It allows to configure left or right rotation.
-    /// INTEGRATION:
+    /// Input:
+    /// - rot : the rotation offset
+    /// - side : the rotation side
+    /// Warning:
     /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
     /// - same with rotated word
+    /// - need to check that the 2 most significant limbs of shifted are zero
     pub fn create_rot(new_row: usize, rot: u32, side: RotMode) -> (usize, Vec<Self>) {
         // Initial Generic gate to constrain the output to be zero
-        let zero_row = new_row;
-        let mut gates = vec![CircuitGate::<F>::create_generic_gadget(
-            Wire::for_row(new_row),
-            GenericGateSpec::Pub,
-            None,
-        )];
-
-        let rot_row = zero_row + 1;
-        let mut rot64_gates = if side == RotMode::Left {
-            Self::create_rot64(rot_row, rot)
+        let rot_gates = if side == RotMode::Left {
+            Self::create_rot64(new_row, rot)
         } else {
-            Self::create_rot64(rot_row, 64 - rot)
+            Self::create_rot64(new_row, 64 - rot)
         };
-        // Append them to the full gates vector
-        gates.append(&mut rot64_gates);
-        // Check that 2 most significant limbs of shifted are zero
-        gates.connect_64bit(zero_row, rot_row + 1);
 
-        (new_row + gates.len(), gates)
+        (new_row + rot_gates.len(), rot_gates)
     }
 }
 
@@ -282,42 +293,26 @@ fn init_rot64<F: PrimeField>(
 }
 
 /// Extends the rot rows to the full witness
-pub fn extend_rot_rows<F: PrimeField>(
+/// Input
+/// - witness: full witness of the circuit
+/// - word: 64-bit word to be rotated
+/// - rot:  rotation offset
+/// - side: side of the rotation, either left or right
+/// Warning:
+/// - don't forget to include a public input row with zero value
+pub fn extend_rot<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
-    word: F,
-    rotated: F,
-    excess: F,
-    shifted: F,
-    bound: F,
+    word: u64,
+    rot: u32,
+    side: RotMode,
 ) {
-    let rot_row = witness[0].len();
-    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 2]);
-    for col in 0..COLUMNS {
-        witness[col].extend(rot_witness[col].iter());
-    }
-    init_rot64(witness, rot_row, word, rotated, excess, shifted, bound);
-}
-
-/// Create a rotation witness
-/// Input: word to be rotated, rotation offset, and side of rotation.
-/// Output: witness for rotation word and initial row with all zeros
-pub fn create_witness<F: PrimeField>(word: u64, rot: u32, side: RotMode) -> [Vec<F>; COLUMNS] {
-    // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
     assert!(rot < 64, "Rotation value must be less than 64");
     assert_ne!(rot, 0, "Rotation value must be non-zero");
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
     let rot = if side == RotMode::Right {
         64 - rot
     } else {
         rot
     };
-    create_witness_rot(&mut witness, word, rot);
-    witness
-}
-
-/// Create a rotation witness
-/// Input: word to be rotated, rotation offset,
-fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: u64, rot: u32) {
     // Split word into shifted and excess parts to compute the witnesses for rotation as follows
     //          <   64     >  bits
     // word   = [---|------]
@@ -333,12 +328,18 @@ fn create_witness_rot<F: PrimeField>(witness: &mut [Vec<F>; COLUMNS], word: u64,
     // Right input of the "FFAdd" for the bound equation
     let bound = 2u128.pow(64) - 2u128.pow(rot);
 
-    extend_rot_rows(
+    let rot_row = witness[0].len();
+    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 2]);
+    for col in 0..COLUMNS {
+        witness[col].extend(rot_witness[col].iter());
+    }
+    init_rot64(
         witness,
-        F::from(word),
-        F::from(rotated),
-        F::from(excess),
-        F::from(shifted),
-        F::from(bound),
+        rot_row,
+        word.into(),
+        rotated.into(),
+        excess.into(),
+        shifted.into(),
+        bound.into(),
     );
 }

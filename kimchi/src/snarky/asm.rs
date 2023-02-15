@@ -17,7 +17,7 @@ fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
     let bigint: num_bigint::BigUint = ff.into();
     let inv: num_bigint::BigUint = ff.neg().into(); // gettho way of splitting the field into positive and negative elements
     if inv < bigint {
-        format!("-{}", inv)
+        format!("-{inv}")
     } else {
         bigint.to_string()
     }

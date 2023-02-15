@@ -18,7 +18,7 @@ fn interfaces() {
         }
 
         fn domain_string(id: u64) -> Option<String> {
-            format!("Foo {}", id).into()
+            format!("Foo {id}").into()
         }
     }
 

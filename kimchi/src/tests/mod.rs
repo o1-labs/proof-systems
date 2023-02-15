@@ -1,5 +1,4 @@
 mod and;
-mod chacha;
 mod ec;
 mod endomul;
 mod endomul_scalar;

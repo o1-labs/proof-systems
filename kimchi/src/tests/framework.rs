@@ -17,10 +17,10 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
-use commitment_dlog::commitment::CommitmentCurve;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
+use poly_commitment::commitment::CommitmentCurve;
 use std::{fmt::Write, mem, time::Instant};
 
 // aliases
@@ -35,6 +35,7 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     runtime_tables: Vec<RuntimeTable<G::ScalarField>>,
     recursion: Vec<RecursionChallenge<G>>,
     num_prev_challenges: usize,
+    disable_gates_checks: bool,
 
     prover_index: Option<ProverIndex<G>>,
     verifier_index: Option<VerifierIndex<G>>,
@@ -86,6 +87,12 @@ where
         self
     }
 
+    #[must_use]
+    pub(crate) fn disable_gates_checks(mut self, disable_gates_checks: bool) -> Self {
+        self.disable_gates_checks = disable_gates_checks;
+        self
+    }
+
     /// creates the indexes
     #[must_use]
     pub(crate) fn setup(mut self) -> TestRunner<G> {
@@ -100,6 +107,7 @@ where
             self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
+            self.disable_gates_checks,
         );
         println!(
             "- time to create prover index: {:?}s",
@@ -146,10 +154,13 @@ where
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
 
-        // verify the circuit satisfiability by the computed witness
-        prover
-            .verify(&witness, &self.0.public_inputs)
-            .map_err(|e| format!("{:?}", e))?;
+        if !self.0.disable_gates_checks {
+            // Note: this is already done by ProverProof::create_recursive::()
+            //       not sure why we do it here
+            prover
+                .verify(&witness, &self.0.public_inputs)
+                .map_err(|e| format!("{e:?}"))?;
+        }
 
         // add the proof to the batch
         let start = Instant::now();
@@ -169,8 +180,13 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge>(&group_map, &self.0.verifier_index.unwrap(), &proof)
-            .map_err(|e| e.to_string())?;
+        verify::<G, EFqSponge, EFrSponge>(
+            &group_map,
+            &self.0.verifier_index.unwrap(),
+            &proof,
+            &self.0.public_inputs,
+        )
+        .map_err(|e| e.to_string())?;
         println!("- time to verify: {}ms", start.elapsed().as_millis());
 
         Ok(())
@@ -190,7 +206,7 @@ where
         let mut line = "| ".to_string();
         for col in cols {
             let bigint: BigUint = col[row].into();
-            write!(line, "{} | ", bigint).unwrap();
+            write!(line, "{bigint} | ").unwrap();
         }
         println!("{line}");
     }

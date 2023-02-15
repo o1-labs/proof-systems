@@ -201,40 +201,83 @@ with $r_{top} = r_2$ and $c = c_1$.
 
 ## Gadget
 
-The foreign field gadget will be composed by 4 sets of `RangeCheck` gadgets for witnesses $a, b, r, u$ accounting for 16 rows in total; followed by one row with `ForeignFieldAdd` gate type; a final `ForeignFieldAdd` with a `Zero` row. The first four rows constrain the range of the left input. The following four constrain the range of the right input. The next range check is for the result of the addition of left and right. Next, a final range check for the upper bound therm. Then the foreign field addition gate performs the actual addition. And the final foreign field addition gate (followed by a zero gate) takes care of the final upper bound operation. A total of 19 rows with 15 columns in Kimchi.
+The full foreign field addition/subtraction gadget will be composed of: 
+- $1$ public input row containing the value $1$;
+- $n$ rows with `ForeignFieldAdd` gate type:
+  - for the actual $n$ chained additions or subtractions;  
+- $1$ `ForeignFieldAdd` row for the bound addition;
+- $1$ `Zero` row for the final bound addition.
+- $1$ `RangeCheck` gadget for the first left input of the chain $a_1 := a$;
+- Then, $n$ of the following set of rows:
+  - $1$ `RangeCheck` gadget for the $i$-th right input $b_i$;
+  - $1$ `RangeCheck` gadget for the $i$-th result which will correspond to the $(i+1)$-th left input of the chain $r_i = a_{i+1}$.
+- $1$ final `RangeCheck` gadget for the bound check $u$.
 
-| Row(s) | Gate type(s)        | Witness |
-| ------ | ------------------- | ------- |
-| 0-3    | `multi-range-check` | $a$     |
-| 4-7    | `multi-range-check` | $b$     |
-| 8-11   | `multi-range-check` | $r$     |
-| 12-15  | `multi-range-check` | $u$     |
-| 16     | `ForeignFieldAdd`   |         |
-| 17     | `ForeignFieldAdd`   |         |
-| 18     | `Zero`              |         |
+A total of 20 rows with 15 columns in Kimchi for 1 addition. All ranges below are inclusive.
 
-We have a mechanism to chain foreign field additions together. In this case, an initial left input range check is performed, which is followed by a $n$ pairs of range check gates for the right input and intermediate result (which become the left input for the next iteration). After the chained inputs checks, a final range check on the upper bound takes place. Then, there are $n$ foreign field addition gates, and finally a foreign field addition gate for the upper bound (whose current row corresponds to the next row of the last foreign field addition gate), and an auxiliary `Zero` row that holds the upper bound.
+| Row(s)           | Gate type(s)        | Witness |
+| ---------------- | ------------------- | ------- |
+| 0                | `PublicInput`       | $1$     |
+| 1..n             | `ForeignFieldAdd`   | +/-     |
+| n+1              | `ForeignFieldAdd`   | bound   |
+| n+2              | `Zero`              | bound   |
+| n+3..n+6         | `multi-range-check` | left    |
+| n+7+8i..n+10+8i  | `multi-range-check` | right   |
+| n+11+8i..n+14+8i | `multi-range-check` | $r$     |
+| 9n+7..9n+10      | `multi-range-check` | $u$     |
 
-More formally, these are the rows for the chained gadget:
 
-| Row(s)      | Gate type(s)                     | Witness |
-| ----------- | -------------------------------- | ------- |
-| 0..3        | `multi-range-check` for `left`   | $a$     |
-|             |                                  |         |
-| 8i+4..8i+7  | `multi-range-check` for `right`  | $b$     |
-| 8i+8..8i+11 | `multi-range-check` for `result` | $r$     |
-|             |                                  |         |
-| 8n+4..8n+7  | `multi-range-check` for `bound`  | $u$     |
-|             |                                  |         |
-| 8n+i+8      | `ForeignFieldAdd`                |         |
-|             |                                  |         |
-| 9n+8        | `ForeignFieldAdd`                |         |
-| 9n+9        | `Zero`                           |         |
+This mechanism can chain foreign field additions together. Initially, there are $n$ foreign field addition gates, followed by a foreign field addition gate for the bound addition (whose current row corresponds to the next row of the last foreign field addition gate), and an auxiliary `Zero` row that holds the upper bound. At the end, an initial left input range check is performed, which is followed by a $n$ pairs of range check gates for the right input and intermediate result (which become the left input for the next iteration). After the chained inputs checks, a final range check on the bound takes place. 
 
+For example, chaining the following set of 3 instructions would result in a full gadget with 37 rows:
+
+$$add(add(add(a,b),c),d)$$
+
+| Row(s) | Gate type(s)        | Witness       |
+| ------ | ------------------- | ------------- |
+| 0      | `PublicInput`       | $1$           |
+| 1      | `ForeignFieldAdd`   | $a+b$         |
+| 2      | `ForeignFieldAdd`   | $(a+b)+c$     |
+| 3      | `ForeignFieldAdd`   | $((a+b)+c)+d$ |
+| 4      | `ForeignFieldAdd`   | bound         |
+| 5      | `Zero`              | bound         |
+| 6..9   | `multi-range-check` | $a$           |
+| 10..13 | `multi-range-check` | $b$           |
+| 14..17 | `multi-range-check` | $a+b$         |
+| 18..21 | `multi-range-check` | $c$           |
+| 22..25 | `multi-range-check` | $a+b+c$       |
+| 26..29 | `multi-range-check` | $d$           |
+| 30..33 | `multi-range-check` | $a+b+c+d$     |
+| 34..37 | `multi-range-check` | bound         |
+
+Nonetheless, such an exhaustive set of checks are not necessary for completeness nor soundness. In particular, only the very final range check for the bound is required. Thus, a shorter gadget that is equally valid and takes $(8*n+4)$ fewer rows could be possible if we can assume that the inputs of each addition are correct foreign field elements. It would follow the next layout (with inclusive ranges): 
+
+| Row(s)   | Gate type(s)                                          | Witness |
+| -------- | ----------------------------------------------------- | ------- |
+| 0        | public input row for soundness of bound overflow flag | $1$     |
+| 1..n     | `ForeignFieldAdd`                                     |         |
+| n+1      | `ForeignFieldAdd`                                     |         |
+| n+2      | `Zero`                                                |         |
+| n+3..n+6 | `multi-range-check` for `bound`                       | $u$     |
+
+Otherwise, we would need range checks for each new input of the chain, but none for intermediate results; implying $4\cdot n$ fewer rows. 
+
+| Row(s)          | Gate type(s)                                          | Witness   |
+| --------------- | ----------------------------------------------------- | --------- |
+| 0               | public input row for soundness of bound overflow flag | $1$       |
+| 1..n            | `ForeignFieldAdd`                                     | $a_i+b_i$ |
+| n+1             | `ForeignFieldAdd`                                     |           |
+| n+2             | `Zero`                                                |           |
+| n+3..n+6        | `multi-range-check` for first left input              | $a_1$     |
+| n+7+4i..n+10+4i | `multi-range-check` for $i$-th right input            | $b_i$     |
+| 5n+7..5n+10     | `multi-range-check` for bound                         | $u$       |
+
+
+For more details see the Bound Addition section of the [Foreign Field Multiplication RFC](../rfcs/ffmul.md).
 
 ### Layout
 
-For this gate, we need to perform 4 range checks to assert that the limbs of $a, b, r, u$ have a correct size, meaning they fit in $2^{88}$ (and thus, range-checking $a, b, r, u$ for $2^{264}$). Because each of these elements is split into 3 limbs, we will have to use 3 copy constraints between the `RangeCheck` gates and the `ForeignFieldAdd` rows (per element). That amounts to 12 copy constraints. Recalling that Kimchi only allows for the first 7 columns of each row to host a copy constraint, we necessarily have to use 2 rows for the actual addition gate. The layout of these two rows is the following:
+For the full mode of tests of this gate, we need to perform 4 range checks to assert that the limbs of $a, b, r, u$ have a correct size, meaning they fit in $2^{88}$ (and thus, range-checking $a, b, r, u$ for $2^{264}$). Because each of these elements is split into 3 limbs, we will have to use 3 copy constraints between the `RangeCheck` gates and the `ForeignFieldAdd` rows (per element). That amounts to 12 copy constraints. Recalling that Kimchi only allows for the first 7 columns of each row to host a copy constraint, we necessarily have to use 2 rows for the actual addition gate. The layout of these two rows is the following:
 
 |            | Curr              | Next              | ... Final    |
 | ---------- | ----------------- | ----------------- | ------------ |
@@ -246,9 +289,9 @@ For this gate, we need to perform 4 range checks to assert that the limbs of $a,
 | 4          | $b_1$ (copy)      |                   |
 | 5          | $b_2$ (copy)      |                   |
 | 6          | $q$               |
-| 7          | $c_0$             |
-| 8          | $c_1$             |
-| 9          | $s$               |
+| 7          | $c$               |
+| 8          |                   |
+| 9          |                   |
 | 10         |                   |
 | 11         |                   |
 | 12         |                   |
@@ -272,6 +315,7 @@ So far, we have pointed out the following sets of constraints:
 - $0 = c_1 \cdot (c_0 + 1) \cdot (c_1 - 1)$
 
 #### Sign checks
+TODO: decide if we really want to keep this check or leave it implicit as it is a coefficient value
 - $0 = (s + 1) \cdot (s - 1)$
 
 #### Overflow checks
@@ -281,3 +325,5 @@ So far, we have pointed out the following sets of constraints:
 
 When we use this gate as part of a larger chained gadget, we should optimize the number of range check rows
 to avoid redundant checks. In particular, if the result of an addition becomes one input of another addition, there is no need to check twice that the limbs of that term have the right length.
+
+The sign is now part of the coefficients of the gate. This will allow us to remove the sign check constraint and release one witness cell element. But more importantly, it brings soundness to the gate as it is now possible to wire the $1$ public input to the overflow witness of the final bound check of every addition chain.  

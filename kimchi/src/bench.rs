@@ -1,5 +1,14 @@
 use std::array;
 
+use groupmap::{BWParameters, GroupMap};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use o1_utils::math;
+use poly_commitment::commitment::CommitmentCurve;
+
 use crate::{
     circuits::{
         gate::CircuitGate,
@@ -8,18 +17,9 @@ use crate::{
     },
     proof::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
-    verifier::batch_verify,
+    verifier::{batch_verify, Context},
     verifier_index::VerifierIndex,
 };
-use commitment_dlog::commitment::CommitmentCurve;
-use groupmap::{BWParameters, GroupMap};
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-
-use o1_utils::math;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -71,20 +71,34 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> ProverProof<Vesta> {
+    pub fn create_proof(&self) -> (ProverProof<Vesta>, Vec<Fp>) {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
+        let public_input = witness[0][0..self.index.cs.public].to_vec();
+
         // add the proof to the batch
-        ProverProof::create::<BaseSponge, ScalarSponge>(&self.group_map, witness, &[], &self.index)
-            .unwrap()
+        (
+            ProverProof::create::<BaseSponge, ScalarSponge>(
+                &self.group_map,
+                witness,
+                &[],
+                &self.index,
+            )
+            .unwrap(),
+            public_input,
+        )
     }
 
-    pub fn batch_verification(&self, batch: Vec<ProverProof<Vesta>>) {
+    pub fn batch_verification(&self, batch: &[(ProverProof<Vesta>, Vec<Fp>)]) {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()
-            .map(|proof| (&self.verifier_index, proof))
+            .map(|(proof, public)| Context {
+                verifier_index: &self.verifier_index,
+                proof,
+                public_input: public,
+            })
             .collect();
         batch_verify::<Vesta, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
     }
@@ -105,12 +119,12 @@ mod tests {
 
         // proof created in 7.1227 ms
         let start = Instant::now();
-        let proof = ctx.create_proof();
+        let (proof, public_input) = ctx.create_proof();
         println!("proof created in {}", start.elapsed().as_millis());
 
         // proof verified in 1.710 ms
         let start = Instant::now();
-        ctx.batch_verification(vec![proof]);
+        ctx.batch_verification(&vec![(proof, public_input)]);
         println!("proof verified in {}", start.elapsed().as_millis());
     }
 }

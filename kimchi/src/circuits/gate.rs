@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
             poseidon, range_check, turshi, varbasemul,
         },
         wires::*,
@@ -97,11 +97,6 @@ pub enum GateType {
     EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar = 6,
-    /// ChaCha
-    ChaCha0 = 7,
-    ChaCha1 = 8,
-    ChaCha2 = 9,
-    ChaChaFinal = 10,
     // Lookup
     Lookup = 11,
     /// Cairo
@@ -123,9 +118,6 @@ pub enum GateType {
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitGateError {
     /// Invalid constraint
-    #[error("Invalid circuit gate type {0:?}")]
-    InvalidCircuitGateType(GateType),
-    /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
     /// Invalid constraint with number
@@ -137,18 +129,9 @@ pub enum CircuitGateError {
     /// Disconnected wires
     #[error("Invalid {typ:?} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
     CopyConstraint { typ: GateType, src: Wire, dst: Wire },
-    /// Invalid copy constraint
-    #[error("Invalid {0:?} copy constraint")]
-    InvalidCopyConstraint(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
-    InvalidLookupConstraintSorted(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
-    InvalidLookupConstraintAggregation(GateType),
-    /// Missing lookup constraint system
-    #[error("Failed to get lookup constraint system for {0:?}")]
-    MissingLookupConstraintSystem(GateType),
+    /// Invalid lookup
+    #[error("Invalid {0:?} lookup constraint")]
+    InvalidLookupConstraint(GateType),
     /// Failed to get witness for row
     #[error("Failed to get {0:?} witness for row {1}")]
     FailedToGetWitnessForRow(GateType, usize),
@@ -226,8 +209,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
             EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
-            // TODO: implement the verification for chacha
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
@@ -310,10 +291,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env),
             GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env),
             GateType::EndoMulScalar => endomul_scalar::EndomulScalar::constraint_checks(&env),
-            GateType::ChaCha0 => chacha::ChaCha0::constraint_checks(&env),
-            GateType::ChaCha1 => chacha::ChaCha1::constraint_checks(&env),
-            GateType::ChaCha2 => chacha::ChaCha2::constraint_checks(&env),
-            GateType::ChaChaFinal => chacha::ChaChaFinal::constraint_checks(&env),
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
                 vec![]
@@ -392,6 +369,22 @@ pub trait Connect {
 
     /// Connects a generic gate cell with zeros to a given row for 64bit range check
     fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
+
+    /// Connects the wires of the range checks in a single foreign field addition
+    /// Inputs:
+    /// - `ffadd_row`: the row of the foreign field addition gate
+    /// - `left_rc`: the first row of the range check for the left input
+    /// - `right_rc`: the first row of the range check for the right input
+    /// - `out_rc`: the first row of the range check for the output of the addition
+    /// Note:
+    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    );
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -406,6 +399,39 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self.connect_cell_pair((start_row, 1), (start_row, 2));
         self.connect_cell_pair((start_row, 2), (zero_row, 0));
         self.connect_cell_pair((zero_row, 0), (start_row, 1));
+    }
+
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    ) {
+        if let Some(left_rc) = left_rc {
+            // Copy left_input_lo -> Curr(0)
+            self.connect_cell_pair((left_rc, 0), (ffadd_row, 0));
+            // Copy left_input_mi -> Curr(1)
+            self.connect_cell_pair((left_rc + 1, 0), (ffadd_row, 1));
+            // Copy left_input_hi -> Curr(2)
+            self.connect_cell_pair((left_rc + 2, 0), (ffadd_row, 2));
+        }
+
+        if let Some(right_rc) = right_rc {
+            // Copy right_input_lo -> Curr(3)
+            self.connect_cell_pair((right_rc, 0), (ffadd_row, 3));
+            // Copy right_input_mi -> Curr(4)
+            self.connect_cell_pair((right_rc + 1, 0), (ffadd_row, 4));
+            // Copy right_input_hi -> Curr(5)
+            self.connect_cell_pair((right_rc + 2, 0), (ffadd_row, 5));
+        }
+
+        // Copy result_lo -> Next(0)
+        self.connect_cell_pair((out_rc, 0), (ffadd_row + 1, 0));
+        // Copy result_mi -> Next(1)
+        self.connect_cell_pair((out_rc + 1, 0), (ffadd_row + 1, 1));
+        // Copy result_hi -> Next(2)
+        self.connect_cell_pair((out_rc + 2, 0), (ffadd_row + 1, 2));
     }
 }
 

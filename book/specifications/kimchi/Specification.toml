@@ -12,7 +12,6 @@ template = "template.md"
 permutation = "../../../kimchi/src/circuits/polynomials/permutation.rs"
 
 # gates
-chacha = "../../../kimchi/src/circuits/polynomials/chacha.rs"
 complete_add = "../../../kimchi/src/circuits/polynomials/complete_add.rs"
 endomul_scalar = "../../../kimchi/src/circuits/polynomials/endomul_scalar.rs"
 endosclmul = "../../../kimchi/src/circuits/polynomials/endosclmul.rs"

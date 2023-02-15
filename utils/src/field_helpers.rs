@@ -63,7 +63,7 @@ impl<F: Field> Two<F> for F {
     }
 
     fn two_pow(pow: u64) -> F {
-        F::two().pow(&[pow])
+        F::two().pow([pow])
     }
 }
 

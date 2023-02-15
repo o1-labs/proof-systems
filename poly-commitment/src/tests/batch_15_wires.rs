@@ -3,10 +3,11 @@
 
 use crate::{
     commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
+    evaluation_proof::DensePolynomialOrEvaluations,
     srs::SRS,
 };
 use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -89,10 +90,20 @@ where
             commit += start.elapsed();
 
             start = Instant::now();
-            let polys: Vec<_> = (0..a.len())
-                .map(|i| (&a[i], bounds[i], (comm[i].0).blinders.clone()))
+            let polys: Vec<(
+                DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
+                _,
+                _,
+            )> = (0..a.len())
+                .map(|i| {
+                    (
+                        DensePolynomialOrEvaluations::DensePolynomial(&a[i]),
+                        bounds[i],
+                        (comm[i].0).blinders.clone(),
+                    )
+                })
                 .collect();
-            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
+            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
                 &group_map,
                 &polys,
                 &x,
@@ -103,7 +114,7 @@ where
             );
             open += start.elapsed();
 
-            (sponge.clone(), x.clone(), polymask, evalmask, comm, proof)
+            (sponge.clone(), x, polymask, evalmask, comm, proof)
         })
         .collect::<Vec<_>>();
 

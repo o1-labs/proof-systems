@@ -1,15 +1,11 @@
-use std::cmp::max;
+use std::{array, cmp::max};
 
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, GateType},
         polynomial::COLUMNS,
-        polynomials::{
-            generic::GenericGateSpec,
-            not::{create_not_witness_checked_length, create_not_witness_unchecked_length},
-            xor::{self},
-        },
+        polynomials::{generic::GenericGateSpec, not, xor},
         wires::Wire,
     },
     curve::KimchiCurve,
@@ -46,6 +42,39 @@ const RNG_SEED: [u8; 32] = [
     89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
 ];
 
+// Creates as many negations as the number of inputs. The inputs must fit in the native field.
+// We start at the row 0 using generic gates to perform the negations.
+// Input: a vector of words to be negated, and the number of bits (all the same)
+// Panics if the bits length is too small for the inputs
+fn create_not_witness_unchecked_length<F: PrimeField>(
+    inputs: &[F],
+    bits: usize,
+) -> [Vec<F>; COLUMNS] {
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
+    witness[0][0] = F::from(2u8).pow([bits as u64]) - F::one();
+    let result = not::extend_not_witness_unchecked_length(&mut witness, inputs, bits);
+    if let Err(e) = result {
+        panic!("{}", e);
+    }
+    witness
+}
+
+// Create a Not witness for less than 255 bits (native field) starting at row 0
+// Input: first input and optional bit length
+// If `bits` is not provided, the negation is performed using the length of the `input` in bits.
+// If `bits` is provided, the negation takes the maximum length of `bits` and `input`.
+fn create_not_witness_checked_length<F: PrimeField>(
+    input: F,
+    bits: Option<usize>,
+) -> [Vec<F>; COLUMNS] {
+    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
+    let input_big = input.to_biguint();
+    let real_bits = max(input_big.bitlen(), bits.unwrap_or(0));
+    witness[0][0] = F::from(2u8).pow([real_bits as u64]) - F::one();
+    not::extend_not_witness_checked_length(&mut witness, input, bits);
+    witness
+}
+
 // Constraint system for Not gadget using Xor16
 fn create_test_constraint_system_not_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
     bits: usize,
@@ -60,7 +89,7 @@ where
             None,
         )];
         let next_row =
-            CircuitGate::<G::ScalarField>::extend_not_gadget_checked_length(&mut gates, 0, 1, bits);
+            CircuitGate::<G::ScalarField>::extend_not_gadget_checked_length(&mut gates, 0, bits);
         (next_row, gates)
     };
 
@@ -85,9 +114,8 @@ where
         GenericGateSpec::Pub,
         None,
     )];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(
-        &mut gates, num_nots, 0, 1,
-    );
+    let mut next_row =
+        CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(&mut gates, num_nots, 0);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
@@ -260,7 +288,7 @@ fn test_prove_and_verify_not_xor() {
             GenericGateSpec::Pub,
             None,
         )];
-        let next_row = CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, 1, bits);
+        let next_row = CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, bits);
         (next_row, gates)
     };
 
@@ -279,7 +307,7 @@ fn test_prove_and_verify_not_xor() {
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
-            PallasField::from(2u32).pow(&[bits as u64]) - PallasField::one(),
+            PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
         ])
         .lookup_tables(vec![xor::lookup_table()])
         .setup()
@@ -300,7 +328,7 @@ fn test_prove_and_verify_five_not_gnrc() {
             GenericGateSpec::Pub,
             None,
         )];
-        let next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0, 1);
+        let next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0);
         (next_row, gates)
     };
 
@@ -322,7 +350,7 @@ fn test_prove_and_verify_five_not_gnrc() {
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
-            PallasField::from(2u32).pow(&[bits as u64]) - PallasField::one(),
+            PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
         ])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
@@ -409,7 +437,8 @@ fn test_bad_not_gnrc() {
         })
     );
     witness[0][1] += PallasField::one();
-    let index = new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None);
+    let index =
+        new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None, false);
     assert_eq!(
         index.cs.gates[1].verify::<Vesta>(1, &witness, &index, &[]),
         Err(("generic: incorrect gate").to_string())

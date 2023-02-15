@@ -314,7 +314,13 @@ pub mod testing {
             res += public;
 
             // selector poly
-            res = &res * &self.evaluated_column_coefficients.generic_selector;
+            res = &res
+                * &self
+                    .column_evaluations
+                    .generic_selector4
+                    .interpolate_by_ref();
+            // Interpolation above is inefficient, as is the rest of the function,
+            // would be better just to check the equation on all the rows.
 
             // verify that it is divisible by Z_H
             match res.divide_by_vanishing_poly(self.cs.domain.d1) {

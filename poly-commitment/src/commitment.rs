@@ -146,7 +146,7 @@ where
         &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
     );
     let two: G::ScalarField = (2u64).into();
-    let two_pow = two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
+    let two_pow = two.pow([<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
     if n1 < n2 {
         (x - (two_pow + G::ScalarField::one())) / two
     } else {
@@ -473,7 +473,7 @@ pub fn combined_inner_product<F: PrimeField>(
             let shifted_evals: Vec<_> = evaluation_points
                 .iter()
                 .zip(&last_evals)
-                .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
+                .map(|(elm, f_elm)| elm.pow([(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
             res += &(xi_i * DensePolynomial::<F>::eval_polynomial(&shifted_evals, *evalscale));
@@ -888,7 +888,7 @@ mod tests {
     use super::*;
 
     use crate::srs::SRS;
-    use ark_poly::{Polynomial, UVPolynomial};
+    use ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
     use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
     use mina_poseidon::sponge::DefaultFqSponge;
@@ -995,9 +995,21 @@ mod tests {
         let sponge =
             DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
-        let polys = vec![
-            (&poly1, None, commitment.blinders),
-            (&poly2, Some(upperbound), bounded_commitment.blinders),
+        let polys: Vec<(
+            DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
+            Option<usize>,
+            PolyComm<_>,
+        )> = vec![
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(&poly1),
+                None,
+                commitment.blinders,
+            ),
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(&poly2),
+                Some(upperbound),
+                bounded_commitment.blinders,
+            ),
         ];
         let elm = vec![Fp::rand(rng), Fp::rand(rng)];
 

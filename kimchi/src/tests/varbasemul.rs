@@ -75,7 +75,7 @@ fn varbase_mul_test() {
             acc,
         );
 
-        let shift = <Other as AffineCurve>::ScalarField::from(2).pow(&[(bits_msb.len()) as u64]);
+        let shift = <Other as AffineCurve>::ScalarField::from(2).pow([(bits_msb.len()) as u64]);
         let expected = g
             .mul((<Other as AffineCurve>::ScalarField::one() + shift + x_.double()).into_repr())
             .into_affine();

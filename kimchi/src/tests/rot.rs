@@ -1,18 +1,24 @@
+use std::{array, sync::Arc};
+
+use super::framework::TestFramework;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::rot::{self, RotMode},
+        polynomials::{
+            generic::GenericGateSpec,
+            rot::{self, RotMode},
+        },
         wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover_index::ProverIndex,
 };
-
-use super::framework::TestFramework;
 use ark_ec::AffineCurve;
-use ark_ff::{One, PrimeField};
+use ark_ff::{One, PrimeField, Zero};
+use ark_poly::EvaluationDomain;
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -20,6 +26,7 @@ use mina_poseidon::{
     FqSponge,
 };
 use o1_utils::Two;
+use poly_commitment::srs::{endos, SRS};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -29,10 +36,42 @@ type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
+type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+
 const RNG_SEED: [u8; 32] = [
     211, 31, 143, 75, 29, 255, 0, 126, 237, 193, 86, 160, 1, 90, 131, 221, 186, 168, 4, 95, 50, 48,
     89, 29, 13, 250, 215, 172, 130, 24, 164, 162,
 ];
+
+fn create_rot_gadget<G: KimchiCurve>(rot: u32, side: RotMode) -> Vec<CircuitGate<G::ScalarField>>
+where
+    G::BaseField: PrimeField,
+{
+    // gate for the zero value
+    let mut gates = vec![CircuitGate::<G::ScalarField>::create_generic_gadget(
+        Wire::for_row(0),
+        GenericGateSpec::Pub,
+        None,
+    )];
+    CircuitGate::<G::ScalarField>::extend_rot(&mut gates, rot, side, 0);
+    gates
+}
+
+fn create_rot_witness<G: KimchiCurve>(
+    word: u64,
+    rot: u32,
+    side: RotMode,
+) -> [Vec<G::ScalarField>; COLUMNS]
+where
+    G::BaseField: PrimeField,
+{
+    // Include the zero row
+    let mut witness: [Vec<G::ScalarField>; COLUMNS] =
+        array::from_fn(|_| vec![G::ScalarField::zero()]);
+    rot::extend_rot(&mut witness, word, rot, side);
+    witness
+}
 
 fn create_test_constraint_system<G: KimchiCurve, EFqSponge, EFrSponge>(
     rot: u32,
@@ -41,12 +80,12 @@ fn create_test_constraint_system<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
 {
-    let (mut next_row, mut gates) = { CircuitGate::<G::ScalarField>::create_rot(0, rot, side) };
+    // gate for the zero value
+    let mut gates = create_rot_gadget::<G>(rot, side);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
+        gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
     }
 
     ConstraintSystem::create(gates).build().unwrap()
@@ -62,20 +101,18 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let rot = rng.gen_range(1..64);
     // Create
-    let (mut next_row, mut gates) =
-        CircuitGate::<G::ScalarField>::create_rot(0, rot, RotMode::Left);
+    let mut gates = create_rot_gadget::<G>(rot, RotMode::Left);
 
     // Temporary workaround for lookup-table/domain-size issue
     for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
+        gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
     }
 
     // Create input
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
 
     // Create witness
-    let witness = rot::create_witness(word, rot, RotMode::Left);
+    let witness = create_rot_witness::<G>(word, rot, RotMode::Left);
 
     assert!(TestFramework::<G>::default()
         .gates(gates)
@@ -123,7 +160,8 @@ where
     EFrSponge: FrSponge<G::ScalarField>,
 {
     let cs = create_test_constraint_system::<G, EFqSponge, EFrSponge>(rot, side);
-    let witness = rot::create_witness(word, rot, side);
+
+    let witness = create_rot_witness::<G>(word, rot, side);
 
     if side == RotMode::Left {
         assert_eq!(G::ScalarField::from(word.rotate_left(rot)), witness[1][1]);
@@ -152,7 +190,7 @@ fn test_rot_random() {
 fn test_zero_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    rot::create_witness::<PallasField>(word, 0, RotMode::Left);
+    create_rot_witness::<Vesta>(word, 0, RotMode::Left);
 }
 
 #[should_panic]
@@ -161,7 +199,7 @@ fn test_zero_rot() {
 fn test_large_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    rot::create_witness::<PallasField>(word, 64, RotMode::Left);
+    create_rot_witness::<Vesta>(word, 64, RotMode::Left);
 }
 
 #[test]
@@ -258,4 +296,84 @@ fn test_bad_constraints() {
             dst: Wire { row: 0, col: 0 }
         })
     );
+}
+
+#[test]
+// Finalization test
+fn test_rot_finalization() {
+    // Includes the actual input of the rotation and a row with the zero value
+    let num_public_inputs = 2;
+    // 1 ROT of 32 to the left
+    let rot = 32;
+    let mode = RotMode::Left;
+
+    // circuit
+    let gates = {
+        let mut gates = vec![];
+        // public inputs
+        for row in 0..num_public_inputs {
+            gates.push(CircuitGate::<Fp>::create_generic_gadget(
+                Wire::for_row(row),
+                GenericGateSpec::Pub,
+                None,
+            ));
+        }
+        CircuitGate::<Fp>::extend_rot(&mut gates, rot, mode, 1);
+        // connect first public input to the word of the ROT
+        gates.connect_cell_pair((0, 0), (2, 0));
+
+        // Temporary workaround for lookup-table/domain-size issue
+        for _ in 0..(1 << 13) {
+            gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
+        }
+
+        gates
+    };
+
+    // witness
+    let witness = {
+        // create one row for the public word
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
+
+        // initialize the public input containing the word to be rotated
+        let input = 0xDC811727DAF22EC1u64;
+        cols[0][0] = input.into();
+        rot::extend_rot::<Fp>(&mut cols, input, rot, mode);
+
+        cols
+    };
+
+    let index = {
+        let cs = ConstraintSystem::create(gates.clone())
+            .public(num_public_inputs)
+            .lookup(vec![rot::lookup_table()])
+            .build()
+            .unwrap();
+        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+    };
+
+    for row in 0..witness[0].len() {
+        assert_eq!(
+            index.cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &index.cs,
+                &witness[0][0..index.cs.public]
+            ),
+            Ok(())
+        );
+    }
+
+    assert!(TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness.clone())
+        .public_inputs(vec![witness[0][0], witness[0][1]])
+        .setup()
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .is_ok());
 }
