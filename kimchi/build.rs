@@ -6,5 +6,5 @@ fn main() {
     Command::new("make")
         .args(&["-C", "../book/specifications/kimchi"])
         .status()
-        .expect("failed make specification");
+        .expect("failed to make specification");
 }
