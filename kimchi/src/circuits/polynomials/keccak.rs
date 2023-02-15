@@ -202,7 +202,7 @@ pub(crate) fn keccak_hash(
 /// M || pad[x](|M|)
 /// Padding rule 10*1.
 /// The padded message vector will start with the message vector
-/// followed by the 10*1 rule to fulfill a length that is a multiple of bitrate.
+/// followed by the 10*1 rule to fulfil a length that is a multiple of bitrate.
 pub(crate) fn pad(message: &[u8], bitrate: usize) -> Vec<u8> {
     // copy the message to the first part of the padded message
     let mut padded_message = message.clone().to_vec();
