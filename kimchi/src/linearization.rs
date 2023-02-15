@@ -13,7 +13,7 @@ use crate::circuits::polynomials::{
     endosclmul::EndosclMul,
     foreign_field_add::circuitgates::ForeignFieldAdd,
     foreign_field_mul::circuitgates::ForeignFieldMul,
-    generic, permutation,
+    generic,
     poseidon::Poseidon,
     range_check::circuitgates::{RangeCheck0, RangeCheck1},
     rot,
@@ -27,6 +27,7 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
+use crate::constants::PERM_CONSTRAINTS;
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
 /// Get the expresion of constraints.
@@ -151,7 +152,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     // permutation
-    powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
+    powers_of_alpha.register(ArgumentType::Permutation, PERM_CONSTRAINTS);
 
     // lookup
     if let Some(feature_flags) = feature_flags {

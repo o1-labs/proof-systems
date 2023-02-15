@@ -7,10 +7,10 @@ use crate::{
         expr::{Column, Constants, PolishToken},
         gate::GateType,
         lookup::tables::combine_table,
-        polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
+    constants::PERM_CONSTRAINTS,
     curve::KimchiCurve,
     error::VerifyError,
     oracles::OraclesResult,
@@ -353,7 +353,7 @@ where
             let zeta1m1 = zeta1 - G::ScalarField::one();
 
             let mut alpha_powers =
-                all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                all_alphas.get_alphas(ArgumentType::Permutation, PERM_CONSTRAINTS);
             let alpha0 = alpha_powers
                 .next()
                 .expect("missing power of alpha for permutation");
@@ -634,7 +634,7 @@ where
         // the permutation is written manually (not using the expr framework)
         let zkp = verifier_index.zkpm().evaluate(&oracles.zeta);
 
-        let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+        let alphas = all_alphas.get_alphas(ArgumentType::Permutation, PERM_CONSTRAINTS);
 
         let mut commitments = vec![&verifier_index.sigma_comm[PERMUTS - 1]];
         let mut scalars = vec![ConstraintSystem::<G::ScalarField>::perm_scalars(

@@ -7,6 +7,7 @@ use crate::{
         },
         wires::COLUMNS,
     },
+    constants::ZK_ROWS,
     error::ProverError,
 };
 use ark_ff::{FftField, One, PrimeField, Zero};
@@ -19,16 +20,6 @@ use std::collections::HashMap;
 use CurrOrNext::{Curr, Next};
 
 use super::runtime_tables;
-
-/// Number of constraints produced by the argument.
-pub const CONSTRAINTS: u32 = 7;
-
-/// The number of points that are evaluated in the protocol (zeta and zeta * omega).
-pub const EVALS: u64 = 2;
-
-/// The number of rows that are added to a witness/circuit in order to provide zero-knowledge.
-/// We might actually only need `EVALS` but let's be double safe.
-pub const ZK_ROWS: u64 = EVALS + 1;
 
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.

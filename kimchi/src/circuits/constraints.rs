@@ -7,9 +7,10 @@ use crate::{
         gate::{CircuitGate, GateType},
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-        polynomials::permutation::{Shifts, ZK_ROWS},
+        polynomials::permutation::Shifts,
         wires::*,
     },
+    constants::ZK_ROWS,
     curve::KimchiCurve,
     error::SetupError,
     prover_index::ProverIndex,
@@ -656,7 +657,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + (ZK_ROWS) as usize)?;
+        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
 
         assert!(domain.d1.size > ZK_ROWS);
 

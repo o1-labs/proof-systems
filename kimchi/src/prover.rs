@@ -12,8 +12,7 @@ use crate::{
             endosclmul::EndosclMul,
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
-            generic, permutation,
-            permutation::ZK_ROWS,
+            generic,
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
@@ -22,6 +21,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
+    constants::{PERM_CONSTRAINTS, ZK_ROWS},
     curve::KimchiCurve,
     error::ProverError,
     lagrange_basis_evaluations::LagrangeBasisEvaluations,
@@ -190,7 +190,7 @@ where
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        if length_padding < (ZK_ROWS) as usize {
+        if length_padding < ZK_ROWS as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
 
@@ -205,7 +205,7 @@ where
             w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
-            for row in w.iter_mut().rev().take((ZK_ROWS) as usize) {
+            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
                 *row = <G::ScalarField as UniformRand>::rand(rng);
             }
         }
@@ -342,7 +342,7 @@ where
                     }
 
                     // zero-knowledge
-                    for e in evals.iter_mut().rev().take((ZK_ROWS) as usize) {
+                    for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
                         *e = <G::ScalarField as UniformRand>::rand(rng);
                     }
 
@@ -692,8 +692,7 @@ where
             };
             // permutation
             let (mut t8, bnd) = {
-                let alphas =
-                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                let alphas = all_alphas.get_alphas(ArgumentType::Permutation, PERM_CONSTRAINTS);
                 let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
 
                 check_constraint!(index, perm);
@@ -979,8 +978,7 @@ where
                 // the constraint system struct
 
                 // permutation (not part of linearization yet)
-                let alphas =
-                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                let alphas = all_alphas.get_alphas(ArgumentType::Permutation, PERM_CONSTRAINTS);
                 let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial

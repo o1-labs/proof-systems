@@ -13,6 +13,7 @@ pub use turshi;
 pub mod alphas;
 pub mod bench;
 pub mod circuits;
+pub mod constants;
 pub mod curve;
 pub mod error;
 pub mod lagrange_basis_evaluations;
