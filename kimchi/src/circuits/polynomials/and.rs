@@ -31,24 +31,29 @@ use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Tw
 //~ Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
 //~ $$ A \& B = \frac{A + B - (A \oplus B)}{2} $$
 //~ Let us define the following operations for better readability:
-//~ ```
+//~
+//~ ```text
 //~ a + b = sum
 //~ a ^ b = xor
 //~ a & b = and
 //~ ```
+//~
 //~ Then, we can rewrite the above equation as follows:
 //~ $$ 2 \cdot and = sum - xor $$
 //~ which can be expressed as a double generic gate.
 //~
 //~ Then, our AND gadget for $n$ bytes looks as follows:
+//~
 //~ * $n/8$ Xor16 gates
 //~ * 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
 //~ * 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
 //~
 //~ Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
+//~
 //~ * Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
 //~ * Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
 //~ Meaning,
+//~
 //~ * the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
 //~ * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
