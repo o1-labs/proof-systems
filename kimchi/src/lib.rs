@@ -18,6 +18,7 @@ pub mod error;
 pub mod lagrange_basis_evaluations;
 pub mod linearization;
 pub mod oracles;
+pub mod pickles;
 pub mod plonk_sponge;
 pub mod proof;
 pub mod prover;
