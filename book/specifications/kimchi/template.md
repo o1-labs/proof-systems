@@ -182,6 +182,7 @@ TODO
 ### Permutation
 
 {sections.permutation}
+
 ### Lookup
 
 Lookups in kimchi allows you to check if a single value, or a series of values, are part of a table.
@@ -203,12 +204,15 @@ In this section, we describe the tables kimchi supports, as well as the differen
 Kimchi currently supports two lookup tables:
 
 {sections.tables}
+
 ##### XOR
 
 {sections.table_xor}
+
 ##### 12-bit Check
 
 {sections.table_12bit}
+
 #### The Lookup Selectors
 
 **XorSelector**. Performs 4 queries to the XOR lookup table.
@@ -220,6 +224,7 @@ Kimchi currently supports two lookup tables:
 #### Producing the sorted table as the prover
 
 {sections.lookup}
+
 ### Gates
 
 A circuit is described as a series of gates.
@@ -262,6 +267,7 @@ TODO: for each gate describe how to create it?
 #### Foreign Field Multiplication
 
 {sections.foreign_field_mul}
+
 #### Xor
 
 {sections.xor16}
@@ -273,6 +279,7 @@ Here we describe basic gadgets that we build using a combination of the gates de
 #### Not
 
 {sections.not_gadget}
+
 #### And
 
 {sections.and_gadget}

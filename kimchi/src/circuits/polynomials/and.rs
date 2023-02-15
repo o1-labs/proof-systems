@@ -25,11 +25,7 @@ use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Tw
 //~ For now, we are willing to pay this small overhead and produce AND gadget as follows:
 //~
 //~ We observe that we can express bitwise addition as follows:
-//~ $$
-//~ \begin{aligned}
-//~ A + B = (A \oplus B) + 2 \cdot (A \& B)
-//~ \end{aligned}
-//~ $$
+//~ $$A + B = (A \oplus B) + 2 \cdot (A \& B)$$
 //~
 //~ where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
 //~ In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.

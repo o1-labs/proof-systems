@@ -315,6 +315,7 @@ If computed correctly, we should have $z(g^{n-3}) = 1$.
 Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
 in order to add zero-knowledge to the protocol.
 
+
 ### Lookup
 
 Lookups in kimchi allows you to check if a single value, or a series of values, are part of a table.
@@ -343,6 +344,7 @@ pub const XOR_TABLE_ID: i32 = 0;
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 ```
 
+
 ##### XOR
 
 The lookup table for 4-bit xor.
@@ -357,10 +359,12 @@ $$0 = 0 + j*0 + j^2*0$$
 
 will translate into a scalar multiplication by 0, which is free.
 
+
 ##### 12-bit Check
 
 The range check table is a single-column table containing the numbers from 0 to 2^12 (excluded).
 This is used to check that the value fits in 12 bits.
+
 
 #### The Lookup Selectors
 
@@ -404,6 +408,7 @@ Then, for each `i < max_lookups_per_row`, if `i % 2 = 0`, we enforce that the
 last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
 and if `i % 2 = 1`, we enforce that
 the first element of `LookupSorted(i) = first element of LookupSorted(i + 1)`.
+
 
 ### Gates
 
@@ -1294,6 +1299,7 @@ The foreign field multiplication gate's rows are laid out like this
 |  14 |                              |                           |
 
 
+
 #### Xor
 
 `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
@@ -1396,6 +1402,7 @@ to have a given length.
 | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 
 
+
 #### And
 
 We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
@@ -1404,11 +1411,7 @@ lookup table that would have the same size as that of the Xor.
 For now, we are willing to pay this small overhead and produce AND gadget as follows:
 
 We observe that we can express bitwise addition as follows:
-$$
-\begin{aligned}
-A + B = (A \oplus B) + 2 \cdot (A \& B)
-\end{aligned}
-$$
+$$A + B = (A \oplus B) + 2 \cdot (A \& B)$$
 
 where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
 In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
