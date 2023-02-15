@@ -85,11 +85,13 @@ where
             ScalarField::<Circuit::Curve>::zero(),
         );
 
+        dbg!("yo");
         // init
         self.compiled_circuit
             .sys
             .generate_witness_init(public_input_and_output.clone());
 
+        dbg!("yo");
         // run circuit and get return var
         let public_input_var: Circuit::PublicInput = self.compiled_circuit.sys.public_input();
         let return_var = self
@@ -97,16 +99,20 @@ where
             .circuit
             .circuit(&mut self.compiled_circuit.sys, public_input_var);
 
+        dbg!("yo");
         // get values from private input vec
         let (return_cvars, aux) = return_var.to_cvars();
         let public_output_values = self.compiled_circuit.sys.public_output_values(return_cvars);
 
+        dbg!("yo");
         // create constraint between public output var and return var
         self.compiled_circuit.sys.wire_public_output(return_var);
 
+        dbg!("yo");
         // finalize
         let mut witness = self.compiled_circuit.sys.generate_witness();
 
+        dbg!("yo");
         // replace public output part of witness
         let start = Circuit::PublicInput::SIZE_IN_FIELD_ELEMENTS;
         let end = start + Circuit::PublicOutput::SIZE_IN_FIELD_ELEMENTS;
@@ -117,6 +123,7 @@ where
             *cell = *val;
         }
 
+        dbg!("yo");
         // same but with the full public input
         for (cell, val) in &mut public_input_and_output[start..end]
             .iter_mut()
@@ -125,12 +132,14 @@ where
             *cell = *val;
         }
 
+        dbg!("yo");
         // reconstruct public output
         let public_output =
             Circuit::PublicOutput::value_of_field_elements(public_output_values, aux);
 
         witness.debug();
 
+        dbg!("yo");
         // verify the witness
         if debug {
             self.index
@@ -172,7 +181,6 @@ where
             + FqSponge<BaseField<Circuit::Curve>, Circuit::Curve, ScalarField<Circuit::Curve>>,
         EFrSponge: FrSponge<ScalarField<Circuit::Curve>>,
     {
-        let mut proof = proof;
         let mut public_input = Circuit::PublicInput::value_to_field_elements(&public_input).0;
         public_input.extend(Circuit::PublicOutput::value_to_field_elements(&public_output).0);
 
@@ -209,6 +217,9 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> CompiledCircuit<Circuit>
 
     // compile to gates
     let gates = sys.compile().to_vec();
+
+    // turn as_prover
+    sys.as_prover = true;
 
     // return compiled circuit
     CompiledCircuit {

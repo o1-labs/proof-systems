@@ -74,12 +74,16 @@ where
     /// A counter used to track variables (this includes public inputs) as they're being created.
     next_var: usize,
 
-    /// Indication that we're running the witness generation (as opposed to the circuit creation).
+    /// Indication that we're running the witness generation.
+    /// This does not necessarily mean that constraints are not created,
+    /// as we can do both at the same time.
+    // TODO: perhaps we should try to make the distinction between witness/constraint generation clearer
     has_witness: bool,
 
-    /// Indication that we're running in prover mode (as opposed to compiling the circuit).
-    // TODO: more doc on that
-    as_prover: bool,
+    /// Indication that we're running in prover mode.
+    /// In this mode, we do not want to create constraints.
+    // TODO: perhaps we should try to make the distinction between compile/runtime clearer
+    pub(crate) as_prover: bool,
 }
 
 //
@@ -209,6 +213,7 @@ where
         for cvar in cvars {
             match cvar {
                 CVar::Var(idx) => {
+                    dbg!(&self.private_input, self.num_public_inputs);
                     let val = self.private_input[idx - self.num_public_inputs];
                     values.push(val);
                 }
