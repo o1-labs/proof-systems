@@ -11,7 +11,7 @@ Table of content:
 
 There are three main algorithms to kimchi:
 
-* [Setup](#constraint-system-creation): takes a circuit and produces a prover index, and a verifier index.
+* [Setup](#setup): takes a circuit and produces a prover index, and a verifier index.
 * [Proof creation](#proof-creation): takes the prover index, and the execution trace of the circuit to produce a proof.
 * [Proof verification](#proof-verification): takes the verifier index and a proof to verify.
 
@@ -119,24 +119,24 @@ In this section we list these specifications, as well as the interfaces we make 
 Refer to the [specification on polynomial commitments](./poly-commitment.md).
 We make use of the following functions from that specification:
 
-- `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
-- `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
-- `PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof`
-- `PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool`
+* `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
+* `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
+* `PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof`
+* `PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool`
 
 ### Poseidon hash function
 
 Refer to the [specification on Poseidon](./poseidon.md).
 We make use of the following functions from that specification:
 
-- `Poseidon.init(params) -> FqSponge`
-- `Poseidon.update(field_elem)`
-- `Poseidon.finalize() -> FieldElem`
+* `Poseidon.init(params) -> FqSponge`
+* `Poseidon.update(field_elem)`
+* `Poseidon.finalize() -> FieldElem`
 
 specify the following functions on top:
 
-- `Poseidon.produce_challenge()` (TODO: uses the endomorphism)
-- `Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge`
+* `Poseidon.produce_challenge()` (TODO: uses the endomorphism)
+* `Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge`
 
 With the current parameters:
 
@@ -175,7 +175,9 @@ The different ranges of alpha are described as follows:
 As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
 ```
 
-TODO: linearization
+### Linearization
+
+TODO
 
 ### Permutation
 
@@ -199,11 +201,17 @@ In this section, we describe the tables kimchi supports, as well as the differen
 
 #### The Lookup Tables
 
-Kimchi currently supports a single lookup table:
+Kimchi currently supports two lookup tables:
 
 {sections.tables}
 
-**XOR**. {sections.xor}
+##### XOR
+
+{sections.table_xor}
+
+##### 12-bit Check
+
+{sections.table_12bit}
 
 #### The Lookup Selectors
 
@@ -259,14 +267,20 @@ TODO: for each gate describe how to create it?
 #### Foreign Field Multiplication
 
 {sections.foreign_field_mul}
+
 #### Xor
 
 {sections.xor16}
 
+### Gadgets
+
+Here we describe basic gadgets that we build using a combination of the gates described above.
+
 #### Not
 
 {sections.not_gadget}
-##### And
+
+#### And
 
 {sections.and_gadget}
 

@@ -27,7 +27,8 @@ and_gadget = "../../../kimchi/src/circuits/polynomials/and.rs"
 
 # lookup
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
-xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
+table_xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
+table_12bit = "../../../kimchi/src/circuits/lookup/tables/range_check.rs"
 lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 lookup_index = "../../../kimchi/src/circuits/lookup/index.rs"
 
