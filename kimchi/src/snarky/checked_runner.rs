@@ -243,15 +243,33 @@ where
         self.compute_inner(false, loc, to_compute_value)
     }
 
+    /// Computes a closure with `as_prover` set to true.
+    fn as_prover<T, FUNC>(&mut self, to_compute_value: FUNC) -> T::OutOfCircuit
+    where
+        T: SnarkyType<F>,
+        FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
+    {
+        let old_as_prover = self.as_prover;
+        self.as_prover = true;
+        let value = to_compute_value(self);
+        self.as_prover = old_as_prover;
+        value
+    }
+
     // TODO: make loc argument work
     fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: String, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
     {
+        // we're in witness generation mode
         if self.has_witness {
             // compute the value by running the closure
-            let value = to_compute_value(self);
+            // let old_as_prover = self.as_prover;
+            // self.as_prover = true;
+            // let value = to_compute_value(self);
+            // self.as_prover = old_as_prover;
+            let value = self.as_prover::<T, _>(to_compute_value);
 
             // convert the value into field elements
             let (fields, aux) = T::value_to_field_elements(&value);
@@ -259,7 +277,11 @@ where
 
             // convert each field element into a circuit var
             for field in fields {
-                let v = self.store_field_elt(field);
+                let v = if self.as_prover {
+                    CVar::Constant(field)
+                } else {
+                    self.store_field_elt(field)
+                };
                 field_vars.push(v);
             }
 
@@ -273,7 +295,9 @@ where
 
             // return the snarky type
             snarky_type
-        } else {
+        }
+        /* we're in constraint generation mode */
+        else {
             // create enough variables to store the given type
             let mut cvars = vec![];
             for _ in 0..T::SIZE_IN_FIELD_ELEMENTS {
@@ -334,16 +358,21 @@ where
     }
 
     /// Adds a list of [AnnotatedConstraint]s to the circuit.
+    // TODO: clean up all these add constraints functions
     pub fn add_constraints(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
-        if self.has_witness {
-            if self.eval_constraints {
-                for constraint in &constraints {
-                    constraint.check_constraint(self);
-                }
-            }
-        } else {
-            self.add_constraint_inner(constraints);
+        if self.as_prover {
+            // Don't add constraints as the prover, or the constraint system won't match!
+            return;
         }
+
+        if self.eval_constraints {
+            for constraint in &constraints {
+                // TODO: return an error here instead of panicking
+                constraint.check_constraint(self);
+            }
+        }
+
+        self.add_constraints_inner(constraints);
     }
 
     pub fn add_constraint(&mut self, constraint: Constraint<F>, annotation: Option<&'static str>) {
@@ -353,7 +382,7 @@ where
         }])
     }
 
-    fn add_constraint_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
+    fn add_constraints_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
         let cs = match &mut self.system {
             Some(cs) => cs,
             None => return, // TODO: why silent fail?
