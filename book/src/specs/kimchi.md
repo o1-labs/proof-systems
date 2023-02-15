@@ -1404,11 +1404,16 @@ lookup table that would have the same size as that of the Xor.
 For now, we are willing to pay this small overhead and produce AND gadget as follows:
 
 We observe that we can express bitwise addition as follows:
-$$ A + B = (A \oplus B) + 2 \cdot (A \& B) $$
+$$
+\begin{aligned}
+A + B = (A \oplus B) + 2 \cdot (A \& B)
+\end{aligned}
+$$
+
 where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
 In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
 Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
-$$ A \& B = \frac{A + B - (A \oplus B)}{2} $$
+$$A \& B = \frac{A + B - (A \oplus B)}{2}$$
 Let us define the following operations for better readability:
 
 ```text
