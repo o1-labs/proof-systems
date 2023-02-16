@@ -1,6 +1,5 @@
 //! This module implements permutation constraint polynomials.
 
-//~
 //~ The permutation constraints are the following 4 constraints:
 //~
 //~ The two sides of the coin (with $\text{shift}_0 = 1$):
@@ -39,7 +38,6 @@
 //~
 //~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
 //~
-
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -320,7 +318,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
         };
 
-        //
         Ok((perm, bnd))
     }
 
@@ -455,7 +452,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~ &\ (w_6(g^i) + \sigma_6 \cdot beta + \gamma)
         //~ \end{align}
         //~ $$
-        //~
         //~
         for j in 0..n - 3 {
             z[j + 1] = witness

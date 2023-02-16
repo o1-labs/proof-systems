@@ -11,7 +11,7 @@ Table of content:
 
 There are three main algorithms to kimchi:
 
-* [Setup](#constraint-system-creation): takes a circuit and produces a prover index, and a verifier index.
+* [Setup](#setup): takes a circuit and produces a prover index, and a verifier index.
 * [Proof creation](#proof-creation): takes the prover index, and the execution trace of the circuit to produce a proof.
 * [Proof verification](#proof-verification): takes the verifier index and a proof to verify.
 
@@ -119,24 +119,24 @@ In this section we list these specifications, as well as the interfaces we make 
 Refer to the [specification on polynomial commitments](./poly-commitment.md).
 We make use of the following functions from that specification:
 
-- `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
-- `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
-- `PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof`
-- `PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool`
+* `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
+* `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
+* `PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof`
+* `PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool`
 
 ### Poseidon hash function
 
 Refer to the [specification on Poseidon](./poseidon.md).
 We make use of the following functions from that specification:
 
-- `Poseidon.init(params) -> FqSponge`
-- `Poseidon.update(field_elem)`
-- `Poseidon.finalize() -> FieldElem`
+* `Poseidon.init(params) -> FqSponge`
+* `Poseidon.update(field_elem)`
+* `Poseidon.finalize() -> FieldElem`
 
 specify the following functions on top:
 
-- `Poseidon.produce_challenge()` (TODO: uses the endomorphism)
-- `Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge`
+* `Poseidon.produce_challenge()` (TODO: uses the endomorphism)
+* `Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge`
 
 With the current parameters:
 
@@ -175,10 +175,11 @@ The different ranges of alpha are described as follows:
 As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
 ```
 
-TODO: linearization
+### Linearization
+
+TODO
 
 ### Permutation
-
 
 The permutation constraints are the following 4 constraints:
 
@@ -309,7 +310,6 @@ z_2 = &\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
 \end{align}
 $$
 
-
 If computed correctly, we should have $z(g^{n-3}) = 1$.
 
 Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
@@ -334,7 +334,7 @@ In this section, we describe the tables kimchi supports, as well as the differen
 
 #### The Lookup Tables
 
-Kimchi currently supports a single lookup table:
+Kimchi currently supports two lookup tables:
 
 ```rs
 /// The table ID associated with the XOR lookup table.
@@ -342,11 +342,12 @@ pub const XOR_TABLE_ID: i32 = 0;
 
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
-
 ```
 
 
-**XOR**. The lookup table for 4-bit xor.
+##### XOR
+
+The lookup table for 4-bit xor.
 Note that it is constructed so that `(0, 0, 0)` is the last position in the table.
 
 This is because tables are extended to the full size of a column (essentially)
@@ -354,9 +355,15 @@ by padding them with their final value. And, having the value `(0, 0, 0)` here m
 that when we commit to this table and use the dummy value in the `lookup_sorted`
 columns, those entries that have the dummy value of
 
-$$0 = 0 + j * 0 + j^2 * 0$$
+$$0 = 0 + j*0 + j^2*0$$
 
 will translate into a scalar multiplication by 0, which is free.
+
+
+##### 12-bit Check
+
+The range check table is a single-column table containing the numbers from 0 to 2^12 (excluded).
+This is used to check that the value fits in 12 bits.
 
 
 #### The Lookup Selectors
@@ -369,7 +376,6 @@ will translate into a scalar multiplication by 0, which is free.
 
 #### Producing the sorted table as the prover
 
-
 Because of our ZK-rows, we can't do the trick in the plookup paper of
 wrapping around to enforce consistency between the sorted lookup columns.
 
@@ -377,8 +383,8 @@ Instead, we arrange the LookupSorted table into columns in a snake-shape.
 
 Like so,
 
-```
-_   _
+```text
+   _   _
 | | | | |
 | | | | |
 |_| |_| |
@@ -386,7 +392,7 @@ _   _
 
 or, imagining the full sorted array is `[ s0, ..., s8 ]`, like
 
-```
+```text
 s0 s4 s4 s8
 s1 s3 s5 s7
 s2 s2 s6 s6
@@ -394,7 +400,7 @@ s2 s2 s6 s6
 
 So the direction ("increasing" or "decreasing" (relative to LookupTable) is
 
-```
+```rs
 if i % 2 = 0 { Increasing } else { Decreasing }
 ```
 
@@ -402,7 +408,6 @@ Then, for each `i < max_lookups_per_row`, if `i % 2 = 0`, we enforce that the
 last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
 and if `i % 2 = 1`, we enforce that
 the first element of `LookupSorted(i) = first element of LookupSorted(i + 1)`.
-
 
 
 ### Gates
@@ -451,7 +456,7 @@ The constraints:
 * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
 * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
 
-where the $c_i$ are the [coefficients]().
+where the $c_i$ are the `coefficients`.
 
 
 #### Poseidon
@@ -496,29 +501,34 @@ are constrained to represent the 5 rounds of permutation.
 Each of the associated 15 registers is associated to a constraint, calculated as:
 
 first round:
-* $w_6 - [r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)]$
-* $w_7 - [r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)]$
-* $w_8 - [r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)]$
+
+* $w_6 - \left(r_0 + (M_{0, 0} w_0^S + M_{0, 1} w_1^S + M_{0, 2} w_2^S)\right)$
+* $w_7 - \left(r_1 + (M_{1, 0} w_0^S + M_{1, 1} w_1^S + M_{1, 2} w_2^S)\right)$
+* $w_8 - \left(r_2 + (M_{2, 0} w_0^S + M_{2, 1} w_1^S + M_{2, 2} w_2^S)\right)$
 
 second round:
-* $w_9 - [r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)]$
-* $w_{10} - [r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)]$
-* $w_{11} - [r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)]$
+
+* $w_9 - \left(r_3 + (M_{0, 0} w_6^S + M_{0, 1} w_7^S + M_{0, 2} w_8^S)\right)$
+* $w_{10} - \left(r_4 + (M_{1, 0} w_6^S + M_{1, 1} w_7^S + M_{1, 2} w_8^S)\right)$
+* $w_{11} - \left(r_5 + (M_{2, 0} w_6^S + M_{2, 1} w_7^S + M_{2, 2} w_8^S)\right)$
 
 third round:
-* $w_{12} - [r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)]$
-* $w_{13} - [r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)]$
-* $w_{14} - [r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)]$
+
+* $w_{12} - \left(r_6 + (M_{0, 0} w_9^S + M_{0, 1} w_{10}^S + M_{0, 2} w_{11}^S)\right)$
+* $w_{13} - \left(r_7 + (M_{1, 0} w_9^S + M_{1, 1} w_{10}^S + M_{1, 2} w_{11}^S)\right)$
+* $w_{14} - \left(r_8 + (M_{2, 0} w_9^S + M_{2, 1} w_{10}^S + M_{2, 2} w_{11}^S)\right)$
 
 fourth round:
-* $w_3 - [r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)]$
-* $w_4 - [r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)]$
-* $w_5 - [r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)]$
+
+* $w_3 - \left(r_9 + (M_{0, 0} w_{12}^S + M_{0, 1} w_{13}^S + M_{0, 2} w_{14}^S)\right)$
+* $w_4 - \left(r_{10} + (M_{1, 0} w_{12}^S + M_{1, 1} w_{13}^S + M_{1, 2} w_{14}^S)\right)$
+* $w_5 - \left(r_{11} + (M_{2, 0} w_{12}^S + M_{2, 1} w_{13}^S + M_{2, 2} w_{14}^S)\right)$
 
 fifth round:
-* $w_{0, next} - [r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)]$
-* $w_{1, next} - [r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)]$
-* $w_{2, next} - [r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)]$
+
+* $w_{0, next} - \left(r_{12} + (M_{0, 0} w_3^S + M_{0, 1} w_4^S + M_{0, 2} w_5^S)\right)$
+* $w_{1, next} - \left(r_{13} + (M_{1, 0} w_3^S + M_{1, 1} w_4^S + M_{1, 2} w_5^S)\right)$
+* $w_{2, next} - \left(r_{14} + (M_{2, 0} w_3^S + M_{2, 1} w_4^S + M_{2, 2} w_5^S)\right)$
 
 where $w_{i, next}$ is the polynomial $w_i(\omega x)$ which points to the next row.
 
@@ -532,15 +542,17 @@ The layout is
 | x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
 
 where
-- `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
-- `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
+
+* `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
+* `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
 
 The rest of the values are inaccessible from the permutation argument, but
-- `same_x` is a boolean that is true iff `x1 == x2`.
+`same_x` is a boolean that is true iff `x1 == x2`.
 
 The following constraints are generated:
 
 constraint 1:
+
 * $x_{0} = w_{2} - w_{0}$
 * $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$
 
@@ -597,21 +609,22 @@ for some functions `c_func` and `d_func`. If one works out what these functions 
 every input (thinking of a two-bit input as a number in $\{0, 1, 2, 3\}$), one finds they
 are given by
 
-`c_func(x)`, defined by
-- `c_func(0) = 0`
-- `c_func(1) = 0`
-- `c_func(2) = -1`
-- `c_func(3) = 1`
+* `c_func(x)`, defined by
+	 * `c_func(0) = 0`
+	 * `c_func(1) = 0`
+	 * `c_func(2) = -1`
+	 * `c_func(3) = 1`
 
-`d_func(x)`, defined by
-- `d_func(0) = -1`
-- `d_func(1) = 1`
-- `d_func(2) = 0`
-- `d_func(3) = 0`
+* `d_func(x)`, defined by
+	 * `d_func(0) = -1`
+	 * `d_func(1) = 1`
+	 * `d_func(2) = 0`
+	 * `d_func(3) = 0`
 
 One can then interpolate to find polynomials that implement these functions on $\{0, 1, 2, 3\}$.
 
 You can use [`sage`](https://www.sagemath.org/), as
+
 ```ignore
 R = PolynomialRing(QQ, 'x')
 c_func = R.lagrange_polynomial([(0, 0), (1, 0), (2, -1), (3, 1)])
@@ -625,6 +638,7 @@ Then, `c_func` is given by
 ```
 
 and `d_func` is given by
+
 ```ignore
 2/3 * x^3 - 7/2 * x^2 + 29/6 * x - 1 <=> c_func + (-x^2 + 3x - 1)
 ```
@@ -646,6 +660,7 @@ crumb(x)
 = x^4 - 6*x^3 + 11*x^2 - 6*x
 = x *(x^3 - 6*x^2 + 11*x - 6)
 ```
+
 Each iteration performs the following computations
 
 * Update $n$: $\quad n_{i+1} = 2 \cdot n_{i} + x_i$
@@ -661,9 +676,9 @@ Then, after the 8 iterations, we compute expected values of the above operations
 Putting together all of the above, these are the 11 constraints for this gate
 
 * Checking values after the 8 iterations:
-  * Constrain $n$: ` 0 = expected_n8 - n8`
-  * Constrain $a$: ` 0 = expected_a8 - a8`
-  * Constrain $b$: ` 0 = expected_b8 - b8`
+  * Constrain $n$: `0 = expected_n8 - n8`
+  * Constrain $a$: `0 = expected_a8 - a8`
+  * Constrain $b$: `0 = expected_b8 - b8`
 * Checking the crumbs, meaning each $x$ is indeed in the range $\{0, 1, 2, 3\}$:
   * Constrain $x_0$: `0 = x0 * ( x0^3 - 6 * x0^2 + 11 * x0 - 6 )`
   * Constrain $x_1$: `0 = x1 * ( x1^3 - 6 * x1^2 + 11 * x1 - 6 )`
@@ -681,9 +696,12 @@ Putting together all of the above, these are the 11 constraints for this gate
 We implement custom gate constraints for short Weierstrass curve
 endomorphism optimised variable base scalar multiplication.
 
-Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
-elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
-that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is represented by the set of points $(x,y)$
+that satisfy the following equation with
+$a,b\in\mathbb{F}_{q}$
+ and
+$4a^3+27b^2\neq_{\mathbb{F}_q} 0 $:
 $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
 If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
 operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
@@ -711,11 +729,11 @@ will store the current accumulated value and the next one for the check.
 
 For readability, we define the following variables for the constraints:
 
-  * `endo` $:=$ `EndoCoefficient`
-  * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
-  * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
-  * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
-  * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+* `endo` $:=$ `EndoCoefficient`
+* `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
+* `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
+* `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
+* `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
 
 These are the 11 constraints that correspond to each EVBSM gate,
 which take care of 4 bits of the scalar within a single EVBSM row:
@@ -741,16 +759,16 @@ The constraints above are derived from the following EC Affine arithmetic equati
 * (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
 * (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
 * (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
-    * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+  * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
 * (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
-    * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
+  * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
 *
 * (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
 * (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
 * (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
-    * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+  * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
 * (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
-    * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
+  * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
 
 Defining $s_2$ and $s_4$ as
 
@@ -762,7 +780,7 @@ Gives the following equations when substituting the values of $s_2$ and $s_4$:
 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
--
+
 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
@@ -822,9 +840,10 @@ for the operation $(P±T)+P$:
 
 `S = (P + (b ? T : −T)) + P`
 
-We follow this criteria:
-- If the bit is positive, the sign should be a subtraction
-- If the bit is negative, the sign should be an addition
+We follow these criteria:
+
+* If the bit is positive, the sign should be a subtraction
+* If the bit is negative, the sign should be an addition
 
 Then, paraphrasing the above, we will represent this behavior as:
 
@@ -848,9 +867,9 @@ In each step of the algorithm, we consider the following elliptic curves affine 
 For readability, we define the following 3 variables
 in such a way that $s_2$ can be expressed as `u / t`:
 
-  * `rx` $:= s_1^2 - x_i - x_t$
-  * `t` $:= x_i - $ `rx` $ \iff 2 \cdot x_i - s_1^2 + x_t$
-  * `u` $:= 2 \cdot y_i - $ `t` $\cdot s_1 \iff 2 \cdot y_i - s_1 \cdot (2\cdot x_i - s^2_1 + x_t)$
+* `rx` $:= s_1^2 - x_i - x_t$
+* `t` $:= x_i - $ `rx` $ \iff 2 \cdot x_i - s_1^2 + x_t$
+* `u` $:= 2 \cdot y_i - $ `t` $\cdot s_1 \iff 2 \cdot y_i - s_1 \cdot (2\cdot x_i - s^2_1 + x_t)$
 
 Next, for each bit in the algorithm, we create the following 4 constraints that derive from the above:
 
@@ -874,6 +893,7 @@ Finally, the additional constraint makes sure that the scalar is being correctly
 into its binary form (using the double-and-add decomposition) as:
 $$ n' = 2^5 \cdot n + 2^4 \cdot b_0 + 2^3 \cdot b_1 + 2^2 \cdot b_2 + 2^1 \cdot b_3 + b_4$$
 This equation is translated as the constraint:
+
 * Binary decomposition:
 `0 = n' - (b4 + 2 * (b3 + 2 * (b2 + 2 * (b1 + 2 * (b0 + 2*n)))))`
 
@@ -885,11 +905,12 @@ The multi range check gadget is comprised of three circuit gates (`RangeCheck0`,
 `RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
 v_1$ and $v_2$) of up to 88 bits each.
 
-Values can be copied as inputs to the multi range check gadget in two ways.
-  * [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
+Values can be copied as inputs to the multi range check gadget in two ways:
+
+* [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
     cells of the first 3 rows of the gadget.  In this mode the first gate
     coefficient is set to `0`.
-  * [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
+* [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
     row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
     In this mode the first gate coefficient is set to `1`.
 
@@ -897,6 +918,7 @@ The `RangeCheck0` gate can also be used on its own to perform 64-bit range check
 constraining witness cells 1-2 to zero.
 
 **Byte-order:**
+
 * Each cell value is in little-endian byte order
 * Limbs are mapped to columns in big-endian order (i.e. the lowest columns
   contain the highest bits)
@@ -904,9 +926,10 @@ constraining witness cells 1-2 to zero.
   we can copy the highest two constraints to zero and get a 64-bit lookup, which
   are envisioned to be a common case
 
-The values are decomposed into limbs as follows.
-- `L` is a 12-bit lookup (or copy) limb,
-- `C` is a 2-bit "crumb" limb (we call half a nybble a crumb).
+The values are decomposed into limbs as follows:
+
+* `L` is a 12-bit lookup (or copy) limb,
+* `C` is a 2-bit "crumb" limb (we call half a nybble a crumb).
 
 ```text
         <----6----> <------8------>
@@ -915,6 +938,7 @@ The values are decomposed into limbs as follows.
         <2> <--4--> <---------------18---------------->
    v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 ```
+
 **Witness structure:**
 
 | Row | Contents        |
@@ -938,7 +962,8 @@ some lookups of v0 and v1 to the final row.
 
 **Constraints:**
 
-For efficiency, the limbs are constrained differently according to their type.
+For efficiency, the limbs are constrained differently according to their type:
+
 * 12-bit limbs are constrained with plookups
 * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 
@@ -1000,7 +1025,8 @@ Different rows are constrained using different `CircuitGate` types
 * The rest of $v_0$ and $v_1$ are constrained by the lookups in the `Zero` gate row
 * This gate operates on the `Curr` row
 
-It uses three different types of constraints
+It uses three different types of constraints:
+
 * copy    - copy to another cell (12-bits)
 * plookup - plookup (12-bits)
 * crumb   - degree-4 constraint (2-bits)
@@ -1032,7 +1058,8 @@ where the notation `vpi` and `vci` defined in the "Layout" section above.
 * This circuit gate is used to fully constrain $v_2$
 * It operates on the `Curr` and `Next` rows
 
-It uses two different types of constraints
+It uses two different types of constraints:
+
 * plookup - plookup (12-bits)
 * crumb   - degree-4 constraint (2-bits)
 
@@ -1090,9 +1117,10 @@ left_input +/- right_input = field_overflow * foreign_modulus + result
 ```
 
 Note: Our limbs are 88-bit long. We denote with:
- - `lo` the least significant limb (in little-endian, this is from 0 to 87)
- - `mi` the middle limb            (in little-endian, this is from 88 to 175)
- - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
+
+* `lo` the least significant limb (in little-endian, this is from 0 to 87)
+* `mi` the middle limb            (in little-endian, this is from 88 to 175)
+* `hi` the most significant limb  (in little-endian, this is from 176 to 263)
 
 Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
 
@@ -1102,9 +1130,9 @@ Let `foreign_modulus_lo`, `foreign_modulus_mi`, `foreign_modulus_hi` be 88-bit l
 
 Then the limbs of the result are
 
-- `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
-- `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
-- `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
+* `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
+* `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
+* `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
 
 `field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
 
@@ -1115,15 +1143,17 @@ to make sure that the result is less than the modulus, by adding `2^{3*88} - for
  (This can be computed easily from the limbs of the modulus)
 Note that `2^{264}` as limbs represents: (0, 0, 0, 1) then:
 
-The upper-bound check can be calculated as
-- `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
-- `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
-- `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
+The upper-bound check can be calculated as:
+
+* `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
+* `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+* `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
 
 Which is equivalent to another foreign field addition with right input 2^{264}, q = 1 and s = 1
-- `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
-- `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
-- `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
+
+* `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
+* `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+* `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
 
 `bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
 
@@ -1172,8 +1202,8 @@ the savings of one row and a few constraints of difference.
 
 ##### Integration
 
-- Copy final overflow bit from public input containing value 1
- - Range check the final bound
+* Copy final overflow bit from public input containing value 1
+ * Range check the final bound
 
 
 
@@ -1269,6 +1299,102 @@ The foreign field multiplication gate's rows are laid out like this
 |  14 |                              |                           |
 
 
+
+#### Rotation
+
+Rotation of a 64-bit word by a known offset
+`Rot64` onstrains known-length rotation of 64-bit words:
+
+* This circuit gate is used to constrain that a 64-bit word is rotated by $r < 64$ bits to the "left".
+* The rotation is performed towards the most significant side (thus, the new LSB is fed with the old MSB).
+* This gate operates on the `Curr` and `Next` rows.
+
+The idea is to split the rotation operation into two parts:
+
+* Shift to the left
+* Add the excess bits to the right
+
+We represent shifting with multiplication modulo $2^{64}$. That is, for each word to be rotated, we provide in
+the witness a quotient and a remainder, similarly to `ForeignFieldMul` such that the following operation holds:
+
+$$word \cdot 2^{rot} = quotient \cdot 2^{64} + remainder$$
+
+Then, the remainder corresponds to the shifted word, and the quotient corresponds to the excess bits.
+
+$$word \cdot 2^{rot} = excess \cdot 2^{64} + shifted$$
+
+Thus, in order to obtain the rotated word, we need to add the quotient and the remainder as follows:
+
+$$rotated = shifted + excess$$
+
+The input word is known to be of length 64 bits. All we need for soundness is check that the shifted and
+excess parts of the word have the correct size as well. That means, we need to range check that:
+
+$$
+\begin{aligned}
+excess &< 2^{rot}\\
+shifted &< 2^{64}
+\end{aligned}
+$$
+
+The latter can be obtained with a `RangeCheck0` gate setting the two most significant limbs to zero.
+The former is equivalent to the following check:
+
+$$bound = excess - 2^{rot} + 2^{64} < 2^{64}$$
+
+which is doable with the constraints in a `RangeCheck0` gate. Since our current row within the `Rot64` gate
+is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
+and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
+
+| Gate   | `Rot64`             | `RangeCheck0`    |
+| ------ | ------------------- | ---------------- |
+| Column | `Curr`              | `Next`           |
+| ------ | ------------------- | ---------------- |
+|      0 | copy `word`         |`shifted`         |
+|      1 | copy `rotated`      | 0                |
+|      2 |      `excess`       | 0                |
+|      3 |      `bound_limb0`  | `shifted_limb0`  |
+|      4 |      `bound_limb1`  | `shifted_limb1`  |
+|      5 |      `bound_limb2`  | `shifted_limb2`  |
+|      6 |      `bound_limb3`  | `shifted_limb3`  |
+|      7 |      `bound_crumb0` | `shifted_crumb0` |
+|      8 |      `bound_crumb1` | `shifted_crumb1` |
+|      9 |      `bound_crumb2` | `shifted_crumb2` |
+|     10 |      `bound_crumb3` | `shifted_crumb3` |
+|     11 |      `bound_crumb4` | `shifted_crumb4` |
+|     12 |      `bound_crumb5` | `shifted_crumb5` |
+|     13 |      `bound_crumb6` | `shifted_crumb6` |
+|     14 |      `bound_crumb7` | `shifted_crumb7` |
+
+In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
+to perform the rotation are fixed, public, and known in advance, according to the following table,
+depending on the coordinate of each cell within the 5x5 matrix state:
+
+| y \ x |   0 |   1 |   2 |   3 |   4 |
+| ----- | --- | --- | --- | --- | --- |
+| 0     |   0 |  36 |   3 | 105 | 210 |
+| 1     |   1 | 300 |  10 |  45 |  66 |
+| 2     | 190 |   6 | 171 |  15 | 253 |
+| 3     |  28 |  55 | 153 |  21 | 120 |
+| 4     |  91 | 276 | 231 | 136 |  78 |
+
+But since we will always be using 64-bit words in our Keccak usecase ($w = 64$), we can have an equivalent
+table with these values modulo 64 to avoid needing multiple passes of the rotation gate (a single step would
+cause overflows otherwise):
+
+| y \ x |   0 |   1 |   2 |   3 |   4 |
+| ----- | --- | --- | --- | --- | --- |
+| 0     |   0 |  36 |   3 |  41 |  18 |
+| 1     |   1 |  44 |  10 |  45 |   2 |
+| 2     |  62 |   6 |  43 |  15 |  61 |
+| 3     |  28 |  55 |  25 |  21 |  56 |
+| 4     |  27 |  20 |  39 |   8 |  14 |
+
+Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
+gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
+
+
+
 #### Xor
 
 `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
@@ -1277,7 +1403,8 @@ The foreign field multiplication gate's rows are laid out like this
 * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
 * This gate operates on the `Curr` and `Next` rows.
 
-It uses three different types of constraints
+It uses three different types of constraints:
+
 * copy          - copy to another cell (32-bits)
 * plookup       - xor-table plookup (4-bits)
 * decomposition - the constraints inside the gate
@@ -1323,13 +1450,17 @@ use the 8-bit XOR table.
 ```
 
 
+### Gadgets
+
+Here we describe basic gadgets that we build using a combination of the gates described above.
+
 #### Not
 
 We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
 
- The first version of the NOT gadget reuses `Xor16` by making the following observation: __the bitwise NOT operation is equivalent to the
-bitwise XOR operation with the all one words of a certain length__. In other words,
-$$ \neg x = x \oplus 1^* $$
+ The first version of the NOT gadget reuses `Xor16` by making the following observation: *the bitwise NOT operation is equivalent to the
+bitwise XOR operation with the all one words of a certain length*. In other words,
+$$\neg x = x \oplus 1^*$$
 where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
 XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
  with $1^*$ is equivalent to bitwise negation (i.e. NOT).
@@ -1343,7 +1474,7 @@ or the output of a previous XOR gadget (which will be the case in our Keccak use
 In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
 This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
 
-** NOT Layout using XOR **
+##### NOT Layout using XOR
 
 Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
 follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
@@ -1354,7 +1485,7 @@ follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\c
 | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
 | i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 
-** NOT Layout using Generic gates **
+##### NOT Layout using Generic gates
 
 Here we show the layout of the NOT gadget using the Generic approach. The gadget needs a row with a public input containing the all-one word of the given length, exactly as above.
 Then, one Generic gate reusing the all-one word as left inputs can be used to negate up to two words per row. This approach requires that the input word is known (or constrained)
@@ -1366,7 +1497,8 @@ to have a given length.
 | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 
 
-##### And
+
+#### And
 
 We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
 add an `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
@@ -1374,31 +1506,37 @@ lookup table that would have the same size as that of the Xor.
 For now, we are willing to pay this small overhead and produce AND gadget as follows:
 
 We observe that we can express bitwise addition as follows:
-$$ A + B = (A \oplus B) + 2 \cdot (A \& B) $$
-where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
+$$A + B = (A \oplus B) + 2 \cdot (A \wedge B)$$
+
+where $\oplus$ is the bitwise XOR operation, $\wedge$ is the bitwise AND operation, and $+$ is the addition operation.
 In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
 Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
-$$ A \& B = \frac{A + B - (A \oplus B)}{2} $$
+$$A \wedge B = \frac{A + B - (A \oplus B)}{2}$$
 Let us define the following operations for better readability:
-```
+
+```text
  a + b = sum
-a ^ b = xor
-a & b = and
+a x b = xor
+a ^ b = and
 ```
+
 Then, we can rewrite the above equation as follows:
 $$ 2 \cdot and = sum - xor $$
 which can be expressed as a double generic gate.
 
 Then, our AND gadget for $n$ bytes looks as follows:
+
 * $n/8$ Xor16 gates
 * 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
 * 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
 
 Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
+
 * Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
 * Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
 Meaning,
-* the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
+
+* the `xor` in `a x b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
 * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
 
@@ -1526,10 +1664,10 @@ To create the index, follow these steps:
 
    To do this, for each table:
 
-	- Update the corresponding entries in a table id vector (of size the domain as well)
+	* Update the corresponding entries in a table id vector (of size the domain as well)
    with the table ID of the table.
-	- Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
-	- Fill in any unused columns with 0 (to match the dummy value)
+	* Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+	* Fill in any unused columns with 0 (to match the dummy value)
 6. Pad the end of the concatened table with the dummy value.
 7. Pad the end of the table id vector with 0s.
 8. pre-compute polynomial and evaluation form for the look up tables
@@ -1954,32 +2092,32 @@ The prover then follows the following steps to create the proof:
    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
    0 entries and entries that have less-than-full-size field elemnts.)
 1. If using lookup:
-	- if using runtime table:
-		- check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+	* if using runtime table:
+		* check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
 		  we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
-		- calculate the contribution to the second column of the lookup table
+		* calculate the contribution to the second column of the lookup table
 		  (the runtime vector)
-	- If queries involve a lookup table with multiple columns
+	* If queries involve a lookup table with multiple columns
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
-	- Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
-	- If multiple lookup tables are involved,
+	* Derive the scalar joint combiner $j$ from $j'$ using the endomorphism (TOOD: specify)
+	* If multiple lookup tables are involved,
 	  set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
 	  Essentially, this is to add a last column of table ids to the concatenated lookup tables.
-	- Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+	* Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
 	  Warning: This assumes that we always use the XOR table when using lookups.
-	- Compute the lookup table values as the combination of the lookup table entries.
-	- Compute the sorted evaluations.
-	- Randomize the last `EVALS` rows in each of the sorted polynomials
+	* Compute the lookup table values as the combination of the lookup table entries.
+	* Compute the sorted evaluations.
+	* Randomize the last `EVALS` rows in each of the sorted polynomials
 	  in order to add zero-knowledge to the protocol.
-	- Commit each of the sorted polynomials.
-	- Absorb each commitments to the sorted polynomials.
+	* Commit each of the sorted polynomials.
+	* Absorb each commitments to the sorted polynomials.
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
 1. If using lookup:
-	- Compute the lookup aggregation polynomial.
-	- Commit to the aggregation polynomial.
-	- Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+	* Compute the lookup aggregation polynomial.
+	* Commit to the aggregation polynomial.
+	* Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 1. Compute the permutation aggregation polynomial $z$.
 1. Commit (hidding) to the permutation aggregation polynomial $z$.
 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
@@ -1988,10 +2126,10 @@ The prover then follows the following steps to create the proof:
 1. TODO: instantiate alpha?
 1. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
    The quotient polynomial is computed by adding all these polynomials together:
-	- the combined constraints for all the gates
-	- the combined constraints for the permutation
-	- TODO: lookup
-	- the negated public polynomial
+	* the combined constraints for all the gates
+	* the combined constraints for the permutation
+	* TODO: lookup
+	* the negated public polynomial
    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
    TODO: specify the split of the permutation polynomial into perm and bnd?
 1. commit (hiding) to the quotient polynomial $t$
@@ -2000,16 +2138,16 @@ The prover then follows the following steps to create the proof:
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-	- the aggregation polynomial
-	- the sorted polynomials
-	- the table polynonial
+	* the aggregation polynomial
+	* the sorted polynomials
+	* the table polynonial
 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
-	- $s_i$
-	- $w_i$
-	- $z$
-	- lookup (TODO)
-	- generic selector
-	- poseidon selector
+	* $s_i$
+	* $w_i$
+	* $z$
+	* lookup (TODO)
+	* generic selector
+	* poseidon selector
 
    By "chunk evaluate" we mean that the evaluation of each polynomial can potentially be a vector of values.
    This is because the index's `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
@@ -2026,7 +2164,7 @@ The prover then follows the following steps to create the proof:
 1. Compute the ft polynomial.
    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
 1. construct the blinding part of the ft polynomial commitment
-   see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
+   [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
 1. Evaluate the ft polynomial at $\zeta\omega$ only.
 1. Setup the Fr-Sponge
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
@@ -2035,12 +2173,12 @@ The prover then follows the following steps to create the proof:
 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-	- the public polynomial
-	- z
-	- generic selector
-	- poseidon selector
-	- the 15 register/witness
-	- 6 sigmas evaluations (the last one is not evaluated)
+	* the public polynomial
+	* z
+	* generic selector
+	* poseidon selector
+	* the 15 register/witness
+	* 6 sigmas evaluations (the last one is not evaluated)
 1. Sample $v'$ with the Fr-Sponge
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify)
 1. Sample $u'$ with the Fr-Sponge
@@ -2049,19 +2187,19 @@ The prover then follows the following steps to create the proof:
    (and evaluation proofs) in the protocol.
    First, include the previous challenges, in case we are in a recursive prover.
 1. Then, include:
-	- the negated public polynomial
-	- the ft polynomial
-	- the permutation aggregation polynomial z polynomial
-	- the generic selector
-	- the poseidon selector
-	- the 15 registers/witness columns
-	- the 6 sigmas
-	- optionally, the runtime table
+	* the negated public polynomial
+	* the ft polynomial
+	* the permutation aggregation polynomial z polynomial
+	* the generic selector
+	* the poseidon selector
+	* the 15 registers/witness columns
+	* the 6 sigmas
+	* optionally, the runtime table
 1. if using lookup:
-	- add the lookup sorted polynomials
-	- add the lookup aggreg polynomial
-	- add the combined table polynomial
-	- if present, add the runtime table polynomial
+	* add the lookup sorted polynomials
+	* add the lookup aggreg polynomial
+	* add the combined table polynomial
+	* if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
@@ -2082,12 +2220,12 @@ We run the following algorithm:
 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
 1. Absorb the commitments to the registers / witness columns with the Fq-Sponge.
 1. If lookup is used:
-	- If it involves queries to a multiple-column lookup table,
+	* If it involves queries to a multiple-column lookup table,
 	  then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
 	  otherwise set the joint combiner challenge $j'$ to $0$.
-	- Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+	* Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
 	  (TODO: specify endomorphism)
-	- absorb the commitments to the sorted polynomials.
+	* absorb the commitments to the sorted polynomials.
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
@@ -2107,12 +2245,12 @@ We run the following algorithm:
    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-	- the public polynomial
-	- z
-	- generic selector
-	- poseidon selector
-	- the 15 register/witness
-	- 6 sigmas evaluations (the last one is not evaluated)
+	* the public polynomial
+	* z
+	* generic selector
+	* poseidon selector
+	* the 15 register/witness
+	* 6 sigmas evaluations (the last one is not evaluated)
 1. Sample $v'$ with the Fr-Sponge.
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
 1. Sample $u'$ with the Fr-Sponge.
@@ -2132,7 +2270,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 1. Combine the chunked polynomials' evaluations
    (TODO: most likely only the quotient polynomial is chunked)
    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
-4. Compute the commitment to the linearized polynomial $f$.
+1. Compute the commitment to the linearized polynomial $f$.
    To do this, add the constraints of all of the gates, of the permutation,
    and optionally of the lookup.
    (See the separate sections in the [constraints](#constraints) section.)
@@ -2144,15 +2282,16 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
    (see [Maller's optimization](../crypto/plonk/maller_15.html)).
 1. List the polynomial commitments, and their associated evaluations,
    that are associated to the aggregated evaluation proof in the proof:
-	- recursion
-	- public input commitment
-	- ft commitment (chunks of it)
-	- permutation commitment
-	- index commitments that use the coefficients
-	- witness commitments
-	- coefficient commitments
-	- sigma commitments
-	- lookup commitments
+	* recursion
+	* public input commitment
+	* ft commitment (chunks of it)
+	* permutation commitment
+	* index commitments that use the coefficients
+	* witness commitments
+	* coefficient commitments
+	* sigma commitments
+	* lookup commitments
+
 #### Batch verification of proofs
 
 Below, we define the steps to verify a number of proofs

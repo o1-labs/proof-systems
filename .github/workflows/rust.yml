@@ -33,6 +33,10 @@ jobs:
           toolchain: "1.67.0"
           components: rustfmt, clippy
 
+      - name: Install markdownlint
+        run: |
+          npm install -g markdownlint-cli
+
       # https://github.com/Swatinem/rust-cache
       - name: Cache Rust stuff
         uses: Swatinem/rust-cache@v1

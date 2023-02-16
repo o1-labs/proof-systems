@@ -22,12 +22,14 @@ range_check = "../../../kimchi/src/circuits/polynomials/range_check/circuitgates
 foreign_field_add = "../../../kimchi/src/circuits/polynomials/foreign_field_add/circuitgates.rs"
 foreign_field_mul = "../../../kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs"
 xor16 = "../../../kimchi/src/circuits/polynomials/xor.rs"
+rot64 = "../../../kimchi/src/circuits/polynomials/rot.rs"
 not_gadget = "../../../kimchi/src/circuits/polynomials/not.rs"
 and_gadget = "../../../kimchi/src/circuits/polynomials/and.rs"
 
 # lookup
 tables = "../../../kimchi/src/circuits/lookup/tables/mod.rs"
-xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
+table_xor = "../../../kimchi/src/circuits/lookup/tables/xor.rs"
+table_12bit = "../../../kimchi/src/circuits/lookup/tables/range_check.rs"
 lookup = "../../../kimchi/src/circuits/lookup/constraints.rs"
 lookup_index = "../../../kimchi/src/circuits/lookup/index.rs"
 
