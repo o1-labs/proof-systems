@@ -1,15 +1,13 @@
 // Build script
 
-use std::process::Command;
+use cargo_spec::build::{self, OutputFormat};
 
 fn main() {
     // Rebuild specification
-    assert!(
-        Command::new("make")
-            .args(["-C", "../book/specifications/kimchi", "build"])
-            .status()
-            .expect("failed to get status")
-            .success(),
-        "failed to generate specification markdown"
-    );
+    build::build(
+        "../book/specifications/kimchi/Specification.toml".into(),
+        Some("../book/src/specs/kimchi.md".into()),
+        OutputFormat::Markdown,
+    )
+    .expect("failed to generate specification");
 }
