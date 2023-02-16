@@ -268,6 +268,10 @@ TODO: for each gate describe how to create it?
 
 {sections.foreign_field_mul}
 
+#### Rotation
+
+{sections.rot64}
+
 #### Xor
 
 {sections.xor16}
