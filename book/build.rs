@@ -1,0 +1,4 @@
+// Build script
+
+fn main() {
+}

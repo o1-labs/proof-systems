@@ -2,8 +2,9 @@
 name = "book"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
-[dependencies]
+[build-dependencies]
 make = "0.0.0"
 mdbook = "0.4.27"
 mdbook-admonish = "1.8.0"
