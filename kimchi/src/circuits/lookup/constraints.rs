@@ -7,7 +7,7 @@ use crate::{
         },
         wires::COLUMNS,
     },
-    constants::ZK_ROWS,
+    constants::EVALS,
     error::ProverError,
 };
 use ark_ff::{FftField, One, PrimeField, Zero};
@@ -20,6 +20,12 @@ use std::collections::HashMap;
 use CurrOrNext::{Curr, Next};
 
 use super::runtime_tables;
+
+/// Number of constraints produced by the argument.
+pub const CONSTRAINTS: u32 = 7;
+
+/// The number of random values to append to columns for zero-knowledge.
+pub const ZK_ROWS: u64 = EVALS + 1;
 
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.

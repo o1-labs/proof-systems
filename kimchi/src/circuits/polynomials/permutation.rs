@@ -46,7 +46,7 @@ use crate::{
         polynomial::WitnessOverDomains,
         wires::{Wire, COLUMNS, PERMUTS},
     },
-    constants::ZK_ROWS,
+    constants::EVALS,
     curve::KimchiCurve,
     error::ProverError,
     proof::{PointEvaluations, ProofEvaluations},
@@ -63,6 +63,19 @@ use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::array;
+
+/// Number of constraints produced by the argument.
+pub const CONSTRAINTS: u32 = 3;
+
+/// The permutation constraint should not apply on the final row  
+/// (not including [ZK_ROWS] otherwise it will wrap around.  
+/// We only need to check the final value of the permutation accumulator  
+/// on the final row.  
+/// Ref: https://o1-labs.github.io/proof-systems/plonk/zkpm.html
+pub const PERM_FINAL_ACC: u64 = 1;
+
+/// The number of rows that are added to a witness/circuit in order to provide zero-knowledge.
+pub const ZK_ROWS: u64 = EVALS + PERM_FINAL_ACC;
 
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})

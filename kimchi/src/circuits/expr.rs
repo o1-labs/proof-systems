@@ -2821,10 +2821,12 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
-            polynomials::generic::GenericGateSpec, wires::Wire,
+            constraints::ConstraintSystem,
+            expr::constraints::ExprOps,
+            gate::CircuitGate,
+            polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
+            wires::Wire,
         },
-        constants::ZK_ROWS,
         curve::KimchiCurve,
         prover_index::ProverIndex,
     };

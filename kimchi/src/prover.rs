@@ -13,6 +13,7 @@ use crate::{
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic,
+            permutation::{CONSTRAINTS, ZK_ROWS},
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
@@ -21,7 +22,6 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
-    constants::{PERM_CONSTRAINTS, ZK_ROWS},
     curve::KimchiCurve,
     error::ProverError,
     lagrange_basis_evaluations::LagrangeBasisEvaluations,
@@ -692,7 +692,7 @@ where
             };
             // permutation
             let (mut t8, bnd) = {
-                let alphas = all_alphas.get_alphas(ArgumentType::Permutation, PERM_CONSTRAINTS);
+                let alphas = all_alphas.get_alphas(ArgumentType::Permutation, CONSTRAINTS);
                 let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
 
                 check_constraint!(index, perm);
@@ -978,7 +978,7 @@ where
                 // the constraint system struct
 
                 // permutation (not part of linearization yet)
-                let alphas = all_alphas.get_alphas(ArgumentType::Permutation, PERM_CONSTRAINTS);
+                let alphas = all_alphas.get_alphas(ArgumentType::Permutation, CONSTRAINTS);
                 let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
 
                 // the circuit polynomial

@@ -7,6 +7,7 @@ use crate::circuits::lookup::{
     constraints::LookupConfiguration,
     lookups::{LookupFeatures, LookupInfo, LookupPatterns},
 };
+use crate::circuits::polynomials::permutation;
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
@@ -27,7 +28,6 @@ use crate::circuits::{
     gate::GateType,
     wires::COLUMNS,
 };
-use crate::constants::PERM_CONSTRAINTS;
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
 /// Get the expresion of constraints.
@@ -152,7 +152,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     // permutation
-    powers_of_alpha.register(ArgumentType::Permutation, PERM_CONSTRAINTS);
+    powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
     // lookup
     if let Some(feature_flags) = feature_flags {

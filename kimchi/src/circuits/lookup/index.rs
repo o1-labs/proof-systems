@@ -1,15 +1,12 @@
 use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
-use crate::{
-    circuits::{
-        domains::EvaluationDomains,
-        gate::CircuitGate,
-        lookup::{
-            constraints::LookupConfiguration,
-            lookups::{LookupInfo, LookupPattern},
-            tables::LookupTable,
-        },
+use crate::circuits::{
+    domains::EvaluationDomains,
+    gate::CircuitGate,
+    lookup::{
+        constraints::{LookupConfiguration, ZK_ROWS},
+        lookups::{LookupInfo, LookupPattern},
+        tables::LookupTable,
     },
-    constants::ZK_ROWS,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{

@@ -2,7 +2,7 @@
 
 use crate::circuits::domains::EvaluationDomains;
 use crate::circuits::polynomials::permutation::zk_polynomial;
-use crate::constants::ZK_ROWS;
+use crate::circuits::polynomials::permutation::ZK_ROWS;
 use ark_ff::FftField;
 use ark_poly::EvaluationDomain;
 use ark_poly::UVPolynomial;
