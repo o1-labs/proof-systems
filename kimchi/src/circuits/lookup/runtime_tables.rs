@@ -21,6 +21,7 @@ pub struct RuntimeTableSpec {
 /// Use this type at setup time, to list all the runtime tables.
 ///
 /// Note: care must be taken as table IDs can collide with IDs of other types of lookup tables.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RuntimeTableCfg<F> {
     /// An indexed runtime table has a counter (starting at zero) in its first column.
     Indexed(RuntimeTableSpec),
