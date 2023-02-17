@@ -574,7 +574,7 @@ fn verify_range_check0_v0_test_lookups() {
     );
 
     let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates.clone())
+        .gates(index.cs.gates)
         .setup();
 
     for i in 3..=6 {
@@ -627,7 +627,7 @@ fn verify_range_check0_v1_test_lookups() {
     );
 
     let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates.clone())
+        .gates(index.cs.gates)
         .setup();
 
     for i in 3..=6 {
@@ -981,7 +981,7 @@ fn verify_range_check1_test_curr_row_lookups() {
     );
 
     let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates.clone())
+        .gates(index.cs.gates)
         .setup();
 
     for i in 3..=6 {
@@ -1030,7 +1030,7 @@ fn verify_range_check1_test_next_row_lookups() {
     );
 
     let test_runner = TestFramework::<Vesta>::default()
-        .gates(index.cs.gates.clone())
+        .gates(index.cs.gates)
         .setup();
 
     for row in 0..=1 {
