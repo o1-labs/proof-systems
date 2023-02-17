@@ -189,7 +189,6 @@ fn test_prove_and_verify_xor() {
     assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![xor::lookup_table()])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .is_ok());
@@ -382,7 +381,6 @@ fn test_bad_xor() {
         TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)
-            .lookup_tables(vec![xor::lookup_table()])
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
         Err(String::from(

@@ -309,7 +309,6 @@ fn test_prove_and_verify_not_xor() {
         .public_inputs(vec![
             PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
         ])
-        .lookup_tables(vec![xor::lookup_table()])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .is_ok());
@@ -478,7 +477,6 @@ fn test_bad_not_xor() {
         TestFramework::<Vesta>::default()
             .gates(cs.gates)
             .witness(witness)
-            .lookup_tables(vec![xor::lookup_table()])
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
         Err(String::from(
