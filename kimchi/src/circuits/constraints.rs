@@ -660,10 +660,10 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 .iter()
                 .map(
                     |LookupTable { data, id: _ }| {
-                        if data.len() > 0 {
-                            data[0].len()
-                        } else {
+                        if data.is_empty() {
                             0
+                        } else {
+                            data[0].len()
                         }
                     },
                 )
