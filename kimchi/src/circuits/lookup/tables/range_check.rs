@@ -20,3 +20,5 @@ where
         data: table,
     }
 }
+
+pub const TABLE_SIZE: usize = RANGE_CHECK_UPPERBOUND as usize;
