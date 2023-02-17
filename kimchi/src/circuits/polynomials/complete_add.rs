@@ -7,11 +7,12 @@
 //~ | x1 | y1 | x2 | y2 | x3 | y3 | inf | same_x | s | inf_z | x21_inv |
 //~
 //~ where
-//~ - `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
-//~ - `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
+//~
+//~ * `(x1, y1), (x2, y2)` are the inputs and `(x3, y3)` the output.
+//~ * `inf` is a boolean that is true iff the result (x3, y3) is the point at infinity.
 //~
 //~ The rest of the values are inaccessible from the permutation argument, but
-//~ - `same_x` is a boolean that is true iff `x1 == x2`.
+//~ `same_x` is a boolean that is true iff `x1 == x2`.
 //~
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
@@ -36,6 +37,7 @@ fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
 //~ The following constraints are generated:
 //~
 //~ constraint 1:
+//~
 //~ * $x_{0} = w_{2} - w_{0}$
 //~ * $(w_{10} \cdot x_{0} - \mathbb{F}(1) - w_{7})$
 //~

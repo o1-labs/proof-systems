@@ -7,7 +7,6 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
         polynomials::{foreign_field_add::witness::FFOps, foreign_field_mul, range_check},
-        wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -156,12 +155,6 @@ where
         external_checks.extend_witness_compact_multi_range_checks(&mut witness);
     }
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
     let runner = if full {
         // Create prover index with test framework
         Some(
@@ -169,7 +162,6 @@ where
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
                 .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup(),
         )
     } else {
@@ -227,7 +219,6 @@ where
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
                 .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup()
                 .prove_and_verify::<EFqSponge, EFrSponge>()
             {

@@ -11,7 +11,7 @@ Table of content:
 
 There are three main algorithms to kimchi:
 
-* [Setup](#constraint-system-creation): takes a circuit and produces a prover index, and a verifier index.
+* [Setup](#setup): takes a circuit and produces a prover index, and a verifier index.
 * [Proof creation](#proof-creation): takes the prover index, and the execution trace of the circuit to produce a proof.
 * [Proof verification](#proof-verification): takes the verifier index and a proof to verify.
 
@@ -25,10 +25,10 @@ The following tables are created to describe the circuit:
 The columns of the tables list the gates, while the rows are the length of the circuit.
 For each row, only a single gate can take a value $1$ while all other gates take the value $0$.
 
-|  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar | ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal |
-| :---: | :-----: | :------: | :---------: | :--------: | :-----: | :-----------: | :-----: | :-----: | :-----: | :---------: |
-|   0   |    1    |    0     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
-|   1   |    0    |    1     |      0      |     0      |    0    |       0       |    0    |    0    |    0    |      0      |
+|  row  | Generic | Poseidon | CompleteAdd | VarBaseMul | EndoMul | EndoMulScalar |
+| :---: | :-----: | :------: | :---------: | :--------: | :-----: | :-----------: |
+|   0   |    1    |    0     |      0      |     0      |    0    |       0       |
+|   1   |    0    |    1     |      0      |     0      |    0    |       0       |
 
 **Coefficients**. The coefficient table has 15 columns, and is used to tweak the gates.
 Currently, only the [Generic](#double-generic-gate) and the [Poseidon](#poseidon) gates use it (refer to their own sections to see how).
@@ -67,14 +67,14 @@ In the case where you would want to use lookups, the following tables would be n
 
 **Lookup selectors**. A lookup selector is used to perform a number of queries in different lookup tables. Any gate can advertise its use of a lookup selector (so a lookup selector can be associated to several gates), and on which rows they want to use them (current and/or next). In cases where a gate need to use lookups in its current row only, and is the only one performing a specific combination of queries, then its gate selector can be used in place of a lookup selector. As with gates, lookup selectors (including gates used as lookup selectors) are mutually exclusives (only one can be used on a given row).
 
-We currently have two lookup selectors:
+For example, suppose we have two lookup selectors:
 
 |  row  | ChaChaQuery | ChaChaFinalQuery |
 | :---: | :---------: | :--------------: |
 |   0   |      0      |        0         |
 |   1   |      1      |        0         |
 
-Where each apply 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
+Where each applies 4 queries. A query is a table describing which lookup table it queries, and the linear combination of the witness to use in the query.
 For example, the following table describes a query into the XOR table made out of linear combinations of registers (checking that $r_0 \oplus r_2 = 2 \cdot r_1$):
 
 | table_id |   l   |   r   |   o   |
@@ -119,24 +119,24 @@ In this section we list these specifications, as well as the interfaces we make 
 Refer to the [specification on polynomial commitments](./poly-commitment.md).
 We make use of the following functions from that specification:
 
-- `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
-- `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
-- `PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof`
-- `PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool`
+* `PolyCom.non_hiding_commit(poly) -> PolyCom::NonHidingCommitment`
+* `PolyCom.commit(poly) -> PolyCom::HidingCommitment`
+* `PolyCom.evaluation_proof(poly, commitment, point) -> EvaluationProof`
+* `PolyCom.verify(commitment, point, evaluation, evaluation_proof) -> bool`
 
 ### Poseidon hash function
 
 Refer to the [specification on Poseidon](./poseidon.md).
 We make use of the following functions from that specification:
 
-- `Poseidon.init(params) -> FqSponge`
-- `Poseidon.update(field_elem)`
-- `Poseidon.finalize() -> FieldElem`
+* `Poseidon.init(params) -> FqSponge`
+* `Poseidon.update(field_elem)`
+* `Poseidon.finalize() -> FieldElem`
 
 specify the following functions on top:
 
-- `Poseidon.produce_challenge()` (TODO: uses the endomorphism)
-- `Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge`
+* `Poseidon.produce_challenge()` (TODO: uses the endomorphism)
+* `Poseidon.to_fr_sponge() -> state_of_fq_sponge_before_eval, FrSponge`
 
 With the current parameters:
 
@@ -175,7 +175,9 @@ The different ranges of alpha are described as follows:
 As gates are mutually exclusive (a single gate is used on each row), we can reuse the same range of powers of alpha across all the gates.
 ```
 
-TODO: linearization
+### Linearization
+
+TODO
 
 ### Permutation
 
@@ -193,21 +195,23 @@ Similarly to the generic gate, each values taking part in a lookup can be scaled
 The lookup functionality is an opt-in feature of kimchi that can be used by custom gates.
 From the user's perspective, not using any gates that make use of lookups means that the  feature will be disabled and there will be no overhead to the protocol.
 
-```admonish
-For now, the Chacha gates are the only gates making use of lookups.
-```
-
 Refer to the [lookup RFC](../rfcs/3-lookup.md) for an overview of the lookup feature.
 
 In this section, we describe the tables kimchi supports, as well as the different lookup selectors (and their associated queries)
 
 #### The Lookup Tables
 
-Kimchi currently supports a single lookup table:
+Kimchi currently supports two lookup tables:
 
 {sections.tables}
 
-**XOR**. {sections.xor}
+##### XOR
+
+{sections.table_xor}
+
+##### 12-bit Check
+
+{sections.table_12bit}
 
 #### The Lookup Selectors
 
@@ -216,8 +220,6 @@ Kimchi currently supports a single lookup table:
 |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r   |   o    | -   |   l   |   r    |   o    |
 | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :---: | :----: | --- | :---: | :----: | :----: |
 | 1, r3 | 1, r7 | 1, r11 | -   | 1, r4 | 1, r8 | 1, r12 | -   | 1, r5 | 1, r9 | 1, r13 | -   | 1, r6 | 1, r10 | 1, r14 |
-
-**ChaChaFinalSelector**. Performs 4 different queries to the XOR lookup table. (TODO: specify the layout)
 
 #### Producing the sorted table as the prover
 
@@ -237,10 +239,6 @@ TODO: for each gate describe how to create it?
 #### Poseidon
 
 {sections.poseidon}
-
-#### Chacha
-
-{sections.chacha}
 
 #### Elliptic Curve Addition
 
@@ -269,14 +267,24 @@ TODO: for each gate describe how to create it?
 #### Foreign Field Multiplication
 
 {sections.foreign_field_mul}
+
+#### Rotation
+
+{sections.rot64}
+
 #### Xor
 
 {sections.xor16}
 
+### Gadgets
+
+Here we describe basic gadgets that we build using a combination of the gates described above.
+
 #### Not
 
 {sections.not_gadget}
-##### And
+
+#### And
 
 {sections.and_gadget}
 

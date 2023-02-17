@@ -11,7 +11,6 @@ pub const XOR_TABLE_ID: i32 = 0;
 
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
-
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
@@ -64,6 +63,16 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
         GateLookupTable::RangeCheck => range_check::range_check_table(),
+    }
+}
+
+impl GateLookupTable {
+    /// Returns the lookup table associated to a [`GateLookupTable`].
+    pub fn table_size(&self) -> usize {
+        match self {
+            GateLookupTable::Xor => xor::TABLE_SIZE,
+            GateLookupTable::RangeCheck => range_check::TABLE_SIZE,
+        }
     }
 }
 

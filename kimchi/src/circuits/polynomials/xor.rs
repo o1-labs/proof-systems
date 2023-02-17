@@ -90,7 +90,8 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
 //~ * This gate operates on the `Curr` and `Next` rows.
 //~
-//~ It uses three different types of constraints
+//~ It uses three different types of constraints:
+//~
 //~ * copy          - copy to another cell (32-bits)
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate

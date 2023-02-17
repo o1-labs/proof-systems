@@ -9,7 +9,7 @@ use ark_ff::Field;
 //~ that when we commit to this table and use the dummy value in the `lookup_sorted`
 //~ columns, those entries that have the dummy value of
 //~
-//~ $$0 = 0 + j * 0 + j^2 * 0$$
+//~ $$0 = 0 + j*0 + j^2*0$$
 //~
 //~ will translate into a scalar multiplication by 0, which is free.
 
@@ -42,3 +42,5 @@ pub fn xor_table<F: Field>() -> LookupTable<F> {
         data,
     }
 }
+
+pub const TABLE_SIZE: usize = 256;

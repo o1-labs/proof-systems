@@ -635,11 +635,20 @@ pub mod caml {
 
         pub generic_selector: PointEvaluations<Vec<CamlF>>,
         pub poseidon_selector: PointEvaluations<Vec<CamlF>>,
+        pub additive_lookup_aggregation: Option<PointEvaluations<Vec<CamlF>>>,
+        pub additive_lookup_count: Option<PointEvaluations<Vec<CamlF>>>,
+        pub additive_lookup_inverses: Option<Vec<PointEvaluations<Vec<CamlF>>>>,
     }
 
     //
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
+    fn conv_evaluations<F, CamlF>(x: PointEvaluations<Vec<F>>) -> PointEvaluations<Vec<CamlF>>
+    where
+        CamlF: From<F>,
+    {
+        x.map(&|x| x.into_iter().map(Into::into).collect())
+    }
 
     impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>> for CamlProofEvaluations<CamlF>
     where
@@ -647,133 +656,72 @@ pub mod caml {
         CamlF: From<F>,
     {
         fn from(pe: ProofEvaluations<PointEvaluations<Vec<F>>>) -> Self {
-            let w = (
-                pe.w[0]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[1]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[2]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[3]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[4]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[5]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[6]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[7]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[8]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[9]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[10]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[11]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[12]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[13]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.w[14]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-            );
-            let coefficients = (
-                pe.coefficients[0]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[1]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[2]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[3]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[4]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[5]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[6]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[7]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[8]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[9]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[10]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[11]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[12]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[13]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.coefficients[14]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-            );
-            let s = (
-                pe.s[0]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.s[1]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.s[2]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.s[3]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.s[4]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                pe.s[5]
-                    .clone()
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-            );
+            let w = {
+                let [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14] = pe.w;
+                (
+                    conv_evaluations(w0),
+                    conv_evaluations(w1),
+                    conv_evaluations(w2),
+                    conv_evaluations(w3),
+                    conv_evaluations(w4),
+                    conv_evaluations(w5),
+                    conv_evaluations(w6),
+                    conv_evaluations(w7),
+                    conv_evaluations(w8),
+                    conv_evaluations(w9),
+                    conv_evaluations(w10),
+                    conv_evaluations(w11),
+                    conv_evaluations(w12),
+                    conv_evaluations(w13),
+                    conv_evaluations(w14),
+                )
+            };
+            let coefficients = {
+                let [coefficients0, coefficients1, coefficients2, coefficients3, coefficients4, coefficients5, coefficients6, coefficients7, coefficients8, coefficients9, coefficients10, coefficients11, coefficients12, coefficients13, coefficients14] =
+                    pe.coefficients;
+                (
+                    conv_evaluations(coefficients0),
+                    conv_evaluations(coefficients1),
+                    conv_evaluations(coefficients2),
+                    conv_evaluations(coefficients3),
+                    conv_evaluations(coefficients4),
+                    conv_evaluations(coefficients5),
+                    conv_evaluations(coefficients6),
+                    conv_evaluations(coefficients7),
+                    conv_evaluations(coefficients8),
+                    conv_evaluations(coefficients9),
+                    conv_evaluations(coefficients10),
+                    conv_evaluations(coefficients11),
+                    conv_evaluations(coefficients12),
+                    conv_evaluations(coefficients13),
+                    conv_evaluations(coefficients14),
+                )
+            };
+            let s = {
+                let [s0, s1, s2, s3, s4, s5] = pe.s;
+                (
+                    conv_evaluations(s0),
+                    conv_evaluations(s1),
+                    conv_evaluations(s2),
+                    conv_evaluations(s3),
+                    conv_evaluations(s4),
+                    conv_evaluations(s5),
+                )
+            };
 
             Self {
                 w,
                 coefficients,
-                z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
+                z: conv_evaluations(pe.z),
                 s,
-                generic_selector: pe
-                    .generic_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                poseidon_selector: pe
-                    .poseidon_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                generic_selector: conv_evaluations(pe.generic_selector),
+                poseidon_selector: conv_evaluations(pe.poseidon_selector),
                 lookup: pe.lookup.map(Into::into),
+                additive_lookup_aggregation: pe.additive_lookup_aggregation.map(conv_evaluations),
+                additive_lookup_count: pe.additive_lookup_count.map(conv_evaluations),
+                additive_lookup_inverses: pe
+                    .additive_lookup_inverses
+                    .map(|x| x.into_iter().map(conv_evaluations).collect()),
             }
         }
     }
@@ -785,90 +733,61 @@ pub mod caml {
     {
         fn from(cpe: CamlProofEvaluations<CamlF>) -> Self {
             let w = [
-                cpe.w.0.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.1.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.2.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.3.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.4.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.5.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.6.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.7.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.8.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.9.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.10.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.11.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.12.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.13.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.w.14.map(&|x| x.into_iter().map(Into::into).collect()),
+                conv_evaluations(cpe.w.0),
+                conv_evaluations(cpe.w.1),
+                conv_evaluations(cpe.w.2),
+                conv_evaluations(cpe.w.3),
+                conv_evaluations(cpe.w.4),
+                conv_evaluations(cpe.w.5),
+                conv_evaluations(cpe.w.6),
+                conv_evaluations(cpe.w.7),
+                conv_evaluations(cpe.w.8),
+                conv_evaluations(cpe.w.9),
+                conv_evaluations(cpe.w.10),
+                conv_evaluations(cpe.w.11),
+                conv_evaluations(cpe.w.12),
+                conv_evaluations(cpe.w.13),
+                conv_evaluations(cpe.w.14),
             ];
             let coefficients = [
-                cpe.coefficients
-                    .0
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .1
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .2
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .3
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .4
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .5
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .6
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .7
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .8
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .9
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .10
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .11
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .12
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .13
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.coefficients
-                    .14
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                conv_evaluations(cpe.coefficients.0),
+                conv_evaluations(cpe.coefficients.1),
+                conv_evaluations(cpe.coefficients.2),
+                conv_evaluations(cpe.coefficients.3),
+                conv_evaluations(cpe.coefficients.4),
+                conv_evaluations(cpe.coefficients.5),
+                conv_evaluations(cpe.coefficients.6),
+                conv_evaluations(cpe.coefficients.7),
+                conv_evaluations(cpe.coefficients.8),
+                conv_evaluations(cpe.coefficients.9),
+                conv_evaluations(cpe.coefficients.10),
+                conv_evaluations(cpe.coefficients.11),
+                conv_evaluations(cpe.coefficients.12),
+                conv_evaluations(cpe.coefficients.13),
+                conv_evaluations(cpe.coefficients.14),
             ];
             let s = [
-                cpe.s.0.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.s.1.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.s.2.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.s.3.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.s.4.map(&|x| x.into_iter().map(Into::into).collect()),
-                cpe.s.5.map(&|x| x.into_iter().map(Into::into).collect()),
+                conv_evaluations(cpe.s.0),
+                conv_evaluations(cpe.s.1),
+                conv_evaluations(cpe.s.2),
+                conv_evaluations(cpe.s.3),
+                conv_evaluations(cpe.s.4),
+                conv_evaluations(cpe.s.5),
             ];
 
             Self {
                 w,
                 coefficients,
-                z: cpe.z.map(&|x| x.into_iter().map(Into::into).collect()),
+                z: conv_evaluations(cpe.z),
                 s,
-                generic_selector: cpe
-                    .generic_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                poseidon_selector: cpe
-                    .poseidon_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                generic_selector: conv_evaluations(cpe.generic_selector),
+                poseidon_selector: conv_evaluations(cpe.poseidon_selector),
                 lookup: cpe.lookup.map(Into::into),
+                additive_lookup_aggregation: cpe.additive_lookup_aggregation.map(conv_evaluations),
+                additive_lookup_count: cpe.additive_lookup_count.map(conv_evaluations),
+                additive_lookup_inverses: cpe
+                    .additive_lookup_inverses
+                    .map(|x| x.into_iter().map(conv_evaluations).collect()),
             }
         }
     }

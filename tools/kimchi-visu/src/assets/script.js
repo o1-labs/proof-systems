@@ -145,14 +145,6 @@ function gateColor(gate) {
         return "bg-red-300";
     } else if (gate == "EndoMulScalar") {
         return "bg-orange-300";
-    } else if (gate == "ChaCha0") {
-        return "bg-teal-300";
-    } else if (gate == "ChaCha1") {
-        return "bg-pink-300";
-    } else if (gate == "ChaCha2") {
-        return "bg-stone-300";
-    } else if (gate == "ChaChaFinal") {
-        return "bg-slate-300";
     } else { // Zero
         return "bg-gray-300";
     }

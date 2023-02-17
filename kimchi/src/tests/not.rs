@@ -82,22 +82,16 @@ fn create_test_constraint_system_not_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
 {
-    let (mut next_row, mut gates) = {
+    let gates = {
         let mut gates = vec![CircuitGate::<G::ScalarField>::create_generic_gadget(
             Wire::for_row(0),
             GenericGateSpec::Pub,
             None,
         )];
-        let next_row =
+        let _next_row =
             CircuitGate::<G::ScalarField>::extend_not_gadget_checked_length(&mut gates, 0, bits);
-        (next_row, gates)
+        gates
     };
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     ConstraintSystem::create(gates).public(1).build().unwrap()
 }
@@ -114,14 +108,8 @@ where
         GenericGateSpec::Pub,
         None,
     )];
-    let mut next_row =
+    let _next_row =
         CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(&mut gates, num_nots, 0);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     ConstraintSystem::create(gates).public(1).build().unwrap()
 }
@@ -282,21 +270,15 @@ fn test_prove_and_verify_not_xor() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Create circuit
-    let (mut next_row, mut gates) = {
+    let gates = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
             Wire::for_row(0),
             GenericGateSpec::Pub,
             None,
         )];
-        let next_row = CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, bits);
-        (next_row, gates)
+        let _next_row = CircuitGate::<Fp>::extend_not_gadget_checked_length(&mut gates, 0, bits);
+        gates
     };
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     // Create witness and random inputs
 
@@ -309,7 +291,6 @@ fn test_prove_and_verify_not_xor() {
         .public_inputs(vec![
             PallasField::from(2u32).pow([bits as u64]) - PallasField::one(),
         ])
-        .lookup_tables(vec![xor::lookup_table()])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .is_ok());
@@ -322,21 +303,15 @@ fn test_prove_and_verify_five_not_gnrc() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Create circuit
-    let (mut next_row, mut gates) = {
+    let gates = {
         let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
             Wire::for_row(0),
             GenericGateSpec::Pub,
             None,
         )];
-        let next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0);
-        (next_row, gates)
+        let _next_row = CircuitGate::<Fp>::extend_not_gadget_unchecked_length(&mut gates, 5, 0);
+        gates
     };
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     // Create witness and random inputs
     let witness: [Vec<PallasField>; 15] = create_not_witness_unchecked_length::<PallasField>(
@@ -478,7 +453,6 @@ fn test_bad_not_xor() {
         TestFramework::<Vesta>::default()
             .gates(cs.gates)
             .witness(witness)
-            .lookup_tables(vec![xor::lookup_table()])
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
         Err(String::from(

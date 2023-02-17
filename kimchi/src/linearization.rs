@@ -9,7 +9,6 @@ use crate::circuits::lookup::{
 };
 use crate::circuits::polynomials::{
     additive_lookup,
-    chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
     endosclmul::EndosclMul,
@@ -55,27 +54,6 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     expr += CompleteAdd::combined_constraints(&powers_of_alpha);
     expr += EndosclMul::combined_constraints(&powers_of_alpha);
     expr += EndomulScalar::combined_constraints(&powers_of_alpha);
-
-    {
-        let chacha_expr = || {
-            let mut expr = ChaCha0::combined_constraints(&powers_of_alpha);
-            expr += ChaCha1::combined_constraints(&powers_of_alpha);
-            expr += ChaCha2::combined_constraints(&powers_of_alpha);
-            expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
-            expr
-        };
-        if let Some(feature_flags) = feature_flags {
-            if feature_flags.chacha {
-                expr += chacha_expr();
-            }
-        } else {
-            expr += Expr::IfFeature(
-                FeatureFlag::ChaCha,
-                Box::new(chacha_expr()),
-                Box::new(Expr::zero()),
-            );
-        }
-    }
 
     {
         let range_check0_expr = || RangeCheck0::combined_constraints(&powers_of_alpha);
@@ -216,7 +194,6 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         let all_features = LookupFeatures {
             patterns: LookupPatterns {
                 xor: true,
-                chacha_final: true,
                 lookup: true,
                 range_check: true,
                 foreign_field_mul: true,
@@ -301,7 +278,6 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         // Generating using `IfFeature`, turn on all feature flags.
         {
             FeatureFlags {
-                chacha: true,
                 range_check0: true,
                 range_check1: true,
                 foreign_field_add: true,
@@ -311,7 +287,6 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,
-                        chacha_final: true,
                         lookup: true,
                         range_check: true,
                         foreign_field_mul: true,
