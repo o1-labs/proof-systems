@@ -169,7 +169,6 @@ where
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
                 .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup(),
         )
     } else {
@@ -227,7 +226,6 @@ where
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
                 .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup()
                 .prove_and_verify::<EFqSponge, EFrSponge>()
             {

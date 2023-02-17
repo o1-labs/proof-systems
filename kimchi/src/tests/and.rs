@@ -158,7 +158,6 @@ where
     assert!(TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![and::lookup_table()])
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
         .is_ok());
@@ -360,7 +359,6 @@ fn test_bad_and() {
         TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)
-            .lookup_tables(vec![xor::lookup_table()])
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
         Err(String::from(

@@ -596,7 +596,6 @@ fn verify_range_check0_v0_test_lookups() {
             TestFramework::<Vesta>::default()
                 .gates(index.cs.gates.clone())
                 .witness(witness.clone())
-                .lookup_tables(vec![range_check::gadget::lookup_table()])
                 .setup()
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
@@ -645,7 +644,6 @@ fn verify_range_check0_v1_test_lookups() {
             TestFramework::<Vesta>::default()
                 .gates(index.cs.gates.clone())
                 .witness(witness.clone())
-                .lookup_tables(vec![range_check::gadget::lookup_table()])
                 .setup()
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
@@ -992,7 +990,6 @@ fn verify_range_check1_test_curr_row_lookups() {
             TestFramework::<Vesta>::default()
                 .gates(index.cs.gates.clone())
                 .witness(witness.clone())
-                .lookup_tables(vec![range_check::gadget::lookup_table()])
                 .setup()
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
@@ -1042,7 +1039,6 @@ fn verify_range_check1_test_next_row_lookups() {
                 TestFramework::<Vesta>::default()
                     .gates(index.cs.gates.clone())
                     .witness(witness.clone())
-                    .lookup_tables(vec![range_check::gadget::lookup_table()])
                     .setup()
                     .prove_and_verify::<BaseSponge, ScalarSponge>(),
                 Err(String::from(
@@ -1247,7 +1243,6 @@ fn verify_compact_multi_range_check_proof() {
     assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![range_check::gadget::lookup_table()])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .is_ok());

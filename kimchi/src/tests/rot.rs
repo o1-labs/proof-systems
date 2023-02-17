@@ -117,7 +117,6 @@ where
     assert!(TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![rot::lookup_table()])
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
         .is_ok());
