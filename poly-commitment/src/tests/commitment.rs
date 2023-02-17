@@ -1,5 +1,8 @@
 use crate::{
-    commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve, Evaluation, PolyComm},
+    commitment::{
+        combined_inner_product, BatchEvaluationProof, BlindedCommitment, CommitmentCurve,
+        Evaluation, PolyComm,
+    },
     evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
     srs::SRS,
 };
@@ -70,7 +73,10 @@ pub struct AggregatedEvaluationProof {
 
 impl AggregatedEvaluationProof {
     /// This function converts an aggregated evaluation proof into something the verify API understands
-    pub fn verify_type(&self) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>> {
+    pub fn verify_type(
+        &self,
+        srs: &SRS<Vesta>,
+    ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>> {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
@@ -81,6 +87,37 @@ impl AggregatedEvaluationProof {
             });
         }
 
+        let combined_inner_product = {
+            let es: Vec<_> = coms
+                .iter()
+                .map(
+                    |Evaluation {
+                         commitment,
+                         evaluations,
+                         degree_bound,
+                     }| {
+                        let bound: Option<usize> = (|| {
+                            let b = (*degree_bound)?;
+                            let x = commitment.shifted?;
+                            if x.is_zero() {
+                                None
+                            } else {
+                                Some(b)
+                            }
+                        })();
+                        (evaluations.clone(), bound)
+                    },
+                )
+                .collect();
+            combined_inner_product(
+                &self.eval_points,
+                &self.polymask,
+                &self.evalmask,
+                &es,
+                srs.g.len(),
+            )
+        };
+
         BatchEvaluationProof {
             sponge: self.fq_sponge.clone(),
             evaluation_points: self.eval_points.clone(),
@@ -88,6 +125,7 @@ impl AggregatedEvaluationProof {
             evalscale: self.evalmask,
             evaluations: coms,
             opening: &self.proof,
+            combined_inner_product,
         }
     }
 }
@@ -215,7 +253,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let timer = Instant::now();
 
     // batch verify all the proofs
-    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
+    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type(&srs)).collect();
     assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
 
     // TODO: move to bench

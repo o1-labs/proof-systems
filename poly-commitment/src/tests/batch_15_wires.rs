@@ -2,7 +2,7 @@
 //! verification of a batch of batched opening proofs of polynomial commitments
 
 use crate::{
-    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
+    commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     evaluation_proof::DensePolynomialOrEvaluations,
     srs::SRS,
 };
@@ -114,7 +114,34 @@ where
             );
             open += start.elapsed();
 
-            (sponge.clone(), x, polymask, evalmask, comm, proof)
+            let combined_inner_product = {
+                let es: Vec<_> = comm
+                    .iter()
+                    .map(|(commitment, evaluations, degree_bound)| {
+                        let bound: Option<usize> = (|| {
+                            let b = (*degree_bound)?;
+                            let x = commitment.commitment.shifted?;
+                            if x.is_zero() {
+                                None
+                            } else {
+                                Some(b)
+                            }
+                        })();
+                        (evaluations.clone(), bound)
+                    })
+                    .collect();
+                combined_inner_product(&x, &polymask, &evalmask, &es, srs.g.len())
+            };
+
+            (
+                sponge.clone(),
+                x,
+                polymask,
+                evalmask,
+                comm,
+                proof,
+                combined_inner_product,
+            )
         })
         .collect::<Vec<_>>();
 
@@ -135,6 +162,7 @@ where
                 })
                 .collect::<Vec<_>>(),
             opening: &proof.5,
+            combined_inner_product: proof.6,
         })
         .collect::<Vec<_>>();
 
