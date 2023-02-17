@@ -568,7 +568,7 @@ where
                     aggregation,
                     inverses,
                 } = additive_lookup::compute_aggregations(
-                    &joint_lookup_table_d8,
+                    joint_lookup_table_d8,
                     index.cs.domain.d1,
                     &index.cs.gates,
                     &witness,
@@ -1258,7 +1258,7 @@ where
         polynomials.extend(additive_lookup_aggregation.as_ref().iter().map(
             |additive_lookup_aggregation| {
                 (
-                    evaluations_form(&additive_lookup_aggregation),
+                    evaluations_form(additive_lookup_aggregation),
                     None,
                     additive_lookup_aggregation_commitment
                         .as_ref()
@@ -1274,7 +1274,7 @@ where
                 .iter()
                 .map(|additive_lookup_count| {
                     (
-                        evaluations_form(&additive_lookup_count),
+                        evaluations_form(additive_lookup_count),
                         None,
                         additive_lookup_count_commitment
                             .as_ref()
@@ -1288,18 +1288,17 @@ where
             additive_lookup_inverses
                 .as_ref()
                 .iter()
-                .map(|inverses| {
+                .flat_map(|inverses| {
                     inverses.iter().enumerate().map(|(idx, inverses)| {
                         (
-                            evaluations_form(&inverses),
+                            evaluations_form(inverses),
                             None,
                             additive_lookup_inverses_commitment.as_ref().unwrap()[idx]
                                 .blinders
                                 .clone(),
                         )
                     })
-                })
-                .flatten(),
+                }),
         );
 
         //~ 1. if using lookup:

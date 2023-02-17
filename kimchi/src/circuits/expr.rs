@@ -216,9 +216,9 @@ impl Column {
             }
             Column::Coefficient(i) => format!("c_{{{i}}}"),
             Column::Permutation(i) => format!("sigma_{{{i}}}"),
-            Column::AdditiveLookupAggregation => format!("lookup\\_aggreg"),
-            Column::AdditiveLookupCount => format!("lookup\\_counts"),
-            Column::AdditiveLookupInverse(i) => format!("lookup\\_inverse_{{{}}}", i),
+            Column::AdditiveLookupAggregation => "lookup\\_aggreg".to_string(),
+            Column::AdditiveLookupCount => "lookup\\_counts".to_string(),
+            Column::AdditiveLookupInverse(i) => format!("lookup\\_inverse_{{{i}}}"),
         }
     }
 
@@ -237,9 +237,9 @@ impl Column {
             }
             Column::Coefficient(i) => format!("c[{i}]"),
             Column::Permutation(i) => format!("sigma_[{i}]"),
-            Column::AdditiveLookupAggregation => format!("lookup\\_aggreg"),
-            Column::AdditiveLookupCount => format!("lookup\\_counts"),
-            Column::AdditiveLookupInverse(i) => format!("lookup\\_inverse_[{}]", i),
+            Column::AdditiveLookupAggregation => "lookup\\_aggreg".to_string(),
+            Column::AdditiveLookupCount => "lookup\\_counts".to_string(),
+            Column::AdditiveLookupInverse(i) => format!("lookup\\_inverse_[{i}]"),
         }
     }
 }

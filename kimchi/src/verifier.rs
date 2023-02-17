@@ -599,7 +599,7 @@ where
 
     check_opt_eval_len(additive_lookup_aggregation)?;
     check_opt_eval_len(additive_lookup_count)?;
-    for inv in additive_lookup_inverses.iter().map(|x| x.iter()).flatten() {
+    for inv in additive_lookup_inverses.iter().flat_map(|x| x.iter()) {
         check_eval_len(inv)?;
     }
 
