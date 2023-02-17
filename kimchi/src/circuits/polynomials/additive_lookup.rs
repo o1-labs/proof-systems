@@ -161,87 +161,108 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
     let n = d1.size();
     let lookup_rows = n - ZK_ROWS - 1;
 
-    let mut aggregation = Vec::with_capacity(d1.size());
+    // Compute the inversions corresponding to the table, and create a map from table values to
+    // their index in the lookup table.
+    let (joint_lookup_value_to_index_map, negative_inverted_lookup_values_offset_by_one) = {
+        let mut joint_lookup_value_to_index_map: HashMap<F, usize> = HashMap::new();
 
-    let mut inverses = vec![Vec::with_capacity(d1.size()); lookup_info.max_per_row];
+        // Optimisation: we will later reuse this as our aggregation, so we initialize it with a
+        // placeholder value (one) for batch inversion that we can replace.
+        let mut lookup_values_offset_by_one = Vec::with_capacity(d1.size());
+        lookup_values_offset_by_one.push(F::one());
 
-    aggregation.push(F::zero());
-
-    let mut counts_map = {
-        let mut counts: HashMap<F, usize> = HashMap::new();
-
-        let by_row = lookup_info.by_row(gates);
-
-        for (i, row) in by_row
+        for (i, joint_lookup_value) in joint_lookup_table_d8
+            .evals
             .iter()
-            .enumerate()
-            // avoid zk rows
+            .step_by(8)
             .take(lookup_rows)
+            .enumerate()
         {
-            let spec = row;
-            let mut lookup_contributions = F::zero();
-            let num_lookups = spec.len();
-            for (j, joint_lookup) in spec.iter().enumerate() {
-                let eval = |pos: LocalPosition| -> F {
-                    let row = match pos.row {
-                        Curr => i,
-                        Next => i + 1,
-                    };
-                    witness[pos.column][row]
-                };
-                let joint_lookup_evaluation =
-                    joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
-                *counts.entry(joint_lookup_evaluation).or_insert(0) += 1;
-                let inverse = (beta + joint_lookup_evaluation).inverse().ok_or(
-                    ProverError::DivisionByZero(
-                        "Could not invert one of the joint lookup evaluations",
-                    ),
-                )?;
-                inverses[j].push(inverse);
-                lookup_contributions += inverse;
-            }
-            for inverses in inverses
-                .iter_mut()
-                .take(lookup_info.max_per_row)
-                .skip(num_lookups)
-            {
-                inverses.push(F::zero());
-            }
-            aggregation.push(lookup_contributions)
+            lookup_values_offset_by_one.push(beta + *joint_lookup_value);
+            joint_lookup_value_to_index_map
+                .entry(*joint_lookup_value)
+                .or_insert(i);
         }
-
-        counts
+        let mut negative_inverted_lookup_values_offset_by_one = lookup_values_offset_by_one;
+        ark_ff::batch_inversion_and_mul(
+            &mut negative_inverted_lookup_values_offset_by_one,
+            &-F::one(),
+        );
+        (
+            joint_lookup_value_to_index_map,
+            negative_inverted_lookup_values_offset_by_one,
+        )
     };
 
-    let mut counts = Vec::with_capacity(d1.size());
+    let mut counts = vec![0u64; lookup_rows];
+    let mut inverses = vec![Vec::with_capacity(d1.size()); lookup_info.max_per_row];
 
-    for (i, lookup_value) in joint_lookup_table_d8
-        .evals
+    let by_row = lookup_info.by_row(gates);
+
+    // Accumulate the counts for each value in the lookup table, and use the index map to look up
+    // the precomputed inverses for each looked-up value.
+    for (i, spec) in by_row
         .iter()
-        .step_by(8)
-        .take(lookup_rows)
         .enumerate()
+        // avoid zk rows
+        .take(lookup_rows)
     {
-        if let Some((_, lookup_count)) = counts_map.remove_entry(lookup_value) {
-            let lookup_count = F::from(lookup_count as u64);
-            counts.push(lookup_count);
-            let prev_aggregation = aggregation[i];
-            aggregation[i + 1] += prev_aggregation - lookup_count / (beta + lookup_value);
-        } else {
-            counts.push(F::zero());
-            let prev_aggregation = aggregation[i];
-            aggregation[i + 1] += prev_aggregation;
+        let num_lookups = spec.len();
+        for (j, joint_lookup) in spec.iter().enumerate() {
+            let eval = |pos: LocalPosition| -> F {
+                let row = match pos.row {
+                    Curr => i,
+                    Next => i + 1,
+                };
+                witness[pos.column][row]
+            };
+            // Compute the value that will appear in the joint lookup table.
+            let joint_lookup_evaluation =
+                joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
+            // Find the index of the value in the table
+            let index = joint_lookup_value_to_index_map
+                .get(&joint_lookup_evaluation)
+                .ok_or(ProverError::ValueNotInTable)?;
+            // Use the cached inverted values from the table to insert the corresponding inverse.
+            inverses[j].push(-negative_inverted_lookup_values_offset_by_one[index + 1]);
+            // Increase the count for the lookup entry by one.
+            counts[*index] += 1u64;
+        }
+        for inverses in inverses
+            .iter_mut()
+            .take(lookup_info.max_per_row)
+            .skip(num_lookups)
+        {
+            inverses.push(F::zero());
         }
     }
 
+    // Convert the usage counts for each entry to a field element.
+    let counts: Vec<F> = counts.into_iter().map(Into::into).collect();
+
+    // We have now finished using this as an inversion cache, so we can compute the aggregation.
+    let mut aggregation = negative_inverted_lookup_values_offset_by_one;
+
+    // Replace the placeholder in the first entry with the initial value of the aggregation
+    // polynomial.
+    aggregation[0] = F::zero();
+
+    for (i, spec) in by_row.iter().enumerate().take(lookup_rows) {
+        // Scale the table inverse by its number of uses
+        aggregation[i + 1] *= counts[i];
+        // Cascade the aggregation from the previous row through to this one.
+        let acc = aggregation[i];
+        aggregation[i + 1] += acc;
+        for (j, _) in spec.iter().enumerate() {
+            // Add the inverse term for this lookup (already computed above).
+            aggregation[i + 1] += inverses[j][i];
+        }
+    }
+
+    // Add randomness to the last ZK_ROWS rows of each polynomial, to provide zero-knowledge.
     let counts = zk_patch(counts, d1, rng);
     let aggregation = zk_patch(aggregation, d1, rng);
-
     let inverses = inverses.into_iter().map(|x| zk_patch(x, d1, rng)).collect();
-
-    if !counts_map.is_empty() {
-        return Err(ProverError::ValueNotInTable);
-    }
 
     assert_eq!(F::zero(), aggregation[0]);
     assert_eq!(F::zero(), aggregation[lookup_rows]);
