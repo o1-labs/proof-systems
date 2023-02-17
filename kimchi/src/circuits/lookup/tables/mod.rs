@@ -11,7 +11,6 @@ pub const XOR_TABLE_ID: i32 = 0;
 
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
-
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates

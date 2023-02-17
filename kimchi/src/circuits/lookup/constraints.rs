@@ -43,7 +43,6 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
-//~
 //~ Because of our ZK-rows, we can't do the trick in the plookup paper of
 //~ wrapping around to enforce consistency between the sorted lookup columns.
 //~
@@ -51,8 +50,8 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 //~ Like so,
 //~
-//~ ```
-//~ _   _
+//~ ```text
+//~    _   _
 //~ | | | | |
 //~ | | | | |
 //~ |_| |_| |
@@ -60,7 +59,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 //~ or, imagining the full sorted array is `[ s0, ..., s8 ]`, like
 //~
-//~ ```
+//~ ```text
 //~ s0 s4 s4 s8
 //~ s1 s3 s5 s7
 //~ s2 s2 s6 s6
@@ -68,7 +67,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~
 //~ So the direction ("increasing" or "decreasing" (relative to LookupTable) is
 //~
-//~ ```
+//~ ```rs
 //~ if i % 2 = 0 { Increasing } else { Decreasing }
 //~ ```
 //~
@@ -76,7 +75,6 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 //~ last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
 //~ and if `i % 2 = 1`, we enforce that
 //~ the first element of `LookupSorted(i) = first element of LookupSorted(i + 1)`.
-//~
 
 /// Computes the sorted lookup tables required by the lookup argument.
 ///
