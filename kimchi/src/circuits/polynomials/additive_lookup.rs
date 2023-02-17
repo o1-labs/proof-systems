@@ -200,8 +200,12 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
                 inverses[j].push(inverse);
                 lookup_contributions += inverse;
             }
-            for j in num_lookups..lookup_info.max_per_row {
-                inverses[j].push(F::zero());
+            for inverses in inverses
+                .iter_mut()
+                .take(lookup_info.max_per_row)
+                .skip(num_lookups)
+            {
+                inverses.push(F::zero());
             }
             aggregation.push(lookup_contributions)
         }
