@@ -46,7 +46,7 @@ use crate::{
         polynomial::WitnessOverDomains,
         wires::{Wire, COLUMNS, PERMUTS},
     },
-    constants::EVALS,
+    constants::ZK_ROWS,
     curve::KimchiCurve,
     error::ProverError,
     proof::{PointEvaluations, ProofEvaluations},
@@ -73,9 +73,6 @@ pub const CONSTRAINTS: u32 = 3;
 /// on the final row.  
 /// Ref: https://o1-labs.github.io/proof-systems/plonk/zkpm.html
 pub const PERM_FINAL_ACC: u64 = 1;
-
-/// The number of rows that are added to a witness/circuit in order to provide zero-knowledge.
-pub const ZK_ROWS: u64 = EVALS + PERM_FINAL_ACC;
 
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
