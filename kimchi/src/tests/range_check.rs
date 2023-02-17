@@ -54,17 +54,11 @@ const RNG_SEED: [u8; 32] = [
 ];
 
 fn create_test_prover_index(public_size: usize, compact: bool) -> ProverIndex<Vesta> {
-    let (mut next_row, mut gates) = if compact {
+    let (_next_row, gates) = if compact {
         CircuitGate::<Fp>::create_compact_multi_range_check(0)
     } else {
         CircuitGate::<Fp>::create_multi_range_check(0)
     };
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     new_index_for_test_with_lookups(
         gates,
@@ -1066,13 +1060,6 @@ fn verify_64_bit_range_check() {
     gates[1].wires[2] = Wire { row: 0, col: 0 };
     gates[0].wires[0] = Wire { row: 1, col: 1 };
 
-    // Temporary workaround for lookup-table/domain-size issue
-    let mut next_row = 2;
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
     // Create constraint system
     let cs =
         ConstraintSystem::<Fp>::create(gates /*, mina_poseidon::pasta::fp_kimchi::params()*/)
@@ -1232,13 +1219,7 @@ fn verify_compact_multi_range_check_proof() {
     // Create witness
     let witness = range_check::witness::create_multi_compact_limbs::<PallasField>(&limbs);
 
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let (_next_row, gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
 
     assert!(TestFramework::<Vesta>::default()
         .gates(gates)
