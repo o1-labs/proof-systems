@@ -653,10 +653,39 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
+        let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
+
+        let num_lookups = {
+            let mut num_lookups: usize = lookup_tables
+                .iter()
+                .map(
+                    |LookupTable { data, id: _ }| {
+                        if data.is_empty() {
+                            0
+                        } else {
+                            data[0].len()
+                        }
+                    },
+                )
+                .sum();
+            for runtime_table in runtime_tables.iter() {
+                num_lookups += runtime_table.len();
+            }
+            let LookupFeatures { patterns, .. } = &lookup_features;
+            for pattern in patterns.into_iter() {
+                if let Some(gate_table) = pattern.table() {
+                    num_lookups += gate_table.table_size();
+                }
+            }
+            num_lookups
+        };
+
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
+        let domain_size_lower_bound =
+            std::cmp::max(gates.len(), num_lookups + 1) + ZK_ROWS as usize;
+        let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
 
         assert!(domain.d1.size > ZK_ROWS);
 
@@ -671,8 +700,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             })
             .collect();
         gates.append(&mut padding);
-
-        let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
 
         let mut feature_flags = FeatureFlags {
             range_check0: false,

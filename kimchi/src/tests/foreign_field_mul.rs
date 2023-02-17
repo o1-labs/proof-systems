@@ -7,7 +7,6 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
         polynomials::{foreign_field_add::witness::FFOps, foreign_field_mul, range_check},
-        wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -154,12 +153,6 @@ where
         gates.connect_cell_pair((1, 3), (22, 1));
         gates.connect_cell_pair((1, 4), (20, 0));
         external_checks.extend_witness_compact_multi_range_checks(&mut witness);
-    }
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
     }
 
     let runner = if full {

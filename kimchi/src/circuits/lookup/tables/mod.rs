@@ -66,6 +66,16 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     }
 }
 
+impl GateLookupTable {
+    /// Returns the lookup table associated to a [`GateLookupTable`].
+    pub fn table_size(&self) -> usize {
+        match self {
+            GateLookupTable::Xor => xor::TABLE_SIZE,
+            GateLookupTable::RangeCheck => range_check::TABLE_SIZE,
+        }
+    }
+}
+
 /// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
 /// am using `[F; n]` to model a vector of length `n`).
 ///

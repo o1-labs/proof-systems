@@ -46,13 +46,7 @@ where
     EFrSponge: FrSponge<G::ScalarField>,
 {
     let mut gates = vec![];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let _next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
 
     gates
 }
@@ -140,13 +134,7 @@ where
 
     // Create
     let mut gates = vec![];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let _next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
 
     // Create inputs
     let input1 = rng.gen(None, Some(bytes * 8));

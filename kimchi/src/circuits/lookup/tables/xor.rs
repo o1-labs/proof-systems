@@ -42,3 +42,5 @@ pub fn xor_table<F: Field>() -> LookupTable<F> {
         data,
     }
 }
+
+pub const TABLE_SIZE: usize = 256;

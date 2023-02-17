@@ -16,12 +16,6 @@ type PallasField = <Pallas as AffineCurve>::BaseField;
 fn create_test_constraint_system() -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_keccak(0) };
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
     ConstraintSystem::create(gates).build().unwrap()
 }
 
