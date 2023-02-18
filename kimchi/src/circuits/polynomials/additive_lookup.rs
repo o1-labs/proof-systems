@@ -4,14 +4,14 @@ use crate::{
         gate::{CircuitGate, CurrOrNext::*},
         lookup::{
             constraints::{zk_patch, LookupConfiguration},
-            lookups::{JointLookupSpec, LocalPosition, LookupInfo},
+            lookups::{JointLookupSpec, LocalPosition, LookupInfo, LookupPatterns},
             runtime_tables,
         },
         wires::COLUMNS,
     },
     error::ProverError,
 };
-use ark_ff::{FftField, PrimeField, Zero};
+use ark_ff::{FftField, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;
 use std::collections::HashMap;
@@ -112,6 +112,58 @@ pub fn constraints<F: FftField>(
         E::UnnormalizedLagrangeBasis(final_lookup_row)
             * (E::cell(Column::AdditiveLookupAggregation, Curr) - E::zero()),
     ];
+
+    // Add the inverse constraints.
+    {
+        let joint_combiner = E::Constant(ConstantExpr::JointCombiner);
+        let table_id_combiner =
+            // Compute `joint_combiner.pow(lookup_info.max_joint_size)`, injecting feature flags if
+            // needed.
+            (1..lookup_info.max_joint_size).fold(joint_combiner.clone(), |acc, i| {
+                let mut new_term = joint_combiner.clone();
+                if generate_feature_flags {
+                    new_term = E::IfFeature(
+                        FeatureFlag::TableWidth((i + 1) as isize),
+                        Box::new(new_term),
+                        Box::new(E::one()),
+                    );
+                }
+                acc * new_term
+            });
+
+        // Note: we iterate over all possible patterns to ensure that the constraints always end up
+        // at the same position in the list. For constraints that we aren't using, we hard-code
+        // them to 0.
+        let all_lookup_patterns = LookupPatterns {
+            xor: true,
+            lookup: true,
+            range_check: true,
+            foreign_field_mul: true,
+        };
+        for spec in all_lookup_patterns.into_iter() {
+            let is_used = lookup_info.features.patterns[spec];
+            for (i, joint_lookup) in spec.lookups::<F>().into_iter().enumerate() {
+                let eval = |pos: LocalPosition| witness(pos.column, pos.row);
+                let mut term = if is_used {
+                    column(Column::LookupKindIndex(spec))
+                        * ((E::Constant(ConstantExpr::Beta)
+                            + joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval))
+                            * column(Column::AdditiveLookupInverse(i))
+                            - E::one())
+                } else {
+                    E::zero()
+                };
+                if generate_feature_flags {
+                    term = E::IfFeature(
+                        FeatureFlag::LookupPattern(spec),
+                        Box::new(term),
+                        Box::new(E::zero()),
+                    )
+                }
+                res.push(term)
+            }
+        }
+    }
 
     // if we are using runtime tables, we add:
     // $RT(x) (1 - \text{selector}_{RT}(x)) = 0$
