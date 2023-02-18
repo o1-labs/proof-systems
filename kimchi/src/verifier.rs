@@ -558,11 +558,7 @@ where
     for coeff in coefficients {
         check_eval_len(coeff)?;
     }
-    if let Some(LookupEvaluations {
-        table,
-        runtime,
-    }) = lookup
-    {
+    if let Some(LookupEvaluations { table, runtime }) = lookup {
         check_eval_len(table)?;
         if let Some(runtime) = &runtime {
             check_eval_len(runtime)?;

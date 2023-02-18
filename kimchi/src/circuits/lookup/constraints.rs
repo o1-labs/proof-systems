@@ -1,10 +1,4 @@
-use crate::{
-    circuits::{
-        lookup::lookups::{
-            JointLookup, JointLookupValue, LookupInfo,
-        },
-    },
-};
+use crate::circuits::lookup::lookups::{JointLookup, JointLookupValue, LookupInfo};
 use ark_ff::{FftField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 use rand::Rng;

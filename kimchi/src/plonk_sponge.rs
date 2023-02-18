@@ -78,10 +78,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         s.iter().for_each(|s_i| points.push(s_i));
 
         if let Some(l) = lookup.as_ref() {
-            let LookupEvaluations {
-                table,
-                runtime,
-            } = l;
+            let LookupEvaluations { table, runtime } = l;
             points.push(table);
             runtime.iter().for_each(|x| points.push(x));
         }

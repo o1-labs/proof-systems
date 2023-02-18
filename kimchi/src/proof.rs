@@ -169,10 +169,7 @@ impl<Evals> PointEvaluations<Evals> {
 
 impl<Eval> LookupEvaluations<Eval> {
     pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> LookupEvaluations<Eval2> {
-        let LookupEvaluations {
-            table,
-            runtime,
-        } = self;
+        let LookupEvaluations { table, runtime } = self;
         LookupEvaluations {
             table: f(table),
             runtime: runtime.map(f),
@@ -180,10 +177,7 @@ impl<Eval> LookupEvaluations<Eval> {
     }
 
     pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> LookupEvaluations<Eval2> {
-        let LookupEvaluations {
-            table,
-            runtime,
-        } = self;
+        let LookupEvaluations { table, runtime } = self;
         LookupEvaluations {
             table: f(table),
             runtime: runtime.as_ref().map(f),

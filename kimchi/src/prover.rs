@@ -1299,11 +1299,7 @@ pub mod caml {
         G: AffineCurve,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
     {
-        fn from(
-            LookupCommitments {
-                runtime,
-            }: LookupCommitments<G>,
-        ) -> Self {
+        fn from(LookupCommitments { runtime }: LookupCommitments<G>) -> Self {
             Self {
                 runtime: runtime.map(Into::into),
             }
@@ -1316,9 +1312,7 @@ pub mod caml {
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
         fn from(
-            CamlLookupCommitments {
-                runtime,
-            }: CamlLookupCommitments<CamlG>,
+            CamlLookupCommitments { runtime }: CamlLookupCommitments<CamlG>,
         ) -> LookupCommitments<G> {
             LookupCommitments {
                 runtime: runtime.map(Into::into),
