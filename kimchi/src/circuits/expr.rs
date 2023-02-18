@@ -73,10 +73,6 @@ pub struct Constants<F: 'static> {
 ///
 /// All are evaluations over the D8 domain
 pub struct LookupEnvironment<'a, F: FftField> {
-    /// The sorted lookup table polynomials.
-    pub sorted: &'a Vec<Evaluations<F, D<F>>>,
-    /// The lookup aggregation polynomials.
-    pub aggreg: &'a Evaluations<F, D<F>>,
     /// The lookup-type selector polynomials.
     pub selectors: &'a LookupSelectors<Evaluations<F, D<F>>>,
     /// The evaluations of the combined lookup table polynomial.
@@ -128,8 +124,6 @@ impl<'a, F: FftField> Environment<'a, F> {
             Coefficient(i) => Some(&self.coefficient[*i]),
             Z => Some(self.z),
             LookupKindIndex(i) => lookup.and_then(|l| l.selectors[*i].as_ref()),
-            LookupSorted(i) => lookup.map(|l| &l.sorted[*i]),
-            LookupAggreg => lookup.map(|l| l.aggreg),
             LookupTable => lookup.map(|l| l.table),
             LookupRuntimeSelector => lookup.and_then(|l| l.runtime_selector),
             LookupRuntimeTable => lookup.and_then(|l| l.runtime_table),
@@ -178,8 +172,6 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
 pub enum Column {
     Witness(usize),
     Z,
-    LookupSorted(usize),
-    LookupAggreg,
     LookupTable,
     LookupKindIndex(LookupPattern),
     LookupRuntimeSelector,
@@ -205,8 +197,6 @@ impl Column {
         match self {
             Column::Witness(i) => format!("w_{{{i}}}"),
             Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s_{{{i}}}"),
-            Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
             Column::LookupKindIndex(i) => format!("k_{{{i:?}}}"),
             Column::LookupRuntimeSelector => "rts".to_string(),
@@ -226,8 +216,6 @@ impl Column {
         match self {
             Column::Witness(i) => format!("w[{i}]"),
             Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s[{i}]"),
-            Column::LookupAggreg => "a".to_string(),
             Column::LookupTable => "t".to_string(),
             Column::LookupKindIndex(i) => format!("k[{i:?}]"),
             Column::LookupRuntimeSelector => "rts".to_string(),
@@ -687,8 +675,6 @@ impl Variable {
             match self.col {
                 Witness(i) => Ok(evals.w[i]),
                 Z => Ok(evals.z),
-                LookupSorted(i) => l.map(|l| l.sorted[i]),
-                LookupAggreg => l.map(|l| l.aggreg),
                 LookupTable => l.map(|l| l.table),
                 LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
                 Index(GateType::Poseidon) => Ok(evals.poseidon_selector),

@@ -27,7 +27,6 @@ pub enum ArgumentType {
     /// The permutation argument
     Permutation,
     /// The lookup argument
-    Lookup,
     AdditiveLookup,
 }
 

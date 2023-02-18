@@ -42,10 +42,6 @@ pub struct PointEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LookupEvaluations<Evals> {
-    /// sorted lookup table polynomial
-    pub sorted: Vec<Evals>,
-    /// lookup aggregation polynomial
-    pub aggreg: Evals,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
     pub table: Evals,
@@ -89,10 +85,6 @@ pub struct ProofEvaluations<Evals> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
-    /// Commitments to the sorted lookup table polynomial (may have chunks)
-    pub sorted: Vec<PolyComm<G>>,
-    /// Commitment to the lookup aggregation polynomial
-    pub aggreg: PolyComm<G>,
     /// Optional commitment to concatenated runtime tables
     pub runtime: Option<PolyComm<G>>,
 }
@@ -178,14 +170,10 @@ impl<Evals> PointEvaluations<Evals> {
 impl<Eval> LookupEvaluations<Eval> {
     pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> LookupEvaluations<Eval2> {
         let LookupEvaluations {
-            sorted,
-            aggreg,
             table,
             runtime,
         } = self;
         LookupEvaluations {
-            sorted: sorted.into_iter().map(f).collect(),
-            aggreg: f(aggreg),
             table: f(table),
             runtime: runtime.map(f),
         }
@@ -193,14 +181,10 @@ impl<Eval> LookupEvaluations<Eval> {
 
     pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> LookupEvaluations<Eval2> {
         let LookupEvaluations {
-            sorted,
-            aggreg,
             table,
             runtime,
         } = self;
         LookupEvaluations {
-            sorted: sorted.iter().map(f).collect(),
-            aggreg: f(aggreg),
             table: f(table),
             runtime: runtime.as_ref().map(f),
         }
@@ -327,13 +311,8 @@ impl<F> ProofEvaluations<F> {
             s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
             coefficients: array::from_fn(|j| array::from_fn(|i| &evals[i].coefficients[j])),
             lookup: if has_lookup {
-                let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
                 Some(LookupEvaluations {
-                    aggreg: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
                     table: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().table),
-                    sorted: (0..sorted_length)
-                        .map(|j| array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
-                        .collect(),
                     runtime: if has_runtime {
                         Some(array::from_fn(|i| {
                             evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
@@ -460,8 +439,6 @@ impl<F> ProofEvaluations<F> {
         match col {
             Column::Witness(i) => Some(&self.w[i]),
             Column::Z => Some(&self.z),
-            Column::LookupSorted(i) => Some(&self.lookup.as_ref()?.sorted[i]),
-            Column::LookupAggreg => Some(&self.lookup.as_ref()?.aggreg),
             Column::LookupTable => Some(&self.lookup.as_ref()?.table),
             Column::LookupKindIndex(_) => None,
             Column::LookupRuntimeSelector => None,
@@ -534,8 +511,6 @@ pub mod caml {
 
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlLookupEvaluations<CamlF> {
-        pub sorted: Vec<PointEvaluations<Vec<CamlF>>>,
-        pub aggreg: PointEvaluations<Vec<CamlF>>,
         pub table: PointEvaluations<Vec<CamlF>>,
         pub runtime: Option<PointEvaluations<Vec<CamlF>>>,
     }
@@ -547,12 +522,6 @@ pub mod caml {
     {
         fn from(le: LookupEvaluations<PointEvaluations<Vec<F>>>) -> Self {
             Self {
-                sorted: le
-                    .sorted
-                    .into_iter()
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect()))
-                    .collect(),
-                aggreg: le.aggreg.map(&|x| x.into_iter().map(Into::into).collect()),
                 table: le.table.map(&|x| x.into_iter().map(Into::into).collect()),
                 runtime: le
                     .runtime
@@ -567,12 +536,6 @@ pub mod caml {
     {
         fn from(pe: CamlLookupEvaluations<CamlF>) -> Self {
             Self {
-                sorted: pe
-                    .sorted
-                    .into_iter()
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect()))
-                    .collect(),
-                aggreg: pe.aggreg.map(&|x| x.into_iter().map(Into::into).collect()),
                 table: pe.table.map(&|x| x.into_iter().map(Into::into).collect()),
                 runtime: pe
                     .runtime

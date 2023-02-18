@@ -376,38 +376,6 @@ This is used to check that the value fits in 12 bits.
 
 #### Producing the sorted table as the prover
 
-Because of our ZK-rows, we can't do the trick in the plookup paper of
-wrapping around to enforce consistency between the sorted lookup columns.
-
-Instead, we arrange the LookupSorted table into columns in a snake-shape.
-
-Like so,
-
-```text
-   _   _
-| | | | |
-| | | | |
-|_| |_| |
-```
-
-or, imagining the full sorted array is `[ s0, ..., s8 ]`, like
-
-```text
-s0 s4 s4 s8
-s1 s3 s5 s7
-s2 s2 s6 s6
-```
-
-So the direction ("increasing" or "decreasing" (relative to LookupTable) is
-
-```rs
-if i % 2 = 0 { Increasing } else { Decreasing }
-```
-
-Then, for each `i < max_lookups_per_row`, if `i % 2 = 0`, we enforce that the
-last element of `LookupSorted(i) = last element of LookupSorted(i + 1)`,
-and if `i % 2 = 1`, we enforce that
-the first element of `LookupSorted(i) = first element of LookupSorted(i + 1)`.
 
 
 ### Gates
@@ -1935,10 +1903,6 @@ pub struct PointEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LookupEvaluations<Evals> {
-    /// sorted lookup table polynomial
-    pub sorted: Vec<Evals>,
-    /// lookup aggregation polynomial
-    pub aggreg: Evals,
     // TODO: May be possible to optimize this away?
     /// lookup table polynomial
     pub table: Evals,
@@ -1982,10 +1946,6 @@ pub struct ProofEvaluations<Evals> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
 pub struct LookupCommitments<G: AffineCurve> {
-    /// Commitments to the sorted lookup table polynomial (may have chunks)
-    pub sorted: Vec<PolyComm<G>>,
-    /// Commitment to the lookup aggregation polynomial
-    pub aggreg: PolyComm<G>,
     /// Optional commitment to concatenated runtime tables
     pub runtime: Option<PolyComm<G>>,
 }
@@ -2119,17 +2079,8 @@ The prover then follows the following steps to create the proof:
 	* Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
 	  Warning: This assumes that we always use the XOR table when using lookups.
 	* Compute the lookup table values as the combination of the lookup table entries.
-	* Compute the sorted evaluations.
-	* Randomize the last `EVALS` rows in each of the sorted polynomials
-	  in order to add zero-knowledge to the protocol.
-	* Commit each of the sorted polynomials.
-	* Absorb each commitments to the sorted polynomials.
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
-1. If using lookup:
-	* Compute the lookup aggregation polynomial.
-	* Commit to the aggregation polynomial.
-	* Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
 1. Optionally compute the additive lookup aggregation and count polynomials.
 1. Commit (hiding) to the additive lookup aggregation polynomial.
 1. Absorb the additive lookup aggregation polynomial commitment with the Fq-sponge.
@@ -2157,8 +2108,6 @@ The prover then follows the following steps to create the proof:
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
-	* the aggregation polynomial
-	* the sorted polynomials
 	* the table polynonial
 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
 	* $s_i$
@@ -2215,8 +2164,6 @@ The prover then follows the following steps to create the proof:
 	* the 6 sigmas
 	* optionally, the runtime table
 1. if using lookup:
-	* add the lookup sorted polynomials
-	* add the lookup aggreg polynomial
 	* add the combined table polynomial
 	* if present, add the runtime table polynomial
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
@@ -2244,10 +2191,8 @@ We run the following algorithm:
 	  otherwise set the joint combiner challenge $j'$ to $0$.
 	* Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
 	  (TODO: specify endomorphism)
-	* absorb the commitments to the sorted polynomials.
 1. Sample $\beta$ with the Fq-Sponge.
 1. Sample $\gamma$ with the Fq-Sponge.
-1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
 1. Absorb the additive lookup aggregation polynomial commitment with the Fq-sponge.
 1. Absorb the additive lookup count polynomial commitment with the Fq-sponge.
 1. Absorb the additive lookup inverses polynomials commitments with the Fq-sponge.
@@ -2313,7 +2258,6 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	* coefficient commitments
 	* sigma commitments
 	* additive lookup commitments
-	* lookup commitments
 
 #### Batch verification of proofs
 

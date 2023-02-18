@@ -51,8 +51,6 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
             Coefficient(i) => Some(&self.verifier_index.coefficients_comm[i]),
             Permutation(i) => Some(&self.verifier_index.sigma_comm[i]),
             Z => Some(&self.proof.commitments.z_comm),
-            LookupSorted(i) => Some(&self.proof.commitments.lookup.as_ref()?.sorted[i]),
-            LookupAggreg => Some(&self.proof.commitments.lookup.as_ref()?.aggreg),
             LookupKindIndex(i) => {
                 Some(self.verifier_index.lookup_index.as_ref()?.lookup_selectors[i].as_ref()?)
             }
@@ -189,29 +187,11 @@ where
             None
         };
 
-        if index.lookup_index.is_some() {
-            let lookup_commits = self
-                .commitments
-                .lookup
-                .as_ref()
-                .ok_or(VerifyError::LookupCommitmentMissing)?;
-
-            //~~ * absorb the commitments to the sorted polynomials.
-            for com in &lookup_commits.sorted {
-                absorb_commitment(&mut fq_sponge, com);
-            }
-        }
-
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
 
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
-
-        //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
-        self.commitments.lookup.iter().for_each(|l| {
-            absorb_commitment(&mut fq_sponge, &l.aggreg);
-        });
 
         if let Some(lookup_index) = index.lookup_index.as_ref() {
             if let Some(inverses) = self.commitments.additive_lookup_inverses.as_ref() {
@@ -579,16 +559,10 @@ where
         check_eval_len(coeff)?;
     }
     if let Some(LookupEvaluations {
-        sorted,
-        aggreg,
         table,
         runtime,
     }) = lookup
     {
-        for sorted_i in sorted {
-            check_eval_len(sorted_i)?;
-        }
-        check_eval_len(aggreg)?;
         check_eval_len(table)?;
         if let Some(runtime) = &runtime {
             check_eval_len(runtime)?;
@@ -800,6 +774,7 @@ where
     //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
     //~~ * additive lookup commitments
+    //~
     .chain(
         verifier_index
             .lookup_index
@@ -812,22 +787,6 @@ where
                 ]
                 .into_iter()
                 .chain((0..li.lookup_info.max_per_row).map(Column::AdditiveLookupInverse))
-            })
-            .into_iter()
-            .flatten(),
-    )
-    //~~ * lookup commitments
-    //~
-    .chain(
-        verifier_index
-            .lookup_index
-            .as_ref()
-            .map(|li| {
-                // add evaluations of sorted polynomials
-                (0..li.lookup_info.max_per_row + 1)
-                    .map(Column::LookupSorted)
-                    // add evaluations of the aggreg polynomial
-                    .chain([Column::LookupAggreg].into_iter())
             })
             .into_iter()
             .flatten(),
