@@ -75,6 +75,12 @@ jobs:
           command: fmt
           args: -- --check
 
+      - name: Setup OCaml
+        run: |
+          sudo apt update
+          sudo apt install -y ocaml
+
+
       - name: Lint (clippy)
         uses: actions-rs/cargo@v1
         with:
