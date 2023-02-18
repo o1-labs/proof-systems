@@ -46,10 +46,6 @@ pub fn constraints<F: FftField>(
 
     // The contributions given by each lookup pattern.
     let lookup_contributions = {
-        // This is set up so that on rows that have lookups, chunk will be equal
-        // to the product over all lookups `f` in that row of `gamma + f`
-        // and
-        // on non-lookup rows, will be equal to 1.
         let f_term = |spec: &Vec<JointLookupSpec<_>>| {
             assert!(spec.len() <= lookup_info.max_per_row);
 
