@@ -29,6 +29,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::iter::Iterator;
+use std::ops::Mul;
 
 use super::evaluation_proof::*;
 
@@ -154,7 +155,10 @@ where
     }
 }
 
-impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
+impl<'a, 'b, C> Add<&'a PolyComm<C>> for &'b PolyComm<C>
+where
+    C: Add<C, Output = C> + Copy,
+{
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
@@ -203,6 +207,20 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
             (Some(p1), Some(p2)) => Some(p1 + (-p2)),
         };
         PolyComm { unshifted, shifted }
+    }
+}
+
+impl<F> Mul<F> for &PolyComm<F>
+where
+    F: Field,
+{
+    type Output = PolyComm<F>;
+
+    fn mul(self, c: F) -> Self::Output {
+        PolyComm {
+            unshifted: self.unshifted.iter().map(|b| *b * c).collect(),
+            shifted: self.shifted.map(|b| b * c),
+        }
     }
 }
 

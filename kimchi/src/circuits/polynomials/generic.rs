@@ -63,6 +63,12 @@ pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
 /// Number of generic of registers by a double generic gate.
 pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
 
+/// Offset of the (first) multiplication coefficient.
+pub const MUL_OFFSET: usize = 3;
+
+/// Offset of the (first) constant coefficient.
+pub const CONSTANT_OFFSET: usize = 4;
+
 /// Implementation of the `Generic` gate
 #[derive(Default)]
 pub struct Generic<F>(PhantomData<F>);
