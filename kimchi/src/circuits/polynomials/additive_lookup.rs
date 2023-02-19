@@ -159,34 +159,33 @@ pub fn constraints<F: FftField + PrimeField>(
                  inverse_count: &mut usize| {
                     let product_of_lookups = product_of_lookups.take();
                     let sum_of_products_of_lookups = sum_of_products_of_lookups.take();
-                    match (product_of_lookups, sum_of_products_of_lookups) {
-                        (Some(product_of_lookups), Some(sum_of_products_of_lookups)) => {
-                            let mut term = if is_used {
-                                // Assert that AdditiveLookupInverse(i)
-                                // = 1/(lookup[6*i]) + 1/(lookup[6*i+1]) + ... + 1/(lookup[6*i+5).
-                                // Since we can't perform division, instead we multiply through by the product
-                                // of all of the lookups (product_of_lookups) and assert that that is equal to
-                                // the sums of all products of 5 out of the 6 lookups
-                                // (sum_of_products_of_lookups).
-                                let res = column(Column::LookupKindIndex(spec))
-                                    * (product_of_lookups
-                                        * column(Column::AdditiveLookupInverse(*inverse_count))
-                                        - sum_of_products_of_lookups);
-                                *inverse_count += 1;
-                                res
-                            } else {
-                                E::zero()
-                            };
-                            if generate_feature_flags {
-                                term = E::IfFeature(
-                                    FeatureFlag::LookupPattern(spec),
-                                    Box::new(term),
-                                    Box::new(E::zero()),
-                                )
-                            }
-                            res.push(term)
+                    if let (Some(product_of_lookups), Some(sum_of_products_of_lookups)) =
+                        (product_of_lookups, sum_of_products_of_lookups)
+                    {
+                        let mut term = if is_used {
+                            // Assert that AdditiveLookupInverse(i)
+                            // = 1/(lookup[6*i]) + 1/(lookup[6*i+1]) + ... + 1/(lookup[6*i+5).
+                            // Since we can't perform division, instead we multiply through by the product
+                            // of all of the lookups (product_of_lookups) and assert that that is equal to
+                            // the sums of all products of 5 out of the 6 lookups
+                            // (sum_of_products_of_lookups).
+                            let res = column(Column::LookupKindIndex(spec))
+                                * (product_of_lookups
+                                    * column(Column::AdditiveLookupInverse(*inverse_count))
+                                    - sum_of_products_of_lookups);
+                            *inverse_count += 1;
+                            res
+                        } else {
+                            E::zero()
+                        };
+                        if generate_feature_flags {
+                            term = E::IfFeature(
+                                FeatureFlag::LookupPattern(spec),
+                                Box::new(term),
+                                Box::new(E::zero()),
+                            )
                         }
-                        _ => (),
+                        res.push(term)
                     }
                 };
             for (i, joint_lookup) in spec.lookups::<F>().into_iter().enumerate() {
