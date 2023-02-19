@@ -7,7 +7,7 @@ use crate::{
         expr::{Column, Constants, PolishToken},
         gate::GateType,
         lookup::tables::combine_table,
-        polynomials::permutation,
+        polynomials::{additive_lookup, permutation},
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
@@ -194,10 +194,12 @@ where
         let gamma = fq_sponge.challenge();
 
         if let Some(lookup_index) = index.lookup_index.as_ref() {
+            let num_inverses_columns =
+                additive_lookup::num_inverses_columns(&lookup_index.lookup_info);
             if let Some(inverses) = self.commitments.additive_lookup_inverses.as_ref() {
-                if inverses.len() < lookup_index.lookup_info.max_per_row {
+                if inverses.len() < num_inverses_columns {
                     return Err(VerifyError::MissingCommitment(
-                        Column::AdditiveLookupInverse(lookup_index.lookup_info.max_per_row - 1),
+                        Column::AdditiveLookupInverse(num_inverses_columns - 1),
                     ));
                 }
             } else {
@@ -206,9 +208,9 @@ where
                 ));
             }
             if let Some(inverses) = self.evals.additive_lookup_inverses.as_ref() {
-                if inverses.len() < lookup_index.lookup_info.max_per_row {
+                if inverses.len() < num_inverses_columns {
                     return Err(VerifyError::MissingEvaluation(
-                        Column::AdditiveLookupInverse(lookup_index.lookup_info.max_per_row - 1),
+                        Column::AdditiveLookupInverse(num_inverses_columns - 1),
                     ));
                 }
             } else {
@@ -782,7 +784,10 @@ where
                     Column::AdditiveLookupCount,
                 ]
                 .into_iter()
-                .chain((0..li.lookup_info.max_per_row).map(Column::AdditiveLookupInverse))
+                .chain(
+                    (0..additive_lookup::num_inverses_columns(&li.lookup_info))
+                        .map(Column::AdditiveLookupInverse),
+                )
             })
             .into_iter()
             .flatten(),

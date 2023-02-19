@@ -167,7 +167,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
                 LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
 
             {
-                let constraints = additive_lookup::constraints(&lookup_configuration, false);
+                let constraints =
+                    additive_lookup::constraints(&lookup_configuration, false, &mut cache);
                 let constraints_len = u32::try_from(constraints.len())
                     .expect("we always expect a relatively low amount of constraints");
 
@@ -194,7 +195,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         let lookup_configuration = LookupConfiguration::new(LookupInfo::create(all_features));
 
         {
-            let constraints = additive_lookup::constraints(&lookup_configuration, true);
+            let constraints = additive_lookup::constraints(&lookup_configuration, true, &mut cache);
             let constraints_len = u32::try_from(constraints.len())
                 .expect("we always expect a relatively low amount of constraints");
 
@@ -286,7 +287,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
     // the lookup polynomials
     if let Some(lookup_info) = lookup_info {
-        for i in 0..=lookup_info.max_per_row {
+        for i in 0..additive_lookup::num_inverses_columns(&lookup_info) {
             h.insert(AdditiveLookupInverse(i));
         }
         h.insert(LookupTable);

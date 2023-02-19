@@ -1,6 +1,6 @@
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr},
+        expr::{prologue::*, Cache, Column, ConstantExpr},
         gate::{CircuitGate, CurrOrNext::*},
         lookup::{
             constraints::{zk_patch, LookupConfiguration},
@@ -18,14 +18,21 @@ use std::collections::HashMap;
 
 pub const ZK_ROWS: usize = 3;
 
+pub const INVERSE_BATCH_SIZE: usize = 6;
+
+pub fn num_inverses_columns(lookup_info: &LookupInfo) -> usize {
+    (lookup_info.max_per_row + INVERSE_BATCH_SIZE - 1) / INVERSE_BATCH_SIZE
+}
+
 /// Specifies the additive lookup constraints as expressions.
 ///
 /// # Panics
 ///
 /// Will panic if single `element` length is bigger than `max_per_row` length.
-pub fn constraints<F: FftField>(
+pub fn constraints<F: FftField + PrimeField>(
     configuration: &LookupConfiguration<F>,
     generate_feature_flags: bool,
+    cache: &mut Cache,
 ) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
@@ -50,6 +57,7 @@ pub fn constraints<F: FftField>(
             assert!(spec.len() <= lookup_info.max_per_row);
 
             spec.iter()
+                .step_by(INVERSE_BATCH_SIZE)
                 .enumerate()
                 .map(|(i, _)| column(Column::AdditiveLookupInverse(i)))
                 .fold(None, |acc: Option<E<F>>, x| match acc {
@@ -142,26 +150,81 @@ pub fn constraints<F: FftField>(
         };
         for spec in all_lookup_patterns.into_iter() {
             let is_used = lookup_info.features.patterns[spec];
+            let mut product_of_lookups: Option<E<_>> = None;
+            let mut sum_of_products_of_lookups: Option<E<_>> = None;
+            let mut inverse_count = 0;
+            let mut insert_inverses_constraint =
+                |product_of_lookups: &mut Option<E<_>>,
+                 sum_of_products_of_lookups: &mut Option<E<_>>,
+                 inverse_count: &mut usize| {
+                    let product_of_lookups = product_of_lookups.take();
+                    let sum_of_products_of_lookups = sum_of_products_of_lookups.take();
+                    match (product_of_lookups, sum_of_products_of_lookups) {
+                        (Some(product_of_lookups), Some(sum_of_products_of_lookups)) => {
+                            let mut term = if is_used {
+                                // Assert that AdditiveLookupInverse(i)
+                                // = 1/(lookup[6*i]) + 1/(lookup[6*i+1]) + ... + 1/(lookup[6*i+5).
+                                // Since we can't perform division, instead we multiply through by the product
+                                // of all of the lookups (product_of_lookups) and assert that that is equal to
+                                // the sums of all products of 5 out of the 6 lookups
+                                // (sum_of_products_of_lookups).
+                                let res = column(Column::LookupKindIndex(spec))
+                                    * (product_of_lookups
+                                        * column(Column::AdditiveLookupInverse(*inverse_count))
+                                        - sum_of_products_of_lookups);
+                                *inverse_count += 1;
+                                res
+                            } else {
+                                E::zero()
+                            };
+                            if generate_feature_flags {
+                                term = E::IfFeature(
+                                    FeatureFlag::LookupPattern(spec),
+                                    Box::new(term),
+                                    Box::new(E::zero()),
+                                )
+                            }
+                            res.push(term)
+                        }
+                        _ => (),
+                    }
+                };
             for (i, joint_lookup) in spec.lookups::<F>().into_iter().enumerate() {
                 let eval = |pos: LocalPosition| witness(pos.column, pos.row);
-                let mut term = if is_used {
-                    column(Column::LookupKindIndex(spec))
-                        * ((E::Constant(ConstantExpr::Beta)
-                            + joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval))
-                            * column(Column::AdditiveLookupInverse(i))
-                            - E::one())
-                } else {
-                    E::zero()
-                };
-                if generate_feature_flags {
-                    term = E::IfFeature(
-                        FeatureFlag::LookupPattern(spec),
-                        Box::new(term),
-                        Box::new(E::zero()),
-                    )
+                let lookup_term = E::Constant(ConstantExpr::Beta)
+                    + joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
+                let lookup_term = cache.cache(lookup_term);
+                // We are gradually constructing the value
+                // a_1 * a_2 * .. * a_n + a_0 * a_2 * a_3 * ... * a_n + a_0 * a_1 * .. * a_{n-1}.
+                {
+                    let new_sum_of_products_of_lookups = match sum_of_products_of_lookups.take() {
+                        None => Some(E::one()),
+                        Some(e) => Some(
+                            e * lookup_term.clone() + product_of_lookups.as_ref().unwrap().clone(),
+                        ),
+                    };
+                    sum_of_products_of_lookups = new_sum_of_products_of_lookups;
                 }
-                res.push(term)
+                // We then update the product to include the current term as well.
+                product_of_lookups = match product_of_lookups.take() {
+                    None => Some(lookup_term),
+                    Some(product_of_lookups) => Some(product_of_lookups * lookup_term),
+                };
+                // We multiply in batches of INVERSE_BATCH_SIZE, to keep the degree low enough.
+                if i % INVERSE_BATCH_SIZE == INVERSE_BATCH_SIZE - 1 {
+                    insert_inverses_constraint(
+                        &mut product_of_lookups,
+                        &mut sum_of_products_of_lookups,
+                        &mut inverse_count,
+                    );
+                }
             }
+            // The final batch may be incomplete; if so, add it here.
+            insert_inverses_constraint(
+                &mut product_of_lookups,
+                &mut sum_of_products_of_lookups,
+                &mut inverse_count,
+            );
         }
     }
 
@@ -243,7 +306,8 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
     };
 
     let mut counts = vec![0u64; lookup_rows];
-    let mut inverses = vec![Vec::with_capacity(d1.size()); lookup_info.max_per_row];
+    let num_inverses_columns = num_inverses_columns(lookup_info);
+    let mut inverses = vec![Vec::with_capacity(d1.size()); num_inverses_columns];
 
     let by_row = lookup_info.by_row(gates);
 
@@ -272,13 +336,19 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
                 .get(&joint_lookup_evaluation)
                 .ok_or(ProverError::ValueNotInTable)?;
             // Use the cached inverted values from the table to insert the corresponding inverse.
-            inverses[j].push(-negative_inverted_lookup_values_offset_by_one[index + 1]);
+            if j % INVERSE_BATCH_SIZE == 0 {
+                inverses[j / INVERSE_BATCH_SIZE]
+                    .push(-negative_inverted_lookup_values_offset_by_one[index + 1]);
+            } else {
+                inverses[j / INVERSE_BATCH_SIZE][i] -=
+                    negative_inverted_lookup_values_offset_by_one[index + 1];
+            }
             // Increase the count for the lookup entry by one.
             counts[*index] += 1u64;
         }
         for inverses in inverses
             .iter_mut()
-            .take(lookup_info.max_per_row)
+            .take(num_inverses_columns)
             .skip(num_lookups)
         {
             inverses.push(F::zero());
@@ -301,7 +371,7 @@ pub fn compute_aggregations<R: Rng + ?Sized, F: PrimeField>(
         // Cascade the aggregation from the previous row through to this one.
         let acc = aggregation[i];
         aggregation[i + 1] += acc;
-        for (j, _) in spec.iter().enumerate() {
+        for (j, _) in spec.iter().enumerate().step_by(INVERSE_BATCH_SIZE) {
             // Add the inverse term for this lookup (already computed above).
             aggregation[i + 1] += inverses[j][i];
         }
