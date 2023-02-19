@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2962,18 +2962,6 @@
 <a href="#2962" id="2962">2962</a>
 <a href="#2963" id="2963">2963</a>
 <a href="#2964" id="2964">2964</a>
-<a href="#2965" id="2965">2965</a>
-<a href="#2966" id="2966">2966</a>
-<a href="#2967" id="2967">2967</a>
-<a href="#2968" id="2968">2968</a>
-<a href="#2969" id="2969">2969</a>
-<a href="#2970" id="2970">2970</a>
-<a href="#2971" id="2971">2971</a>
-<a href="#2972" id="2972">2972</a>
-<a href="#2973" id="2973">2973</a>
-<a href="#2974" id="2974">2974</a>
-<a href="#2975" id="2975">2975</a>
-<a href="#2976" id="2976">2976</a>
 </pre><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         constraints::FeatureFlags,
@@ -3133,9 +3121,9 @@
 <span class="comment">// Compute the ith unnormalized lagrange basis
 </span><span class="kw">fn </span>unnormalized_lagrange_basis&lt;F: FftField&gt;(domain: <span class="kw-2">&amp;</span>D&lt;F&gt;, i: i32, pt: <span class="kw-2">&amp;</span>F) -&gt; F {
     <span class="kw">let </span>omega_i = <span class="kw">if </span>i &lt; <span class="number">0 </span>{
-        domain.group_gen.pow(<span class="kw-2">&amp;</span>[-i <span class="kw">as </span>u64]).inverse().unwrap()
+        domain.group_gen.pow([-i <span class="kw">as </span>u64]).inverse().unwrap()
     } <span class="kw">else </span>{
-        domain.group_gen.pow(<span class="kw-2">&amp;</span>[i <span class="kw">as </span>u64])
+        domain.group_gen.pow([i <span class="kw">as </span>u64])
     };
     domain.evaluate_vanishing_polynomial(<span class="kw-2">*</span>pt) / (<span class="kw-2">*</span>pt - omega_i)
 }
@@ -3169,17 +3157,17 @@
         <span class="kw">match </span><span class="self">self </span>{
             Column::Witness(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;w_{{{i}}}&quot;</span>),
             Column::Z =&gt; <span class="string">&quot;Z&quot;</span>.to_string(),
-            Column::LookupSorted(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;s_{{{}}}&quot;</span>, i),
+            Column::LookupSorted(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;s_{{{i}}}&quot;</span>),
             Column::LookupAggreg =&gt; <span class="string">&quot;a&quot;</span>.to_string(),
             Column::LookupTable =&gt; <span class="string">&quot;t&quot;</span>.to_string(),
-            Column::LookupKindIndex(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;k_{{{:?}}}&quot;</span>, i),
+            Column::LookupKindIndex(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;k_{{{i:?}}}&quot;</span>),
             Column::LookupRuntimeSelector =&gt; <span class="string">&quot;rts&quot;</span>.to_string(),
             Column::LookupRuntimeTable =&gt; <span class="string">&quot;rt&quot;</span>.to_string(),
             Column::Index(gate) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, gate)
+                <span class="macro">format!</span>(<span class="string">&quot;{gate:?}&quot;</span>)
             }
-            Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c_{{{}}}&quot;</span>, i),
-            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_{{{}}}&quot;</span>, i),
+            Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c_{{{i}}}&quot;</span>),
+            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_{{{i}}}&quot;</span>),
         }
     }
 
@@ -3187,17 +3175,17 @@
         <span class="kw">match </span><span class="self">self </span>{
             Column::Witness(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;w[{i}]&quot;</span>),
             Column::Z =&gt; <span class="string">&quot;Z&quot;</span>.to_string(),
-            Column::LookupSorted(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;s[{}]&quot;</span>, i),
+            Column::LookupSorted(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;s[{i}]&quot;</span>),
             Column::LookupAggreg =&gt; <span class="string">&quot;a&quot;</span>.to_string(),
             Column::LookupTable =&gt; <span class="string">&quot;t&quot;</span>.to_string(),
-            Column::LookupKindIndex(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;k[{:?}]&quot;</span>, i),
+            Column::LookupKindIndex(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;k[{i:?}]&quot;</span>),
             Column::LookupRuntimeSelector =&gt; <span class="string">&quot;rts&quot;</span>.to_string(),
             Column::LookupRuntimeTable =&gt; <span class="string">&quot;rt&quot;</span>.to_string(),
             Column::Index(gate) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, gate)
+                <span class="macro">format!</span>(<span class="string">&quot;{gate:?}&quot;</span>)
             }
-            Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c[{}]&quot;</span>, i),
-            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_[{}]&quot;</span>, i),
+            Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c[{i}]&quot;</span>),
+            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_[{i}]&quot;</span>),
         }
     }
 }
@@ -3303,7 +3291,7 @@
         }
         <span class="kw">use </span>ConstantExpr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
-            Literal(x) =&gt; Literal(x.pow(<span class="kw-2">&amp;</span>[p])),
+            Literal(x) =&gt; Literal(x.pow([p])),
             x =&gt; Pow(Box::new(x), p),
         }
     }
@@ -3319,7 +3307,7 @@
             EndoCoefficient =&gt; c.endo_coefficient,
             Mds { row, col } =&gt; c.mds[<span class="kw-2">*</span>row][<span class="kw-2">*</span>col],
             Literal(x) =&gt; <span class="kw-2">*</span>x,
-            Pow(x, p) =&gt; x.value(c).pow(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>p <span class="kw">as </span>u64]),
+            Pow(x, p) =&gt; x.value(c).pow([<span class="kw-2">*</span>p]),
             Mul(x, y) =&gt; x.value(c) * y.value(c),
             Add(x, y) =&gt; x.value(c) + y.value(c),
             Sub(x, y) =&gt; x.value(c) - y.value(c),
@@ -3338,9 +3326,9 @@
 }
 
 <span class="kw">impl </span>CacheId {
-    <span class="kw">fn </span>get_from&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, F: FftField&gt;(
+    <span class="kw">fn </span>get_from&lt;<span class="lifetime">&#39;b</span>, F: FftField&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        cache: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>HashMap&lt;CacheId, EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt;&gt;,
+        cache: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span>HashMap&lt;CacheId, EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;&gt;,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;EvalResult&lt;<span class="lifetime">&#39;b</span>, F&gt;&gt; {
         cache.get(<span class="self">self</span>).map(|e| <span class="kw">match </span>e {
             EvalResult::Constant(x) =&gt; EvalResult::Constant(<span class="kw-2">*</span>x),
@@ -3412,8 +3400,8 @@
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 </span><span class="kw">pub enum </span>FeatureFlag {
-    ChaCha,
-    RangeCheck,
+    RangeCheck0,
+    RangeCheck1,
     ForeignFieldAdd,
     ForeignFieldMul,
     Xor,
@@ -3561,8 +3549,8 @@
                 <span class="kw">let </span>is_enabled = {
                     <span class="kw">use </span>FeatureFlag::<span class="kw-2">*</span>;
                     <span class="kw">match </span>feature {
-                        ChaCha =&gt; features.chacha,
-                        RangeCheck =&gt; features.range_check,
+                        RangeCheck0 =&gt; features.range_check0,
+                        RangeCheck1 =&gt; features.range_check1,
                         ForeignFieldAdd =&gt; features.foreign_field_add,
                         ForeignFieldMul =&gt; features.foreign_field_mul,
                         Xor =&gt; features.xor,
@@ -3706,7 +3694,7 @@
                 },
                 Pow(n) =&gt; {
                     <span class="kw">let </span>i = stack.len() - <span class="number">1</span>;
-                    stack[i] = stack[i].pow(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>n <span class="kw">as </span>u64]);
+                    stack[i] = stack[i].pow([<span class="kw-2">*</span>n]);
                 }
                 Add =&gt; {
                     <span class="kw">let </span>y = stack.pop().ok_or(ExprError::EmptyStack)<span class="question-mark">?</span>;
@@ -3895,14 +3883,14 @@
     <span class="kw">let </span>ii = i <span class="kw">as </span>u64;
     <span class="macro">assert!</span>(ii &lt; n);
     <span class="kw">let </span>omega = d1.group_gen;
-    <span class="kw">let </span>omega_i = omega.pow(<span class="kw-2">&amp;</span>[ii]);
-    <span class="kw">let </span>omega_minus_i = omega.pow(<span class="kw-2">&amp;</span>[n - ii]);
+    <span class="kw">let </span>omega_i = omega.pow([ii]);
+    <span class="kw">let </span>omega_minus_i = omega.pow([n - ii]);
 
     <span class="comment">// Write res_domain = &lt; omega_k &gt; with
     // |res_domain| = k * |H|
 
     // omega_k^0, ..., omega_k^k
-    </span><span class="kw">let </span>omega_k_n_pows = pows(res_domain.group_gen.pow(<span class="kw-2">&amp;</span>[n]), k);
+    </span><span class="kw">let </span>omega_k_n_pows = pows(res_domain.group_gen.pow([n]), k);
     <span class="kw">let </span>omega_k_pows = pows(res_domain.group_gen, k);
 
     <span class="kw">let </span><span class="kw-2">mut </span>evals: Vec&lt;F&gt; = {
@@ -3957,11 +3945,7 @@
         }
     }
 
-    <span class="kw">fn </span>add&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span>&gt;(
-        <span class="self">self</span>,
-        other: EvalResult&lt;<span class="lifetime">&#39;b</span>, F&gt;,
-        res_domain: (Domain, D&lt;F&gt;),
-    ) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
+    <span class="kw">fn </span>add&lt;<span class="lifetime">&#39;c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
         <span class="kw">use </span>EvalResult::<span class="kw-2">*</span>;
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (Constant(x), Constant(y)) =&gt; Constant(x + y),
@@ -4080,11 +4064,7 @@
         }
     }
 
-    <span class="kw">fn </span>sub&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span>&gt;(
-        <span class="self">self</span>,
-        other: EvalResult&lt;<span class="lifetime">&#39;b</span>, F&gt;,
-        res_domain: (Domain, D&lt;F&gt;),
-    ) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
+    <span class="kw">fn </span>sub&lt;<span class="lifetime">&#39;c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
         <span class="kw">use </span>EvalResult::<span class="kw-2">*</span>;
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (Constant(x), Constant(y)) =&gt; Constant(x - y),
@@ -4239,11 +4219,7 @@
         }
     }
 
-    <span class="kw">fn </span>mul&lt;<span class="lifetime">&#39;b</span>, <span class="lifetime">&#39;c</span>&gt;(
-        <span class="self">self</span>,
-        other: EvalResult&lt;<span class="lifetime">&#39;b</span>, F&gt;,
-        res_domain: (Domain, D&lt;F&gt;),
-    ) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
+    <span class="kw">fn </span>mul&lt;<span class="lifetime">&#39;c</span>&gt;(<span class="self">self</span>, other: EvalResult&lt;<span class="lifetime">&#39;_</span>, F&gt;, res_domain: (Domain, D&lt;F&gt;)) -&gt; EvalResult&lt;<span class="lifetime">&#39;c</span>, F&gt; {
         <span class="kw">use </span>EvalResult::<span class="kw-2">*</span>;
         <span class="kw">match </span>(<span class="self">self</span>, other) {
             (Constant(x), Constant(y)) =&gt; Constant(x * y),
@@ -4509,7 +4485,7 @@
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.evaluate_(d, pt, evals, c).map(|x| x.double()),
             Constant(x) =&gt; <span class="prelude-val">Ok</span>(x.value(c)),
-            Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c)<span class="question-mark">?</span>.pow(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>p <span class="kw">as </span>u64])),
+            Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate_(d, pt, evals, c)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
             BinOp(Op2::Mul, x, y) =&gt; {
                 <span class="kw">let </span>x = (<span class="kw-2">*</span>x).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
                 <span class="kw">let </span>y = (<span class="kw-2">*</span>y).evaluate_(d, pt, evals, c)<span class="question-mark">?</span>;
@@ -4546,7 +4522,7 @@
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
-    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;<span class="lifetime">&#39;a</span>, F&gt;) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
+    </span><span class="kw">pub fn </span>evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;<span class="lifetime">&#39;_</span>, F&gt;) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
         <span class="self">self</span>.evaluate_constants(env).evaluations(env)
     }
 }
@@ -4567,7 +4543,7 @@
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Constant(x) =&gt; <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>x),
-            Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate(d, pt, evals)<span class="question-mark">?</span>.pow(<span class="kw-2">&amp;</span>[<span class="kw-2">*</span>p <span class="kw">as </span>u64])),
+            Pow(x, p) =&gt; <span class="prelude-val">Ok</span>(x.evaluate(d, pt, evals)<span class="question-mark">?</span>.pow([<span class="kw-2">*</span>p])),
             Double(x) =&gt; x.evaluate(d, pt, evals).map(|x| x.double()),
             Square(x) =&gt; x.evaluate(d, pt, evals).map(|x| x.square()),
             BinOp(Op2::Mul, x, y) =&gt; {
@@ -4600,7 +4576,7 @@
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
-    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">&#39;a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;<span class="lifetime">&#39;a</span>, F&gt;) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
+    </span><span class="kw">pub fn </span>evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;<span class="lifetime">&#39;_</span>, F&gt;) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
         <span class="kw">let </span>d1_size = env.domain.d1.size;
         <span class="kw">let </span>deg = <span class="self">self</span>.degree(d1_size);
         <span class="kw">let </span>d = <span class="kw">if </span>deg &lt;= d1_size {
@@ -4826,7 +4802,7 @@
             <span class="kw">let </span>c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
-                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {:?} not found&quot;</span>, idx));
+                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
             <span class="kw">let </span>scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -4856,7 +4832,7 @@
             <span class="kw">let </span>c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
-                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {:?} not found&quot;</span>, idx));
+                .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
             <span class="kw">let </span>scale = e.evals.len() / n;
             res.par_iter_mut()
                 .enumerate()
@@ -5373,7 +5349,7 @@
             Mds { row, col } =&gt; <span class="macro">format!</span>(<span class="string">&quot;mds({row}, {col})&quot;</span>),
             Literal(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;0x{}&quot;</span>, x.to_hex()),
             Pow(x, n) =&gt; <span class="kw">match </span>x.as_ref() {
-                Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha^{}&quot;</span>, n),
+                Alpha =&gt; <span class="macro">format!</span>(<span class="string">&quot;alpha^{n}&quot;</span>),
                 x =&gt; <span class="macro">format!</span>(<span class="string">&quot;{}^{n}&quot;</span>, x.text()),
             },
             Add(x, y) =&gt; <span class="macro">format!</span>(<span class="string">&quot;({} + {})&quot;</span>, x.text(), y.text()),
@@ -5476,7 +5452,7 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.latex_name()
             }
-            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, feature),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
         }
     }
 
@@ -5499,7 +5475,7 @@
                 cache.insert(<span class="kw-2">*</span>id, e.as_ref().clone());
                 id.var_name()
             }
-            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, feature),
+            IfFeature(feature, <span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">format!</span>(<span class="string">&quot;{feature:?}&quot;</span>),
         }
     }
 
@@ -5819,8 +5795,8 @@
         prover_index::ProverIndex,
     };
     <span class="kw">use </span>ark_ff::UniformRand;
-    <span class="kw">use </span>commitment_dlog::srs::{endos, SRS};
     <span class="kw">use </span>mina_curves::pasta::{Fp, Pallas, Vesta};
+    <span class="kw">use </span>poly_commitment::srs::{endos, SRS};
     <span class="kw">use </span>rand::{prelude::StdRng, SeedableRng};
     <span class="kw">use </span>std::array;
     <span class="kw">use </span>std::sync::Arc;
@@ -5951,4 +5927,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

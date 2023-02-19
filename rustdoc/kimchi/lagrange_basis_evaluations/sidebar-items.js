@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["LagrangeBasisEvaluations","The evaluations of all normalized lagrange basis polynomials at a given point. Can be used to evaluate an `Evaluations` form polynomial at that point."]]};
+window.SIDEBAR_ITEMS = {"struct":["LagrangeBasisEvaluations"]};

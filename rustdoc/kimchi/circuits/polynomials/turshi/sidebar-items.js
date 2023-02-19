@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":[["CIRCUIT_GATE_COUNT",""]],"fn":[["circuit_gate_combined_constraints","Combines the constraints for the Cairo gates depending on its type"]],"mod":[["testing",""],["witness",""]],"struct":[["Claim",""],["Flags",""],["Instruction",""],["Transition",""]]};
+window.SIDEBAR_ITEMS = {"constant":["CIRCUIT_GATE_COUNT"],"fn":["circuit_gate_combined_constraints"],"mod":["testing","witness"],"struct":["Claim","Flags","Instruction","Transition"]};

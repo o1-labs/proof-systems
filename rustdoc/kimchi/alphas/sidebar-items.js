@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["Alphas","This type can be used to create a mapping between powers of alpha and constraint types. See [Self::default] to create one, and [Self::register] to register a new mapping. Once you know the alpha value, you can convert this type to a [Alphas]."],["MustConsumeIterator","Wrapper around an iterator that warns you if not consumed entirely."]]};
+window.SIDEBAR_ITEMS = {"struct":["Alphas","MustConsumeIterator"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":[["KimchiCurve","Represents additional information that a curve needs in order to be used with Kimchi"]]};
+window.SIDEBAR_ITEMS = {"trait":["KimchiCurve"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["compute_intermediate_products","Compute non-zero intermediate products"],["compute_intermediate_sums","Compute intermediate sums"],["compute_native_modulus_values",""]],"struct":[["ForeignFieldMul","This gate operates on the Curr and Next rowsIt uses copy, plookup, crumb and custom constraints"]]};
+window.SIDEBAR_ITEMS = {"fn":["compute_intermediate_products","compute_intermediate_sums","compute_native_modulus_values"],"struct":["ForeignFieldMul"]};

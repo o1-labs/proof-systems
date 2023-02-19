@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["LookupEvals",""],["LookupPolys",""],["LookupShifts",""],["WitnessEvals","Evaluations of the wires and permutation"],["WitnessOverDomains",""],["WitnessShifts",""]]};
+window.SIDEBAR_ITEMS = {"struct":["LookupEvals","LookupPolys","LookupShifts","WitnessEvals","WitnessOverDomains","WitnessShifts"]};

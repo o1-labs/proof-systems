@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/constraints.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>constraints.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/constraints.rs`."><title>constraints.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../source-files.js"></script><script defer src="../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../kimchi/index.html"><img class="rust-logo" src="../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -770,6 +770,26 @@
 <a href="#770" id="770">770</a>
 <a href="#771" id="771">771</a>
 <a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -780,7 +800,6 @@
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::range_check,
         wires::<span class="kw-2">*</span>,
     },
     curve::KimchiCurve,
@@ -806,10 +825,10 @@
 </span><span class="doccomment">/// Flags for optional features in the constraint system
 </span><span class="attr">#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>FeatureFlags {
-    <span class="doccomment">/// ChaCha gates
-    </span><span class="kw">pub </span>chacha: bool,
-    <span class="doccomment">/// Range check gates
-    </span><span class="kw">pub </span>range_check: bool,
+    <span class="doccomment">/// RangeCheck0 gate
+    </span><span class="kw">pub </span>range_check0: bool,
+    <span class="doccomment">/// RangeCheck1 gate
+    </span><span class="kw">pub </span>range_check1: bool,
     <span class="doccomment">/// Foreign field addition gate
     </span><span class="kw">pub </span>foreign_field_add: bool,
     <span class="doccomment">/// Foreign field multiplication gate
@@ -876,17 +895,17 @@
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>emul_selector8: E&lt;F, D&lt;F&gt;&gt;,
 
-    <span class="doccomment">/// ChaCha selectors over domain d8
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;[o1_utils::serialization::SerdeAs; 4]&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>chacha_selectors8: <span class="prelude-ty">Option</span>&lt;[E&lt;F, D&lt;F&gt;&gt;; <span class="number">4</span>]&gt;,
-
     <span class="doccomment">/// EC point addition selector over domain d8
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>endomul_scalar_selector8: E&lt;F, D&lt;F&gt;&gt;,
 
-    <span class="doccomment">/// Range check gate selector over domain d8
-    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;[o1_utils::serialization::SerdeAs; range_check::gadget::GATE_COUNT]&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>range_check_selectors8: <span class="prelude-ty">Option</span>&lt;[E&lt;F, D&lt;F&gt;&gt;; range_check::gadget::GATE_COUNT]&gt;,
+    <span class="doccomment">/// RangeCheck0 gate selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>range_check0_selector8: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
+
+    <span class="doccomment">/// RangeCheck1 gate selector over domain d8
+    </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
+    </span><span class="kw">pub </span>range_check1_selector8: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
 
     <span class="doccomment">/// Foreign field addition gate selector over domain d8
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
@@ -940,6 +959,9 @@
     <span class="doccomment">/// precomputes
     </span><span class="attr">#[serde(skip)]
     </span>precomputations: OnceCell&lt;Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;&gt;,
+
+    <span class="doccomment">/// Disable gates checks (for testing; only enables with development builds)
+    </span><span class="kw">pub </span>disable_gates_checks: bool,
 }
 
 <span class="doccomment">/// Represents an error found when verifying a witness with a gate
@@ -960,6 +982,7 @@
     lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;,
     runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;,
     precomputations: <span class="prelude-ty">Option</span>&lt;Arc&lt;DomainConstantEvaluations&lt;F&gt;&gt;&gt;,
+    disable_gates_checks: bool,
 }
 
 <span class="doccomment">/// Create selector polynomial for a circuit gate
@@ -968,24 +991,29 @@
     gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
     domain: <span class="kw-2">&amp;</span>EvaluationDomains&lt;F&gt;,
     target_domain: <span class="kw-2">&amp;</span>D&lt;F&gt;,
+    disable_gates_checks: bool,
 ) -&gt; E&lt;F, D&lt;F&gt;&gt; {
-    <span class="comment">// Coefficient form
-    </span><span class="kw">let </span>coeff = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
-        gates
-            .iter()
-            .map(|gate| {
-                <span class="kw">if </span>gate.typ == gate_type {
-                    F::one()
-                } <span class="kw">else </span>{
-                    F::zero()
-                }
-            })
-            .collect(),
-        domain.d1,
-    )
-    .interpolate();
+    <span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) &amp;&amp; disable_gates_checks {
+        DP::&lt;F&gt;::zero().evaluate_over_domain_by_ref(<span class="kw-2">*</span>target_domain)
+    } <span class="kw">else </span>{
+        <span class="comment">// Coefficient form
+        </span><span class="kw">let </span>coeff = E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(
+            gates
+                .iter()
+                .map(|gate| {
+                    <span class="kw">if </span>gate.typ == gate_type {
+                        F::one()
+                    } <span class="kw">else </span>{
+                        F::zero()
+                    }
+                })
+                .collect(),
+            domain.d1,
+        )
+        .interpolate();
 
-    coeff.evaluate_over_domain_by_ref(<span class="kw-2">*</span>target_domain)
+        coeff.evaluate_over_domain_by_ref(<span class="kw-2">*</span>target_domain)
+    }
 }
 
 <span class="kw">impl</span>&lt;F: PrimeField&gt; ConstraintSystem&lt;F&gt; {
@@ -997,6 +1025,7 @@
     /// - `lookup_tables: vec![]`,
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
+    /// - `disable_gates_checks: false`,
     ///
     /// How to use it:
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
@@ -1010,6 +1039,7 @@
             lookup_tables: <span class="macro">vec!</span>[],
             runtime_tables: <span class="prelude-val">None</span>,
             precomputations: <span class="prelude-val">None</span>,
+            disable_gates_checks: <span class="bool-val">false</span>,
         }
     }
 
@@ -1048,10 +1078,7 @@
                 <span class="kw">if </span>wire.col &gt;= PERMUTS {
                     <span class="kw">return </span><span class="prelude-val">Err</span>(GateError::Custom {
                         row,
-                        err: <span class="macro">format!</span>(
-                            <span class="string">&quot;a wire can only be connected to the first {} columns&quot;</span>,
-                            PERMUTS
-                        ),
+                        err: <span class="macro">format!</span>(<span class="string">&quot;a wire can only be connected to the first {PERMUTS} columns&quot;</span>),
                     });
                 }
 
@@ -1211,6 +1238,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d4,
+            <span class="self">self</span>.disable_gates_checks,
         );
 
         <span class="kw">let </span>mul_selector8 = selector_polynomial(
@@ -1218,6 +1246,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+            <span class="self">self</span>.disable_gates_checks,
         );
 
         <span class="kw">let </span>emul_selector8 = selector_polynomial(
@@ -1225,6 +1254,7 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+            <span class="self">self</span>.disable_gates_checks,
         );
 
         <span class="kw">let </span>endomul_scalar_selector8 = selector_polynomial(
@@ -1232,65 +1262,40 @@
             <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
             <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+            <span class="self">self</span>.disable_gates_checks,
         );
 
         <span class="kw">let </span>generic_selector4 = evaluated_column_coefficients
             .generic_selector
             .evaluate_over_domain_by_ref(<span class="self">self</span>.domain.d4);
 
-        <span class="comment">// chacha gate
-        </span><span class="kw">let </span>chacha_selectors8 = {
-            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.chacha {
+        <span class="comment">// RangeCheck0 constraint selector polynomials
+        </span><span class="kw">let </span>range_check0_selector8 = {
+            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check0 {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>([
-                    selector_polynomial(
-                        GateType::ChaCha0,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::ChaCha1,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::ChaCha2,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::ChaChaFinal,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-                    ),
-                ])
+                <span class="prelude-val">Some</span>(selector_polynomial(
+                    GateType::RangeCheck0,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    <span class="self">self</span>.disable_gates_checks,
+                ))
             }
         };
 
-        <span class="comment">// Range check constraint selector polynomials
-        </span><span class="kw">let </span>range_check_selectors8 = {
-            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check {
+        <span class="comment">// RangeCheck1 constraint selector polynomials
+        </span><span class="kw">let </span>range_check1_selector8 = {
+            <span class="kw">if </span>!<span class="self">self</span>.feature_flags.range_check1 {
                 <span class="prelude-val">None
             </span>} <span class="kw">else </span>{
-                <span class="prelude-val">Some</span>([
-                    selector_polynomial(
-                        GateType::RangeCheck0,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::RangeCheck1,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
-                        <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
-                    ),
-                ])
+                <span class="prelude-val">Some</span>(selector_polynomial(
+                    GateType::RangeCheck1,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
+                    <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    <span class="self">self</span>.disable_gates_checks,
+                ))
             }
         };
 
@@ -1304,6 +1309,7 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    <span class="self">self</span>.disable_gates_checks,
                 ))
             }
         };
@@ -1318,6 +1324,7 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    <span class="self">self</span>.disable_gates_checks,
                 ))
             }
         };
@@ -1331,6 +1338,7 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    <span class="self">self</span>.disable_gates_checks,
                 ))
             }
         };
@@ -1344,6 +1352,7 @@
                     <span class="kw-2">&amp;</span><span class="self">self</span>.gates,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain,
                     <span class="kw-2">&amp;</span><span class="self">self</span>.domain.d8,
+                    <span class="self">self</span>.disable_gates_checks,
                 ))
             }
         };
@@ -1362,9 +1371,9 @@
             complete_add_selector4,
             mul_selector8,
             emul_selector8,
-            chacha_selectors8,
             endomul_scalar_selector8,
-            range_check_selectors8,
+            range_check0_selector8,
+            range_check1_selector8,
             foreign_field_add_selector8,
             foreign_field_mul_selector8,
             xor_selector8,
@@ -1420,6 +1429,12 @@
         <span class="self">self
     </span>}
 
+    <span class="doccomment">/// Disable gates checks (for testing; only enables with development builds)
+    </span><span class="kw">pub fn </span>disable_gates_checks(<span class="kw-2">mut </span><span class="self">self</span>, disable_gates_checks: bool) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.disable_gates_checks = disable_gates_checks;
+        <span class="self">self
+    </span>}
+
     <span class="doccomment">/// Build the [ConstraintSystem] from a [Builder].
     </span><span class="kw">pub fn </span>build(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;ConstraintSystem&lt;F&gt;, SetupError&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>gates = <span class="self">self</span>.gates;
@@ -1430,10 +1445,39 @@
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         </span><span class="macro">assert!</span>(gates.len() &gt; <span class="number">1</span>);
 
+        <span class="kw">let </span>lookup_features = LookupFeatures::from_gates(<span class="kw-2">&amp;</span>gates, runtime_tables.is_some());
+
+        <span class="kw">let </span>num_lookups = {
+            <span class="kw">let </span><span class="kw-2">mut </span>num_lookups: usize = lookup_tables
+                .iter()
+                .map(
+                    |LookupTable { data, id: <span class="kw">_ </span>}| {
+                        <span class="kw">if </span>data.is_empty() {
+                            <span class="number">0
+                        </span>} <span class="kw">else </span>{
+                            data[<span class="number">0</span>].len()
+                        }
+                    },
+                )
+                .sum();
+            <span class="kw">for </span>runtime_table <span class="kw">in </span>runtime_tables.iter() {
+                num_lookups += runtime_table.len();
+            }
+            <span class="kw">let </span>LookupFeatures { patterns, .. } = <span class="kw-2">&amp;</span>lookup_features;
+            <span class="kw">for </span>pattern <span class="kw">in </span>patterns.into_iter() {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(gate_table) = pattern.table() {
+                    num_lookups += gate_table.table_size();
+                }
+            }
+            num_lookups
+        };
+
         <span class="comment">//~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        </span><span class="kw">let </span>domain = EvaluationDomains::&lt;F&gt;::create(gates.len() + ZK_ROWS <span class="kw">as </span>usize)<span class="question-mark">?</span>;
+        </span><span class="kw">let </span>domain_size_lower_bound =
+            std::cmp::max(gates.len(), num_lookups + <span class="number">1</span>) + ZK_ROWS <span class="kw">as </span>usize;
+        <span class="kw">let </span>domain = EvaluationDomains::&lt;F&gt;::create(domain_size_lower_bound)<span class="question-mark">?</span>;
 
         <span class="macro">assert!</span>(domain.d1.size &gt; ZK_ROWS);
 
@@ -1449,11 +1493,9 @@
             .collect();
         gates.append(<span class="kw-2">&amp;mut </span>padding);
 
-        <span class="kw">let </span>lookup_features = LookupFeatures::from_gates(<span class="kw-2">&amp;</span>gates, runtime_tables.is_some());
-
         <span class="kw">let </span><span class="kw-2">mut </span>feature_flags = FeatureFlags {
-            chacha: <span class="bool-val">false</span>,
-            range_check: <span class="bool-val">false</span>,
+            range_check0: <span class="bool-val">false</span>,
+            range_check1: <span class="bool-val">false</span>,
             lookup_features,
             foreign_field_add: <span class="bool-val">false</span>,
             foreign_field_mul: <span class="bool-val">false</span>,
@@ -1463,11 +1505,8 @@
 
         <span class="kw">for </span>gate <span class="kw">in </span><span class="kw-2">&amp;</span>gates {
             <span class="kw">match </span>gate.typ {
-                GateType::ChaCha0
-                | GateType::ChaCha1
-                | GateType::ChaCha2
-                | GateType::ChaChaFinal =&gt; feature_flags.chacha = <span class="bool-val">true</span>,
-                GateType::RangeCheck0 | GateType::RangeCheck1 =&gt; feature_flags.range_check = <span class="bool-val">true</span>,
+                GateType::RangeCheck0 =&gt; feature_flags.range_check0 = <span class="bool-val">true</span>,
+                GateType::RangeCheck1 =&gt; feature_flags.range_check1 = <span class="bool-val">true</span>,
                 GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
                 GateType::ForeignFieldMul =&gt; feature_flags.foreign_field_mul = <span class="bool-val">true</span>,
                 GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
@@ -1505,6 +1544,7 @@
             </span>lookup_constraint_system,
             feature_flags,
             precomputations: domain_constant_evaluation,
+            disable_gates_checks: <span class="self">self</span>.disable_gates_checks,
         };
 
         <span class="kw">match </span><span class="self">self</span>.precomputations {
@@ -1543,4 +1583,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

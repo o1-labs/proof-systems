@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["testing",""]],"struct":[["ProverIndex","The index used by the prover"]]};
+window.SIDEBAR_ITEMS = {"mod":["testing"],"struct":["ProverIndex"]};

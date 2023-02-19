@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["absorb_commitment","b_poly","b_poly_coefficients","combined_inner_product","inner_prod","pows","product","shift_scalar","squeeze_challenge","squeeze_prechallenge","to_group"],"struct":["BatchEvaluationProof","BlindedCommitment","Evaluation","PolyComm"],"trait":["CommitmentCurve"]};

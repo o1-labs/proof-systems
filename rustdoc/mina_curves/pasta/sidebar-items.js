@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["curves",""],["fields",""]]};
+window.SIDEBAR_ITEMS = {"mod":["curves","fields"]};

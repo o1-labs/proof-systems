@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":[["constants",""],["pasta",""],["permutation","The permutation module contains the function implementing the permutation used in Poseidon"],["poseidon","This module implements Poseidon Hash Function primitive"],["sponge",""]],"trait":[["FqSponge",""]]};
+window.SIDEBAR_ITEMS = {"mod":["constants","pasta","permutation","poseidon","sponge"],"trait":["FqSponge"]};

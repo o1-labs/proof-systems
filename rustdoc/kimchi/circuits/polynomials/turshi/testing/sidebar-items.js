@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["ensure_cairo_gate","verifies that the Cairo gate constraints are solved by the witness depending on its type"]]};
+window.SIDEBAR_ITEMS = {"fn":["ensure_cairo_gate"]};

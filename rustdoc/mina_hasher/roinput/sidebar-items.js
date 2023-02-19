@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["ROInput","Random oracle input structure"]]};
+window.SIDEBAR_ITEMS = {"struct":["ROInput"]};

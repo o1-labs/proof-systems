@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["ChunkedEvaluations","This struct contains multiple chunk evaluations."]]};
+window.SIDEBAR_ITEMS = {"struct":["ChunkedEvaluations"]};

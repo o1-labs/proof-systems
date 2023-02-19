@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["create_and_witness","Create a And for inputs as field elements starting at row 0 Input: first input, second input, and desired byte length Panics if the input is too large for the chosen number of bytes"],["lookup_table","Get the AND lookup table"]]};
+window.SIDEBAR_ITEMS = {"fn":["create_and_witness","extend_and_witness","lookup_table"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/prover.rs`."><title>prover.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1487,21 +1487,6 @@
 <a href="#1487" id="1487">1487</a>
 <a href="#1488" id="1488">1488</a>
 <a href="#1489" id="1489">1489</a>
-<a href="#1490" id="1490">1490</a>
-<a href="#1491" id="1491">1491</a>
-<a href="#1492" id="1492">1492</a>
-<a href="#1493" id="1493">1493</a>
-<a href="#1494" id="1494">1494</a>
-<a href="#1495" id="1495">1495</a>
-<a href="#1496" id="1496">1496</a>
-<a href="#1497" id="1497">1497</a>
-<a href="#1498" id="1498">1498</a>
-<a href="#1499" id="1499">1499</a>
-<a href="#1500" id="1500">1500</a>
-<a href="#1501" id="1501">1501</a>
-<a href="#1502" id="1502">1502</a>
-<a href="#1503" id="1503">1503</a>
-<a href="#1504" id="1504">1504</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements prover&#39;s zk-proof primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -1511,7 +1496,6 @@
         gate::GateType,
         lookup::{<span class="self">self</span>, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
-            chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal},
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
@@ -1520,10 +1504,7 @@
             generic, permutation,
             permutation::ZK_ROWS,
             poseidon::Poseidon,
-            range_check::{
-                <span class="self">self</span>,
-                circuitgates::{RangeCheck0, RangeCheck1},
-            },
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
             varbasemul::VarbaseMul,
             xor::Xor16,
@@ -1546,15 +1527,15 @@
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain <span class="kw">as </span>D, UVPolynomial,
 };
-<span class="kw">use </span>commitment_dlog::{
+<span class="kw">use </span>itertools::Itertools;
+<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+<span class="kw">use </span>o1_utils::ExtendedDensePolynomial <span class="kw">as _</span>;
+<span class="kw">use </span>poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
     evaluation_proof::DensePolynomialOrEvaluations,
 };
-<span class="kw">use </span>itertools::Itertools;
-<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-<span class="kw">use </span>o1_utils::ExtendedDensePolynomial <span class="kw">as _</span>;
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::collections::HashMap;
@@ -1681,8 +1662,9 @@
         <span class="comment">// TODO: rng should be passed as arg
         </span><span class="kw">let </span>rng = <span class="kw-2">&amp;mut </span>rand::rngs::OsRng;
 
-        <span class="comment">// double-check the witness
-        </span><span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) {
+        <span class="comment">// Verify the circuit satisfiability by the computed witness (baring plookup constraints)
+        // Catch mistakes before proof generation.
+        </span><span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) &amp;&amp; !index.cs.disable_gates_checks {
             <span class="kw">let </span>public = witness[<span class="number">0</span>][<span class="number">0</span>..index.cs.public].to_vec();
             index.verify(<span class="kw-2">&amp;</span>witness, <span class="kw-2">&amp;</span>public).expect(<span class="string">&quot;incorrect witness&quot;</span>);
         }
@@ -1734,7 +1716,7 @@
         //~    and $0$ for the rest.
         </span><span class="kw">let </span>public = witness[<span class="number">0</span>][<span class="number">0</span>..index.cs.public].to_vec();
         <span class="kw">let </span>public_poly = -Evaluations::&lt;G::ScalarField, D&lt;G::ScalarField&gt;&gt;::from_vec_and_domain(
-            public.clone(),
+            public,
             index.cs.domain.d1,
         )
         .interpolate();
@@ -1818,9 +1800,9 @@
 
         <span class="comment">//~ 1. If using lookup:
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = <span class="kw-2">&amp;</span>index.cs.lookup_constraint_system {
-            <span class="comment">//~~ - if using runtime table:
+            <span class="comment">//~~ * if using runtime table:
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(cfg_runtime_tables) = <span class="kw-2">&amp;</span>lcs.runtime_tables {
-                <span class="comment">//~~~ - check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
+                <span class="comment">//~~~ * check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
                 //~~~   we expect the given runtime tables to be sorted as configured, this makes it easier afterwards
                 </span><span class="kw">let </span>expected_runtime: Vec&lt;<span class="kw">_</span>&gt; = cfg_runtime_tables
                     .iter()
@@ -1834,7 +1816,7 @@
                     <span class="kw">return </span><span class="prelude-val">Err</span>(ProverError::RuntimeTablesInconsistent);
                 }
 
-                <span class="comment">//~~~ - calculate the contribution to the second column of the lookup table
+                <span class="comment">//~~~ * calculate the contribution to the second column of the lookup table
                 //~~~   (the runtime vector)
                 </span><span class="kw">let </span>(runtime_table_contribution, runtime_table_contribution_d8) = {
                     <span class="kw">let </span><span class="kw-2">mut </span>offset = lcs
@@ -1886,7 +1868,7 @@
                 lookup_context.runtime_second_col_d8 = <span class="prelude-val">Some</span>(second_column_d8);
             }
 
-            <span class="comment">//~~ - If queries involve a lookup table with multiple columns
+            <span class="comment">//~~ * If queries involve a lookup table with multiple columns
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,
             //~~   otherwise set the joint combiner challenge $j&#39;$ to $0$.
             </span><span class="kw">let </span>joint_combiner = <span class="kw">if </span>lcs.configuration.lookup_info.features.joint_lookup_used {
@@ -1895,10 +1877,10 @@
                 G::ScalarField::zero()
             };
 
-            <span class="comment">//~~ - Derive the scalar joint combiner $j$ from $j&#39;$ using the endomorphism (TOOD: specify)
+            <span class="comment">//~~ * Derive the scalar joint combiner $j$ from $j&#39;$ using the endomorphism (TOOD: specify)
             </span><span class="kw">let </span>joint_combiner: G::ScalarField = ScalarChallenge(joint_combiner).to_field(endo_r);
 
-            <span class="comment">//~~ - If multiple lookup tables are involved,
+            <span class="comment">//~~ * If multiple lookup tables are involved,
             //~~   set the `table_id_combiner` as the $j^i$ with $i$ the maximum width of any used table.
             //~~   Essentially, this is to add a last column of table ids to the concatenated lookup tables.
             </span><span class="kw">let </span>table_id_combiner: G::ScalarField = <span class="kw">if </span>lcs.table_ids8.as_ref().is_some() {
@@ -1909,7 +1891,7 @@
             };
             lookup_context.table_id_combiner = <span class="prelude-val">Some</span>(table_id_combiner);
 
-            <span class="comment">//~~ - Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
+            <span class="comment">//~~ * Compute the dummy lookup value as the combination of the last entry of the XOR table (so `(0, 0, 0)`).
             //~~   Warning: This assumes that we always use the XOR table when using lookups.
             </span><span class="kw">let </span>dummy_lookup_value = lcs
                 .configuration
@@ -1917,7 +1899,7 @@
                 .evaluate(<span class="kw-2">&amp;</span>joint_combiner, <span class="kw-2">&amp;</span>table_id_combiner);
             lookup_context.dummy_lookup_value = <span class="prelude-val">Some</span>(dummy_lookup_value);
 
-            <span class="comment">//~~ - Compute the lookup table values as the combination of the lookup table entries.
+            <span class="comment">//~~ * Compute the lookup table values as the combination of the lookup table entries.
             </span><span class="kw">let </span>joint_lookup_table_d8 = {
                 <span class="kw">let </span><span class="kw-2">mut </span>evals = Vec::with_capacity(d1_size);
 
@@ -1970,7 +1952,7 @@
             <span class="comment">// TODO: This interpolation is avoidable.
             </span><span class="kw">let </span>joint_lookup_table = joint_lookup_table_d8.interpolate_by_ref();
 
-            <span class="comment">//~~ - Compute the sorted evaluations.
+            <span class="comment">//~~ * Compute the sorted evaluations.
             // TODO: Once we switch to committing using lagrange commitments,
             // `witness` will be consumed when we interpolate, so interpolation will
             // have to moved below this.
@@ -1985,20 +1967,20 @@
                 <span class="kw-2">&amp;</span>lcs.configuration.lookup_info,
             )<span class="question-mark">?</span>;
 
-            <span class="comment">//~~ - Randomize the last `EVALS` rows in each of the sorted polynomials
+            <span class="comment">//~~ * Randomize the last `EVALS` rows in each of the sorted polynomials
             //~~   in order to add zero-knowledge to the protocol.
             </span><span class="kw">let </span>sorted: Vec&lt;<span class="kw">_</span>&gt; = sorted
                 .into_iter()
                 .map(|chunk| lookup::constraints::zk_patch(chunk, index.cs.domain.d1, rng))
                 .collect();
 
-            <span class="comment">//~~ - Commit each of the sorted polynomials.
+            <span class="comment">//~~ * Commit each of the sorted polynomials.
             </span><span class="kw">let </span>sorted_comms: Vec&lt;<span class="kw">_</span>&gt; = sorted
                 .iter()
                 .map(|v| index.srs.commit_evaluations(index.cs.domain.d1, v, rng))
                 .collect();
 
-            <span class="comment">//~~ - Absorb each commitments to the sorted polynomials.
+            <span class="comment">//~~ * Absorb each commitments to the sorted polynomials.
             </span>sorted_comms
                 .iter()
                 .for_each(|c| absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>c.commitment));
@@ -2028,7 +2010,7 @@
 
         <span class="comment">//~ 1. If using lookup:
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = <span class="kw-2">&amp;</span>index.cs.lookup_constraint_system {
-            <span class="comment">//~~ - Compute the lookup aggregation polynomial.
+            <span class="comment">//~~ * Compute the lookup aggregation polynomial.
             </span><span class="kw">let </span>joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
             <span class="kw">let </span>aggreg = lookup::constraints::aggregation::&lt;<span class="kw">_</span>, G::ScalarField&gt;(
@@ -2046,12 +2028,12 @@
                 <span class="kw-2">&amp;</span>lcs.configuration.lookup_info,
             )<span class="question-mark">?</span>;
 
-            <span class="comment">//~~ - Commit to the aggregation polynomial.
+            <span class="comment">//~~ * Commit to the aggregation polynomial.
             </span><span class="kw">let </span>aggreg_comm = index
                 .srs
                 .commit_evaluations(index.cs.domain.d1, <span class="kw-2">&amp;</span>aggreg, rng);
 
-            <span class="comment">//~~ - Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
+            <span class="comment">//~~ * Absorb the commitment to the aggregation polynomial with the Fq-Sponge.
             </span>absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, <span class="kw-2">&amp;</span>aggreg_comm.commitment);
 
             <span class="comment">// precompute different forms of the aggregation polynomial for later
@@ -2086,10 +2068,10 @@
 
         <span class="comment">//~ 1. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
         //~    The quotient polynomial is computed by adding all these polynomials together:
-        //~~ - the combined constraints for all the gates
-        //~~ - the combined constraints for the permutation
-        //~~ - TODO: lookup
-        //~~ - the negated public polynomial
+        //~~ * the combined constraints for all the gates
+        //~~ * the combined constraints for the permutation
+        //~~ * TODO: lookup
+        //~~ * the negated public polynomial
         //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
         </span><span class="kw">let </span>lookup_env = <span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = <span class="kw-2">&amp;</span>index.cs.lookup_constraint_system {
@@ -2123,22 +2105,13 @@
                 EndoMulScalar,
                 <span class="kw-2">&amp;</span>index.column_evaluations.endomul_scalar_selector8,
             );
-            [ChaCha0, ChaCha1, ChaCha2, ChaChaFinal]
-                .iter()
-                .enumerate()
-                .for_each(|(i, g)| {
-                    <span class="kw">if let </span><span class="prelude-val">Some</span>(c) = <span class="kw-2">&amp;</span>index.column_evaluations.chacha_selectors8 {
-                        index_evals.insert(<span class="kw-2">*</span>g, <span class="kw-2">&amp;</span>c[i]);
-                    }
-                });
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(polys) = <span class="kw-2">&amp;</span>index.column_evaluations.range_check_selectors8 {
-                index_evals.extend(
-                    range_check::gadget::circuit_gates()
-                        .iter()
-                        .enumerate()
-                        .map(|(i, gate_type)| (<span class="kw-2">*</span>gate_type, <span class="kw-2">&amp;</span>polys[i])),
-                );
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = <span class="kw-2">&amp;</span>index.column_evaluations.range_check0_selector8.as_ref() {
+                index_evals.insert(GateType::RangeCheck0, selector);
+            }
+
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = <span class="kw-2">&amp;</span>index.column_evaluations.range_check1_selector8.as_ref() {
+                index_evals.insert(GateType::RangeCheck1, selector);
             }
 
             <span class="kw">if let </span><span class="prelude-val">Some</span>(selector) = index
@@ -2220,8 +2193,10 @@
             {
                 <span class="kw">use </span><span class="kw">crate</span>::circuits::argument::DynArgument;
 
-                <span class="kw">let </span>chacha_enabled = index.column_evaluations.chacha_selectors8.is_some();
-                <span class="kw">let </span>range_check_enabled = index.column_evaluations.range_check_selectors8.is_some();
+                <span class="kw">let </span>range_check0_enabled =
+                    index.column_evaluations.range_check0_selector8.is_some();
+                <span class="kw">let </span>range_check1_enabled =
+                    index.column_evaluations.range_check1_selector8.is_some();
                 <span class="kw">let </span>foreign_field_addition_enabled = index
                     .column_evaluations
                     .foreign_field_add_selector8
@@ -2242,14 +2217,9 @@
                     (<span class="kw-2">&amp;</span>EndosclMul::default(), <span class="bool-val">true</span>),
                     (<span class="kw-2">&amp;</span>EndomulScalar::default(), <span class="bool-val">true</span>),
                     (<span class="kw-2">&amp;</span>Poseidon::default(), <span class="bool-val">true</span>),
-                    <span class="comment">// Chacha gates
-                    </span>(<span class="kw-2">&amp;</span>ChaCha0::default(), chacha_enabled),
-                    (<span class="kw-2">&amp;</span>ChaCha1::default(), chacha_enabled),
-                    (<span class="kw-2">&amp;</span>ChaCha2::default(), chacha_enabled),
-                    (<span class="kw-2">&amp;</span>ChaChaFinal::default(), chacha_enabled),
                     <span class="comment">// Range check gates
-                    </span>(<span class="kw-2">&amp;</span>RangeCheck0::default(), range_check_enabled),
-                    (<span class="kw-2">&amp;</span>RangeCheck1::default(), range_check_enabled),
+                    </span>(<span class="kw-2">&amp;</span>RangeCheck0::default(), range_check0_enabled),
+                    (<span class="kw-2">&amp;</span>RangeCheck1::default(), range_check1_enabled),
                     <span class="comment">// Foreign field addition gate
                     </span>(<span class="kw-2">&amp;</span>ForeignFieldAdd::default(), foreign_field_addition_enabled),
                     <span class="comment">// Foreign field multiplication gate
@@ -2363,14 +2333,14 @@
 
         <span class="comment">//~ 1. If lookup is used, evaluate the following polynomials at $\zeta$ and $\zeta \omega$:
         </span><span class="kw">if </span>index.cs.lookup_constraint_system.is_some() {
-            <span class="comment">//~~ - the aggregation polynomial
+            <span class="comment">//~~ * the aggregation polynomial
             </span><span class="kw">let </span>aggreg = lookup_context
                 .aggreg_coeffs
                 .as_ref()
                 .unwrap()
                 .to_chunked_polynomial(index.max_poly_size);
 
-            <span class="comment">//~~ - the sorted polynomials
+            <span class="comment">//~~ * the sorted polynomials
             </span><span class="kw">let </span>sorted = lookup_context
                 .sorted_coeffs
                 .as_ref()
@@ -2378,7 +2348,7 @@
                 .iter()
                 .map(|c| c.to_chunked_polynomial(index.max_poly_size));
 
-            <span class="comment">//~~ - the table polynonial
+            <span class="comment">//~~ * the table polynonial
             </span><span class="kw">let </span>joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
             <span class="kw">let </span>joint_table = joint_table.to_chunked_polynomial(index.max_poly_size);
 
@@ -2408,12 +2378,12 @@
         }
 
         <span class="comment">//~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
-        //~~ - $s_i$
-        //~~ - $w_i$
-        //~~ - $z$
-        //~~ - lookup (TODO)
-        //~~ - generic selector
-        //~~ - poseidon selector
+        //~~ * $s_i$
+        //~~ * $w_i$
+        //~~ * $z$
+        //~~ * lookup (TODO)
+        //~~ * generic selector
+        //~~ * poseidon selector
         //~
         //~    By &quot;chunk evaluate&quot; we mean that the evaluation of each polynomial can potentially be a vector of values.
         //~    This is because the index&#39;s `max_poly_size` parameter dictates the maximum size of a polynomial in the protocol.
@@ -2475,9 +2445,9 @@
             ),
         };
 
-        <span class="kw">let </span>zeta_to_srs_len = zeta.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]);
-        <span class="kw">let </span>zeta_omega_to_srs_len = zeta_omega.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]);
-        <span class="kw">let </span>zeta_to_domain_size = zeta.pow(<span class="kw-2">&amp;</span>[d1_size <span class="kw">as </span>u64]);
+        <span class="kw">let </span>zeta_to_srs_len = zeta.pow([index.max_poly_size <span class="kw">as </span>u64]);
+        <span class="kw">let </span>zeta_omega_to_srs_len = zeta_omega.pow([index.max_poly_size <span class="kw">as </span>u64]);
+        <span class="kw">let </span>zeta_to_domain_size = zeta.pow([d1_size <span class="kw">as </span>u64]);
 
         <span class="comment">//~ 1. Evaluate the same polynomials without chunking them
         //~    (so that each polynomial should correspond to a single value this time).
@@ -2525,7 +2495,7 @@
         };
 
         <span class="comment">//~ 1. construct the blinding part of the ft polynomial commitment
-        //~    see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors
+        //~    [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
         </span><span class="kw">let </span>blinding_ft = {
             <span class="kw">let </span>blinding_t = t_comm.blinders.chunk_blinding(zeta_to_srs_len);
             <span class="kw">let </span>blinding_f = G::ScalarField::zero();
@@ -2586,12 +2556,12 @@
         </span>fr_sponge.absorb(<span class="kw-2">&amp;</span>ft_eval1);
 
         <span class="comment">//~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-        //~~ - the public polynomial
-        //~~ - z
-        //~~ - generic selector
-        //~~ - poseidon selector
-        //~~ - the 15 register/witness
-        //~~ - 6 sigmas evaluations (the last one is not evaluated)
+        //~~ * the public polynomial
+        //~~ * z
+        //~~ * generic selector
+        //~~ * poseidon selector
+        //~~ * the 15 register/witness
+        //~~ * 6 sigmas evaluations (the last one is not evaluated)
         </span>fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">0</span>]);
         fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">1</span>]);
         fr_sponge.absorb_evaluations(<span class="kw-2">&amp;</span>chunked_evals);
@@ -2630,14 +2600,14 @@
         };
 
         <span class="comment">//~ 1. Then, include:
-        //~~ - the negated public polynomial
-        //~~ - the ft polynomial
-        //~~ - the permutation aggregation polynomial z polynomial
-        //~~ - the generic selector
-        //~~ - the poseidon selector
-        //~~ - the 15 registers/witness columns
-        //~~ - the 6 sigmas
-        //~~ - optionally, the runtime table
+        //~~ * the negated public polynomial
+        //~~ * the ft polynomial
+        //~~ * the permutation aggregation polynomial z polynomial
+        //~~ * the generic selector
+        //~~ * the poseidon selector
+        //~~ * the 15 registers/witness columns
+        //~~ * the 6 sigmas
+        //~~ * optionally, the runtime table
         </span>polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>public_poly), <span class="prelude-val">None</span>, fixed_hiding(<span class="number">1</span>)));
         polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>ft), <span class="prelude-val">None</span>, blinding_ft));
         polynomials.push((coefficients_form(<span class="kw-2">&amp;</span>z_poly), <span class="prelude-val">None</span>, z_comm.blinders));
@@ -2675,7 +2645,7 @@
 
         <span class="comment">//~ 1. if using lookup:
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(lcs) = <span class="kw-2">&amp;</span>index.cs.lookup_constraint_system {
-            <span class="comment">//~~ - add the lookup sorted polynomials
+            <span class="comment">//~~ * add the lookup sorted polynomials
             </span><span class="kw">let </span>sorted_poly = lookup_context.sorted_coeffs.as_ref().unwrap();
             <span class="kw">let </span>sorted_comms = lookup_context.sorted_comms.as_ref().unwrap();
 
@@ -2683,7 +2653,7 @@
                 polynomials.push((coefficients_form(poly), <span class="prelude-val">None</span>, comm.blinders.clone()));
             }
 
-            <span class="comment">//~~ - add the lookup aggreg polynomial
+            <span class="comment">//~~ * add the lookup aggreg polynomial
             </span><span class="kw">let </span>aggreg_poly = lookup_context.aggreg_coeffs.as_ref().unwrap();
             <span class="kw">let </span>aggreg_comm = lookup_context.aggreg_comm.as_ref().unwrap();
             polynomials.push((
@@ -2692,7 +2662,7 @@
                 aggreg_comm.blinders.clone(),
             ));
 
-            <span class="comment">//~~ - add the combined table polynomial
+            <span class="comment">//~~ * add the combined table polynomial
             </span><span class="kw">let </span>table_blinding = <span class="kw">if </span>lcs.runtime_selector.is_some() {
                 <span class="kw">let </span>runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 <span class="kw">let </span>joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
@@ -2711,7 +2681,7 @@
 
             polynomials.push((coefficients_form(joint_lookup_table), <span class="prelude-val">None</span>, table_blinding));
 
-            <span class="comment">//~~ - if present, add the runtime table polynomial
+            <span class="comment">//~~ * if present, add the runtime table polynomial
             </span><span class="kw">if </span>lcs.runtime_selector.is_some() {
                 <span class="kw">let </span>runtime_table_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 <span class="kw">let </span>runtime_table = lookup_context.runtime_table.as_ref().unwrap();
@@ -2754,7 +2724,6 @@
             proof,
             evals: chunked_evals,
             ft_eval1,
-            public,
             prev_challenges,
         })
     }
@@ -2765,7 +2734,7 @@
     <span class="kw">use super</span>::<span class="kw-2">*</span>;
     <span class="kw">use </span><span class="kw">crate</span>::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     <span class="kw">use </span>ark_ec::AffineCurve;
-    <span class="kw">use </span>commitment_dlog::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+    <span class="kw">use </span>poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
 
     <span class="comment">//
     // CamlProverProof&lt;CamlG, CamlF&gt;
@@ -2967,44 +2936,45 @@
     // ProverProof&lt;G&gt; &lt;-&gt; CamlProverProof&lt;CamlG, CamlF&gt;
     //
 
-    </span><span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;ProverProof&lt;G&gt;&gt; <span class="kw">for </span>CamlProverProof&lt;CamlG, CamlF&gt;
+    </span><span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;(ProverProof&lt;G&gt;, Vec&lt;G::ScalarField&gt;)&gt; <span class="kw">for </span>CamlProverProof&lt;CamlG, CamlF&gt;
     <span class="kw">where
         </span>G: AffineCurve,
         CamlG: From&lt;G&gt;,
         CamlF: From&lt;G::ScalarField&gt;,
     {
-        <span class="kw">fn </span>from(pp: ProverProof&lt;G&gt;) -&gt; <span class="self">Self </span>{
+        <span class="kw">fn </span>from(pp: (ProverProof&lt;G&gt;, Vec&lt;G::ScalarField&gt;)) -&gt; <span class="self">Self </span>{
             <span class="self">Self </span>{
-                commitments: pp.commitments.into(),
-                proof: pp.proof.into(),
-                evals: pp.evals.into(),
-                ft_eval1: pp.ft_eval1.into(),
-                public: pp.public.into_iter().map(Into::into).collect(),
-                prev_challenges: pp.prev_challenges.into_iter().map(Into::into).collect(),
+                commitments: pp.<span class="number">0</span>.commitments.into(),
+                proof: pp.<span class="number">0</span>.proof.into(),
+                evals: pp.<span class="number">0</span>.evals.into(),
+                ft_eval1: pp.<span class="number">0</span>.ft_eval1.into(),
+                public: pp.<span class="number">1</span>.into_iter().map(Into::into).collect(),
+                prev_challenges: pp.<span class="number">0</span>.prev_challenges.into_iter().map(Into::into).collect(),
             }
         }
     }
 
-    <span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;CamlProverProof&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>ProverProof&lt;G&gt;
+    <span class="kw">impl</span>&lt;G, CamlG, CamlF&gt; From&lt;CamlProverProof&lt;CamlG, CamlF&gt;&gt; <span class="kw">for </span>(ProverProof&lt;G&gt;, Vec&lt;G::ScalarField&gt;)
     <span class="kw">where
         </span>G: AffineCurve + From&lt;CamlG&gt;,
         G::ScalarField: From&lt;CamlF&gt;,
     {
-        <span class="kw">fn </span>from(caml_pp: CamlProverProof&lt;CamlG, CamlF&gt;) -&gt; ProverProof&lt;G&gt; {
-            ProverProof {
+        <span class="kw">fn </span>from(caml_pp: CamlProverProof&lt;CamlG, CamlF&gt;) -&gt; (ProverProof&lt;G&gt;, Vec&lt;G::ScalarField&gt;) {
+            <span class="kw">let </span>proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
                 evals: caml_pp.evals.into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
-                public: caml_pp.public.into_iter().map(Into::into).collect(),
                 prev_challenges: caml_pp
                     .prev_challenges
                     .into_iter()
                     .map(Into::into)
                     .collect(),
-            }
+            };
+
+            (proof, caml_pp.public.into_iter().map(Into::into).collect())
         }
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

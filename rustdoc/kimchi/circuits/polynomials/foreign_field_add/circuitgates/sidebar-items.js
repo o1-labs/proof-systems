@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["ForeignFieldAdd","Implementation of the foreign field addition gate"]]};
+window.SIDEBAR_ITEMS = {"struct":["ForeignFieldAdd"]};

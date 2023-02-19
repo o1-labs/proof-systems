@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["OraclesResult","The result of running the oracle protocol"]]};
+window.SIDEBAR_ITEMS = {"struct":["OraclesResult"]};

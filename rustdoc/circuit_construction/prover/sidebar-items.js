@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["generate_prover_index","Creates the prover index on input an `srs`, used `constants`, parameters for Poseidon, number of public inputs, and a specific circuit"],["prove","Given an index, a group map, custom blinders for the witness, a public input vector, and a circuit `main`, it creates a proof."]],"trait":[["CoordinateCurve","Handling coordinates in an affine curve"]]};
+window.SIDEBAR_ITEMS = {"fn":["generate_prover_index","prove"],"trait":["CoordinateCurve"]};

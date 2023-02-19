@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/not.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>not.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/not.rs`."><title>not.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -258,24 +258,6 @@
 <a href="#258" id="258">258</a>
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
-<a href="#261" id="261">261</a>
-<a href="#262" id="262">262</a>
-<a href="#263" id="263">263</a>
-<a href="#264" id="264">264</a>
-<a href="#265" id="265">265</a>
-<a href="#266" id="266">266</a>
-<a href="#267" id="267">267</a>
-<a href="#268" id="268">268</a>
-<a href="#269" id="269">269</a>
-<a href="#270" id="270">270</a>
-<a href="#271" id="271">271</a>
-<a href="#272" id="272">272</a>
-<a href="#273" id="273">273</a>
-<a href="#274" id="274">274</a>
-<a href="#275" id="275">275</a>
-<a href="#276" id="276">276</a>
-<a href="#277" id="277">277</a>
-<a href="#278" id="278">278</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the NOT gadget and the witness code generation,
 //! for both the implementation running with `Xor16` gates and the one with `Generic` gates.
 //! Note that this module does not include a `Not` gate type.
@@ -296,9 +278,9 @@
 
 <span class="comment">//~ We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
 //~
-//~ The first version of the NOT gadget reuses `Xor16` by making the following observation: __the bitwise NOT operation is equivalent to the
-//~ bitwise XOR operation with the all one words of a certain length__. In other words,
-//~ $$ \neg x = x \oplus 1^* $$
+//~ The first version of the NOT gadget reuses `Xor16` by making the following observation: *the bitwise NOT operation is equivalent to the
+//~ bitwise XOR operation with the all one words of a certain length*. In other words,
+//~ $$\neg x = x \oplus 1^*$$
 //~ where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
 //~ XOR with $1$ outputs $1$, thus negating $x_i$. Similarly, if $x_i = 1$ then XOR with 1 outputs 0, again negating $x_i$. Thus, bitwise XOR
 //~ with $1^*$ is equivalent to bitwise negation (i.e. NOT).
@@ -312,7 +294,7 @@
 //~ In this case, we simply perform the negation as a subtraction of the input word from the all one word (which again can be copied from a public input).
 //~ This comes with the advantage of holding up to 2 word negations per row (an eight-times improvement over the XOR approach), but it requires the user to know the length of the input.
 //~
-//~ ** NOT Layout using XOR **
+//~ ##### NOT Layout using XOR
 //~
 //~ Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
 //~ follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
@@ -321,9 +303,9 @@
 //~ | --------- | ------------- | --------------------------------------------------------------------- |
 //~ | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
 //~ | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
-//~ | i+n       | `Zero`        | Constrain that the final row is all zeros for correctness of Xor gate |
+//~ | i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 //~
-//~ ** NOT Layout using Generic gates **
+//~ ##### NOT Layout using Generic gates
 //~
 //~ Here we show the layout of the NOT gadget using the Generic approach. The gadget needs a row with a public input containing the all-one word of the given length, exactly as above.
 //~ Then, one Generic gate reusing the all-one word as left inputs can be used to negate up to two words per row. This approach requires that the input word is known (or constrained)
@@ -335,42 +317,46 @@
 //~ | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 //~
 </span><span class="kw">impl</span>&lt;F: PrimeField&gt; CircuitGate&lt;F&gt; {
-    <span class="doccomment">/// Creates a bitwise negation gadget with `n` NOT components of some length previously constrained using a generic gate
+    <span class="doccomment">/// Extends a bitwise negation gadget with `n` NOT components of some length previously constrained using a generic gate
     /// (checking that a cell stores `2^bits-1` value). Assumes that the inputs are known to have at most `bits` length.
     /// Starts the gates in the `new_row` position.
     /// Includes:
     /// - ceil(n/2) Double Generic gates to perform the `( 2^(bits) - 1 ) - input` operation for every two inputs in each row
-    /// BEWARE:
+    /// Input:
+    /// - gates     : full circuit
+    /// - n         : number of negations to perform
+    /// - pub_row   : row containing the public input with the all-one word of the given length
+    /// Important:
     /// - If the bit length of the input is not fixed, then it must be constrained somewhere else.
     /// - Otherwise, use the `extend_neg_checked_length` instead (but this one requires about 8 times more rows).
-    /// INTEGRATION:
-    /// - Needs a leading public input generic gate in `pub_row` to constrain the left input of each generic gate for negation to be `2^bits-1`.
+    /// Warning:
+    /// - don&#39;t forget to include a public input in `pub_row` to constrain the left of each generic gate for negation to be `2^bits - 1`
     </span><span class="kw">pub fn </span>extend_not_gadget_unchecked_length(
         gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
         n: usize,
         pub_row: usize,
-        new_row: usize,
     ) -&gt; usize {
         <span class="comment">// taking advantage of double generic gates to negate two words in each row
-        </span><span class="kw">let </span><span class="kw-2">mut </span>new_row = new_row;
+        </span><span class="kw">let </span><span class="kw-2">mut </span>new_row = gates.len();
         <span class="kw">for _ in </span><span class="number">0</span>..(n / <span class="number">2</span>) {
-            new_row = <span class="self">Self</span>::not_gnrc(gates, pub_row, new_row, <span class="bool-val">true</span>);
+            new_row = <span class="self">Self</span>::extend_not_gnrc(gates, pub_row, new_row, <span class="bool-val">true</span>);
         }
         <span class="comment">// odd number of NOTs require one more row to negate the last word only
         </span><span class="kw">if </span>n % <span class="number">2 </span>== <span class="number">1 </span>{
-            new_row = <span class="self">Self</span>::not_gnrc(gates, pub_row, new_row, <span class="bool-val">false</span>);
+            new_row = <span class="self">Self</span>::extend_not_gnrc(gates, pub_row, new_row, <span class="bool-val">false</span>);
         }
         new_row
     }
 
-    <span class="comment">// Returns a double generic gate for negation for one or two words
+    <span class="comment">// Extends a double generic gate for negation for one or two words
     // Input:
+    // - gates          : full ciricuit to which the not will be added
     // - new_row        : row to start the double NOT generic gate
     // - pub_row        : row where the public inputs is stored (the 2^bits - 1) value (in the column 0 of that row)
     // - double_generic : whether to perform two NOTs or only one inside the generic gate
     // Output:
     // - new_row : next row after the double NOT generic gate, corresponds to `new_row+1`
-    </span><span class="kw">fn </span>not_gnrc(
+    </span><span class="kw">fn </span>extend_not_gnrc(
         gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
         pub_row: usize,
         new_row: usize,
@@ -406,24 +392,26 @@
         new_row + <span class="number">1
     </span>}
 
-    <span class="doccomment">/// Creates a NOT gadget for `bits` length using Xor gates.
+    <span class="doccomment">/// Extends a NOT gadget for `bits` length using Xor gates.
     /// It implicitly constrains the length of the input to be at most 16 * num_xors bits.
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
     /// Input:
-    /// - new_row : row to start the NOT gadget
-    /// Requires:
-    /// - 1 initial public input generic gate in `pub_row` to constrain the input to be `2^bits-1`.
-    /// INTEGRATION:
-    /// - Connect the left input to a public input row containing the 2^bits-1 value
+    /// - gates : full circuit
+    /// - pub_row : row containing the public input with the all-one word of the given length
+    /// - bits    : number of bits of the input
+    /// Precndition:
+    /// - 1 initial public input generic gate in `all_ones_row` to constrain the input to be `2^bits-1`.
+    /// Warning:
+    /// - don&#39;t forget to connect the left input to a public input row containing the `2^bits - 1` value
     </span><span class="kw">pub fn </span>extend_not_gadget_checked_length(
         gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;,
-        pub_row: usize,
-        new_row: usize,
+        all_ones_row: usize,
         bits: usize,
     ) -&gt; usize {
         <span class="kw">let </span>n = num_xors(bits);
+        <span class="kw">let </span>new_row = gates.len();
         <span class="kw">let </span><span class="kw-2">mut </span>not_gates = (<span class="number">0</span>..n)
             .map(|i| CircuitGate {
                 typ: GateType::Xor16,
@@ -442,7 +430,7 @@
         </span>gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">1</span>));
         gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">2</span>));
         <span class="comment">// Integration
-        </span>gates.connect_cell_pair((pub_row, <span class="number">0</span>), (new_row, <span class="number">1</span>)); <span class="comment">// input2 of xor is all ones
+        </span>gates.connect_cell_pair((all_ones_row, <span class="number">0</span>), (new_row, <span class="number">1</span>)); <span class="comment">// input2 of xor is all ones
 
         </span>gates.len()
     }
@@ -452,7 +440,8 @@
 /// Input: full witness, first input and optional bit length
 /// If `bits` is not provided, the negation is performed using the length of the `input` in bits.
 /// If `bits` is provided, the negation takes the maximum length between `bits` and that of `input`.
-/// INTEGRATION: set a row of the witness with public input `2^bits - 1` and wire to the second input of the first Xor gate.
+/// Warning:
+/// - don&#39;t forget to set a row of the witness with public input `2^bits -1` and wire it to the second input of the first `Xor16` gate
 </span><span class="kw">pub fn </span>extend_not_witness_checked_length&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     input: F,
@@ -469,7 +458,7 @@
         bits,
         (
             F::from_biguint(<span class="kw-2">&amp;</span>input).unwrap(),
-            F::from(<span class="number">2u8</span>).pow(<span class="kw-2">&amp;</span>[bits <span class="kw">as </span>u64]) - F::one(),
+            F::from(<span class="number">2u8</span>).pow([bits <span class="kw">as </span>u64]) - F::one(),
             F::from_biguint(<span class="kw-2">&amp;</span>output).unwrap(),
         ),
     );
@@ -479,33 +468,17 @@
     }
 }
 
-<span class="doccomment">/// Create a Not witness for less than 255 bits (native field) starting at row 0
-/// Input: first input and optional bit length
-/// If `bits` is not provided, the negation is performed using the length of the `input` in bits.
-/// If `bits` is provided, the negation takes the maximum length between `bits` and that of `input`.
-</span><span class="kw">pub fn </span>create_not_witness_checked_length&lt;F: PrimeField&gt;(
-    input: F,
-    bits: <span class="prelude-ty">Option</span>&lt;usize&gt;,
-) -&gt; [Vec&lt;F&gt;; COLUMNS] {
-    <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">1</span>]);
-    <span class="kw">let </span>input_big = input.to_biguint();
-    <span class="kw">let </span>real_bits = max(input_big.bitlen(), bits.unwrap_or(<span class="number">0</span>));
-    witness[<span class="number">0</span>][<span class="number">0</span>] = F::from(<span class="number">2u8</span>).pow(<span class="kw-2">&amp;</span>[real_bits <span class="kw">as </span>u64]) - F::one();
-    extend_not_witness_checked_length(<span class="kw-2">&amp;mut </span>witness, input, bits);
-    witness
-}
-
 <span class="doccomment">/// Extends negation witnesses from generic gate, assuming the input witness already contains
 /// public input rows holding the 2^bits-1 value.
 /// Input: a vector of words to be negated, and the number of bits (all the same)
-/// Panics if the bits length is too small for the inputs
-/// INTEGRATION: Set public input of bits in public generic gate
-/// NOTE: `witness[0][pub] = 2^bits - 1`
+/// Returns error if the bits length is too small for the inputs
+/// Warning: Set public input of bits in public generic gate
+/// Note: `witness[0][pub] = 2^bits - 1`
 </span><span class="kw">pub fn </span>extend_not_witness_unchecked_length&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
     inputs: <span class="kw-2">&amp;</span>[F],
     bits: usize,
-) {
+) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
     <span class="comment">// Check inputs fit in bits and in native field
     </span><span class="kw">let </span>inputs = inputs
         .iter()
@@ -513,10 +486,14 @@
         .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
     <span class="kw">for </span>input <span class="kw">in </span>inputs.clone() {
         <span class="kw">if </span>bits &lt; input.bitlen() {
-            <span class="macro">panic!</span>(<span class="string">&quot;Bits must be greater or equal than the inputs length&quot;</span>);
+            <span class="prelude-val">Err</span>(<span class="macro">format!</span>(
+                <span class="string">&quot;Bits must be greater or equal than the inputs length: {} &lt; {}&quot;</span>,
+                bits,
+                input.bitlen()
+            ))<span class="question-mark">?</span>;
         }
     }
-    <span class="kw">let </span>all_ones = F::from(<span class="number">2u8</span>).pow(<span class="kw-2">&amp;</span>[bits <span class="kw">as </span>u64]) - F::one();
+    <span class="kw">let </span>all_ones = F::from(<span class="number">2u8</span>).pow([bits <span class="kw">as </span>u64]) - F::one();
     <span class="kw">let </span>rows = (inputs.len() <span class="kw">as </span>f64 / <span class="number">2.0</span>).ceil() <span class="kw">as </span>usize;
     <span class="kw">let </span><span class="kw-2">mut </span>not_witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); rows]);
     <span class="kw">for </span>(i, input) <span class="kw">in </span>inputs.iter().enumerate().step_by(<span class="number">2</span>) {
@@ -539,20 +516,7 @@
     <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
         witness[col].extend(not_witness[col].iter());
     }
-}
-
-<span class="doccomment">/// Creates as many negations as the number of inputs. The inputs must fit in the native field.
-/// We start at the row 0 using generic gates to perform the negations.
-/// Input: a vector of words to be negated, and the number of bits (all the same)
-/// Panics if the bits length is too small for the inputs
-</span><span class="kw">pub fn </span>create_not_witness_unchecked_length&lt;F: PrimeField&gt;(
-    inputs: <span class="kw-2">&amp;</span>[F],
-    bits: usize,
-) -&gt; [Vec&lt;F&gt;; COLUMNS] {
-    <span class="kw">let </span><span class="kw-2">mut </span>witness: [Vec&lt;F&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">1</span>]);
-    witness[<span class="number">0</span>][<span class="number">0</span>] = F::from(<span class="number">2u8</span>).pow(<span class="kw-2">&amp;</span>[bits <span class="kw">as </span>u64]) - F::one();
-    extend_not_witness_unchecked_length(<span class="kw-2">&amp;mut </span>witness, inputs, bits);
-    witness
+    <span class="prelude-val">Ok</span>(())
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

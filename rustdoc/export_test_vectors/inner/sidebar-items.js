@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["Mode",""],["ParamType",""]],"fn":[["main",""]]};
+window.SIDEBAR_ITEMS = {"enum":["Mode","ParamType"],"fn":["main"]};

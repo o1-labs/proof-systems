@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["LookupVerifierIndex",""],["VerifierIndex",""]]};
+window.SIDEBAR_ITEMS = {"struct":["LookupVerifierIndex","VerifierIndex"]};

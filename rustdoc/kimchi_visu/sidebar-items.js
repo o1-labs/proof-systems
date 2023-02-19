@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["latex_constraints",""],["visu","Produces a `circuit.html` in the current folder."]],"mod":[["witness",""]]};
+window.SIDEBAR_ITEMS = {"fn":["latex_constraints","visu"],"mod":["witness"]};

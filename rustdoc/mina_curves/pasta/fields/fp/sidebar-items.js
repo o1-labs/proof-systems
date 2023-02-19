@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["FpParameters",""]],"type":[["Fp",""]]};
+window.SIDEBAR_ITEMS = {"struct":["FpParameters"],"type":["Fp"]};

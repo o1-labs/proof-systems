@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/linearization.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>linearization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/linearization.rs`."><title>linearization.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -324,9 +324,6 @@
 <a href="#324" id="324">324</a>
 <a href="#325" id="325">325</a>
 <a href="#326" id="326">326</a>
-<a href="#327" id="327">327</a>
-<a href="#328" id="328">328</a>
-<a href="#329" id="329">329</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements the linearization.
 
 </span><span class="kw">use </span><span class="kw">crate</span>::alphas::Alphas;
@@ -336,16 +333,20 @@
     constraints::LookupConfiguration,
     lookups::{LookupFeatures, LookupInfo, LookupPatterns},
 };
-<span class="comment">// TODO JES: CLEAN UP
-</span><span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::complete_add::CompleteAdd;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::endomul_scalar::EndomulScalar;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::endosclmul::EndosclMul;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::poseidon::Poseidon;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::varbasemul::VarbaseMul;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::{generic, permutation, range_check, rot, xor};
+<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::{
+    complete_add::CompleteAdd,
+    endomul_scalar::EndomulScalar,
+    endosclmul::EndosclMul,
+    foreign_field_add::circuitgates::ForeignFieldAdd,
+    foreign_field_mul::circuitgates::ForeignFieldMul,
+    generic, permutation,
+    poseidon::Poseidon,
+    range_check::circuitgates::{RangeCheck0, RangeCheck1},
+    rot,
+    varbasemul::VarbaseMul,
+    xor,
+};
+
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
@@ -380,37 +381,32 @@
     expr += EndomulScalar::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
 
     {
-        <span class="kw">let </span>chacha_expr = || {
-            <span class="kw">let </span><span class="kw-2">mut </span>expr = ChaCha0::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
-            expr += ChaCha1::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
-            expr += ChaCha2::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
-            expr += ChaChaFinal::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
-            expr
-        };
+        <span class="kw">let </span>range_check0_expr = || RangeCheck0::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+
         <span class="kw">if let </span><span class="prelude-val">Some</span>(feature_flags) = feature_flags {
-            <span class="kw">if </span>feature_flags.chacha {
-                expr += chacha_expr();
+            <span class="kw">if </span>feature_flags.range_check0 {
+                expr += range_check0_expr();
             }
         } <span class="kw">else </span>{
             expr += Expr::IfFeature(
-                FeatureFlag::ChaCha,
-                Box::new(chacha_expr()),
+                FeatureFlag::RangeCheck0,
+                Box::new(range_check0_expr()),
                 Box::new(Expr::zero()),
             );
         }
     }
 
     {
-        <span class="kw">let </span>range_check_expr = || range_check::gadget::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
+        <span class="kw">let </span>range_check1_expr = || RangeCheck1::combined_constraints(<span class="kw-2">&amp;</span>powers_of_alpha);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(feature_flags) = feature_flags {
-            <span class="kw">if </span>feature_flags.range_check {
-                expr += range_check_expr();
+            <span class="kw">if </span>feature_flags.range_check1 {
+                expr += range_check1_expr();
             }
         } <span class="kw">else </span>{
             expr += Expr::IfFeature(
-                FeatureFlag::RangeCheck,
-                Box::new(range_check_expr()),
+                FeatureFlag::RangeCheck1,
+                Box::new(range_check1_expr()),
                 Box::new(Expr::zero()),
             );
         }
@@ -506,7 +502,6 @@
         <span class="kw">let </span>all_features = LookupFeatures {
             patterns: LookupPatterns {
                 xor: <span class="bool-val">true</span>,
-                chacha_final: <span class="bool-val">true</span>,
                 lookup: <span class="bool-val">true</span>,
                 range_check: <span class="bool-val">true</span>,
                 foreign_field_mul: <span class="bool-val">true</span>,
@@ -570,8 +565,8 @@
         <span class="comment">// Generating using `IfFeature`, turn on all feature flags.
         </span>{
             FeatureFlags {
-                chacha: <span class="bool-val">true</span>,
-                range_check: <span class="bool-val">true</span>,
+                range_check0: <span class="bool-val">true</span>,
+                range_check1: <span class="bool-val">true</span>,
                 foreign_field_add: <span class="bool-val">true</span>,
                 foreign_field_mul: <span class="bool-val">true</span>,
                 xor: <span class="bool-val">true</span>,
@@ -579,7 +574,6 @@
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: <span class="bool-val">true</span>,
-                        chacha_final: <span class="bool-val">true</span>,
                         lookup: <span class="bool-val">true</span>,
                         range_check: <span class="bool-val">true</span>,
                         foreign_field_mul: <span class="bool-val">true</span>,
@@ -657,4 +651,4 @@
     (linearization, powers_of_alpha)
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["DomainConstantEvaluations","pre-computed polynomials that depend only on the chosen field and domain"]]};
+window.SIDEBAR_ITEMS = {"struct":["DomainConstantEvaluations"]};

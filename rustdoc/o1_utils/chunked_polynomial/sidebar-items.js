@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["ChunkedPolynomial","This struct contains multiple chunk polynomials with degree `size-1`."]]};
+window.SIDEBAR_ITEMS = {"struct":["ChunkedPolynomial"]};

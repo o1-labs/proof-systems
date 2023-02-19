@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["main","“Usage: cargo run –all-features –bin export_test_vectors – [hex|b10] [legacy|kimchi] <OUTPUT_FILE>”,"]],"mod":[["inner",""],["vectors",""]]};
+window.SIDEBAR_ITEMS = {"fn":["main"],"mod":["inner","vectors"]};

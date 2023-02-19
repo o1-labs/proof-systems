@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/lookup/index.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>index.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/lookup/index.rs`."><title>index.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -448,18 +448,6 @@
 <a href="#448" id="448">448</a>
 <a href="#449" id="449">449</a>
 <a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
 </pre><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
@@ -500,15 +488,13 @@
 <span class="doccomment">/// Lookup selectors
 </span><span class="attr">#[derive(Clone, Serialize, Deserialize, Debug, Default)]
 </span><span class="kw">pub struct </span>LookupSelectors&lt;T&gt; {
-    <span class="doccomment">/// Chacha pattern lookup selector
+    <span class="doccomment">/// XOR pattern lookup selector
     </span><span class="kw">pub </span>xor: <span class="prelude-ty">Option</span>&lt;T&gt;,
-    <span class="doccomment">/// ChachaFinal pattern lookup selector
-    </span><span class="kw">pub </span>chacha_final: <span class="prelude-ty">Option</span>&lt;T&gt;,
     <span class="doccomment">/// Lookup pattern lookup selector
     </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;T&gt;,
-    <span class="doccomment">/// RangeCheck pattern lookup selector
+    <span class="doccomment">/// Range check pattern lookup selector
     </span><span class="kw">pub </span>range_check: <span class="prelude-ty">Option</span>&lt;T&gt;,
-    <span class="doccomment">/// FFMul pattern lookup selector
+    <span class="doccomment">/// Foreign field multiplication pattern lookup selector
     </span><span class="kw">pub </span>ffmul: <span class="prelude-ty">Option</span>&lt;T&gt;,
 }
 
@@ -517,8 +503,6 @@
 </span><span class="kw">struct </span>LookupSelectorsSerdeAs&lt;F: FftField&gt; {
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>xor: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
-    <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
-    </span><span class="kw">pub </span>chacha_final: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;E&lt;F, D&lt;F&gt;&gt;&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
@@ -536,7 +520,6 @@
     {
         <span class="kw">let </span>repr = LookupSelectorsSerdeAs {
             xor: val.xor.clone(),
-            chacha_final: val.chacha_final.clone(),
             lookup: val.lookup.clone(),
             range_check: val.range_check.clone(),
             ffmul: val.ffmul.clone(),
@@ -554,14 +537,12 @@
     {
         <span class="kw">let </span>LookupSelectorsSerdeAs {
             xor,
-            chacha_final,
             lookup,
             range_check,
             ffmul,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)<span class="question-mark">?</span>;
         <span class="prelude-val">Ok</span>(LookupSelectors {
             xor,
-            chacha_final,
             lookup,
             range_check,
             ffmul,
@@ -575,7 +556,6 @@
     <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: LookupPattern) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             LookupPattern::Xor =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.xor,
-            LookupPattern::ChaChaFinal =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.chacha_final,
             LookupPattern::Lookup =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.lookup,
             LookupPattern::RangeCheck =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.range_check,
             LookupPattern::ForeignFieldMul =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.ffmul,
@@ -587,7 +567,6 @@
     <span class="kw">fn </span>index_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>, index: LookupPattern) -&gt; <span class="kw-2">&amp;mut </span><span class="self">Self</span>::Output {
         <span class="kw">match </span>index {
             LookupPattern::Xor =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.xor,
-            LookupPattern::ChaChaFinal =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.chacha_final,
             LookupPattern::Lookup =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.lookup,
             LookupPattern::RangeCheck =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.range_check,
             LookupPattern::ForeignFieldMul =&gt; <span class="kw-2">&amp;mut </span><span class="self">self</span>.ffmul,
@@ -599,7 +578,6 @@
     <span class="kw">pub fn </span>map&lt;U, F: Fn(T) -&gt; U&gt;(<span class="self">self</span>, f: F) -&gt; LookupSelectors&lt;U&gt; {
         <span class="kw">let </span>LookupSelectors {
             xor,
-            chacha_final,
             lookup,
             range_check,
             ffmul,
@@ -610,7 +588,6 @@
         </span><span class="kw">let </span>f = |x| f(x);
         LookupSelectors {
             xor: xor.map(f),
-            chacha_final: chacha_final.map(f),
             lookup: lookup.map(f),
             range_check: range_check.map(f),
             ffmul: ffmul.map(f),
@@ -620,7 +597,6 @@
     <span class="kw">pub fn </span>as_ref(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; LookupSelectors&lt;<span class="kw-2">&amp;</span>T&gt; {
         LookupSelectors {
             xor: <span class="self">self</span>.xor.as_ref(),
-            chacha_final: <span class="self">self</span>.chacha_final.as_ref(),
             lookup: <span class="self">self</span>.lookup.as_ref(),
             range_check: <span class="self">self</span>.range_check.as_ref(),
             ffmul: <span class="self">self</span>.ffmul.as_ref(),
@@ -839,12 +815,12 @@
                         non_zero_table_id = <span class="bool-val">true</span>;
                     }
 
-                    <span class="comment">//~~ - Update the corresponding entries in a table id vector (of size the domain as well)
+                    <span class="comment">//~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
                     </span><span class="kw">let </span>table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
-                    <span class="comment">//~~ - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+                    <span class="comment">//~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     </span><span class="kw">for </span>(i, col) <span class="kw">in </span>table.data.iter().enumerate() {
                         <span class="kw">if </span>col.len() != table_len {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(LookupError::InconsistentTableLength);
@@ -852,7 +828,7 @@
                         lookup_table[i].extend(col);
                     }
 
-                    <span class="comment">//~~ - Fill in any unused columns with 0 (to match the dummy value)
+                    <span class="comment">//~~ * Fill in any unused columns with 0 (to match the dummy value)
                     </span><span class="kw">for </span>lookup_table <span class="kw">in </span>lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
@@ -923,4 +899,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

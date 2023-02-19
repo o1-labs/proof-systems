@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["OrderedHashSet","Very dumb way to write an ordered hash set."]]};
+window.SIDEBAR_ITEMS = {"struct":["OrderedHashSet"]};

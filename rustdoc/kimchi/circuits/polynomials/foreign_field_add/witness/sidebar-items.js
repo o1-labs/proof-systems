@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":[["FFOps","All foreign field operations allowed"]],"fn":[["create_chain","Creates a FFAdd witness (including `ForeignFieldAdd` rows, and one final `ForeignFieldAdd` row for bound) inputs: list of all inputs to the chain of additions/subtractions opcode: true for addition, false for subtraction modulus: modulus of the foreign field"],["extend_witness_bound_addition","Create witness for bound computation addition gate"]]};
+window.SIDEBAR_ITEMS = {"enum":["FFOps"],"fn":["create_chain","extend_witness_bound_addition"]};

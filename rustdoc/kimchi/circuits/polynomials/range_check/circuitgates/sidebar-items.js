@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["RangeCheck0",""],["RangeCheck1",""]]};
+window.SIDEBAR_ITEMS = {"struct":["RangeCheck0","RangeCheck1"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":[["xor_table","Returns the XOR lookup table"]]};
+window.SIDEBAR_ITEMS = {"constant":["TABLE_SIZE"],"fn":["xor_table"]};

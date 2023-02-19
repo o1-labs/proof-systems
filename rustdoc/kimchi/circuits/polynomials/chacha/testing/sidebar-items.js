@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":[["chacha20",""],["chacha20_gates","This is just for tests. It doesn’t set up the permutations"],["chacha20_rows",""]]};

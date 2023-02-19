@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/permutation.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>permutation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/permutation.rs`."><title>permutation.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -487,14 +487,9 @@
 <a href="#487" id="487">487</a>
 <a href="#488" id="488">488</a>
 <a href="#489" id="489">489</a>
-<a href="#490" id="490">490</a>
-<a href="#491" id="491">491</a>
-<a href="#492" id="492">492</a>
-<a href="#493" id="493">493</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements permutation constraint polynomials.
 
-</span><span class="comment">//~
-//~ The permutation constraints are the following 4 constraints:
+</span><span class="comment">//~ The permutation constraints are the following 4 constraints:
 //~
 //~ The two sides of the coin (with $\text{shift}_0 = 1$):
 //~
@@ -532,7 +527,6 @@
 //~
 //~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
 //~
-
 </span><span class="kw">use crate</span>::{
     circuits::{
         constraints::ConstraintSystem,
@@ -562,7 +556,7 @@
 <span class="doccomment">/// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 </span><span class="kw">pub fn </span>eval_vanishes_on_last_4_rows&lt;F: FftField&gt;(domain: D&lt;F&gt;, x: F) -&gt; F {
-    <span class="kw">let </span>w4 = domain.group_gen.pow(<span class="kw-2">&amp;</span>[domain.size - (ZK_ROWS + <span class="number">1</span>)]);
+    <span class="kw">let </span>w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + <span class="number">1</span>)]);
     <span class="kw">let </span>w3 = domain.group_gen * w4;
     <span class="kw">let </span>w2 = domain.group_gen * w3;
     <span class="kw">let </span>w1 = domain.group_gen * w2;
@@ -574,7 +568,7 @@
 </span><span class="kw">pub fn </span>vanishes_on_last_4_rows&lt;F: FftField&gt;(domain: D&lt;F&gt;) -&gt; DensePolynomial&lt;F&gt; {
     <span class="kw">let </span>x = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[F::zero(), F::one()]);
     <span class="kw">let </span>c = |a: F| DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>[a]);
-    <span class="kw">let </span>w4 = domain.group_gen.pow(<span class="kw-2">&amp;</span>[domain.size - (ZK_ROWS + <span class="number">1</span>)]);
+    <span class="kw">let </span>w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + <span class="number">1</span>)]);
     <span class="kw">let </span>w3 = domain.group_gen * w4;
     <span class="kw">let </span>w2 = domain.group_gen * w3;
     <span class="kw">let </span>w1 = domain.group_gen * w2;
@@ -583,7 +577,7 @@
 
 <span class="doccomment">/// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 </span><span class="kw">pub fn </span>zk_w3&lt;F: FftField&gt;(domain: D&lt;F&gt;) -&gt; F {
-    domain.group_gen.pow(<span class="kw-2">&amp;</span>[domain.size - (ZK_ROWS)])
+    domain.group_gen.pow([domain.size - (ZK_ROWS)])
 }
 
 <span class="doccomment">/// Evaluates the polynomial
@@ -665,7 +659,7 @@
         <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
 
         <span class="kw-2">*</span>input += <span class="number">1</span>;
-        h.update(<span class="kw-2">&amp;</span>input.to_be_bytes());
+        h.update(input.to_be_bytes());
 
         <span class="kw">let </span><span class="kw-2">mut </span>shift = F::from_random_bytes(<span class="kw-2">&amp;</span>h.finalize()[..<span class="number">31</span>])
             .expect(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
@@ -673,7 +667,7 @@
         <span class="kw">while </span>!shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
             <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
             <span class="kw-2">*</span>input += <span class="number">1</span>;
-            h.update(<span class="kw-2">&amp;</span>input.to_be_bytes());
+            h.update(input.to_be_bytes());
             shift = F::from_random_bytes(<span class="kw-2">&amp;</span>h.finalize()[..<span class="number">31</span>])
                 .expect(<span class="string">&quot;our field elements fit in more than 31 bytes&quot;</span>);
         }
@@ -813,8 +807,7 @@
             <span class="kw-2">&amp;</span>bnd1.scale(alpha1) + <span class="kw-2">&amp;</span>bnd2.scale(alpha2)
         };
 
-        <span class="comment">//
-        </span><span class="prelude-val">Ok</span>((perm, bnd))
+        <span class="prelude-val">Ok</span>((perm, bnd))
     }
 
     <span class="doccomment">/// permutation linearization poly contribution computation
@@ -949,7 +942,6 @@
         //~ \end{align}
         //~ $$
         //~
-        //~
         </span><span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..n - <span class="number">3 </span>{
             z[j + <span class="number">1</span>] = witness
                 .iter()
@@ -985,4 +977,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

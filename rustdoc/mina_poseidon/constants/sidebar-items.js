@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":[["PlonkSpongeConstantsKimchi",""],["PlonkSpongeConstantsLegacy",""]],"trait":[["SpongeConstants",""]]};
+window.SIDEBAR_ITEMS = {"struct":["PlonkSpongeConstantsKimchi","PlonkSpongeConstantsLegacy"],"trait":["SpongeConstants"]};

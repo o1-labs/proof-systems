@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>verifier.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/verifier.rs`."><title>verifier.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../kimchi/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -830,6 +830,99 @@
 <a href="#830" id="830">830</a>
 <a href="#831" id="831">831</a>
 <a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -847,23 +940,32 @@
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{PointEvaluations, ProverProof, RecursionChallenge},
+    proof::{
+        LookupEvaluations, PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge,
+    },
     verifier_index::VerifierIndex,
 };
+<span class="kw">use </span>ark_ec::AffineCurve;
 <span class="kw">use </span>ark_ff::{Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Polynomial};
-<span class="kw">use </span>commitment_dlog::commitment::{
+<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+<span class="kw">use </span>poly_commitment::commitment::{
     absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
-<span class="kw">use </span>mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 <span class="kw">use </span>rand::thread_rng;
 
 <span class="doccomment">/// The result of a proof verification.
 </span><span class="kw">pub type </span><span class="prelude-ty">Result</span>&lt;T&gt; = std::result::Result&lt;T, VerifyError&gt;;
 
 <span class="kw">pub struct </span>Context&lt;<span class="lifetime">&#39;a</span>, G: KimchiCurve&gt; {
-    proof: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProverProof&lt;G&gt;,
-    index: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>VerifierIndex&lt;G&gt;,
+    <span class="doccomment">/// The [VerifierIndex] associated to the proof
+    </span><span class="kw">pub </span>verifier_index: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>VerifierIndex&lt;G&gt;,
+
+    <span class="doccomment">/// The proof to verify
+    </span><span class="kw">pub </span>proof: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProverProof&lt;G&gt;,
+
+    <span class="doccomment">/// The public input used in the creation of the proof
+    </span><span class="kw">pub </span>public_input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[G::ScalarField],
 }
 
 <span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, G: KimchiCurve&gt; Context&lt;<span class="lifetime">&#39;a</span>, G&gt; {
@@ -871,17 +973,17 @@
         <span class="kw">use </span>Column::<span class="kw-2">*</span>;
         <span class="kw">match </span>col {
             Witness(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.proof.commitments.w_comm[i]),
-            Coefficient(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.coefficients_comm[i]),
-            Permutation(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.sigma_comm[i]),
+            Coefficient(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.coefficients_comm[i]),
+            Permutation(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.sigma_comm[i]),
             Z =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.proof.commitments.z_comm),
             LookupSorted(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.proof.commitments.lookup.as_ref()<span class="question-mark">?</span>.sorted[i]),
             LookupAggreg =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.proof.commitments.lookup.as_ref()<span class="question-mark">?</span>.aggreg),
             LookupKindIndex(i) =&gt; {
-                <span class="prelude-val">Some</span>(<span class="self">self</span>.index.lookup_index.as_ref()<span class="question-mark">?</span>.lookup_selectors[i].as_ref()<span class="question-mark">?</span>)
+                <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.lookup_index.as_ref()<span class="question-mark">?</span>.lookup_selectors[i].as_ref()<span class="question-mark">?</span>)
             }
             LookupTable =&gt; <span class="prelude-val">None</span>,
             LookupRuntimeSelector =&gt; <span class="prelude-val">Some</span>(
-                <span class="self">self</span>.index
+                <span class="self">self</span>.verifier_index
                     .lookup_index
                     .as_ref()<span class="question-mark">?
                     </span>.runtime_tables_selector
@@ -892,24 +994,20 @@
                 <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
                 <span class="kw">match </span>t {
                     Zero =&gt; <span class="prelude-val">None</span>,
-                    Generic =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.generic_comm),
+                    Generic =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.generic_comm),
                     Lookup =&gt; <span class="prelude-val">None</span>,
-                    CompleteAdd =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.complete_add_comm),
-                    VarBaseMul =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.mul_comm),
-                    EndoMul =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.emul_comm),
-                    EndoMulScalar =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.endomul_scalar_comm),
-                    Poseidon =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.psm_comm),
-                    ChaCha0 =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.chacha_comm.as_ref()<span class="question-mark">?</span>[<span class="number">0</span>]),
-                    ChaCha1 =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.chacha_comm.as_ref()<span class="question-mark">?</span>[<span class="number">1</span>]),
-                    ChaCha2 =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.chacha_comm.as_ref()<span class="question-mark">?</span>[<span class="number">2</span>]),
-                    ChaChaFinal =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.chacha_comm.as_ref()<span class="question-mark">?</span>[<span class="number">3</span>]),
+                    CompleteAdd =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.complete_add_comm),
+                    VarBaseMul =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.mul_comm),
+                    EndoMul =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.emul_comm),
+                    EndoMulScalar =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.endomul_scalar_comm),
+                    Poseidon =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index.psm_comm),
                     CairoClaim | CairoInstruction | CairoFlags | CairoTransition =&gt; <span class="prelude-val">None</span>,
-                    RangeCheck0 =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.range_check_comm.as_ref()<span class="question-mark">?</span>[<span class="number">0</span>]),
-                    RangeCheck1 =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.index.range_check_comm.as_ref()<span class="question-mark">?</span>[<span class="number">1</span>]),
-                    ForeignFieldAdd =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.foreign_field_add_comm.as_ref()<span class="question-mark">?</span>),
-                    ForeignFieldMul =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.foreign_field_mul_comm.as_ref()<span class="question-mark">?</span>),
-                    Xor16 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.xor_comm.as_ref()<span class="question-mark">?</span>),
-                    Rot64 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.index.rot_comm.as_ref()<span class="question-mark">?</span>),
+                    RangeCheck0 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.range_check0_comm.as_ref()<span class="question-mark">?</span>),
+                    RangeCheck1 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.range_check1_comm.as_ref()<span class="question-mark">?</span>),
+                    ForeignFieldAdd =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.foreign_field_add_comm.as_ref()<span class="question-mark">?</span>),
+                    ForeignFieldMul =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.foreign_field_mul_comm.as_ref()<span class="question-mark">?</span>),
+                    Xor16 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.xor_comm.as_ref()<span class="question-mark">?</span>),
+                    Rot64 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.rot_comm.as_ref()<span class="question-mark">?</span>),
                 }
             }
         }
@@ -936,6 +1034,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;,
         public_comm: <span class="kw-2">&amp;</span>PolyComm&lt;G&gt;,
+        public_input: <span class="kw-2">&amp;</span>[G::ScalarField],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;OraclesResult&lt;G, EFqSponge&gt;&gt; {
         <span class="comment">//~
         //~ #### Fiat-Shamir argument
@@ -985,7 +1084,7 @@
         }
 
         <span class="kw">let </span>joint_combiner = <span class="kw">if let </span><span class="prelude-val">Some</span>(l) = <span class="kw-2">&amp;</span>index.lookup_index {
-            <span class="comment">//~~ - If it involves queries to a multiple-column lookup table,
+            <span class="comment">//~~ * If it involves queries to a multiple-column lookup table,
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j&#39;$,
             //~~   otherwise set the joint combiner challenge $j&#39;$ to $0$.
             </span><span class="kw">let </span>joint_combiner = <span class="kw">if </span>l.joint_lookup_used {
@@ -994,7 +1093,7 @@
                 G::ScalarField::zero()
             };
 
-            <span class="comment">//~~ - Derive the scalar joint combiner challenge $j$ from $j&#39;$ using the endomorphism.
+            <span class="comment">//~~ * Derive the scalar joint combiner challenge $j$ from $j&#39;$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             </span><span class="kw">let </span>joint_combiner = ScalarChallenge(joint_combiner);
             <span class="kw">let </span>joint_combiner_field = joint_combiner.to_field(endo_r);
@@ -1012,7 +1111,7 @@
                 .as_ref()
                 .ok_or(VerifyError::LookupCommitmentMissing)<span class="question-mark">?</span>;
 
-            <span class="comment">//~~ - absorb the commitments to the sorted polynomials.
+            <span class="comment">//~~ * absorb the commitments to the sorted polynomials.
             </span><span class="kw">for </span>com <span class="kw">in </span><span class="kw-2">&amp;</span>lookup_commits.sorted {
                 absorb_commitment(<span class="kw-2">&amp;mut </span>fq_sponge, com);
             }
@@ -1072,12 +1171,12 @@
         fr_sponge.absorb(<span class="kw-2">&amp;</span>prev_challenge_digest);
 
         <span class="comment">// prepare some often used values
-        </span><span class="kw">let </span>zeta1 = zeta.pow(<span class="kw-2">&amp;</span>[n]);
+        </span><span class="kw">let </span>zeta1 = zeta.pow([n]);
         <span class="kw">let </span>zetaw = zeta * index.domain.group_gen;
         <span class="kw">let </span>evaluation_points = [zeta, zetaw];
         <span class="kw">let </span>powers_of_eval_points_for_chunks = PointEvaluations {
-            zeta: zeta.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]),
-            zeta_omega: zetaw.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]),
+            zeta: zeta.pow([index.max_poly_size <span class="kw">as </span>u64]),
+            zeta_omega: zetaw.pow([index.max_poly_size <span class="kw">as </span>u64]),
         };
 
         <span class="comment">//~ 1. Compute evaluations for the previous recursion challenges.
@@ -1103,12 +1202,12 @@
         all_alphas.instantiate(alpha);
 
         <span class="comment">// compute Lagrange base evaluation denominators
-        </span><span class="kw">let </span>w: Vec&lt;<span class="kw">_</span>&gt; = index.domain.elements().take(<span class="self">self</span>.public.len()).collect();
+        </span><span class="kw">let </span>w: Vec&lt;<span class="kw">_</span>&gt; = index.domain.elements().take(public_input.len()).collect();
 
         <span class="kw">let </span><span class="kw-2">mut </span>zeta_minus_x: Vec&lt;<span class="kw">_</span>&gt; = w.iter().map(|w| zeta - w).collect();
 
         w.iter()
-            .take(<span class="self">self</span>.public.len())
+            .take(public_input.len())
             .for_each(|w| zeta_minus_x.push(zetaw - w));
 
         ark_ff::fields::batch_inversion::&lt;G::ScalarField&gt;(<span class="kw-2">&amp;mut </span>zeta_minus_x);
@@ -1116,13 +1215,12 @@
         <span class="comment">//~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
         //~
         //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        </span><span class="kw">let </span>public_evals = <span class="kw">if </span><span class="self">self</span>.public.is_empty() {
+        </span><span class="kw">let </span>public_evals = <span class="kw">if </span>public_input.is_empty() {
             [<span class="macro">vec!</span>[G::ScalarField::zero()], <span class="macro">vec!</span>[G::ScalarField::zero()]]
         } <span class="kw">else </span>{
             [
                 <span class="macro">vec!</span>[
-                    (<span class="self">self
-                        </span>.public
+                    (public_input
                         .iter()
                         .zip(zeta_minus_x.iter())
                         .zip(index.domain.elements())
@@ -1132,15 +1230,14 @@
                         * index.domain.size_inv,
                 ],
                 <span class="macro">vec!</span>[
-                    (<span class="self">self
-                        </span>.public
+                    (public_input
                         .iter()
-                        .zip(zeta_minus_x[<span class="self">self</span>.public.len()..].iter())
+                        .zip(zeta_minus_x[public_input.len()..].iter())
                         .zip(index.domain.elements())
                         .map(|((p, l), w)| -<span class="kw-2">*</span>l * p * w)
                         .fold(G::ScalarField::zero(), |x, y| x + y))
                         * index.domain.size_inv
-                        * (zetaw.pow(<span class="kw-2">&amp;</span>[n <span class="kw">as </span>u64]) - G::ScalarField::one()),
+                        * (zetaw.pow([n]) - G::ScalarField::one()),
                 ],
             ]
         };
@@ -1149,12 +1246,12 @@
         </span>fr_sponge.absorb(<span class="kw-2">&amp;</span><span class="self">self</span>.ft_eval1);
 
         <span class="comment">//~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-        //~~ - the public polynomial
-        //~~ - z
-        //~~ - generic selector
-        //~~ - poseidon selector
-        //~~ - the 15 register/witness
-        //~~ - 6 sigmas evaluations (the last one is not evaluated)
+        //~~ * the public polynomial
+        //~~ * z
+        //~~ * generic selector
+        //~~ * poseidon selector
+        //~~ * the 15 register/witness
+        //~~ * 6 sigmas evaluations (the last one is not evaluated)
         </span>fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">0</span>]);
         fr_sponge.absorb_multiple(<span class="kw-2">&amp;</span>public_evals[<span class="number">1</span>]);
         fr_sponge.absorb_evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>.evals);
@@ -1306,9 +1403,68 @@
     }
 }
 
+<span class="doccomment">/// Enforce the length of evaluations inside [`Proof`].
+/// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
+/// The length value is prone to future change.
+</span><span class="kw">fn </span>check_proof_evals_len&lt;G&gt;(proof: <span class="kw-2">&amp;</span>ProverProof&lt;G&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
+<span class="kw">where
+    </span>G: KimchiCurve,
+    G::BaseField: PrimeField,
+{
+    <span class="kw">let </span>ProofEvaluations {
+        w,
+        z,
+        s,
+        coefficients,
+        lookup,
+        generic_selector,
+        poseidon_selector,
+    } = <span class="kw-2">&amp;</span>proof.evals;
+
+    <span class="kw">let </span>check_eval_len = |eval: <span class="kw-2">&amp;</span>PointEvaluations&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;| -&gt; <span class="prelude-ty">Result</span>&lt;()&gt; {
+        <span class="kw">if </span>eval.zeta.len().is_one() &amp;&amp; eval.zeta_omega.len().is_one() {
+            <span class="prelude-val">Ok</span>(())
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(VerifyError::IncorrectEvaluationsLength)
+        }
+    };
+
+    <span class="kw">for </span>w_i <span class="kw">in </span>w {
+        check_eval_len(w_i)<span class="question-mark">?</span>;
+    }
+    check_eval_len(z)<span class="question-mark">?</span>;
+    <span class="kw">for </span>s_i <span class="kw">in </span>s {
+        check_eval_len(s_i)<span class="question-mark">?</span>;
+    }
+    <span class="kw">for </span>coeff <span class="kw">in </span>coefficients {
+        check_eval_len(coeff)<span class="question-mark">?</span>;
+    }
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(LookupEvaluations {
+        sorted,
+        aggreg,
+        table,
+        runtime,
+    }) = lookup
+    {
+        <span class="kw">for </span>sorted_i <span class="kw">in </span>sorted {
+            check_eval_len(sorted_i)<span class="question-mark">?</span>;
+        }
+        check_eval_len(aggreg)<span class="question-mark">?</span>;
+        check_eval_len(table)<span class="question-mark">?</span>;
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(runtime) = <span class="kw-2">&amp;</span>runtime {
+            check_eval_len(runtime)<span class="question-mark">?</span>;
+        }
+    }
+    check_eval_len(generic_selector)<span class="question-mark">?</span>;
+    check_eval_len(poseidon_selector)<span class="question-mark">?</span>;
+
+    <span class="prelude-val">Ok</span>(())
+}
+
 <span class="kw">fn </span>to_batch&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge, EFrSponge&gt;(
-    index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;,
+    verifier_index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;,
     proof: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>ProverProof&lt;G&gt;,
+    public_input: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>[&lt;G <span class="kw">as </span>AffineCurve&gt;::ScalarField],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;BatchEvaluationProof&lt;<span class="lifetime">&#39;a</span>, G, EFqSponge&gt;&gt;
 <span class="kw">where
     </span>G: KimchiCurve,
@@ -1324,30 +1480,37 @@
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
-    </span><span class="kw">if </span>proof.prev_challenges.len() != index.prev_challenges {
+    </span><span class="kw">if </span>proof.prev_challenges.len() != verifier_index.prev_challenges {
         <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectPrevChallengesLength(
-            index.prev_challenges,
+            verifier_index.prev_challenges,
             proof.prev_challenges.len(),
         ));
     }
-    <span class="kw">if </span>proof.public.len() != index.public {
-        <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectPubicInputLength(index.public));
+    <span class="kw">if </span>public_input.len() != verifier_index.public {
+        <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectPubicInputLength(
+            verifier_index.public,
+        ));
     }
+
+    <span class="comment">//~ 1. Check the length of evaluations inside the proof.
+    </span>check_proof_evals_len(proof)<span class="question-mark">?</span>;
 
     <span class="comment">//~ 1. Commit to the negated public input polynomial.
     </span><span class="kw">let </span>public_comm = {
-        <span class="kw">if </span>proof.public.len() != index.public {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectPubicInputLength(index.public));
+        <span class="kw">if </span>public_input.len() != verifier_index.public {
+            <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::IncorrectPubicInputLength(
+                verifier_index.public,
+            ));
         }
-        <span class="kw">let </span>lgr_comm = index
+        <span class="kw">let </span>lgr_comm = verifier_index
             .srs()
             .lagrange_bases
-            .get(<span class="kw-2">&amp;</span>index.domain.size())
+            .get(<span class="kw-2">&amp;</span>verifier_index.domain.size())
             .expect(<span class="string">&quot;pre-computed committed lagrange bases not found&quot;</span>);
-        <span class="kw">let </span>com: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().take(index.public).collect();
-        <span class="kw">let </span>elm: Vec&lt;<span class="kw">_</span>&gt; = proof.public.iter().map(|s| -<span class="kw-2">*</span>s).collect();
+        <span class="kw">let </span>com: Vec&lt;<span class="kw">_</span>&gt; = lgr_comm.iter().take(verifier_index.public).collect();
+        <span class="kw">let </span>elm: Vec&lt;<span class="kw">_</span>&gt; = public_input.iter().map(|s| -<span class="kw-2">*</span>s).collect();
         <span class="kw">let </span>public_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>com, <span class="kw-2">&amp;</span>elm);
-        index
+        verifier_index
             .srs()
             .mask_custom(
                 public_comm,
@@ -1371,16 +1534,20 @@
         zeta1: zeta_to_domain_size,
         ft_eval0,
         ..
-    } = proof.oracles::&lt;EFqSponge, EFrSponge&gt;(index, <span class="kw-2">&amp;</span>public_comm)<span class="question-mark">?</span>;
+    } = proof.oracles::&lt;EFqSponge, EFrSponge&gt;(verifier_index, <span class="kw-2">&amp;</span>public_comm, public_input)<span class="question-mark">?</span>;
 
     <span class="comment">//~ 1. Combine the chunked polynomials&#39; evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
     </span><span class="kw">let </span>evals = proof.evals.combine(<span class="kw-2">&amp;</span>powers_of_eval_points_for_chunks);
 
-    <span class="kw">let </span>context = Context { proof, index };
+    <span class="kw">let </span>context = Context {
+        verifier_index,
+        proof,
+        public_input,
+    };
 
-    <span class="comment">//~ 4. Compute the commitment to the linearized polynomial $f$.
+    <span class="comment">//~ 1. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
     //~    and optionally of the lookup.
     //~    (See the separate sections in the [constraints](#constraints) section.)
@@ -1390,11 +1557,11 @@
     //~    in which case the evaluation should be used in place of the commitment.
     </span><span class="kw">let </span>f_comm = {
         <span class="comment">// the permutation is written manually (not using the expr framework)
-        </span><span class="kw">let </span>zkp = index.zkpm().evaluate(<span class="kw-2">&amp;</span>oracles.zeta);
+        </span><span class="kw">let </span>zkp = verifier_index.zkpm().evaluate(<span class="kw-2">&amp;</span>oracles.zeta);
 
         <span class="kw">let </span>alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
-        <span class="kw">let </span><span class="kw-2">mut </span>commitments = <span class="macro">vec!</span>[<span class="kw-2">&amp;</span>index.sigma_comm[PERMUTS - <span class="number">1</span>]];
+        <span class="kw">let </span><span class="kw-2">mut </span>commitments = <span class="macro">vec!</span>[<span class="kw-2">&amp;</span>verifier_index.sigma_comm[PERMUTS - <span class="number">1</span>]];
         <span class="kw">let </span><span class="kw-2">mut </span>scalars = <span class="macro">vec!</span>[ConstraintSystem::&lt;G::ScalarField&gt;::perm_scalars(
             <span class="kw-2">&amp;</span>evals,
             oracles.beta,
@@ -1411,14 +1578,19 @@
                 beta: oracles.beta,
                 gamma: oracles.gamma,
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.<span class="number">1</span>),
-                endo_coefficient: index.endo,
+                endo_coefficient: verifier_index.endo,
                 mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
             };
 
-            <span class="kw">for </span>(col, tokens) <span class="kw">in </span><span class="kw-2">&amp;</span>index.linearization.index_terms {
-                <span class="kw">let </span>scalar =
-                    PolishToken::evaluate(tokens, index.domain, oracles.zeta, <span class="kw-2">&amp;</span>evals, <span class="kw-2">&amp;</span>constants)
-                        .expect(<span class="string">&quot;should evaluate&quot;</span>);
+            <span class="kw">for </span>(col, tokens) <span class="kw">in </span><span class="kw-2">&amp;</span>verifier_index.linearization.index_terms {
+                <span class="kw">let </span>scalar = PolishToken::evaluate(
+                    tokens,
+                    verifier_index.domain,
+                    oracles.zeta,
+                    <span class="kw-2">&amp;</span>evals,
+                    <span class="kw-2">&amp;</span>constants,
+                )
+                .expect(<span class="string">&quot;should evaluate&quot;</span>);
 
                 <span class="kw">let </span>col = <span class="kw-2">*</span>col;
                 scalars.push(scalar);
@@ -1437,7 +1609,7 @@
     <span class="comment">//~ 1. Compute the (chuncked) commitment of $ft$
     //~    (see [Maller&#39;s optimization](../crypto/plonk/maller_15.html)).
     </span><span class="kw">let </span>ft_comm = {
-        <span class="kw">let </span>zeta_to_srs_len = oracles.zeta.pow(<span class="kw-2">&amp;</span>[index.max_poly_size <span class="kw">as </span>u64]);
+        <span class="kw">let </span>zeta_to_srs_len = oracles.zeta.pow([verifier_index.max_poly_size <span class="kw">as </span>u64]);
         <span class="kw">let </span>chunked_f_comm = f_comm.chunk_commitment(zeta_to_srs_len);
         <span class="kw">let </span>chunked_t_comm = <span class="kw-2">&amp;</span>proof.commitments.t_comm.chunk_commitment(zeta_to_srs_len);
         <span class="kw-2">&amp;</span>chunked_f_comm - <span class="kw-2">&amp;</span>chunked_t_comm.scale(zeta_to_domain_size - G::ScalarField::one())
@@ -1447,21 +1619,21 @@
     //~    that are associated to the aggregated evaluation proof in the proof:
     </span><span class="kw">let </span><span class="kw-2">mut </span>evaluations = <span class="macro">vec!</span>[];
 
-    <span class="comment">//~~ - recursion
+    <span class="comment">//~~ * recursion
     </span>evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
         degree_bound: <span class="prelude-val">None</span>,
     }));
 
-    <span class="comment">//~~ - public input commitment
+    <span class="comment">//~~ * public input commitment
     </span>evaluations.push(Evaluation {
         commitment: public_comm,
         evaluations: public_evals.to_vec(),
         degree_bound: <span class="prelude-val">None</span>,
     });
 
-    <span class="comment">//~~ - ft commitment (chunks of it)
+    <span class="comment">//~~ * ft commitment (chunks of it)
     </span>evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: <span class="macro">vec!</span>[<span class="macro">vec!</span>[ft_eval0], <span class="macro">vec!</span>[proof.ft_eval1]],
@@ -1469,22 +1641,23 @@
     });
 
     <span class="kw">for </span>col <span class="kw">in </span>[
-        <span class="comment">//~~ - permutation commitment
+        <span class="comment">//~~ * permutation commitment
         </span>Column::Z,
-        <span class="comment">//~~ - index commitments that use the coefficients
+        <span class="comment">//~~ * index commitments that use the coefficients
         </span>Column::Index(GateType::Generic),
         Column::Index(GateType::Poseidon),
     ]
     .into_iter()
-    <span class="comment">//~~ - witness commitments
+    <span class="comment">//~~ * witness commitments
     </span>.chain((<span class="number">0</span>..COLUMNS).map(Column::Witness))
-    <span class="comment">//~~ - coefficient commitments
+    <span class="comment">//~~ * coefficient commitments
     </span>.chain((<span class="number">0</span>..COLUMNS).map(Column::Coefficient))
-    <span class="comment">//~~ - sigma commitments
+    <span class="comment">//~~ * sigma commitments
     </span>.chain((<span class="number">0</span>..PERMUTS - <span class="number">1</span>).map(Column::Permutation))
-    <span class="comment">//~~ - lookup commitments
+    <span class="comment">//~~ * lookup commitments
+    //~
     </span>.chain(
-        index
+        verifier_index
             .lookup_index
             .as_ref()
             .map(|li| {
@@ -1511,7 +1684,7 @@
         });
     }
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(li) = <span class="kw-2">&amp;</span>index.lookup_index {
+    <span class="kw">if let </span><span class="prelude-val">Some</span>(li) = <span class="kw-2">&amp;</span>verifier_index.lookup_index {
         <span class="kw">let </span>lookup_comms = proof
             .commitments
             .lookup
@@ -1574,7 +1747,7 @@
     }
 
     <span class="comment">// prepare for the opening proof verification
-    </span><span class="kw">let </span>evaluation_points = <span class="macro">vec!</span>[oracles.zeta, oracles.zeta * index.domain.group_gen];
+    </span><span class="kw">let </span>evaluation_points = <span class="macro">vec!</span>[oracles.zeta, oracles.zeta * verifier_index.domain.group_gen];
     <span class="prelude-val">Ok</span>(BatchEvaluationProof {
         sponge: fq_sponge,
         evaluations,
@@ -1594,6 +1767,7 @@
     group_map: <span class="kw-2">&amp;</span>G::Map,
     verifier_index: <span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;,
     proof: <span class="kw-2">&amp;</span>ProverProof&lt;G&gt;,
+    public_input: <span class="kw-2">&amp;</span>[G::ScalarField],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
     </span>G: KimchiCurve,
@@ -1601,13 +1775,16 @@
     EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
     EFrSponge: FrSponge&lt;G::ScalarField&gt;,
 {
-    <span class="kw">let </span>proofs = <span class="macro">vec!</span>[(verifier_index, proof)];
+    <span class="kw">let </span>proofs = <span class="macro">vec!</span>[Context {
+        verifier_index,
+        proof,
+        public_input,
+    }];
     batch_verify::&lt;G, EFqSponge, EFrSponge&gt;(group_map, <span class="kw-2">&amp;</span>proofs)
 }
 
 <span class="doccomment">/// This function verifies the batch of zk-proofs
 ///     proofs: vector of Plonk proofs
-///     index: `VerifierIndex`
 ///     RETURN: verification status
 ///
 /// # Errors
@@ -1615,7 +1792,7 @@
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 </span><span class="kw">pub fn </span>batch_verify&lt;G, EFqSponge, EFrSponge&gt;(
     group_map: <span class="kw-2">&amp;</span>G::Map,
-    proofs: <span class="kw-2">&amp;</span>[(<span class="kw-2">&amp;</span>VerifierIndex&lt;G&gt;, <span class="kw-2">&amp;</span>ProverProof&lt;G&gt;)],
+    proofs: <span class="kw-2">&amp;</span>[Context&lt;G&gt;],
 ) -&gt; <span class="prelude-ty">Result</span>&lt;()&gt;
 <span class="kw">where
     </span>G: KimchiCurve,
@@ -1637,22 +1814,31 @@
 
     <span class="comment">//~ 1. Ensure that all the proof&#39;s verifier index have a URS of the same length. (TODO: do they have to be the same URS though? should we check for that?)
     // TODO: Account for the different SRS lengths
-    </span><span class="kw">let </span>srs = <span class="kw-2">&amp;</span>proofs[<span class="number">0</span>].<span class="number">0</span>.srs();
-    <span class="kw">for </span>(index, <span class="kw">_</span>) <span class="kw">in </span>proofs.iter() {
-        <span class="kw">if </span>index.srs().g.len() != srs.g.len() {
+    </span><span class="kw">let </span>srs = proofs[<span class="number">0</span>].verifier_index.srs();
+    <span class="kw">for </span><span class="kw-2">&amp;</span>Context { verifier_index, .. } <span class="kw">in </span>proofs {
+        <span class="kw">if </span>verifier_index.srs().g.len() != srs.g.len() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::DifferentSRS);
         }
 
         <span class="comment">// also make sure that the SRS is not smaller than the domain size
-        </span><span class="kw">if </span>index.srs().max_degree() &lt; index.domain.size() {
+        </span><span class="kw">if </span>verifier_index.srs().max_degree() &lt; verifier_index.domain.size() {
             <span class="kw">return </span><span class="prelude-val">Err</span>(VerifyError::SRSTooSmall);
         }
     }
 
     <span class="comment">//~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
     </span><span class="kw">let </span><span class="kw-2">mut </span>batch = <span class="macro">vec!</span>[];
-    <span class="kw">for </span>(index, proof) <span class="kw">in </span>proofs {
-        batch.push(to_batch::&lt;G, EFqSponge, EFrSponge&gt;(index, proof)<span class="question-mark">?</span>);
+    <span class="kw">for </span><span class="kw-2">&amp;</span>Context {
+        verifier_index,
+        proof,
+        public_input,
+    } <span class="kw">in </span>proofs
+    {
+        batch.push(to_batch::&lt;G, EFqSponge, EFrSponge&gt;(
+            verifier_index,
+            proof,
+            public_input,
+        )<span class="question-mark">?</span>);
     }
 
     <span class="comment">//~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
@@ -1663,4 +1849,4 @@
     }
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>

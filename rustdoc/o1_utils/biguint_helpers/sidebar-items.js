@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"trait":[["BigUintHelpers","Helpers for BigUint"]]};
+window.SIDEBAR_ITEMS = {"trait":["BigUintHelpers"]};

@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/xor.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>xor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-1f7d512b176f0f72.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-124a1ca42af929b6.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fbcde169c4acde5f.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-4743e13df3dfe8c4.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-0e1b889528bd466b.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-65289d5d067c7c66.css"><script id="default-settings" ></script><script src="../../../../static.files/storage-d43fa987303ecbbb.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-bc1b32400f872ddb.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-5ec35bf9ca753509.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/xor.rs`."><title>xor.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-1def573a4779b29b.css" id="mainThemeStyle"><link rel="stylesheet" id="themeStyle" href="../../../../static.files/light-d59023bfa12059d2.css"><link rel="stylesheet" disabled href="../../../../static.files/dark-1ca41bb1e10af075.css"><link rel="stylesheet" disabled href="../../../../static.files/ayu-18b4181a2f3fb862.css"><script src="../../../../static.files/storage-3891ce972e3a2bf8.js"></script><script defer src="../../../../static.files/source-script-ea63cb6500f71309.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-98a684e84ae5b08b.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -259,6 +259,24 @@
 <a href="#259" id="259">259</a>
 <a href="#260" id="260">260</a>
 <a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This module includes the definition of the XOR gadget for 64, 32, and 16 bits,
 //! the definition of the constraints of the `Xor16` circuit gate,
 //! and the code for witness generation for the XOR gadget.
@@ -285,16 +303,44 @@
 <span class="kw">use </span><span class="kw">super</span>::generic::GenericGateSpec;
 
 <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; CircuitGate&lt;F&gt; {
+    <span class="doccomment">/// Extends a XOR gadget for `bits` length to a circuit
+    /// Includes:
+    /// - num_xors Xor16 gates
+    /// - 1 Generic gate to constrain the final row to be zero with itself
+    /// Input:
+    /// - gates     : vector of circuit gates
+    /// - bits      : length of the XOR gadget
+    /// Output:
+    /// - new row index
+    </span><span class="kw">pub fn </span>extend_xor_gadget(gates: <span class="kw-2">&amp;mut </span>Vec&lt;<span class="self">Self</span>&gt;, bits: usize) -&gt; usize {
+        <span class="kw">let </span>new_row = gates.len();
+        <span class="kw">let </span>(<span class="kw">_</span>, <span class="kw-2">mut </span>xor_gates) = <span class="self">Self</span>::create_xor_gadget(new_row, bits);
+        <span class="comment">// extend the whole circuit with the xor gadget
+        </span>gates.append(<span class="kw-2">&amp;mut </span>xor_gates);
+
+        <span class="comment">// check fin_in1, fin_in2, fin_out are zero
+        </span><span class="kw">let </span>zero_row = gates.len() - <span class="number">1</span>;
+        gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">1</span>));
+        gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">2</span>));
+
+        gates.len()
+    }
+
     <span class="doccomment">/// Creates a XOR gadget for `bits` length
     /// Includes:
     /// - num_xors Xor16 gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
+    /// Input:
+    /// - new_row   : row to start the XOR gadget
+    /// - bits      : number of bits in the XOR
     /// Outputs tuple (next_row, circuit_gates) where
     /// - next_row  : next row after this gate
     /// - gates     : vector of circuit gates comprising this gate
+    /// Warning:
+    /// - don&#39;t forget to check that the final row is all zeros as in `extend_xor_gadget`
     </span><span class="kw">pub fn </span>create_xor_gadget(new_row: usize, bits: usize) -&gt; (usize, Vec&lt;<span class="self">Self</span>&gt;) {
         <span class="kw">let </span>num_xors = num_xors(bits);
-        <span class="kw">let </span><span class="kw-2">mut </span>gates = (<span class="number">0</span>..num_xors)
+        <span class="kw">let </span><span class="kw-2">mut </span>xor_gates = (<span class="number">0</span>..num_xors)
             .map(|i| CircuitGate {
                 typ: GateType::Xor16,
                 wires: Wire::for_row(new_row + i),
@@ -302,16 +348,13 @@
             })
             .collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
         <span class="kw">let </span>zero_row = new_row + num_xors;
-        gates.push(CircuitGate::create_generic_gadget(
+        xor_gates.push(CircuitGate::create_generic_gadget(
             Wire::for_row(zero_row),
             GenericGateSpec::Const(F::zero()),
             <span class="prelude-val">None</span>,
         ));
-        <span class="comment">// check fin_in1, fin_in2, fin_out are zero
-        </span>gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">1</span>));
-        gates.connect_cell_pair((zero_row, <span class="number">0</span>), (zero_row, <span class="number">2</span>));
 
-        (zero_row + <span class="number">1</span>, gates)
+        (new_row + xor_gates.len(), xor_gates)
     }
 }
 
@@ -326,7 +369,8 @@
 //~ * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
 //~ * This gate operates on the `Curr` and `Next` rows.
 //~
-//~ It uses three different types of constraints
+//~ It uses three different types of constraints:
+//~
 //~ * copy          - copy to another cell (32-bits)
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate
@@ -362,7 +406,7 @@
 //~ |   1 | `Xor16`       | Xor next 2 bytes of the words              |
 //~ |   2 | `Xor16`       | Xor next 2 bytes of the words              |
 //~ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
-//~ |   4 | `Zero`        | Zero values, can be reused as generic gate |
+//~ |   4 | `Generic`     | Zero values, can be reused as generic gate |
 //~
 //~ ```admonish info
 //~ We could halve the number of rows of the 64-bit XOR gadget by having lookups
@@ -472,24 +516,16 @@
 
 <span class="doccomment">/// Extends the Xor rows to the full witness
 /// Panics if the words are larger than the desired bits
-</span><span class="kw">pub fn </span>extend_xor_rows&lt;F: PrimeField&gt;(
+</span><span class="kw">pub fn </span>extend_xor_witness&lt;F: PrimeField&gt;(
     witness: <span class="kw-2">&amp;mut </span>[Vec&lt;F&gt;; COLUMNS],
+    input1: F,
+    input2: F,
     bits: usize,
-    words: (F, F, F),
 ) {
-    <span class="kw">let </span>input1_big = words.<span class="number">0</span>.to_biguint();
-    <span class="kw">let </span>input2_big = words.<span class="number">1</span>.to_biguint();
-    <span class="kw">let </span>output_big = words.<span class="number">2</span>.to_biguint();
-    <span class="kw">if </span>bits &lt; input1_big.bitlen() || bits &lt; input2_big.bitlen() || bits &lt; output_big.bitlen() {
-        <span class="macro">panic!</span>(<span class="string">&quot;Bits must be greater or equal than the inputs length&quot;</span>);
-    }
-    <span class="kw">let </span>xor_witness: [Vec&lt;F&gt;; COLUMNS] =
-        array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">1 </span>+ num_xors(bits) <span class="kw">as </span>usize]);
-    <span class="kw">let </span>xor_row = witness[<span class="number">0</span>].len();
+    <span class="kw">let </span>xor_witness = create_xor_witness(input1, input2, bits);
     <span class="kw">for </span>col <span class="kw">in </span><span class="number">0</span>..COLUMNS {
         witness[col].extend(xor_witness[col].iter());
     }
-    init_xor(witness, xor_row, bits, words);
 }
 
 <span class="doccomment">/// Create a Xor for up to the native length starting at row 0
@@ -504,7 +540,7 @@
     <span class="kw">let </span>output = BigUint::bitwise_xor(<span class="kw-2">&amp;</span>input1_big, <span class="kw-2">&amp;</span>input2_big);
 
     <span class="kw">let </span><span class="kw-2">mut </span>xor_witness: [Vec&lt;F&gt;; COLUMNS] =
-        array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">1 </span>+ num_xors(bits) <span class="kw">as </span>usize]);
+        array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[F::zero(); <span class="number">1 </span>+ num_xors(bits)]);
 
     init_xor(
         <span class="kw-2">&amp;mut </span>xor_witness,
@@ -521,4 +557,4 @@
     (bits <span class="kw">as </span>f64 / <span class="number">16.0</span>).ceil() <span class="kw">as </span>usize
 }
 </code></pre></div>
-</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.68.0-nightly (0442fbabe 2023-01-10)" data-search-js="search-181581080540673f.js" data-settings-js="settings-bebeae96e00e4617.js" data-settings-css="settings-58836c674e2f7bd2.css" ></div></body></html>
+</section></main><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.69.0-nightly (4507fdaaa 2023-02-18)" data-search-js="search-14421e1532aead08.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" ></div></body></html>
