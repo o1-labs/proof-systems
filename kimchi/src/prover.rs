@@ -3,7 +3,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        expr::{l0_1, Constants, Environment, LookupEnvironment},
+        expr::{self, l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -638,10 +638,13 @@ where
             }
         };
 
+        let mut cache = expr::Cache::default();
+
         let quotient_poly = {
             // generic
             let mut t4 = {
-                let generic_constraint = generic::Generic::combined_constraints(&all_alphas);
+                let generic_constraint =
+                    generic::Generic::combined_constraints(&all_alphas, &mut cache);
                 let generic4 = generic_constraint.evaluations(&env);
 
                 if cfg!(debug_assertions) {
@@ -709,7 +712,7 @@ where
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
                 {
-                    let constraint = gate.combined_constraints(&all_alphas);
+                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
                     let eval = constraint.evaluations(&env);
                     if eval.domain().size == t4.domain().size {
                         t4 += &eval;

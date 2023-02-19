@@ -98,7 +98,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
     const CONSTRAINTS: u32 = 7;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = env.witness_curr(0);
         let y1 = env.witness_curr(1);
@@ -118,8 +118,6 @@ where
 
         // This variable is used to constrain same_x
         let x21_inv = env.witness_curr(10);
-
-        let mut cache = Cache::default();
 
         let x21 = cache.cache(x2.clone() - x1.clone());
         let y21 = cache.cache(y2 - y1.clone());

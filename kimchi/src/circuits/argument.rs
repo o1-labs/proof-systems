@@ -11,7 +11,7 @@ use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    expr::{constraints::ExprOps, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -142,17 +142,17 @@ pub trait Argument<F: PrimeField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T>;
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
-    fn constraints() -> Vec<E<F>> {
+    fn constraints(cache: &mut Cache) -> Vec<E<F>> {
         // Generate constraints
-        Self::constraint_checks(&ArgumentEnv::default())
+        Self::constraint_checks(&ArgumentEnv::default(), cache)
     }
 
     /// Returns constraints safely combined via the passed combinator.
-    fn combined_constraints(alphas: &Alphas<F>) -> E<F> {
-        let constraints = Self::constraints();
+    fn combined_constraints(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
+        let constraints = Self::constraints(cache);
         assert_eq!(constraints.len(), Self::CONSTRAINTS as usize);
         let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
         let combined_constraints = E::combine_constraints(alphas, constraints);
@@ -168,17 +168,17 @@ pub trait Argument<F: PrimeField> {
 }
 
 pub trait DynArgument<F: PrimeField> {
-    fn constraints(&self) -> Vec<E<F>>;
-    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F>;
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>;
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>;
     fn argument_type(&self) -> ArgumentType;
 }
 
 impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
-    fn constraints(&self) -> Vec<E<F>> {
-        <Self as Argument<F>>::constraints()
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>> {
+        <Self as Argument<F>>::constraints(cache)
     }
-    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F> {
-        <Self as Argument<F>>::combined_constraints(alphas)
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
+        <Self as Argument<F>>::combined_constraints(alphas, cache)
     }
     fn argument_type(&self) -> ArgumentType {
         <Self as Argument<F>>::ARGUMENT_TYPE
