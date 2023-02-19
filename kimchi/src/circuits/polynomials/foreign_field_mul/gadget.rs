@@ -8,7 +8,7 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::Argument,
-        expr::E,
+        expr::{Cache, E},
         gate::{CircuitGate, GateType},
         lookup::{
             self,
@@ -80,9 +80,13 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
-pub fn circuit_gate_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_constraints<F: PrimeField>(
+    typ: GateType,
+    alphas: &Alphas<F>,
+    cache: &mut Cache,
+) -> E<F> {
     match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas),
+        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas, cache),
         _ => panic!("invalid gate type"),
     }
 }
@@ -96,8 +100,8 @@ pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
 }
 
 /// Get the combined constraints for all foreign field multiplication circuit gates
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>) -> E<F> {
-    ForeignFieldMul::combined_constraints(alphas)
+pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
+    ForeignFieldMul::combined_constraints(alphas, cache)
 }
 
 /// Get the foreign field multiplication lookup table

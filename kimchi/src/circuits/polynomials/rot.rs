@@ -4,7 +4,10 @@ use super::range_check::witness::range_check_0_row;
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::constraints::{crumb, ExprOps},
+        expr::{
+            constraints::{crumb, ExprOps},
+            Cache,
+        },
         gate::{CircuitGate, Connect, GateType},
         lookup::{
             self,
@@ -198,7 +201,7 @@ where
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
         let mut constraints = (7..COLUMNS)
