@@ -37,6 +37,11 @@ jobs:
         run: |
           npm install -g markdownlint-cli
 
+      - name: Setup OCaml (because of ocaml-gen)
+        run: |
+          sudo apt update
+          sudo apt install -y ocaml
+
       # https://github.com/Swatinem/rust-cache
       - name: Cache Rust stuff
         uses: Swatinem/rust-cache@v1
