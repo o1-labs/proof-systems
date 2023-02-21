@@ -1969,6 +1969,8 @@ pub struct ProofEvaluations<Evals> {
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the varbasemul selector polynomial
+    pub varbasemul_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature

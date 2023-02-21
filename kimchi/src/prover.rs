@@ -954,6 +954,9 @@ where
             poseidon_selector: chunked_evals_for_selector(
                 &index.column_evaluations.poseidon_selector8,
             ),
+            varbasemul_selector: chunked_evals_for_selector(
+                &index.column_evaluations.mul_selector8,
+            ),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
