@@ -76,6 +76,8 @@ pub struct ProofEvaluations<Evals> {
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the varbasemul selector polynomial
+    pub varbasemul_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature
@@ -205,6 +207,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup,
             generic_selector,
             poseidon_selector,
+            varbasemul_selector,
         } = self;
         ProofEvaluations {
             w: w.map(f),
@@ -214,6 +217,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup: lookup.map(|x| LookupEvaluations::map(x, f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
+            varbasemul_selector: f(varbasemul_selector),
         }
     }
 
@@ -226,6 +230,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup,
             generic_selector,
             poseidon_selector,
+            varbasemul_selector,
         } = self;
         ProofEvaluations {
             w: [
@@ -267,6 +272,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup: lookup.as_ref().map(|l| l.map_ref(f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
+            varbasemul_selector: f(varbasemul_selector),
         }
     }
 }
@@ -289,6 +295,7 @@ impl<F> ProofEvaluations<F> {
         ProofEvaluations {
             generic_selector: array::from_fn(|i| &evals[i].generic_selector),
             poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
+            varbasemul_selector: array::from_fn(|i| &evals[i].varbasemul_selector),
             z: array::from_fn(|i| &evals[i].z),
             w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
             s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
@@ -380,6 +387,7 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             lookup: None,
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
+            varbasemul_selector: pt(F::zero(), F::zero()),
         }
     }
 }
@@ -406,6 +414,7 @@ impl<F> ProofEvaluations<F> {
             Column::LookupRuntimeTable => Some(self.lookup.as_ref()?.runtime.as_ref()?),
             Column::Index(GateType::Generic) => Some(&self.generic_selector),
             Column::Index(GateType::Poseidon) => Some(&self.poseidon_selector),
+            Column::Index(GateType::VarBaseMul) => Some(&self.varbasemul_selector),
             Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),
@@ -570,6 +579,7 @@ pub mod caml {
 
         pub generic_selector: PointEvaluations<Vec<CamlF>>,
         pub poseidon_selector: PointEvaluations<Vec<CamlF>>,
+        pub varbasemul_selector: PointEvaluations<Vec<CamlF>>,
     }
 
     //
@@ -708,6 +718,9 @@ pub mod caml {
                 poseidon_selector: pe
                     .poseidon_selector
                     .map(&|x| x.into_iter().map(Into::into).collect()),
+                varbasemul_selector: pe
+                    .varbasemul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 lookup: pe.lookup.map(Into::into),
             }
         }
@@ -802,6 +815,9 @@ pub mod caml {
                     .map(&|x| x.into_iter().map(Into::into).collect()),
                 poseidon_selector: cpe
                     .poseidon_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                varbasemul_selector: cpe
+                    .varbasemul_selector
                     .map(&|x| x.into_iter().map(Into::into).collect()),
                 lookup: cpe.lookup.map(Into::into),
             }

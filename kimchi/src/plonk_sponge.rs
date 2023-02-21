@@ -67,9 +67,10 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             lookup,
             generic_selector,
             poseidon_selector,
+            varbasemul_selector,
         } = e;
 
-        let mut points = vec![z, generic_selector, poseidon_selector];
+        let mut points = vec![z, generic_selector, poseidon_selector, varbasemul_selector];
         w.iter().for_each(|w_i| points.push(w_i));
         coefficients.iter().for_each(|c_i| points.push(c_i));
         s.iter().for_each(|s_i| points.push(s_i));

@@ -512,6 +512,7 @@ where
         lookup,
         generic_selector,
         poseidon_selector,
+        varbasemul_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
@@ -550,6 +551,7 @@ where
     }
     check_eval_len(generic_selector)?;
     check_eval_len(poseidon_selector)?;
+    check_eval_len(varbasemul_selector)?;
 
     Ok(())
 }
