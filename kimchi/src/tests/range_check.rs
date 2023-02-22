@@ -54,17 +54,11 @@ const RNG_SEED: [u8; 32] = [
 ];
 
 fn create_test_prover_index(public_size: usize, compact: bool) -> ProverIndex<Vesta> {
-    let (mut next_row, mut gates) = if compact {
+    let (_next_row, gates) = if compact {
         CircuitGate::<Fp>::create_compact_multi_range_check(0)
     } else {
         CircuitGate::<Fp>::create_multi_range_check(0)
     };
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     new_index_for_test_with_lookups(
         gates,
@@ -561,25 +555,31 @@ fn verify_range_check0_test_copy_constraints() {
 fn verify_range_check0_v0_test_lookups() {
     let index = create_test_prover_index(0, false);
 
+    let witness = range_check::witness::create_multi::<PallasField>(
+        PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+        PallasField::zero(),
+        PallasField::zero(),
+    );
+
+    // Positive test
+    // gates[0] is RangeCheck0 and constrains some of v0
+    assert_eq!(
+        index.cs.gates[0].verify_witness::<Vesta>(
+            0,
+            &witness,
+            &index.cs,
+            &witness[0][0..index.cs.public]
+        ),
+        Ok(())
+    );
+
+    let test_runner = TestFramework::<Vesta>::default()
+        .gates(index.cs.gates)
+        .setup();
+
     for i in 3..=6 {
         // Test ith lookup
-        let mut witness = range_check::witness::create_multi::<PallasField>(
-            PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-            PallasField::zero(),
-            PallasField::zero(),
-        );
-
-        // Positive test
-        // gates[0] is RangeCheck0 and constrains some of v0
-        assert_eq!(
-            index.cs.gates[0].verify_witness::<Vesta>(
-                0,
-                &witness,
-                &index.cs,
-                &witness[0][0..index.cs.public]
-            ),
-            Ok(())
-        );
+        let mut witness = witness.clone();
 
         // Negative test
         // Make ith plookup limb out of range while keeping the
@@ -593,11 +593,9 @@ fn verify_range_check0_v0_test_lookups() {
 
         // Perform test that will catch invalid plookup constraints
         assert_eq!(
-            TestFramework::<Vesta>::default()
-                .gates(index.cs.gates.clone())
-                .witness(witness.clone())
-                .lookup_tables(vec![range_check::gadget::lookup_table()])
-                .setup()
+            test_runner
+                .clone()
+                .witness(witness)
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
                 "the lookup failed to find a match in the table"
@@ -610,25 +608,31 @@ fn verify_range_check0_v0_test_lookups() {
 fn verify_range_check0_v1_test_lookups() {
     let index = create_test_prover_index(0, false);
 
+    let witness = range_check::witness::create_multi::<PallasField>(
+        PallasField::zero(),
+        PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+        PallasField::zero(),
+    );
+
+    // Positive test
+    // gates[1] is RangeCheck0 and constrains some of v1
+    assert_eq!(
+        index.cs.gates[1].verify_witness::<Vesta>(
+            1,
+            &witness,
+            &index.cs,
+            &witness[0][0..index.cs.public]
+        ),
+        Ok(())
+    );
+
+    let test_runner = TestFramework::<Vesta>::default()
+        .gates(index.cs.gates)
+        .setup();
+
     for i in 3..=6 {
         // Test ith lookup
-        let mut witness = range_check::witness::create_multi::<PallasField>(
-            PallasField::zero(),
-            PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-            PallasField::zero(),
-        );
-
-        // Positive test
-        // gates[1] is RangeCheck0 and constrains some of v1
-        assert_eq!(
-            index.cs.gates[1].verify_witness::<Vesta>(
-                1,
-                &witness,
-                &index.cs,
-                &witness[0][0..index.cs.public]
-            ),
-            Ok(())
-        );
+        let mut witness = witness.clone();
 
         // Negative test
         // Make ith plookup limb out of range while keeping the
@@ -642,11 +646,9 @@ fn verify_range_check0_v1_test_lookups() {
 
         // Perform test that will catch invalid plookup constraints
         assert_eq!(
-            TestFramework::<Vesta>::default()
-                .gates(index.cs.gates.clone())
-                .witness(witness.clone())
-                .lookup_tables(vec![range_check::gadget::lookup_table()])
-                .setup()
+            test_runner
+                .clone()
+                .witness(witness)
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
                 "the lookup failed to find a match in the table"
@@ -960,26 +962,31 @@ fn verify_range_check1_test_copy_constraints() {
 #[test]
 fn verify_range_check1_test_curr_row_lookups() {
     let index = create_test_prover_index(0, false);
+    let witness = range_check::witness::create_multi::<PallasField>(
+        PallasField::zero(),
+        PallasField::zero(),
+        PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+    );
+
+    // Positive test
+    // gates[2] is RangeCheck1 and constrains v2
+    assert_eq!(
+        index.cs.gates[2].verify_witness::<Vesta>(
+            2,
+            &witness,
+            &index.cs,
+            &witness[0][0..index.cs.public]
+        ),
+        Ok(())
+    );
+
+    let test_runner = TestFramework::<Vesta>::default()
+        .gates(index.cs.gates)
+        .setup();
 
     for i in 3..=6 {
         // Test ith lookup (impacts v2)
-        let mut witness = range_check::witness::create_multi::<PallasField>(
-            PallasField::zero(),
-            PallasField::zero(),
-            PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-        );
-
-        // Positive test
-        // gates[2] is RangeCheck1 and constrains v2
-        assert_eq!(
-            index.cs.gates[2].verify_witness::<Vesta>(
-                2,
-                &witness,
-                &index.cs,
-                &witness[0][0..index.cs.public]
-            ),
-            Ok(())
-        );
+        let mut witness = witness.clone();
 
         // Negative test
         // Make ith plookup limb out of range while keeping the
@@ -989,11 +996,9 @@ fn verify_range_check1_test_curr_row_lookups() {
 
         // Perform test that will catch invalid plookup constraints
         assert_eq!(
-            TestFramework::<Vesta>::default()
-                .gates(index.cs.gates.clone())
+            test_runner
+                .clone()
                 .witness(witness.clone())
-                .lookup_tables(vec![range_check::gadget::lookup_table()])
-                .setup()
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
                 "the lookup failed to find a match in the table"
@@ -1006,25 +1011,31 @@ fn verify_range_check1_test_curr_row_lookups() {
 fn verify_range_check1_test_next_row_lookups() {
     let index = create_test_prover_index(0, false);
 
+    let witness = range_check::witness::create_multi::<PallasField>(
+        PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+        PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
+        PallasField::zero(),
+    );
+
+    // Positive test case (gates[2] is RangeCheck1 and constrains
+    // both v0's and v1's lookups that are deferred to 4th row)
+    assert_eq!(
+        index.cs.gates[2].verify_witness::<Vesta>(
+            2,
+            &witness,
+            &index.cs,
+            &witness[0][0..index.cs.public]
+        ),
+        Ok(())
+    );
+
+    let test_runner = TestFramework::<Vesta>::default()
+        .gates(index.cs.gates)
+        .setup();
+
     for row in 0..=1 {
         for col in 1..=2 {
-            let mut witness = range_check::witness::create_multi::<PallasField>(
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-                PallasField::from(2u64).pow([88]) - PallasField::one(), // in range
-                PallasField::zero(),
-            );
-
-            // Positive test case (gates[2] is RangeCheck1 and constrains
-            // both v0's and v1's lookups that are deferred to 4th row)
-            assert_eq!(
-                index.cs.gates[2].verify_witness::<Vesta>(
-                    2,
-                    &witness,
-                    &index.cs,
-                    &witness[0][0..index.cs.public]
-                ),
-                Ok(())
-            );
+            let mut witness = witness.clone();
 
             // Negative test by making plookup limb out of range
             // while also assuring the rest of the witness is still valid
@@ -1039,11 +1050,9 @@ fn verify_range_check1_test_next_row_lookups() {
 
             // Perform test that will catch invalid plookup constraints
             assert_eq!(
-                TestFramework::<Vesta>::default()
-                    .gates(index.cs.gates.clone())
+                test_runner
+                    .clone()
                     .witness(witness.clone())
-                    .lookup_tables(vec![range_check::gadget::lookup_table()])
-                    .setup()
                     .prove_and_verify::<BaseSponge, ScalarSponge>(),
                 Err(String::from(
                     "the lookup failed to find a match in the table"
@@ -1069,13 +1078,6 @@ fn verify_64_bit_range_check() {
     gates[1].wires[1] = Wire { row: 1, col: 2 };
     gates[1].wires[2] = Wire { row: 0, col: 0 };
     gates[0].wires[0] = Wire { row: 1, col: 1 };
-
-    // Temporary workaround for lookup-table/domain-size issue
-    let mut next_row = 2;
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     // Create constraint system
     let cs =
@@ -1236,18 +1238,11 @@ fn verify_compact_multi_range_check_proof() {
     // Create witness
     let witness = range_check::witness::create_multi_compact_limbs::<PallasField>(&limbs);
 
-    let (mut next_row, mut gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let (_next_row, gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
 
     assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![range_check::gadget::lookup_table()])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .is_ok());

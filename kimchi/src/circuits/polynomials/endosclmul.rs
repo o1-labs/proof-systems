@@ -23,9 +23,12 @@ use std::marker::PhantomData;
 //~ We implement custom gate constraints for short Weierstrass curve
 //~ endomorphism optimised variable base scalar multiplication.
 //~
-//~ Given a finite field $\mathbb{F}_q$ of order $q$, if the order is not a multiple of 2 nor 3, then an
-//~ elliptic curve over $\mathbb{F}_q$ in short Weierstrass form is represented by the set of points $(x,y)$
-//~ that satisfy the following equation with $a,b\in\mathbb{F}_q$ and $4a^3+27b^2\neq_{\mathbb{F}_q} 0$:
+//~ Given a finite field $\mathbb{F}_{q}$ of order $q$, if the order is not a multiple of 2 nor 3, then an
+//~ elliptic curve over $\mathbb{F}_{q}$ in short Weierstrass form is represented by the set of points $(x,y)$
+//~ that satisfy the following equation with
+//~ $a,b\in\mathbb{F}_{q}$
+//~ and
+//~ $4a^3+27b^2\neq_{\mathbb{F}_q} 0 $:
 //~ $$E(\mathbb{F}_q): y^2 = x^3 + a x + b$$
 //~ If $P=(x_p, y_p)$ and $T=(x_t, y_t)$ are two points in the curve $E(\mathbb{F}_q)$, the goal of this
 //~ operation is to perform the operation $2P±T$ efficiently as $(P±T)+P$.
@@ -53,11 +56,11 @@ use std::marker::PhantomData;
 //~
 //~ For readability, we define the following variables for the constraints:
 //~
-//~   * `endo` $:=$ `EndoCoefficient`
-//~   * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
-//~   * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
-//~   * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
-//~   * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
+//~ * `endo` $:=$ `EndoCoefficient`
+//~ * `xq1` $:= (1 + ($`endo`$ - 1)\cdot b_1) \cdot x_t$
+//~ * `xq2` $:= (1 + ($`endo`$ - 1)\cdot b_3) \cdot x_t$
+//~ * `yq1` $:= (2\cdot b_2 - 1) \cdot y_t$
+//~ * `yq2` $:= (2\cdot b_4 - 1) \cdot y_t$
 //~
 //~ These are the 11 constraints that correspond to each EVBSM gate,
 //~ which take care of 4 bits of the scalar within a single EVBSM row:
@@ -83,16 +86,16 @@ use std::marker::PhantomData;
 //~ * (1) => $(x_{q_1} - x_p) \cdot s_1 = y_{q_1} - y_p$
 //~ * (2&3) => $(x_p – x_r) \cdot s_2 = y_r + y_p$
 //~ * (2) => $(2 \cdot x_p + x_{q_1} – s_1^2) \cdot (s_1 + s_2) = 2 \cdot y_p$
-//~     * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
+//~   * <=> $(2 \cdot x_p – s_1^2 + x_{q_1}) \cdot ((x_p – x_r) \cdot s_1 + y_r + y_p) = (x_p – x_r) \cdot 2 \cdot y_p$
 //~ * (3) => $s_1^2 - s_2^2 = x_{q_1} - x_r$
-//~     * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
+//~   * <=> $(y_r + y_p)^2 = (x_p – x_r)^2 \cdot (s_1^2 – x_{q_1} + x_r)$
 //~ *
 //~ * (4) => $(x_{q_2} - x_r) \cdot s_3 = y_{q_2} - y_r$
 //~ * (5&6) => $(x_r – x_s) \cdot s_4 = y_s + y_r$
 //~ * (5) => $(2 \cdot x_r + x_{q_2} – s_3^2) \cdot (s_3 + s_4) = 2 \cdot y_r$
-//~     * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
+//~   * <=> $(2 \cdot x_r – s_3^2 + x_{q_2}) \cdot ((x_r – x_s) \cdot s_3 + y_s + y_r) = (x_r – x_s) \cdot 2 \cdot y_r$
 //~ * (6) => $s_3^2 – s_4^2 = x_{q_2} - x_s$
-//~     * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
+//~   * <=> $(y_s + y_r)^2 = (x_r – x_s)^2 \cdot (s_3^2 – x_{q_2} + x_s)$
 //~
 //~ Defining $s_2$ and $s_4$ as
 //~
@@ -104,7 +107,7 @@ use std::marker::PhantomData;
 //~ 1. `(xq1 - xp) * s1 = (2 * b1 - 1) * yt - yp`
 //~ 2. `(2 * xp – s1^2 + xq1) * ((xp – xr) * s1 + yr + yp) = (xp – xr) * 2 * yp`
 //~ 3. `(yr + yp)^2 = (xp – xr)^2 * (s1^2 – xq1 + xr)`
-//~ -
+//~
 //~ 4. `(xq2 - xr) * s3 = (2 * b2 - 1) * yt - yr`
 //~ 5. `(2 * xr – s3^2 + xq2) * ((xr – xs) * s3 + ys + yr) = (xr – xs) * 2 * yr`
 //~ 6. `(ys + yr)^2 = (xr – xs)^2 * (s3^2 – xq2 + xs)`
