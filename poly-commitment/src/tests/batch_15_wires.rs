@@ -103,7 +103,7 @@ where
                     )
                 })
                 .collect();
-            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
+            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
                 &group_map,
                 &polys,
                 &x,

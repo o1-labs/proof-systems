@@ -221,25 +221,25 @@ impl<G: KimchiCurve> ProverIndex<G> {
                     &self.column_evaluations.coefficients8[i],
                 )
             }),
-            generic_comm: mask_fixed(
+            generic_comm: {let res = mask_fixed(
                 self.srs.commit_evaluations_non_hiding(
                     domain,
                     &self.column_evaluations.generic_selector4,
                 ),
-            ),
+            ); println!("generic_comm: {:?}", res); res},
 
-            psm_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
+            psm_comm: {let res = mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.poseidon_selector8,
-            )),
+            )); println!("psm_comm: {:?}", res); res},
 
             complete_add_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.complete_add_selector4,
             ),
-            mul_comm: self
+            mul_comm: {let res = mask_fixed(self
                 .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
+                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8)); println!("mul_comm: {:?}", res); res},
             emul_comm: self
                 .srs
                 .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),

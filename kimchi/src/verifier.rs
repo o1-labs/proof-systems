@@ -428,6 +428,7 @@ where
                 Column::Z,
                 Column::Index(GateType::Generic),
                 Column::Index(GateType::Poseidon),
+                Column::Index(GateType::VarBaseMul),
             ]
             .into_iter()
             .chain((0..COLUMNS).map(Column::Witness))
@@ -723,6 +724,7 @@ where
         //~~ * index commitments that use the coefficients
         Column::Index(GateType::Generic),
         Column::Index(GateType::Poseidon),
+        Column::Index(GateType::VarBaseMul),
     ]
     .into_iter()
     //~~ * witness commitments

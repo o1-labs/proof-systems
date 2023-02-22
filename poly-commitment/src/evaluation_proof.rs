@@ -11,6 +11,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::iter::Iterator;
+use ark_poly::Radix2EvaluationDomain;
 
 enum OptShiftedPolynomial<P> {
     Unshifted(P),
@@ -82,12 +83,12 @@ impl<G: CommitmentCurve> SRS<G> {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
-    pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>>(
+    pub fn open<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
         // TODO(mimoo): create a type for that entry
         plnms: &[(
-            DensePolynomialOrEvaluations<G::ScalarField, D>,
+            DensePolynomialOrEvaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>,
             Option<usize>,
             PolyComm<G::ScalarField>,
         )], // vector of polynomial with optional degree bound and commitment randomness
@@ -102,6 +103,7 @@ impl<G: CommitmentCurve> SRS<G> {
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
     {
+        println!("polyscale: {}\nevalscale: {}", polyscale, evalscale);
         let (endo_q, endo_r) = endos::<G>();
 
         let rounds = math::ceil_log2(self.g.len());
@@ -139,12 +141,22 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut omega = G::ScalarField::zero();
             let mut scale = G::ScalarField::one();
 
+        let mask_fixed = |commitment: PolyComm<G>| {
+            let blinders = commitment.map(|_| G::ScalarField::one());
+            self
+                .mask_custom(commitment, &blinders)
+                .unwrap()
+                .commitment
+        };
+
             // iterating over polynomials in the batch
             for (p_i, degree_bound, omegas) in plnms {
                 match p_i {
                     DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) => {
                         let stride = evals_i.evals.len() / sub_domain.size();
                         let evals = &evals_i.evals;
+                        let res = mask_fixed(self
+                .commit_evaluations_non_hiding(sub_domain.clone(), evals_i.clone())); println!("some comm: {:?}", res);
                         plnm_evals_part
                             .par_iter_mut()
                             .enumerate()
@@ -195,7 +207,7 @@ impl<G: CommitmentCurve> SRS<G> {
             let mut plnm = plnm.to_dense_polynomial();
             if !plnm_evals_part.is_empty() {
                 let n = plnm_evals_part.len();
-                plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
+                plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, Radix2EvaluationDomain::new(n).unwrap())
                     .interpolate();
             }
 
@@ -219,16 +231,24 @@ impl<G: CommitmentCurve> SRS<G> {
             res
         };
 
+        println!("elm.len = {}", elm.len());
+
         let combined_inner_product = p
             .coeffs
             .iter()
             .zip(b_init.iter())
-            .map(|(a, b)| *a * b)
+            .map(|(a, b)| {
+                println!("proof: commitment = {:?}", a);
+                println!("proof: evaluation = {:?}", b);
+                *a * b })
             .fold(G::ScalarField::zero(), |acc, x| acc + x);
+
+        println!("combined_inner_product: {}", combined_inner_product);
 
         sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product)]);
 
         let t = sponge.challenge_fq();
+        println!("t: {}", t);
         let u: G = to_group(group_map, t);
 
         let mut a = p.coeffs;

@@ -182,7 +182,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         let evalmask = Fp::rand(&mut rng);
 
         let timer = Instant::now();
-        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
+        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
             &group_map,
             &polynomials,
             &eval_points.clone(),

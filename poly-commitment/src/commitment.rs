@@ -449,6 +449,8 @@ pub fn combined_inner_product<F: PrimeField>(
     let mut res = F::zero();
     let mut xi_i = F::one();
 
+    println!("eval_points.len = {}", evaluation_points.len());
+
     for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
         // transpose the evaluations
         let evals = (0..evals_tr[0].len())
@@ -720,6 +722,7 @@ impl<G: CommitmentCurve> SRS<G> {
             opening,
         } in batch.iter_mut()
         {
+            println!("verifier polyscale: {}\nevalscale: {}", polyscale, evalscale);
             // TODO: This computation is repeated in ProverProof::oracles
             let combined_inner_product0 = {
                 let es: Vec<_> = evaluations
@@ -730,9 +733,13 @@ impl<G: CommitmentCurve> SRS<G> {
                              evaluations,
                              degree_bound,
                          }| {
+                            println!("commitment = {:?}", commitment);
+                            println!("evaluations = {:?}", evaluations);
+                            println!("degree_bound = {:?}", degree_bound);
                             let bound: Option<usize> = (|| {
                                 let b = (*degree_bound)?;
                                 let x = commitment.shifted?;
+                                assert!(false);
                                 if x.is_zero() {
                                     None
                                 } else {
@@ -745,10 +752,12 @@ impl<G: CommitmentCurve> SRS<G> {
                     .collect();
                 combined_inner_product(evaluation_points, polyscale, evalscale, &es, self.g.len())
             };
+            println!("verifier combined_inner_product: {}", combined_inner_product0);
 
             sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
 
             let t = sponge.challenge_fq();
+            println!("t: {}", t);
             let u: G = to_group(group_map, t);
 
             let Challenges { chal, chal_inv } = opening.challenges::<EFqSponge>(&endo_r, sponge);
