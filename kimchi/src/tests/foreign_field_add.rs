@@ -322,17 +322,11 @@ fn create_test_constraint_system_ffadd(
     foreign_field_modulus: BigUint,
     full: bool,
 ) -> ProverIndex<Vesta> {
-    let (mut next_row, mut gates) = if full {
+    let (_next_row, gates) = if full {
         full_circuit(opcodes, &foreign_field_modulus)
     } else {
         short_circuit(opcodes, &foreign_field_modulus)
     };
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
     let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
@@ -1272,13 +1266,7 @@ fn prove_and_verify(operation_count: usize) {
 
     // Create circuit
     // Initialize public input
-    let (mut next_row, mut gates) = short_circuit(&operations, &foreign_field_modulus);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let (_next_row, gates) = short_circuit(&operations, &foreign_field_modulus);
 
     // Create random inputs
     let inputs = (0..operation_count + 1)
@@ -1344,15 +1332,9 @@ fn test_ffadd_no_rc() {
         .collect::<Vec<_>>();
 
     // Create circuit
-    let (mut next_row, mut gates) = short_circuit(&operations, &foreign_mod);
+    let (_next_row, mut gates) = short_circuit(&operations, &foreign_mod);
 
     extend_gate_bound_rc(&mut gates);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
 
@@ -1421,7 +1403,7 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Create foreign field addition gates
-    let (mut next_row, mut gates) = short_circuit(&[FFOps::Add], foreign_field_modulus);
+    let (_next_row, gates) = short_circuit(&[FFOps::Add], foreign_field_modulus);
 
     let left_input =
         BigUint::from_bytes_be(&random_input(rng, foreign_field_modulus.clone(), true));
@@ -1434,12 +1416,6 @@ where
         &[FFOps::Add],
         foreign_field_modulus.clone(),
     );
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     let cs = ConstraintSystem::create(gates.clone())
         .public(1)
@@ -1498,12 +1474,6 @@ fn test_ffadd_finalization() {
         gates.connect_ffadd_range_checks(1, Some(4), Some(8), 12);
         // Connect the bound check range checks
         gates.connect_ffadd_range_checks(2, None, None, 16);
-
-        // Temporary workaround for lookup-table/domain-size issue
-        for _ in 0..(1 << 13) {
-            gates.push(CircuitGate::zero(Wire::for_row(curr_row)));
-            curr_row += 1;
-        }
 
         gates
     };

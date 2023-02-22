@@ -55,13 +55,7 @@ where
     G::BaseField: PrimeField,
 {
     let mut gates = vec![];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let _next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
 
     ConstraintSystem::create(gates).build().unwrap()
 }
@@ -172,13 +166,7 @@ fn test_prove_and_verify_xor() {
     let bits = 64;
     // Create
     let mut gates = vec![];
-    let mut next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let _next_row = CircuitGate::<Fp>::extend_xor_gadget(&mut gates, bits);
 
     let input1 = rng.gen_field_with_bits(bits);
     let input2 = rng.gen_field_with_bits(bits);
@@ -189,7 +177,6 @@ fn test_prove_and_verify_xor() {
     assert!(TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![xor::lookup_table()])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
         .is_ok());
@@ -322,16 +309,10 @@ fn test_extend_xor() {
             None,
         ));
     }
-    let mut next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
+    let _next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
     // connect public input
     gates.connect_cell_pair((0, 0), (2, 0));
     gates.connect_cell_pair((1, 0), (2, 1));
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
 
     let cs = ConstraintSystem::create(gates).public(2).build().unwrap();
 
@@ -363,12 +344,7 @@ fn test_bad_xor() {
     let bits = max(bits, max(bits1, bits2));
 
     let mut gates = vec![];
-    let mut next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let _next_row = CircuitGate::<PallasField>::extend_xor_gadget(&mut gates, bits);
 
     let mut witness = xor::create_xor_witness(input1, input2, bits);
 
@@ -382,7 +358,6 @@ fn test_bad_xor() {
         TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)
-            .lookup_tables(vec![xor::lookup_table()])
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
         Err(String::from(
@@ -412,11 +387,6 @@ fn test_xor_finalization() {
         // connect public inputs to the inputs of the XOR
         gates.connect_cell_pair((0, 0), (2, 0));
         gates.connect_cell_pair((1, 0), (2, 1));
-
-        // Temporary workaround for lookup-table/domain-size issue
-        for _ in 0..(1 << 13) {
-            gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
-        }
         gates
     };
 

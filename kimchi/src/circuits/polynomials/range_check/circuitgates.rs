@@ -2,11 +2,12 @@
 //~ `RangeCheck1` and `Zero`) and can perform range checks on three values ($v_0,
 //~ v_1$ and $v_2$) of up to 88 bits each.
 //~
-//~ Values can be copied as inputs to the multi range check gadget in two ways.
-//~   * [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
+//~ Values can be copied as inputs to the multi range check gadget in two ways:
+//~
+//~ * [Standard mode] With 3 copies, by copying $v_0, v_1$ and $v_2$ to the first
 //~     cells of the first 3 rows of the gadget.  In this mode the first gate
 //~     coefficient is set to `0`.
-//~   * [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
+//~ * [Compact mode] With 2 copies, by copying $v_2$ to the first cell of the first
 //~     row and copying $v_{10} = v_0 + 2^{\ell} \cdot v_1$ to the 2nd cell of row 2.
 //~     In this mode the first gate coefficient is set to `1`.
 //~
@@ -14,6 +15,7 @@
 //~ constraining witness cells 1-2 to zero.
 //~
 //~ **Byte-order:**
+//~
 //~ * Each cell value is in little-endian byte order
 //~ * Limbs are mapped to columns in big-endian order (i.e. the lowest columns
 //~   contain the highest bits)
@@ -21,9 +23,10 @@
 //~   we can copy the highest two constraints to zero and get a 64-bit lookup, which
 //~   are envisioned to be a common case
 //~
-//~ The values are decomposed into limbs as follows.
-//~ - `L` is a 12-bit lookup (or copy) limb,
-//~ - `C` is a 2-bit "crumb" limb (we call half a nybble a crumb).
+//~ The values are decomposed into limbs as follows:
+//~
+//~ * `L` is a 12-bit lookup (or copy) limb,
+//~ * `C` is a 2-bit "crumb" limb (we call half a nybble a crumb).
 //~
 //~ ```text
 //~         <----6----> <------8------>
@@ -32,7 +35,7 @@
 //~         <2> <--4--> <---------------18---------------->
 //~    v2 = C C L L L L C C C C C C C C C C C C C C C C C C
 //~ ```
-//
+//~
 //~ **Witness structure:**
 //~
 //~ | Row | Contents        |
@@ -56,7 +59,8 @@
 //~
 //~ **Constraints:**
 //~
-//~ For efficiency, the limbs are constrained differently according to their type.
+//~ For efficiency, the limbs are constrained differently according to their type:
+//~
 //~ * 12-bit limbs are constrained with plookups
 //~ * 2-bit crumbs are constrained with degree-4 constraints $x(x-1)(x-2)(x-3)$
 //~
@@ -129,7 +133,8 @@ use ark_ff::PrimeField;
 //~ * The rest of $v_0$ and $v_1$ are constrained by the lookups in the `Zero` gate row
 //~ * This gate operates on the `Curr` row
 //~
-//~ It uses three different types of constraints
+//~ It uses three different types of constraints:
+//~
 //~ * copy    - copy to another cell (12-bits)
 //~ * plookup - plookup (12-bits)
 //~ * crumb   - degree-4 constraint (2-bits)
@@ -230,7 +235,8 @@ where
 //~ * This circuit gate is used to fully constrain $v_2$
 //~ * It operates on the `Curr` and `Next` rows
 //~
-//~ It uses two different types of constraints
+//~ It uses two different types of constraints:
+//~
 //~ * plookup - plookup (12-bits)
 //~ * crumb   - degree-4 constraint (2-bits)
 //~

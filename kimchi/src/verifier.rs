@@ -159,7 +159,7 @@ where
         }
 
         let joint_combiner = if let Some(l) = &index.lookup_index {
-            //~~ - If it involves queries to a multiple-column lookup table,
+            //~~ * If it involves queries to a multiple-column lookup table,
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
             let joint_combiner = if l.joint_lookup_used {
@@ -168,7 +168,7 @@ where
                 G::ScalarField::zero()
             };
 
-            //~~ - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+            //~~ * Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             let joint_combiner = ScalarChallenge(joint_combiner);
             let joint_combiner_field = joint_combiner.to_field(endo_r);
@@ -186,7 +186,7 @@ where
                 .as_ref()
                 .ok_or(VerifyError::LookupCommitmentMissing)?;
 
-            //~~ - absorb the commitments to the sorted polynomials.
+            //~~ * absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
                 absorb_commitment(&mut fq_sponge, com);
             }
@@ -321,12 +321,12 @@ where
         fr_sponge.absorb(&self.ft_eval1);
 
         //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-        //~~ - the public polynomial
-        //~~ - z
-        //~~ - generic selector
-        //~~ - poseidon selector
-        //~~ - the 15 register/witness
-        //~~ - 6 sigmas evaluations (the last one is not evaluated)
+        //~~ * the public polynomial
+        //~~ * z
+        //~~ * generic selector
+        //~~ * poseidon selector
+        //~~ * the 15 register/witness
+        //~~ * 6 sigmas evaluations (the last one is not evaluated)
         fr_sponge.absorb_multiple(&public_evals[0]);
         fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
@@ -622,7 +622,7 @@ where
         public_input,
     };
 
-    //~ 4. Compute the commitment to the linearized polynomial $f$.
+    //~ 1. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
     //~    and optionally of the lookup.
     //~    (See the separate sections in the [constraints](#constraints) section.)
@@ -694,21 +694,21 @@ where
     //~    that are associated to the aggregated evaluation proof in the proof:
     let mut evaluations = vec![];
 
-    //~~ - recursion
+    //~~ * recursion
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
         degree_bound: None,
     }));
 
-    //~~ - public input commitment
+    //~~ * public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
         evaluations: public_evals.to_vec(),
         degree_bound: None,
     });
 
-    //~~ - ft commitment (chunks of it)
+    //~~ * ft commitment (chunks of it)
     evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: vec![vec![ft_eval0], vec![proof.ft_eval1]],
@@ -716,20 +716,21 @@ where
     });
 
     for col in [
-        //~~ - permutation commitment
+        //~~ * permutation commitment
         Column::Z,
-        //~~ - index commitments that use the coefficients
+        //~~ * index commitments that use the coefficients
         Column::Index(GateType::Generic),
         Column::Index(GateType::Poseidon),
     ]
     .into_iter()
-    //~~ - witness commitments
+    //~~ * witness commitments
     .chain((0..COLUMNS).map(Column::Witness))
-    //~~ - coefficient commitments
+    //~~ * coefficient commitments
     .chain((0..COLUMNS).map(Column::Coefficient))
-    //~~ - sigma commitments
+    //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
-    //~~ - lookup commitments
+    //~~ * lookup commitments
+    //~
     .chain(
         verifier_index
             .lookup_index
