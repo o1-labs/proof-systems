@@ -110,7 +110,7 @@ mod tests {
             let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
 
             let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
-            let srs_path: PathBuf = [base_path, "..".into(), curve.to_string() + ".srs"]
+            let srs_path: PathBuf = [base_path, "../srs".into(), curve.to_string() + ".srs"]
                 .iter()
                 .collect();
 
