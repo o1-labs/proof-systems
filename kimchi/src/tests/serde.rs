@@ -28,6 +28,13 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 #[cfg(test)]
 mod tests {
 
+    use std::{env, fs, path::PathBuf};
+
+    use ark_ff::PrimeField;
+    use ark_serialize::{Read, Write};
+    use mina_curves::pasta::PallasParameters;
+    use num_traits::pow;
+
     use super::*;
 
     #[test]
@@ -92,5 +99,54 @@ mod tests {
         )
         .unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+    }
+
+    #[test]
+    pub fn test_srs_serialization() {
+        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize) -> ()
+        where
+            T::BaseField: PrimeField,
+        {
+            let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
+
+            let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
+            let srs_path: PathBuf = [
+                base_path.clone(),
+                "..".into(),
+                (curve.to_string() + ".srs").into(),
+            ]
+            .iter()
+            .collect();
+            println!("path = {}", srs_path.display());
+
+            // Safety check (comment to manually create new SRS)
+            // if !srs_path.exists() {
+            //     panic!("Missing SRS file: {}", srs_path.display());
+            // }
+
+            let mut file = fs::OpenOptions::new()
+                .create(true)
+                .read(true)
+                .write(true)
+                .open(srs_path.clone())
+                .expect("failed to open file");
+
+            // Create SRS (uncomment to manually create new SRS)
+            println!("Creating SRS");
+            let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
+            file.write_all(&srs_bytes).expect("failed to write file");
+            file.flush().expect("failed to flush file");
+
+            println!("Checking SRS");
+            let mut bytes = vec![];
+            file.read_to_end(&mut bytes).expect("failed to read file");
+            let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
+            assert_eq!(srs.g, srs_serde.g);
+            assert_eq!(srs.h, srs_serde.h);
+            file.flush().expect("failed to flush file");
+        }
+
+        create_or_check_srs::<VestaParameters>("vesta", 16);
+        create_or_check_srs::<PallasParameters>("pallas", 16);
     }
 }
