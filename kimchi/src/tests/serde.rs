@@ -117,33 +117,36 @@ mod tests {
             ]
             .iter()
             .collect();
-            println!("path = {}", srs_path.display());
 
             // Safety check (comment to manually create new SRS)
-            // if !srs_path.exists() {
-            //     panic!("Missing SRS file: {}", srs_path.display());
-            // }
+            if !srs_path.exists() {
+                panic!("Missing SRS file: {}", srs_path.display());
+            }
 
-            let mut file = fs::OpenOptions::new()
-                .create(true)
-                .read(true)
-                .write(true)
-                .open(srs_path.clone())
-                .expect("failed to open file");
+            if !srs_path.exists() {
+                // Create SRS
+                let mut file = fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(srs_path.clone())
+                    .expect("failed to open file");
 
-            // Create SRS (uncomment to manually create new SRS)
-            println!("Creating SRS");
-            let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
-            file.write_all(&srs_bytes).expect("failed to write file");
-            file.flush().expect("failed to flush file");
+                let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
+                file.write_all(&srs_bytes).expect("failed to write file");
+                file.flush().expect("failed to flush file");
+            } else {
+                // Check SRS
+                let mut file = fs::OpenOptions::new()
+                    .read(true)
+                    .open(srs_path.clone())
+                    .expect("failed to open file");
 
-            println!("Checking SRS");
-            let mut bytes = vec![];
-            file.read_to_end(&mut bytes).expect("failed to read file");
-            let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
-            assert_eq!(srs.g, srs_serde.g);
-            assert_eq!(srs.h, srs_serde.h);
-            file.flush().expect("failed to flush file");
+                let mut bytes = vec![];
+                file.read_to_end(&mut bytes).expect("failed to read file");
+                let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
+                assert_eq!(srs.g, srs_serde.g);
+                assert_eq!(srs.h, srs_serde.h);
+            }
         }
 
         create_or_check_srs::<VestaParameters>("vesta", 16);
