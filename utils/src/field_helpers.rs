@@ -211,7 +211,7 @@ mod tests {
     use ark_ec::CurveConfig;
 
     use ark_ff::One;
-    use mina_curves::pasta::pallas::PallasConfig;
+    use mina_curves::pasta::PallasConfig;
 
     /// Base field element type
     pub type BaseField = <PallasConfig as CurveConfig>::BaseField;

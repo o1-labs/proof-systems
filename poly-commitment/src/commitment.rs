@@ -10,7 +10,6 @@ use core::ops::{Add, Sub};
 use std::fmt::Debug;
 
 use std::iter::Iterator;
-use std::ops::AddAssign;
 
 use ark_ec::{
     models::short_weierstrass::Affine as SWJAffine, models::short_weierstrass::SWCurveConfig,
@@ -236,15 +235,13 @@ impl<C: AffineRepr> PolyComm<C> {
             return Self::new(vec![C::zero()], None);
         }
 
-        let all_scalars: Vec<_> = elm.to_vec();
-
         let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
         let mut unshifted = Vec::with_capacity(unshifted_size);
 
         for chunk in 0..unshifted_size {
             let (points, scalars): (Vec<_>, Vec<_>) = com
                 .iter()
-                .zip(&all_scalars)
+                .zip(elm)
                 // get rid of scalars that don't have an associated chunk
                 .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
                 .unzip();
@@ -255,7 +252,7 @@ impl<C: AffineRepr> PolyComm<C> {
 
         let mut shifted_pairs = com
             .iter()
-            .zip(all_scalars)
+            .zip(elm)
             // get rid of commitments without a `shifted` part
             .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
             .peekable();
@@ -549,7 +546,7 @@ impl<G: CommitmentCurve> SRS<G> {
             .ok_or_else(|| CommitmentError::BlindersDontMatch(blinders.len(), com.len()))?
             .map(|(g, b)| {
                 let mut g_masked = self.h.mul(b);
-                g_masked.add_assign(&g);
+                g_masked += &g;
                 g_masked.into_affine()
             });
         Ok(BlindedCommitment {
@@ -573,8 +570,6 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let basis_len = self.g.len();
         let coeffs_len = plnm.coeffs.len();
-
-        // let coeffs: Vec<_> = plnm.iter().map(|c| c.into_bigint()).collect();
 
         // chunk while commiting
         let mut unshifted = vec![];

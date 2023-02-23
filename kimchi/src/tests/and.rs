@@ -12,7 +12,7 @@ use crate::{
 
 use ark_ec::AffineRepr;
 use ark_ff::{One, PrimeField, Zero};
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasConfig, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -27,9 +27,9 @@ use super::framework::TestFramework;
 type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type VestaBaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
+type PallasBaseSponge = DefaultFqSponge<PallasConfig, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 const RNG_SEED: [u8; 32] = [

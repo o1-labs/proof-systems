@@ -9,7 +9,7 @@ use crate::circuits::{
     wires::Wire,
 };
 use ark_ff::Zero;
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -17,7 +17,7 @@ use mina_poseidon::{
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {

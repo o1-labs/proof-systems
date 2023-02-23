@@ -1,7 +1,7 @@
 use std::array;
 
 use groupmap::{BWParameters, GroupMap};
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -22,12 +22,12 @@ use crate::{
 };
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 pub struct BenchmarkCtx {
     num_gates: usize,
-    group_map: BWParameters<VestaParameters>,
+    group_map: BWParameters<VestaConfig>,
     index: ProverIndex<Vesta>,
     verifier_index: VerifierIndex<Vesta>,
 }

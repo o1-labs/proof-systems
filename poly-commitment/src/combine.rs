@@ -23,7 +23,6 @@ use ark_ff::{BitIteratorBE, Field, One, PrimeField, Zero};
 use itertools::Itertools;
 use mina_poseidon::sponge::ScalarChallenge;
 use rayon::prelude::*;
-use std::ops::AddAssign;
 
 fn add_pairs_in_place<P: SWCurveConfig>(pairs: &mut Vec<SWJAffine<P>>) {
     let len = if pairs.len() % 2 == 0 {
@@ -600,24 +599,24 @@ fn window_shamir<G: AffineRepr>(x1: G::ScalarField, g1: G, x2: G::ScalarField, g
         res.double_in_place();
         match ((hi_1, lo_1), (hi_2, lo_2)) {
             ((false, false), (false, false)) => (),
-            ((false, true), (false, false)) => res.add_assign(&g01_00),
-            ((true, false), (false, false)) => res.add_assign(&g10_00),
-            ((true, true), (false, false)) => res.add_assign(&g11_00),
+            ((false, true), (false, false)) => res += &g01_00,
+            ((true, false), (false, false)) => res += &g10_00,
+            ((true, true), (false, false)) => res += &g11_00,
 
-            ((false, false), (false, true)) => res.add_assign(&g00_01),
-            ((false, true), (false, true)) => res.add_assign(&g01_01),
-            ((true, false), (false, true)) => res.add_assign(&g10_01),
-            ((true, true), (false, true)) => res.add_assign(&g11_01),
+            ((false, false), (false, true)) => res += &g00_01,
+            ((false, true), (false, true)) => res += &g01_01,
+            ((true, false), (false, true)) => res += &g10_01,
+            ((true, true), (false, true)) => res += &g11_01,
 
-            ((false, false), (true, false)) => res.add_assign(&g00_10),
-            ((false, true), (true, false)) => res.add_assign(&g01_10),
-            ((true, false), (true, false)) => res.add_assign(&g10_10),
-            ((true, true), (true, false)) => res.add_assign(&g11_10),
+            ((false, false), (true, false)) => res += &g00_10,
+            ((false, true), (true, false)) => res += &g01_10,
+            ((true, false), (true, false)) => res += &g10_10,
+            ((true, true), (true, false)) => res += &g11_10,
 
-            ((false, false), (true, true)) => res.add_assign(&g00_11),
-            ((false, true), (true, true)) => res.add_assign(&g01_11),
-            ((true, false), (true, true)) => res.add_assign(&g10_11),
-            ((true, true), (true, true)) => res.add_assign(&g11_11),
+            ((false, false), (true, true)) => res += &g00_11,
+            ((false, true), (true, true)) => res += &g01_11,
+            ((true, false), (true, true)) => res += &g10_11,
+            ((true, true), (true, true)) => res += &g11_11,
         }
     }
 
@@ -629,70 +628,70 @@ pub fn shamir_window_table<G: AffineRepr>(g1: G, g2: G) -> [G; 16] {
     let g01_00 = g1.into_group();
     let g10_00 = {
         let mut g = g01_00;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g11_00 = {
         let mut g = g10_00;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
 
     let g00_01 = g2.into_group();
     let g01_01 = {
         let mut g = g00_01;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g10_01 = {
         let mut g = g01_01;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g11_01 = {
         let mut g = g10_01;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
 
     let g00_10 = {
         let mut g = g00_01;
-        g.add_assign(&g2);
+        g += &g2;
         g
     };
     let g01_10 = {
         let mut g = g00_10;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g10_10 = {
         let mut g = g01_10;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g11_10 = {
         let mut g = g10_10;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g00_11 = {
         let mut g = g00_10;
-        g.add_assign(&g2);
+        g += &g2;
         g
     };
     let g01_11 = {
         let mut g = g00_11;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g10_11 = {
         let mut g = g01_11;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
     let g11_11 = {
         let mut g = g10_11;
-        g.add_assign(&g1);
+        g += &g1;
         g
     };
 

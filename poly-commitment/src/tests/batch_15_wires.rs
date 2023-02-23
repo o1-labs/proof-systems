@@ -10,7 +10,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use colored::Colorize;
 use groupmap::GroupMap;
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Vesta, VestaConfig};
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
 use mina_poseidon::sponge::DefaultFqSponge;
 use mina_poseidon::FqSponge;
@@ -31,9 +31,8 @@ where
 
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
-    let sponge = DefaultFqSponge::<VestaParameters, SC>::new(
-        mina_poseidon::pasta::fq_kimchi::static_params(),
-    );
+    let sponge =
+        DefaultFqSponge::<VestaConfig, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
     let mut commit = Duration::new(0, 0);
     let mut open = Duration::new(0, 0);
@@ -103,7 +102,7 @@ where
                     )
                 })
                 .collect();
-            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
+            let proof = srs.open::<DefaultFqSponge<VestaConfig, SC>, _, _>(
                 &group_map,
                 &polys,
                 &x,
@@ -142,6 +141,6 @@ where
     println!("{}{:?}", "open time: ".magenta(), open);
 
     let start = Instant::now();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut proofs, rng));
+    assert!(srs.verify::<DefaultFqSponge<VestaConfig, SC>, _>(&group_map, &mut proofs, rng));
     println!("{}{:?}", "verification time: ".green(), start.elapsed());
 }

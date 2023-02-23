@@ -7,7 +7,7 @@ use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Radix2EvaluationDomain};
 use colored::Colorize;
 use groupmap::GroupMap;
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Vesta, VestaConfig};
 use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
 use mina_poseidon::sponge::DefaultFqSponge;
 use mina_poseidon::FqSponge as _;
@@ -63,14 +63,14 @@ pub struct AggregatedEvaluationProof {
     /// the random value used to separate evaluations
     evalmask: Fp,
     /// an Fq-sponge
-    fq_sponge: DefaultFqSponge<VestaParameters, SC>,
+    fq_sponge: DefaultFqSponge<VestaConfig, SC>,
     /// the actual evaluation proof
     proof: OpeningProof<Vesta>,
 }
 
 impl AggregatedEvaluationProof {
     /// This function converts an aggregated evaluation proof into something the verify API understands
-    pub fn verify_type(&self) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>> {
+    pub fn verify_type(&self) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaConfig, SC>> {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());
@@ -94,9 +94,8 @@ impl AggregatedEvaluationProof {
 
 fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let group_map = <Vesta as CommitmentCurve>::Map::setup();
-    let fq_sponge = DefaultFqSponge::<VestaParameters, SC>::new(
-        mina_poseidon::pasta::fq_kimchi::static_params(),
-    );
+    let fq_sponge =
+        DefaultFqSponge::<VestaConfig, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Vesta>::create(1 << 7);
@@ -182,7 +181,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         let evalmask = Fp::rand(&mut rng);
 
         let timer = Instant::now();
-        let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
+        let proof = srs.open::<DefaultFqSponge<VestaConfig, SC>, _, _>(
             &group_map,
             &polynomials,
             &eval_points.clone(),
@@ -216,7 +215,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
 
     // batch verify all the proofs
     let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
-    assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
+    assert!(srs.verify::<DefaultFqSponge<VestaConfig, SC>, _>(&group_map, &mut batch, &mut rng));
 
     // TODO: move to bench
     println!(

@@ -16,7 +16,7 @@ use crate::{
 use ark_ec::AffineRepr;
 use ark_ff::{Field, One, Zero};
 use ark_poly::EvaluationDomain;
-use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaConfig};
 use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{
     foreign_field::{
@@ -43,7 +43,7 @@ use poly_commitment::{
 
 use super::framework::TestFramework;
 
-type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type BaseSponge = DefaultFqSponge<VestaConfig, PlonkSpongeConstantsKimchi>;
 type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
 type PallasField = <Pallas as AffineRepr>::BaseField;

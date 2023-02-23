@@ -377,7 +377,7 @@ mod tests {
     use crate::field_helpers::FieldHelpers;
     use ark_ec::CurveConfig;
     use ark_ff::One;
-    use mina_curves::pasta::pallas::PallasConfig;
+    use mina_curves::pasta::PallasConfig;
     use num_bigint::RandBigInt;
     use rand::{rngs::StdRng, SeedableRng};
 

@@ -51,7 +51,7 @@ impl<F: Field> CairoFieldHelpers<F> for F {
 mod tests {
     use super::*;
     use ark_ec::CurveConfig;
-    use mina_curves::pasta::pallas::PallasConfig;
+    use mina_curves::pasta::PallasConfig;
     use o1_utils::FieldHelpers;
 
     /// Base field element type

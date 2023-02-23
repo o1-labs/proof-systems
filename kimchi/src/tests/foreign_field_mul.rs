@@ -14,7 +14,7 @@ use crate::{
 };
 use ark_ec::AffineRepr;
 use ark_ff::{Field, PrimeField, Zero};
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Fq, Pallas, PallasConfig, Vesta, VestaConfig};
 use num_bigint::BigUint;
 use num_traits::One;
 use o1_utils::{
@@ -37,9 +37,9 @@ type PallasField = <Pallas as AffineRepr>::BaseField;
 type VestaField = <Vesta as AffineRepr>::BaseField;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type VestaBaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
+type PallasBaseSponge = DefaultFqSponge<PallasConfig, SpongeParams>;
 type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 const RNG_SEED: [u8; 32] = [

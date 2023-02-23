@@ -4,7 +4,7 @@ use crate::circuits::{
 };
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{Field, One, UniformRand, Zero};
-use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -16,7 +16,7 @@ use std::ops::Mul;
 use super::framework::TestFramework;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 // Tests add and double gates

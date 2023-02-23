@@ -9,7 +9,7 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::Zero;
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -20,7 +20,7 @@ use std::array;
 // aliases
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 const NUM_POS: usize = 1; // 1360; // number of Poseidon hashes in the circuit

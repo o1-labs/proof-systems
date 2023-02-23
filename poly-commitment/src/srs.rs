@@ -174,7 +174,7 @@ where
             // Apply the IFFT
             domain.ifft_in_place(&mut lg);
             // Append the 'partial Langrange polynomials' to the vector of unshifted chunks
-            let lg = G::Group::normalize_batch(lg.as_mut_slice())
+            let lg = G::Group::normalize_batch(&lg)
                 .iter()
                 .map(|g| g.into_group())
                 .collect::<Vec<_>>();

@@ -7,7 +7,7 @@ use crate::tests::framework::TestFramework;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
 use colored::Colorize;
-use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -19,7 +19,7 @@ use std::ops::Mul;
 use std::time::Instant;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]

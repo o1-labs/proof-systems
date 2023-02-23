@@ -3,7 +3,7 @@ use kimchi::curve::KimchiCurve;
 use kimchi::o1_utils::FieldHelpers;
 use std::ops::Mul;
 
-type SpongeQ = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
+type SpongeQ = DefaultFqSponge<VestaConfig, PlonkSpongeConstantsKimchi>;
 type SpongeR = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
 pub struct Witness<G: AffineRepr> {

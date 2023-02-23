@@ -38,7 +38,7 @@ pub fn full_round<F: Field, SC: SpongeConstants>(
     }
     *state = apply_mds_matrix::<F, SC>(params, state);
     for (i, x) in params.round_constants[r].iter().enumerate() {
-        state[i].add_assign(x);
+        state[i] += x;
     }
 }
 
@@ -48,7 +48,7 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
 ) {
     for r in 0..SC::PERM_HALF_ROUNDS_FULL {
         for (i, x) in params.round_constants[r].iter().enumerate() {
-            state[i].add_assign(x);
+            state[i] += x;
         }
         for state_i in state.iter_mut() {
             *state_i = sbox::<F, SC>(*state_i);
@@ -61,7 +61,7 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
             .iter()
             .enumerate()
         {
-            state[i].add_assign(x);
+            state[i] += x;
         }
         state[0] = sbox::<F, SC>(state[0]);
         apply_mds_matrix::<F, SC>(params, state);
@@ -73,7 +73,7 @@ pub fn half_rounds<F: Field, SC: SpongeConstants>(
             .iter()
             .enumerate()
         {
-            state[i].add_assign(x);
+            state[i] += x;
         }
         for state_i in state.iter_mut() {
             *state_i = sbox::<F, SC>(*state_i);
@@ -89,7 +89,7 @@ pub fn poseidon_block_cipher<F: Field, SC: SpongeConstants>(
     if SC::PERM_HALF_ROUNDS_FULL == 0 {
         if SC::PERM_INITIAL_ARK {
             for (i, x) in params.round_constants[0].iter().enumerate() {
-                state[i].add_assign(x);
+                state[i] += x;
             }
             for r in 0..SC::PERM_ROUNDS_FULL {
                 full_round::<F, SC>(params, state, r + 1);

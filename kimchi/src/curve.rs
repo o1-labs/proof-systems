@@ -1,7 +1,6 @@
 use ark_ec::{short_weierstrass::Affine, CurveConfig};
 use mina_curves::pasta::curves::{
-    pallas::{LegacyPallasConfig, PallasConfig},
-    vesta::{LegacyVestaConfig, VestaConfig},
+    LegacyPallasConfig, LegacyVestaConfig, PallasConfig, VestaConfig,
 };
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;

@@ -2,7 +2,7 @@ use super::framework::TestFramework;
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
 use crate::circuits::wires::COLUMNS;
 use ark_ff::Zero;
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -10,7 +10,7 @@ use mina_poseidon::{
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]

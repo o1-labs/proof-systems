@@ -1,5 +1,5 @@
 use groupmap::{BWParameters, GroupMap};
-use mina_curves::pasta::{vesta::Affine as Vesta, vesta::VestaConfig, Fq};
+use mina_curves::pasta::{Fq, Vesta, VestaConfig};
 
 type G = VestaConfig;
 

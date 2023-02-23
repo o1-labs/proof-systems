@@ -98,14 +98,14 @@ impl<F: Field, SC: SpongeConstants> Sponge<F, F> for ArithmeticSponge<F, SC> {
                     if n == self.rate {
                         self.poseidon_block_cipher();
                         self.sponge_state = SpongeState::Absorbed(1);
-                        self.state[0].add_assign(x);
+                        self.state[0] += x;
                     } else {
                         self.sponge_state = SpongeState::Absorbed(n + 1);
-                        self.state[n].add_assign(x);
+                        self.state[n] += x;
                     }
                 }
                 SpongeState::Squeezed(_n) => {
-                    self.state[0].add_assign(x);
+                    self.state[0] += x;
                     self.sponge_state = SpongeState::Absorbed(1);
                 }
             }

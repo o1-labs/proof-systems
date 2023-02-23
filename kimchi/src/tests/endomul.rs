@@ -6,7 +6,7 @@ use crate::circuits::{
 use crate::tests::framework::TestFramework;
 use ark_ec::{AffineRepr, CurveGroup};
 use ark_ff::{BigInteger, BitIteratorLE, Field, One, PrimeField, UniformRand, Zero};
-use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaConfig};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
@@ -17,7 +17,7 @@ use std::array;
 use std::ops::Mul;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+type BaseSponge = DefaultFqSponge<VestaConfig, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<F, SpongeParams>;
 
 #[test]
