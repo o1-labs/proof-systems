@@ -103,20 +103,16 @@ mod tests {
 
     #[test]
     pub fn test_srs_serialization() {
-        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize) -> ()
+        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize)
         where
             T::BaseField: PrimeField,
         {
             let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
 
             let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
-            let srs_path: PathBuf = [
-                base_path.clone(),
-                "..".into(),
-                (curve.to_string() + ".srs").into(),
-            ]
-            .iter()
-            .collect();
+            let srs_path: PathBuf = [base_path, "..".into(), curve.to_string() + ".srs"]
+                .iter()
+                .collect();
 
             // Safety check (comment to manually create new SRS)
             if !srs_path.exists() {
@@ -128,7 +124,7 @@ mod tests {
                 let mut file = fs::OpenOptions::new()
                     .create(true)
                     .write(true)
-                    .open(srs_path.clone())
+                    .open(srs_path)
                     .expect("failed to open file");
 
                 let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
@@ -138,7 +134,7 @@ mod tests {
                 // Check SRS
                 let mut file = fs::OpenOptions::new()
                     .read(true)
-                    .open(srs_path.clone())
+                    .open(srs_path)
                     .expect("failed to open file");
 
                 let mut bytes = vec![];
