@@ -64,10 +64,10 @@ fn endomul_scalar_test() {
         );
     }
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
