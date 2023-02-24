@@ -94,13 +94,13 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]
@@ -186,14 +186,14 @@ fn runtime_table(num: usize, indexed: bool) {
     print_witness(&witness, 0, 20);
 
     // run test
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_tables_setup)
         .setup()
         .runtime_tables(runtime_tables)
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]

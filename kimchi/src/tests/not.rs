@@ -285,7 +285,7 @@ fn test_prove_and_verify_not_xor() {
     let witness =
         create_not_witness_checked_length::<PallasField>(rng.gen_field_with_bits(bits), Some(bits));
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
@@ -293,7 +293,7 @@ fn test_prove_and_verify_not_xor() {
         ])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]
@@ -321,7 +321,7 @@ fn test_prove_and_verify_five_not_gnrc() {
         bits,
     );
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
@@ -329,7 +329,7 @@ fn test_prove_and_verify_five_not_gnrc() {
         ])
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]

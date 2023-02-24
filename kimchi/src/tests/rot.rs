@@ -104,12 +104,12 @@ where
     // Create witness
     let witness = create_rot_witness::<G>(word, rot, RotMode::Left);
 
-    assert!(TestFramework::<G>::default()
+    TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]
@@ -353,11 +353,11 @@ fn test_rot_finalization() {
         );
     }
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }

@@ -1224,7 +1224,7 @@ fn verify_range_check_valid_proof1() {
         &public_input,
     );
 
-    assert!(res.is_ok());
+    res.unwrap();
 }
 
 #[test]
@@ -1240,10 +1240,10 @@ fn verify_compact_multi_range_check_proof() {
 
     let (_next_row, gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }

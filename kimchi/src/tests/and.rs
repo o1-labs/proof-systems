@@ -143,12 +143,12 @@ where
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    assert!(TestFramework::<G>::default()
+    TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]

@@ -28,6 +28,13 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 #[cfg(test)]
 mod tests {
 
+    use std::{env, fs, path::PathBuf};
+
+    use ark_ff::PrimeField;
+    use ark_serialize::{Read, Write};
+    use mina_curves::pasta::PallasParameters;
+    use num_traits::pow;
+
     use super::*;
 
     #[test]
@@ -92,5 +99,53 @@ mod tests {
         )
         .unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+    }
+
+    #[test]
+    pub fn test_srs_serialization() {
+        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize)
+        where
+            T::BaseField: PrimeField,
+        {
+            let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
+
+            let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
+            let srs_path: PathBuf = [base_path, "../srs".into(), curve.to_string() + ".srs"]
+                .iter()
+                .collect();
+
+            // Safety check (comment to manually create new SRS)
+            if !srs_path.exists() {
+                panic!("Missing SRS file: {}", srs_path.display());
+            }
+
+            if !srs_path.exists() {
+                // Create SRS
+                let mut file = fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(srs_path)
+                    .expect("failed to open file");
+
+                let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
+                file.write_all(&srs_bytes).expect("failed to write file");
+                file.flush().expect("failed to flush file");
+            } else {
+                // Check SRS
+                let mut file = fs::OpenOptions::new()
+                    .read(true)
+                    .open(srs_path)
+                    .expect("failed to open file");
+
+                let mut bytes = vec![];
+                file.read_to_end(&mut bytes).expect("failed to read file");
+                let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
+                assert_eq!(srs.g, srs_serde.g);
+                assert_eq!(srs.h, srs_serde.h);
+            }
+        }
+
+        create_or_check_srs::<VestaParameters>("vesta", 16);
+        create_or_check_srs::<PallasParameters>("pallas", 16);
     }
 }

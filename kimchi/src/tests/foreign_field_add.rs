@@ -1277,13 +1277,13 @@ fn prove_and_verify(operation_count: usize) {
     // Create witness
     let witness = short_witness(&inputs, &operations, foreign_field_modulus);
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![PallasField::one()])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 // Prove and verify a randomly generated operation (only ffadd)
@@ -1529,11 +1529,11 @@ fn test_ffadd_finalization() {
         );
     }
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0]])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }

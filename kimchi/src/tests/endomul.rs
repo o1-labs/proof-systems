@@ -108,10 +108,10 @@ fn endomul_test() {
         assert_eq!(x.into_bigint(), res.n.into_bigint());
     }
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }

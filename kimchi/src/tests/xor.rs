@@ -174,12 +174,12 @@ fn test_prove_and_verify_xor() {
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]
@@ -430,11 +430,11 @@ fn test_xor_finalization() {
         );
     }
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
