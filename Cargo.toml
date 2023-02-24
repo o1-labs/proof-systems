@@ -5,7 +5,6 @@ members = [
     "groupmap",
     "hasher",
     "kimchi",
-    "circuit-construction",
     "poseidon",
     "poseidon/export_test_vectors",
     "poly-commitment",
