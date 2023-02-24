@@ -2271,7 +2271,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                             <span class="kw">if </span>!s1.is_zero() {
                                 <span class="self">self</span>.union_find(x1);
                                 <span class="self">self</span>.union_find(x2);
-                                <span class="macro">assert!</span>(<span class="self">self</span>.union_finds.union(x1, x2).is_ok());
+                                <span class="self">self</span>.union_finds.union(x1, x2).unwrap();
                             };
                         } <span class="kw">else if
                         </span><span class="comment">/* s1 x1 - s2 x2 = 0 */
@@ -2301,7 +2301,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                                 <span class="kw">let </span>x2 = x2.clone();
                                 <span class="self">self</span>.union_find(x1);
                                 <span class="self">self</span>.union_find(x2);
-                                <span class="macro">assert!</span>(<span class="self">self</span>.union_finds.union(x1, x2).is_ok());
+                                <span class="self">self</span>.union_finds.union(x1, x2).unwrap();
                             }
                             <span class="prelude-val">None </span>=&gt; {
                                 <span class="self">self</span>.add_generic_constraint(
@@ -2324,7 +2324,7 @@ connected to (`wired_to`), and the selector polynomial associated with the gate.
                                 <span class="kw">let </span>x1 = x1.clone();
                                 <span class="self">self</span>.union_find(x1);
                                 <span class="self">self</span>.union_find(x2);
-                                <span class="macro">assert!</span>(<span class="self">self</span>.union_finds.union(x1, x2).is_ok());
+                                <span class="self">self</span>.union_finds.union(x1, x2).unwrap();
                             }
                             <span class="prelude-val">None </span>=&gt; {
                                 <span class="self">self</span>.add_generic_constraint(
