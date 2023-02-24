@@ -44,7 +44,7 @@ jobs:
 
       # https://github.com/Swatinem/rust-cache
       - name: Cache Rust stuff
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
 
       #
       # Doc & Spec
