@@ -28,11 +28,12 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 #[cfg(test)]
 mod tests {
 
+    use ark_ec::models::short_weierstrass::SWCurveConfig;
     use std::{env, fs, path::PathBuf};
 
     use ark_ff::PrimeField;
     use ark_serialize::{Read, Write};
-    use mina_curves::pasta::PallasParameters;
+    use mina_curves::pasta::PallasConfig;
     use num_traits::pow;
 
     use super::*;
@@ -103,11 +104,11 @@ mod tests {
 
     #[test]
     pub fn test_srs_serialization() {
-        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize)
+        fn create_or_check_srs<T: SWCurveConfig + Clone>(curve: &str, exp: usize)
         where
             T::BaseField: PrimeField,
         {
-            let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
+            let srs = SRS::<Affine<T>>::create(pow(2, exp));
 
             let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
             let srs_path: PathBuf = [base_path, "../srs".into(), curve.to_string() + ".srs"]
@@ -139,13 +140,13 @@ mod tests {
 
                 let mut bytes = vec![];
                 file.read_to_end(&mut bytes).expect("failed to read file");
-                let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
+                let srs_serde: SRS<Affine<T>> = rmp_serde::from_slice(&bytes).unwrap();
                 assert_eq!(srs.g, srs_serde.g);
                 assert_eq!(srs.h, srs_serde.h);
             }
         }
 
-        create_or_check_srs::<VestaParameters>("vesta", 16);
-        create_or_check_srs::<PallasParameters>("pallas", 16);
+        create_or_check_srs::<VestaConfig>("vesta", 16);
+        create_or_check_srs::<PallasConfig>("pallas", 16);
     }
 }
