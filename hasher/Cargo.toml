@@ -1,6 +1,6 @@
 [package]
 name = "mina-hasher"
-version = "0.1.0"
+version = "0.2.0"
 description = "The hasher used by Mina"
 repository = "https://github.com/o1-labs/proof-systems"
 homepage = "https://o1-labs.github.io/proof-systems/"
@@ -13,9 +13,9 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
-mina-poseidon = { path = "../poseidon", version = "0.1.0" }
-mina-curves = { path = "../curves", version = "0.1.0" }
-o1-utils = { path = "../utils", version = "0.1.0" }
+mina-poseidon = { path = "../poseidon", version = "0.2.0" }
+mina-curves = { path = "../curves", version = "0.2.0" }
+o1-utils = { path = "../utils", version = "0.2.0" }
 
 ark-ff = { version = "0.4.0", features = [ "parallel", "asm" ] }
 

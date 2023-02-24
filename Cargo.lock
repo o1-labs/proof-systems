@@ -426,7 +426,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "circuit-construction"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -809,7 +809,7 @@ checksum = "b5320ae4c3782150d900b79807611a59a99fc9a1d61d686faafc24b93fc8d7ca"
 
 [[package]]
 name = "export_test_vectors"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ff",
  "ark-serialize",
@@ -940,7 +940,7 @@ checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
 
 [[package]]
 name = "groupmap"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1110,7 +1110,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1155,7 +1155,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi-visu"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1282,7 +1282,7 @@ dependencies = [
 
 [[package]]
 name = "mina-curves"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-algebra-test-templates",
  "ark-ec",
@@ -1295,7 +1295,7 @@ dependencies = [
 
 [[package]]
 name = "mina-hasher"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ff",
  "bitvec",
@@ -1308,7 +1308,7 @@ dependencies = [
 
 [[package]]
 name = "mina-poseidon"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1329,7 +1329,7 @@ dependencies = [
 
 [[package]]
 name = "mina-signer"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1498,7 +1498,7 @@ dependencies = [
 
 [[package]]
 name = "o1-utils"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1764,7 +1764,7 @@ dependencies = [
 
 [[package]]
 name = "poly-commitment"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -2516,7 +2516,7 @@ checksum = "24eb03ba0eab1fd845050058ce5e616558e8f8d8fca633e6b163fe25c797213a"
 
 [[package]]
 name = "turshi"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
