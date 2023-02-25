@@ -1,6 +1,6 @@
 [package]
 name = "o1-utils"
-version = "0.2.0"
+version = "0.1.0"
 description = "Set of utility extending arkworks"
 repository = "https://github.com/o1-labs/proof-systems"
 homepage = "https://o1-labs.github.io/proof-systems/"
@@ -29,6 +29,6 @@ rand_core = "0.6.3"
 
 [dev-dependencies]
 ark-ec = { version = "0.4.0", features = [ "parallel" ] }
-mina-curves = { path = "../curves", version = "0.2.0" }
+mina-curves = { path = "../curves", version = "0.1.0" }
 num-bigint = { version = "0.4.3", features = ["rand"] }
 secp256k1 = "0.24.2"

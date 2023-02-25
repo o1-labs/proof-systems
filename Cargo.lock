@@ -281,7 +281,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
 name = "circuit-construction"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -566,7 +566,7 @@ checksum = "7fcaabb2fef8c910e7f4c7ce9f67a1283a1715879a7c230ca9d6d1ae31f16d91"
 
 [[package]]
 name = "export_test_vectors"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ff",
  "ark-serialize",
@@ -624,7 +624,7 @@ dependencies = [
 
 [[package]]
 name = "groupmap"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -724,7 +724,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -768,7 +768,7 @@ dependencies = [
 
 [[package]]
 name = "kimchi-visu"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -827,7 +827,7 @@ dependencies = [
 
 [[package]]
 name = "mina-curves"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-algebra-test-templates",
  "ark-ec",
@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "mina-hasher"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ff",
  "bitvec",
@@ -853,7 +853,7 @@ dependencies = [
 
 [[package]]
 name = "mina-poseidon"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -874,7 +874,7 @@ dependencies = [
 
 [[package]]
 name = "mina-signer"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -946,7 +946,7 @@ dependencies = [
 
 [[package]]
 name = "o1-utils"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1099,7 +1099,7 @@ dependencies = [
 
 [[package]]
 name = "poly-commitment"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
@@ -1642,7 +1642,7 @@ checksum = "24eb03ba0eab1fd845050058ce5e616558e8f8d8fca633e6b163fe25c797213a"
 
 [[package]]
 name = "turshi"
-version = "0.2.0"
+version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",

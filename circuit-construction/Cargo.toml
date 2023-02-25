@@ -1,6 +1,6 @@
 [package]
 name = "circuit-construction"
-version = "0.2.0"
+version = "0.1.0"
 description = "A simple circuit writer for kimchi"
 repository = "https://github.com/o1-labs/proof-systems"
 edition = "2021"
@@ -30,12 +30,12 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 thiserror = "1.0.30"
 
-poly-commitment = { path = "../poly-commitment", version = "0.2.0" }
-groupmap = { path = "../groupmap", version = "0.2.0" }
-mina-curves = { path = "../curves", version = "0.2.0" }
-o1-utils = { path = "../utils", version = "0.2.0" }
-mina-poseidon = { path = "../poseidon", version = "0.2.0" }
-kimchi = { path = "../kimchi", version = "0.2.0" }
+poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
+groupmap = { path = "../groupmap", version = "0.1.0" }
+mina-curves = { path = "../curves", version = "0.1.0" }
+o1-utils = { path = "../utils", version = "0.1.0" }
+mina-poseidon = { path = "../poseidon", version = "0.1.0" }
+kimchi = { path = "../kimchi", version = "0.1.0" }
 
 [dev-dependencies]
 proptest = "1.0.0"
