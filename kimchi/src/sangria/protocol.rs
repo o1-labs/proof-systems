@@ -255,6 +255,7 @@ where
 pub struct SangriaProof<G>
 where
     G: KimchiCurve,
+    //    G::ScalarField: PrimeField,
 {
     /// A commitment to the t polynomial.
     t_commit: PolyComm<G>,
