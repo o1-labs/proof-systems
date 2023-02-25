@@ -2366,11 +2366,11 @@ where
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_bigint().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
-                x => format!("{}^{n}", x.ocaml()),
+                x => format!("{}^{n}", x.latex()),
             },
-            Add(x, y) => format!("({} + {})", x.ocaml(), y.ocaml()),
-            Mul(x, y) => format!("({} \\cdot {})", x.ocaml(), y.ocaml()),
-            Sub(x, y) => format!("({} - {})", x.ocaml(), y.ocaml()),
+            Add(x, y) => format!("({} + {})", x.latex(), y.latex()),
+            Mul(x, y) => format!("({} \\cdot {})", x.latex(), y.latex()),
+            Sub(x, y) => format!("({} - {})", x.latex(), y.latex()),
         }
     }
 
