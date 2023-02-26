@@ -2824,7 +2824,7 @@ pub mod test {
             constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
             polynomials::generic::GenericGateSpec, wires::Wire,
         },
-        constants::ZK_ROWS,
+        constants::WITNESS_ZK_ROWS,
         curve::KimchiCurve,
         prover_index::ProverIndex,
     };
@@ -2912,7 +2912,7 @@ pub mod test {
 
     #[test]
     fn test_unnormalized_lagrange_basis() {
-        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + ZK_ROWS as usize)
+        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + WITNESS_ZK_ROWS as usize)
             .expect("failed to create evaluation domain");
         let rng = &mut StdRng::from_seed([17u8; 32]);
 

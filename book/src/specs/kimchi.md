@@ -1601,7 +1601,7 @@ The compilation steps to create the common index are as follow:
 1. If the circuit is less than 2 gates, abort.
 2. Create a domain for the circuit. That is,
    compute the smallest subgroup of the field that
-   has order greater or equal to `n + ZK_ROWS` elements.
+   has order greater or equal to `n + WITNESS_ZK_ROWS` elements.
 3. Pad the circuit: add zero gates to reach the domain size.
 4. sample the `PERMUTS` shifts.
 
@@ -2066,10 +2066,10 @@ The prover then follows the following steps to create the proof:
 1. Ensure we have room in the witness for the zero-knowledge rows.
    We currently expect the witness not to be of the same length as the domain,
    but instead be of the length of the (smaller) circuit.
-   If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+   If we cannot add `WITNESS_ZK_ROWS` rows to the columns of the witness before reaching
    the size of the domain, abort.
 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-   Then, randomize the last `ZK_ROWS` of each columns.
+   Then, randomize the last `WITNESS_ZK_ROWS` of each columns.
 1. Setup the Fq-Sponge.
 1. Absorb the digest of the VerifierIndex.
 1. Absorb the commitments of the previous challenges with the Fq-sponge.

@@ -22,7 +22,7 @@ use crate::{
         },
         wires::{COLUMNS, PERMUTS},
     },
-    constants::ZK_ROWS,
+    constants::WITNESS_ZK_ROWS,
     curve::KimchiCurve,
     error::ProverError,
     lagrange_basis_evaluations::LagrangeBasisEvaluations,
@@ -184,19 +184,19 @@ where
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
         //~    We currently expect the witness not to be of the same length as the domain,
         //~    but instead be of the length of the (smaller) circuit.
-        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+        //~    If we cannot add `WITNESS_ZK_ROWS` rows to the columns of the witness before reaching
         //~    the size of the domain, abort.
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        if length_padding < ZK_ROWS as usize {
+        if length_padding < WITNESS_ZK_ROWS as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
 
         //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-        //~    Then, randomize the last `ZK_ROWS` of each columns.
+        //~    Then, randomize the last `WITNESS_ZK_ROWS` of each columns.
         for w in &mut witness {
             if w.len() != length_witness {
                 return Err(ProverError::WitnessCsInconsistent);
@@ -206,7 +206,7 @@ where
             w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
-            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
+            for row in w.iter_mut().rev().take(WITNESS_ZK_ROWS as usize) {
                 *row = <G::ScalarField as UniformRand>::rand(rng);
             }
         }
@@ -343,7 +343,7 @@ where
                     }
 
                     // zero-knowledge
-                    for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
+                    for e in evals.iter_mut().rev().take(WITNESS_ZK_ROWS as usize) {
                         *e = <G::ScalarField as UniformRand>::rand(rng);
                     }
 

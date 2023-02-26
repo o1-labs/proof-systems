@@ -44,7 +44,7 @@ use crate::{
         polynomial::WitnessOverDomains,
         wires::{Wire, COLUMNS, PERMUTS},
     },
-    constants::ZK_ROWS,
+    constants::WITNESS_ZK_ROWS,
     curve::KimchiCurve,
     error::ProverError,
     proof::{PointEvaluations, ProofEvaluations},
@@ -65,17 +65,10 @@ use std::array;
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
 
-/// The permutation constraint should not apply on the final row  
-/// (not including [ZK_ROWS] otherwise it will wrap around.  
-/// We only need to check the final value of the permutation accumulator  
-/// on the final row.  
-/// Ref: https://o1-labs.github.io/proof-systems/plonk/zkpm.html
-pub const PERM_FINAL_ACC: u64 = 1;
-
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow([domain.size - (WITNESS_ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -87,7 +80,7 @@ pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
 pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
     let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
     let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow([domain.size - (WITNESS_ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -96,7 +89,7 @@ pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> 
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow([domain.size - ZK_ROWS])
+    domain.group_gen.pow([domain.size - WITNESS_ZK_ROWS])
 }
 
 /// Evaluates the polynomial
