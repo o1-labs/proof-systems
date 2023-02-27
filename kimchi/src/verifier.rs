@@ -455,6 +455,8 @@ where
     G: KimchiCurve,
     G::BaseField: PrimeField,
 {
+    let expected_size = 1;
+
     let ProofEvaluations {
         public,
         w,
@@ -467,10 +469,18 @@ where
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
-        if eval.zeta.len().is_one() && eval.zeta_omega.len().is_one() {
-            Ok(())
+        if eval.zeta.len() != expected_size {
+            Err(VerifyError::IncorrectEvaluationsLength(
+                expected_size,
+                eval.zeta.len(),
+            ))
+        } else if eval.zeta_omega.len() != expected_size {
+            Err(VerifyError::IncorrectEvaluationsLength(
+                expected_size,
+                eval.zeta_omega.len(),
+            ))
         } else {
-            Err(VerifyError::IncorrectEvaluationsLength)
+            Ok(())
         }
     };
 
