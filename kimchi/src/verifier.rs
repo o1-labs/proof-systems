@@ -287,36 +287,6 @@ where
 
         ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
 
-        //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-        //~
-        //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        let public_evals = if public_input.is_empty() {
-            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
-        } else {
-            [
-                vec![
-                    (public_input
-                        .iter()
-                        .zip(zeta_minus_x.iter())
-                        .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * w)
-                        .fold(G::ScalarField::zero(), |x, y| x + y))
-                        * (zeta1 - G::ScalarField::one())
-                        * index.domain.size_inv,
-                ],
-                vec![
-                    (public_input
-                        .iter()
-                        .zip(zeta_minus_x[public_input.len()..].iter())
-                        .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * w)
-                        .fold(G::ScalarField::zero(), |x, y| x + y))
-                        * index.domain.size_inv
-                        * (zetaw.pow([n]) - G::ScalarField::one()),
-                ],
-            ]
-        };
-
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
 
@@ -327,8 +297,6 @@ where
         //~~ * poseidon selector
         //~~ * the 15 register/witness
         //~~ * 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_multiple(&public_evals[0]);
-        fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
@@ -372,11 +340,7 @@ where
                 .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
                 .fold(init, |x, y| x * y);
 
-            ft_eval0 -= if public_evals[0].is_empty() {
-                G::ScalarField::zero()
-            } else {
-                public_evals[0][0]
-            };
+            ft_eval0 -= self.evals.public.zeta[0];
 
             ft_eval0 -= evals
                 .w
@@ -422,7 +386,13 @@ where
             #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((public_evals.to_vec(), None));
+            es.push((
+                vec![
+                    self.evals.public.zeta.clone(),
+                    self.evals.public.zeta_omega.clone(),
+                ],
+                None,
+            ));
             es.push((vec![ft_eval0, ft_eval1], None));
             for col in [
                 Column::Z,
@@ -468,7 +438,6 @@ where
             digest,
             oracles,
             all_alphas,
-            public_evals,
             powers_of_eval_points_for_chunks,
             polys,
             zeta1,
@@ -487,6 +456,7 @@ where
     G::BaseField: PrimeField,
 {
     let ProofEvaluations {
+        public,
         w,
         z,
         s,
@@ -503,6 +473,8 @@ where
             Err(VerifyError::IncorrectEvaluationsLength)
         }
     };
+
+    check_eval_len(public)?;
 
     for w_i in w {
         check_eval_len(w_i)?;
@@ -603,7 +575,6 @@ where
         fq_sponge,
         oracles,
         all_alphas,
-        public_evals,
         powers_of_eval_points_for_chunks,
         polys,
         zeta1: zeta_to_domain_size,
@@ -704,7 +675,10 @@ where
     //~~ * public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
-        evaluations: public_evals.to_vec(),
+        evaluations: vec![
+            proof.evals.public.zeta.clone(),
+            proof.evals.public.zeta_omega.clone(),
+        ],
         degree_bound: None,
     });
 

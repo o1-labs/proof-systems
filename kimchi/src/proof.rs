@@ -61,6 +61,8 @@ pub struct LookupEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
+    /// public input polynomials
+    pub public: Evals,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -198,6 +200,7 @@ impl<Eval> LookupEvaluations<Eval> {
 impl<Eval> ProofEvaluations<Eval> {
     pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<Eval2> {
         let ProofEvaluations {
+            public,
             w,
             z,
             s,
@@ -207,6 +210,7 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector,
         } = self;
         ProofEvaluations {
+            public: f(public),
             w: w.map(f),
             z: f(z),
             s: s.map(f),
@@ -219,6 +223,7 @@ impl<Eval> ProofEvaluations<Eval> {
 
     pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> ProofEvaluations<Eval2> {
         let ProofEvaluations {
+            public,
             w: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14],
             z,
             s: [s0, s1, s2, s3, s4, s5],
@@ -228,6 +233,7 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector,
         } = self;
         ProofEvaluations {
+            public: f(public),
             w: [
                 f(w0),
                 f(w1),
@@ -289,6 +295,7 @@ impl<F> ProofEvaluations<F> {
         ProofEvaluations {
             generic_selector: array::from_fn(|i| &evals[i].generic_selector),
             poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
+            public: array::from_fn(|i| &evals[i].public),
             z: array::from_fn(|i| &evals[i].z),
             w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
             s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
@@ -373,6 +380,7 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             zeta_omega: next,
         };
         ProofEvaluations {
+            public: pt(F::zero(), F::zero()),
             w: array::from_fn(|i| pt(curr[i], next[i])),
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
@@ -523,6 +531,7 @@ pub mod caml {
     #[allow(clippy::type_complexity)]
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
+        pub public: PointEvaluations<Vec<CamlF>>,
         pub w: (
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
@@ -698,6 +707,7 @@ pub mod caml {
             );
 
             Self {
+                public: pe.public.map(&|x| x.into_iter().map(Into::into).collect()),
                 w,
                 coefficients,
                 z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
@@ -793,6 +803,7 @@ pub mod caml {
             ];
 
             Self {
+                public: cpe.public.map(&|x| x.into_iter().map(Into::into).collect()),
                 w,
                 coefficients,
                 z: cpe.z.map(&|x| x.into_iter().map(Into::into).collect()),

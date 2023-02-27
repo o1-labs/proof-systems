@@ -20,8 +20,6 @@ where
     pub oracles: RandomOracles<G::ScalarField>,
     /// the computed powers of alpha
     pub all_alphas: Alphas<G::ScalarField>,
-    /// public polynomial evaluations
-    pub public_evals: [Vec<G::ScalarField>; 2],
     /// zeta^n and (zeta * omega)^n
     pub powers_of_eval_points_for_chunks: PointEvaluations<G::ScalarField>,
     /// recursion data
@@ -50,7 +48,6 @@ pub mod caml {
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlOracles<CamlF> {
         pub o: CamlRandomOracles<CamlF>,
-        pub public_evals: (CamlF, CamlF),
         pub opening_prechallenges: Vec<CamlF>,
         pub digest_before_evaluations: CamlF,
     }
@@ -78,10 +75,9 @@ pub mod caml {
         let oracles_result =
             proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm, public_input)?;
 
-        let (mut sponge, combined_inner_product, public_evals, digest, oracles) = (
+        let (mut sponge, combined_inner_product, digest, oracles) = (
             oracles_result.fq_sponge,
             oracles_result.combined_inner_product,
-            oracles_result.public_evals,
             oracles_result.digest,
             oracles_result.oracles,
         );
@@ -97,7 +93,6 @@ pub mod caml {
 
         Ok(CamlOracles {
             o: oracles.into(),
-            public_evals: (public_evals[0][0].into(), public_evals[1][0].into()),
             opening_prechallenges,
             digest_before_evaluations: digest.into(),
         })
