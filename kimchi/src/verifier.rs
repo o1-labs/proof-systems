@@ -470,33 +470,35 @@ where
         poseidon_selector,
     } = &proof.evals;
 
-    let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
+    let check_eval_len = |eval: &PointEvaluations<Vec<_>>, str: &'static str| -> Result<()> {
         if eval.zeta.len() != expected_size {
             Err(VerifyError::IncorrectEvaluationsLength(
                 expected_size,
                 eval.zeta.len(),
+                str,
             ))
         } else if eval.zeta_omega.len() != expected_size {
             Err(VerifyError::IncorrectEvaluationsLength(
                 expected_size,
                 eval.zeta_omega.len(),
+                str,
             ))
         } else {
             Ok(())
         }
     };
 
-    check_eval_len(public)?;
+    check_eval_len(public, "public input")?;
 
     for w_i in w {
-        check_eval_len(w_i)?;
+        check_eval_len(w_i, "witness")?;
     }
-    check_eval_len(z)?;
+    check_eval_len(z, "permutation accumulator")?;
     for s_i in s {
-        check_eval_len(s_i)?;
+        check_eval_len(s_i, "permutation shifts")?;
     }
     for coeff in coefficients {
-        check_eval_len(coeff)?;
+        check_eval_len(coeff, "coefficients")?;
     }
     if let Some(LookupEvaluations {
         sorted,
@@ -506,16 +508,16 @@ where
     }) = lookup
     {
         for sorted_i in sorted {
-            check_eval_len(sorted_i)?;
+            check_eval_len(sorted_i, "lookup sorted")?;
         }
-        check_eval_len(aggreg)?;
-        check_eval_len(table)?;
+        check_eval_len(aggreg, "lookup aggregation")?;
+        check_eval_len(table, "lookup table")?;
         if let Some(runtime) = &runtime {
-            check_eval_len(runtime)?;
+            check_eval_len(runtime, "runtime lookup table")?;
         }
     }
-    check_eval_len(generic_selector)?;
-    check_eval_len(poseidon_selector)?;
+    check_eval_len(generic_selector, "generic selector")?;
+    check_eval_len(poseidon_selector, "poseidon selector")?;
 
     Ok(())
 }
