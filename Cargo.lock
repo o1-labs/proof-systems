@@ -1085,7 +1085,6 @@ dependencies = [
  "hex",
  "iai",
  "itertools",
- "mina-book",
  "mina-curves",
  "mina-poseidon",
  "num-bigint",
