@@ -814,13 +814,16 @@ where
         let t_comm = {
             let mut t_comm = index.srs.commit(&quotient_poly, None, rng);
 
-            let expected_t_size = PERMUTS;
-            let dummies = expected_t_size - t_comm.commitment.unshifted.len();
+            let expected_t_size = 7;
+            let dummies = expected_t_size * (index.cs.domain.d1.size() / index.max_poly_size)
+                - t_comm.commitment.unshifted.len();
+
             // Add `dummies` many hiding commitments to the 0 polynomial, since if the
             // number of commitments in `t_comm` is less than the max size, it means that
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 let w = <G::ScalarField as UniformRand>::rand(rng);
+
                 t_comm
                     .commitment
                     .unshifted

@@ -119,6 +119,8 @@ where
         let n = index.domain.size;
         let (_, endo_r) = G::endos();
 
+        let chunk_size = index.domain.size() / index.max_poly_size;
+
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
@@ -212,9 +214,13 @@ where
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(endo_r);
 
-        //~ 1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
-        if self.commitments.t_comm.unshifted.len() != PERMUTS {
-            return Err(VerifyError::IncorrectCommitmentLength("t"));
+        //~ 1. Enforce that the length of the $t$ commitment is of size 7.
+        if self.commitments.t_comm.unshifted.len() != chunk_size * 7 {
+            return Err(VerifyError::IncorrectCommitmentLength(
+                "t",
+                chunk_size * 7,
+                self.commitments.t_comm.unshifted.len(),
+            ));
         }
 
         //~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.

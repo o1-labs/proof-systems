@@ -35,8 +35,8 @@ pub enum ProverError {
 /// Errors that can arise when verifying a proof
 #[derive(Error, Debug, Clone, Copy)]
 pub enum VerifyError {
-    #[error("the commitment to {0} is of an unexpected size")]
-    IncorrectCommitmentLength(&'static str),
+    #[error("the commitment to {0} is of an unexpected size (expected {1}, got {2})")]
+    IncorrectCommitmentLength(&'static str, usize, usize),
 
     #[error("the public input is of an unexpected size (expected {0})")]
     IncorrectPubicInputLength(usize),
