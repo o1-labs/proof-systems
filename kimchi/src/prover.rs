@@ -907,19 +907,21 @@ where
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 
-        let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
-        let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
+        let zeta_evals =
+            LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta);
+        let zeta_omega_evals =
+            LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta_omega);
 
         let chunked_evals_for_selector =
             |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate_boolean(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate_boolean(p)],
+                zeta: zeta_evals.evaluate_boolean(p),
+                zeta_omega: zeta_omega_evals.evaluate_boolean(p),
             };
 
         let chunked_evals_for_evaluations =
             |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate(p)],
+                zeta: zeta_evals.evaluate(p),
+                zeta_omega: zeta_omega_evals.evaluate(p),
             };
 
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
