@@ -161,7 +161,6 @@ where
             TestFramework::<G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
-                .witness(witness.clone())
                 .setup(),
         )
     } else {
@@ -169,7 +168,7 @@ where
     };
 
     let cs = if let Some(runner) = runner.as_ref() {
-        runner.prover_index().cs.clone()
+        runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
         ConstraintSystem::create(gates.clone()).build().unwrap()
@@ -183,9 +182,15 @@ where
         }
     }
 
-    if let Some(runner) = runner {
+    if let Some(runner) = runner.as_ref() {
         // Perform full test that everything is ok before invalidation
-        assert_eq!(runner.prove_and_verify::<EFqSponge, EFrSponge>(), Ok(()));
+        assert_eq!(
+            runner
+                .clone()
+                .witness(witness.clone())
+                .prove_and_verify::<EFqSponge, EFrSponge>(),
+            Ok(())
+        );
     }
 
     if !invalidations.is_empty() {
@@ -214,12 +219,10 @@ where
         }
 
         // Run test on invalid witness
-        if full {
-            match TestFramework::<G>::default()
-                .disable_gates_checks(disable_gates_checks)
-                .gates(gates.clone())
+        if let Some(runner) = runner.as_ref() {
+            match runner
+                .clone()
                 .witness(witness.clone())
-                .setup()
                 .prove_and_verify::<EFqSponge, EFrSponge>()
             {
                 Err(err_msg) => {
