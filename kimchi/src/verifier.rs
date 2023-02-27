@@ -448,15 +448,11 @@ where
 }
 
 /// Enforce the length of evaluations inside [`Proof`].
-/// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
-/// The length value is prone to future change.
-fn check_proof_evals_len<G>(proof: &ProverProof<G>) -> Result<()>
+fn check_proof_evals_len<G>(proof: &ProverProof<G>, expected_size: usize) -> Result<()>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
 {
-    let expected_size = 1;
-
     let ProofEvaluations {
         public,
         w,
@@ -550,7 +546,7 @@ where
     }
 
     //~ 1. Check the length of evaluations inside the proof.
-    check_proof_evals_len(proof)?;
+    check_proof_evals_len(proof, 1)?;
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
