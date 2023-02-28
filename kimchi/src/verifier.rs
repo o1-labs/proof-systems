@@ -578,11 +578,8 @@ where
             verifier_index
                 .srs()
                 .mask_custom(
-                    public_comm,
-                    &PolyComm {
-                        unshifted: vec![G::ScalarField::one(); 1],
-                        shifted: None,
-                    },
+                    public_comm.clone(),
+                    &public_comm.map(|_| G::ScalarField::one()),
                 )
                 .unwrap()
                 .commitment
