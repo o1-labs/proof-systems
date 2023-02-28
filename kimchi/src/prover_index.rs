@@ -56,22 +56,12 @@ pub struct ProverIndex<G: KimchiCurve> {
 
 impl<G: KimchiCurve> ProverIndex<G> {
     /// this function compiles the index from constraints
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `polynomial segment size` is bigger than `circuit`.
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
         srs: Arc<SRS<G>>,
     ) -> Self {
         let max_poly_size = srs.g.len();
-        if cs.public > 0 {
-            assert!(
-                max_poly_size >= cs.domain.d1.size(),
-                "polynomial segment size has to be not smaller than that of the circuit!"
-            );
-        }
         cs.endo = endo_q;
 
         // pre-compute the linearization

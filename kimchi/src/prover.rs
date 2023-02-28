@@ -161,11 +161,7 @@ where
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
-        // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_degree() < d1_size {
-            return Err(ProverError::SRSTooSmall);
-        }
 
         let (_, endo_r) = G::endos();
 
