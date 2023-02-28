@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- `to_hex` and `from_hex` now work with big-endian byte ordering, instead of little-endian.
 - Upgrade to arkworks 0.4.0 (see [summary of changes](https://hackmd.io/@imikushin/B1rjCZeAs) and the [official CHANGELOG](https://github.com/arkworks-rs/algebra/blob/master/CHANGELOG.md))
 - Upgrade to Rust 1.67.0
 
