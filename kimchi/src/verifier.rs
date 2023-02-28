@@ -134,6 +134,8 @@ where
             absorb_commitment(&mut fq_sponge, comm);
         }
 
+        println!("verifier public_comm: {:?}", public_comm);
+
         //~ 1. Absorb the commitment of the public input polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, public_comm);
 
@@ -201,6 +203,8 @@ where
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
+        println!("verifier gamma: {}", gamma);
+
         //~ 1. If using lookup, absorb the commitment to the aggregation lookup polynomial.
         self.commitments.lookup.iter().for_each(|l| {
             absorb_commitment(&mut fq_sponge, &l.aggreg);
@@ -215,6 +219,8 @@ where
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(endo_r);
 
+        println!("verifier alpha: {}", alpha);
+
         //~ 1. Enforce that the length of the $t$ commitment is of size 7.
         if self.commitments.t_comm.unshifted.len() != chunk_size * 7 {
             return Err(VerifyError::IncorrectCommitmentLength(
@@ -224,6 +230,8 @@ where
             ));
         }
 
+        println!("verifier t_comm: {:?}", self.commitments.t_comm);
+
         //~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
         absorb_commitment(&mut fq_sponge, &self.commitments.t_comm);
 
@@ -232,6 +240,7 @@ where
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta = zeta_chal.to_field(endo_r);
+        println!("verifier zeta: {}", zeta);
 
         //~ 1. Setup the Fr-Sponge.
         let digest = fq_sponge.clone().digest();
@@ -388,6 +397,8 @@ where
 
             ft_eval0
         };
+
+        println!("verifier ft_eval0: {}", ft_eval0);
 
         let combined_inner_product = {
             let ft_eval0 = vec![ft_eval0];
@@ -607,6 +618,8 @@ where
     //~    with the right powers of $\zeta^n$ and $(\zeta * \omega)^n$.
     let evals = proof.evals.combine(&powers_of_eval_points_for_chunks);
 
+    println!("verifier evals: {:#?}", evals);
+
     let context = Context {
         verifier_index,
         proof,
@@ -685,12 +698,16 @@ where
     //~    that are associated to the aggregated evaluation proof in the proof:
     let mut evaluations = vec![];
 
+    println!("Before polys: {}", evaluations.len());
+
     //~~ * recursion
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
         degree_bound: None,
     }));
+
+    println!("After polys: {}", evaluations.len());
 
     //~~ * public input commitment
     evaluations.push(Evaluation {
@@ -701,6 +718,8 @@ where
         ],
         degree_bound: None,
     });
+
+    println!("After public input: {}", evaluations.len());
 
     //~~ * ft commitment (chunks of it)
     evaluations.push(Evaluation {
@@ -814,6 +833,23 @@ where
             });
         }
     }
+
+    println!("evaluations:\n{:#?}", evaluations);
+
+    println!("mismatched evaluations:");
+    for (i, evaluation) in evaluations.iter().enumerate() {
+        let commitment_len = evaluation.commitment.unshifted.len();
+        let shifted_commitment = evaluation.commitment.shifted.is_some();
+        let evaluations_len_zeta = evaluation.evaluations[0].len();
+        let evaluations_len_zeta_omega = evaluation.evaluations[1].len();
+        if commitment_len != evaluations_len_zeta
+            || commitment_len != evaluations_len_zeta_omega
+            || shifted_commitment
+        {
+            println!("i: {}, commitment_len: {}, evaluations_len_zeta: {}, evaluations_len_zeta_omega: {}, shifted_commitment: {}", i, commitment_len, evaluations_len_zeta, evaluations_len_zeta_omega, shifted_commitment);
+        }
+    }
+    println!("end of mismatched evaluations");
 
     // prepare for the opening proof verification
     let evaluation_points = vec![oracles.zeta, oracles.zeta * verifier_index.domain.group_gen];

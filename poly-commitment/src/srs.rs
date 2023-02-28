@@ -201,6 +201,7 @@ where
                 Some(lg)
             };
 
+        println!("unshifted.len(): {}", unshifted.len());
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
                 unshifted: unshifted.iter().map(|v| v[i].into_affine()).collect(),

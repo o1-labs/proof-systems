@@ -484,6 +484,7 @@ pub fn combined_inner_product<F: PrimeField>(
 }
 
 /// Contains the evaluation of a polynomial commitment at a set of points.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Evaluation<G>
 where
     G: AffineCurve,

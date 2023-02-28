@@ -156,7 +156,7 @@ pub mod testing {
             .disable_gates_checks(disable_gates_checks)
             .build()
             .unwrap();
-        let mut srs = SRS::<G>::create(cs.domain.d1.size());
+        let mut srs = SRS::<G>::create(cs.domain.d1.size() / 2);
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 

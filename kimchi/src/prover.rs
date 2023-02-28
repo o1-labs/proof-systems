@@ -163,9 +163,8 @@ where
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_degree() < d1_size {
-            return Err(ProverError::SRSTooSmall);
-        }
+        println!("index.srs.g.len(): {}", index.srs.g.len());
+        println!("d1_size: {}", d1_size);
 
         let (_, endo_r) = G::endos();
 
@@ -234,6 +233,25 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        // MATT: Note for when you wake up:
+        // commit_non_hiding is giving the wrong number of commitments below.
+        // fixing that should fix the hash inconsistency, in turn maybe fixing everything
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        //
+        //
         let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks, None);
         let public_comm = {
             index
@@ -245,6 +263,8 @@ where
                 .unwrap()
                 .commitment
         };
+
+        println!("prover public_comm: {:?}", public_comm);
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
@@ -523,6 +543,8 @@ where
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
+        println!("prover gamma: {}", gamma);
+
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ * Compute the lookup aggregation polynomial.
@@ -576,6 +598,8 @@ where
 
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details)
         let alpha: G::ScalarField = alpha_chal.to_field(endo_r);
+
+        println!("prover alpha: {}", alpha);
 
         //~ 1. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
@@ -816,6 +840,8 @@ where
         //~ 1. commit (hiding) to the quotient polynomial $t$
         let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, None, rng) };
 
+        println!("prover t_comm: {:?}", t_comm.commitment);
+
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);
 
@@ -824,6 +850,7 @@ where
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         let zeta = zeta_chal.to_field(endo_r);
+        println!("prover zeta: {}", zeta);
 
         let omega = index.cs.domain.d1.group_gen;
         let zeta_omega = zeta * omega;
@@ -899,11 +926,18 @@ where
         let zeta_omega_evals =
             LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta_omega);
 
-        let chunked_evals_for_selector =
-            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
+        let chunked_evals_for_selector = |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| {
+            let poly = p.clone().interpolate();
+            let zeta = poly
+                .to_chunked_polynomial(num_chunks, index.max_poly_size)
+                .evaluate_chunks(zeta);
+            let res = PointEvaluations {
                 zeta: zeta_evals.evaluate_boolean(p),
                 zeta_omega: zeta_omega_evals.evaluate_boolean(p),
             };
+            assert_eq!(zeta, res.zeta);
+            res
+        };
 
         let chunked_evals_for_evaluations =
             |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
@@ -967,6 +1001,8 @@ where
             chunked_evals.combine(&powers_of_eval_points_for_chunks)
         };
 
+        println!("prover evals: {:#?}", evals);
+
         //~ 1. Compute the ft polynomial.
         //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
         let ft: DensePolynomial<G::ScalarField> = {
@@ -1002,6 +1038,13 @@ where
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
         };
 
+        println!(
+            "ft.coeffs.len(): {}, d1.size(): {}, max_poly_size: {}",
+            ft.coeffs().len(),
+            index.cs.domain.d1.size(),
+            index.max_poly_size
+        );
+
         //~ 1. construct the blinding part of the ft polynomial commitment
         //~    [see this section](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#evaluation-proof-and-blinding-factors)
         let blinding_ft = {
@@ -1016,6 +1059,8 @@ where
                 shifted: None,
             }
         };
+        let ft_eval0 = ft.evaluate(&zeta);
+        println!("prover ft_eval0: {}", ft_eval0);
 
         //~ 1. Evaluate the ft polynomial at $\zeta\omega$ only.
         let ft_eval1 = ft.evaluate(&zeta_omega);
@@ -1198,6 +1243,12 @@ where
                 ));
             }
         }
+
+        let evals = index
+            .srs
+            .prover_polynomials_to_verifier_evaluations(&polynomials, &[zeta, zeta_omega]);
+
+        println!("prover evaluations:\n{:#?}", evals);
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         let proof = index.srs.open(

@@ -31,7 +31,8 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
         assert_eq!(p.evals.len() % self.evals[0].len(), 0);
         let stride = p.evals.len() / self.evals[0].len();
-        self.evals
+        let res = self
+            .evals
             .iter()
             .map(|evals| {
                 let mut result = F::zero();
@@ -42,7 +43,10 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
                 }
                 result
             })
-            .collect()
+            .collect();
+        let other_res = self.evaluate(p);
+        assert_eq!(res, other_res);
+        res
     }
 
     /// Compute all evaluations of the normalized lagrange basis polynomials of the
