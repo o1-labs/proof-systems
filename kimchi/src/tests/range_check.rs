@@ -67,6 +67,7 @@ fn create_test_prover_index(public_size: usize, compact: bool) -> ProverIndex<Ve
         vec![range_check::gadget::lookup_table()],
         None,
         false,
+        None,
     )
 }
 

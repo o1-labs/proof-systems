@@ -36,6 +36,7 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     recursion: Vec<RecursionChallenge<G>>,
     num_prev_challenges: usize,
     disable_gates_checks: bool,
+    override_srs_size: Option<usize>,
 
     prover_index: Option<ProverIndex<G>>,
     verifier_index: Option<VerifierIndex<G>>,
@@ -94,6 +95,12 @@ where
         self
     }
 
+    #[must_use]
+    pub(crate) fn override_srs_size(mut self, size: usize) -> Self {
+        self.override_srs_size = Some(size);
+        self
+    }
+
     /// creates the indexes
     #[must_use]
     pub(crate) fn setup(mut self) -> TestRunner<G> {
@@ -109,6 +116,7 @@ where
             lookup_tables,
             runtime_tables_setup,
             self.disable_gates_checks,
+            self.override_srs_size,
         );
         println!(
             "- time to create prover index: {:?}s",

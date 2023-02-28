@@ -142,6 +142,7 @@ pub mod testing {
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
+        override_srs_size: Option<usize>,
     ) -> ProverIndex<G>
     where
         G::BaseField: PrimeField,
@@ -156,7 +157,8 @@ pub mod testing {
             .disable_gates_checks(disable_gates_checks)
             .build()
             .unwrap();
-        let mut srs = SRS::<G>::create(cs.domain.d1.size());
+        let srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
+        let mut srs = SRS::<G>::create(srs_size);
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
@@ -172,6 +174,6 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false, None)
     }
 }
