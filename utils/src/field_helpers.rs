@@ -67,19 +67,16 @@ impl<F: Field> Two<F> for F {
     }
 }
 
-/// Field element helpers
-///   Unless otherwise stated everything is in little-endian byte order.
+/// Extension trait for the [ark_ff::Field] trait.
+/// Unless otherwise stated everything is in little-endian byte order.
 pub trait FieldHelpers<F> {
-    /// Deserialize from bytes
+    /// Deserialize from bytes.
     fn from_bytes(bytes: &[u8]) -> Result<F>;
 
-    /// Deserialize from little-endian hex
-    fn from_hex(hex: &str) -> Result<F>;
-
-    /// Deserialize from bits
+    /// Deserialize from bits.
     fn from_bits(bits: &[bool]) -> Result<F>;
 
-    /// Deserialize from BigUint
+    /// Deserialize from BigUint.
     fn from_biguint(big: &BigUint) -> Result<F>
     where
         F: PrimeField,
@@ -89,16 +86,21 @@ pub trait FieldHelpers<F> {
             .map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
-    /// Serialize to bytes
+    /// Serialize to bytes.
     fn to_bytes(&self) -> Vec<u8>;
 
-    /// Serialize to hex
+    /// Serialize to hex.
+    /// The bytes are encoded in big-endian byte order, unlike the default of the arkworks library.
     fn to_hex(&self) -> String;
 
-    /// Serialize to bits
+    /// Deserialize from little-endian hex.
+    /// The bytes are encoded in big-endian byte order, unlike the default of the arkworks library.
+    fn from_hex(hex: &str) -> Result<F>;
+
+    /// Serialize to bits.
     fn to_bits(&self) -> Vec<bool>;
 
-    /// Serialize field element to a BigUint
+    /// Serialize field element to a BigUint.
     fn to_biguint(&self) -> BigUint
     where
         F: PrimeField,
@@ -106,10 +108,10 @@ pub trait FieldHelpers<F> {
         BigUint::from_bytes_le(&self.to_bytes())
     }
 
-    /// Create a new field element from this field elements bits
+    /// Create a new field element from this field elements bits.
     fn bits_to_field(&self, start: usize, end: usize) -> Result<F>;
 
-    /// Field size in bits
+    /// Field size in bits.
     fn size_in_bits() -> usize
     where
         F: PrimeField,
@@ -117,7 +119,7 @@ pub trait FieldHelpers<F> {
         F::MODULUS_BIT_SIZE as usize
     }
 
-    /// Field size in bytes
+    /// Field size in bytes.
     fn size_in_bytes() -> usize
     where
         F: PrimeField,
@@ -125,7 +127,7 @@ pub trait FieldHelpers<F> {
         F::size_in_bits() / 8 + (F::size_in_bits() % 8 != 0) as usize
     }
 
-    /// Get the modulus as `BigUint`
+    /// Get the modulus as `BigUint`.
     fn modulus_biguint() -> BigUint
     where
         F: PrimeField,
@@ -140,7 +142,8 @@ impl<F: Field> FieldHelpers<F> for F {
     }
 
     fn from_hex(hex: &str) -> Result<F> {
-        let bytes: Vec<u8> = hex::decode(hex).map_err(|_| FieldHelpersError::DecodeHex)?;
+        let mut bytes: Vec<u8> = hex::decode(hex).map_err(|_| FieldHelpersError::DecodeHex)?;
+        bytes.reverse(); // BE -> LE encoding
         F::deserialize_compressed(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
@@ -165,7 +168,9 @@ impl<F: Field> FieldHelpers<F> for F {
     }
 
     fn to_hex(&self) -> String {
-        hex::encode(self.to_bytes())
+        let mut bytes = self.to_bytes();
+        bytes.reverse(); // LE -> BE encoding
+        hex::encode(bytes)
     }
 
     fn to_bits(&self) -> Vec<bool> {
