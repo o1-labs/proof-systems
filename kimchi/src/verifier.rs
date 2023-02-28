@@ -22,8 +22,9 @@ use crate::{
 };
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
-use ark_poly::{EvaluationDomain, Polynomial};
+use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
+use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::commitment::{
     absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
 };
@@ -346,7 +347,10 @@ where
                 .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
                 .fold(init, |x, y| x * y);
 
-            ft_eval0 -= self.evals.public.zeta[0];
+            ft_eval0 -= DensePolynomial::eval_polynomial(
+                &self.evals.public.zeta,
+                powers_of_eval_points_for_chunks.zeta,
+            );
 
             ft_eval0 -= evals
                 .w
