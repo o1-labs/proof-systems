@@ -433,7 +433,7 @@ impl Op2 {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 pub enum FeatureFlag {
     RangeCheck0,

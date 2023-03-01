@@ -294,7 +294,7 @@ pub mod caml {
     // ScalarChallenge<F> <-> CamlScalarChallenge<CamlF>
     //
 
-    #[derive(Debug, Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(Debug, Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlScalarChallenge<CamlF>(pub CamlF);
 
     impl<F, CamlF> From<ScalarChallenge<F>> for CamlScalarChallenge<CamlF>

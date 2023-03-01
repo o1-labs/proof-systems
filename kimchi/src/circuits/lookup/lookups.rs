@@ -40,7 +40,7 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct LookupPatterns {
     pub xor: bool,
@@ -131,7 +131,7 @@ impl LookupPatterns {
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 pub struct LookupFeatures {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
@@ -379,7 +379,7 @@ impl<F: Copy> JointLookup<SingleLookup<F>, LookupTableID> {
 )]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 pub enum LookupPattern {
     Xor,

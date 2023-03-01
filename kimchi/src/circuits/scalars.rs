@@ -50,7 +50,7 @@ pub mod caml {
     // RandomOracles<F> <-> CamlRandomOracles<CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlRandomOracles<CamlF> {
         pub joint_combiner: Option<(CamlScalarChallenge<CamlF>, CamlF)>,
         pub beta: CamlF,

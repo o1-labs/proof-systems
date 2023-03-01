@@ -1778,7 +1778,7 @@ A proof consists of the following data structures:
 #[derive(Copy, Clone, Serialize, Deserialize, Default, Debug)]
 #[cfg_attr(
     feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+    derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 #[serde(bound(
     serialize = "Vec<o1_utils::serialization::SerdeAs>: serde_with::SerializeAs<Evals>",

@@ -1251,7 +1251,7 @@ pub mod caml {
     // CamlProverProof<CamlG, CamlF>
     //
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverProof<CamlG, CamlF> {
         pub commitments: CamlProverCommitments<CamlG>,
         pub proof: CamlOpeningProof<CamlG, CamlF>,
@@ -1266,7 +1266,7 @@ pub mod caml {
     // CamlProverCommitments<CamlG>
     //
 
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlLookupCommitments<CamlG> {
         pub sorted: Vec<CamlPolyComm<CamlG>>,
         pub aggreg: CamlPolyComm<CamlG>,
@@ -1274,7 +1274,7 @@ pub mod caml {
     }
 
     #[allow(clippy::type_complexity)]
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(Clone, ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProverCommitments<CamlG> {
         // polynomial commitments
         pub w_comm: (

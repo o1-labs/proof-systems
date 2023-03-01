@@ -88,7 +88,7 @@ pub mod caml {
     use super::*;
     use std::convert::TryInto;
 
-    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    #[derive(ocaml::ToValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlWire {
         pub row: ocaml::Int,
         pub col: ocaml::Int,
