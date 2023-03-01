@@ -5,16 +5,15 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, poseidon,
-            range_check, turshi, varbasemul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
+            poseidon, range_check, turshi, varbasemul,
         },
         wires::*,
     },
     curve::KimchiCurve,
+    prover_index::ProverIndex,
 };
-use ark_ff::{bytes::ToBytes, PrimeField};
-use ark_poly::Evaluations;
-use ark_poly::Radix2EvaluationDomain as D;
+use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -22,7 +21,11 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr, polynomials::xor};
+use super::{
+    argument::ArgumentWitness,
+    expr,
+    polynomials::{rot, xor},
+};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -94,11 +97,6 @@ pub enum GateType {
     EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar = 6,
-    /// ChaCha
-    ChaCha0 = 7,
-    ChaCha1 = 8,
-    ChaCha2 = 9,
-    ChaChaFinal = 10,
     // Lookup
     Lookup = 11,
     /// Cairo
@@ -106,30 +104,19 @@ pub enum GateType {
     CairoInstruction = 13,
     CairoFlags = 14,
     CairoTransition = 15,
-    /// Range check (16-24)
+    /// Range check
     RangeCheck0 = 16,
     RangeCheck1 = 17,
-    ForeignFieldAdd = 25,
-    //ForeignFieldMul = 26,
-    // Gates for Keccak follow:
-    Xor16 = 27,
-}
-
-/// Selector polynomial
-#[serde_as]
-#[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct SelectorPolynomial<F: PrimeField> {
-    /// Evaluation form (evaluated over domain d8)
-    #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub eval8: Evaluations<F, D<F>>,
+    ForeignFieldAdd = 18,
+    ForeignFieldMul = 19,
+    // Gates for Keccak
+    Xor16 = 20,
+    Rot64 = 21,
 }
 
 /// Gate error
 #[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CircuitGateError {
-    /// Invalid constraint
-    #[error("Invalid circuit gate type {0:?}")]
-    InvalidCircuitGateType(GateType),
     /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
     InvalidConstraint(GateType),
@@ -142,18 +129,9 @@ pub enum CircuitGateError {
     /// Disconnected wires
     #[error("Invalid {typ:?} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
     CopyConstraint { typ: GateType, src: Wire, dst: Wire },
-    /// Invalid copy constraint
-    #[error("Invalid {0:?} copy constraint")]
-    InvalidCopyConstraint(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - sorted evaluations")]
-    InvalidLookupConstraintSorted(GateType),
-    /// Invalid lookup constraint - sorted evaluations
-    #[error("Invalid {0:?} lookup constraint - aggregation polynomial")]
-    InvalidLookupConstraintAggregation(GateType),
-    /// Missing lookup constraint system
-    #[error("Failed to get lookup constraint system for {0:?}")]
-    MissingLookupConstraintSystem(GateType),
+    /// Invalid lookup
+    #[error("Invalid {0:?} lookup constraint")]
+    InvalidLookupConstraint(GateType),
     /// Failed to get witness for row
     #[error("Failed to get {0:?} witness for row {1}")]
     FailedToGetWitnessForRow(GateType, usize),
@@ -203,7 +181,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
     }
 }
 
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
         CircuitGate::new(GateType::Zero, wires, vec![])
@@ -219,7 +197,7 @@ impl<F: PrimeField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        cs: &ConstraintSystem<F>,
+        index: &ProverIndex<G>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
@@ -229,23 +207,27 @@ impl<F: PrimeField> CircuitGate<F> {
             Poseidon => self.verify_poseidon::<G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<G>(row, witness, cs),
-            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, cs),
-            // TODO: implement the verification for chacha
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
+            EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
+            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<G>(row, witness, cs)
+                self.verify_cairo_gate::<G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_range_check::<G>(row, witness, cs)
-                .map_err(|e| e.to_string()),
-            Xor16 => self
-                .verify_xor::<G>(row, witness, cs)
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_foreign_field_add::<G>(row, witness, cs)
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            ForeignFieldMul => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            Xor16 => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            Rot64 => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -262,14 +244,13 @@ impl<F: PrimeField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants::<F> {
+        let constants = expr::Constants {
             alpha: F::one(),
             beta: F::one(),
             gamma: F::one(),
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
-            foreign_field_modulus: cs.foreign_field_modulus.clone(),
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -310,10 +291,6 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env),
             GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env),
             GateType::EndoMulScalar => endomul_scalar::EndomulScalar::constraint_checks(&env),
-            GateType::ChaCha0 => chacha::ChaCha0::constraint_checks(&env),
-            GateType::ChaCha1 => chacha::ChaCha1::constraint_checks(&env),
-            GateType::ChaCha2 => chacha::ChaCha2::constraint_checks(&env),
-            GateType::ChaChaFinal => chacha::ChaChaFinal::constraint_checks(&env),
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
                 vec![]
@@ -328,17 +305,21 @@ impl<F: PrimeField> CircuitGate<F> {
             GateType::RangeCheck1 => {
                 range_check::circuitgates::RangeCheck1::constraint_checks(&env)
             }
-            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
             GateType::ForeignFieldAdd => {
                 foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
             }
+            GateType::ForeignFieldMul => {
+                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
+            }
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
+            GateType::Rot64 => rot::Rot64::constraint_checks(&env),
         };
 
         // Check for failed constraints
         for (i, result) in results.iter().enumerate() {
             if !result.is_zero() {
                 // Pinpoint failed constraint
-                return Err(CircuitGateError::Constraint(self.typ, i));
+                return Err(CircuitGateError::Constraint(self.typ, i + 1));
             }
         }
 
@@ -388,6 +369,22 @@ pub trait Connect {
 
     /// Connects a generic gate cell with zeros to a given row for 64bit range check
     fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
+
+    /// Connects the wires of the range checks in a single foreign field addition
+    /// Inputs:
+    /// - `ffadd_row`: the row of the foreign field addition gate
+    /// - `left_rc`: the first row of the range check for the left input
+    /// - `right_rc`: the first row of the range check for the right input
+    /// - `out_rc`: the first row of the range check for the output of the addition
+    /// Note:
+    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    );
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -403,16 +400,75 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self.connect_cell_pair((start_row, 2), (zero_row, 0));
         self.connect_cell_pair((zero_row, 0), (start_row, 1));
     }
+
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    ) {
+        if let Some(left_rc) = left_rc {
+            // Copy left_input_lo -> Curr(0)
+            self.connect_cell_pair((left_rc, 0), (ffadd_row, 0));
+            // Copy left_input_mi -> Curr(1)
+            self.connect_cell_pair((left_rc + 1, 0), (ffadd_row, 1));
+            // Copy left_input_hi -> Curr(2)
+            self.connect_cell_pair((left_rc + 2, 0), (ffadd_row, 2));
+        }
+
+        if let Some(right_rc) = right_rc {
+            // Copy right_input_lo -> Curr(3)
+            self.connect_cell_pair((right_rc, 0), (ffadd_row, 3));
+            // Copy right_input_mi -> Curr(4)
+            self.connect_cell_pair((right_rc + 1, 0), (ffadd_row, 4));
+            // Copy right_input_hi -> Curr(5)
+            self.connect_cell_pair((right_rc + 2, 0), (ffadd_row, 5));
+        }
+
+        // Copy result_lo -> Next(0)
+        self.connect_cell_pair((out_rc, 0), (ffadd_row + 1, 0));
+        // Copy result_mi -> Next(1)
+        self.connect_cell_pair((out_rc + 1, 0), (ffadd_row + 1, 1));
+        // Copy result_hi -> Next(2)
+        self.connect_cell_pair((out_rc + 2, 0), (ffadd_row + 1, 2));
+    }
 }
 
-/// A circuit is specified as a series of [`CircuitGate`].
+/// A circuit is specified as a public input size and a list of [`CircuitGate`].
 #[derive(Serialize)]
-pub struct Circuit<'a, F: PrimeField>(
-    #[serde(bound = "CircuitGate<F>: Serialize")] pub &'a [CircuitGate<F>],
-);
+#[serde(bound = "CircuitGate<F>: Serialize")]
+pub struct Circuit<'a, F: PrimeField> {
+    pub public_input_size: usize,
+    pub gates: &'a [CircuitGate<F>],
+}
+
+impl<'a, F> Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    pub fn new(public_input_size: usize, gates: &'a [CircuitGate<F>]) -> Self {
+        Self {
+            public_input_size,
+            gates,
+        }
+    }
+}
 
 impl<'a, F: PrimeField> CryptoDigest for Circuit<'a, F> {
     const PREFIX: &'static [u8; 15] = b"kimchi-circuit0";
+}
+
+impl<'a, F> From<&'a ConstraintSystem<F>> for Circuit<'a, F>
+where
+    F: PrimeField,
+{
+    fn from(cs: &'a ConstraintSystem<F>) -> Self {
+        Self {
+            public_input_size: cs.public,
+            gates: &cs.gates,
+        }
+    }
 }
 
 #[cfg(feature = "ocaml_types")]

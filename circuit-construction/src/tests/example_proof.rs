@@ -88,16 +88,17 @@ fn test_example_circuit() {
     };
 
     // generate proof
+    let public_input = vec![public_key.x, public_key.y, hash];
     let proof = prove::<Vesta, _, SpongeQ, SpongeR>(
         &prover_index,
         &group_map,
         None,
-        vec![public_key.x, public_key.y, hash],
+        &public_input,
         |sys, p| circuit::<Fp, Pallas, _>(&proof_system_constants, Some(&witness), sys, p),
     );
 
     // verify proof
     let verifier_index = prover_index.verifier_index();
 
-    verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof).unwrap();
+    verify::<_, SpongeQ, SpongeR>(&group_map, &verifier_index, &proof, &public_input).unwrap();
 }

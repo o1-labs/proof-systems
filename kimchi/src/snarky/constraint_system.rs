@@ -1,3 +1,5 @@
+#![allow(clippy::all)]
+
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
@@ -518,7 +520,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
 
         let digest = {
             use o1_utils::hasher::CryptoDigest as _;
-            let circuit = crate::circuits::gate::Circuit(&rust_gates);
+            let circuit = crate::circuits::gate::Circuit::new(public_input_size, &rust_gates);
             circuit.digest()
         };
 
@@ -942,7 +944,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                             if !s1.is_zero() {
                                 self.union_find(x1);
                                 self.union_find(x2);
-                                assert!(self.union_finds.union(x1, x2).is_ok());
+                                self.union_finds.union(x1, x2).unwrap();
                             };
                         } else if
                         /* s1 x1 - s2 x2 = 0 */
@@ -972,7 +974,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                                 let x2 = x2.clone();
                                 self.union_find(x1);
                                 self.union_find(x2);
-                                assert!(self.union_finds.union(x1, x2).is_ok());
+                                self.union_finds.union(x1, x2).unwrap();
                             }
                             None => {
                                 self.add_generic_constraint(
@@ -995,7 +997,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                                 let x1 = x1.clone();
                                 self.union_find(x1);
                                 self.union_find(x2);
-                                assert!(self.union_finds.union(x1, x2).is_ok());
+                                self.union_finds.union(x1, x2).unwrap();
                             }
                             None => {
                                 self.add_generic_constraint(

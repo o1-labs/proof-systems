@@ -3,7 +3,7 @@ mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
 mod copy_shift_cell;
-mod crumb_cell;
+mod variable_bits_cell;
 mod variable_cell;
 mod variables;
 
@@ -12,7 +12,7 @@ pub use self::{
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
     copy_shift_cell::CopyShiftCell,
-    crumb_cell::CrumbCell,
+    variable_bits_cell::VariableBitsCell,
     variable_cell::VariableCell,
     variables::{variable_map, variables, Variables},
 };
@@ -160,7 +160,7 @@ mod tests {
         // Local variable (witness computation) with same names as VariableCell above
         let sum_of_products = PallasField::from(1337u32);
         let something_else = sum_of_products * PallasField::from(5u32);
-        let final_value = (something_else + PallasField::one()).pow(&[2u64]);
+        let final_value = (something_else + PallasField::one()).pow([2u64]);
 
         init_row(
             &mut witness,

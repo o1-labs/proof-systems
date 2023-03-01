@@ -18,6 +18,21 @@
 - [Polynomial commitments](./plonk/polynomial_commitments.md)
   - [Inner product argument](./plonk/inner_product.md)
   - [Different functionnalities](./plonk/inner_product_api.md)
+- [Two Party Computation](./fundamentals/zkbook_2pc/overview.md)
+  - [Garbled Circuits](./fundamentals/zkbook_2pc/gc.md)
+    - [Basics](./fundamentals/zkbook_2pc/basics.md)
+    - [Point and Permute](./fundamentals/zkbook_2pc/pap.md)
+    - [Free XOR](./fundamentals/zkbook_2pc/freexor.md)
+    - [Row Reduction](./fundamentals/zkbook_2pc/row_red.md)
+    - [Half Gate](./fundamentals/zkbook_2pc/halfgate.md)
+    - [Full Description](./fundamentals/zkbook_2pc/fulldesc.md)
+    - [Fixed-Key-AES Hashes](./fundamentals/zkbook_2pc/fkaes.md)
+
+  - [Oblivious Transfer](./fundamentals/zkbook_2pc/ot.md)
+    - [Base OT](./fundamentals/zkbook_2pc/baseot.md)
+    - [OT Extension](./fundamentals/zkbook_2pc/ote.md)
+
+  - [Full Protocol](./fundamentals/zkbook_2pc/2pc.md)
 
 # Proof systems
 
@@ -67,9 +82,10 @@
 - [RFC 1: Final check](./plonk/final_check.md)
 - [RFC 2: Maller's optimization for kimchi](./plonk/maller_15.md)
 - [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
-- [RFC 4: Foreign Field Addition](./rfcs/ffadd.md)
-- [RFC 5: Keccak](./rfcs/keccak.md)
-- [RFC 6: Extended lookup tables](./rfcs/)
+- [RFC 4: Extended lookup tables](./rfcs/extended-lookup-tables.md)
+- [RFC 5: Foreign Field Addition](./rfcs/ffadd.md)
+- [RFC 6: Foreign Field Multiplication](./rfcs/foreign_field_mul.md)
+- [RFC 7: Keccak](./rfcs/keccak.md)
   
 # Specifications
 

@@ -1,5 +1,5 @@
 [package]
-name = "commitment_dlog"
+name = "poly-commitment"
 version = "0.1.0"
 description = "An implementation of an inner-product argument polynomial commitment scheme, as used in kimchi"
 repository = "https://github.com/o1-labs/proof-systems"

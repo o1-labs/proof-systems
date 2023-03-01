@@ -1,11 +1,11 @@
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
-use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
 use mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
+use poly_commitment::{commitment::CommitmentCurve, srs::endos};
 
 ///Represents additional information that a curve needs in order to be used with Kimchi
 pub trait KimchiCurve: CommitmentCurve {

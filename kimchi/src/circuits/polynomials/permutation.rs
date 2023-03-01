@@ -1,6 +1,5 @@
 //! This module implements permutation constraint polynomials.
 
-//~
 //~ The permutation constraints are the following 4 constraints:
 //~
 //~ The two sides of the coin (with $\text{shift}_0 = 1$):
@@ -39,15 +38,16 @@
 //~
 //~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
 //~
-
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
         polynomial::WitnessOverDomains,
         wires::{Wire, COLUMNS, PERMUTS},
     },
+    curve::KimchiCurve,
     error::ProverError,
-    proof::ProofEvaluations,
+    proof::{PointEvaluations, ProofEvaluations},
+    prover_index::ProverIndex,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 use ark_poly::{
@@ -58,6 +58,7 @@ use ark_poly::{Polynomial, UVPolynomial};
 use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
+use rayon::prelude::*;
 use std::array;
 
 /// Number of constraints produced by the argument.
@@ -66,7 +67,7 @@ pub const ZK_ROWS: u64 = 3;
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -78,7 +79,7 @@ pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
 pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
     let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
     let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -87,7 +88,7 @@ pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> 
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow(&[domain.size - (ZK_ROWS)])
+    domain.group_gen.pow([domain.size - (ZK_ROWS)])
 }
 
 /// Evaluates the polynomial
@@ -169,7 +170,7 @@ where
         let mut h = Blake2b512::new();
 
         *input += 1;
-        h.update(&input.to_be_bytes());
+        h.update(input.to_be_bytes());
 
         let mut shift = F::from_random_bytes(&h.finalize()[..31])
             .expect("our field elements fit in more than 31 bytes");
@@ -177,7 +178,7 @@ where
         while !shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
             let mut h = Blake2b512::new();
             *input += 1;
-            h.update(&input.to_be_bytes());
+            h.update(input.to_be_bytes());
             shift = F::from_random_bytes(&h.finalize()[..31])
                 .expect("our field elements fit in more than 31 bytes");
         }
@@ -190,7 +191,7 @@ where
     }
 }
 
-impl<F: PrimeField> ConstraintSystem<F> {
+impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// permutation quotient poly contribution computation
     ///
     /// # Errors
@@ -214,7 +215,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         let alpha2 = alphas.next().expect("missing power of alpha");
 
         // constant gamma in evaluation form (in domain d8)
-        let gamma = &self.precomputations().constant_1_d8.scale(gamma);
+        let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
 
         //~ The quotient contribution of the permutation is split into two parts $perm$ and $bnd$.
         //~ They will be used by the prover.
@@ -251,9 +252,9 @@ impl<F: PrimeField> ConstraintSystem<F> {
             // (w[6](x) + gamma + x * beta * shift[6])
             // in evaluation form in d8
             let mut shifts = lagrange.d8.this.z.clone();
-            for (witness, shift) in lagrange.d8.this.w.iter().zip(self.shift.iter()) {
+            for (witness, shift) in lagrange.d8.this.w.iter().zip(self.cs.shift.iter()) {
                 let term =
-                    &(witness + gamma) + &self.precomputations().poly_x_d1.scale(beta * shift);
+                    &(witness + gamma) + &self.cs.precomputations().poly_x_d1.scale(beta * shift);
                 shifts = &shifts * &term;
             }
 
@@ -263,12 +264,18 @@ impl<F: PrimeField> ConstraintSystem<F> {
             // (w8[6] + gamma + sigma[6] * beta)
             // in evaluation form in d8
             let mut sigmas = lagrange.d8.next.z.clone();
-            for (witness, sigma) in lagrange.d8.this.w.iter().zip(self.sigmal8.iter()) {
+            for (witness, sigma) in lagrange
+                .d8
+                .this
+                .w
+                .iter()
+                .zip(self.column_evaluations.permutation_coefficients8.iter())
+            {
                 let term = witness + &(gamma + &sigma.scale(beta));
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &self.precomputations().zkpl
+            &(&shifts - &sigmas).scale(alpha0) * &self.cs.precomputations().zkpl
         };
 
         //~ and `bnd`:
@@ -296,7 +303,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
 
             // accumulator end := (z(x) - 1) / (x - sid[n-3])
             let denominator = DensePolynomial::from_coefficients_slice(&[
-                -self.sid[self.domain.d1.size() - 3],
+                -self.cs.sid[self.cs.domain.d1.size() - 3],
                 F::one(),
             ]);
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
@@ -311,31 +318,39 @@ impl<F: PrimeField> ConstraintSystem<F> {
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
         };
 
-        //
         Ok((perm, bnd))
     }
 
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &[ProofEvaluations<F>],
+        e: &ProofEvaluations<PointEvaluations<F>>,
         zeta: F,
         beta: F,
         gamma: F,
         alphas: impl Iterator<Item = F>,
-    ) -> DensePolynomial<F> {
+    ) -> Evaluations<F, D<F>> {
         //~
         //~ The linearization:
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
         //~
-        let zkpm_zeta = self.precomputations().zkpm.evaluate(&zeta);
-        let scalar = Self::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        self.sigmam[PERMUTS - 1].scale(scalar)
+        let zkpm_zeta = self.cs.precomputations().zkpm.evaluate(&zeta);
+        let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
+        let evals8 = &self.column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
+        const STRIDE: usize = 8;
+        let n = evals8.len() / STRIDE;
+        let evals = (0..n)
+            .into_par_iter()
+            .map(|i| scalar * evals8[STRIDE * i])
+            .collect();
+        Evaluations::from_vec_and_domain(evals, D::new(n).unwrap())
     }
+}
 
+impl<F: PrimeField> ConstraintSystem<F> {
     pub fn perm_scalars(
-        e: &[ProofEvaluations<F>],
+        e: &ProofEvaluations<PointEvaluations<F>>,
         beta: F,
         gamma: F,
         mut alphas: impl Iterator<Item = F>,
@@ -365,16 +380,17 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~ \end{align}
         //~$$
         //~
-        let init = e[1].z * beta * alpha0 * zkp_zeta;
-        let res = e[0]
-            .w
-            .iter()
-            .zip(e[0].s.iter())
-            .map(|(w, s)| gamma + (beta * s) + w)
-            .fold(init, |x, y| x * y);
+        let init = e.z.zeta_omega * beta * alpha0 * zkp_zeta;
+        let res =
+            e.w.iter()
+                .zip(e.s.iter())
+                .map(|(w, s)| gamma + (beta * s.zeta) + w.zeta)
+                .fold(init, |x, y| x * y);
         -res
     }
+}
 
+impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// permutation aggregation polynomial computation
     ///
     /// # Errors
@@ -391,10 +407,10 @@ impl<F: PrimeField> ConstraintSystem<F> {
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> Result<DensePolynomial<F>, ProverError> {
-        let n = self.domain.d1.size();
+        let n = self.cs.domain.d1.size();
 
         // only works if first element is 1
-        assert_eq!(self.domain.d1.elements().next(), Some(F::one()));
+        assert_eq!(self.cs.domain.d1.elements().next(), Some(F::one()));
 
         //~ To compute the permutation aggregation polynomial,
         //~ the prover interpolates the polynomial that has the following evaluations.
@@ -437,12 +453,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
         //~ \end{align}
         //~ $$
         //~
-        //~
         for j in 0..n - 3 {
             z[j + 1] = witness
                 .iter()
-                .zip(self.sigmal1.iter())
-                .map(|(w, s)| w[j] + (s[j] * beta) + gamma)
+                .zip(self.column_evaluations.permutation_coefficients8.iter())
+                .map(|(w, s)| w[j] + (s[8 * j] * beta) + gamma)
                 .fold(F::one(), |x, y| x * y);
         }
 
@@ -452,8 +467,8 @@ impl<F: PrimeField> ConstraintSystem<F> {
             let x = z[j];
             z[j + 1] *= witness
                 .iter()
-                .zip(self.shift.iter())
-                .map(|(w, s)| w[j] + (self.sid[j] * beta * s) + gamma)
+                .zip(self.cs.shift.iter())
+                .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
                 .fold(x, |z, y| z * y);
         }
 
@@ -468,7 +483,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
         z[n - 2] = F::rand(rng);
         z[n - 1] = F::rand(rng);
 
-        let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.domain.d1).interpolate();
+        let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
         Ok(res)
     }
 }

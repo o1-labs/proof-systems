@@ -4,7 +4,7 @@ use crate::circuits::{
     gate::CircuitGate,
     lookup::{
         constraints::LookupConfiguration,
-        lookups::{JointLookup, LookupInfo, LookupPattern},
+        lookups::{LookupInfo, LookupPattern},
         tables::LookupTable,
     },
     polynomials::permutation::ZK_ROWS,
@@ -26,7 +26,7 @@ use thiserror::Error;
 pub enum LookupError {
     #[error("One of the lookup tables has columns of different lengths")]
     InconsistentTableLength,
-    #[error("The combined lookup table is larger than allowed by the domain size. Obsered: {length}, expected: {maximum_allowed}")]
+    #[error("The combined lookup table is larger than allowed by the domain size. Observed: {length}, expected: {maximum_allowed}")]
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
@@ -38,14 +38,14 @@ pub enum LookupError {
 /// Lookup selectors
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct LookupSelectors<T> {
-    /// Chacha pattern lookup selector
+    /// XOR pattern lookup selector
     pub xor: Option<T>,
-    /// ChachaFinal pattern lookup selector
-    pub chacha_final: Option<T>,
-    /// LookupGate pattern lookup selector
-    pub lookup_gate: Option<T>,
-    /// RangeCheckGate pattern lookup selector
-    pub range_check_gate: Option<T>,
+    /// Lookup pattern lookup selector
+    pub lookup: Option<T>,
+    /// Range check pattern lookup selector
+    pub range_check: Option<T>,
+    /// Foreign field multiplication pattern lookup selector
+    pub ffmul: Option<T>,
 }
 
 #[serde_as]
@@ -54,11 +54,11 @@ struct LookupSelectorsSerdeAs<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub xor: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub chacha_final: Option<E<F, D<F>>>,
+    pub lookup: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub lookup_gate: Option<E<F, D<F>>>,
+    pub range_check: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub range_check_gate: Option<E<F, D<F>>>,
+    pub ffmul: Option<E<F, D<F>>>,
 }
 
 impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
@@ -70,9 +70,9 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
     {
         let repr = LookupSelectorsSerdeAs {
             xor: val.xor.clone(),
-            chacha_final: val.chacha_final.clone(),
-            lookup_gate: val.lookup_gate.clone(),
-            range_check_gate: val.range_check_gate.clone(),
+            lookup: val.lookup.clone(),
+            range_check: val.range_check.clone(),
+            ffmul: val.ffmul.clone(),
         };
         repr.serialize(serializer)
     }
@@ -87,15 +87,15 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
     {
         let LookupSelectorsSerdeAs {
             xor,
-            chacha_final,
-            lookup_gate,
-            range_check_gate,
+            lookup,
+            range_check,
+            ffmul,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
             xor,
-            chacha_final,
-            lookup_gate,
-            range_check_gate,
+            lookup,
+            range_check,
+            ffmul,
         })
     }
 }
@@ -106,9 +106,9 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
     fn index(&self, index: LookupPattern) -> &Self::Output {
         match index {
             LookupPattern::Xor => &self.xor,
-            LookupPattern::ChaChaFinal => &self.chacha_final,
-            LookupPattern::LookupGate => &self.lookup_gate,
-            LookupPattern::RangeCheckGate => &self.range_check_gate,
+            LookupPattern::Lookup => &self.lookup,
+            LookupPattern::RangeCheck => &self.range_check,
+            LookupPattern::ForeignFieldMul => &self.ffmul,
         }
     }
 }
@@ -117,9 +117,9 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
             LookupPattern::Xor => &mut self.xor,
-            LookupPattern::ChaChaFinal => &mut self.chacha_final,
-            LookupPattern::LookupGate => &mut self.lookup_gate,
-            LookupPattern::RangeCheckGate => &mut self.range_check_gate,
+            LookupPattern::Lookup => &mut self.lookup,
+            LookupPattern::RangeCheck => &mut self.range_check,
+            LookupPattern::ForeignFieldMul => &mut self.ffmul,
         }
     }
 }
@@ -128,9 +128,9 @@ impl<T> LookupSelectors<T> {
     pub fn map<U, F: Fn(T) -> U>(self, f: F) -> LookupSelectors<U> {
         let LookupSelectors {
             xor,
-            chacha_final,
-            lookup_gate,
-            range_check_gate,
+            lookup,
+            range_check,
+            ffmul,
         } = self;
         // This closure isn't really redundant -- it shields the parameter from a copy -- but
         // clippy isn't smart enough to figure that out..
@@ -138,18 +138,18 @@ impl<T> LookupSelectors<T> {
         let f = |x| f(x);
         LookupSelectors {
             xor: xor.map(f),
-            chacha_final: chacha_final.map(f),
-            lookup_gate: lookup_gate.map(f),
-            range_check_gate: range_check_gate.map(f),
+            lookup: lookup.map(f),
+            range_check: range_check.map(f),
+            ffmul: ffmul.map(f),
         }
     }
 
     pub fn as_ref(&self) -> LookupSelectors<&T> {
         LookupSelectors {
             xor: self.xor.as_ref(),
-            chacha_final: self.chacha_final.as_ref(),
-            lookup_gate: self.lookup_gate.as_ref(),
-            range_check_gate: self.range_check_gate.as_ref(),
+            lookup: self.lookup.as_ref(),
+            range_check: self.range_check.as_ref(),
+            ffmul: self.ffmul.as_ref(),
         }
     }
 }
@@ -209,10 +209,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
         match LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {
             None => Ok(None),
             Some(lookup_info) => {
-                let lookup_used = match lookup_info.lookup_used() {
-                    Some(lookup_used) => lookup_used,
-                    None => return Ok(None),
-                };
                 let d1_size = domain.d1.size();
 
                 // The maximum number of entries that can be provided across all tables.
@@ -369,12 +365,12 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         non_zero_table_id = true;
                     }
 
-                    //~~ - Update the corresponding entries in a table id vector (of size the domain as well)
+                    //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
-                    //~~ - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+                    //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
@@ -382,7 +378,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    //~~ - Fill in any unused columns with 0 (to match the dummy value)
+                    //~~ * Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
@@ -401,13 +397,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         maximum_allowed: max_num_entries - 1,
                     });
                 }
-
-                // For computational efficiency, we choose the dummy lookup value to be all 0s in
-                // table 0.
-                let dummy_lookup = JointLookup {
-                    entry: vec![],
-                    table_id: F::zero(),
-                };
 
                 //~ 6. Pad the end of the concatened table with the dummy value.
                 lookup_table
@@ -442,6 +431,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let runtime_tables =
                     runtime_tables.map(|rt| rt.into_iter().map(Into::into).collect());
 
+                let configuration = LookupConfiguration::new(lookup_info);
+
                 Ok(Some(Self {
                     lookup_selectors,
                     lookup_table8,
@@ -451,11 +442,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     runtime_selector,
                     runtime_tables,
                     runtime_table_offset,
-                    configuration: LookupConfiguration {
-                        lookup_used,
-                        lookup_info,
-                        dummy_lookup,
-                    },
+                    configuration,
                 }))
             }
         }

@@ -11,13 +11,13 @@ use crate::{
 };
 use ark_ec::short_weierstrass_jacobian::GroupAffine;
 use ark_ff::Zero;
-use commitment_dlog::{commitment::CommitmentCurve, srs::SRS};
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
 use std::array;
 use std::time::Instant;
 
@@ -28,13 +28,20 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 #[cfg(test)]
 mod tests {
 
+    use std::{env, fs, path::PathBuf};
+
+    use ark_ff::PrimeField;
+    use ark_serialize::{Read, Write};
+    use mina_curves::pasta::PallasParameters;
+    use num_traits::pow;
+
     use super::*;
 
     #[test]
     fn test_rmp_serde() {
         let ctx = BenchmarkCtx::new(1 << 4);
 
-        let proof = ctx.create_proof();
+        let (proof, public_input) = ctx.create_proof();
 
         // small check of proof being serializable
         // serialize a proof
@@ -45,7 +52,7 @@ mod tests {
         let de_pf: ProverProof<Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
-        ctx.batch_verification(vec![de_pf.clone()]);
+        ctx.batch_verification(&vec![(de_pf, public_input)]);
     }
 
     #[test]
@@ -64,7 +71,7 @@ mod tests {
             serde_json::to_string(&verifier_index).expect("couldn't serialize index");
 
         // verify the circuit satisfiability by the computed witness
-        index.cs.verify::<Vesta>(&witness, &public).unwrap();
+        index.verify(&witness, &public).unwrap();
 
         // add the proof to the batch
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
@@ -84,8 +91,61 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge>(&group_map, &verifier_index_deserialize, &proof)
-            .unwrap();
+        verify::<Vesta, BaseSponge, ScalarSponge>(
+            &group_map,
+            &verifier_index_deserialize,
+            &proof,
+            &public,
+        )
+        .unwrap();
         println!("- time to verify: {}ms", start.elapsed().as_millis());
+    }
+
+    #[test]
+    pub fn test_srs_serialization() {
+        fn create_or_check_srs<T: ark_ec::SWModelParameters + Clone>(curve: &str, exp: usize)
+        where
+            T::BaseField: PrimeField,
+        {
+            let srs = SRS::<GroupAffine<T>>::create(pow(2, exp));
+
+            let base_path = env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
+            let srs_path: PathBuf = [base_path, "../srs".into(), curve.to_string() + ".srs"]
+                .iter()
+                .collect();
+
+            // Safety check (comment to manually create new SRS)
+            if !srs_path.exists() {
+                panic!("Missing SRS file: {}", srs_path.display());
+            }
+
+            if !srs_path.exists() {
+                // Create SRS
+                let mut file = fs::OpenOptions::new()
+                    .create(true)
+                    .write(true)
+                    .open(srs_path)
+                    .expect("failed to open file");
+
+                let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
+                file.write_all(&srs_bytes).expect("failed to write file");
+                file.flush().expect("failed to flush file");
+            } else {
+                // Check SRS
+                let mut file = fs::OpenOptions::new()
+                    .read(true)
+                    .open(srs_path)
+                    .expect("failed to open file");
+
+                let mut bytes = vec![];
+                file.read_to_end(&mut bytes).expect("failed to read file");
+                let srs_serde: SRS<GroupAffine<T>> = rmp_serde::from_slice(&bytes).unwrap();
+                assert_eq!(srs.g, srs_serde.g);
+                assert_eq!(srs.h, srs_serde.h);
+            }
+        }
+
+        create_or_check_srs::<VestaParameters>("vesta", 16);
+        create_or_check_srs::<PallasParameters>("pallas", 16);
     }
 }

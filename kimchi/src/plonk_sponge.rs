@@ -5,7 +5,7 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
-use crate::proof::ProofEvaluations;
+use crate::proof::{LookupEvaluations, PointEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -25,7 +25,7 @@ pub trait FrSponge<Fr: Field> {
 
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations<const N: usize>(&mut self, e: [&ProofEvaluations<Vec<Fr>>; N]);
+    fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>);
 }
 
 impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
@@ -56,66 +56,40 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
     }
 
     // We absorb all evaluations of the same polynomial at the same time
-    fn absorb_evaluations<const N: usize>(&mut self, e: [&ProofEvaluations<Vec<Fr>>; N]) {
+    fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>) {
         self.last_squeezed = vec![];
 
-        let e = ProofEvaluations::transpose(e);
+        let ProofEvaluations {
+            w,
+            z,
+            s,
+            coefficients,
+            lookup,
+            generic_selector,
+            poseidon_selector,
+        } = e;
 
-        let mut points = vec![
-            &e.z,
-            &e.generic_selector,
-            &e.poseidon_selector,
-            &e.w[0],
-            &e.w[1],
-            &e.w[2],
-            &e.w[3],
-            &e.w[4],
-            &e.w[5],
-            &e.w[6],
-            &e.w[7],
-            &e.w[8],
-            &e.w[9],
-            &e.w[10],
-            &e.w[11],
-            &e.w[12],
-            &e.w[13],
-            &e.w[14],
-            &e.coefficients[0],
-            &e.coefficients[1],
-            &e.coefficients[2],
-            &e.coefficients[3],
-            &e.coefficients[4],
-            &e.coefficients[5],
-            &e.coefficients[6],
-            &e.coefficients[7],
-            &e.coefficients[8],
-            &e.coefficients[9],
-            &e.coefficients[10],
-            &e.coefficients[11],
-            &e.coefficients[12],
-            &e.coefficients[13],
-            &e.coefficients[14],
-            &e.s[0],
-            &e.s[1],
-            &e.s[2],
-            &e.s[3],
-            &e.s[4],
-            &e.s[5],
-        ];
+        let mut points = vec![z, generic_selector, poseidon_selector];
+        w.iter().for_each(|w_i| points.push(w_i));
+        coefficients.iter().for_each(|c_i| points.push(c_i));
+        s.iter().for_each(|s_i| points.push(s_i));
 
-        if let Some(l) = e.lookup.as_ref() {
-            points.push(&l.aggreg);
-            points.push(&l.table);
-            for s in &l.sorted {
-                points.push(s);
-            }
-            l.runtime.iter().for_each(|x| points.push(x));
+        if let Some(l) = lookup.as_ref() {
+            let LookupEvaluations {
+                sorted,
+                aggreg,
+                table,
+                runtime,
+            } = l;
+            points.push(aggreg);
+            points.push(table);
+            sorted.iter().for_each(|s| points.push(s));
+            runtime.iter().for_each(|x| points.push(x));
         }
 
-        for p in points {
-            for x in p {
-                self.sponge.absorb(x);
-            }
-        }
+        points.into_iter().for_each(|p| {
+            self.sponge.absorb(&p.zeta);
+            self.sponge.absorb(&p.zeta_omega);
+        })
     }
 }

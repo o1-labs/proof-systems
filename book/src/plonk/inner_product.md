@@ -113,6 +113,7 @@ We can picture the protocol as follows:
 
 1. The prover first sends a commitment to the polynomial $f$.
 2. The verifier sends a point $s$, asking for the value $f(s)$. To help the prover perform a proof of correct evaluation, they also send a random challenge $x$.
+(NOTE: The verifier sends the random challenge $x$ ONLY AFTER they receive the $z=f(s)$)
 3. The prover sends the result of the evaluation, $z$, as well as a proof.
 
 ![inner 1](../img/inner1.png)

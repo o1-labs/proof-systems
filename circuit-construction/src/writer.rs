@@ -162,7 +162,7 @@ pub trait Cs<F: PrimeField> {
         let v = self.var(|| {
             // TODO: No need to recompute this each time.
             let two = Fr::from(2u64);
-            let shift = Fr::one() + two.pow(&[length as u64]);
+            let shift = Fr::one() + two.pow([length as u64]);
 
             let x = g();
             // x = 2 y + shift

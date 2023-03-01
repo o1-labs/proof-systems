@@ -5,11 +5,8 @@ use crate::{
     alphas::Alphas,
     circuits::{
         expr::{Linearization, PolishToken},
-        lookup::{index::LookupSelectors, lookups::LookupsUsed},
-        polynomials::{
-            permutation::{zk_polynomial, zk_w3},
-            range_check,
-        },
+        lookup::{index::LookupSelectors, lookups::LookupInfo},
+        polynomials::permutation::{zk_polynomial, zk_w3},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -18,13 +15,12 @@ use crate::{
 };
 use ark_ff::{One, PrimeField};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain as D};
-use commitment_dlog::{
+use mina_poseidon::FqSponge;
+use once_cell::sync::OnceCell;
+use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
     srs::SRS,
 };
-use mina_poseidon::FqSponge;
-use num_bigint::BigUint;
-use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -39,7 +35,7 @@ use std::{
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LookupVerifierIndex<G: CommitmentCurve> {
-    pub lookup_used: LookupsUsed,
+    pub joint_lookup_used: bool,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub lookup_table: Vec<PolyComm<G>>,
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -50,8 +46,8 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub table_ids: Option<PolyComm<G>>,
 
-    /// The maximum joint size of any joint lookup in a constraint in `kinds`. This can be computed from `kinds`.
-    pub max_joint_size: u32,
+    /// Information about the specific lookups used
+    pub lookup_info: LookupInfo,
 
     /// An optional selector polynomial for runtime tables
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
@@ -66,8 +62,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-    /// maximal size of the quotient polynomial according to the supported constraints
-    pub max_quot_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,
@@ -106,24 +100,29 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub endomul_scalar_comm: PolyComm<G>,
 
-    /// Chacha polynomial commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub chacha_comm: Option<[PolyComm<G>; 4]>,
+    /// RangeCheck0 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check0_comm: Option<PolyComm<G>>,
 
-    /// Range check commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub range_check_comm: Option<[PolyComm<G>; range_check::gadget::GATE_COUNT]>,
-
-    /// Foreign field modulus
-    pub foreign_field_modulus: Option<BigUint>,
+    /// RangeCheck1 polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub range_check1_comm: Option<PolyComm<G>>,
 
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
 
+    /// Foreign field multiplication gates polynomial commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub foreign_field_mul_comm: Option<PolyComm<G>>,
+
     /// Xor commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub xor_comm: Option<PolyComm<G>>,
+
+    /// Rot commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub rot_comm: Option<PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -176,25 +175,24 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .lookup_constraint_system
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
-                    lookup_used: cs.configuration.lookup_used,
+                    joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
+                    lookup_info: cs.configuration.lookup_info.clone(),
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e)),
                     lookup_table: cs
                         .lookup_table8
                         .iter()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None))
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e))
                         .collect(),
                     table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
-                        self.srs
-                            .commit_evaluations_non_hiding(domain, table_ids8, None)
+                        self.srs.commit_evaluations_non_hiding(domain, table_ids8)
                     }),
-                    max_joint_size: cs.configuration.lookup_info.max_joint_size,
                     runtime_tables_selector: cs
                         .runtime_selector
                         .as_ref()
-                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e, None)),
+                        .map(|e| self.srs.commit_evaluations_non_hiding(domain, e)),
                 })
         };
 
@@ -202,7 +200,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
         VerifierIndex {
             domain,
             max_poly_size: self.max_poly_size,
-            max_quot_size: self.max_quot_size,
             powers_of_alpha: self.powers_of_alpha.clone(),
             public: self.cs.public,
             prev_challenges: self.cs.prev_challenges,
@@ -212,57 +209,79 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 cell
             },
 
-            sigma_comm: array::from_fn(|i| self.srs.commit_non_hiding(&self.cs.sigmam[i], None)),
-            coefficients_comm: array::from_fn(|i| {
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &self.cs.coefficients8[i], None)
+            sigma_comm: array::from_fn(|i| {
+                self.srs.commit_evaluations_non_hiding(
+                    domain,
+                    &self.column_evaluations.permutation_coefficients8[i],
+                )
             }),
-            generic_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.genericm, None)),
+            coefficients_comm: array::from_fn(|i| {
+                self.srs.commit_evaluations_non_hiding(
+                    domain,
+                    &self.column_evaluations.coefficients8[i],
+                )
+            }),
+            generic_comm: mask_fixed(
+                self.srs.commit_evaluations_non_hiding(
+                    domain,
+                    &self.column_evaluations.generic_selector4,
+                ),
+            ),
 
-            psm_comm: mask_fixed(self.srs.commit_non_hiding(&self.cs.psm, None)),
+            psm_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
+                domain,
+                &self.column_evaluations.poseidon_selector8,
+            )),
 
             complete_add_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.complete_addl4,
-                None,
+                &self.column_evaluations.complete_add_selector4,
             ),
             mul_comm: self
                 .srs
-                .commit_evaluations_non_hiding(domain, &self.cs.mull8, None),
+                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
             emul_comm: self
                 .srs
-                .commit_evaluations_non_hiding(domain, &self.cs.emull, None),
+                .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
 
             endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
                 domain,
-                &self.cs.endomul_scalar8,
-                None,
+                &self.column_evaluations.endomul_scalar_selector8,
             ),
 
-            chacha_comm: self.cs.chacha8.as_ref().map(|c| {
-                array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i], None))
-            }),
+            range_check0_comm: self
+                .column_evaluations
+                .range_check0_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            range_check_comm: self.cs.range_check_selector_polys.as_ref().map(|poly| {
-                array::from_fn(|i| {
-                    self.srs
-                        .commit_evaluations_non_hiding(domain, &poly[i].eval8, None)
-                })
-            }),
+            range_check1_comm: self
+                .column_evaluations
+                .range_check1_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             foreign_field_add_comm: self
-                .cs
-                .foreign_field_add_selector_poly
+                .column_evaluations
+                .foreign_field_add_selector8
                 .as_ref()
-                .map(|poly| {
-                    self.srs
-                        .commit_evaluations_non_hiding(domain, &poly.eval8, None)
-                }),
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            xor_comm: self.cs.xor_selector_poly.as_ref().map(|poly| {
-                self.srs
-                    .commit_evaluations_non_hiding(domain, &poly.eval8, None)
-            }),
+            foreign_field_mul_comm: self
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            xor_comm: self
+                .column_evaluations
+                .xor_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+            rot_comm: self
+                .column_evaluations
+                .rot_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
             zkpm: {
@@ -278,7 +297,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
-            foreign_field_modulus: self.cs.foreign_field_modulus.clone(),
         }
     }
 }
@@ -376,7 +394,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         let VerifierIndex {
             domain: _,
             max_poly_size: _,
-            max_quot_size: _,
             srs: _,
             public: _,
             prev_challenges: _,
@@ -392,11 +409,12 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             endomul_scalar_comm,
 
             // Optional gates
-            chacha_comm,
-            range_check_comm,
+            range_check0_comm,
+            range_check1_comm,
             foreign_field_add_comm,
-            foreign_field_modulus: _,
+            foreign_field_mul_comm,
             xor_comm,
+            rot_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -427,16 +445,18 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
         // Optional gates
 
-        if let Some(chacha_comm) = chacha_comm {
-            for chacha_comm in chacha_comm {
-                fq_sponge.absorb_g(&chacha_comm.unshifted);
-            }
+        if let Some(range_check0_comm) = range_check0_comm {
+            fq_sponge.absorb_g(&range_check0_comm.unshifted);
         }
-        if let Some(range_check_comm) = range_check_comm {
-            for range_check_comm in range_check_comm {
-                fq_sponge.absorb_g(&range_check_comm.unshifted);
-            }
+
+        if let Some(range_check1_comm) = range_check1_comm {
+            fq_sponge.absorb_g(&range_check1_comm.unshifted);
         }
+
+        if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
+            fq_sponge.absorb_g(&foreign_field_mul_comm.unshifted);
+        }
+
         if let Some(foreign_field_add_comm) = foreign_field_add_comm {
             fq_sponge.absorb_g(&foreign_field_add_comm.unshifted);
         }
@@ -445,10 +465,15 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             fq_sponge.absorb_g(&xor_comm.unshifted);
         }
 
+        if let Some(rot_comm) = rot_comm {
+            fq_sponge.absorb_g(&rot_comm.unshifted);
+        }
+
         // Lookup index; optional
 
         if let Some(LookupVerifierIndex {
-            lookup_used: _,
+            joint_lookup_used: _,
+            lookup_info: _,
             lookup_table,
             table_ids,
             runtime_tables_selector,
@@ -456,12 +481,10 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             lookup_selectors:
                 LookupSelectors {
                     xor,
-                    chacha_final,
-                    lookup_gate,
-                    range_check_gate,
+                    lookup,
+                    range_check,
+                    ffmul,
                 },
-
-            max_joint_size: _,
         }) = lookup_index
         {
             for entry in lookup_table {
@@ -477,14 +500,14 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             if let Some(xor) = xor {
                 fq_sponge.absorb_g(&xor.unshifted);
             }
-            if let Some(chacha_final) = chacha_final {
-                fq_sponge.absorb_g(&chacha_final.unshifted);
+            if let Some(lookup) = lookup {
+                fq_sponge.absorb_g(&lookup.unshifted);
             }
-            if let Some(lookup_gate) = lookup_gate {
-                fq_sponge.absorb_g(&lookup_gate.unshifted);
+            if let Some(range_check) = range_check {
+                fq_sponge.absorb_g(&range_check.unshifted);
             }
-            if let Some(range_check_gate) = range_check_gate {
-                fq_sponge.absorb_g(&range_check_gate.unshifted);
+            if let Some(ffmul) = ffmul {
+                fq_sponge.absorb_g(&ffmul.unshifted);
             }
         }
         fq_sponge.digest_fq()

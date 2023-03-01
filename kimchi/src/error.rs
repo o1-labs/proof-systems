@@ -1,6 +1,6 @@
 //! This module implements the [`ProverError`] type.
 
-use commitment_dlog::error::CommitmentError;
+use poly_commitment::error::CommitmentError;
 use thiserror::Error;
 
 /// Errors that can arise when creating a proof
@@ -44,6 +44,9 @@ pub enum VerifyError {
     #[error("the previous challenges have an unexpected length (expected {0}, got {1})")]
     IncorrectPrevChallengesLength(usize, usize),
 
+    #[error("proof malformed: an evaluation was of the incorrect size (all evaluations are expected to be of length 1)")]
+    IncorrectEvaluationsLength,
+
     #[error("the opening proof failed to verify")]
     OpenProof,
 
@@ -64,6 +67,12 @@ pub enum VerifyError {
 
     #[error("runtime tables are used, but missing from the proof")]
     IncorrectRuntimeProof,
+
+    #[error("the evaluation for {0:?} is missing")]
+    MissingEvaluation(crate::circuits::expr::Column),
+
+    #[error("the commitment for {0:?} is missing")]
+    MissingCommitment(crate::circuits::expr::Column),
 }
 
 /// Errors that can arise when preparing the setup

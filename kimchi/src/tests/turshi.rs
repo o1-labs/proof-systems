@@ -75,10 +75,8 @@ fn test_cairo_gate() {
     let (circuit, _) = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
 
     // Verify each gate
-    let mut row = 0;
-    for gate in circuit {
+    for (row, gate) in circuit.into_iter().enumerate() {
         let res_ensure = ensure_cairo_gate(&gate, row, &witness);
         assert_eq!(Ok(()), res_ensure);
-        row = row + 1;
     }
 }

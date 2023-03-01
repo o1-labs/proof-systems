@@ -100,14 +100,6 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     pub fn mds(&self, row: usize, col: usize) -> T {
         T::constant(ConstantExpr::<F>::Mds { row, col }, self.data.as_ref())
     }
-
-    /// Helper to access the foreign field modulus limb at index idx
-    pub fn foreign_modulus(&self, idx: usize) -> T {
-        T::constant(
-            ConstantExpr::<F>::ForeignFieldModulus(idx),
-            self.data.as_ref(),
-        )
-    }
 }
 
 /// Argument environment data for constraints of field elements
@@ -172,5 +164,23 @@ pub trait Argument<F: PrimeField> {
         } else {
             combined_constraints
         }
+    }
+}
+
+pub trait DynArgument<F: PrimeField> {
+    fn constraints(&self) -> Vec<E<F>>;
+    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F>;
+    fn argument_type(&self) -> ArgumentType;
+}
+
+impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
+    fn constraints(&self) -> Vec<E<F>> {
+        <Self as Argument<F>>::constraints()
+    }
+    fn combined_constraints(&self, alphas: &Alphas<F>) -> E<F> {
+        <Self as Argument<F>>::combined_constraints(alphas)
+    }
+    fn argument_type(&self) -> ArgumentType {
+        <Self as Argument<F>>::ARGUMENT_TYPE
     }
 }

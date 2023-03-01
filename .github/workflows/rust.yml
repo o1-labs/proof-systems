@@ -30,21 +30,25 @@ jobs:
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: "1.63.0"
+          toolchain: "1.67.0"
           components: rustfmt, clippy
 
-      # https://github.com/Swatinem/rust-cache
-      - name: Cache Rust stuff
-        uses: Swatinem/rust-cache@v1
+      - name: Install markdownlint
+        run: |
+          npm install -g markdownlint-cli
 
       - name: Setup OCaml (because of ocaml-gen)
         run: |
           sudo apt update
           sudo apt install -y ocaml
 
-      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
-      - name: Install latest nextest release
-        uses: taiki-e/install-action@nextest
+      # https://github.com/Swatinem/rust-cache
+      - name: Cache Rust stuff
+        uses: Swatinem/rust-cache@v1
+
+      #
+      # Doc & Spec
+      #
 
       - name: Install cargo-spec for specifications
         uses: actions-rs/install@v0.1
@@ -52,15 +56,19 @@ jobs:
           crate: cargo-spec
           version: 0.4.1
 
-      #
-      # Tests
-      # 
+      - name: Build the kimchi specification
+        run: |
+          cd book/specifications
+          cd kimchi && make build
 
-      - name: Test with latest nextest release (faster than cargo test)
-        uses: actions-rs/cargo@v1
-        with:            
-          command: nextest
-          args: run --all-features --release
+      - name: Build the polynomial commitment specification
+        run: |
+          cd book/specifications
+          cd poly-commitment && make build
+
+      - name: Check that up-to-date specification is checked in
+        run: |
+          git diff --exit-code
 
       #
       # Coding guidelines
@@ -76,22 +84,42 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --all-features -- -D warnings
+          args: --all-features --tests --all-targets -- -D warnings
+
+      - name: Run Clippy (beta)
+        uses: actions-rs/clippy-check@v1
+        continue-on-error: true
+        with:
+          name: Clippy (beta)
+          token: ${{ secrets.GITHUB_TOKEN }}
+          args: --all-features --all-targets -- -W clippy::all
 
       #
-      # Doc & Spec
+      # Build
       #
 
-      - name: Build the kimchi specification
-        run: |
-          cd book/specifications
-          cd kimchi && make build
+      - name: Ensure that everything builds
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --all-targets --all-features
 
-      - name: Build the polynomial commitment specification
-        run: |
-          cd book/specifications
-          cd poly-commitment && make build
+      #
+      # Tests
+      #
 
-      - name: Check that up-to-date specification is checked in
-        run: |
-          git diff --exit-code
+      # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
+      - name: Install latest nextest release
+        uses: taiki-e/install-action@nextest
+
+      - name: Test with latest nextest release (faster than cargo test)
+        uses: actions-rs/cargo@v1
+        with:
+          command: nextest
+          args: run --all-features --release
+
+      - name: Doc tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all-features --release --doc

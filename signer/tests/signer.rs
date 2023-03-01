@@ -108,17 +108,17 @@ fn signer_zero_test() {
     let mut ctx = mina_signer::create_legacy(NetworkId::TESTNET);
     let sig = ctx.sign(&kp, &tx);
 
-    assert_eq!(ctx.verify(&sig, &kp.public, &tx), true);
+    assert!(ctx.verify(&sig, &kp.public, &tx));
 
     // Zero some things
     let mut sig2 = sig.clone();
     sig2.rx = BaseField::zero();
-    assert_eq!(ctx.verify(&sig2, &kp.public, &tx), false);
+    assert!(!ctx.verify(&sig2, &kp.public, &tx));
     let mut sig3 = sig;
     sig3.s = ScalarField::zero();
-    assert_eq!(ctx.verify(&sig3, &kp.public, &tx), false);
+    assert!(!ctx.verify(&sig3, &kp.public, &tx));
     sig3.rx = BaseField::zero();
-    assert_eq!(ctx.verify(&sig3, &kp.public, &tx), false);
+    assert!(!ctx.verify(&sig3, &kp.public, &tx));
 }
 
 #[test]

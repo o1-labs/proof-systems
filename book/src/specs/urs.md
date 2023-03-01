@@ -10,7 +10,6 @@ The URS comprises of:
 
 * `Gs`: an arbitrary ordered list of curve points that can be used to commit to a polynomial in a non-hiding way.
 * `H`: a blinding curve point that can be used to add hidding to a polynomial commitment scheme.
-* `endo_q, endo_r`: TODO
 
 The URS is generated deterministically, and thus can be rederived if not stored.
 
@@ -61,10 +60,6 @@ def point_of_random_bytes(random_bytes):
 
 TODO: specify `map.to_group` in the previous section.
 
-## Endo stuff
-
-TODO: specify endo_r, endo_q
-
 ## URS values in practice
 
 As there is no limit to the number of commitment curve points you can generate, we only provide the first three ones to serve as test vectors.
@@ -87,12 +82,6 @@ G2 = (x=26985F27306586711466C5B2C28754AA62FE33516D75CEF1F7751F1A169713FD, y=2E89
 H = (x=092060386301C999AAB4F263757836369CA27975E28BC7A8E5B2CE5B26262201, y=314FC4D83AE66A509F9D41BE6165F2606A209A9B5805EE85CE20249C5EBCBE26)
 ```
 
-**endo**:
-
-```
-endo_q = 06819A58283E528E511DB4D81CF70F5A0FED467D47C033AF2AA9D2E050AA0E4F
-endo_r = 12CCCA834ACDBA712CAAD5DC57AAB1B01D1F8BD237AD31491DAD5EBDFDFE4AB9
-```
 
 ### Pallas
 
@@ -106,12 +95,4 @@ G2 = (x2808BC21BEB90314377BF6130285FABE6CE4B8A4457FB25BC95EBA0083DF27E3, y=1E04E
 
 ```
 H = (x221B959DACD2052AAE26193FCA36B53279866A4FBBAB0D5A2F828B5FD7778201, y=058C8F1105CAE57F4891EADC9B85C8954E5067190E155E61D66855ACE69C16C0)
-```
-
-**endo**:
-
-```
-
-endo_q = 2D33357CB532458ED3552A23A8554E5005270D29D19FC7D27B7FD22F0201B547
-endo_r = 397E65A7D7C1AD71AEE24B27E308F0A61259527EC1D4752E619D1840AF55F1B1
 ```

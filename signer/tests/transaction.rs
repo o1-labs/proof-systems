@@ -64,27 +64,27 @@ impl Hashable for Transaction {
 impl Transaction {
     pub fn new_payment(from: PubKey, to: PubKey, amount: u64, fee: u64, nonce: u32) -> Self {
         Transaction {
-            fee: fee,
+            fee,
             fee_token: 1,
             fee_payer_pk: from.into_compressed(),
-            nonce: nonce,
+            nonce,
             valid_until: u32::MAX,
             memo: std::array::from_fn(|i| (i == 0) as u8),
             tag: PAYMENT_TX_TAG,
             source_pk: from.into_compressed(),
             receiver_pk: to.into_compressed(),
             token_id: 1,
-            amount: amount,
+            amount,
             token_locked: false,
         }
     }
 
     pub fn new_delegation(from: PubKey, to: PubKey, fee: u64, nonce: u32) -> Self {
         Transaction {
-            fee: fee,
+            fee,
             fee_token: 1,
             fee_payer_pk: from.into_compressed(),
-            nonce: nonce,
+            nonce,
             valid_until: u32::MAX,
             memo: std::array::from_fn(|i| (i == 0) as u8),
             tag: DELEGATION_TX_TAG,
@@ -113,7 +113,7 @@ impl Transaction {
     pub fn set_memo_str(mut self, memo: &str) -> Self {
         self.memo[0] = 0x01;
         self.memo[1] = std::cmp::min(memo.len(), MEMO_BYTES - 2) as u8;
-        let memo = format!("{:\0<32}", memo); // Pad user-supplied memo with zeros
+        let memo = format!("{memo:\0<32}"); // Pad user-supplied memo with zeros
         self.memo[2..]
             .copy_from_slice(&memo.as_bytes()[..std::cmp::min(memo.len(), MEMO_BYTES - 2)]);
         // Anything beyond MEMO_BYTES is truncated

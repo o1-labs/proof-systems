@@ -4,8 +4,8 @@ use ark_ff::Field;
 ///   First, you use "anchor" names for the variables when specifying
 ///   the witness layout.
 ///
-///     Ex.
-///
+///   Ex.
+///```ignore
 ///     let layout = [
 ///         [
 ///             &CopyShiftCell::create(0, 2, 8),
@@ -14,20 +14,23 @@ use ark_ff::Field;
 ///             &VariableCell::create("final_value"),
 ///         ]
 ///      ;
+///```
 ///
 ///   Second, you use variables with the same names when performing the
 ///   witness computation.
 ///
-///     Ex.
+///   Ex.
+///```ignore
 ///
 ///     let sum_of_products = carry1 * limb1 + pow1 * limb2;
 ///     ...
 ///     let final_value = middle_bits.pow(&[2u8]) * carry_flag
+///```
 ///
 ///   Third, when you're ready to generate the witness, you pass those
 ///   variables to the witness creation functions using variables!(foo, bar)
 ///   or variable_map!("foo" => 12, "bar" => blah).
-///
+///```ignore
 ///     Ex.
 ///
 ///     init_witness(
@@ -35,6 +38,7 @@ use ark_ff::Field;
 ///         &layout,
 ///         &variables!(sum_of_products, something_else, final_value),
 ///     );
+///```
 ///
 use std::{
     collections::HashMap,
@@ -89,10 +93,10 @@ macro_rules! variables {
 /// Macro to simplify creation of layout map
 #[macro_export]
 macro_rules! variable_map {
-    ($( $name: expr => $value: expr ),*) => {{
+    [$( $name: expr => $value: expr ),*] => {{
         let mut vars = Variables::create();
-         $( vars.insert($name, $value); )*
-         vars
+        $( vars.insert($name, $value); )*
+        vars
     }}
 }
 

@@ -69,7 +69,7 @@ impl<F: Field> Alphas<F> {
         };
 
         if self.mapping.insert(ty, (self.next_power, powers)).is_some() {
-            panic!("cannot re-register {:?}", ty);
+            panic!("cannot re-register {ty:?}");
         }
 
         self.next_power = self
@@ -94,7 +94,7 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
+            .unwrap_or_else(|| panic!("constraint {ty:?} was not registered"));
 
         if num > range.1 {
             panic!(
@@ -140,7 +140,7 @@ impl<F: Field> Alphas<F> {
         let range = self
             .mapping
             .get(&ty)
-            .unwrap_or_else(|| panic!("constraint {:?} was not registered", ty));
+            .unwrap_or_else(|| panic!("constraint {ty:?} was not registered"));
 
         if num > range.1 {
             panic!(
@@ -176,7 +176,7 @@ impl<T> Display for Alphas<T> {
             let name = if matches!(arg, ArgumentType::Gate(_)) {
                 "gates".to_string()
             } else {
-                format!("{:?}", arg)
+                format!("{arg:?}")
             };
             let range = self
                 .mapping
@@ -243,7 +243,7 @@ mod tests {
 
     use super::*;
     use crate::circuits::gate::GateType;
-    use mina_curves::pasta::Fp;
+    use mina_curves::pasta::{Fp, Vesta};
 
     // testing [Builder]
 
@@ -287,7 +287,7 @@ mod tests {
     fn registered_alpha_powers_for_some_constraint_twice() {
         let mut alphas = Alphas::<Fp>::default();
         alphas.register(ArgumentType::Gate(GateType::Poseidon), 2);
-        alphas.register(ArgumentType::Gate(GateType::ChaCha0), 3);
+        alphas.register(ArgumentType::Gate(GateType::ForeignFieldMul), 3);
     }
 
     #[test]
@@ -321,19 +321,10 @@ mod tests {
 
     #[test]
     fn get_alphas_for_spec() {
-        let gates = vec![CircuitGate::<Fp>::zero(Wire::new(0)); 2];
-        let index = new_index_for_test(gates, 0);
-        let (_linearization, powers_of_alpha) = expr_linearization(
-            index.cs.chacha8.is_some(),
-            index.cs.range_check_selector_polys.is_some(),
-            index
-                .cs
-                .lookup_constraint_system
-                .as_ref()
-                .map(|lcs| &lcs.configuration),
-            index.cs.foreign_field_add_selector_poly.is_some(),
-            index.cs.xor_selector_poly.is_some(),
-        );
+        let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
+        let index = new_index_for_test::<Vesta>(gates, 0);
+        let (_linearization, powers_of_alpha) =
+            expr_linearization::<Fp>(Some(&index.cs.feature_flags), true);
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let spec_path = Path::new(&manifest_dir)

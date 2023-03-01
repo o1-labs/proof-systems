@@ -2,8 +2,8 @@
 
 use ark_ec::AffineCurve;
 use ark_ff::Field;
-use commitment_dlog::commitment::CommitmentCurve;
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
+use poly_commitment::commitment::CommitmentCurve;
 
 use crate::curve::KimchiCurve;
 
