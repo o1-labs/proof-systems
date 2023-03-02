@@ -366,6 +366,28 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         res
     }
 
+    pub fn compute_witness_for_ocaml(
+        &mut self,
+        public_inputs: &[Field],
+        private_inputs: &[Field],
+    ) -> [Vec<Field>; COLUMNS] {
+        // ensure that we have the right number of public inputs
+        let public_input_size = self.get_primary_input_size();
+        assert_eq!(public_inputs.len(), public_input_size);
+
+        // create closure that will read variables from the input
+        let external_values = |i| {
+            if i < public_inputs.len() {
+                public_inputs[i]
+            } else {
+                private_inputs[i - public_inputs.len()]
+            }
+        };
+
+        // compute witness
+        self.compute_witness(external_values)
+    }
+
     /// Compute the witness, given the constraint system `sys`
     /// and a function that converts the indexed secret inputs to their concrete values.
     ///
@@ -539,6 +561,13 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         self.rows.push(vars);
     }
 
+    /// Returns the number of rows in the constraint system.
+    /// Note: This is not necessarily the number of rows of the compiled circuit.
+    /// If the circuit has not finished compiling, you will only get the current number of rows.
+    pub fn get_rows_len(&self) -> usize {
+        self.rows.len()
+    }
+
     /// Fill the `gate` values(input and output), and finalize the `circuit`.
     ///
     /// # Panics
@@ -640,6 +669,18 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         };
 
         self.gates = Circuit::Compiled(digest, rust_gates);
+    }
+
+    /// Produces a digest of the constraint system.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if the constraint system has not previously been compiled (via [`Self::finalize`]).
+    pub fn digest(&self) -> [u8; 32] {
+        match &self.gates {
+            Circuit::Compiled(digest, _) => *digest,
+            Circuit::Unfinalized(_) => panic!("digest called on unfinalized constraint system"),
+        }
     }
 
     // TODO: why does it return a mutable reference?
