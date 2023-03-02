@@ -96,6 +96,10 @@ impl<Field: PrimeField> GateSpec<usize, Field> {
 }
 
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 pub struct ScaleRound<A> {
     pub accs: Vec<(A, A)>,
     pub bits: Vec<A>,
@@ -106,6 +110,10 @@ pub struct ScaleRound<A> {
 }
 
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 pub struct EndoscaleRound<A> {
     pub xt: A,
     pub yt: A,
@@ -123,6 +131,10 @@ pub struct EndoscaleRound<A> {
 }
 
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 pub struct EndoscaleScalarRound<A> {
     pub n0: A,
     pub n8: A,
@@ -142,6 +154,10 @@ pub struct EndoscaleScalarRound<A> {
 
 // TODO: get rid of this
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum BasicSnarkyConstraint<Var> {
     Boolean(Var),
     Equal(Var, Var),
@@ -149,47 +165,76 @@ pub enum BasicSnarkyConstraint<Var> {
     R1CS(Var, Var, Var),
 }
 
+#[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+pub struct BasicInput<Var, Field> {
+    l: (Field, Var),
+    r: (Field, Var),
+    o: (Field, Var),
+    m: Field,
+    c: Field,
+}
+
+#[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+pub struct PoseidonInput<Var> {
+    // TODO: revert back to arrays once we don't need to expose this struct to OCaml
+    // pub states: [[Var; SPONGE_WIDTH]; ROUNDS_PER_HASH],
+    // pub last: [Var; SPONGE_WIDTH],
+    pub states: Vec<Vec<Var>>,
+    pub last: Vec<Var>,
+}
+
+#[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+pub struct EcAddCompleteInput<Var> {
+    p1: (Var, Var),
+    p2: (Var, Var),
+    p3: (Var, Var),
+    inf: Var,
+    same_x: Var,
+    slope: Var,
+    inf_z: Var,
+    x21_inv: Var,
+}
+
+#[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+pub struct EcEndoscaleInput<Var> {
+    state: Vec<EndoscaleRound<Var>>,
+    xs: Var,
+    ys: Var,
+    n_acc: Var,
+}
+
 /** A PLONK constraint (or gate) can be [`Basic`](KimchiConstraint::Basic), [`Poseidon`](KimchiConstraint::Poseidon),
  * [`EcAddComplete`](KimchiConstraint::EcAddComplete), [`EcScale`](KimchiConstraint::EcScale),
  * [`EcEndoscale`](KimchiConstraint::EcEndoscale), or [`EcEndoscalar`](KimchiConstraint::EcEndoscalar). */
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 pub enum KimchiConstraint<Var, Field> {
-    Basic {
-        l: (Field, Var),
-        r: (Field, Var),
-        o: (Field, Var),
-        m: Field,
-        c: Field,
-    },
-    Poseidon {
-        state: Vec<Vec<Var>>,
-    },
-    Poseidon2 {
-        states: [[Var; SPONGE_WIDTH]; ROUNDS_PER_HASH],
-        last: [Var; SPONGE_WIDTH],
-    },
-    EcAddComplete {
-        p1: (Var, Var),
-        p2: (Var, Var),
-        p3: (Var, Var),
-        inf: Var,
-        same_x: Var,
-        slope: Var,
-        inf_z: Var,
-        x21_inv: Var,
-    },
-    EcScale {
-        state: Vec<ScaleRound<Var>>,
-    },
-    EcEndoscale {
-        state: Vec<EndoscaleRound<Var>>,
-        xs: Var,
-        ys: Var,
-        n_acc: Var,
-    },
-    EcEndoscalar {
-        state: Vec<EndoscaleScalarRound<Var>>,
-    },
+    Basic(BasicInput<Var, Field>),
+    Poseidon(Vec<Vec<Var>>),
+    Poseidon2(PoseidonInput<Var>),
+    EcAddComplete(EcAddCompleteInput<Var>),
+    EcScale(Vec<ScaleRound<Var>>),
+    EcEndoscale(EcEndoscaleInput<Var>),
+    EcEndoscalar(Vec<EndoscaleScalarRound<Var>>),
 }
 
 /* TODO: This is a Unique_id in OCaml. */
@@ -1086,7 +1131,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         Cvar: SnarkyCvar<Field = Field>,
     {
         match constraint {
-            KimchiConstraint::Basic { l, r, o, m, c } => {
+            KimchiConstraint::Basic(BasicInput { l, r, o, m, c }) => {
                 /* 0
                    = l.s * l.x
                    + r.s * r.x
@@ -1147,7 +1192,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             }
             // TODO: the code in circuit-writer was better
             // TODO: also `rounds` would be a better name than `state`
-            KimchiConstraint::Poseidon { state } => {
+            KimchiConstraint::Poseidon(state) => {
                 // we expect state to be a vector of all the intermediary round states
                 // (in addition to the initial and final states)
                 assert_eq!(state.len(), ROUNDS_PER_HASH * ROUNDS_PER_HASH);
@@ -1232,29 +1277,47 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 ];
                 self.add_row(vars, GateType::Zero, vec![]);
             }
-            KimchiConstraint::Poseidon2 { states, last } => {
-                states
-                    .map(|round| round.map(|x| self.reduce_to_var(x)))
+            KimchiConstraint::Poseidon2(PoseidonInput { states, last }) => {
+                // reduce variables
+                let states = states
                     .into_iter()
-                    .zip(self.constants.poseidon.round_constants.clone().into_iter())
-                    .chunks(ROUNDS_PER_ROW)
-                    .into_iter()
-                    .for_each(|rounds| {
-                        let (vars, coeffs) = rounds
+                    .map(|round| {
+                        round
                             .into_iter()
-                            .flat_map(|(round, round_constants)| {
-                                round
-                                    .into_iter()
-                                    .map(Option::Some)
-                                    .zip(round_constants.into_iter())
-                            })
-                            .unzip();
-                        self.add_row(vars, GateType::Poseidon, coeffs);
-                    });
-                let last = last.map(|x| self.reduce_to_var(x)).map(Some).to_vec();
+                            .map(|x| self.reduce_to_var(x))
+                            .collect_vec()
+                    })
+                    .collect_vec();
+
+                // create the rows
+                for rounds in &states
+                    .into_iter()
+                    // TODO: poseidon constants should really be passed instead of living in the constraint system as a cfg no? annoying clone fosho
+                    .zip(self.constants.poseidon.round_constants.clone())
+                    .chunks(ROUNDS_PER_ROW)
+                {
+                    let (vars, coeffs) = rounds
+                        .into_iter()
+                        .flat_map(|(round, round_constants)| {
+                            round
+                                .into_iter()
+                                .map(Option::Some)
+                                .zip(round_constants.into_iter())
+                        })
+                        .unzip();
+                    self.add_row(vars, GateType::Poseidon, coeffs);
+                }
+
+                // last row is a zero gate to save as output
+                let last = last
+                    .into_iter()
+                    .map(|x| self.reduce_to_var(x))
+                    .map(Some)
+                    .collect_vec();
                 self.add_row(last, GateType::Zero, vec![]);
             }
-            KimchiConstraint::EcAddComplete {
+
+            KimchiConstraint::EcAddComplete(EcAddCompleteInput {
                 p1,
                 p2,
                 p3,
@@ -1263,7 +1326,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 slope,
                 inf_z,
                 x21_inv,
-            } => {
+            }) => {
                 let mut reduce_curve_point =
                     |(x, y)| (self.reduce_to_var(x), self.reduce_to_var(y));
                 // 0   1   2   3   4   5   6   7      8   9
@@ -1287,7 +1350,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 ];
                 self.add_row(vars, GateType::CompleteAdd, vec![]);
             }
-            KimchiConstraint::EcScale { state } => {
+            KimchiConstraint::EcScale(state) => {
                 for ScaleRound {
                     accs,
                     bits,
@@ -1338,12 +1401,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     self.add_row(next_row, GateType::Zero, vec![]);
                 }
             }
-            KimchiConstraint::EcEndoscale {
+            KimchiConstraint::EcEndoscale(EcEndoscaleInput {
                 state,
                 xs,
                 ys,
                 n_acc,
-            } => {
+            }) => {
                 for round in state {
                     let vars = vec![
                         Some(self.reduce_to_var(round.xt)),
@@ -1378,7 +1441,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 ];
                 self.add_row(vars, GateType::Zero, vec![]);
             }
-            KimchiConstraint::EcEndoscalar { state } => {
+            KimchiConstraint::EcEndoscalar(state) => {
                 for round in state {
                     let vars = vec![
                         Some(self.reduce_to_var(round.n0)),
@@ -1439,13 +1502,13 @@ where
     pub fn check_constraint(&self, witness_env: &impl WitnessGeneration<F>) {
         match self {
             // we only check the basic gate
-            KimchiConstraint::Basic {
+            KimchiConstraint::Basic(BasicInput {
                 l: (c0, l_var),
                 r: (c1, r_var),
                 o: (c2, o_var),
                 m: c3,
                 c: c4,
-            } => {
+            }) => {
                 let l = witness_env.read_var(l_var);
                 let r = witness_env.read_var(r_var);
                 let o = witness_env.read_var(o_var);
@@ -1460,6 +1523,236 @@ where
             | KimchiConstraint::EcScale { .. }
             | KimchiConstraint::EcEndoscale { .. }
             | KimchiConstraint::EcEndoscalar { .. } => (),
+        }
+    }
+}
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::*;
+
+    //
+    // Annoying conversion function that will eventually disappear
+    //
+
+    pub fn convert_constraint<F, CamlF, CamlFVar>(
+        constraint: &KimchiConstraint<CamlFVar, CamlF>,
+    ) -> KimchiConstraint<CVar<F>, F>
+    where
+        for<'a> F: PrimeField + From<&'a CamlF>,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        use KimchiConstraint::*;
+        match constraint {
+            Basic(x) => Basic(basic_conv(x)),
+            Poseidon(x) => Poseidon(
+                x.into_iter()
+                    .map(|x| x.into_iter().map(Into::into).collect_vec())
+                    .collect_vec(),
+            ),
+            Poseidon2(_) => unreachable!(),
+            EcAddComplete(x) => EcAddComplete(ec_add_complete_conv(x)),
+            EcScale(x) => EcScale(x.into_iter().map(|x| ec_scale_round(x)).collect()),
+            EcEndoscale(x) => EcEndoscale(ec_endoscale_conv(x)),
+            EcEndoscalar(x) => {
+                EcEndoscalar(x.into_iter().map(|x| ec_endoscale_scalar_conv(x)).collect())
+            }
+        }
+    }
+
+    pub fn basic_conv<F, CamlF, CamlFVar>(x: &BasicInput<CamlFVar, CamlF>) -> BasicInput<CVar<F>, F>
+    where
+        for<'a> F: PrimeField + From<&'a CamlF>,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        let BasicInput {
+            l: (l0, l1),
+            r: (r0, r1),
+            o: (o0, o1),
+            m,
+            c,
+        } = x;
+
+        BasicInput {
+            l: (l0.into(), l1.into()),
+            r: (r0.into(), r1.into()),
+            o: (o0.into(), o1.into()),
+            m: m.into(),
+            c: c.into(),
+        }
+    }
+
+    pub fn ec_add_complete_conv<F, CamlFVar>(
+        x: &EcAddCompleteInput<CamlFVar>,
+    ) -> EcAddCompleteInput<CVar<F>>
+    where
+        F: PrimeField,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        let EcAddCompleteInput {
+            p1: (p1_x, p1_y),
+            p2: (p2_x, p2_y),
+            p3: (p3_x, p3_y),
+            inf,
+            same_x,
+            slope,
+            inf_z,
+            x21_inv,
+        } = x;
+
+        EcAddCompleteInput {
+            p1: (p1_x.into(), p1_y.into()),
+            p2: (p2_x.into(), p2_y.into()),
+            p3: (p3_x.into(), p3_y.into()),
+            inf: inf.into(),
+            same_x: same_x.into(),
+            slope: slope.into(),
+            inf_z: inf_z.into(),
+            x21_inv: x21_inv.into(),
+        }
+    }
+
+    pub fn ec_scale_round<F, CamlFVar>(x: &ScaleRound<CamlFVar>) -> ScaleRound<CVar<F>>
+    where
+        F: PrimeField,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        let ScaleRound {
+            accs,
+            bits,
+            ss,
+            base: (base0, base1),
+            n_prev,
+            n_next,
+        } = x;
+        ScaleRound {
+            accs: accs
+                .into_iter()
+                .map(|(x, y)| (x.into(), y.into()))
+                .collect(),
+            bits: bits.into_iter().map(Into::into).collect(),
+            ss: ss.into_iter().map(Into::into).collect(),
+            base: (base0.into(), base1.into()),
+            n_prev: n_prev.into(),
+            n_next: n_next.into(),
+        }
+    }
+
+    pub fn ec_endoscale_round<F, CamlFVar>(x: &EndoscaleRound<CamlFVar>) -> EndoscaleRound<CVar<F>>
+    where
+        F: PrimeField,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        let EndoscaleRound {
+            xt,
+            yt,
+            xp,
+            yp,
+            n_acc,
+            xr,
+            yr,
+            s1,
+            s3,
+            b1,
+            b2,
+            b3,
+            b4,
+        } = x;
+
+        EndoscaleRound {
+            xt: xt.into(),
+            yt: yt.into(),
+            xp: xp.into(),
+            yp: yp.into(),
+            n_acc: n_acc.into(),
+            xr: xr.into(),
+            yr: yr.into(),
+            s1: s1.into(),
+            s3: s3.into(),
+            b1: b1.into(),
+            b2: b2.into(),
+            b3: b3.into(),
+            b4: b4.into(),
+        }
+    }
+
+    pub fn ec_endoscale_conv<F, CamlFVar>(
+        x: &EcEndoscaleInput<CamlFVar>,
+    ) -> EcEndoscaleInput<CVar<F>>
+    where
+        F: PrimeField,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        let EcEndoscaleInput {
+            state,
+            xs,
+            ys,
+            n_acc,
+        } = x;
+
+        EcEndoscaleInput {
+            state: state.into_iter().map(|x| ec_endoscale_round(x)).collect(),
+            xs: xs.into(),
+            ys: ys.into(),
+            n_acc: n_acc.into(),
+        }
+    }
+
+    pub fn ec_endoscale_scalar_conv<F, CamlFVar>(
+        x: &EndoscaleScalarRound<CamlFVar>,
+    ) -> EndoscaleScalarRound<CVar<F>>
+    where
+        F: PrimeField,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        let EndoscaleScalarRound {
+            n0,
+            n8,
+            a0,
+            b0,
+            a8,
+            b8,
+            x0,
+            x1,
+            x2,
+            x3,
+            x4,
+            x5,
+            x6,
+            x7,
+        } = x;
+
+        EndoscaleScalarRound {
+            n0: n0.into(),
+            n8: n8.into(),
+            a0: a0.into(),
+            b0: b0.into(),
+            a8: a8.into(),
+            b8: b8.into(),
+            x0: x0.into(),
+            x1: x1.into(),
+            x2: x2.into(),
+            x3: x3.into(),
+            x4: x4.into(),
+            x5: x5.into(),
+            x6: x6.into(),
+            x7: x7.into(),
+        }
+    }
+
+    pub fn convert_basic_constraint<F, CamlFVar>(
+        constraint: &BasicSnarkyConstraint<CamlFVar>,
+    ) -> BasicSnarkyConstraint<CVar<F>>
+    where
+        F: PrimeField,
+        for<'a> CVar<F>: From<&'a CamlFVar>,
+    {
+        use BasicSnarkyConstraint::*;
+        match constraint {
+            Boolean(a) => Boolean(a.into()),
+            Equal(a, b) => Equal(a.into(), b.into()),
+            Square(a, b) => Square(a.into(), b.into()),
+            R1CS(a, b, c) => R1CS(a.into(), b.into(), c.into()),
         }
     }
 }

@@ -14,6 +14,8 @@ use mina_poseidon::{
 };
 use std::iter::successors;
 
+use super::constraint_system::PoseidonInput;
+
 pub fn poseidon<F: PrimeField>(
     loc: String,
     runner: &mut RunState<F>,
@@ -30,7 +32,7 @@ pub fn poseidon<F: PrimeField>(
         .take(ROUNDS_PER_HASH + 1)
         .map(|(r, _)| r);
 
-        let states = iter
+        let states: Vec<_> = iter
             .by_ref()
             .take(ROUNDS_PER_HASH)
             .chunks(ROUNDS_PER_ROW)
@@ -48,7 +50,10 @@ pub fn poseidon<F: PrimeField>(
             let [a, b, _] = last.clone();
             (a, b)
         };
-        let constraint = Constraint::KimchiConstraint(KimchiConstraint::Poseidon2 { states, last });
+        let constraint = Constraint::KimchiConstraint(KimchiConstraint::Poseidon2(PoseidonInput {
+            states: states.into_iter().map(|s| s.to_vec()).collect(),
+            last: last.to_vec(),
+        }));
         (constraint, hash)
     };
     runner.add_constraint(constraint, Some("Poseidon"));

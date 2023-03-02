@@ -416,6 +416,17 @@ where
     }
 }
 
+impl<F> Add<Self> for CVar<F>
+where
+    F: PrimeField,
+{
+    type Output = CVar<F>;
+
+    fn add(self, other: Self) -> Self::Output {
+        self.add(&other)
+    }
+}
+
 impl<'a, F> Add<&'a Self> for CVar<F>
 where
     F: PrimeField,
@@ -453,6 +464,17 @@ where
     }
 }
 
+impl<F> Sub<CVar<F>> for CVar<F>
+where
+    F: PrimeField,
+{
+    type Output = CVar<F>;
+
+    fn sub(self, other: CVar<F>) -> Self::Output {
+        self.sub(&other)
+    }
+}
+
 impl<'a, F> Sub<&'a CVar<F>> for CVar<F>
 where
     F: PrimeField,
@@ -476,6 +498,17 @@ where
 }
 
 impl<F> Neg for &CVar<F>
+where
+    F: PrimeField,
+{
+    type Output = CVar<F>;
+
+    fn neg(self) -> Self::Output {
+        self.scale(-F::one())
+    }
+}
+
+impl<F> Neg for CVar<F>
 where
     F: PrimeField,
 {
