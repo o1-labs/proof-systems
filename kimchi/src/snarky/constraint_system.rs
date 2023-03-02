@@ -292,6 +292,10 @@ where
     next_row: usize,
     /** The size of the public input (which fills the first rows of our constraint system. */
     public_input_size: Option<usize>,
+
+    /** The number of previous recursion challenges. */
+    prev_challenges: Option<usize>,
+
     /** Whatever is not public input. */
     auxiliary_input_size: usize,
 
@@ -326,6 +330,13 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             panic!("set_primary_input_size can only be called once");
         }
         self.public_input_size = Some(num_pub_inputs);
+    }
+
+    pub fn set_prev_challenges(&mut self, prev_challenges: usize) {
+        if self.prev_challenges.is_some() {
+            panic!("set_prev_challenges can only be called once");
+        }
+        self.prev_challenges = Some(prev_challenges);
     }
 
     /** Converts the set of permutations (`equivalence_classes`) to
@@ -440,6 +451,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             // TODO: if we expect a `Field: KimchiParams` we can simply do `Field::constants()` here. But we might want to wait for Fabrizio's trait? Also we should keep this close to the OCaml stuff if we want to avoid pains when we plug this in
             constants: constants,
             public_input_size: None,
+            prev_challenges: None,
             next_internal_var: 0,
             internal_vars: HashMap::new(),
             gates: Circuit::Unfinalized(Vec::new()),
@@ -466,7 +478,11 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     ///
     /// Will panic if `public_input_size` is None.
     pub fn get_primary_input_size(&self) -> usize {
-        self.public_input_size.unwrap()
+        self.public_input_size.expect("attempt to retrieve public input size before it was set (via `set_primary_input_size`)")
+    }
+
+    pub fn get_prev_challenges(&self) -> Option<usize> {
+        self.prev_challenges
     }
 
     /** Non-public part of the witness. */
