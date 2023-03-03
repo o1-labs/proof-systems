@@ -371,6 +371,9 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         public_inputs: &[Field],
         private_inputs: &[Field],
     ) -> [Vec<Field>; COLUMNS] {
+        // make sure it's finalized
+        self.finalize();
+
         // ensure that we have the right number of public inputs
         let public_input_size = self.get_primary_input_size();
         assert_eq!(public_inputs.len(), public_input_size);
@@ -399,10 +402,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     where
         FUNC: Fn(usize) -> Field,
     {
-        // we need to finalize the circuit first to get pending generic gates
-        if matches!(self.gates, Circuit::Unfinalized(..)) {
-            self.finalize();
-        }
+        // make sure it's finalized
+        self.finalize();
 
         // init execution trace table
         let mut internal_values = HashMap::new();
@@ -664,10 +665,13 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     /// # Panics
     ///
     /// Will panic if the constraint system has not previously been compiled (via [`Self::finalize`]).
-    pub fn digest(&self) -> [u8; 32] {
+    pub fn digest(&mut self) -> [u8; 32] {
+        // make sure it's finalized
+        self.finalize();
+
         match &self.gates {
             Circuit::Compiled(digest, _) => *digest,
-            Circuit::Unfinalized(_) => panic!("digest called on unfinalized constraint system"),
+            Circuit::Unfinalized(_) => unreachable!(),
         }
     }
 
