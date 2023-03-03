@@ -296,9 +296,6 @@ where
     /** The number of previous recursion challenges. */
     prev_challenges: Option<usize>,
 
-    /** Whatever is not public input. */
-    auxiliary_input_size: usize,
-
     /// Enables the double generic gate optimization.
     /// It can be useful to disable this feature for debugging.
     generic_gate_optimization: bool,
@@ -480,18 +477,11 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             rows: Vec::new(),
             next_row: 0,
             equivalence_classes: HashMap::new(),
-            // TODO: remove this field, it's unused
-            auxiliary_input_size: 0,
             generic_gate_optimization: false,
             pending_generic_gate: None,
             cached_constants: HashMap::new(),
             union_finds: disjoint_set::DisjointSet::new(),
         }
-    }
-
-    /** Returns the number of auxiliary inputs. */
-    pub fn get_auxiliary_input_size(&self) -> usize {
-        self.auxiliary_input_size
     }
 
     /// Returns the number of public inputs.
@@ -505,11 +495,6 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
 
     pub fn get_prev_challenges(&self) -> Option<usize> {
         self.prev_challenges
-    }
-
-    /** Non-public part of the witness. */
-    pub fn set_auxiliary_input_size(&mut self, x: usize) {
-        self.auxiliary_input_size = x;
     }
 
     /** Sets the number of public-input. It should only be called once. */
