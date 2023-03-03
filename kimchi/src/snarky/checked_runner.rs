@@ -52,7 +52,7 @@ where
 {
     /// The constraint system used to build the circuit.
     /// If not set, the constraint system is not built.
-    system: Option<SnarkyConstraintSystem<F>>,
+    pub system: Option<SnarkyConstraintSystem<F>>,
 
     /// The public input of the circuit used in witness generation.
     // TODO: can we merge public_input and private_input?
@@ -66,24 +66,24 @@ where
 
     /// If set, the witness generation will check if the constraints are satisfied.
     /// This is useful to simulate running the circuit and return an error if an assertion fails.
-    eval_constraints: bool,
+    pub eval_constraints: bool,
 
     /// The number of public inputs.
     num_public_inputs: usize,
 
     /// A counter used to track variables (this includes public inputs) as they're being created.
-    next_var: usize,
+    pub next_var: usize,
 
     /// Indication that we're running the witness generation.
     /// This does not necessarily mean that constraints are not created,
     /// as we can do both at the same time.
     // TODO: perhaps we should try to make the distinction between witness/constraint generation clearer
-    has_witness: bool,
+    pub has_witness: bool,
 
     /// Indication that we're running in prover mode.
     /// In this mode, we do not want to create constraints.
     // TODO: perhaps we should try to make the distinction between compile/runtime clearer
-    pub(crate) as_prover: bool,
+    pub as_prover: bool,
 }
 
 //
