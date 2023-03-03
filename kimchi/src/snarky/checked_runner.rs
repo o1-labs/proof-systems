@@ -142,18 +142,24 @@ where
     pub fn new<Curve: KimchiCurve<ScalarField = F>>(
         public_input_size: usize,
         public_output_size: usize,
+        with_system: bool,
     ) -> Self {
         // init
         let num_public_inputs = public_input_size + public_output_size;
 
         // create the CS
         let constants = Constants::new::<Curve>();
-        let mut system = SnarkyConstraintSystem::create(constants);
-        system.set_primary_input_size(num_public_inputs);
+        let system = if with_system {
+            let mut system = SnarkyConstraintSystem::create(constants);
+            system.set_primary_input_size(num_public_inputs);
+            Some(system)
+        } else {
+            None
+        };
 
         // create the runner
         let mut sys = Self {
-            system: Some(system),
+            system,
             public_input: Vec::with_capacity(num_public_inputs),
             public_output: Vec::with_capacity(public_output_size),
             private_input: vec![],
@@ -388,6 +394,7 @@ where
     }
 
     fn add_constraints_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
+        // TODO: we should have a mode "don't create constraints" instead of having an option here
         let cs = match &mut self.system {
             Some(cs) => cs,
             None => return, // TODO: why silent fail?
@@ -469,6 +476,7 @@ where
         if let Some(cs) = &mut self.system {
             cs.finalize_and_get_gates()
         } else {
+            // TODO: do we really want to panic here?
             panic!("woot");
         }
     }
@@ -485,6 +493,7 @@ where
         // TODO: asserting this is dumb.. what if there's no private input : D
         assert!(!self.private_input.is_empty());
 
+        // TODO: do we really want to panic here?
         let system = self.system.as_mut().unwrap();
 
         let get_one = |var_idx| {
@@ -507,6 +516,7 @@ where
     }
 
     pub(crate) fn poseidon_params(&self) -> mina_poseidon::poseidon::ArithmeticSpongeParams<F> {
+        // TODO: do we really want to panic here?
         self.system.as_ref().map(|sys| sys.sponge_params()).unwrap()
     }
 

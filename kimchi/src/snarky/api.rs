@@ -206,6 +206,7 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> CompiledCircuit<Circuit>
     let mut sys = RunState::new::<Circuit::Curve>(
         Circuit::PublicInput::SIZE_IN_FIELD_ELEMENTS,
         Circuit::PublicOutput::SIZE_IN_FIELD_ELEMENTS,
+        true,
     );
 
     // run circuit and get return var
