@@ -24,7 +24,7 @@ where
     public_input: Vec<F>,
 
     // TODO: we could also just store `usize` here
-    pub(crate) public_output: Vec<CVar<F>>,
+    pub(crate) public_output: Vec<FieldVar<F>>,
 
     /// The private input of the circuit used in witness generation. Still not sure what that is, or why we care about this.
     private_input: Vec<F>,
@@ -64,7 +64,7 @@ When the API calls the circuit written by the developer, it expects the public o
 The compilation or proving API that ends up calling that function, can thus obtain the variables of the public output.
 With that in hand, the API can continue to write the circuit to enforce an equality constraint between these variables being returned and the public output variable that it had previously stored in the state.
 
-Essentially, the kimchi backend will turn this into as many wiring as there are `CVar` in the public output.
+Essentially, the kimchi backend will turn this into as many wiring as there are `FieldVar` in the public output.
 
 During witness generation, we need a way to modify the witness once we know the values of the public output.
-As the public output `CVar`s were generated from the snarky wrapper (and not from the kimchi backend), the snarky wrapper should know their values after running the given circuit.
+As the public output `FieldVar`s were generated from the snarky wrapper (and not from the kimchi backend), the snarky wrapper should know their values after running the given circuit.

@@ -21,5 +21,5 @@ pub mod prelude {
     use super::*;
     pub use crate::loc;
     pub use checked_runner::RunState;
-    pub use cvar::CVar;
+    pub use cvar::FieldVar;
 }

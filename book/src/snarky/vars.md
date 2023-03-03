@@ -2,7 +2,7 @@
 
 In this section we will introduce two types of variables:
 
-* Circuit vars, or `CVar`s, which are low-level variables representing field elements.
+* Circuit vars, or `FieldVar`s, which are low-level variables representing field elements.
 * Snarky vars, which are high-level variables that user can use to create more meaningful programs.
 
 ## Circuit vars
@@ -11,7 +11,7 @@ In snarky, we first define circuit variables (TODO: rename Field variable?) whic
 These circuit variables, or cvars, can be represented differently in the system:
 
 ```rust
-pub enum CVar<F>
+pub enum FieldVar<F>
 where
     F: PrimeField,
 {
@@ -21,15 +21,15 @@ where
     /// A variable that can be refered to via a `usize`.
     Var(usize),
 
-    /// The addition of two other [CVar]s.
-    Add(Box<CVar<F>>, Box<CVar<F>>),
+    /// The addition of two other [FieldVar]s.
+    Add(Box<FieldVar<F>>, Box<FieldVar<F>>),
 
-    /// Scaling of a [CVar].
-    Scale(F, Box<CVar<F>>),
+    /// Scaling of a [FieldVar].
+    Scale(F, Box<FieldVar<F>>),
 }
 ```
 
-One can see a CVar as an AST, where two atoms exist: a `Var(usize)` which represents a private input, an a `Constant(F)` which represents a constant.
+One can see a FieldVar as an AST, where two atoms exist: a `Var(usize)` which represents a private input, an a `Constant(F)` which represents a constant.
 Anything else represents combinations of these two atoms.
 
 ### Constants
@@ -39,7 +39,7 @@ This is why we need to know if a cvar is a constant, so that we can avoid constr
 For example, the following code does not encode 2 or 1 in the circuit, but will encode 3:
 
 ```rust
-let x: CVar = state.exists(|_| 2) + state.exists(|_| 3);
+let x: FieldVar = state.exists(|_| 2) + state.exists(|_| 3);
 state.assert_eq(x, y); // 3 and y will be encoded in the circuit
 ```
 
@@ -47,14 +47,14 @@ whereas the following code will encode all variables:
 
 ```rust
 let x = y + y;
-let one: CVar = state.exists(|_| 1);
+let one: FieldVar = state.exists(|_| 1);
 assert_eq(x, one);
 ```
 
 ### Non-constants
 
-Right after being created, a `CVar` is not constrained yet, and needs to be constrained by the application.
-That is unless the application wants the `CVar` to be a constant that will not need to be constrained (see previous example) or because the application wants the `CVar` to be a random value (unlikely) (TODO: we should add a "rand" function for that).
+Right after being created, a `FieldVar` is not constrained yet, and needs to be constrained by the application.
+That is unless the application wants the `FieldVar` to be a constant that will not need to be constrained (see previous example) or because the application wants the `FieldVar` to be a random value (unlikely) (TODO: we should add a "rand" function for that).
 
 In any case, a circuit variable which is not a constant has a value that is not known yet at circuit-generation time.
 In some situations, we might not want to constrain the 
@@ -84,8 +84,8 @@ For this reason, there's a function `seal()` defined in pickles and snarkyjs. (T
 
 ## Snarky vars
 
-Handling `CVar`s can be cumbersome, as they can only represent a single field element.
-We might want to represent values that are either in a smaller range (e.g. [booleans](./booleans.md)) or that are made out of several `CVar`s.
+Handling `FieldVar`s can be cumbersome, as they can only represent a single field element.
+We might want to represent values that are either in a smaller range (e.g. [booleans](./booleans.md)) or that are made out of several `FieldVar`s.
 
 For this, snarky's API exposes the following trait, which allows users to define their own types:
 
@@ -102,9 +102,9 @@ where
 
     const SIZE_IN_FIELD_ELEMENTS: usize;
 
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary);
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary);
 
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, aux: Self::Auxiliary) -> Self;
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self;
 
     fn check(&self, cs: &mut RunState<F>);
 
@@ -131,5 +131,5 @@ This is because the relationship is currently only one-way: a `SnarkyType` knows
 (TODO: should we implement that though?)
 
 A `SnarkyType` always implements a `check()` function, which is called by snarky when `compute()` is called to create such a type.
-The `check()` function is responsible for creating the constraints that sanitize the newly-created `SnarkyType` (and its underlying `CVar`s).
-For example, creating a boolean would make sure that the underlying `CVar` is either 0 or 1.
+The `check()` function is responsible for creating the constraints that sanitize the newly-created `SnarkyType` (and its underlying `FieldVar`s).
+For example, creating a boolean would make sure that the underlying `FieldVar` is either 0 or 1.

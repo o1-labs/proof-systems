@@ -3,7 +3,7 @@ use crate::{
     snarky::{
         checked_runner::Constraint,
         constraint_system::KimchiConstraint,
-        prelude::{CVar, RunState},
+        prelude::{FieldVar, RunState},
     },
 };
 use ark_ff::PrimeField;
@@ -19,9 +19,9 @@ use super::constraint_system::PoseidonInput;
 pub fn poseidon<F: PrimeField>(
     loc: String,
     runner: &mut RunState<F>,
-    preimage: (CVar<F>, CVar<F>),
-) -> (CVar<F>, CVar<F>) {
-    let initial_state = [preimage.0, preimage.1, CVar::Constant(F::zero())];
+    preimage: (FieldVar<F>, FieldVar<F>),
+) -> (FieldVar<F>, FieldVar<F>) {
+    let initial_state = [preimage.0, preimage.1, FieldVar::Constant(F::zero())];
     let (constraint, hash) = {
         let params = runner.poseidon_params();
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
@@ -62,11 +62,11 @@ pub fn poseidon<F: PrimeField>(
 
 fn round<F: PrimeField>(
     loc: String,
-    elements: &[CVar<F>; SPONGE_WIDTH],
+    elements: &[FieldVar<F>; SPONGE_WIDTH],
     runner: &mut RunState<F>,
     round: usize,
     params: &ArithmeticSpongeParams<F>,
-) -> [CVar<F>; SPONGE_WIDTH] {
+) -> [FieldVar<F>; SPONGE_WIDTH] {
     runner.compute(loc, |env| {
         let state = elements.clone().map(|var| env.read_var(&var));
         full_round2::<F, PlonkSpongeConstantsKimchi>(params, state, round)

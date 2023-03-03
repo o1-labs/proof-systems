@@ -1,7 +1,7 @@
 use crate::{
     loc,
     snarky::{
-        checked_runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::CVar,
+        checked_runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::FieldVar,
         traits::SnarkyType,
     },
 };
@@ -20,7 +20,7 @@ where
 
 /// A boolean variable.
 #[derive(Debug, Clone)]
-pub struct Boolean<F: PrimeField>(CVar<F>);
+pub struct Boolean<F: PrimeField>(FieldVar<F>);
 
 impl<F> SnarkyType<F> for Boolean<F>
 where
@@ -32,11 +32,11 @@ where
 
     const SIZE_IN_FIELD_ELEMENTS: usize = 1;
 
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
         (vec![self.0.clone()], ())
     }
 
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {
         assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
         Self(cvars[0].clone())
     }
@@ -71,11 +71,11 @@ where
     F: PrimeField,
 {
     pub fn true_() -> Self {
-        Self(CVar::Constant(F::one()))
+        Self(FieldVar::Constant(F::one()))
     }
 
     pub fn false_() -> Self {
-        Self(CVar::Constant(F::zero()))
+        Self(FieldVar::Constant(F::zero()))
     }
 
     pub fn not(&self) -> Self {
@@ -100,10 +100,10 @@ where
             return xs[0].or(xs[1], cs); // TODO: is this better than below?
         }
 
-        let zero = CVar::Constant(F::zero());
+        let zero = FieldVar::Constant(F::zero());
 
         let xs: Vec<_> = xs.iter().map(|x| &x.0).collect();
-        let sum = CVar::sum(&xs);
+        let sum = FieldVar::sum(&xs);
         let all_zero = sum.equal(cs, &zero);
 
         all_zero.not()
@@ -118,16 +118,16 @@ where
             return xs[0].and(&xs[1], cs); // TODO: is this better than below?
         }
 
-        let expected = CVar::Constant(F::from(xs.len() as u64));
+        let expected = FieldVar::Constant(F::from(xs.len() as u64));
         let xs: Vec<_> = xs.iter().map(|x| &x.0).collect();
-        let sum = CVar::sum(&xs);
+        let sum = FieldVar::sum(&xs);
 
         sum.equal(cs, &expected)
     }
 
     pub fn to_constant(&self) -> Option<bool> {
         match self.0 {
-            CVar::Constant(x) => Some(x == F::one()),
+            FieldVar::Constant(x) => Some(x == F::one()),
             _ => None,
         }
     }

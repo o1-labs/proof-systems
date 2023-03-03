@@ -8,7 +8,7 @@ use crate::{
     snarky::{
         boolean::Boolean,
         constraint_system::{BasicSnarkyConstraint, KimchiConstraint, SnarkyConstraintSystem},
-        cvar::CVar,
+        cvar::FieldVar,
         traits::SnarkyType,
     },
 };
@@ -39,10 +39,10 @@ where
 #[derive(Debug)]
 pub enum Constraint<F: PrimeField> {
     /// Old R1CS-like constraints.
-    BasicSnarkyConstraint(BasicSnarkyConstraint<CVar<F>>),
+    BasicSnarkyConstraint(BasicSnarkyConstraint<FieldVar<F>>),
 
     /// Custom gates in kimchi.
-    KimchiConstraint(KimchiConstraint<CVar<F>, F>),
+    KimchiConstraint(KimchiConstraint<FieldVar<F>, F>),
 }
 
 /// The state used when compiling a circuit in snarky, or used in witness generation as well.
@@ -59,7 +59,7 @@ where
     public_input: Vec<F>,
 
     // TODO: we could also just store `usize` here
-    pub(crate) public_output: Vec<CVar<F>>,
+    pub(crate) public_output: Vec<FieldVar<F>>,
 
     /// The private input of the circuit used in witness generation. Still not sure what that is, or why we care about this.
     private_input: Vec<F>,
@@ -97,17 +97,17 @@ where
     F: PrimeField,
 {
     /// Allows the caller to obtain the value behind a circuit variable.
-    fn read_var(&self, var: &CVar<F>) -> F;
+    fn read_var(&self, var: &FieldVar<F>) -> F;
 }
 
 impl<F: PrimeField, G: WitnessGeneration<F>> WitnessGeneration<F> for &G {
-    fn read_var(&self, var: &CVar<F>) -> F {
+    fn read_var(&self, var: &FieldVar<F>) -> F {
         G::read_var(*self, var)
     }
 }
 
 impl<F: PrimeField> WitnessGeneration<F> for &dyn WitnessGeneration<F> {
-    fn read_var(&self, var: &CVar<F>) -> F {
+    fn read_var(&self, var: &FieldVar<F>) -> F {
         (**self).read_var(var)
     }
 }
@@ -116,7 +116,7 @@ impl<F> WitnessGeneration<F> for RunState<F>
 where
     F: PrimeField,
 {
-    fn read_var(&self, var: &CVar<F>) -> F {
+    fn read_var(&self, var: &FieldVar<F>) -> F {
         let get_one = |var_idx| {
             if var_idx < self.num_public_inputs {
                 self.public_input[var_idx]
@@ -187,32 +187,32 @@ where
 
         let mut cvars = Vec::with_capacity(T::SIZE_IN_FIELD_ELEMENTS);
         for i in 0..T::SIZE_IN_FIELD_ELEMENTS {
-            cvars.push(CVar::Var(i));
+            cvars.push(FieldVar::Var(i));
         }
         let aux = T::constraint_system_auxiliary();
         T::from_cvars_unsafe(cvars, aux)
     }
 
     /// Allocates a new var representing a private input.
-    fn alloc_var(&mut self) -> CVar<F> {
+    pub fn alloc_var(&mut self) -> FieldVar<F> {
         let v = self.next_var;
         self.next_var += 1;
-        CVar::Var(v)
+        FieldVar::Var(v)
     }
 
     /// Stores a field element as an unconstrained private input.
-    fn store_field_elt(&mut self, x: F) -> CVar<F> {
+    pub fn store_field_elt(&mut self, x: F) -> FieldVar<F> {
         let v = self.next_var;
         self.next_var += 1;
         self.private_input.push(x);
-        CVar::Var(v)
+        FieldVar::Var(v)
     }
 
-    pub(crate) fn public_output_values(&self, cvars: Vec<CVar<F>>) -> Vec<F> {
+    pub(crate) fn public_output_values(&self, cvars: Vec<FieldVar<F>>) -> Vec<F> {
         let mut values = vec![];
         for cvar in cvars {
             match cvar {
-                CVar::Var(idx) => {
+                FieldVar::Var(idx) => {
                     dbg!(&self.private_input, self.num_public_inputs);
                     let val = self.private_input[idx - self.num_public_inputs];
                     values.push(val);
@@ -283,7 +283,7 @@ where
             // convert each field element into a circuit var
             for field in fields {
                 let v = if self.as_prover {
-                    CVar::Constant(field)
+                    FieldVar::Constant(field)
                 } else {
                     self.store_field_elt(field)
                 };
@@ -329,7 +329,7 @@ where
     pub fn assert_(
         &mut self,
         annotation: Option<&'static str>,
-        basic_constraints: Vec<BasicSnarkyConstraint<CVar<F>>>,
+        basic_constraints: Vec<BasicSnarkyConstraint<FieldVar<F>>>,
     ) {
         let constraints: Vec<_> = basic_constraints
             .into_iter()
@@ -347,9 +347,9 @@ where
     pub fn assert_r1cs(
         &mut self,
         annotation: Option<&'static str>,
-        a: CVar<F>,
-        b: CVar<F>,
-        c: CVar<F>,
+        a: FieldVar<F>,
+        b: FieldVar<F>,
+        c: FieldVar<F>,
     ) {
         let constraint = BasicSnarkyConstraint::R1CS(a, b, c);
         self.assert_(annotation, vec![constraint]);
@@ -357,7 +357,7 @@ where
 
     // TODO: get rid of this
     /// Creates a constraint for `assert_eq!(x, y)`;
-    pub fn assert_eq(&mut self, annotation: Option<&'static str>, x: CVar<F>, y: CVar<F>) {
+    pub fn assert_eq(&mut self, annotation: Option<&'static str>, x: FieldVar<F>, y: FieldVar<F>) {
         let constraint = BasicSnarkyConstraint::Equal(x, y);
         self.assert_(annotation, vec![constraint]);
     }
@@ -409,12 +409,12 @@ where
 
     /// Adds a constraint that returns `then_` if `b` is `true`, `else_` otherwise.
     /// Equivalent to `if b { then_ } else { else_ }`.
-    pub fn if_(&mut self, b: Boolean<F>, then_: CVar<F>, else_: CVar<F>) -> CVar<F> {
+    pub fn if_(&mut self, b: Boolean<F>, then_: FieldVar<F>, else_: FieldVar<F>) -> FieldVar<F> {
         // r = e + b (t - e)
         // r - e = b (t - e)
         let cvars = b.to_cvars().0;
         let b = &cvars[0];
-        if let CVar::Constant(b) = b {
+        if let FieldVar::Constant(b) = b {
             if b.is_one() {
                 return then_;
             } else {
@@ -423,16 +423,16 @@ where
         }
 
         match (&then_, &else_) {
-            (CVar::Constant(t), CVar::Constant(e)) => {
+            (FieldVar::Constant(t), FieldVar::Constant(e)) => {
                 let t_times_b = b.scale(*t);
-                let one_minus_b = CVar::Constant(F::one()) - b;
+                let one_minus_b = FieldVar::Constant(F::one()) - b;
                 t_times_b + &one_minus_b.scale(*e)
             }
             _ => {
                 let b_clone = b.clone();
                 let then_clone = then_.clone();
                 let else_clone = else_.clone();
-                let res: CVar<F> = self.compute(loc!(), move |env| {
+                let res: FieldVar<F> = self.compute(loc!(), move |env| {
                     let b = env.read_var(&b_clone);
                     let res_var = if b == F::one() {
                         &then_clone
@@ -510,7 +510,11 @@ where
         self.system.as_ref().map(|sys| sys.sponge_params()).unwrap()
     }
 
-    pub fn poseidon(&mut self, loc: String, preimage: (CVar<F>, CVar<F>)) -> (CVar<F>, CVar<F>) {
+    pub fn poseidon(
+        &mut self,
+        loc: String,
+        preimage: (FieldVar<F>, FieldVar<F>),
+    ) -> (FieldVar<F>, FieldVar<F>) {
         super::poseidon::poseidon(loc, self, preimage)
     }
 }

@@ -3,7 +3,7 @@
 Booleans are a good example of a [snarky variable](./vars.md#snarky-vars).
 
 ```rust
-pub struct Boolean<F: PrimeField>(CVar<F>);
+pub struct Boolean<F: PrimeField>(FieldVar<F>);
 
 impl<F> SnarkyType<F> for Boolean<F>
 where
@@ -15,11 +15,11 @@ where
 
     const SIZE_IN_FIELD_ELEMENTS: usize = 1;
 
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
         (vec![self.0.clone()], ())
     }
 
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {
         assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
         Self(cvars[0].clone())
     }
@@ -53,7 +53,7 @@ where
 
 ## Check
 
-The `check()` function is simply constraining the `CVar` $x$ to be either $0$ or $1$ using the following constraint:
+The `check()` function is simply constraining the `FieldVar` $x$ to be either $0$ or $1$ using the following constraint:
 
 $$x ( x - 1) = 0$$
 

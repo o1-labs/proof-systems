@@ -9,7 +9,7 @@ use crate::{
         },
         wires::{Wire, COLUMNS, PERMUTS},
     },
-    snarky::{checked_runner::WitnessGeneration, constants::Constants, cvar::CVar},
+    snarky::{checked_runner::WitnessGeneration, constants::Constants, cvar::FieldVar},
 };
 use ark_ff::PrimeField;
 use itertools::Itertools;
@@ -1531,7 +1531,7 @@ enum ConstantOrVar {
     Var(V),
 }
 
-impl<F> BasicSnarkyConstraint<CVar<F>>
+impl<F> BasicSnarkyConstraint<FieldVar<F>>
 where
     F: PrimeField,
 {
@@ -1552,7 +1552,7 @@ where
     }
 }
 
-impl<F> KimchiConstraint<CVar<F>, F>
+impl<F> KimchiConstraint<FieldVar<F>, F>
 where
     F: PrimeField,
 {
@@ -1594,10 +1594,10 @@ pub mod caml {
 
     pub fn convert_constraint<F, CamlF, CamlFVar>(
         constraint: &KimchiConstraint<CamlFVar, CamlF>,
-    ) -> KimchiConstraint<CVar<F>, F>
+    ) -> KimchiConstraint<FieldVar<F>, F>
     where
         for<'a> F: PrimeField + From<&'a CamlF>,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         use KimchiConstraint::*;
         match constraint {
@@ -1617,10 +1617,12 @@ pub mod caml {
         }
     }
 
-    pub fn basic_conv<F, CamlF, CamlFVar>(x: &BasicInput<CamlFVar, CamlF>) -> BasicInput<CVar<F>, F>
+    pub fn basic_conv<F, CamlF, CamlFVar>(
+        x: &BasicInput<CamlFVar, CamlF>,
+    ) -> BasicInput<FieldVar<F>, F>
     where
         for<'a> F: PrimeField + From<&'a CamlF>,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         let BasicInput {
             l: (l0, l1),
@@ -1641,10 +1643,10 @@ pub mod caml {
 
     pub fn ec_add_complete_conv<F, CamlFVar>(
         x: &EcAddCompleteInput<CamlFVar>,
-    ) -> EcAddCompleteInput<CVar<F>>
+    ) -> EcAddCompleteInput<FieldVar<F>>
     where
         F: PrimeField,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         let EcAddCompleteInput {
             p1: (p1_x, p1_y),
@@ -1669,10 +1671,10 @@ pub mod caml {
         }
     }
 
-    pub fn ec_scale_round<F, CamlFVar>(x: &ScaleRound<CamlFVar>) -> ScaleRound<CVar<F>>
+    pub fn ec_scale_round<F, CamlFVar>(x: &ScaleRound<CamlFVar>) -> ScaleRound<FieldVar<F>>
     where
         F: PrimeField,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         let ScaleRound {
             accs,
@@ -1695,10 +1697,12 @@ pub mod caml {
         }
     }
 
-    pub fn ec_endoscale_round<F, CamlFVar>(x: &EndoscaleRound<CamlFVar>) -> EndoscaleRound<CVar<F>>
+    pub fn ec_endoscale_round<F, CamlFVar>(
+        x: &EndoscaleRound<CamlFVar>,
+    ) -> EndoscaleRound<FieldVar<F>>
     where
         F: PrimeField,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         let EndoscaleRound {
             xt,
@@ -1735,10 +1739,10 @@ pub mod caml {
 
     pub fn ec_endoscale_conv<F, CamlFVar>(
         x: &EcEndoscaleInput<CamlFVar>,
-    ) -> EcEndoscaleInput<CVar<F>>
+    ) -> EcEndoscaleInput<FieldVar<F>>
     where
         F: PrimeField,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         let EcEndoscaleInput {
             state,
@@ -1757,10 +1761,10 @@ pub mod caml {
 
     pub fn ec_endoscale_scalar_conv<F, CamlFVar>(
         x: &EndoscaleScalarRound<CamlFVar>,
-    ) -> EndoscaleScalarRound<CVar<F>>
+    ) -> EndoscaleScalarRound<FieldVar<F>>
     where
         F: PrimeField,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         let EndoscaleScalarRound {
             n0,
@@ -1799,10 +1803,10 @@ pub mod caml {
 
     pub fn convert_basic_constraint<F, CamlFVar>(
         constraint: &BasicSnarkyConstraint<CamlFVar>,
-    ) -> BasicSnarkyConstraint<CVar<F>>
+    ) -> BasicSnarkyConstraint<FieldVar<F>>
     where
         F: PrimeField,
-        for<'a> CVar<F>: From<&'a CamlFVar>,
+        for<'a> FieldVar<F>: From<&'a CamlFVar>,
     {
         use BasicSnarkyConstraint::*;
         match constraint {
@@ -1831,9 +1835,9 @@ mod tests {
     fn test_permutation_equal() {
         let mut state = setup(0);
 
-        let x = CVar::Var(0);
-        let y = CVar::Var(1);
-        let z = CVar::Var(2);
+        let x = FieldVar::Var(0);
+        let y = FieldVar::Var(1);
+        let z = FieldVar::Var(2);
 
         // x * y = z
         state.add_basic_snarky_constraint(BasicSnarkyConstraint::R1CS(x.clone(), y.clone(), z));
@@ -1855,10 +1859,10 @@ mod tests {
     fn test_permutation_public() {
         let mut state = setup(1);
 
-        let public = CVar::Var(0);
+        let public = FieldVar::Var(0);
 
-        let x = CVar::Var(1);
-        let y = CVar::Var(2);
+        let x = FieldVar::Var(1);
+        let y = FieldVar::Var(2);
 
         // x * y = z
         state.add_basic_snarky_constraint(BasicSnarkyConstraint::R1CS(
