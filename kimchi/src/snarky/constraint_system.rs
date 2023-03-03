@@ -15,6 +15,8 @@ use ark_ff::PrimeField;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 
+use super::union_find::DisjointSet;
+
 /** A row indexing in a constraint system.
     Either a public input row, or a non-public input row that starts at index 0.
 */
@@ -317,7 +319,7 @@ where
     a single equivalence class, so that the permutation argument enforces these desired equalities
     as well.
     */
-    union_finds: disjoint_set::DisjointSet<V>,
+    union_finds: DisjointSet<V>,
 }
 
 impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
@@ -480,7 +482,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             generic_gate_optimization: false,
             pending_generic_gate: None,
             cached_constants: HashMap::new(),
-            union_finds: disjoint_set::DisjointSet::new(),
+            union_finds: DisjointSet::new(),
         }
     }
 

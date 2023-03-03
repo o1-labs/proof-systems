@@ -8,6 +8,7 @@ pub mod boolean;
 pub mod checked_runner;
 pub mod constants;
 pub mod constraint_system;
+pub mod union_find;
 pub mod cvar;
 pub mod errors;
 pub(crate) mod poseidon;

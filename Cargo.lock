@@ -837,12 +837,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "disjoint-set"
-version = "0.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d102f1a462fdcdddce88d6d46c06c074a2d2749b262230333726b06c52bb7585"
-
-[[package]]
 name = "ducc"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1517,7 +1511,6 @@ dependencies = [
  "book",
  "colored",
  "criterion",
- "disjoint-set",
  "groupmap",
  "hex",
  "iai",
