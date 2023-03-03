@@ -55,7 +55,7 @@ impl Position<usize> {
 
 /** A gate/row/constraint consists of a type (kind), a row, the other cells its columns/cells are
 connected to (`wired_to`), and the selector polynomial associated with the gate. */
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 struct GateSpec<Row, Field> {
     kind: GateType,
     wired_to: Vec<Position<Row>>,
@@ -256,7 +256,7 @@ enum V {
 /** Keeps track of a circuit (which is a list of gates)
   while it is being written.
 */
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 enum Circuit<F>
 where
     F: PrimeField,
@@ -270,6 +270,7 @@ where
 }
 
 /** The constraint system. */
+#[derive(Debug, Clone)]
 pub struct SnarkyConstraintSystem<Field>
 where
     Field: PrimeField,
