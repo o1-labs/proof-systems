@@ -494,6 +494,11 @@ where
         }
     }
 
+    #[cfg(feature = "ocaml_types")]
+    pub fn get_private_inputs(&self) -> Vec<F> {
+        self.private_input.clone()
+    }
+
     pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
         assert_eq!(self.num_public_inputs, public_input.len());
         assert_eq!(self.next_var, self.num_public_inputs);
