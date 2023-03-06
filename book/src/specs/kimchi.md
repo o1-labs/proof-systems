@@ -1750,6 +1750,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
+    /// the number of randomized rows to achieve zero knowledge
+    pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
     pub srs: OnceCell<Arc<SRS<G>>>,

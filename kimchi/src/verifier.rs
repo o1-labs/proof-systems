@@ -122,8 +122,7 @@ where
 
         let chunk_size = index.domain.size() / index.max_poly_size;
 
-        // TODO
-        let zk_rows = 3;
+        let zk_rows = index.zk_rows;
 
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
@@ -567,8 +566,7 @@ where
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
-    // TODO
-    let zk_rows = 3;
+    let zk_rows = verifier_index.zk_rows;
 
     if proof.prev_challenges.len() != verifier_index.prev_challenges {
         return Err(VerifyError::IncorrectPrevChallengesLength(
