@@ -388,7 +388,8 @@ where
             return;
         }
 
-        if self.eval_constraints {
+        // We can't evaluate the constraints if we are not computing over a value.
+        if self.eval_constraints && self.has_witness {
             for constraint in &constraints {
                 // TODO: return an error here instead of panicking
                 constraint.check_constraint(self);
