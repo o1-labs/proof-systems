@@ -6,7 +6,7 @@ use crate::{
     circuits::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
-        polynomials::permutation::{vanishes_on_last_n_rows, zk_w3},
+        polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -294,7 +294,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             },
             w: {
                 let cell = OnceCell::new();
-                cell.set(zk_w3(self.cs.domain.d1)).unwrap();
+                cell.set(zk_w(self.cs.domain.d1, self.cs.zk_rows)).unwrap();
                 cell
             },
             endo: self.cs.endo,
@@ -325,7 +325,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
     /// Gets w from [`VerifierIndex`] lazily
     pub fn w(&self) -> &G::ScalarField {
-        self.w.get_or_init(|| zk_w3(self.domain))
+        self.w.get_or_init(|| zk_w(self.domain, self.zk_rows))
     }
 
     /// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS and an optional offset in the file.

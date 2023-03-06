@@ -7,7 +7,7 @@ use crate::{
         gate::{CircuitGate, GateType},
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
-        polynomials::permutation::{Shifts, ZK_ROWS},
+        polynomials::permutation::Shifts,
         wires::*,
     },
     curve::KimchiCurve,
@@ -683,7 +683,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             num_lookups
         };
 
-        let zk_rows = ZK_ROWS;
+        let zk_rows = 3;
 
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
@@ -734,9 +734,14 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //
         // Lookup
         // ------
-        let lookup_constraint_system =
-            LookupConstraintSystem::create(&gates, lookup_tables, runtime_tables, &domain)
-                .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
+        let lookup_constraint_system = LookupConstraintSystem::create(
+            &gates,
+            lookup_tables,
+            runtime_tables,
+            &domain,
+            zk_rows as usize,
+        )
+        .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
 
         let sid = shifts.map[0].clone();
 

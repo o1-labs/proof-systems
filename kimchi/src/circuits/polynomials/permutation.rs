@@ -63,7 +63,6 @@ use std::array;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
-pub const ZK_ROWS: u64 = 3;
 
 /// Evaluates the polynomial
 /// (x - w^{n - i}) * (x - w^{n - i - 1}) * ... * (x - w^{n - 1})
@@ -98,8 +97,8 @@ pub fn vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64) -> DensePolyno
 }
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
-pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow([domain.size - (ZK_ROWS)])
+pub fn zk_w<F: FftField>(domain: D<F>, zk_rows: u64) -> F {
+    domain.group_gen.pow([domain.size - zk_rows])
 }
 
 /// Shifts represent the shifts required in the permutation argument of PLONK.

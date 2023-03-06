@@ -2841,11 +2841,8 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            constraints::ConstraintSystem,
-            expr::constraints::ExprOps,
-            gate::CircuitGate,
-            polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
-            wires::Wire,
+            constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
+            polynomials::generic::GenericGateSpec, wires::Wire,
         },
         curve::KimchiCurve,
         prover_index::ProverIndex,
@@ -2938,7 +2935,8 @@ pub mod test {
 
     #[test]
     fn test_unnormalized_lagrange_basis() {
-        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + ZK_ROWS as usize)
+        let zk_rows = 3;
+        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + zk_rows)
             .expect("failed to create evaluation domain");
         let rng = &mut StdRng::from_seed([17u8; 32]);
 
