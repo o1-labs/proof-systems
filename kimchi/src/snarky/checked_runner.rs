@@ -494,6 +494,7 @@ where
     }
 
     pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
+        assert_eq!(self.num_public_inputs, public_input.len());
         assert_eq!(self.next_var, self.num_public_inputs);
 
         self.has_witness = true;
