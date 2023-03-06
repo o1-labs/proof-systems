@@ -105,29 +105,14 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
 /// Evaluates the polynomial
 /// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3)
+    eval_vanishes_on_last_n_rows(domain, ZK_ROWS, x)
 }
 
 /// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
 /// Currently, we use k = 3 for 2 blinding factors,
 /// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
 pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-
-    // (x-w3)(x-w2)(x-w1) =
-    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-    let w1w2 = w1 * w2;
-    DensePolynomial::from_coefficients_slice(&[
-        -w1w2 * w3,                   // 1
-        w1w2 + (w1 * w3) + (w3 * w2), // x
-        -w1 - w2 - w3,                // x^2
-        F::one(),                     // x^3
-    ])
+    vanishes_on_last_n_rows(domain, ZK_ROWS)
 }
 
 /// Shifts represent the shifts required in the permutation argument of PLONK.
