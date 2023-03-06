@@ -125,6 +125,7 @@ where
             }
         };
 
+        // TODO: same here, can we avoid passing a closure?
         var.eval(&get_one)
     }
 }
@@ -183,6 +184,17 @@ where
 
         //
         sys
+    }
+
+    #[cfg(feature = "ocaml_types")]
+    /// Used by the OCaml side to read variables directly by their indexes.
+    /// Can panic.
+    pub fn read_var_idx(&self, idx: usize) -> F {
+        if idx < self.num_public_inputs {
+            self.public_input[idx]
+        } else {
+            self.private_input[idx - self.num_public_inputs]
+        }
     }
 
     pub fn public_input<T: SnarkyType<F>>(&self) -> T {
@@ -505,6 +517,7 @@ where
         };
 
         // compute witness
+        // TODO: can we avoid passing a closure here? a reference to a Inputs struct would be better perhaps.
         let witness = system.compute_witness(get_one);
 
         // clear state (TODO: find better solution)
