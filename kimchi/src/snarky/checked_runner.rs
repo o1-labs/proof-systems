@@ -494,9 +494,10 @@ where
     }
 
     pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
+        assert_eq!(self.next_var, self.num_public_inputs);
+
         self.has_witness = true;
         self.public_input = public_input;
-        self.next_var = self.num_public_inputs;
     }
 
     /// Returns the public output generated after running the circuit,
