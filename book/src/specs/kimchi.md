@@ -1601,7 +1601,7 @@ The compilation steps to create the common index are as follow:
 1. If the circuit is less than 2 gates, abort.
 2. Create a domain for the circuit. That is,
    compute the smallest subgroup of the field that
-   has order greater or equal to `n + ZK_ROWS` elements.
+   has order greater or equal to `n + zk_rows` elements.
 3. Pad the circuit: add zero gates to reach the domain size.
 4. sample the `PERMUTS` shifts.
 

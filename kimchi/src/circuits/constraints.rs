@@ -148,6 +148,8 @@ pub struct ConstraintSystem<F: PrimeField> {
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
 
+    pub zk_rows: u64,
+
     /// flags for optional features
     pub feature_flags: FeatureFlags,
 
@@ -680,14 +682,16 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             num_lookups
         };
 
+        let zk_rows = ZK_ROWS;
+
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
-        //~    has order greater or equal to `n + ZK_ROWS` elements.
+        //~    has order greater or equal to `n + zk_rows` elements.
         let domain_size_lower_bound =
-            std::cmp::max(gates.len(), num_lookups + 1) + ZK_ROWS as usize;
+            std::cmp::max(gates.len(), num_lookups + 1) + zk_rows as usize;
         let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
 
-        assert!(domain.d1.size > ZK_ROWS);
+        assert!(domain.d1.size > zk_rows);
 
         //~ 3. Pad the circuit: add zero gates to reach the domain size.
         let d1_size = domain.d1.size();
@@ -748,6 +752,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             gates,
             shift: shifts.shifts,
             endo,
+            zk_rows,
             //fr_sponge_params: self.sponge_params,
             lookup_constraint_system,
             feature_flags,
