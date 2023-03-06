@@ -254,8 +254,9 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 
     pub fn precomputations(&self) -> &Arc<DomainConstantEvaluations<F>> {
-        self.precomputations
-            .get_or_init(|| Arc::new(DomainConstantEvaluations::create(self.domain).unwrap()))
+        self.precomputations.get_or_init(|| {
+            Arc::new(DomainConstantEvaluations::create(self.domain, self.zk_rows).unwrap())
+        })
     }
 
     pub fn set_precomputations(&self, precomputations: Arc<DomainConstantEvaluations<F>>) {

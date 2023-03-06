@@ -1,8 +1,6 @@
 //! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
 
 use crate::circuits::domains::EvaluationDomains;
-use crate::circuits::polynomials::permutation::zk_polynomial;
-use crate::circuits::polynomials::permutation::ZK_ROWS;
 use ark_ff::FftField;
 use ark_poly::EvaluationDomain;
 use ark_poly::UVPolynomial;
@@ -26,9 +24,9 @@ pub struct DomainConstantEvaluations<F: FftField> {
     /// 0-th Lagrange evaluated over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub constant_1_d8: E<F, D<F>>,
-    /// the polynomial that vanishes on the last four rows
+    /// the polynomial that vanishes on the zero-knowledge rows and the row before
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub vanishes_on_last_4_rows: E<F, D<F>>,
+    pub vanishes_on_zero_knowledge_and_previous_rows: E<F, D<F>>,
     /// zero-knowledge polynomial over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub zkpl: E<F, D<F>>,
@@ -37,7 +35,7 @@ pub struct DomainConstantEvaluations<F: FftField> {
 }
 
 impl<F: FftField> DomainConstantEvaluations<F> {
-    pub fn create(domain: EvaluationDomains<F>) -> Option<Self> {
+    pub fn create(domain: EvaluationDomains<F>, zk_rows: u64) -> Option<Self> {
         let poly_x_d1 = DP::from_coefficients_slice(&[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
         let constant_1_d4 =
@@ -45,20 +43,20 @@ impl<F: FftField> DomainConstantEvaluations<F> {
         let constant_1_d8 =
             E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size()], domain.d8);
 
-        let vanishes_on_last_4_rows =
-            vanishes_on_last_n_rows(domain.d1, 4).evaluate_over_domain(domain.d8);
+        let vanishes_on_zero_knowledge_and_previous_rows =
+            vanishes_on_last_n_rows(domain.d1, zk_rows + 1).evaluate_over_domain(domain.d8);
 
-        assert!(domain.d1.size > ZK_ROWS);
+        assert!(domain.d1.size > zk_rows);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-        let zkpm = zk_polynomial(domain.d1);
+        let zkpm = vanishes_on_last_n_rows(domain.d1, zk_rows);
         let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
 
         Some(DomainConstantEvaluations {
             poly_x_d1,
             constant_1_d4,
             constant_1_d8,
-            vanishes_on_last_4_rows,
+            vanishes_on_zero_knowledge_and_previous_rows,
             zkpl,
             zkpm,
         })

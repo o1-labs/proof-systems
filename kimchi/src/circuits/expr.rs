@@ -96,8 +96,8 @@ pub struct Environment<'a, F: FftField> {
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
     pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The polynomial which vanishes on the last 4 elements of the domain.
-    pub vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
+    /// The polynomial that vanishes on the zero-knowledge rows and the row before.
+    pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
     pub z: &'a Evaluations<F, D<F>>,
     /// The index selector polynomials.
@@ -1733,7 +1733,7 @@ impl<F: FftField> Expr<F> {
             Expr::VanishesOnLast4Rows => EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: 0,
-                evals: env.vanishes_on_last_4_rows,
+                evals: env.vanishes_on_zero_knowledge_and_previous_rows,
             },
             Expr::Constant(x) => EvalResult::Constant(*x),
             Expr::UnnormalizedLagrangeBasis(i) => EvalResult::Evals {
@@ -2429,7 +2429,7 @@ where
             Constant(x) => x.ocaml(),
             Cell(v) => format!("cell({})", v.ocaml()),
             UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            VanishesOnLast4Rows => "vanishes_on_zero_knowledge_and_previous_rows".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
@@ -2501,7 +2501,7 @@ where
             Constant(x) => x.text(),
             Cell(v) => v.text(),
             UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            VanishesOnLast4Rows => "vanishes_on_zero_knowledge_and_previous_rows".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
@@ -2900,7 +2900,10 @@ pub mod test {
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &index.column_evaluations.coefficients8,
-            vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
+            vanishes_on_zero_knowledge_and_previous_rows: &index
+                .cs
+                .precomputations()
+                .vanishes_on_zero_knowledge_and_previous_rows,
             z: &domain_evals.d8.this.z,
             l0_1: l0_1(index.cs.domain.d1),
             domain: index.cs.domain,
