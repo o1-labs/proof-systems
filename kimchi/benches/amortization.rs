@@ -1,6 +1,4 @@
-use criterion::{
-    black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion, SamplingMode,
-};
+use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use kimchi::bench::BenchmarkCtx;
 
 const PROOFS: usize = 10;
