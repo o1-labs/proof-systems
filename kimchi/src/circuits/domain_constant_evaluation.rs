@@ -10,7 +10,7 @@ use ark_poly::{univariate::DensePolynomial as DP, Evaluations as E, Radix2Evalua
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::polynomials::permutation::vanishes_on_last_4_rows;
+use super::polynomials::permutation::vanishes_on_last_n_rows;
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -46,7 +46,7 @@ impl<F: FftField> DomainConstantEvaluations<F> {
             E::<F, D<F>>::from_vec_and_domain(vec![F::one(); domain.d8.size()], domain.d8);
 
         let vanishes_on_last_4_rows =
-            vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
+            vanishes_on_last_n_rows(domain.d1, 4).evaluate_over_domain(domain.d8);
 
         assert!(domain.d1.size > ZK_ROWS);
 

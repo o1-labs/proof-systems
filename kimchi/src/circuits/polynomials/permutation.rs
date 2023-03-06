@@ -64,26 +64,37 @@ use std::array;
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
 pub const ZK_ROWS: u64 = 3;
+
 /// Evaluates the polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3) * (x - w4)
+/// (x - w^{n - i}) * (x - w^{n - i - 1}) * ... * (x - w^{n - 1})
+pub fn eval_vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64, x: F) -> F {
+    if i == 0 {
+        return F::one();
+    }
+    let mut term = domain.group_gen.pow([domain.size - i]);
+    let mut acc = x - term;
+    for _ in 0..i - 1 {
+        term *= domain.group_gen;
+        acc *= x - term;
+    }
+    acc
 }
 
 /// The polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
+/// (x - w^{n - i}) * (x - w^{n - i - 1}) * ... * (x - w^{n - 1})
+pub fn vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64) -> DensePolynomial<F> {
+    let constant = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
+    if i == 0 {
+        return constant(F::one());
+    }
     let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
-    let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
+    let mut term = domain.group_gen.pow([domain.size - i]);
+    let mut acc = &x - &constant(term);
+    for _ in 0..i - 1 {
+        term *= domain.group_gen;
+        acc = &acc * &(&x - &constant(term));
+    }
+    acc
 }
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial

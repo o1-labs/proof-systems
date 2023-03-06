@@ -7,7 +7,7 @@ use crate::{
             index::LookupSelectors,
             lookups::{LookupPattern, LookupPatterns},
         },
-        polynomials::permutation::eval_vanishes_on_last_4_rows,
+        polynomials::permutation::eval_vanishes_on_last_n_rows,
         wires::COLUMNS,
     },
     proof::{PointEvaluations, ProofEvaluations},
@@ -718,7 +718,7 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
-                VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
+                VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_n_rows(d, 4, pt)),
                 UnnormalizedLagrangeBasis(i) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
                 }
@@ -1538,7 +1538,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x - y)
             }
-            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
+            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_n_rows(d, 4, pt)),
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
@@ -1597,7 +1597,7 @@ impl<F: FftField> Expr<F> {
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x - y)
             }
-            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
+            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_n_rows(d, 4, pt)),
             UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, evals),
