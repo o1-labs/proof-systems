@@ -102,19 +102,6 @@ pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
     domain.group_gen.pow([domain.size - (ZK_ROWS)])
 }
 
-/// Evaluates the polynomial
-/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
-    eval_vanishes_on_last_n_rows(domain, ZK_ROWS, x)
-}
-
-/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
-/// Currently, we use k = 3 for 2 blinding factors,
-/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
-pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
-    vanishes_on_last_n_rows(domain, ZK_ROWS)
-}
-
 /// Shifts represent the shifts required in the permutation argument of PLONK.
 /// It also caches the shifted powers of omega for optimization purposes.
 pub struct Shifts<F> {

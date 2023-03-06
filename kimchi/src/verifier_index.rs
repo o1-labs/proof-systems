@@ -6,7 +6,7 @@ use crate::{
     circuits::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
-        polynomials::permutation::{zk_polynomial, zk_w3},
+        polynomials::permutation::{vanishes_on_last_n_rows, zk_w3},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -319,7 +319,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
     /// Gets zkpm from [`VerifierIndex`] lazily
     pub fn zkpm(&self) -> &DensePolynomial<G::ScalarField> {
-        self.zkpm.get_or_init(|| zk_polynomial(self.domain))
+        self.zkpm
+            .get_or_init(|| vanishes_on_last_n_rows(self.domain, self.zk_rows))
     }
 
     /// Gets w from [`VerifierIndex`] lazily
