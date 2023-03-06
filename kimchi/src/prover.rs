@@ -663,6 +663,7 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
+                    zk_rows: index.cs.zk_rows,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,

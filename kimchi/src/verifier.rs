@@ -122,6 +122,9 @@ where
 
         let chunk_size = index.domain.size() / index.max_poly_size;
 
+        // TODO
+        let zk_rows = 3;
+
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
@@ -375,6 +378,7 @@ where
                 joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
+                zk_rows,
             };
 
             ft_eval0 -= PolishToken::evaluate(
@@ -563,6 +567,9 @@ where
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
+    // TODO
+    let zk_rows = 3;
+
     if proof.prev_challenges.len() != verifier_index.prev_challenges {
         return Err(VerifyError::IncorrectPrevChallengesLength(
             verifier_index.prev_challenges,
@@ -665,6 +672,7 @@ where
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: verifier_index.endo,
                 mds: &G::sponge_params().mds,
+                zk_rows,
             };
 
             for (col, tokens) in &verifier_index.linearization.index_terms {

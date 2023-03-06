@@ -602,9 +602,9 @@ pub fn constraints<F: FftField>(
     let final_lookup_row: i32 = -(ZK_ROWS as i32) - 1;
 
     let mut res = vec![
-        // the accumulator except for the last 4 rows
+        // the accumulator except for the last zk_rows+1 rows
         // (contains the zk-rows and the last value of the accumulator)
-        E::VanishesOnLast4Rows * aggreg_equation,
+        E::VanishesOnZeroKnowledgeAndPreviousRows * aggreg_equation,
         // the initial value of the accumulator
         E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the final value of the accumulator is 1
