@@ -476,13 +476,21 @@ where
                 joint_combiner,
                 table_id_combiner,
                 &lcs.configuration.lookup_info,
+                index.cs.zk_rows as usize,
             )?;
 
             //~~ * Randomize the last `EVALS` rows in each of the sorted polynomials
             //~~   in order to add zero-knowledge to the protocol.
             let sorted: Vec<_> = sorted
                 .into_iter()
-                .map(|chunk| lookup::constraints::zk_patch(chunk, index.cs.domain.d1, rng))
+                .map(|chunk| {
+                    lookup::constraints::zk_patch(
+                        chunk,
+                        index.cs.domain.d1,
+                        index.cs.zk_rows as usize,
+                        rng,
+                    )
+                })
                 .collect();
 
             //~~ * Commit each of the sorted polynomials.
@@ -537,6 +545,7 @@ where
                 lookup_context.sorted.as_ref().unwrap(),
                 rng,
                 &lcs.configuration.lookup_info,
+                index.cs.zk_rows as usize,
             )?;
 
             //~~ * Commit to the aggregation polynomial.
@@ -766,7 +775,11 @@ where
             // lookup
             {
                 if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                    let constraints = lookup::constraints::constraints(&lcs.configuration, false);
+                    let constraints = lookup::constraints::constraints(
+                        &lcs.configuration,
+                        false,
+                        index.cs.zk_rows as usize,
+                    );
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");
                     let lookup_alphas =
