@@ -40,6 +40,8 @@ To scan for lints:
 cargo clippy --all-features --tests --all-targets -- -D warnings
 ```
 
+Note: cargo can automatically fix some lints. To do so, add `--fix` to the above command (as the first parameter).
+
 Finally, to check formatting:
 ```bash
 cargo fmt

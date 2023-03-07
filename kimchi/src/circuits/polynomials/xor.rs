@@ -90,7 +90,8 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
 //~ * This gate operates on the `Curr` and `Next` rows.
 //~
-//~ It uses three different types of constraints
+//~ It uses three different types of constraints:
+//~
 //~ * copy          - copy to another cell (32-bits)
 //~ * plookup       - xor-table plookup (4-bits)
 //~ * decomposition - the constraints inside the gate
@@ -126,7 +127,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ |   1 | `Xor16`       | Xor next 2 bytes of the words              |
 //~ |   2 | `Xor16`       | Xor next 2 bytes of the words              |
 //~ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
-//~ |   4 | `Zero`        | Zero values, can be reused as generic gate |
+//~ |   4 | `Generic`     | Zero values, can be reused as generic gate |
 //~
 //~ ```admonish info
 //~ We could halve the number of rows of the 64-bit XOR gadget by having lookups

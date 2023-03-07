@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
             poseidon, range_check, turshi, varbasemul,
         },
         wires::*,
@@ -97,11 +97,6 @@ pub enum GateType {
     EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar = 6,
-    /// ChaCha
-    ChaCha0 = 7,
-    ChaCha1 = 8,
-    ChaCha2 = 9,
-    ChaChaFinal = 10,
     // Lookup
     Lookup = 11,
     /// Cairo
@@ -214,8 +209,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
             EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
-            // TODO: implement the verification for chacha
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
@@ -298,10 +291,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env),
             GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env),
             GateType::EndoMulScalar => endomul_scalar::EndomulScalar::constraint_checks(&env),
-            GateType::ChaCha0 => chacha::ChaCha0::constraint_checks(&env),
-            GateType::ChaCha1 => chacha::ChaCha1::constraint_checks(&env),
-            GateType::ChaCha2 => chacha::ChaCha2::constraint_checks(&env),
-            GateType::ChaChaFinal => chacha::ChaChaFinal::constraint_checks(&env),
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
                 vec![]

@@ -25,7 +25,7 @@ use std::{fmt::Write, mem, time::Instant};
 
 // aliases
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct TestFramework<G: KimchiCurve> {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
@@ -41,6 +41,7 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     verifier_index: Option<VerifierIndex<G>>,
 }
 
+#[derive(Clone)]
 pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>);
 
 impl<G: KimchiCurve> TestFramework<G>
@@ -138,6 +139,12 @@ where
     #[must_use]
     pub(crate) fn recursion(mut self, recursion: Vec<RecursionChallenge<G>>) -> Self {
         self.0.recursion = recursion;
+        self
+    }
+
+    #[must_use]
+    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; COLUMNS]) -> Self {
+        self.0.witness = Some(witness);
         self
     }
 

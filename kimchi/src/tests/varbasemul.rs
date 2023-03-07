@@ -89,10 +89,10 @@ fn varbase_mul_test() {
         start.elapsed()
     );
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }

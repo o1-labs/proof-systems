@@ -7,7 +7,6 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
         polynomials::{foreign_field_add::witness::FFOps, foreign_field_mul, range_check},
-        wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -156,20 +155,12 @@ where
         external_checks.extend_witness_compact_multi_range_checks(&mut witness);
     }
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
     let runner = if full {
         // Create prover index with test framework
         Some(
             TestFramework::<G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
-                .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup(),
         )
     } else {
@@ -177,7 +168,7 @@ where
     };
 
     let cs = if let Some(runner) = runner.as_ref() {
-        runner.prover_index().cs.clone()
+        runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
         ConstraintSystem::create(gates.clone()).build().unwrap()
@@ -191,9 +182,15 @@ where
         }
     }
 
-    if let Some(runner) = runner {
+    if let Some(runner) = runner.as_ref() {
         // Perform full test that everything is ok before invalidation
-        assert_eq!(runner.prove_and_verify::<EFqSponge, EFrSponge>(), Ok(()));
+        assert_eq!(
+            runner
+                .clone()
+                .witness(witness.clone())
+                .prove_and_verify::<EFqSponge, EFrSponge>(),
+            Ok(())
+        );
     }
 
     if !invalidations.is_empty() {
@@ -222,13 +219,10 @@ where
         }
 
         // Run test on invalid witness
-        if full {
-            match TestFramework::<G>::default()
-                .disable_gates_checks(disable_gates_checks)
-                .gates(gates.clone())
+        if let Some(runner) = runner.as_ref() {
+            match runner
+                .clone()
                 .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
-                .setup()
                 .prove_and_verify::<EFqSponge, EFrSponge>()
             {
                 Err(err_msg) => {

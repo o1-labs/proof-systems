@@ -100,10 +100,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub endomul_scalar_comm: PolyComm<G>,
 
-    /// Chacha polynomial commitments
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub chacha_comm: Option<[PolyComm<G>; 4]>,
-
     /// RangeCheck0 polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub range_check0_comm: Option<PolyComm<G>>,
@@ -252,12 +248,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 domain,
                 &self.column_evaluations.endomul_scalar_selector8,
             ),
-
-            chacha_comm: self
-                .column_evaluations
-                .chacha_selectors8
-                .as_ref()
-                .map(|c| array::from_fn(|i| self.srs.commit_evaluations_non_hiding(domain, &c[i]))),
 
             range_check0_comm: self
                 .column_evaluations
@@ -419,7 +409,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             endomul_scalar_comm,
 
             // Optional gates
-            chacha_comm,
             range_check0_comm,
             range_check1_comm,
             foreign_field_add_comm,
@@ -455,12 +444,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         fq_sponge.absorb_g(&endomul_scalar_comm.unshifted);
 
         // Optional gates
-
-        if let Some(chacha_comm) = chacha_comm {
-            for chacha_comm in chacha_comm {
-                fq_sponge.absorb_g(&chacha_comm.unshifted);
-            }
-        }
 
         if let Some(range_check0_comm) = range_check0_comm {
             fq_sponge.absorb_g(&range_check0_comm.unshifted);
@@ -498,7 +481,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             lookup_selectors:
                 LookupSelectors {
                     xor,
-                    chacha_final,
                     lookup,
                     range_check,
                     ffmul,
@@ -517,9 +499,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
             if let Some(xor) = xor {
                 fq_sponge.absorb_g(&xor.unshifted);
-            }
-            if let Some(chacha_final) = chacha_final {
-                fq_sponge.absorb_g(&chacha_final.unshifted);
             }
             if let Some(lookup) = lookup {
                 fq_sponge.absorb_g(&lookup.unshifted);

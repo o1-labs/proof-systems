@@ -81,12 +81,7 @@ where
     G::BaseField: PrimeField,
 {
     // gate for the zero value
-    let mut gates = create_rot_gadget::<G>(rot, side);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
-    }
+    let gates = create_rot_gadget::<G>(rot, side);
 
     ConstraintSystem::create(gates).build().unwrap()
 }
@@ -101,12 +96,7 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let rot = rng.gen_range(1..64);
     // Create
-    let mut gates = create_rot_gadget::<G>(rot, RotMode::Left);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
-    }
+    let gates = create_rot_gadget::<G>(rot, RotMode::Left);
 
     // Create input
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
@@ -114,13 +104,12 @@ where
     // Create witness
     let witness = create_rot_witness::<G>(word, rot, RotMode::Left);
 
-    assert!(TestFramework::<G>::default()
+    TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![rot::lookup_table()])
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]
@@ -322,11 +311,6 @@ fn test_rot_finalization() {
         // connect first public input to the word of the ROT
         gates.connect_cell_pair((0, 0), (2, 0));
 
-        // Temporary workaround for lookup-table/domain-size issue
-        for _ in 0..(1 << 13) {
-            gates.push(CircuitGate::zero(Wire::for_row(gates.len())));
-        }
-
         gates
     };
 
@@ -369,11 +353,11 @@ fn test_rot_finalization() {
         );
     }
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }

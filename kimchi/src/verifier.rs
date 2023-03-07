@@ -15,7 +15,9 @@ use crate::{
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{PointEvaluations, ProverProof, RecursionChallenge},
+    proof::{
+        LookupEvaluations, PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge,
+    },
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
@@ -74,10 +76,6 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     EndoMul => Some(&self.verifier_index.emul_comm),
                     EndoMulScalar => Some(&self.verifier_index.endomul_scalar_comm),
                     Poseidon => Some(&self.verifier_index.psm_comm),
-                    ChaCha0 => Some(&self.verifier_index.chacha_comm.as_ref()?[0]),
-                    ChaCha1 => Some(&self.verifier_index.chacha_comm.as_ref()?[1]),
-                    ChaCha2 => Some(&self.verifier_index.chacha_comm.as_ref()?[2]),
-                    ChaChaFinal => Some(&self.verifier_index.chacha_comm.as_ref()?[3]),
                     CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
                     RangeCheck0 => Some(self.verifier_index.range_check0_comm.as_ref()?),
                     RangeCheck1 => Some(self.verifier_index.range_check1_comm.as_ref()?),
@@ -161,7 +159,7 @@ where
         }
 
         let joint_combiner = if let Some(l) = &index.lookup_index {
-            //~~ - If it involves queries to a multiple-column lookup table,
+            //~~ * If it involves queries to a multiple-column lookup table,
             //~~   then squeeze the Fq-Sponge to obtain the joint combiner challenge $j'$,
             //~~   otherwise set the joint combiner challenge $j'$ to $0$.
             let joint_combiner = if l.joint_lookup_used {
@@ -170,7 +168,7 @@ where
                 G::ScalarField::zero()
             };
 
-            //~~ - Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
+            //~~ * Derive the scalar joint combiner challenge $j$ from $j'$ using the endomorphism.
             //~~   (TODO: specify endomorphism)
             let joint_combiner = ScalarChallenge(joint_combiner);
             let joint_combiner_field = joint_combiner.to_field(endo_r);
@@ -188,7 +186,7 @@ where
                 .as_ref()
                 .ok_or(VerifyError::LookupCommitmentMissing)?;
 
-            //~~ - absorb the commitments to the sorted polynomials.
+            //~~ * absorb the commitments to the sorted polynomials.
             for com in &lookup_commits.sorted {
                 absorb_commitment(&mut fq_sponge, com);
             }
@@ -323,12 +321,12 @@ where
         fr_sponge.absorb(&self.ft_eval1);
 
         //~ 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
-        //~~ - the public polynomial
-        //~~ - z
-        //~~ - generic selector
-        //~~ - poseidon selector
-        //~~ - the 15 register/witness
-        //~~ - 6 sigmas evaluations (the last one is not evaluated)
+        //~~ * the public polynomial
+        //~~ * z
+        //~~ * generic selector
+        //~~ * poseidon selector
+        //~~ * the 15 register/witness
+        //~~ * 6 sigmas evaluations (the last one is not evaluated)
         fr_sponge.absorb_multiple(&public_evals[0]);
         fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
@@ -435,7 +433,25 @@ where
             .chain((0..COLUMNS).map(Column::Witness))
             .chain((0..COLUMNS).map(Column::Coefficient))
             .chain((0..PERMUTS - 1).map(Column::Permutation))
-            {
+            .chain(
+                index
+                    .lookup_index
+                    .as_ref()
+                    .map(|li| {
+                        (0..li.lookup_info.max_per_row + 1)
+                            .map(Column::LookupSorted)
+                            .chain([Column::LookupAggreg, Column::LookupTable].into_iter())
+                            .chain(
+                                li.runtime_tables_selector
+                                    .as_ref()
+                                    .map(|_| [Column::LookupRuntimeTable].into_iter())
+                                    .into_iter()
+                                    .flatten(),
+                            )
+                    })
+                    .into_iter()
+                    .flatten(),
+            ) {
                 es.push((
                     {
                         let evals = self
@@ -480,6 +496,64 @@ where
     }
 }
 
+/// Enforce the length of evaluations inside [`Proof`].
+/// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
+/// The length value is prone to future change.
+fn check_proof_evals_len<G>(proof: &ProverProof<G>) -> Result<()>
+where
+    G: KimchiCurve,
+    G::BaseField: PrimeField,
+{
+    let ProofEvaluations {
+        w,
+        z,
+        s,
+        coefficients,
+        lookup,
+        generic_selector,
+        poseidon_selector,
+    } = &proof.evals;
+
+    let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
+        if eval.zeta.len().is_one() && eval.zeta_omega.len().is_one() {
+            Ok(())
+        } else {
+            Err(VerifyError::IncorrectEvaluationsLength)
+        }
+    };
+
+    for w_i in w {
+        check_eval_len(w_i)?;
+    }
+    check_eval_len(z)?;
+    for s_i in s {
+        check_eval_len(s_i)?;
+    }
+    for coeff in coefficients {
+        check_eval_len(coeff)?;
+    }
+    if let Some(LookupEvaluations {
+        sorted,
+        aggreg,
+        table,
+        runtime,
+    }) = lookup
+    {
+        for sorted_i in sorted {
+            check_eval_len(sorted_i)?;
+        }
+        check_eval_len(aggreg)?;
+        check_eval_len(table)?;
+        if let Some(runtime) = &runtime {
+            check_eval_len(runtime)?;
+        }
+    }
+    check_eval_len(generic_selector)?;
+    check_eval_len(poseidon_selector)?;
+
+    Ok(())
+}
+
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
     verifier_index: &VerifierIndex<G>,
     proof: &'a ProverProof<G>,
@@ -510,6 +584,9 @@ where
             verifier_index.public,
         ));
     }
+
+    //~ 1. Check the length of evaluations inside the proof.
+    check_proof_evals_len(proof)?;
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
@@ -549,6 +626,7 @@ where
         polys,
         zeta1: zeta_to_domain_size,
         ft_eval0,
+        combined_inner_product,
         ..
     } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, public_input)?;
 
@@ -563,7 +641,7 @@ where
         public_input,
     };
 
-    //~ 4. Compute the commitment to the linearized polynomial $f$.
+    //~ 1. Compute the commitment to the linearized polynomial $f$.
     //~    To do this, add the constraints of all of the gates, of the permutation,
     //~    and optionally of the lookup.
     //~    (See the separate sections in the [constraints](#constraints) section.)
@@ -635,21 +713,21 @@ where
     //~    that are associated to the aggregated evaluation proof in the proof:
     let mut evaluations = vec![];
 
-    //~~ - recursion
+    //~~ * recursion
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
         degree_bound: None,
     }));
 
-    //~~ - public input commitment
+    //~~ * public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
         evaluations: public_evals.to_vec(),
         degree_bound: None,
     });
 
-    //~~ - ft commitment (chunks of it)
+    //~~ * ft commitment (chunks of it)
     evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: vec![vec![ft_eval0], vec![proof.ft_eval1]],
@@ -657,20 +735,21 @@ where
     });
 
     for col in [
-        //~~ - permutation commitment
+        //~~ * permutation commitment
         Column::Z,
-        //~~ - index commitments that use the coefficients
+        //~~ * index commitments that use the coefficients
         Column::Index(GateType::Generic),
         Column::Index(GateType::Poseidon),
     ]
     .into_iter()
-    //~~ - witness commitments
+    //~~ * witness commitments
     .chain((0..COLUMNS).map(Column::Witness))
-    //~~ - coefficient commitments
+    //~~ * coefficient commitments
     .chain((0..COLUMNS).map(Column::Coefficient))
-    //~~ - sigma commitments
+    //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
-    //~~ - lookup commitments
+    //~~ * lookup commitments
+    //~
     .chain(
         verifier_index
             .lookup_index
@@ -770,6 +849,7 @@ where
         polyscale: oracles.v,
         evalscale: oracles.u,
         opening: &proof.proof,
+        combined_inner_product,
     })
 }
 

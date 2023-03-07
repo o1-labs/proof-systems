@@ -287,7 +287,7 @@ mod tests {
     fn registered_alpha_powers_for_some_constraint_twice() {
         let mut alphas = Alphas::<Fp>::default();
         alphas.register(ArgumentType::Gate(GateType::Poseidon), 2);
-        alphas.register(ArgumentType::Gate(GateType::ChaCha0), 3);
+        alphas.register(ArgumentType::Gate(GateType::ForeignFieldMul), 3);
     }
 
     #[test]

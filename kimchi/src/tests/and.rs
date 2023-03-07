@@ -46,13 +46,7 @@ where
     EFrSponge: FrSponge<G::ScalarField>,
 {
     let mut gates = vec![];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let _next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
 
     gates
 }
@@ -140,13 +134,7 @@ where
 
     // Create
     let mut gates = vec![];
-    let mut next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
-
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
+    let _next_row = CircuitGate::<G::ScalarField>::extend_and(&mut gates, bytes);
 
     // Create inputs
     let input1 = rng.gen(None, Some(bytes * 8));
@@ -155,13 +143,12 @@ where
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    assert!(TestFramework::<G>::default()
+    TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(vec![and::lookup_table()])
         .setup()
         .prove_and_verify::<EFqSponge, EFrSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 #[test]
@@ -360,7 +347,6 @@ fn test_bad_and() {
         TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)
-            .lookup_tables(vec![xor::lookup_table()])
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
         Err(String::from(

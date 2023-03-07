@@ -1,5 +1,4 @@
 pub mod and;
-pub mod chacha;
 pub mod complete_add;
 pub mod endomul_scalar;
 pub mod endosclmul;
