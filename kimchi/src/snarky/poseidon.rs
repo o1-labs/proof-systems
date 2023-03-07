@@ -17,8 +17,8 @@ use std::iter::successors;
 use super::constraint_system::PoseidonInput;
 
 pub fn poseidon<F: PrimeField>(
-    loc: String,
     runner: &mut RunState<F>,
+    loc: &str,
     preimage: (FieldVar<F>, FieldVar<F>),
 ) -> (FieldVar<F>, FieldVar<F>) {
     let initial_state = [preimage.0, preimage.1, FieldVar::Constant(F::zero())];
@@ -26,7 +26,7 @@ pub fn poseidon<F: PrimeField>(
         let params = runner.poseidon_params();
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
             //this case may justify moving to Cow
-            let state = round(loc.clone(), prev, runner, *i, &params);
+            let state = round(runner, loc, prev, *i, &params);
             Some((state, i + 1))
         })
         .take(ROUNDS_PER_HASH + 1)
@@ -61,9 +61,9 @@ pub fn poseidon<F: PrimeField>(
 }
 
 fn round<F: PrimeField>(
-    loc: String,
-    elements: &[FieldVar<F>; SPONGE_WIDTH],
     runner: &mut RunState<F>,
+    loc: &str,
+    elements: &[FieldVar<F>; SPONGE_WIDTH],
     round: usize,
     params: &ArithmeticSpongeParams<F>,
 ) -> [FieldVar<F>; SPONGE_WIDTH] {

@@ -1,14 +1,13 @@
-use crate::{
-    loc,
-    snarky::{
-        boolean::Boolean,
-        checked_runner::{RunState, WitnessGeneration},
-        constraint_system::SnarkyCvar,
-        traits::SnarkyType,
-    },
+use crate::snarky::{
+    boolean::Boolean,
+    checked_runner::{RunState, WitnessGeneration},
+    constraint_system::SnarkyCvar,
+    traits::SnarkyType,
 };
 use ark_ff::PrimeField;
 use std::ops::{Add, Neg, Sub};
+
+use super::{checked_runner::Constraint, constraint_system::BasicSnarkyConstraint};
 
 /// A circuit variable represents a field element in the circuit.
 #[derive(Clone, Debug)]
@@ -125,7 +124,13 @@ where
         Self::linear_combination(&terms)
     }
 
-    pub fn mul(&self, other: &Self, label: Option<&'static str>, cs: &mut RunState<F>) -> Self {
+    pub fn mul(
+        &self,
+        other: &Self,
+        label: Option<&'static str>,
+        loc: &str,
+        cs: &mut RunState<F>,
+    ) -> Self {
         match (self, other) {
             (FieldVar::Constant(x), FieldVar::Constant(y)) => FieldVar::Constant(*x * y),
 
@@ -144,7 +149,7 @@ where
             (_, _) => {
                 let self_clone = self.clone();
                 let other_clone = other.clone();
-                let res: FieldVar<F> = cs.compute(loc!(), move |env| {
+                let res: FieldVar<F> = cs.compute(&loc, move |env| {
                     let x: F = env.read_var(&self_clone);
                     let y: F = env.read_var(&other_clone);
                     x * y
@@ -184,7 +189,7 @@ where
         }
     }
 
-    pub fn equal(&self, state: &mut RunState<F>, other: &FieldVar<F>) -> Boolean<F> {
+    pub fn equal(&self, state: &mut RunState<F>, loc: &str, other: &FieldVar<F>) -> Boolean<F> {
         match (self, other) {
             (FieldVar::Constant(x), FieldVar::Constant(y)) => {
                 let res = if x == y { F::one() } else { F::zero() };
@@ -195,7 +200,7 @@ where
                 let z = self - other;
                 let z_clone = z.clone();
                 let (res, z_inv): (FieldVar<F>, FieldVar<F>) =
-                    state.compute(loc!(), move |env| Self::equal_vars(env, &z_clone));
+                    state.compute(loc, move |env| Self::equal_vars(env, &z_clone));
                 Self::equal_constraints(state, z, z_inv, res.clone());
 
                 let cvars = vec![res];

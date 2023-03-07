@@ -53,7 +53,7 @@ where
     // new functions that might help us with generics?
     //
 
-    fn compute<FUNC>(cs: &mut RunState<F>, loc: String, to_compute_value: FUNC) -> Self
+    fn compute<FUNC>(cs: &mut RunState<F>, loc: &str, to_compute_value: FUNC) -> Self
     where
         FUNC: Fn(&dyn WitnessGeneration<F>) -> Self::OutOfCircuit,
     {

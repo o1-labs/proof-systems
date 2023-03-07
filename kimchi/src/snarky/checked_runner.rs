@@ -249,7 +249,7 @@ where
 
     /// Creates a new non-deterministic variable associated to a value type ([SnarkyType]),
     /// and a closure that can compute it when in witness generation mode.
-    pub fn compute<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    pub fn compute<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -259,7 +259,7 @@ where
 
     /// Same as [Self::compute] except that it does not attempt to constrain the value it computes.
     /// This is to be used internally only, when we know that the value cannot be malformed.
-    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -281,7 +281,7 @@ where
     }
 
     // TODO: make loc argument work
-    fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: String, to_compute_value: FUNC) -> T
+    fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: &str, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -453,7 +453,7 @@ where
                 let b_clone = b.clone();
                 let then_clone = then_.clone();
                 let else_clone = else_.clone();
-                let res: FieldVar<F> = self.compute(loc!(), move |env| {
+                let res: FieldVar<F> = self.compute(&loc!(), move |env| {
                     let b = env.read_var(&b_clone);
                     let res_var = if b == F::one() {
                         &then_clone
@@ -545,9 +545,9 @@ where
 
     pub fn poseidon(
         &mut self,
-        loc: String,
+        loc: &str,
         preimage: (FieldVar<F>, FieldVar<F>),
     ) -> (FieldVar<F>, FieldVar<F>) {
-        super::poseidon::poseidon(loc, self, preimage)
+        super::poseidon::poseidon(self, loc, preimage)
     }
 }
