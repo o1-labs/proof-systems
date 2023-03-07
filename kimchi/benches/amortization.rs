@@ -21,7 +21,7 @@ pub fn amortization(c: &mut Criterion) {
             |b, _| {
                 b.iter_batched(
                     || &proofs[0..(1 << size)],
-                    |input| ctx.batch_verification(black_box(&input)),
+                    |input| ctx.batch_verification(black_box(input)),
                     BatchSize::SmallInput,
                 );
             },
