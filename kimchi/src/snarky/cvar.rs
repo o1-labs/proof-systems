@@ -209,6 +209,28 @@ where
         }
     }
 
+    /// Seals the value of a variable.
+    ///
+    /// As a [`FieldVar`] can represent an AST,
+    /// it might not be a good idea to clone it and reuse it in several places.
+    /// This is because the exact same reduction that will eventually happen on each clone
+    /// will end up creating the same set of constraints multiple times in the circuit.
+    ///
+    /// It is useful to call [`seal`] on a variable that represents a long computation
+    /// that hasn't been constrained yet (e.g. by an assert call, or a call to a custom gate),
+    /// before using it further in the circuit.
+    pub fn seal(&self, state: &mut RunState<F>, loc: &str) -> Self {
+        match self.to_constant_and_terms() {
+            (None, terms) if terms.len() == 1 && terms[0].0.is_one() => FieldVar::Var(terms[0].1),
+            (Some(c), terms) if terms.is_empty() => FieldVar::Constant(c),
+            _ => {
+                let y: FieldVar<F> = state.compute(loc, |env| env.read_var(self));
+                // this call will reduce [self]
+                self.assert_equals(state, loc, &y);
+                y
+            }
+        }
+    }
 }
 
 //
