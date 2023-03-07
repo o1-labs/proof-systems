@@ -46,6 +46,7 @@ pub enum Constraint<F: PrimeField> {
 }
 
 /// The state used when compiling a circuit in snarky, or used in witness generation as well.
+#[derive(Debug)]
 pub struct RunState<F>
 where
     F: PrimeField,
@@ -500,8 +501,9 @@ where
     }
 
     pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
-        assert_eq!(self.num_public_inputs, public_input.len());
-        assert_eq!(self.next_var, self.num_public_inputs);
+        assert_eq!(self.num_public_inputs, public_input.len(), "the number of public inputs passed ({}) does not match the number of public inputs expected ({})", public_input.len(), self.num_public_inputs);
+
+        assert_eq!(self.next_var, self.num_public_inputs, "compiler bug: the `next_var` counter is not correctly initialized to the number of public inputs");
 
         self.has_witness = true;
         self.public_input = public_input;
