@@ -252,6 +252,25 @@ where
 }
 
 //
+// Assertions
+//
+
+impl<F> FieldVar<F>
+where
+    F: PrimeField,
+{
+    pub fn assert_equals(&self, state: &mut RunState<F>, _loc: &str, other: &FieldVar<F>) {
+        state.add_constraint(
+            Constraint::BasicSnarkyConstraint(BasicSnarkyConstraint::Equal(
+                self.clone(),
+                other.clone(),
+            )),
+            Some("assert equals"),
+        );
+    }
+}
+
+//
 // Operations
 //
 
