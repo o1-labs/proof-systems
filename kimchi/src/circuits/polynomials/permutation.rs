@@ -196,6 +196,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
 
+        let zk_rows = self.cs.zk_rows as usize;
+
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
 
@@ -283,9 +285,9 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
                 return Err(ProverError::Permutation("first division rest"));
             }
 
-            // accumulator end := (z(x) - 1) / (x - sid[n-3])
+            // accumulator end := (z(x) - 1) / (x - sid[n-zk_rows])
             let denominator = DensePolynomial::from_coefficients_slice(&[
-                -self.cs.sid[self.cs.domain.d1.size() - 3],
+                -self.cs.sid[self.cs.domain.d1.size() - zk_rows],
                 F::one(),
             ]);
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
@@ -391,6 +393,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     ) -> Result<DensePolynomial<F>, ProverError> {
         let n = self.cs.domain.d1.size();
 
+        let zk_rows = self.cs.zk_rows as usize;
+
         // only works if first element is 1
         assert_eq!(self.cs.domain.d1.elements().next(), Some(F::one()));
 
@@ -435,7 +439,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~ \end{align}
         //~ $$
         //~
-        for j in 0..n - 3 {
+        for j in 0..n - zk_rows {
             z[j + 1] = witness
                 .iter()
                 .zip(self.column_evaluations.permutation_coefficients8.iter())
@@ -443,9 +447,9 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
                 .fold(F::one(), |x, y| x * y);
         }
 
-        ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
+        ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - zk_rows]);
 
-        for j in 0..n - 3 {
+        for j in 0..n - zk_rows {
             let x = z[j];
             z[j + 1] *= witness
                 .iter()
@@ -454,16 +458,17 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
                 .fold(x, |z, y| z * y);
         }
 
-        //~ If computed correctly, we should have $z(g^{n-3}) = 1$.
+        //~ If computed correctly, we should have $z(g^{n-zk_rows}) = 1$.
         //~
-        if z[n - 3] != F::one() {
+        if z[n - zk_rows] != F::one() {
             return Err(ProverError::Permutation("final value"));
         };
 
-        //~ Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
-        //~ in order to add zero-knowledge to the protocol.
-        z[n - 2] = F::rand(rng);
-        z[n - 1] = F::rand(rng);
+        //~ Finally, randomize the last `zk_rows-1` evaluations in order to add zero-knowledge to
+        //~ the protocol.
+        for i in n-zk_rows+1..n {
+            z[i] = F::rand(rng);
+        }
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
         Ok(res)

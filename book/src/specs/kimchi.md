@@ -310,10 +310,10 @@ z_2 = &\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
 \end{align}
 $$
 
-If computed correctly, we should have $z(g^{n-3}) = 1$.
+If computed correctly, we should have $z(g^{n-zk_rows}) = 1$.
 
-Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
-in order to add zero-knowledge to the protocol.
+Finally, randomize the last `zk_rows-1` evaluations in order to add zero-knowledge to
+the protocol.
 
 
 ### Lookup
