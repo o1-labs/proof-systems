@@ -71,6 +71,10 @@ harness = false
 name = "proof_iai"
 harness = false
 
+[[bench]]
+name = "amortization"
+harness = false
+
 [features]
 default = []
 ocaml_types = [ "ocaml", "ocaml-gen", "poly-commitment/ocaml_types", "mina-poseidon/ocaml_types" ]
