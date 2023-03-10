@@ -314,11 +314,15 @@ where
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         let v = v_chal.to_field(endo_r);
 
+        println!("v: {}", v);
+
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
         let u = u_chal.to_field(endo_r);
+
+        println!("u: {}", u);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
 
@@ -326,7 +330,8 @@ where
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
-            let zkp = index.zkpm().evaluate(&zeta);
+            let permutation_vanishing_polynomial =
+                index.permutation_vanishing_polynomial_m().evaluate(&zeta);
             let zeta1m1 = zeta1 - G::ScalarField::one();
 
             let mut alpha_powers =
@@ -341,7 +346,10 @@ where
                 .next()
                 .expect("missing power of alpha for permutation");
 
-            let init = (evals.w[PERMUTS - 1].zeta + gamma) * evals.z.zeta_omega * alpha0 * zkp;
+            let init = (evals.w[PERMUTS - 1].zeta + gamma)
+                * evals.z.zeta_omega
+                * alpha0
+                * permutation_vanishing_polynomial;
             let mut ft_eval0 = evals
                 .w
                 .iter()
@@ -359,7 +367,10 @@ where
                 .iter()
                 .zip(index.shift.iter())
                 .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
-                .fold(alpha0 * zkp * evals.z.zeta, |x, y| x * y);
+                .fold(
+                    alpha0 * permutation_vanishing_polynomial * evals.z.zeta,
+                    |x, y| x * y,
+                );
 
             let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
@@ -647,7 +658,9 @@ where
     //~    in which case the evaluation should be used in place of the commitment.
     let f_comm = {
         // the permutation is written manually (not using the expr framework)
-        let zkp = verifier_index.zkpm().evaluate(&oracles.zeta);
+        let permutation_vanishing_polynomial = verifier_index
+            .permutation_vanishing_polynomial_m()
+            .evaluate(&oracles.zeta);
 
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
@@ -657,7 +670,7 @@ where
             oracles.beta,
             oracles.gamma,
             alphas,
-            zkp,
+            permutation_vanishing_polynomial,
         )];
 
         // other gates are implemented using the expression framework

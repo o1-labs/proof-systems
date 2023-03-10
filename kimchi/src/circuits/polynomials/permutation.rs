@@ -101,6 +101,26 @@ pub fn zk_w<F: FftField>(domain: D<F>, zk_rows: u64) -> F {
     domain.group_gen.pow([domain.size - zk_rows])
 }
 
+/// Evaluates the polynomial
+/// (x - w^{n - zk_rows}) * (x - w^{n - zk_rows + 1}) * (x - w^{n - 1})
+pub fn eval_permutation_vanishing_polynomial<F: FftField>(domain: D<F>, zk_rows: u64, x: F) -> F {
+    let term = domain.group_gen.pow([domain.size - zk_rows]);
+    (x - term) * (x - term * domain.group_gen) * (x - domain.group_gen.pow([domain.size - 1]))
+}
+
+/// The polynomial
+/// (x - w^{n - zk_rows}) * (x - w^{n - zk_rows + 1}) * (x - w^{n - 1})
+pub fn permutation_vanishing_polynomial<F: FftField>(
+    domain: D<F>,
+    zk_rows: u64,
+) -> DensePolynomial<F> {
+    let constant = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
+    let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
+    let term = domain.group_gen.pow([domain.size - zk_rows]);
+    &(&(&x - &constant(term)) * &(&x - &constant(term * domain.group_gen)))
+        * &(&x - &constant(domain.group_gen.pow([domain.size - 1])))
+}
+
 /// Shifts represent the shifts required in the permutation argument of PLONK.
 /// It also caches the shifted powers of omega for optimization purposes.
 pub struct Shifts<F> {
@@ -259,7 +279,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &self.cs.precomputations().zkpl
+            &(&shifts - &sigmas).scale(alpha0)
+                * &self.cs.precomputations().permutation_vanishing_polynomial_l
         };
 
         //~ and `bnd`:
@@ -319,7 +340,11 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
         //~
-        let zkpm_zeta = self.cs.precomputations().zkpm.evaluate(&zeta);
+        let zkpm_zeta = self
+            .cs
+            .precomputations()
+            .permutation_vanishing_polynomial_m
+            .evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         let evals8 = &self.column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
         const STRIDE: usize = 8;
@@ -439,7 +464,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~ \end{align}
         //~ $$
         //~
-        for j in 0..n - zk_rows {
+        for j in 0..n - 1 {
             z[j + 1] = witness
                 .iter()
                 .zip(self.column_evaluations.permutation_coefficients8.iter())
@@ -447,15 +472,22 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
                 .fold(F::one(), |x, y| x * y);
         }
 
-        ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - zk_rows]);
+        ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
 
-        for j in 0..n - zk_rows {
-            let x = z[j];
-            z[j + 1] *= witness
-                .iter()
-                .zip(self.cs.shift.iter())
-                .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
-                .fold(x, |z, y| z * y);
+        //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` order to add
+        //~ zero-knowledge to the protocol.
+        //~
+        for j in 0..n - 1 {
+            if j != n - zk_rows && j != n - zk_rows + 1 {
+                let x = z[j];
+                z[j + 1] *= witness
+                    .iter()
+                    .zip(self.cs.shift.iter())
+                    .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
+                    .fold(x, |z, y| z * y);
+            } else {
+                z[j + 1] = F::rand(rng);
+            }
         }
 
         //~ If computed correctly, we should have $z(g^{n-zk_rows}) = 1$.
@@ -463,12 +495,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         if z[n - zk_rows] != F::one() {
             return Err(ProverError::Permutation("final value"));
         };
-
-        //~ Finally, randomize the last `zk_rows-1` evaluations in order to add zero-knowledge to
-        //~ the protocol.
-        for i in n-zk_rows+1..n {
-            z[i] = F::rand(rng);
-        }
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
         Ok(res)

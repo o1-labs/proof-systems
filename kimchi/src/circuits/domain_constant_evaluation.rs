@@ -8,7 +8,7 @@ use ark_poly::{univariate::DensePolynomial as DP, Evaluations as E, Radix2Evalua
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::polynomials::permutation::vanishes_on_last_n_rows;
+use super::polynomials::permutation::{permutation_vanishing_polynomial, vanishes_on_last_n_rows};
 
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -29,9 +29,9 @@ pub struct DomainConstantEvaluations<F: FftField> {
     pub vanishes_on_zero_knowledge_and_previous_rows: E<F, D<F>>,
     /// zero-knowledge polynomial over domain.d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zkpl: E<F, D<F>>,
+    pub permutation_vanishing_polynomial_l: E<F, D<F>>,
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub zkpm: DP<F>,
+    pub permutation_vanishing_polynomial_m: DP<F>,
 }
 
 impl<F: FftField> DomainConstantEvaluations<F> {
@@ -49,16 +49,18 @@ impl<F: FftField> DomainConstantEvaluations<F> {
         assert!(domain.d1.size > zk_rows);
 
         // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-        let zkpm = vanishes_on_last_n_rows(domain.d1, zk_rows);
-        let zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
+        let permutation_vanishing_polynomial_m =
+            permutation_vanishing_polynomial(domain.d1, zk_rows);
+        let permutation_vanishing_polynomial_l =
+            permutation_vanishing_polynomial_m.evaluate_over_domain_by_ref(domain.d8);
 
         Some(DomainConstantEvaluations {
             poly_x_d1,
             constant_1_d4,
             constant_1_d8,
             vanishes_on_zero_knowledge_and_previous_rows,
-            zkpl,
-            zkpm,
+            permutation_vanishing_polynomial_l,
+            permutation_vanishing_polynomial_m,
         })
     }
 }

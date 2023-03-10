@@ -310,10 +310,11 @@ z_2 = &\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
 \end{align}
 $$
 
+We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` order to add
+zero-knowledge to the protocol.
+
 If computed correctly, we should have $z(g^{n-zk_rows}) = 1$.
 
-Finally, randomize the last `zk_rows-1` evaluations in order to add zero-knowledge to
-the protocol.
 
 
 ### Lookup
@@ -1819,7 +1820,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
+    pub permutation_vanishing_polynomial_m: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]

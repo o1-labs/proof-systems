@@ -131,7 +131,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
+    pub permutation_vanishing_polynomial_m: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
@@ -287,9 +287,15 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
-            zkpm: {
+            permutation_vanishing_polynomial_m: {
                 let cell = OnceCell::new();
-                cell.set(self.cs.precomputations().zkpm.clone()).unwrap();
+                cell.set(
+                    self.cs
+                        .precomputations()
+                        .permutation_vanishing_polynomial_m
+                        .clone(),
+                )
+                .unwrap();
                 cell
             },
             w: {
@@ -317,9 +323,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         })
     }
 
-    /// Gets zkpm from [`VerifierIndex`] lazily
-    pub fn zkpm(&self) -> &DensePolynomial<G::ScalarField> {
-        self.zkpm
+    /// Gets permutation_vanishing_polynomial_m from [`VerifierIndex`] lazily
+    pub fn permutation_vanishing_polynomial_m(&self) -> &DensePolynomial<G::ScalarField> {
+        self.permutation_vanishing_polynomial_m
             .get_or_init(|| vanishes_on_last_n_rows(self.domain, self.zk_rows))
     }
 
@@ -425,7 +431,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             lookup_index,
 
             shift: _,
-            zkpm: _,
+            permutation_vanishing_polynomial_m: _,
             w: _,
             endo: _,
 
