@@ -374,6 +374,14 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         }
 
+        // Zero out the sigmas in the zk rows, to ensure that the permutation aggregation is
+        // quasi-random for those rows.
+        for row in self.domain.d1.size() + 2 - (self.zk_rows as usize)..self.domain.d1.size() - 1 {
+            for sigma in sigmal1.iter_mut() {
+                sigma[row] = F::zero();
+            }
+        }
+
         let sigmal1: [_; PERMUTS] = {
             let [s0, s1, s2, s3, s4, s5, s6] = sigmal1;
             [
