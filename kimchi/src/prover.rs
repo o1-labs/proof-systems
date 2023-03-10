@@ -186,6 +186,14 @@ where
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
+        let zero_knowledge_limit = (16 * num_chunks - 4) / 7 ;
+        if (index.cs.zk_rows as usize) < zero_knowledge_limit {
+            return Err(ProverError::NotZeroKnowledge(
+                zero_knowledge_limit,
+                index.cs.zk_rows as usize,
+            ));
+        }
+
         if length_padding < index.cs.zk_rows as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }

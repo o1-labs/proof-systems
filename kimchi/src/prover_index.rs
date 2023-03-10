@@ -156,6 +156,7 @@ pub mod testing {
             .public(public)
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
+            .max_poly_size(override_srs_size)
             .build()
             .unwrap();
         let srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());

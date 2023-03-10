@@ -10,6 +10,11 @@ pub enum ProverError {
     #[error("the circuit is too large")]
     NoRoomForZkInWitness,
 
+    #[error(
+        "there are not enough random rows to achieve zero-knowledge (expected: {0}, got: {1})"
+    )]
+    NotZeroKnowledge(usize, usize),
+
     #[error("the witness columns are not all the same size")]
     WitnessCsInconsistent,
 

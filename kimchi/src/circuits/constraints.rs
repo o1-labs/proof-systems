@@ -193,6 +193,7 @@ pub struct Builder<F: PrimeField> {
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
+    max_poly_size: Option<usize>,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -250,6 +251,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             runtime_tables: None,
             precomputations: None,
             disable_gates_checks: false,
+            max_poly_size: None,
         }
     }
 
@@ -646,6 +648,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
+    pub fn max_poly_size(mut self, max_poly_size: Option<usize>) -> Self {
+        self.max_poly_size = max_poly_size;
+        self
+    }
+
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
@@ -683,13 +690,32 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             num_lookups
         };
 
-        let zk_rows = 3;
-
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + zk_rows` elements.
-        let domain_size_lower_bound =
-            std::cmp::max(gates.len(), num_lookups + 1) + zk_rows as usize;
+        let (zk_rows, domain_size_lower_bound) = {
+            let mut zk_rows = 3;
+            let get_domain_size_lower_bound =
+                |zk_rows: u64| std::cmp::max(gates.len(), num_lookups + 1) + zk_rows as usize;
+            let mut domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
+            if let Some(max_poly_size) = self.max_poly_size {
+                // Iterate to find a fixed-point where zk_rows is sufficient for the number of
+                // chunks that we use, and also does not cause us to overflow the domain size.
+                // NB: We use iteration here rather than hard-coding an assumption about
+                // `compute_size_of_domain`s internals. In practice, this will never be executed
+                // more than once.
+                while {
+                    let domain_size = D::<F>::compute_size_of_domain(domain_size_lower_bound)
+                        .ok_or(SetupError::DomainCreation(
+                            "could not compute size of domain",
+                        ))?;
+                    zk_rows = ((16 * (domain_size / max_poly_size) + 4) / 7) as u64;
+                    domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
+                    domain_size < domain_size_lower_bound
+                } {}
+            }
+            (zk_rows, domain_size_lower_bound)
+        };
         let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
 
         assert!(domain.d1.size > zk_rows);
