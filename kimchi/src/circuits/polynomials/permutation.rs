@@ -65,7 +65,7 @@ use std::array;
 pub const CONSTRAINTS: u32 = 3;
 
 /// Evaluates the polynomial
-/// (x - w^{n - i}) * (x - w^{n - i - 1}) * ... * (x - w^{n - 1})
+/// (x - w^{n - i}) * (x - w^{n - i + 1}) * ... * (x - w^{n - 1})
 pub fn eval_vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64, x: F) -> F {
     if i == 0 {
         return F::one();
@@ -80,7 +80,7 @@ pub fn eval_vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64, x: F) -> 
 }
 
 /// The polynomial
-/// (x - w^{n - i}) * (x - w^{n - i - 1}) * ... * (x - w^{n - 1})
+/// (x - w^{n - i}) * (x - w^{n - i + 1}) * ... * (x - w^{n - 1})
 pub fn vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64) -> DensePolynomial<F> {
     let constant = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
     if i == 0 {
