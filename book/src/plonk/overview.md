@@ -12,5 +12,5 @@ There are a lot of steps involved in the transformation of "I know an input to t
 
 At the end of this chapter, you will understand that the protocol boils down to filling a number of tables (illustrated in the diagram below): tables that specify the circuit, and tables that describes an execution trace of the circuit (given some secret and public inputs).
 
-![kimchi](../../img/kimchi.png)
+![kimchi](../img/kimchi.png)
 
