@@ -1,12 +1,13 @@
 [package]
-name = "book"
+name = "mina-book"
 version = "0.1.0"
+description = "Documentation and specifications of the proof systems"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
 edition = "2021"
+license = "Apache-2.0"
 
 [build-dependencies]
-make = "0.0.0"
-mdbook = "0.4.27"
-mdbook-admonish = "1.8.0"
-mdbook-katex = "0.2.17"
-mdbook-mermaid = "0.12.6"
-mdbook-toc = "0.11.2"
+cargo-spec = { version = "0.5.0" }

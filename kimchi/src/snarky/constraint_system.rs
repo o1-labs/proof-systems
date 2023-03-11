@@ -1098,7 +1098,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                             if !s1.is_zero() {
                                 self.union_find(x1);
                                 self.union_find(x2);
-                                assert!(self.union_finds.union(x1, x2).is_ok());
+                                self.union_finds.union(x1, x2).unwrap();
                             };
                         } else if
                         /* s1 x1 - s2 x2 = 0 */
@@ -1128,7 +1128,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                                 let x2 = x2.clone();
                                 self.union_find(x1);
                                 self.union_find(x2);
-                                assert!(self.union_finds.union(x1, x2).is_ok());
+                                self.union_finds.union(x1, x2).unwrap();
                             }
                             None => {
                                 self.add_generic_constraint(
@@ -1151,7 +1151,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                                 let x1 = x1.clone();
                                 self.union_find(x1);
                                 self.union_find(x2);
-                                assert!(self.union_finds.union(x1, x2).is_ok());
+                                self.union_finds.union(x1, x2).unwrap();
                             }
                             None => {
                                 self.add_generic_constraint(
