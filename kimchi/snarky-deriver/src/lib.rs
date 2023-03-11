@@ -7,20 +7,19 @@
 extern crate proc_macro;
 use std::collections::HashSet;
 
-use convert_case::{Case, Casing};
 use itertools::Itertools;
 use proc_macro::TokenStream;
-use proc_macro2::{Ident, Span};
+use proc_macro2::Span;
 use quote::{format_ident, quote};
 use syn::{
-    punctuated::Punctuated, Fields, FnArg, GenericParam, PredicateType, ReturnType, TraitBound,
-    TraitBoundModifier, Type, TypeParamBound, TypePath, WherePredicate,
+    parse_macro_input, punctuated::Punctuated, Fields, Lit, LitStr, MetaNameValue, PredicateType,
+    TraitBound, TraitBoundModifier, Type, TypeParamBound, WherePredicate,
 };
 
-const TYPES_TO_AVOID: [&str; 2] = ["KimchiCurve", "PrimeField"];
-
 /// The [SnarkyType] derive macro.
-/// It generates implementations of [`kimchi::snarky::SnarkyType`].
+/// It generates implementations of [`kimchi::snarky::SnarkyType`],
+/// as long as your structure's fields implement that type as well.
+/// It works very similarly to [`serde`].
 ///
 /// For example:
 ///
@@ -31,16 +30,75 @@ const TYPES_TO_AVOID: [&str; 2] = ["KimchiCurve", "PrimeField"];
 /// }
 /// ```
 ///
-#[proc_macro_derive(SnarkyType)]
+#[proc_macro_derive(SnarkyType, attributes(snarky))]
 pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
+    // The strategy is the following:
+    //
+    // - we want to produce an implementation for the given struct
+    // - with the exception that we want to enforce the SnarkyType bound on every generic type
+
     // parse struct
     let item_struct: syn::ItemStruct =
-        syn::parse(item).expect("only structs are supported with Struct");
-    let name = &item_struct.ident;
-    let generics = &item_struct.generics.params;
-    let fields = &item_struct.fields;
+        syn::parse(item).expect("only structs are supported with `SnarkyType` at the moment");
+
+    // parse macro attributes into our cfg struct
+    // warning: parsing macro attributes is hairy
+    #[derive(Default)]
+    struct HelperAttributes {
+        field: Option<String>,
+        check_fn: Option<String>,
+        auxiliary_fn: Option<String>,
+        auxiliary_type: Option<String>,
+    }
+    let mut helper_attributes = HelperAttributes::default();
+
+    let malformed_snarky_helper =
+        "snarky helper malformed. It should look like `#[snarky(key = value)]`";
+    for attr in &item_struct.attrs {
+        if let Ok(syn::Meta::List(meta)) = attr.parse_meta() {
+            // we only care about `#[snarky(...)]`
+            if !meta.path.is_ident("snarky") {
+                continue;
+            }
+
+            for meta_inner in meta.nested {
+                match meta_inner {
+                    syn::NestedMeta::Meta(syn::Meta::NameValue(MetaNameValue {
+                        path,
+                        eq_token: _,
+                        lit,
+                    })) => {
+                        let value = match lit {
+                            Lit::Str(lit) => lit.value(),
+                            _ => panic!("{malformed_snarky_helper}"),
+                        };
+                        if path.is_ident("field") {
+                            helper_attributes.field = Some(value);
+                        } else if path.is_ident("check_fn") {
+                            helper_attributes.check_fn = Some(value);
+                            todo!();
+                        } else if path.is_ident("auxiliary_fn") {
+                            helper_attributes.auxiliary_fn = Some(value);
+                            todo!();
+                        } else if path.is_ident("auxiliary_type") {
+                            helper_attributes.auxiliary_type = Some(value);
+                            todo!();
+                        } else {
+                            panic!("{malformed_snarky_helper}");
+                        }
+                    }
+                    x => panic!("{x:?} {malformed_snarky_helper}"),
+                };
+            }
+        }
+    }
 
     // enforce that we have a type parameter `F: PrimeField`
+    // this is needed as we use the same type parameter in the implementation of SnarkyType
+    // (i.e. `impl<F> SnarkyType<F> for MyType<F, _>`)
+    //
+    // Note: if you use `#[snarky(field = "MyField")]`, then we don't enforce this
+
     let has_f_primefield = |generic: &WherePredicate| {
         if let WherePredicate::Type(t) = generic {
             t.bounds.iter().any(|bound| {
@@ -54,16 +112,27 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
             false
         }
     };
-    let where_clause = item_struct
+
+    let missing_field_err =
+        "SnarkyType requires the type to have a type parameter `F: PrimeField, or to specify the field used via `#[snarky(field = \"...\")]`";
+
+    let has_f_primefield = item_struct
         .generics
         .where_clause
         .as_ref()
-        .expect("SnarkyType requires the type to have a type parameter `F: PrimeField");
-    if !where_clause.predicates.iter().any(has_f_primefield) {
-        panic!("SnarkyType requires the type to have a type parameter `F: PrimeField")
+        .map(|w| w.predicates.iter().any(has_f_primefield))
+        .unwrap_or(false);
+
+    let impl_field = match (has_f_primefield, helper_attributes.field.as_ref()) {
+        (true, None) => "F",
+        (false, Some(field)) => field,
+        (false, None) => panic!("{missing_field_err}"),
+        (true, Some(_)) => panic!("you cannot specify a field via `#[snarky(field = \"...\")] if the type already has a `F: PrimeField`"),  
     };
+    let impl_field_path: syn::Path = syn::parse_str(&format!("{impl_field}")).unwrap();
 
     // collect field names and types
+    let fields = &item_struct.fields;
     let (field_names, field_types) = match fields {
         Fields::Named(fields) => fields
             .named
@@ -74,53 +143,58 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
         Fields::Unit => (vec![], vec![]),
     };
 
+    // enforce that we have at least 1 field
+    if field_names.is_empty() {
+        panic!("to use `#[derive(SnarkyType)]` your struct must at least have one field");
+    }
+
     // this deriver is used by both external users, and the kimchi crate itself,
     // so we need to change the path to kimchi depending on the context
-    let (snarky_type_path, snarky_type_path_str) =
-        if std::env::var("CARGO_PKG_NAME").unwrap() == "kimchi" {
-            (quote! { crate::SnarkyType<F> }, "crate::SnarkyType<F>")
-        } else {
-            (
-                quote! { ::kimchi::SnarkyType<F> },
-                "::kimchi::SnarkyType<F>",
-            )
-        };
-
-    // the strategy is the following:
-    // - we want to produce an implementation for the given struct
-    // - with the exception that we want to enforce the SnarkyType bound on every generic type
-
-    let generics_ident: Vec<_> = generics
-        .iter()
-        .filter_map(|g| match g {
-            GenericParam::Type(t) => Some(&t.ident),
-            _ => None,
-        })
-        .collect();
-
-    let name_str = name.to_string();
+    let lib_path = if std::env::var("CARGO_PKG_NAME").unwrap() == "kimchi" {
+        "crate"
+    } else {
+        "::kimchi"
+    };
+    let snarky_type_path_str = format!("{lib_path}::SnarkyType<{impl_field}>");
+    let snarky_type_path: syn::Path = syn::parse_str(&snarky_type_path_str).unwrap();
 
     //
     // We define every block of the SnarkyType implementation individually.
     //
 
-    let auxiliary = quote! {
-        type Auxiliary = (
-            #( <#field_types as #snarky_type_path>::Auxiliary ),*
-        );
+    let auxiliary = if field_names.len() > 1 {
+        quote! {
+            type Auxiliary = (
+                #( <#field_types as #snarky_type_path>::Auxiliary ),*
+            );
+        }
+    } else {
+        quote! {
+            type Auxiliary = (
+                #( <#field_types as #snarky_type_path>::Auxiliary )*
+            );
+        }
     };
 
-    let out_of_circuit = quote! {
-        type OutOfCircuit = (
-            #( <#field_types as #snarky_type_path>::OutOfCircuit ),*
-        );
+    let out_of_circuit = if field_names.len() > 1 {
+        quote! {
+            type OutOfCircuit = (
+                #( <#field_types as #snarky_type_path>::OutOfCircuit ),*
+            );
+        }
+    } else {
+        quote! {
+            type OutOfCircuit = (
+                #( <#field_types as #snarky_type_path>::OutOfCircuit )*
+            );
+        }
     };
 
     let size_in_field_elements = quote! {
         const SIZE_IN_FIELD_ELEMENTS: usize = #( <#field_types as #snarky_type_path>::SIZE_IN_FIELD_ELEMENTS )+*;
     };
 
-    let to_cvars = {
+    let to_cvars = if field_names.len() > 1 {
         // `let (cvars_i, aux_i) = field_i.to_cvars();`
         let mut to_cvars_calls = vec![];
         for (idx, field) in field_names.iter().enumerate() {
@@ -138,7 +212,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
             .collect_vec();
 
         quote! {
-            fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
+            fn to_cvars(&self) -> (Vec<FieldVar<#impl_field_path>>, Self::Auxiliary) {
                 let mut cvars = Vec::with_capacity(Self::SIZE_IN_FIELD_ELEMENTS);
 
                 #( #to_cvars_calls );*
@@ -150,9 +224,15 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
                 (cvars, aux)
             }
         }
+    } else {
+        quote! {
+            fn to_cvars(&self) -> (Vec<FieldVar<#impl_field_path>>, Self::Auxiliary) {
+                #( self.#field_names.to_cvars() )*
+            }
+        }
     };
 
-    let from_cvars_unsafe = {
+    let from_cvars_unsafe = if field_names.len() > 1 {
         // ```
         // let end = offset + T_i::SIZE_IN_FIELD_ELEMENTS;
         // let cvars_i = &cvars[offset..end];
@@ -186,7 +266,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
         }
 
         quote! {
-            fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self {
+            fn from_cvars_unsafe(cvars: Vec<FieldVar<#impl_field_path>>, aux: Self::Auxiliary) -> Self {
                 // TODO: do we really want an assert if it's "unsafe" anyway?
                 assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
 
@@ -198,27 +278,48 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
                 }
             }
         }
+    } else {
+        quote! {
+            fn from_cvars_unsafe(cvars: Vec<FieldVar<#impl_field_path>>, aux: Self::Auxiliary) -> Self {
+                // TODO: do we really want an assert if it's "unsafe" anyway?
+                assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
+
+                Self {
+                    #( #field_names: <#field_types as #snarky_type_path>::from_cvars_unsafe(cvars, aux) ),*
+                }
+            }
+        }
     };
 
     let check = {
         quote! {
-            fn check(&self, cs: &mut RunState<F>) {
+            fn check(&self, cs: &mut RunState<#impl_field_path>) {
                 #( self.#field_names.check(cs) );*
             }
         }
     };
 
     // constraint_system_auxiliary
-    let constraint_system_auxiliary = quote! {
-        fn constraint_system_auxiliary() -> Self::Auxiliary {
-            (
-                #( <#field_types as #snarky_type_path>::constraint_system_auxiliary() ),*
-            )
+    let constraint_system_auxiliary = if field_names.len() > 1 {
+        quote! {
+            fn constraint_system_auxiliary() -> Self::Auxiliary {
+                (
+                    #( <#field_types as #snarky_type_path>::constraint_system_auxiliary() ),*
+                )
+            }
+        }
+    } else {
+        quote! {
+            fn constraint_system_auxiliary() -> Self::Auxiliary {
+                (
+                    #( <#field_types as #snarky_type_path>::constraint_system_auxiliary() )*
+                )
+            }
         }
     };
 
     // value_to_field_elements
-    let value_to_field_elements = {
+    let value_to_field_elements = if field_names.len() > 1 {
         // `let (fields_i, aux_i) = T_i::value_to_field_elements(&self.i);`
         let mut value_to_field_elements_calls = Vec::with_capacity(field_types.len());
         for (idx, field_ty) in field_types.iter().enumerate() {
@@ -242,7 +343,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
             .collect_vec();
 
         quote! {
-            fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
+            fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<#impl_field_path>, Self::Auxiliary) {
                 #( #value_to_field_elements_calls );*
 
                 let fields = [ #( #fields_i ),* ].concat();
@@ -254,10 +355,17 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
                 (fields, aux)
             }
         }
+    } else {
+        quote! {
+            fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<#impl_field_path>, Self::Auxiliary) {
+
+                #( <#field_types as #snarky_type_path>::value_to_field_elements(value) )*
+            }
+        }
     };
 
     // value_of_field_elements
-    let value_of_field_elements = {
+    let value_of_field_elements = if field_types.len() > 1 {
         // ```
         // let end = offset + T_i::SIZE_IN_FIELD_ELEMENTS;
         // let cvars_i = &cvars[offset..end];
@@ -291,7 +399,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
         }
 
         quote! {
-            fn value_of_field_elements(fields: Vec<F>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
+            fn value_of_field_elements(fields: Vec<#impl_field_path>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
                 // TODO: do we really want an assert here?
                 assert_eq!(fields.len(), Self::SIZE_IN_FIELD_ELEMENTS);
 
@@ -301,6 +409,15 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
                 (
                     #( #value_of_field_elements ),*
                 )
+            }
+        }
+    } else {
+        quote! {
+            fn value_of_field_elements(fields: Vec<#impl_field_path>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
+                // TODO: do we really want an assert here?
+                assert_eq!(fields.len(), Self::SIZE_IN_FIELD_ELEMENTS);
+
+                #( <#field_types as #snarky_type_path>::value_of_field_elements(fields, aux) )*
             }
         }
     };
@@ -317,7 +434,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     let mut extended_where_clause = extended_generics.where_clause.unwrap();
 
     let path: syn::Path =
-        syn::parse_str(snarky_type_path_str).expect("snarky_type_path_str is not a valid?");
+        syn::parse_str(&snarky_type_path_str).expect("snarky_type_path_str is not a valid?");
     let impl_snarky_type = TraitBound {
         paren_token: None,
         modifier: TraitBoundModifier::None,
@@ -350,6 +467,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     }
 
     // generate implementations for OCamlDesc and OCamlBinding
+    let name = &item_struct.ident;
     let gen = quote! {
         impl #impl_generics #snarky_type_path for #name #ty_generics #extended_where_clause {
             #auxiliary
