@@ -36,3 +36,6 @@ macro_rules! loc {
         format!("{}:{}", file!(), line!())
     }};
 }
+
+/// Export what is commonly used.
+pub use snarky::prelude::*;
