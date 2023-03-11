@@ -8,12 +8,11 @@ use ark_ff::{Field, PrimeField};
 use ark_ff::{One, Zero};
 use ark_poly::EvaluationDomain;
 use ark_poly::{Evaluations, Radix2EvaluationDomain};
-use groupmap::GroupMap;
 use mina_poseidon::FqSponge;
 use o1_utils::ExtendedEvaluations;
-use poly_commitment::commitment::{BlindedCommitment, CommitmentCurve};
+use poly_commitment::commitment::BlindedCommitment;
 use poly_commitment::{srs::SRS, PolyComm};
-use rand::{thread_rng, CryptoRng, Rng};
+use rand::{CryptoRng, Rng};
 
 use crate::circuits::polynomial::COLUMNS;
 use crate::circuits::polynomials::generic::{CONSTANT_OFFSET, GENERIC_REGISTERS, MUL_OFFSET};
@@ -29,10 +28,10 @@ where
     G: KimchiCurve,
 {
     /// The public input vector (X in the paper).
-    public_input: Vec<G::ScalarField>,
+    public_input: PolyComm<G>,
 
     /// The scaling factor (u in the paper).
-    scaling_factor: G::ScalarField,
+    relaxing_factor: G::ScalarField,
 
     /// The commitments of the witness columns (W in the paper).
     register_commitments: [PolyComm<G>; GENERIC_REGISTERS],
@@ -68,14 +67,9 @@ where
         constant_commit: PolyComm<G>,
         other: &Self,
     ) -> Self {
-        let public_input = self
-            .public_input
-            .iter()
-            .zip(&other.public_input)
-            .map(|(a, b)| *a + (rand_r * b))
-            .collect();
+        let public_input = &self.public_input + &other.public_input.scale(rand_r);
 
-        let scaling_factor = self.scaling_factor + (other.scaling_factor * rand_r);
+        let relaxing_factor = self.relaxing_factor + (other.relaxing_factor * rand_r);
 
         let register_commitments: Vec<_> = self
             .register_commitments
@@ -92,7 +86,7 @@ where
 
         Self {
             public_input,
-            scaling_factor,
+            relaxing_factor,
             register_commitments,
             slack_commitment,
         }
@@ -110,6 +104,9 @@ where
 {
     /// The associated instance (public-part) to this witness.
     instance: SangriaInstance<G>,
+
+    /// The public input vector (X in the paper).
+    public_input_values: Vec<G::ScalarField>,
 
     /// The registers corresponding to the execution trace of the generic gate (W in the paper).
     registers:
@@ -133,19 +130,24 @@ where
     pub fn new<EFqSponge>(
         ctx: &SangriaProver<G, EFqSponge>,
         rng: &mut (impl Rng + CryptoRng),
-        public_input: Vec<G::ScalarField>,
+        public_input_values: Vec<G::ScalarField>,
         registers: [Vec<G::ScalarField>; GENERIC_REGISTERS],
     ) -> Self
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     {
+        let public_input = {
+            let evals = Evaluations::from_vec_and_domain(public_input_values, ctx.circuit_domain);
+            let poly = evals.interpolate();
+            ctx.srs.commit_non_hiding(&poly, None)
+        };
+
         let mut register_commitments = vec![];
         let mut register_blinding_factors = vec![];
         let mut register_evaluations = vec![];
 
         for register in &registers {
-            let evals =
-                Evaluations::from_vec_and_domain(register.clone(), ctx.circuit_domain.clone());
+            let evals = Evaluations::from_vec_and_domain(register.clone(), ctx.circuit_domain);
             let poly = evals.interpolate_by_ref();
             let BlindedCommitment {
                 commitment,
@@ -157,7 +159,7 @@ where
             register_evaluations.push(evals);
         }
 
-        let scaling_factor = G::ScalarField::one();
+        let relaxing_factor = G::ScalarField::one();
 
         let register_commitments: [_; GENERIC_REGISTERS] = register_commitments.try_into().unwrap();
         let register_blinding_factors: [_; GENERIC_REGISTERS] =
@@ -176,10 +178,11 @@ where
         Self {
             instance: SangriaInstance {
                 public_input,
-                scaling_factor,
+                relaxing_factor,
                 register_commitments,
                 slack_commitment,
             },
+            public_input_values,
             registers: register_evaluations,
             slack,
             register_blinding_factors,
@@ -197,6 +200,14 @@ where
         constant_evals: &Evaluations<G::ScalarField, Radix2EvaluationDomain<G::ScalarField>>,
         other: &Self,
     ) -> Self {
+        // X = X' + rX''
+        let public_input_values = self
+            .public_input_values
+            .iter()
+            .zip(&other.public_input_values)
+            .map(|(a, b)| *a + (rand_r * b))
+            .collect();
+
         // W = W' + rW''
         let registers: Vec<_> = self
             .registers
@@ -241,6 +252,7 @@ where
                 constant_commit,
                 &other.instance,
             ),
+            public_input_values,
             registers,
             slack,
             register_blinding_factors,
@@ -376,7 +388,7 @@ where
                     &acc + &(register * coeff)
                 });
             // TODO: we have a trait for a MulAssign on DensePolynomial here (should be more efficient)
-            additions1 = additions1.scale(witness2.instance.scaling_factor);
+            additions1 = additions1.scale(witness2.instance.relaxing_factor);
 
             // u' (qL * a'' + qR * b'' + qO * c'')
             let mut additions2 = witness2
@@ -385,7 +397,7 @@ where
                 .take(GENERIC_REGISTERS)
                 .zip(&self.coefficients)
                 .fold(init, |acc, (register, coeff)| &acc + &(register * coeff));
-            additions2 = additions2.scale(witness1.instance.scaling_factor);
+            additions2 = additions2.scale(witness1.instance.relaxing_factor);
 
             // q_m * (a' * b'' + a'' * b')
             let multiplication = &(&witness1.registers[0] * &witness2.registers[1])
@@ -447,7 +459,7 @@ where
             .take(GENERIC_REGISTERS)
             .zip(self.coefficients.iter())
             .fold(init, |acc, (col, coeff)| &acc + &(col * coeff));
-        res = res.scale(witness.instance.scaling_factor);
+        res = res.scale(witness.instance.relaxing_factor);
 
         // multiplication
         let mul = &(&self.coefficients[MUL_OFFSET] * &witness.registers[0]) * &witness.registers[1];
@@ -551,7 +563,7 @@ where
             // let mut res = coefficients_and_registers
             //     .take(2)
             //     .fold(init, |acc, (coeff, reg)| acc + coeff.scale(reg));
-            // res = res.scale(instance.scaling_factor);
+            // res = res.scale(instance.relaxing_factor);
 
             // // mul
             // res += self.coefficients[MUL_OFFSET]
