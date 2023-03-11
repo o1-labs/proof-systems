@@ -25,11 +25,39 @@ use syn::{
 ///
 /// ```ignore
 /// #[derive(kimchi::SnarkyType)]
-/// struct MyType {
+/// struct MyType<F> where F: PrimeField {
 ///   // ...
 /// }
 /// ```
 ///
+/// You can specify your snarky type implementation to only apply to a single field (e.g. `Fp`),
+/// or to apply to a field that has a different name than `F`:
+///
+/// ```ignore
+/// #[derive(kimchi::SnarkyType)]
+/// #[snarky(field = "G::ScalarField")]
+/// struct MyType<G> where G: KimchiCurve {
+/// ```
+///
+/// You can skip a field in the serializer:
+///
+/// ```ignore
+/// #[derive(kimchi::SnarkyType)]
+/// struct MyType<F> where F: PrimeField {
+///  #[snarky(skip)]
+/// field_to_skip: NotASnarkyType,
+/// ```
+///
+/// Finally, you can specify a custom check function,
+/// as well as a custom auxiliary function and type:
+///
+/// ```ignore
+/// #[derive(kimchi::SnarkyType)]
+/// #[snarky(check_fn = "my_check_fn")]
+/// #[snarky(auxiliary_fn = "my_auxiliary_fn")]
+/// #[snarky(auxiliary_type = "MyAuxiliaryType")]
+/// struct MyType<F> where F: PrimeField {
+/// ```
 #[proc_macro_derive(SnarkyType, attributes(snarky))]
 pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     // The strategy is the following:
@@ -92,6 +120,17 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
             }
         }
     }
+
+    // enforce that custom auxiliary type and custom auxiliary fn come hand in hand
+    match (
+        helper_attributes.auxiliary_type.is_some(),
+        helper_attributes.auxiliary_fn.is_some(),
+    ) {
+        (true, false) | (false, true) => {
+            panic!("`auxiliary_type` and `auxiliary_fn` have to be specified together")
+        }
+        _ => (),
+    };
 
     // enforce that we have a type parameter `F: PrimeField`
     // this is needed as we use the same type parameter in the implementation of SnarkyType
