@@ -118,7 +118,7 @@ Another solution is to keep track of what was reduced, and reuse previous reduct
 It is during this "reducing" step that internal variables (known only to the kimchi backend) are created.
 
 ```admonish
-The process is quite safe, as the kimchi backend cannot use the snarky wrapper variables directly (which are of type `CVar`).
+The process is quite safe, as the kimchi backend cannot use the snarky wrapper variables directly (which are of type `FieldVar`).
 Since the expected format (see the [variables section](#variables) is a number (of type `usize`), the only way to convert a non-tracked variable (constant, or scale, or linear combination) is to reduce it (and in the process constraining its value).
 ```
 

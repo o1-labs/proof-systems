@@ -12,6 +12,7 @@ pub mod cvar;
 pub mod errors;
 pub(crate) mod poseidon;
 pub mod traits;
+pub mod union_find;
 
 #[cfg(test)]
 mod tests;
@@ -20,8 +21,8 @@ mod tests;
 pub mod prelude {
     use super::*;
     pub use crate::loc;
-    pub use checked_runner::RunState;
-    pub use traits::SnarkyType;
-    pub use cvar::CVar;
     pub use boolean::Boolean;
+    pub use checked_runner::RunState;
+    pub use cvar::FieldVar;
+    pub use traits::SnarkyType;
 }

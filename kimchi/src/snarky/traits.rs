@@ -2,7 +2,7 @@
 
 use super::{
     checked_runner::{RunState, WitnessGeneration},
-    cvar::CVar,
+    cvar::FieldVar,
 };
 use ark_ff::PrimeField;
 
@@ -26,10 +26,10 @@ where
     const SIZE_IN_FIELD_ELEMENTS: usize;
 
     /// Returns the circuit variables (and auxiliary data) behind this type.
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary);
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary);
 
     /// Creates a new instance of this type from the given circuit variables (And some auxiliary data).
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, aux: Self::Auxiliary) -> Self;
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self;
 
     /// Checks that the circuit variables behind this type are valid.
     /// For some definition of valid.
@@ -53,7 +53,7 @@ where
     // new functions that might help us with generics?
     //
 
-    fn compute<FUNC>(cs: &mut RunState<F>, loc: String, to_compute_value: FUNC) -> Self
+    fn compute<FUNC>(cs: &mut RunState<F>, loc: &str, to_compute_value: FUNC) -> Self
     where
         FUNC: Fn(&dyn WitnessGeneration<F>) -> Self::OutOfCircuit,
     {
@@ -93,11 +93,11 @@ where
 
     const SIZE_IN_FIELD_ELEMENTS: usize = 0;
 
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
         (vec![], ())
     }
 
-    fn from_cvars_unsafe(_cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {}
+    fn from_cvars_unsafe(_cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {}
 
     fn check(&self, _cs: &mut RunState<F>) {}
 
@@ -122,14 +122,14 @@ where
 
     const SIZE_IN_FIELD_ELEMENTS: usize = T1::SIZE_IN_FIELD_ELEMENTS + T2::SIZE_IN_FIELD_ELEMENTS;
 
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
         let (mut cvars1, aux1) = self.0.to_cvars();
         let (cvars2, aux2) = self.1.to_cvars();
         cvars1.extend(cvars2);
         (cvars1, (aux1, aux2))
     }
 
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, aux: Self::Auxiliary) -> Self {
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self {
         assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
         let (cvars1, cvars2) = cvars.split_at(Self::SIZE_IN_FIELD_ELEMENTS);
         let (aux1, aux2) = aux;
@@ -168,18 +168,18 @@ where
     }
 }
 
-impl<F: PrimeField, const T: usize> SnarkyType<F> for [CVar<F>; T] {
+impl<F: PrimeField, const T: usize> SnarkyType<F> for [FieldVar<F>; T] {
     type Auxiliary = ();
 
     type OutOfCircuit = [F; T];
 
     const SIZE_IN_FIELD_ELEMENTS: usize = T;
 
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
         (self.to_vec(), ())
     }
 
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {
         cvars.try_into().unwrap()
     }
 

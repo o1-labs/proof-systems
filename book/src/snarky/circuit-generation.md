@@ -15,13 +15,13 @@ The `compute()` function also needs a type hint to understand what type of [snar
 
 It then performs the following steps:
 
-* creates enough [`CVar`](./vars#circuit-vars) to hold the value to be created 
-* retrieves the auxiliary data needed to create the snarky type (TODO: explain auxiliary data) and create the [`snarky variable`](./vars.md#snarky-vars) out of the `CVar`s and the auxiliary data
+* creates enough [`FieldVar`](./vars#circuit-vars) to hold the value to be created 
+* retrieves the auxiliary data needed to create the snarky type (TODO: explain auxiliary data) and create the [`snarky variable`](./vars.md#snarky-vars) out of the `FieldVar`s and the auxiliary data
 * if the `TypeCreation` is set to `Checked`, call the `check()` function on the snarky type (which will constrain the value created), if it is set to `Unsafe` do nothing (in which case we're trusting that the value cannot be malformed, this is mostly used internally and it is highly-likely that users directly making use of `Unsafe` are writing bugs)
 
 ```admonish
 At this point we only created variables to hold future values, and made sure that they are constrained.
-The actual values will fill the room created by the `CVar` only during the [witness generation](./witness-generation.md).
+The actual values will fill the room created by the `FieldVar` only during the [witness generation](./witness-generation.md).
 ```
 
 ## Constraints

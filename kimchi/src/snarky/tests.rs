@@ -1,7 +1,7 @@
 use crate::{
     loc,
     snarky::{api::SnarkyCircuit, boolean::Boolean},
-    snarky::{checked_runner::RunState, cvar::CVar},
+    snarky::{checked_runner::RunState, cvar::FieldVar},
 };
 use ark_ff::One;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -26,15 +26,15 @@ impl SnarkyCircuit for TestCircuit {
     type PublicOutput = Boolean<Fp>;
 
     fn circuit(&self, sys: &mut RunState<Fp>, public: Self::PublicInput) -> Self::PublicOutput {
-        let x: CVar<Fp> = sys.compute(loc!(), |_| self.x);
-        let y: CVar<Fp> = sys.compute(loc!(), |_| self.y);
-        let z: CVar<Fp> = sys.compute(loc!(), |_| self.z);
+        let x: FieldVar<Fp> = sys.compute(&loc!(), |_| self.x);
+        let y: FieldVar<Fp> = sys.compute(&loc!(), |_| self.y);
+        let z: FieldVar<Fp> = sys.compute(&loc!(), |_| self.z);
 
         sys.assert_r1cs(Some("x * y = z"), x, y, z);
 
-        let other: Boolean<Fp> = sys.compute(loc!(), |_| true);
+        let other: Boolean<Fp> = sys.compute(&loc!(), |_| true);
 
-        return public.and(&other, sys);
+        return public.and(&other, sys, &loc!());
     }
 }
 

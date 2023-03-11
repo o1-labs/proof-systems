@@ -8,7 +8,7 @@ use crate::{
     snarky::{
         boolean::Boolean,
         constraint_system::{BasicSnarkyConstraint, KimchiConstraint, SnarkyConstraintSystem},
-        cvar::CVar,
+        cvar::FieldVar,
         traits::SnarkyType,
     },
 };
@@ -39,51 +39,52 @@ where
 #[derive(Debug)]
 pub enum Constraint<F: PrimeField> {
     /// Old R1CS-like constraints.
-    BasicSnarkyConstraint(BasicSnarkyConstraint<CVar<F>>),
+    BasicSnarkyConstraint(BasicSnarkyConstraint<FieldVar<F>>),
 
     /// Custom gates in kimchi.
-    KimchiConstraint(KimchiConstraint<CVar<F>, F>),
+    KimchiConstraint(KimchiConstraint<FieldVar<F>, F>),
 }
 
 /// The state used when compiling a circuit in snarky, or used in witness generation as well.
+#[derive(Debug)]
 pub struct RunState<F>
 where
     F: PrimeField,
 {
     /// The constraint system used to build the circuit.
     /// If not set, the constraint system is not built.
-    system: Option<SnarkyConstraintSystem<F>>,
+    pub system: Option<SnarkyConstraintSystem<F>>,
 
     /// The public input of the circuit used in witness generation.
     // TODO: can we merge public_input and private_input?
     public_input: Vec<F>,
 
     // TODO: we could also just store `usize` here
-    pub(crate) public_output: Vec<CVar<F>>,
+    pub(crate) public_output: Vec<FieldVar<F>>,
 
     /// The private input of the circuit used in witness generation. Still not sure what that is, or why we care about this.
     private_input: Vec<F>,
 
     /// If set, the witness generation will check if the constraints are satisfied.
     /// This is useful to simulate running the circuit and return an error if an assertion fails.
-    eval_constraints: bool,
+    pub eval_constraints: bool,
 
     /// The number of public inputs.
     num_public_inputs: usize,
 
     /// A counter used to track variables (this includes public inputs) as they're being created.
-    next_var: usize,
+    pub next_var: usize,
 
     /// Indication that we're running the witness generation.
     /// This does not necessarily mean that constraints are not created,
     /// as we can do both at the same time.
     // TODO: perhaps we should try to make the distinction between witness/constraint generation clearer
-    has_witness: bool,
+    pub has_witness: bool,
 
     /// Indication that we're running in prover mode.
     /// In this mode, we do not want to create constraints.
     // TODO: perhaps we should try to make the distinction between compile/runtime clearer
-    pub(crate) as_prover: bool,
+    pub as_prover: bool,
 }
 
 //
@@ -97,17 +98,17 @@ where
     F: PrimeField,
 {
     /// Allows the caller to obtain the value behind a circuit variable.
-    fn read_var(&self, var: &CVar<F>) -> F;
+    fn read_var(&self, var: &FieldVar<F>) -> F;
 }
 
 impl<F: PrimeField, G: WitnessGeneration<F>> WitnessGeneration<F> for &G {
-    fn read_var(&self, var: &CVar<F>) -> F {
+    fn read_var(&self, var: &FieldVar<F>) -> F {
         G::read_var(*self, var)
     }
 }
 
 impl<F: PrimeField> WitnessGeneration<F> for &dyn WitnessGeneration<F> {
-    fn read_var(&self, var: &CVar<F>) -> F {
+    fn read_var(&self, var: &FieldVar<F>) -> F {
         (**self).read_var(var)
     }
 }
@@ -116,7 +117,7 @@ impl<F> WitnessGeneration<F> for RunState<F>
 where
     F: PrimeField,
 {
-    fn read_var(&self, var: &CVar<F>) -> F {
+    fn read_var(&self, var: &FieldVar<F>) -> F {
         let get_one = |var_idx| {
             if var_idx < self.num_public_inputs {
                 self.public_input[var_idx]
@@ -125,6 +126,7 @@ where
             }
         };
 
+        // TODO: same here, can we avoid passing a closure?
         var.eval(&get_one)
     }
 }
@@ -142,18 +144,24 @@ where
     pub fn new<Curve: KimchiCurve<ScalarField = F>>(
         public_input_size: usize,
         public_output_size: usize,
+        with_system: bool,
     ) -> Self {
         // init
         let num_public_inputs = public_input_size + public_output_size;
 
         // create the CS
         let constants = Constants::new::<Curve>();
-        let mut system = SnarkyConstraintSystem::create(constants);
-        system.set_primary_input_size(num_public_inputs);
+        let system = if with_system {
+            let mut system = SnarkyConstraintSystem::create(constants);
+            system.set_primary_input_size(num_public_inputs);
+            Some(system)
+        } else {
+            None
+        };
 
         // create the runner
         let mut sys = Self {
-            system: Some(system),
+            system,
             public_input: Vec::with_capacity(num_public_inputs),
             public_output: Vec::with_capacity(public_output_size),
             private_input: vec![],
@@ -179,6 +187,17 @@ where
         sys
     }
 
+    #[cfg(feature = "ocaml_types")]
+    /// Used by the OCaml side to read variables directly by their indexes.
+    /// Can panic.
+    pub fn read_var_idx(&self, idx: usize) -> F {
+        if idx < self.num_public_inputs {
+            self.public_input[idx]
+        } else {
+            self.private_input[idx - self.num_public_inputs]
+        }
+    }
+
     pub fn public_input<T: SnarkyType<F>>(&self) -> T {
         assert_eq!(
             T::SIZE_IN_FIELD_ELEMENTS,
@@ -187,32 +206,32 @@ where
 
         let mut cvars = Vec::with_capacity(T::SIZE_IN_FIELD_ELEMENTS);
         for i in 0..T::SIZE_IN_FIELD_ELEMENTS {
-            cvars.push(CVar::Var(i));
+            cvars.push(FieldVar::Var(i));
         }
         let aux = T::constraint_system_auxiliary();
         T::from_cvars_unsafe(cvars, aux)
     }
 
     /// Allocates a new var representing a private input.
-    fn alloc_var(&mut self) -> CVar<F> {
+    pub fn alloc_var(&mut self) -> FieldVar<F> {
         let v = self.next_var;
         self.next_var += 1;
-        CVar::Var(v)
+        FieldVar::Var(v)
     }
 
     /// Stores a field element as an unconstrained private input.
-    fn store_field_elt(&mut self, x: F) -> CVar<F> {
+    pub fn store_field_elt(&mut self, x: F) -> FieldVar<F> {
         let v = self.next_var;
         self.next_var += 1;
         self.private_input.push(x);
-        CVar::Var(v)
+        FieldVar::Var(v)
     }
 
-    pub(crate) fn public_output_values(&self, cvars: Vec<CVar<F>>) -> Vec<F> {
+    pub(crate) fn public_output_values(&self, cvars: Vec<FieldVar<F>>) -> Vec<F> {
         let mut values = vec![];
         for cvar in cvars {
             match cvar {
-                CVar::Var(idx) => {
+                FieldVar::Var(idx) => {
                     dbg!(&self.private_input, self.num_public_inputs);
                     let val = self.private_input[idx - self.num_public_inputs];
                     values.push(val);
@@ -230,7 +249,7 @@ where
 
     /// Creates a new non-deterministic variable associated to a value type ([SnarkyType]),
     /// and a closure that can compute it when in witness generation mode.
-    pub fn compute<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    pub fn compute<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -240,7 +259,7 @@ where
 
     /// Same as [Self::compute] except that it does not attempt to constrain the value it computes.
     /// This is to be used internally only, when we know that the value cannot be malformed.
-    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, loc: String, to_compute_value: FUNC) -> T
+    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -262,7 +281,7 @@ where
     }
 
     // TODO: make loc argument work
-    fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: String, to_compute_value: FUNC) -> T
+    fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: &str, to_compute_value: FUNC) -> T
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -283,7 +302,7 @@ where
             // convert each field element into a circuit var
             for field in fields {
                 let v = if self.as_prover {
-                    CVar::Constant(field)
+                    FieldVar::Constant(field)
                 } else {
                     self.store_field_elt(field)
                 };
@@ -329,7 +348,7 @@ where
     pub fn assert_(
         &mut self,
         annotation: Option<&'static str>,
-        basic_constraints: Vec<BasicSnarkyConstraint<CVar<F>>>,
+        basic_constraints: Vec<BasicSnarkyConstraint<FieldVar<F>>>,
     ) {
         let constraints: Vec<_> = basic_constraints
             .into_iter()
@@ -347,9 +366,9 @@ where
     pub fn assert_r1cs(
         &mut self,
         annotation: Option<&'static str>,
-        a: CVar<F>,
-        b: CVar<F>,
-        c: CVar<F>,
+        a: FieldVar<F>,
+        b: FieldVar<F>,
+        c: FieldVar<F>,
     ) {
         let constraint = BasicSnarkyConstraint::R1CS(a, b, c);
         self.assert_(annotation, vec![constraint]);
@@ -357,7 +376,7 @@ where
 
     // TODO: get rid of this
     /// Creates a constraint for `assert_eq!(x, y)`;
-    pub fn assert_eq(&mut self, annotation: Option<&'static str>, x: CVar<F>, y: CVar<F>) {
+    pub fn assert_eq(&mut self, annotation: Option<&'static str>, x: FieldVar<F>, y: FieldVar<F>) {
         let constraint = BasicSnarkyConstraint::Equal(x, y);
         self.assert_(annotation, vec![constraint]);
     }
@@ -370,7 +389,8 @@ where
             return;
         }
 
-        if self.eval_constraints {
+        // We can't evaluate the constraints if we are not computing over a value.
+        if self.eval_constraints && self.has_witness {
             for constraint in &constraints {
                 // TODO: return an error here instead of panicking
                 constraint.check_constraint(self);
@@ -388,6 +408,7 @@ where
     }
 
     fn add_constraints_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
+        // TODO: we should have a mode "don't create constraints" instead of having an option here
         let cs = match &mut self.system {
             Some(cs) => cs,
             None => return, // TODO: why silent fail?
@@ -409,12 +430,12 @@ where
 
     /// Adds a constraint that returns `then_` if `b` is `true`, `else_` otherwise.
     /// Equivalent to `if b { then_ } else { else_ }`.
-    pub fn if_(&mut self, b: Boolean<F>, then_: CVar<F>, else_: CVar<F>) -> CVar<F> {
+    pub fn if_(&mut self, b: Boolean<F>, then_: FieldVar<F>, else_: FieldVar<F>) -> FieldVar<F> {
         // r = e + b (t - e)
         // r - e = b (t - e)
         let cvars = b.to_cvars().0;
         let b = &cvars[0];
-        if let CVar::Constant(b) = b {
+        if let FieldVar::Constant(b) = b {
             if b.is_one() {
                 return then_;
             } else {
@@ -423,16 +444,16 @@ where
         }
 
         match (&then_, &else_) {
-            (CVar::Constant(t), CVar::Constant(e)) => {
+            (FieldVar::Constant(t), FieldVar::Constant(e)) => {
                 let t_times_b = b.scale(*t);
-                let one_minus_b = CVar::Constant(F::one()) - b;
+                let one_minus_b = FieldVar::Constant(F::one()) - b;
                 t_times_b + &one_minus_b.scale(*e)
             }
             _ => {
                 let b_clone = b.clone();
                 let then_clone = then_.clone();
                 let else_clone = else_.clone();
-                let res: CVar<F> = self.compute(loc!(), move |env| {
+                let res: FieldVar<F> = self.compute(&loc!(), move |env| {
                     let b = env.read_var(&b_clone);
                     let res_var = if b == F::one() {
                         &then_clone
@@ -469,14 +490,23 @@ where
         if let Some(cs) = &mut self.system {
             cs.finalize_and_get_gates()
         } else {
+            // TODO: do we really want to panic here?
             panic!("woot");
         }
     }
 
+    #[cfg(feature = "ocaml_types")]
+    pub fn get_private_inputs(&self) -> Vec<F> {
+        self.private_input.clone()
+    }
+
     pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
+        assert_eq!(self.num_public_inputs, public_input.len(), "the number of public inputs passed ({}) does not match the number of public inputs expected ({})", public_input.len(), self.num_public_inputs);
+
+        assert_eq!(self.next_var, self.num_public_inputs, "compiler bug: the `next_var` counter is not correctly initialized to the number of public inputs");
+
         self.has_witness = true;
         self.public_input = public_input;
-        self.next_var = self.num_public_inputs;
     }
 
     /// Returns the public output generated after running the circuit,
@@ -485,6 +515,7 @@ where
         // TODO: asserting this is dumb.. what if there's no private input : D
         assert!(!self.private_input.is_empty());
 
+        // TODO: do we really want to panic here?
         let system = self.system.as_mut().unwrap();
 
         let get_one = |var_idx| {
@@ -496,6 +527,7 @@ where
         };
 
         // compute witness
+        // TODO: can we avoid passing a closure here? a reference to a Inputs struct would be better perhaps.
         let witness = system.compute_witness(get_one);
 
         // clear state (TODO: find better solution)
@@ -507,10 +539,15 @@ where
     }
 
     pub(crate) fn poseidon_params(&self) -> mina_poseidon::poseidon::ArithmeticSpongeParams<F> {
+        // TODO: do we really want to panic here?
         self.system.as_ref().map(|sys| sys.sponge_params()).unwrap()
     }
 
-    pub fn poseidon(&mut self, loc: String, preimage: (CVar<F>, CVar<F>)) -> (CVar<F>, CVar<F>) {
-        super::poseidon::poseidon(loc, self, preimage)
+    pub fn poseidon(
+        &mut self,
+        loc: &str,
+        preimage: (FieldVar<F>, FieldVar<F>),
+    ) -> (FieldVar<F>, FieldVar<F>) {
+        super::poseidon::poseidon(self, loc, preimage)
     }
 }

@@ -7,7 +7,7 @@ use poly_commitment::commitment::CommitmentCurve;
 
 use crate::curve::KimchiCurve;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Constants<F: Field> {
     pub poseidon: ArithmeticSpongeParams<F>,
     pub endo: F,

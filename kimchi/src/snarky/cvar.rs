@@ -1,28 +1,27 @@
-use crate::{
-    loc,
-    snarky::{
-        boolean::Boolean,
-        checked_runner::{RunState, WitnessGeneration},
-        constraint_system::SnarkyCvar,
-        traits::SnarkyType,
-    },
+use crate::snarky::{
+    boolean::Boolean,
+    checked_runner::{RunState, WitnessGeneration},
+    constraint_system::SnarkyCvar,
+    traits::SnarkyType,
 };
 use ark_ff::PrimeField;
 use std::ops::{Add, Neg, Sub};
 
+use super::{checked_runner::Constraint, constraint_system::BasicSnarkyConstraint};
+
 /// A circuit variable represents a field element in the circuit.
 #[derive(Clone, Debug)]
-pub enum CVar<F>
+pub enum FieldVar<F>
 where
     F: PrimeField,
 {
     Constant(F),
     Var(usize),
-    Add(Box<CVar<F>>, Box<CVar<F>>),
-    Scale(F, Box<CVar<F>>),
+    Add(Box<FieldVar<F>>, Box<FieldVar<F>>),
+    Scale(F, Box<FieldVar<F>>),
 }
 
-impl<F> SnarkyCvar for CVar<F>
+impl<F> SnarkyCvar for FieldVar<F>
 where
     F: PrimeField,
 {
@@ -35,26 +34,26 @@ where
 
 pub type Term<F> = (F, usize);
 
-pub type ScaledCVar<F> = (F, CVar<F>);
+pub type ScaledCVar<F> = (F, FieldVar<F>);
 
-impl<F> CVar<F>
+impl<F> FieldVar<F>
 where
     F: PrimeField,
 {
     fn eval_inner(&self, context: &impl (Fn(usize) -> F), scale: F, res: &mut F) {
         match self {
-            CVar::Constant(c) => {
+            FieldVar::Constant(c) => {
                 *res += scale * c;
             }
-            CVar::Var(v) => {
+            FieldVar::Var(v) => {
                 let v = context(*v); // TODO: might panic
                 *res += scale * v;
             }
-            CVar::Add(a, b) => {
+            FieldVar::Add(a, b) => {
                 a.eval_inner(context, scale, res);
                 b.eval_inner(context, scale, res);
             }
-            CVar::Scale(s, v) => {
+            FieldVar::Scale(s, v) => {
                 v.eval_inner(context, scale * s, res);
             }
         }
@@ -74,14 +73,14 @@ where
         terms: Vec<Term<F>>,
     ) -> (F, Vec<Term<F>>) {
         match self {
-            CVar::Constant(c) => (constant + (scale * c), terms),
-            CVar::Var(v) => {
+            FieldVar::Constant(c) => (constant + (scale * c), terms),
+            FieldVar::Var(v) => {
                 let mut new_terms = vec![(scale, *v)];
                 new_terms.extend(terms);
                 (constant, new_terms)
             }
-            CVar::Scale(s, t) => t.to_constant_and_terms_inner(scale * s, constant, terms),
-            CVar::Add(x1, x2) => {
+            FieldVar::Scale(s, t) => t.to_constant_and_terms_inner(scale * s, constant, terms),
+            FieldVar::Add(x1, x2) => {
                 let (c1, terms1) = x1.to_constant_and_terms_inner(scale, constant, terms);
                 x2.to_constant_and_terms_inner(scale, c1, terms1)
             }
@@ -100,20 +99,20 @@ where
 
     pub fn scale(&self, scalar: F) -> Self {
         if scalar.is_zero() {
-            return CVar::Constant(scalar);
+            return FieldVar::Constant(scalar);
         } else if scalar.is_one() {
             return self.clone();
         }
 
         match self {
-            CVar::Constant(x) => CVar::Constant(*x * scalar),
-            CVar::Scale(s, v) => CVar::Scale(*s * scalar, v.clone()),
-            CVar::Var(_) | CVar::Add(..) => CVar::Scale(scalar, Box::new(self.clone())),
+            FieldVar::Constant(x) => FieldVar::Constant(*x * scalar),
+            FieldVar::Scale(s, v) => FieldVar::Scale(*s * scalar, v.clone()),
+            FieldVar::Var(_) | FieldVar::Add(..) => FieldVar::Scale(scalar, Box::new(self.clone())),
         }
     }
 
     pub fn linear_combination(terms: &[ScaledCVar<F>]) -> Self {
-        let mut res = CVar::Constant(F::zero());
+        let mut res = FieldVar::Constant(F::zero());
         for (cst, term) in terms {
             res = res.add(&term.scale(*cst));
         }
@@ -125,26 +124,32 @@ where
         Self::linear_combination(&terms)
     }
 
-    pub fn mul(&self, other: &Self, label: Option<&'static str>, cs: &mut RunState<F>) -> Self {
+    pub fn mul(
+        &self,
+        other: &Self,
+        label: Option<&'static str>,
+        loc: &str,
+        cs: &mut RunState<F>,
+    ) -> Self {
         match (self, other) {
-            (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x * y),
+            (FieldVar::Constant(x), FieldVar::Constant(y)) => FieldVar::Constant(*x * y),
 
             // TODO: this was not in the original ocaml code, but seems correct to me
-            (CVar::Constant(cst), _) | (_, CVar::Constant(cst)) if cst.is_zero() => {
-                CVar::Constant(F::zero())
+            (FieldVar::Constant(cst), _) | (_, FieldVar::Constant(cst)) if cst.is_zero() => {
+                FieldVar::Constant(F::zero())
             }
 
             // TODO: same here
-            (CVar::Constant(cst), cvar) | (cvar, CVar::Constant(cst)) if cst.is_one() => {
+            (FieldVar::Constant(cst), cvar) | (cvar, FieldVar::Constant(cst)) if cst.is_one() => {
                 cvar.clone()
             }
 
-            (CVar::Constant(cst), cvar) | (cvar, CVar::Constant(cst)) => cvar.scale(*cst),
+            (FieldVar::Constant(cst), cvar) | (cvar, FieldVar::Constant(cst)) => cvar.scale(*cst),
 
             (_, _) => {
                 let self_clone = self.clone();
                 let other_clone = other.clone();
-                let res: CVar<F> = cs.compute(loc!(), move |env| {
+                let res: FieldVar<F> = cs.compute(&loc, move |env| {
                     let x: F = env.read_var(&self_clone);
                     let y: F = env.read_var(&other_clone);
                     x * y
@@ -164,8 +169,8 @@ where
     */
     fn equal_constraints(state: &mut RunState<F>, z: Self, z_inv: Self, r: Self) {
         // TODO: the ocaml code actually calls assert_all
-        let one_minus_r = CVar::Constant(F::one()) - &r;
-        let zero = CVar::Constant(F::zero());
+        let one_minus_r = FieldVar::Constant(F::one()) - &r;
+        let zero = FieldVar::Constant(F::zero());
         state.assert_r1cs(Some("equals_1"), z_inv, z.clone(), one_minus_r);
         state.assert_r1cs(Some("equals_2"), r, z, zero);
     }
@@ -175,7 +180,7 @@ where
 
     In particular, [r] is [1] if [z = 0] and [0] otherwise.
     */
-    fn equal_vars(env: &dyn WitnessGeneration<F>, z: &CVar<F>) -> (F, F) {
+    fn equal_vars(env: &dyn WitnessGeneration<F>, z: &FieldVar<F>) -> (F, F) {
         let z: F = env.read_var(z);
         if let Some(z_inv) = z.inverse() {
             (F::zero(), z_inv)
@@ -184,18 +189,18 @@ where
         }
     }
 
-    pub fn equal(&self, state: &mut RunState<F>, other: &CVar<F>) -> Boolean<F> {
+    pub fn equal(&self, state: &mut RunState<F>, loc: &str, other: &FieldVar<F>) -> Boolean<F> {
         match (self, other) {
-            (CVar::Constant(x), CVar::Constant(y)) => {
+            (FieldVar::Constant(x), FieldVar::Constant(y)) => {
                 let res = if x == y { F::one() } else { F::zero() };
-                let cvars = vec![CVar::Constant(res)];
+                let cvars = vec![FieldVar::Constant(res)];
                 Boolean::from_cvars_unsafe(cvars, ())
             }
             _ => {
                 let z = self - other;
                 let z_clone = z.clone();
-                let (res, z_inv): (CVar<F>, CVar<F>) =
-                    state.compute(loc!(), move |env| Self::equal_vars(env, &z_clone));
+                let (res, z_inv): (FieldVar<F>, FieldVar<F>) =
+                    state.compute(loc, move |env| Self::equal_vars(env, &z_clone));
                 Self::equal_constraints(state, z, z_inv, res.clone());
 
                 let cvars = vec![res];
@@ -204,164 +209,35 @@ where
         }
     }
 
-    /*
-    let equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Boolean.t t =
-      match (x, y) with
-      | Constant x, Constant y ->
-          Checked.return
-            (Boolean.Unsafe.create
-               (Cvar.constant
-                  (if Field.equal x y then Field.one else Field.zero) ) )
-      | _ ->
-          let z = Cvar.(x - y) in
-          let%bind r, inv =
-            exists Typ.(field * field) ~compute:(equal_vars z)
-          in
-          let%map () = equal_constraints z inv r in
-          Boolean.Unsafe.create r */
+    /// Seals the value of a variable.
+    ///
+    /// As a [`FieldVar`] can represent an AST,
+    /// it might not be a good idea to clone it and reuse it in several places.
+    /// This is because the exact same reduction that will eventually happen on each clone
+    /// will end up creating the same set of constraints multiple times in the circuit.
+    ///
+    /// It is useful to call [`seal`] on a variable that represents a long computation
+    /// that hasn't been constrained yet (e.g. by an assert call, or a call to a custom gate),
+    /// before using it further in the circuit.
+    pub fn seal(&self, state: &mut RunState<F>, loc: &str) -> Self {
+        match self.to_constant_and_terms() {
+            (None, terms) if terms.len() == 1 && terms[0].0.is_one() => FieldVar::Var(terms[0].1),
+            (Some(c), terms) if terms.is_empty() => FieldVar::Constant(c),
+            _ => {
+                let y: FieldVar<F> = state.compute(loc, |env| env.read_var(self));
+                // this call will reduce [self]
+                self.assert_equals(state, loc, &y);
+                y
+            }
+        }
+    }
 }
-
-/*
-
-        let assert_equal ?label x y =
-      match (x, y) with
-      | Cvar0.Constant x, Cvar0.Constant y ->
-          if Field.equal x y then return ()
-          else
-            failwithf
-              !"assert_equal: %{sexp: Field.t} != %{sexp: Field.t}"
-              x y ()
-      | _ ->
-          assert_equal ?label x y
-
-    (* [equal_constraints z z_inv r] asserts that
-       if z = 0 then r = 1, or
-       if z <> 0 then r = 0 and z * z_inv = 1
-    *)
-    let equal_constraints (z : Cvar.t) (z_inv : Cvar.t) (r : Cvar.t) =
-      let open Constraint in
-      let open Cvar in
-      assert_all
-        [ r1cs ~label:"equals_1" z_inv z (Cvar.constant Field.one - r)
-        ; r1cs ~label:"equals_2" r z (Cvar.constant Field.zero)
-        ]
-
-    (* [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
-       [equal_constraints z z_inv r].
-
-       In particular, [r] is [1] if [z = 0] and [0] otherwise.
-    *)
-    let equal_vars (z : Cvar.t) : (Field.t * Field.t) As_prover.t =
-      let open As_prover in
-      let%map z = read_var z in
-      if Field.equal z Field.zero then (Field.one, Field.zero)
-      else (Field.zero, Field.inv z)
-
-    let equal (x : Cvar.t) (y : Cvar.t) : Cvar.t Boolean.t t =
-      match (x, y) with
-      | Constant x, Constant y ->
-          Checked.return
-            (Boolean.Unsafe.create
-               (Cvar.constant
-                  (if Field.equal x y then Field.one else Field.zero) ) )
-      | _ ->
-          let z = Cvar.(x - y) in
-          let%bind r, inv =
-            exists Typ.(field * field) ~compute:(equal_vars z)
-          in
-          let%map () = equal_constraints z inv r in
-          Boolean.Unsafe.create r
-
-
-    let square ?(label = "Checked.square") (x : Cvar.t) =
-      match x with
-      | Constant x ->
-          return (Cvar.constant (Field.square x))
-      | _ ->
-          with_label label
-            (let open Let_syntax in
-            let%bind z =
-              exists Typ.field
-                ~compute:As_prover.(map (read_var x) ~f:Field.square)
-            in
-            let%map () = assert_square x z in
-            z)
-
-    (* We get a better stack trace by failing at the call to is_satisfied, so we
-       put a bogus value for the inverse to make the constraint system unsat if
-       x is zero. *)
-    let inv ?(label = "Checked.inv") (x : Cvar.t) =
-      match x with
-      | Constant x ->
-          return (Cvar.constant (Field.inv x))
-      | _ ->
-          with_label label
-            (let open Let_syntax in
-            let%bind x_inv =
-              exists Typ.field
-                ~compute:
-                  As_prover.(
-                    map (read_var x) ~f:(fun x ->
-                        if Field.(equal zero x) then Field.zero
-                        else Backend.Field.inv x ))
-            in
-            let%map () =
-              assert_r1cs ~label:"field_inverse" x x_inv
-                (Cvar.constant Field.one)
-            in
-            x_inv)
-
-    let div ?(label = "Checked.div") (x : Cvar.t) (y : Cvar.t) =
-      match (x, y) with
-      | Constant x, Constant y ->
-          return (Cvar.constant (Field.( / ) x y))
-      | _ ->
-          with_label label
-            (let open Let_syntax in
-            let%bind y_inv = inv y in
-            mul x y_inv)
-
-    let%snarkydef_ if_ (b : Cvar.t Boolean.t) ~(then_ : Cvar.t) ~(else_ : Cvar.t)
-        =
-      let open Let_syntax in
-      (* r = e + b (t - e)
-         r - e = b (t - e)
-      *)
-      let b = (b :> Cvar.t) in
-      match b with
-      | Constant b ->
-          if Field.(equal b one) then return then_ else return else_
-      | _ -> (
-          match (then_, else_) with
-          | Constant t, Constant e ->
-              return Cvar.((t * b) + (e * (constant Field0.one - b)))
-          | _, _ ->
-              let%bind r =
-                exists Typ.field
-                  ~compute:
-                    (let open As_prover in
-                    let open Let_syntax in
-                    let%bind b = read_var b in
-                    read Typ.field
-                      (if Field.equal b Field.one then then_ else else_))
-              in
-              let%map () =
-                assert_r1cs b Cvar.(then_ - else_) Cvar.(r - else_)
-              in
-              r )
-
-    let%snarkydef_ assert_non_zero (v : Cvar.t) =
-      let open Let_syntax in
-      let%map _ = inv v in
-      ()
-}
-*/
 
 //
 // Our Traits
 //
 
-impl<F> SnarkyType<F> for CVar<F>
+impl<F> SnarkyType<F> for FieldVar<F>
 where
     F: PrimeField,
 {
@@ -371,11 +247,11 @@ where
 
     const SIZE_IN_FIELD_ELEMENTS: usize = 1;
 
-    fn to_cvars(&self) -> (Vec<CVar<F>>, Self::Auxiliary) {
+    fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
         (vec![self.clone()], ())
     }
 
-    fn from_cvars_unsafe(cvars: Vec<CVar<F>>, _aux: Self::Auxiliary) -> Self {
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {
         assert_eq!(cvars.len(), 1);
         cvars[0].clone()
     }
@@ -398,88 +274,140 @@ where
 }
 
 //
-// Operations
+// Assertions
 //
 
-impl<F> Add for &CVar<F>
+impl<F> FieldVar<F>
 where
     F: PrimeField,
 {
-    type Output = CVar<F>;
+    pub fn assert_equals(&self, state: &mut RunState<F>, _loc: &str, other: &FieldVar<F>) {
+        state.add_constraint(
+            Constraint::BasicSnarkyConstraint(BasicSnarkyConstraint::Equal(
+                self.clone(),
+                other.clone(),
+            )),
+            Some("assert equals"),
+        );
+    }
+}
+
+//
+// Operations
+//
+
+impl<F> Add for &FieldVar<F>
+where
+    F: PrimeField,
+{
+    type Output = FieldVar<F>;
 
     fn add(self, other: Self) -> Self::Output {
         match (self, other) {
-            (CVar::Constant(x), y) | (y, CVar::Constant(x)) if x.is_zero() => y.clone(),
-            (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x + y),
-            (_, _) => CVar::Add(Box::new(self.clone()), Box::new(other.clone())),
+            (FieldVar::Constant(x), y) | (y, FieldVar::Constant(x)) if x.is_zero() => y.clone(),
+            (FieldVar::Constant(x), FieldVar::Constant(y)) => FieldVar::Constant(*x + y),
+            (_, _) => FieldVar::Add(Box::new(self.clone()), Box::new(other.clone())),
         }
     }
 }
 
-impl<'a, F> Add<&'a Self> for CVar<F>
+impl<F> Add<Self> for FieldVar<F>
 where
     F: PrimeField,
 {
-    type Output = CVar<F>;
+    type Output = FieldVar<F>;
+
+    fn add(self, other: Self) -> Self::Output {
+        self.add(&other)
+    }
+}
+
+impl<'a, F> Add<&'a Self> for FieldVar<F>
+where
+    F: PrimeField,
+{
+    type Output = FieldVar<F>;
 
     fn add(self, other: &Self) -> Self::Output {
         (&self).add(other)
     }
 }
 
-impl<F> Add<CVar<F>> for &CVar<F>
+impl<F> Add<FieldVar<F>> for &FieldVar<F>
 where
     F: PrimeField,
 {
-    type Output = CVar<F>;
+    type Output = FieldVar<F>;
 
-    fn add(self, other: CVar<F>) -> Self::Output {
+    fn add(self, other: FieldVar<F>) -> Self::Output {
         self.add(&other)
     }
 }
 
-impl<F> Sub for &CVar<F>
+impl<F> Sub for &FieldVar<F>
 where
     F: PrimeField,
 {
-    type Output = CVar<F>;
+    type Output = FieldVar<F>;
 
     fn sub(self, other: Self) -> Self::Output {
         match (self, other) {
-            (CVar::Constant(x), CVar::Constant(y)) => CVar::Constant(*x - y),
+            (FieldVar::Constant(x), FieldVar::Constant(y)) => FieldVar::Constant(*x - y),
             // TODO: why not just create a Sub variant?
             _ => self.add(&other.scale(-F::one())),
         }
     }
 }
 
-impl<'a, F> Sub<&'a CVar<F>> for CVar<F>
+impl<F> Sub<FieldVar<F>> for FieldVar<F>
 where
     F: PrimeField,
 {
-    type Output = CVar<F>;
+    type Output = FieldVar<F>;
+
+    fn sub(self, other: FieldVar<F>) -> Self::Output {
+        self.sub(&other)
+    }
+}
+
+impl<'a, F> Sub<&'a FieldVar<F>> for FieldVar<F>
+where
+    F: PrimeField,
+{
+    type Output = FieldVar<F>;
 
     fn sub(self, other: &Self) -> Self::Output {
         (&self).sub(other)
     }
 }
 
-impl<F> Sub<CVar<F>> for &CVar<F>
+impl<F> Sub<FieldVar<F>> for &FieldVar<F>
 where
     F: PrimeField,
 {
-    type Output = CVar<F>;
+    type Output = FieldVar<F>;
 
-    fn sub(self, other: CVar<F>) -> Self::Output {
+    fn sub(self, other: FieldVar<F>) -> Self::Output {
         self.sub(&other)
     }
 }
 
-impl<F> Neg for &CVar<F>
+impl<F> Neg for &FieldVar<F>
 where
     F: PrimeField,
 {
-    type Output = CVar<F>;
+    type Output = FieldVar<F>;
+
+    fn neg(self) -> Self::Output {
+        self.scale(-F::one())
+    }
+}
+
+impl<F> Neg for FieldVar<F>
+where
+    F: PrimeField,
+{
+    type Output = FieldVar<F>;
 
     fn neg(self) -> Self::Output {
         self.scale(-F::one())

@@ -3,7 +3,7 @@ use crate::{
     snarky::{
         checked_runner::Constraint,
         constraint_system::KimchiConstraint,
-        prelude::{CVar, RunState},
+        prelude::{FieldVar, RunState},
     },
 };
 use ark_ff::PrimeField;
@@ -14,23 +14,25 @@ use mina_poseidon::{
 };
 use std::iter::successors;
 
+use super::constraint_system::PoseidonInput;
+
 pub fn poseidon<F: PrimeField>(
-    loc: String,
     runner: &mut RunState<F>,
-    preimage: (CVar<F>, CVar<F>),
-) -> (CVar<F>, CVar<F>) {
-    let initial_state = [preimage.0, preimage.1, CVar::Constant(F::zero())];
+    loc: &str,
+    preimage: (FieldVar<F>, FieldVar<F>),
+) -> (FieldVar<F>, FieldVar<F>) {
+    let initial_state = [preimage.0, preimage.1, FieldVar::Constant(F::zero())];
     let (constraint, hash) = {
         let params = runner.poseidon_params();
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
             //this case may justify moving to Cow
-            let state = round(loc.clone(), prev, runner, *i, &params);
+            let state = round(runner, loc, prev, *i, &params);
             Some((state, i + 1))
         })
         .take(ROUNDS_PER_HASH + 1)
         .map(|(r, _)| r);
 
-        let states = iter
+        let states: Vec<_> = iter
             .by_ref()
             .take(ROUNDS_PER_HASH)
             .chunks(ROUNDS_PER_ROW)
@@ -48,7 +50,10 @@ pub fn poseidon<F: PrimeField>(
             let [a, b, _] = last.clone();
             (a, b)
         };
-        let constraint = Constraint::KimchiConstraint(KimchiConstraint::Poseidon2 { states, last });
+        let constraint = Constraint::KimchiConstraint(KimchiConstraint::Poseidon2(PoseidonInput {
+            states: states.into_iter().map(|s| s.to_vec()).collect(),
+            last: last.to_vec(),
+        }));
         (constraint, hash)
     };
     runner.add_constraint(constraint, Some("Poseidon"));
@@ -56,12 +61,12 @@ pub fn poseidon<F: PrimeField>(
 }
 
 fn round<F: PrimeField>(
-    loc: String,
-    elements: &[CVar<F>; SPONGE_WIDTH],
     runner: &mut RunState<F>,
+    loc: &str,
+    elements: &[FieldVar<F>; SPONGE_WIDTH],
     round: usize,
     params: &ArithmeticSpongeParams<F>,
-) -> [CVar<F>; SPONGE_WIDTH] {
+) -> [FieldVar<F>; SPONGE_WIDTH] {
     runner.compute(loc, |env| {
         let state = elements.clone().map(|var| env.read_var(&var));
         full_round2::<F, PlonkSpongeConstantsKimchi>(params, state, round)
