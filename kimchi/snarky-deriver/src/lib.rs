@@ -155,6 +155,11 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
 
     let has_f_primefield = |generic: &WherePredicate| {
         if let WherePredicate::Type(t) = generic {
+            // check that the type parameter is `F`
+            if !matches!(&t.bounded_ty, Type::Path(p) if p.path.is_ident("F")) {
+                return false;
+            }
+            // check that it is bound by `PrimeField`
             t.bounds.iter().any(|bound| {
                 if let TypeParamBound::Trait(trait_bound) = bound {
                     trait_bound.path.segments.last().unwrap().ident == "PrimeField"
