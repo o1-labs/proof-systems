@@ -74,13 +74,14 @@ where
     }
 }
 
-pub trait OutOfCircuit<F>
+/// A trait to convert between a snarky type and its out-of-circuit equivalent.
+// TODO: should we then remove these functions + OutOfCircuit from SnarkyType? (And have SnarkyType : CircuitAndValue)
+pub trait CircuitAndValue<F>: SnarkyType<F>
 where
     F: PrimeField,
 {
-    type InCircuit: SnarkyType<F>;
-
-    fn to_in_circuit(&self) -> Self::InCircuit;
+    fn to_value(fields: Vec<F>, aux: Self::Auxiliary) -> Self::OutOfCircuit;
+    fn from_value(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary);
 }
 
 //
