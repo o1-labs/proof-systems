@@ -4,12 +4,16 @@ use super::{
     checked_runner::{RunState, WitnessGeneration},
     cvar::FieldVar,
 };
+
 use ark_ff::PrimeField;
+use itertools::Itertools;
+
+use std::fmt::Debug;
 
 /// A snarky type is a type that can be used in a circuit.
 /// It references an equivalent "out-of-circuit" type that one can use outside of the circuit.
 /// (For example, to construct private or public inputs, or a public output, to the circuit.)
-pub trait SnarkyType<F>: std::fmt::Debug + Sized
+pub trait SnarkyType<F>: Debug + Sized
 where
     F: PrimeField,
 {
@@ -130,7 +134,6 @@ where
     }
 
     fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self {
-        // TODO: do we really want an assert if it's "unsafe" here?
         assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
         let (cvars1, cvars2) = cvars.split_at(Self::SIZE_IN_FIELD_ELEMENTS);
         let (aux1, aux2) = aux;
@@ -169,30 +172,64 @@ where
     }
 }
 
-impl<F: PrimeField, const T: usize> SnarkyType<F> for [FieldVar<F>; T] {
-    type Auxiliary = ();
+impl<F, T, const N: usize> SnarkyType<F> for [T; N]
+where
+    F: PrimeField,
+    T: SnarkyType<F>,
+{
+    // TODO: convert this to a `[T::Auxiliary; N]`
+    type Auxiliary = Vec<T::Auxiliary>;
 
-    type OutOfCircuit = [F; T];
+    type OutOfCircuit = [T::OutOfCircuit; N];
 
-    const SIZE_IN_FIELD_ELEMENTS: usize = T;
+    const SIZE_IN_FIELD_ELEMENTS: usize = N * T::SIZE_IN_FIELD_ELEMENTS;
 
     fn to_cvars(&self) -> (Vec<FieldVar<F>>, Self::Auxiliary) {
-        (self.to_vec(), ())
+        let (cvars, aux): (Vec<Vec<_>>, Vec<_>) = self.iter().map(|t| t.to_cvars()).unzip();
+        let cvars = cvars.concat();
+        (cvars, aux)
     }
 
-    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {
-        cvars.try_into().unwrap()
+    fn from_cvars_unsafe(cvars: Vec<FieldVar<F>>, aux: Self::Auxiliary) -> Self {
+        let mut cvars_and_aux = cvars.chunks(T::SIZE_IN_FIELD_ELEMENTS).into_iter().zip(aux);
+
+        std::array::from_fn(|_| {
+            let (cvars, aux) = cvars_and_aux.next().unwrap();
+            assert_eq!(cvars.len(), T::SIZE_IN_FIELD_ELEMENTS);
+            T::from_cvars_unsafe(cvars.to_vec(), aux)
+        })
     }
 
-    fn check(&self, _cs: &mut RunState<F>) {}
+    fn check(&self, cs: &mut RunState<F>) {
+        for t in self.iter() {
+            t.check(cs);
+        }
+    }
 
-    fn constraint_system_auxiliary() -> Self::Auxiliary {}
+    fn constraint_system_auxiliary() -> Self::Auxiliary {
+        let mut aux = Vec::with_capacity(T::SIZE_IN_FIELD_ELEMENTS);
+        for _ in 0..N {
+            aux.push(T::constraint_system_auxiliary());
+        }
+        aux
+    }
 
     fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<F>, Self::Auxiliary) {
-        (value.to_vec(), ())
+        let (fields, aux): (Vec<Vec<_>>, Vec<_>) =
+            value.iter().map(|v| T::value_to_field_elements(v)).unzip();
+        (fields.concat(), aux)
     }
 
-    fn value_of_field_elements(fields: Vec<F>, _aux: Self::Auxiliary) -> Self::OutOfCircuit {
-        fields.try_into().unwrap()
+    fn value_of_field_elements(fields: Vec<F>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
+        let mut values_and_aux = fields
+            .chunks(T::SIZE_IN_FIELD_ELEMENTS)
+            .into_iter()
+            .zip(aux);
+
+        std::array::from_fn(|_| {
+            let (fields, aux) = values_and_aux.next().unwrap();
+            assert_eq!(fields.len(), T::SIZE_IN_FIELD_ELEMENTS);
+            T::value_of_field_elements(fields.to_vec(), aux)
+        })
     }
 }

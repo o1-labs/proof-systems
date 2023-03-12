@@ -104,13 +104,13 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
                             helper_attributes.field = Some(value);
                         } else if path.is_ident("check_fn") {
                             helper_attributes.check_fn = Some(value);
-                            todo!();
+                            panic!("`check_fn` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)");
                         } else if path.is_ident("auxiliary_fn") {
                             helper_attributes.auxiliary_fn = Some(value);
-                            todo!();
+                            panic!("`auxiliary_fn` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)");
                         } else if path.is_ident("auxiliary_type") {
                             helper_attributes.auxiliary_type = Some(value);
-                            todo!();
+                            panic!("`auxiliary_type` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)");
                         } else {
                             panic!("{malformed_snarky_helper}");
                         }
@@ -178,7 +178,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
             .iter()
             .map(|f| (f.ident.as_ref().unwrap(), &f.ty))
             .unzip(),
-        Fields::Unnamed(_fields) => todo!(),
+        Fields::Unnamed(_fields) => panic!("tuple structs are not supported yet"),
         Fields::Unit => (vec![], vec![]),
     };
 
@@ -306,7 +306,6 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
 
         quote! {
             fn from_cvars_unsafe(cvars: Vec<FieldVar<#impl_field_path>>, aux: Self::Auxiliary) -> Self {
-                // TODO: do we really want an assert if it's "unsafe" anyway?
                 assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
 
                 let mut offset = 0;
@@ -320,7 +319,6 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     } else {
         quote! {
             fn from_cvars_unsafe(cvars: Vec<FieldVar<#impl_field_path>>, aux: Self::Auxiliary) -> Self {
-                // TODO: do we really want an assert if it's "unsafe" anyway?
                 assert_eq!(cvars.len(), Self::SIZE_IN_FIELD_ELEMENTS);
 
                 Self {
@@ -439,7 +437,6 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
 
         quote! {
             fn value_of_field_elements(fields: Vec<#impl_field_path>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
-                // TODO: do we really want an assert here?
                 assert_eq!(fields.len(), Self::SIZE_IN_FIELD_ELEMENTS);
 
                 let mut offset = 0;
@@ -453,7 +450,6 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     } else {
         quote! {
             fn value_of_field_elements(fields: Vec<#impl_field_path>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
-                // TODO: do we really want an assert here?
                 assert_eq!(fields.len(), Self::SIZE_IN_FIELD_ELEMENTS);
 
                 #( <#field_types as #snarky_type_path>::value_of_field_elements(fields, aux) )*
@@ -485,8 +481,8 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     for field_type in field_types {
         match field_type {
             Type::Path(_path) => types_to_bind.insert(field_type.clone()),
-            // we only support paths as types for now
-            _ => todo!(),
+            Type::Array(array) => types_to_bind.insert(*array.elem.clone()),
+            x => panic!("non-path as bound types are not supported yet. To request this feature, please copy the entire error to a Github issue (https://github.com/o1-labs/proof-systems): {x:?}"),
         };
     }
 
