@@ -21,7 +21,7 @@ pub fn poseidon<F: PrimeField>(
     loc: &str,
     preimage: (FieldVar<F>, FieldVar<F>),
 ) -> (FieldVar<F>, FieldVar<F>) {
-    let initial_state = [preimage.0, preimage.1, FieldVar::Constant(F::zero())];
+    let initial_state = [preimage.0, preimage.1, FieldVar::zero()];
     let (constraint, hash) = {
         let params = runner.poseidon_params();
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
@@ -95,7 +95,7 @@ where
 {
     /// Creates a new sponge.
     pub fn new() -> DuplexState<F> {
-        let zero = FieldVar::constant(F::zero());
+        let zero = FieldVar::zero();
         let state = [zero.clone(), zero.clone(), zero];
         DuplexState {
             rev_queue: vec![],
@@ -142,7 +142,6 @@ where
         // if we're switching to squeezing, don't forget about the queue
         if self.absorbing {
             assert!(self.squeezed.is_none());
-            let zero = FieldVar::constant(F::zero());
             if let Some(left) = self.rev_queue.pop() {
                 self.state[0] = &self.state[0] + left;
             }
