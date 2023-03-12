@@ -72,7 +72,7 @@ where
     }
 
     pub fn false_() -> Self {
-        Self(FieldVar::Constant(F::zero()))
+        Self(FieldVar::zero())
     }
 
     pub fn not(&self) -> Self {
@@ -97,7 +97,7 @@ where
             return xs[0].or(xs[1], loc, cs); // TODO: is this better than below?
         }
 
-        let zero = FieldVar::Constant(F::zero());
+        let zero = FieldVar::zero();
 
         let xs: Vec<_> = xs.iter().map(|x| &x.0).collect();
         let sum = FieldVar::sum(&xs);

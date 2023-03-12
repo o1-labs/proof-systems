@@ -40,6 +40,14 @@ impl<F> FieldVar<F>
 where
     F: PrimeField,
 {
+    pub fn constant(c: F) -> Self {
+        FieldVar::Constant(c)
+    }
+
+    pub fn zero() -> Self {
+        Self::constant(F::zero())
+    }
+
     fn eval_inner(&self, context: &impl (Fn(usize) -> F), scale: F, res: &mut F) {
         match self {
             FieldVar::Constant(c) => {
@@ -112,7 +120,7 @@ where
     }
 
     pub fn linear_combination(terms: &[ScaledCVar<F>]) -> Self {
-        let mut res = FieldVar::Constant(F::zero());
+        let mut res = FieldVar::zero();
         for (cst, term) in terms {
             res = res.add(&term.scale(*cst));
         }
@@ -136,7 +144,7 @@ where
 
             // TODO: this was not in the original ocaml code, but seems correct to me
             (FieldVar::Constant(cst), _) | (_, FieldVar::Constant(cst)) if cst.is_zero() => {
-                FieldVar::Constant(F::zero())
+                FieldVar::zero()
             }
 
             // TODO: same here
@@ -170,7 +178,7 @@ where
     fn equal_constraints(state: &mut RunState<F>, z: Self, z_inv: Self, r: Self) {
         // TODO: the ocaml code actually calls assert_all
         let one_minus_r = FieldVar::Constant(F::one()) - &r;
-        let zero = FieldVar::Constant(F::zero());
+        let zero = FieldVar::zero();
         state.assert_r1cs(Some("equals_1"), z_inv, z.clone(), one_minus_r);
         state.assert_r1cs(Some("equals_2"), r, z, zero);
     }

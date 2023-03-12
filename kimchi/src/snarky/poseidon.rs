@@ -21,7 +21,7 @@ pub fn poseidon<F: PrimeField>(
     loc: &str,
     preimage: (FieldVar<F>, FieldVar<F>),
 ) -> (FieldVar<F>, FieldVar<F>) {
-    let initial_state = [preimage.0, preimage.1, FieldVar::Constant(F::zero())];
+    let initial_state = [preimage.0, preimage.1, FieldVar::zero()];
     let (constraint, hash) = {
         let params = runner.poseidon_params();
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
