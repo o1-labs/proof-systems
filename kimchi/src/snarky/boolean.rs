@@ -4,6 +4,8 @@ use crate::snarky::{
 };
 use ark_ff::PrimeField;
 
+use super::poseidon::{CircuitAbsorb, DuplexState};
+
 trait OutOfCircuitSnarkyType2<F> {
     type InCircuit;
 }
@@ -60,6 +62,15 @@ where
         assert_eq!(fields.len(), 1);
 
         fields[0] != F::zero()
+    }
+}
+
+impl<F> CircuitAbsorb<F> for Boolean<F>
+where
+    F: PrimeField,
+{
+    fn absorb(&self, duplex: &mut DuplexState<F>, sys: &mut RunState<F>) {
+        self.0.absorb(duplex, sys);
     }
 }
 

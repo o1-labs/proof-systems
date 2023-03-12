@@ -7,7 +7,11 @@ use crate::snarky::{
 use ark_ff::PrimeField;
 use std::ops::{Add, Neg, Sub};
 
-use super::{checked_runner::Constraint, constraint_system::BasicSnarkyConstraint};
+use super::{
+    checked_runner::Constraint,
+    constraint_system::BasicSnarkyConstraint,
+    poseidon::{CircuitAbsorb, DuplexState},
+};
 
 /// A circuit variable represents a field element in the circuit.
 #[derive(Clone, Debug)]
@@ -270,6 +274,15 @@ where
         assert_eq!(fields.len(), 1);
 
         fields[0]
+    }
+}
+
+impl<F> CircuitAbsorb<F> for FieldVar<F>
+where
+    F: PrimeField,
+{
+    fn absorb(&self, duplex: &mut DuplexState<F>, sys: &mut RunState<F>) {
+        duplex.absorb(sys, &[self.clone()]);
     }
 }
 
