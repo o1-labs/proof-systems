@@ -58,6 +58,18 @@ use syn::{
 /// #[snarky(auxiliary_type = "MyAuxiliaryType")]
 /// struct MyType<F> where F: PrimeField {
 /// ```
+///
+/// By default, a tuple will be use to represent the out-of-circuit type.
+/// You can specify it yourself by using the `value` helper attribute:
+///
+/// ```ignore
+/// #[derive(kimchi::SnarkyType)]
+/// #[snarky(value = "MyOutOfCircuitType")]
+/// struct MyType<F> where F: PrimeField {
+/// ```
+///
+/// and implement the [`CircuitAndValue`] trait on your [`SnarkyType`].
+///
 #[proc_macro_derive(SnarkyType, attributes(snarky))]
 pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     // The strategy is the following:
@@ -77,6 +89,7 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
         check_fn: Option<String>,
         auxiliary_fn: Option<String>,
         auxiliary_type: Option<String>,
+        value: Option<String>,
     }
     let mut helper_attributes = HelperAttributes::default();
 
@@ -111,6 +124,8 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
                         } else if path.is_ident("auxiliary_type") {
                             helper_attributes.auxiliary_type = Some(value);
                             panic!("`auxiliary_type` is not supported yet. Post an issue with this error to request it (https://github.com/o1-labs/proof-systems/issues)");
+                        } else if path.is_ident("value") {
+                            helper_attributes.value = Some(value);
                         } else {
                             panic!("{malformed_snarky_helper}");
                         }
@@ -215,7 +230,12 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
         }
     };
 
-    let out_of_circuit = if field_names.len() > 1 {
+    let out_of_circuit = if let Some(value) = &helper_attributes.value {
+        let typ: syn::Path = syn::parse_str(value).expect("could not parse your value");
+        quote! {
+            type OutOfCircuit = #typ;
+        }
+    } else if field_names.len() > 1 {
         quote! {
             type OutOfCircuit = (
                 #( <#field_types as #snarky_type_path>::OutOfCircuit ),*
@@ -356,7 +376,15 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     };
 
     // value_to_field_elements
-    let value_to_field_elements = if field_names.len() > 1 {
+    let value_to_field_elements = if helper_attributes.value.is_some() {
+        let value_trait = format!("{lib_path}::CircuitAndValue<{impl_field}>");
+        let value_trait: syn::Path = syn::parse_str(&value_trait).unwrap();
+        quote! {
+            fn value_to_field_elements(value: &Self::OutOfCircuit) -> (Vec<#impl_field_path>, Self::Auxiliary) {
+                <Self as #value_trait>::from_value(value)
+            }
+        }
+    } else if field_names.len() > 1 {
         // `let (fields_i, aux_i) = T_i::value_to_field_elements(&self.i);`
         let mut value_to_field_elements_calls = Vec::with_capacity(field_types.len());
         for (idx, field_ty) in field_types.iter().enumerate() {
@@ -402,7 +430,17 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
     };
 
     // value_of_field_elements
-    let value_of_field_elements = if field_types.len() > 1 {
+    let value_of_field_elements = if helper_attributes.value.is_some() {
+        let value_trait = format!("{lib_path}::CircuitAndValue<{impl_field}>");
+        let value_trait: syn::Path = syn::parse_str(&value_trait).unwrap();
+
+        quote! {
+            fn value_of_field_elements(fields: Vec<#impl_field_path>, aux: Self::Auxiliary) -> Self::OutOfCircuit {
+                assert_eq!(fields.len(), Self::SIZE_IN_FIELD_ELEMENTS);
+                <Self as #value_trait>::to_value(fields, aux)
+            }
+        }
+    } else if field_types.len() > 1 {
         // ```
         // let end = offset + T_i::SIZE_IN_FIELD_ELEMENTS;
         // let cvars_i = &cvars[offset..end];
