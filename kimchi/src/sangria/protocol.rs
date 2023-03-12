@@ -137,7 +137,8 @@ where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     {
         let public_input = {
-            let evals = Evaluations::from_vec_and_domain(public_input_values, ctx.circuit_domain);
+            let evals =
+                Evaluations::from_vec_and_domain(public_input_values.clone(), ctx.circuit_domain);
             let poly = evals.interpolate();
             ctx.srs.commit_non_hiding(&poly, None)
         };

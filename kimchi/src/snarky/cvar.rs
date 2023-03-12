@@ -44,6 +44,10 @@ impl<F> FieldVar<F>
 where
     F: PrimeField,
 {
+    pub fn constant(c: F) -> Self {
+        FieldVar::Constant(c)
+    }
+
     fn eval_inner(&self, context: &impl (Fn(usize) -> F), scale: F, res: &mut F) {
         match self {
             FieldVar::Constant(c) => {
@@ -302,6 +306,11 @@ where
             )),
             Some("assert equals"),
         );
+    }
+
+    /// Checks that the value is contained in `bits` number of bits.
+    pub fn is_n_bits(&self, state: &mut RunState<F>, _loc: &str, bits: usize) {
+        todo!();
     }
 }
 
