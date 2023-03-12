@@ -72,3 +72,103 @@ fn round<F: PrimeField>(
         full_round2::<F, PlonkSpongeConstantsKimchi>(params, state, round)
     })
 }
+
+//
+// Duplex API
+//
+
+pub struct DuplexState<F>
+where
+    F: PrimeField,
+{
+    rev_queue: Vec<FieldVar<F>>,
+    absorbing: bool,
+    squeezed: Option<FieldVar<F>>,
+    state: [FieldVar<F>; 3],
+}
+
+const RATE_SIZE: usize = 2;
+
+impl<F> DuplexState<F>
+where
+    F: PrimeField,
+{
+    /// Creates a new sponge.
+    pub fn new() -> DuplexState<F> {
+        let zero = FieldVar::zero();
+        let state = [zero.clone(), zero.clone(), zero];
+        DuplexState {
+            rev_queue: vec![],
+            absorbing: true,
+            squeezed: None,
+            state,
+        }
+    }
+
+    /// Absorb.
+    pub fn absorb(&mut self, sys: &mut RunState<F>, inputs: &[FieldVar<F>]) {
+        // no need to permute to switch to absorbing
+        if !self.absorbing {
+            assert!(self.rev_queue.is_empty());
+            self.squeezed = None;
+            self.absorbing = true;
+        }
+
+        // absorb
+        for input in inputs {
+            // we only permute when we try to absorb too much (we lazy)
+            if self.rev_queue.len() == RATE_SIZE {
+                let left = self.rev_queue.pop().unwrap();
+                let right = self.rev_queue.pop().unwrap();
+                self.state[0] = &self.state[0] + left;
+                self.state[1] = &self.state[1] + right;
+                self.permute(sys);
+            }
+
+            self.rev_queue.insert(0, input.clone());
+        }
+    }
+
+    /// Permute. You should most likely not use this function directly,
+    /// and use [Self::absorb] and [Self::squeeze] instead.
+    fn permute(&mut self, sys: &mut RunState<F>) -> (FieldVar<F>, FieldVar<F>) {
+        let left = self.state[0].clone();
+        let right = self.state[1].clone();
+        sys.poseidon("does poseidon really need a loc?", (left, right))
+    }
+
+    /// Squeeze.
+    pub fn squeeze(&mut self, sys: &mut RunState<F>) -> FieldVar<F> {
+        // if we're switching to squeezing, don't forget about the queue
+        if self.absorbing {
+            assert!(self.squeezed.is_none());
+            if let Some(left) = self.rev_queue.pop() {
+                self.state[0] = &self.state[0] + left;
+            }
+            if let Some(right) = self.rev_queue.pop() {
+                self.state[1] = &self.state[1] + right;
+            }
+            self.absorbing = false;
+        }
+
+        // if we still have some left over, release that
+        if let Some(squeezed) = self.squeezed.take() {
+            return squeezed;
+        }
+
+        // otherwise permute and squeeze
+        let (left, right) = self.permute(sys);
+
+        // cache the right, release the left
+        self.squeezed = Some(right);
+        left
+    }
+}
+
+// TODO: create a macro to derive this function automatically
+pub trait CircuitAbsorb<F>
+where
+    F: PrimeField,
+{
+    fn absorb(&self, duplex: &mut DuplexState<F>, sys: &mut RunState<F>);
+}
