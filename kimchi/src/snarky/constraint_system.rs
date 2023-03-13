@@ -477,7 +477,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             rows: Vec::new(),
             next_row: 0,
             equivalence_classes: HashMap::new(),
-            generic_gate_optimization: false,
+            generic_gate_optimization: true,
             pending_generic_gate: None,
             cached_constants: HashMap::new(),
             union_finds: DisjointSet::new(),
