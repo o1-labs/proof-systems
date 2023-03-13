@@ -8,7 +8,9 @@ use ark_ff::PrimeField;
 use std::ops::{Add, Neg, Sub};
 
 use super::{
-    checked_runner::Constraint, constraint_system::BasicSnarkyConstraint, errors::SnarkyResult,
+    checked_runner::Constraint,
+    constraint_system::BasicSnarkyConstraint,
+    errors::{SnarkyCompilationError, SnarkyError, SnarkyResult},
 };
 
 /// A circuit variable represents a field element in the circuit.
@@ -306,13 +308,24 @@ where
         _loc: &str,
         other: &FieldVar<F>,
     ) -> SnarkyResult<()> {
-        state.add_constraint(
-            Constraint::BasicSnarkyConstraint(BasicSnarkyConstraint::Equal(
-                self.clone(),
-                other.clone(),
-            )),
-            Some("assert equals"),
-        )
+        match (self, other) {
+            (FieldVar::Constant(x), FieldVar::Constant(y)) => {
+                if x == y {
+                    Ok(())
+                } else {
+                    Err(SnarkyError::CompilationError(
+                        SnarkyCompilationError::ConstantAssertEquals(x.to_string(), y.to_string()),
+                    ))
+                }
+            }
+            () => state.add_constraint(
+                Constraint::BasicSnarkyConstraint(BasicSnarkyConstraint::Equal(
+                    self.clone(),
+                    other.clone(),
+                )),
+                Some("assert equals"),
+            ),
+        }
     }
 }
 

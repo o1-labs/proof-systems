@@ -12,18 +12,18 @@ pub type SnarkyCompileResult<T> = std::result::Result<T, SnarkyCompilationError>
 /// Snarky errors can come from either a compilation or runtime error.
 #[derive(Debug, Clone, Error)]
 pub enum SnarkyError {
-    #[error("A compilation error occurred.")]
+    #[error("a compilation error occurred")]
     CompilationError(SnarkyCompilationError),
 
-    #[error("A runtime error occurred.")]
+    #[error("a runtime error occurred")]
     RuntimeError(SnarkyRuntimeError),
 }
 
 /// Errors that can occur during compilation of a circuit.
 #[derive(Debug, Clone, Error)]
 pub enum SnarkyCompilationError {
-    #[error("delete this")]
-    ToDelete(String),
+    #[error("the two values were not equal: {0} != {1}")]
+    ConstantAssertEquals(String, String),
 }
 
 /// Errors that can occur during runtime (proving).
