@@ -77,6 +77,10 @@ where
         Self(FieldVar::zero())
     }
 
+    pub fn create_unsafe(x: FieldVar<F>) -> Self {
+        Self(x)
+    }
+
     pub fn not(&self) -> Self {
         Self(Self::true_().0 - &self.0)
     }
