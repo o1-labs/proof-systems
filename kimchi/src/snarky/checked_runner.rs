@@ -1,6 +1,6 @@
 //! The circuit-generation and witness-generation logic.
 
-use super::{api::Witness, constants::Constants};
+use super::{api::Witness, constants::Constants, errors::SnarkyRuntimeError};
 use crate::{
     circuits::gate::CircuitGate,
     curve::KimchiCurve,
@@ -26,7 +26,10 @@ where
     F: PrimeField,
 {
     /// In witness generation, this checks if the constraint is satisfied by some witness values.
-    pub fn check_constraint(&self, env: &impl WitnessGeneration<F>) {
+    pub fn check_constraint(
+        &self,
+        env: &impl WitnessGeneration<F>,
+    ) -> Result<(), SnarkyRuntimeError<F>> {
         match &self.constraint {
             Constraint::BasicSnarkyConstraint(c) => c.check_constraint(env),
             Constraint::KimchiConstraint(c) => c.check_constraint(env),
@@ -474,7 +477,7 @@ where
         if self.eval_constraints && self.has_witness {
             for constraint in &constraints {
                 // TODO: return an error here instead of panicking
-                constraint.check_constraint(self);
+                constraint.check_constraint(self).unwrap();
             }
         }
 
