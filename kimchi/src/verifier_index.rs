@@ -237,9 +237,10 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 domain,
                 &self.column_evaluations.complete_add_selector4,
             ),
-            mul_comm: self
-                .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
+            mul_comm: mask_fixed(
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
+            ),
             emul_comm: self
                 .srs
                 .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),

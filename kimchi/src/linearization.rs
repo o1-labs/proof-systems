@@ -305,6 +305,8 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     // the generic selector polynomial
     h.insert(Index(GateType::Generic));
 
+    h.insert(Index(GateType::VarBaseMul));
+
     h
 }
 
