@@ -48,29 +48,29 @@ where
         Self::constant(F::zero())
     }
 
-    fn eval_inner(&self, context: &impl (Fn(usize) -> F), scale: F, res: &mut F) {
+    fn eval_inner(&self, state: &RunState<F>, scale: F, res: &mut F) {
         match self {
             FieldVar::Constant(c) => {
                 *res += scale * c;
             }
             FieldVar::Var(v) => {
-                let v = context(*v); // TODO: might panic
+                let v = state.read_var_idx(*v); // TODO: might panic
                 *res += scale * v;
             }
             FieldVar::Add(a, b) => {
-                a.eval_inner(context, scale, res);
-                b.eval_inner(context, scale, res);
+                a.eval_inner(state, scale, res);
+                b.eval_inner(state, scale, res);
             }
             FieldVar::Scale(s, v) => {
-                v.eval_inner(context, scale * s, res);
+                v.eval_inner(state, scale * s, res);
             }
         }
     }
 
     /// Evaluate the field element associated to a variable (used during witness generation)
-    pub fn eval(&self, context: &impl (Fn(usize) -> F)) -> F {
+    pub fn eval(&self, state: &RunState<F>) -> F {
         let mut res = F::zero();
-        self.eval_inner(context, F::one(), &mut res);
+        self.eval_inner(state, F::one(), &mut res);
         res
     }
 

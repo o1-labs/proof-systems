@@ -118,16 +118,7 @@ where
     F: PrimeField,
 {
     fn read_var(&self, var: &FieldVar<F>) -> F {
-        let get_one = |var_idx| {
-            if var_idx < self.num_public_inputs {
-                self.public_input[var_idx]
-            } else {
-                self.private_input[var_idx - self.num_public_inputs]
-            }
-        };
-
-        // TODO: same here, can we avoid passing a closure?
-        var.eval(&get_one)
+        var.eval(self)
     }
 }
 
@@ -278,9 +269,8 @@ where
         sys
     }
 
-    #[cfg(feature = "ocaml_types")]
-    /// Used by the OCaml side to read variables directly by their indexes.
-    /// Can panic.
+    /// Used internaly to evaluate variables.
+    /// Can panic if used with a wrong index.
     pub fn read_var_idx(&self, idx: usize) -> F {
         if idx < self.num_public_inputs {
             self.public_input[idx]
