@@ -318,7 +318,7 @@ where
                     ))
                 }
             }
-            () => state.add_constraint(
+            (_, _) => state.add_constraint(
                 Constraint::BasicSnarkyConstraint(BasicSnarkyConstraint::Equal(
                     self.clone(),
                     other.clone(),
