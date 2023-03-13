@@ -1,34 +1,57 @@
 use thiserror::Error;
 
-#[derive(Debug, Clone)]
-pub enum SnarkyError<F> {
-    /// A compilation error occurred.
-    CompilationError(SnarkyCompilationError<F>),
+/// A result type for Snarky errors.
+pub type SnarkyResult<T> = std::result::Result<T, SnarkyError>;
 
-    /// A runtime error occurred.
-    RuntimeError(SnarkyRuntimeError<F>),
+/// A result type for Snarky runtime errors.
+pub type SnarkyRuntimeResult<T> = std::result::Result<T, SnarkyRuntimeError>;
+
+/// A result type for Snarky compilation errors.
+pub type SnarkyCompileResult<T> = std::result::Result<T, SnarkyCompilationError>;
+
+/// Snarky errors can come from either a compilation or runtime error.
+#[derive(Debug, Clone, Error)]
+pub enum SnarkyError {
+    #[error("A compilation error occurred.")]
+    CompilationError(SnarkyCompilationError),
+
+    #[error("A runtime error occurred.")]
+    RuntimeError(SnarkyRuntimeError),
 }
 
+/// Errors that can occur during compilation of a circuit.
 #[derive(Debug, Clone, Error)]
-pub enum SnarkyCompilationError<F> {
-    ToDelete(F),
+pub enum SnarkyCompilationError {
+    #[error("delete this")]
+    ToDelete(String),
 }
 
+/// Errors that can occur during runtime (proving).
 #[derive(Debug, Clone, Error)]
-pub enum SnarkyRuntimeError<F> {
-    /// unsatisfied constraint:
-    /// `{0} * {1} + {2} * {3} + {4} * {5} + {6} * {7} + {8} != 0`
-    UnsatisfiedGenericConstraint(F, F, F, F, F, F, F, F),
+pub enum SnarkyRuntimeError {
+    #[error(
+        "unsatisfied constraint: `{0} * {1} + {2} * {3} + {4} * {5} + {6} * {1} * {3} + {7} != 0`"
+    )]
+    UnsatisfiedGenericConstraint(
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+        String,
+    ),
 
-    /// unsatisfied constraint: {0} is not a boolean (0 or 1)
-    UnsatisfiedBooleanConstraint(F),
+    #[error("unsatisfied constraint: {0} is not a boolean (0 or 1)")]
+    UnsatisfiedBooleanConstraint(String),
 
-    /// unsatisfied constraint: {0} is not equal to {1}
-    UnsatisfiedEqualConstraint(F, F),
+    #[error("unsatisfied constraint: {0} is not equal to {1}")]
+    UnsatisfiedEqualConstraint(String, String),
 
-    /// unsatisfied constraint: {0}^2 is not equal to {1}
-    UnsatisfiedSquareConstraint(F, F),
+    #[error("unsatisfied constraint: {0}^2 is not equal to {1}")]
+    UnsatisfiedSquareConstraint(String, String),
 
-    /// unsatisfied constraint: {0} * {1} is not equal to {2}
-    UnsatisfiedR1CSConstraint(F, F, F),
+    #[error("unsatisfied constraint: {0} * {1} is not equal to {2}")]
+    UnsatisfiedR1CSConstraint(String, String, String),
 }

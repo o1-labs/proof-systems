@@ -1526,19 +1526,24 @@ where
     pub fn check_constraint(
         &self,
         env: &impl WitnessGeneration<F>,
-    ) -> Result<(), SnarkyRuntimeError<F>> {
+    ) -> Result<(), SnarkyRuntimeError> {
         match self {
             BasicSnarkyConstraint::Boolean(v) => {
                 let v = env.read_var(v);
                 if !(v.is_one() || v.is_zero()) {
-                    return Err(SnarkyRuntimeError::UnsatisfiedBooleanConstraint(v));
+                    return Err(SnarkyRuntimeError::UnsatisfiedBooleanConstraint(
+                        v.to_string(),
+                    ));
                 }
             }
             BasicSnarkyConstraint::Equal(v1, v2) => {
                 let v1 = env.read_var(v1);
                 let v2 = env.read_var(v2);
                 if v1 != v2 {
-                    return Err(SnarkyRuntimeError::UnsatisfiedEqualConstraint(v1, v2));
+                    return Err(SnarkyRuntimeError::UnsatisfiedEqualConstraint(
+                        v1.to_string(),
+                        v2.to_string(),
+                    ));
                 }
             }
             BasicSnarkyConstraint::Square(v1, v2) => {
@@ -1546,7 +1551,10 @@ where
                 let v2 = env.read_var(v2);
                 let square = v1.square();
                 if square != v2 {
-                    return Err(SnarkyRuntimeError::UnsatisfiedSquareConstraint(v1, v2));
+                    return Err(SnarkyRuntimeError::UnsatisfiedSquareConstraint(
+                        v1.to_string(),
+                        v2.to_string(),
+                    ));
                 }
             }
             BasicSnarkyConstraint::R1CS(v1, v2, v3) => {
@@ -1555,7 +1563,11 @@ where
                 let v3 = env.read_var(v3);
                 let mul = v1 * v2;
                 if mul != v3 {
-                    return Err(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(v1, v2, v3));
+                    return Err(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(
+                        v1.to_string(),
+                        v2.to_string(),
+                        v3.to_string(),
+                    ));
                 }
             }
         };
@@ -1571,7 +1583,7 @@ where
     pub fn check_constraint(
         &self,
         witness_env: &impl WitnessGeneration<F>,
-    ) -> Result<(), SnarkyRuntimeError<F>> {
+    ) -> Result<(), SnarkyRuntimeError> {
         match self {
             // we only check the basic gate
             KimchiConstraint::Basic(BasicInput {
@@ -1588,7 +1600,14 @@ where
                 if !res.is_zero() {
                     // TODO: return different errors depending on the type of generic gate (e.g. addition, cst, mul, etc.)
                     return Err(SnarkyRuntimeError::UnsatisfiedGenericConstraint(
-                        *c0, l, *c1, r, *c2, o, *c3, *c4,
+                        c0.to_string(),
+                        l.to_string(),
+                        c1.to_string(),
+                        r.to_string(),
+                        c2.to_string(),
+                        o.to_string(),
+                        c3.to_string(),
+                        c4.to_string(),
                     ));
                 }
             }

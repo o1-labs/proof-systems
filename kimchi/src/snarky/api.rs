@@ -106,7 +106,11 @@ where
 
         dbg!("yo");
         // create constraint between public output var and return var
-        self.compiled_circuit.sys.wire_public_output(return_var);
+        // TODO: return error instead of panicking
+        self.compiled_circuit
+            .sys
+            .wire_public_output(return_var)
+            .unwrap();
 
         dbg!("yo");
         // finalize
@@ -214,7 +218,8 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> CompiledCircuit<Circuit>
     let return_var = circuit.circuit(&mut sys, public_input);
 
     // create constraint between public output var and return var
-    sys.wire_public_output(return_var);
+    // TODO: don't panic here, return an error
+    sys.wire_public_output(return_var).unwrap();
 
     // compile to gates
     let gates = sys.compile().to_vec();

@@ -7,7 +7,9 @@ use crate::snarky::{
 use ark_ff::PrimeField;
 use std::ops::{Add, Neg, Sub};
 
-use super::{checked_runner::Constraint, constraint_system::BasicSnarkyConstraint};
+use super::{
+    checked_runner::Constraint, constraint_system::BasicSnarkyConstraint, errors::SnarkyResult,
+};
 
 /// A circuit variable represents a field element in the circuit.
 #[derive(Clone, Debug)]
@@ -138,8 +140,8 @@ where
         label: Option<&'static str>,
         loc: &str,
         cs: &mut RunState<F>,
-    ) -> Self {
-        match (self, other) {
+    ) -> SnarkyResult<Self> {
+        let res = match (self, other) {
             (FieldVar::Constant(x), FieldVar::Constant(y)) => FieldVar::Constant(*x * y),
 
             // TODO: this was not in the original ocaml code, but seems correct to me
@@ -161,26 +163,33 @@ where
                     let x: F = env.read_var(&self_clone);
                     let y: F = env.read_var(&other_clone);
                     x * y
-                });
+                })?;
 
                 let label = label.or(Some("checked_mul"));
 
-                cs.assert_r1cs(label, self.clone(), other.clone(), res.clone());
+                cs.assert_r1cs(label, self.clone(), other.clone(), res.clone())?;
+
                 res
             }
-        }
+        };
+
+        Ok(res)
     }
 
     /** [equal_constraints z z_inv r] asserts that
        if z = 0 then r = 1, or
        if z <> 0 then r = 0 and z * z_inv = 1
     */
-    fn equal_constraints(state: &mut RunState<F>, z: Self, z_inv: Self, r: Self) {
-        // TODO: the ocaml code actually calls assert_all
+    fn equal_constraints(
+        state: &mut RunState<F>,
+        z: Self,
+        z_inv: Self,
+        r: Self,
+    ) -> SnarkyResult<()> {
         let one_minus_r = FieldVar::Constant(F::one()) - &r;
         let zero = FieldVar::zero();
-        state.assert_r1cs(Some("equals_1"), z_inv, z.clone(), one_minus_r);
-        state.assert_r1cs(Some("equals_2"), r, z, zero);
+        state.assert_r1cs(Some("equals_1"), z_inv, z.clone(), one_minus_r)?;
+        state.assert_r1cs(Some("equals_2"), r, z, zero)
     }
 
     /** [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
@@ -197,24 +206,32 @@ where
         }
     }
 
-    pub fn equal(&self, state: &mut RunState<F>, loc: &str, other: &FieldVar<F>) -> Boolean<F> {
-        match (self, other) {
+    pub fn equal(
+        &self,
+        state: &mut RunState<F>,
+        loc: &str,
+        other: &FieldVar<F>,
+    ) -> SnarkyResult<Boolean<F>> {
+        let res = match (self, other) {
             (FieldVar::Constant(x), FieldVar::Constant(y)) => {
-                let res = if x == y { F::one() } else { F::zero() };
-                let cvars = vec![FieldVar::Constant(res)];
-                Boolean::from_cvars_unsafe(cvars, ())
+                if x == y {
+                    Boolean::true_()
+                } else {
+                    Boolean::false_()
+                }
             }
             _ => {
                 let z = self - other;
                 let z_clone = z.clone();
                 let (res, z_inv): (FieldVar<F>, FieldVar<F>) =
-                    state.compute(loc, move |env| Self::equal_vars(env, &z_clone));
-                Self::equal_constraints(state, z, z_inv, res.clone());
+                    state.compute(loc, move |env| Self::equal_vars(env, &z_clone))?;
+                Self::equal_constraints(state, z, z_inv, res.clone())?;
 
-                let cvars = vec![res];
-                Boolean::from_cvars_unsafe(cvars, ())
+                Boolean::create_unsafe(res)
             }
-        }
+        };
+
+        Ok(res)
     }
 
     /// Seals the value of a variable.
@@ -227,15 +244,18 @@ where
     /// It is useful to call [`seal`] on a variable that represents a long computation
     /// that hasn't been constrained yet (e.g. by an assert call, or a call to a custom gate),
     /// before using it further in the circuit.
-    pub fn seal(&self, state: &mut RunState<F>, loc: &str) -> Self {
+    pub fn seal(&self, state: &mut RunState<F>, loc: &str) -> SnarkyResult<Self> {
         match self.to_constant_and_terms() {
-            (None, terms) if terms.len() == 1 && terms[0].0.is_one() => FieldVar::Var(terms[0].1),
-            (Some(c), terms) if terms.is_empty() => FieldVar::Constant(c),
+            (None, terms) if terms.len() == 1 && terms[0].0.is_one() => {
+                Ok(FieldVar::Var(terms[0].1))
+            }
+            (Some(c), terms) if terms.is_empty() => Ok(FieldVar::Constant(c)),
             _ => {
-                let y: FieldVar<F> = state.compute(loc, |env| env.read_var(self));
+                let y: FieldVar<F> = state.compute(loc, |env| env.read_var(self))?;
                 // this call will reduce [self]
-                self.assert_equals(state, loc, &y);
-                y
+                self.assert_equals(state, loc, &y)?;
+
+                Ok(y)
             }
         }
     }
@@ -264,8 +284,9 @@ where
         cvars[0].clone()
     }
 
-    fn check(&self, _cs: &mut super::checked_runner::RunState<F>) {
+    fn check(&self, _cs: &mut RunState<F>) -> SnarkyResult<()> {
         // do nothing
+        Ok(())
     }
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {}
@@ -289,14 +310,19 @@ impl<F> FieldVar<F>
 where
     F: PrimeField,
 {
-    pub fn assert_equals(&self, state: &mut RunState<F>, _loc: &str, other: &FieldVar<F>) {
+    pub fn assert_equals(
+        &self,
+        state: &mut RunState<F>,
+        _loc: &str,
+        other: &FieldVar<F>,
+    ) -> SnarkyResult<()> {
         state.add_constraint(
             Constraint::BasicSnarkyConstraint(BasicSnarkyConstraint::Equal(
                 self.clone(),
                 other.clone(),
             )),
             Some("assert equals"),
-        );
+        )
     }
 }
 

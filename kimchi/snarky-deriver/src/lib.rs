@@ -12,8 +12,8 @@ use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, quote};
 use syn::{
-    parse_macro_input, punctuated::Punctuated, Fields, Lit, LitStr, MetaNameValue, PredicateType,
-    TraitBound, TraitBoundModifier, Type, TypeParamBound, WherePredicate,
+    punctuated::Punctuated, Fields, Lit, MetaNameValue, PredicateType, TraitBound,
+    TraitBoundModifier, Type, TypeParamBound, WherePredicate,
 };
 
 /// The [SnarkyType] derive macro.
@@ -355,8 +355,9 @@ pub fn derive_snarky_type(item: TokenStream) -> TokenStream {
 
     let check = {
         quote! {
-            fn check(&self, cs: &mut RunState<#impl_field_path>) {
-                #( self.#field_names.check(cs) );*
+            fn check(&self, cs: &mut RunState<#impl_field_path>) -> SnarkyResult<()> {
+                #( self.#field_names.check(cs)? );*
+                Ok(())
             }
         }
     };

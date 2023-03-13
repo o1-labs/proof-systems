@@ -1,6 +1,11 @@
 //! The circuit-generation and witness-generation logic.
 
-use super::{api::Witness, constants::Constants, errors::SnarkyRuntimeError};
+use super::{
+    api::Witness,
+    constants::Constants,
+    errors::{SnarkyError, SnarkyResult, SnarkyRuntimeResult},
+    poseidon::poseidon,
+};
 use crate::{
     circuits::gate::CircuitGate,
     curve::KimchiCurve,
@@ -26,10 +31,7 @@ where
     F: PrimeField,
 {
     /// In witness generation, this checks if the constraint is satisfied by some witness values.
-    pub fn check_constraint(
-        &self,
-        env: &impl WitnessGeneration<F>,
-    ) -> Result<(), SnarkyRuntimeError<F>> {
+    pub fn check_constraint(&self, env: &impl WitnessGeneration<F>) -> SnarkyRuntimeResult<()> {
         match &self.constraint {
             Constraint::BasicSnarkyConstraint(c) => c.check_constraint(env),
             Constraint::KimchiConstraint(c) => c.check_constraint(env),
@@ -333,7 +335,7 @@ where
 
     /// Creates a new non-deterministic variable associated to a value type ([SnarkyType]),
     /// and a closure that can compute it when in witness generation mode.
-    pub fn compute<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> T
+    pub fn compute<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> SnarkyResult<T>
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -343,7 +345,11 @@ where
 
     /// Same as [Self::compute] except that it does not attempt to constrain the value it computes.
     /// This is to be used internally only, when we know that the value cannot be malformed.
-    pub(crate) fn compute_unsafe<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> T
+    pub(crate) fn compute_unsafe<T, FUNC>(
+        &mut self,
+        loc: &str,
+        to_compute_value: FUNC,
+    ) -> SnarkyResult<T>
     where
         T: SnarkyType<F>,
         FUNC: Fn(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -365,7 +371,12 @@ where
     }
 
     // TODO: make loc argument work
-    fn compute_inner<T, FUNC>(&mut self, checked: bool, _loc: &str, to_compute_value: FUNC) -> T
+    fn compute_inner<T, FUNC>(
+        &mut self,
+        checked: bool,
+        _loc: &str,
+        to_compute_value: FUNC,
+    ) -> SnarkyResult<T>
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -398,11 +409,11 @@ where
 
             // constrain the conversion
             if checked {
-                snarky_type.check(self);
+                snarky_type.check(self)?;
             }
 
             // return the snarky type
-            snarky_type
+            Ok(snarky_type)
         }
         /* we're in constraint generation mode */
         else {
@@ -419,11 +430,11 @@ where
 
             // constrain the created circuit variables
             if checked {
-                snarky_type.check(self);
+                snarky_type.check(self)?;
             }
 
             // return the snarky type
-            snarky_type
+            Ok(snarky_type)
         }
     }
 
@@ -433,7 +444,7 @@ where
         &mut self,
         annotation: Option<&'static str>,
         basic_constraints: Vec<BasicSnarkyConstraint<FieldVar<F>>>,
-    ) {
+    ) -> SnarkyResult<()> {
         let constraints: Vec<_> = basic_constraints
             .into_iter()
             .map(|c| AnnotatedConstraint {
@@ -442,7 +453,7 @@ where
             })
             .collect();
 
-        self.add_constraints(constraints);
+        self.add_constraints(constraints)
     }
 
     // TODO: get rid of this.
@@ -453,38 +464,53 @@ where
         a: FieldVar<F>,
         b: FieldVar<F>,
         c: FieldVar<F>,
-    ) {
+    ) -> SnarkyResult<()> {
         let constraint = BasicSnarkyConstraint::R1CS(a, b, c);
-        self.assert_(annotation, vec![constraint]);
+        self.assert_(annotation, vec![constraint])
     }
 
     // TODO: get rid of this
     /// Creates a constraint for `assert_eq!(x, y)`;
-    pub fn assert_eq(&mut self, annotation: Option<&'static str>, x: FieldVar<F>, y: FieldVar<F>) {
+    pub fn assert_eq(
+        &mut self,
+        annotation: Option<&'static str>,
+        x: FieldVar<F>,
+        y: FieldVar<F>,
+    ) -> SnarkyResult<()> {
         let constraint = BasicSnarkyConstraint::Equal(x, y);
-        self.assert_(annotation, vec![constraint]);
+        self.assert_(annotation, vec![constraint])
     }
 
     /// Adds a list of [AnnotatedConstraint]s to the circuit.
     // TODO: clean up all these add constraints functions
-    pub fn add_constraints(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
+    pub fn add_constraints(
+        &mut self,
+        constraints: Vec<AnnotatedConstraint<F>>,
+    ) -> SnarkyResult<()> {
         if self.as_prover {
             // Don't add constraints as the prover, or the constraint system won't match!
-            return;
+            return Ok(());
         }
 
         // We can't evaluate the constraints if we are not computing over a value.
         if self.eval_constraints && self.has_witness {
             for constraint in &constraints {
-                // TODO: return an error here instead of panicking
-                constraint.check_constraint(self).unwrap();
+                constraint
+                    .check_constraint(self)
+                    .map_err(SnarkyError::RuntimeError)?;
             }
         }
 
         self.add_constraints_inner(constraints);
+
+        Ok(())
     }
 
-    pub fn add_constraint(&mut self, constraint: Constraint<F>, annotation: Option<&'static str>) {
+    pub fn add_constraint(
+        &mut self,
+        constraint: Constraint<F>,
+        annotation: Option<&'static str>,
+    ) -> SnarkyResult<()> {
         self.add_constraints(vec![AnnotatedConstraint {
             annotation,
             constraint,
@@ -514,16 +540,21 @@ where
 
     /// Adds a constraint that returns `then_` if `b` is `true`, `else_` otherwise.
     /// Equivalent to `if b { then_ } else { else_ }`.
-    pub fn if_(&mut self, b: Boolean<F>, then_: FieldVar<F>, else_: FieldVar<F>) -> FieldVar<F> {
+    pub fn if_(
+        &mut self,
+        b: Boolean<F>,
+        then_: FieldVar<F>,
+        else_: FieldVar<F>,
+    ) -> SnarkyResult<FieldVar<F>> {
         // r = e + b (t - e)
         // r - e = b (t - e)
         let cvars = b.to_cvars().0;
         let b = &cvars[0];
         if let FieldVar::Constant(b) = b {
             if b.is_one() {
-                return then_;
+                return Ok(then_);
             } else {
-                return else_;
+                return Ok(else_);
             }
         }
 
@@ -531,7 +562,7 @@ where
             (FieldVar::Constant(t), FieldVar::Constant(e)) => {
                 let t_times_b = b.scale(*t);
                 let one_minus_b = FieldVar::Constant(F::one()) - b;
-                t_times_b + &one_minus_b.scale(*e)
+                Ok(t_times_b + &one_minus_b.scale(*e))
             }
             _ => {
                 let b_clone = b.clone();
@@ -546,17 +577,18 @@ where
                     };
                     let res: F = res_var.read(env);
                     res
-                });
+                })?;
                 let then_ = &then_ - &else_;
                 let else_ = &res - &else_;
                 // TODO: annotation?
-                self.assert_r1cs(Some("if_"), b.clone(), then_, else_);
-                res
+                self.assert_r1cs(Some("if_"), b.clone(), then_, else_)?;
+
+                Ok(res)
             }
         }
     }
 
-    pub fn wire_public_output(&mut self, return_var: impl SnarkyType<F>) {
+    pub fn wire_public_output(&mut self, return_var: impl SnarkyType<F>) -> SnarkyResult<()> {
         let (return_cvars, _aux) = return_var.to_cvars();
         let public_output_cvars = self.public_output.clone();
 
@@ -566,8 +598,10 @@ where
             .into_iter()
             .zip(public_output_cvars.into_iter())
         {
-            self.assert_eq(Some("wiring public output"), a, b);
+            self.assert_eq(Some("wiring public output"), a, b)?;
         }
+
+        Ok(())
     }
 
     pub fn compile(&mut self) -> &[CircuitGate<F>] {
@@ -632,6 +666,6 @@ where
         loc: &str,
         preimage: (FieldVar<F>, FieldVar<F>),
     ) -> (FieldVar<F>, FieldVar<F>) {
-        super::poseidon::poseidon(self, loc, preimage)
+        poseidon(self, loc, preimage)
     }
 }

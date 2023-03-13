@@ -3,10 +3,10 @@
 use super::{
     checked_runner::{RunState, WitnessGeneration},
     cvar::FieldVar,
+    errors::SnarkyResult,
 };
 
 use ark_ff::PrimeField;
-use itertools::Itertools;
 
 use std::fmt::Debug;
 
@@ -39,7 +39,7 @@ where
     /// For some definition of valid.
     /// For example, a Boolean snarky type would check that the field element representing it is either 0 or 1.
     /// The function does this by adding constraints to your constraint system.
-    fn check(&self, cs: &mut RunState<F>);
+    fn check(&self, cs: &mut RunState<F>) -> SnarkyResult<()>;
 
     /// The "default" value of [Self::Auxiliary].
     /// This is passed to [Self::from_cvars_unsafe] when we are not generating a witness,
@@ -57,7 +57,7 @@ where
     // new functions that might help us with generics?
     //
 
-    fn compute<FUNC>(cs: &mut RunState<F>, loc: &str, to_compute_value: FUNC) -> Self
+    fn compute<FUNC>(cs: &mut RunState<F>, loc: &str, to_compute_value: FUNC) -> SnarkyResult<Self>
     where
         FUNC: Fn(&dyn WitnessGeneration<F>) -> Self::OutOfCircuit,
     {
@@ -104,7 +104,9 @@ where
 
     fn from_cvars_unsafe(_cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {}
 
-    fn check(&self, _cs: &mut RunState<F>) {}
+    fn check(&self, _cs: &mut RunState<F>) -> SnarkyResult<()> {
+        Ok(())
+    }
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {}
 
@@ -144,9 +146,10 @@ where
         )
     }
 
-    fn check(&self, cs: &mut RunState<F>) {
-        self.0.check(cs);
-        self.1.check(cs);
+    fn check(&self, cs: &mut RunState<F>) -> SnarkyResult<()> {
+        self.0.check(cs)?;
+        self.1.check(cs)?;
+        Ok(())
     }
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {
@@ -201,10 +204,11 @@ where
         })
     }
 
-    fn check(&self, cs: &mut RunState<F>) {
+    fn check(&self, cs: &mut RunState<F>) -> SnarkyResult<()> {
         for t in self.iter() {
-            t.check(cs);
+            t.check(cs)?;
         }
+        Ok(())
     }
 
     fn constraint_system_auxiliary() -> Self::Auxiliary {

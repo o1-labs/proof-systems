@@ -56,7 +56,11 @@ pub fn poseidon<F: PrimeField>(
         }));
         (constraint, hash)
     };
-    runner.add_constraint(constraint, Some("Poseidon"));
+
+    runner
+        .add_constraint(constraint, Some("Poseidon"))
+        .expect("compiler bug");
+
     hash
 }
 
@@ -67,10 +71,12 @@ fn round<F: PrimeField>(
     round: usize,
     params: &ArithmeticSpongeParams<F>,
 ) -> [FieldVar<F>; SPONGE_WIDTH] {
-    runner.compute(loc, |env| {
-        let state = elements.clone().map(|var| env.read_var(&var));
-        full_round2::<F, PlonkSpongeConstantsKimchi>(params, state, round)
-    })
+    runner
+        .compute(loc, |env| {
+            let state = elements.clone().map(|var| env.read_var(&var));
+            full_round2::<F, PlonkSpongeConstantsKimchi>(params, state, round)
+        })
+        .expect("compiler bug")
 }
 
 //
