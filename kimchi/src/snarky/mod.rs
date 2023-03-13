@@ -11,7 +11,7 @@ pub mod constraint_system;
 pub mod union_find;
 pub mod cvar;
 pub mod errors;
-pub(crate) mod poseidon;
+pub mod poseidon;
 pub mod traits;
 
 #[cfg(test)]

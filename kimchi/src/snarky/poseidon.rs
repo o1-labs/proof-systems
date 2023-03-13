@@ -83,6 +83,7 @@ fn round<F: PrimeField>(
 // Duplex API
 //
 
+/// A duplex construction allows one to absorb and squeeze data alternatively.
 pub struct DuplexState<F>
 where
     F: PrimeField,
@@ -93,6 +94,9 @@ where
     state: [FieldVar<F>; 3],
 }
 
+/// The rate of the sponge.
+/// The part that is modified when absorbing, and released when squeezing.
+/// Unlike the capacity that must not be touched.
 const RATE_SIZE: usize = 2;
 
 impl<F> DuplexState<F>

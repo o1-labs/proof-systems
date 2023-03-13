@@ -76,7 +76,7 @@ where
         res
     }
 
-    pub fn to_constant_and_terms_inner(
+    fn to_constant_and_terms_inner(
         &self,
         scale: F,
         constant: F,
@@ -143,16 +143,6 @@ where
     ) -> SnarkyResult<Self> {
         let res = match (self, other) {
             (FieldVar::Constant(x), FieldVar::Constant(y)) => FieldVar::Constant(*x * y),
-
-            // TODO: this was not in the original ocaml code, but seems correct to me
-            (FieldVar::Constant(cst), _) | (_, FieldVar::Constant(cst)) if cst.is_zero() => {
-                FieldVar::zero()
-            }
-
-            // TODO: same here
-            (FieldVar::Constant(cst), cvar) | (cvar, FieldVar::Constant(cst)) if cst.is_one() => {
-                cvar.clone()
-            }
 
             (FieldVar::Constant(cst), cvar) | (cvar, FieldVar::Constant(cst)) => cvar.scale(*cst),
 
@@ -387,7 +377,6 @@ where
     fn sub(self, other: Self) -> Self::Output {
         match (self, other) {
             (FieldVar::Constant(x), FieldVar::Constant(y)) => FieldVar::Constant(*x - y),
-            // TODO: why not just create a Sub variant?
             _ => self.add(&other.scale(-F::one())),
         }
     }
