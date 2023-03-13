@@ -232,3 +232,40 @@ When an `assert_equal()` is called, we link the two variables together using the
 During finalization, when we create the cycles, we use the `union_finds` data structure to find the equivalent variables.
 We then create a new equivalence classes hashmap to merge the keys (variables) that are in the same set.
 This is done before using the equivalence classes hashmap to construct the cycles.
+
+## Validation during witness generation
+
+We want to make sure that the program runs to completion, with the given input, before we start computing the proof (which is expensive).
+
+On top of that, we also want to tell the user what line in their circuit has rejected their input. Like a normal program.
+
+This is configurable, via a `eval_constraints` boolean in the state, and is set to `true` by default.
+
+To perform this validation, we do two things:
+
+**Constants**. In functions that assert, we always check if we're dealing with constants first. If we are dealing with constants, we don't create any constraints, and we directly check if the computation is correct. For example:
+
+```rust
+pub fn assert_equals(
+        &self,
+        state: &mut RunState<F>,
+        other: &FieldVar<F>,
+    ) -> SnarkyResult<()> {
+        match (self, other) {
+            (FieldVar::Constant(x), FieldVar::Constant(y)) => {
+                if x == y {
+                    Ok(())
+                } else {
+                    Err(/* ... */)
+                }
+            }
+            () => state.add_constraint(/* ... */)
+        }
+    }
+```
+
+**Runtime values**. During witness generation, actual values are passed to the circuit and can also not pass an "asserting" function. In these cases, we directly check the computation via the gates. 
+
+What does it mean? For example, when we add a generic constraint during witness generation (which are backing a number of asserting functions), we check that the actual values satisfy the generic gate equation. 
+
+Note that not all gates are behind asserting functions, for example the Poseidon gate does not have "bad" inputs, and as such we don't do any checks on it. If for some reason the inputs are bad, it means that the user did this on purpose, and the proof will fail.
