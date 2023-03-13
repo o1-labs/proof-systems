@@ -153,8 +153,7 @@ where
 {
     /// Creates a new sponge.
     pub fn new() -> DuplexState<F> {
-        let zero = FieldVar::constant(F::zero());
-        let state = [zero, zero, zero];
+        let state = [FieldVar::zero(), FieldVar::zero(), FieldVar::zero()];
         DuplexState {
             rev_queue: vec![],
             absorbing: true,
@@ -178,8 +177,8 @@ where
             if self.rev_queue.len() == RATE_SIZE {
                 let left = self.rev_queue.pop().unwrap();
                 let right = self.rev_queue.pop().unwrap();
-                self.state[0] = self.state[0] + left;
-                self.state[1] = self.state[1] + right;
+                self.state[0] = &self.state[0] + left;
+                self.state[1] = &self.state[1] + right;
                 self.permute(sys);
             }
 
@@ -200,12 +199,11 @@ where
         // if we're switching to squeezing, don't forget about the queue
         if self.absorbing {
             assert!(self.squeezed.is_none());
-            let zero = FieldVar::constant(F::zero());
             if let Some(left) = self.rev_queue.pop() {
-                self.state[0] = self.state[0] + left;
+                self.state[0] = &self.state[0] + left;
             }
             if let Some(right) = self.rev_queue.pop() {
-                self.state[1] = self.state[1] + right;
+                self.state[1] = &self.state[1] + right;
             }
             self.absorbing = false;
         }
