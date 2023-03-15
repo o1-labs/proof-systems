@@ -170,10 +170,8 @@ pub mod testing {
             .build()
             .unwrap();
 
-        let mut srs = if cs.domain.d1.log_size_of_group == precomputed_srs::SERIALIZED_SRS_SIZE {
-            precomputed_srs::get_srs()
-        } else if cs.domain.d1.log_size_of_group < precomputed_srs::SERIALIZED_SRS_SIZE {
-            // TODO: we should trim it
+        let mut srs = if cs.domain.d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
+            // TODO: we should trim it if it's smaller
             precomputed_srs::get_srs()
         } else {
             // TODO: we should resume the SRS generation starting from the serialized one
