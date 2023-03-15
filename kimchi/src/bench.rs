@@ -38,7 +38,11 @@ impl BenchmarkCtx {
     }
 
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
-    pub fn new(num_gates: usize) -> Self {
+    pub fn new(srs_size_log2: u32) -> Self {
+        // there's some overhead that we need to remove (e.g. zk rows)
+
+        let num_gates = ((1 << srs_size_log2) - 10) as usize;
+
         // create the circuit
         let mut gates = vec![];
 
@@ -57,6 +61,8 @@ impl BenchmarkCtx {
 
         // create the index
         let index = new_index_for_test(gates, 0);
+
+        assert_eq!(index.cs.domain.d1.log_size_of_group, srs_size_log2, "the test wanted to use an SRS of size {srs_size_log2} but the domain size ended up being {}", index.cs.domain.d1.log_size_of_group);
 
         // create the verifier index
         let verifier_index = index.verifier_index();
