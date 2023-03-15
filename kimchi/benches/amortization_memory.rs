@@ -1,3 +1,9 @@
+/*
+A benchmark for the pick memory use of batch verification through amortization.
+Measures peak memory use with 1-1024 proofs.
+Can be run with:
+cargo criterion --bench amortization_memory
+ */
 use criterion::{
     black_box, criterion_group, criterion_main,
     measurement::{Measurement, ValueFormatter},
@@ -101,6 +107,8 @@ impl Measurement for MaxMemoryUse {
         let now = HeapStats::get();
         assert!(now.max_bytes >= i.0.max_bytes);
 
+        //criterion starts panicking in many cases related the measurement being too precise
+        //so we add an small error to each measurement
         let bytes = now.max_bytes;
         let mut rng = rand::thread_rng();
         assert!(bytes > 200);
@@ -143,7 +151,7 @@ const PROOFS: usize = 10;
 static ALLOC: dhat::Alloc = dhat::Alloc;
 
 fn amortization(c: &mut Criterion<MaxMemoryUse>) {
-    let mut group = c.benchmark_group("amortization-cm");
+    let mut group = c.benchmark_group("amortization-memory");
 
     let ctx = BenchmarkCtx::new(1 << 16);
     let proof_and_public = ctx.create_proof();
@@ -151,6 +159,7 @@ fn amortization(c: &mut Criterion<MaxMemoryUse>) {
         .take(1 << PROOFS)
         .collect();
 
+    //the runtime is slow so we want it to run as few times as possible
     group.sample_size(10);
     group.sampling_mode(SamplingMode::Flat);
     for size in 0..=PROOFS {
