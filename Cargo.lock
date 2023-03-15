@@ -1743,6 +1743,7 @@ dependencies = [
  "rand_chacha",
  "rand_core",
  "rayon",
+ "rmp-serde",
  "serde",
  "serde_with",
  "thiserror",

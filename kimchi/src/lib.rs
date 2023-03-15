@@ -24,6 +24,7 @@ pub mod prover;
 pub mod prover_index;
 pub mod snarky;
 pub mod verifier;
+pub mod precomputed_srs;
 pub mod verifier_index;
 
 #[cfg(test)]

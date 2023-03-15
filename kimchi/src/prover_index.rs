@@ -133,9 +133,12 @@ impl<G: KimchiCurve> ProverIndex<G> {
 
 pub mod testing {
     use super::*;
-    use crate::circuits::{
-        gate::CircuitGate,
-        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+    use crate::{
+        circuits::{
+            gate::CircuitGate,
+            lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+        },
+        precomputed_srs,
     };
     use ark_ff::{PrimeField, SquareRootField};
     use poly_commitment::srs::endos;
@@ -166,7 +169,17 @@ pub mod testing {
             .disable_gates_checks(disable_gates_checks)
             .build()
             .unwrap();
-        let mut srs = SRS::<G>::create(cs.domain.d1.size());
+
+        let mut srs = if cs.domain.d1.log_size_of_group == precomputed_srs::SERIALIZED_SRS_SIZE {
+            precomputed_srs::get_srs()
+        } else if cs.domain.d1.log_size_of_group < precomputed_srs::SERIALIZED_SRS_SIZE {
+            // TODO: we should trim it
+            precomputed_srs::get_srs()
+        } else {
+            // TODO: we should resume the SRS generation starting from the serialized one
+            SRS::<G>::create(cs.domain.d1.size())
+        };
+
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
