@@ -60,8 +60,9 @@ num-bigint = { version = "0.4.3", features = ["rand"] }
 secp256k1 = "0.24.2"
 
 # benchmarks
-criterion = "0.3"
+criterion = { version = "0.4", features = ["html_reports","cargo_bench_support"]}
 iai = "0.1"
+dhat = "0.3"
 
 [[bench]]
 name = "proof_criterion"
@@ -74,6 +75,13 @@ harness = false
 [[bench]]
 name = "amortization"
 harness = false
+
+[[bench]]
+name = "amortization_memory"
+harness = false
+
+[profile.bench]
+debug = 1
 
 [features]
 default = []
