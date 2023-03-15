@@ -30,7 +30,8 @@ where
     G: KimchiCurve,
 {
     let srs_path = get_srs_path::<G>();
-    let file = File::open(srs_path).unwrap_or_else(|_| panic!("missing SRS file: {srs_path:?}"));
+    let file =
+        File::open(srs_path.clone()).unwrap_or_else(|_| panic!("missing SRS file: {srs_path:?}"));
     let reader = BufReader::new(file);
     rmp_serde::from_read(reader).unwrap()
 }
@@ -57,7 +58,7 @@ mod tests {
             let mut file = std::fs::OpenOptions::new()
                 .create(true)
                 .write(true)
-                .open(&srs_path)
+                .open(srs_path)
                 .expect("failed to open SRS file");
 
             let srs_bytes = rmp_serde::to_vec(&srs).unwrap();
