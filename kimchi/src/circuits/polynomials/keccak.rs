@@ -48,7 +48,7 @@ pub const ROUNDS: usize = 12 + 2 * LENGTH;
 pub const ETH_OUTPUT: usize = 256;
 /// Capacity in Keccak256
 pub const ETH_CAPACITY: usize = 512;
-/// Bitrate in Keccak256
+/// Bitrate in Keccak256 (1088)
 pub const ETH_BITRATE: usize = STATE - ETH_CAPACITY;
 
 /// Creates the 5x5 table of rotation offset for Keccak modulo 64
@@ -413,7 +413,7 @@ pub(crate) fn iota(
     state_g
 }
 
-// Transforms a vector of bytes in little endian  into a state of 64-bit words
+// Transforms a vector of bytes in little endian into a state of 64-bit words
 // Assuming that the first 5 words correspond to the x=0 row.
 // The first byte of the vector corresponds to the least significant byte of the first word of the state (x=0, y=0).
 pub(crate) fn from_le_to_state(block: &[u8]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
