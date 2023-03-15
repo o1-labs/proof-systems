@@ -30,7 +30,7 @@ where
     G: KimchiCurve,
 {
     let srs_path = get_srs_path::<G>();
-    let file = File::open(&srs_path).unwrap_or_else(|_| panic!("missing SRS file: {srs_path:?}"));
+    let file = File::open(srs_path).unwrap_or_else(|_| panic!("missing SRS file: {srs_path:?}"));
     let reader = BufReader::new(file);
     rmp_serde::from_read(reader).unwrap()
 }
