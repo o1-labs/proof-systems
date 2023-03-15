@@ -1,3 +1,9 @@
+/*
+A benchmark for execution time of batch verification through amortization.
+Measures time with 1-1024 proofs, and we can expect it to be lower than verifying proofs individually.
+Can be run with:
+cargo criterion --bench amortization
+ */
 use criterion::{black_box, criterion_group, criterion_main, BatchSize, BenchmarkId, Criterion};
 use kimchi::bench::BenchmarkCtx;
 

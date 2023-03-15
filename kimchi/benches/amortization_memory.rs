@@ -7,16 +7,15 @@ use dhat::HeapStats;
 use kimchi::bench::BenchmarkCtx;
 use rand::Rng;
 
-#[global_allocator]
-static ALLOC: dhat::Alloc = dhat::Alloc;
-
-pub struct MaxMemoryUse;
+/// A memory measurement for criterion, could be of interest to extract it into its own module
+/// and document it more if we want to use it for other benchmarks
+struct MaxMemoryUse;
 impl MaxMemoryUse {
     fn criterion() -> Criterion<MaxMemoryUse> {
         Criterion::default().with_measurement(MaxMemoryUse)
     }
 }
-pub struct MemoryFormater;
+struct MemoryFormater;
 
 enum Unit {
     B,
@@ -86,7 +85,7 @@ impl ValueFormatter for MemoryFormater {
         "B"
     }
 }
-pub struct Bytes(usize);
+struct Bytes(usize);
 
 impl Measurement for MaxMemoryUse {
     type Intermediate = (dhat::HeapStats, dhat::Profiler);
@@ -138,7 +137,12 @@ impl Measurement for MaxMemoryUse {
 }
 
 const PROOFS: usize = 10;
-pub fn amortization(c: &mut Criterion<MaxMemoryUse>) {
+
+///an instrumented allocator that allows to collect stats about heap memory, slow
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
+
+fn amortization(c: &mut Criterion<MaxMemoryUse>) {
     let mut group = c.benchmark_group("amortization-cm");
 
     let ctx = BenchmarkCtx::new(1 << 16);
