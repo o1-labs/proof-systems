@@ -1240,7 +1240,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             KimchiConstraint::Poseidon(state) => {
                 // we expect state to be a vector of all the intermediary round states
                 // (in addition to the initial and final states)
-                assert_eq!(state.len(), ROUNDS_PER_HASH * ROUNDS_PER_HASH);
+                assert_eq!(state.len(), ROUNDS_PER_HASH + 1);
 
                 // where each state is three field elements
                 assert!(state.iter().all(|x| x.len() == SPONGE_WIDTH));
