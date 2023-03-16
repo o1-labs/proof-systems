@@ -260,7 +260,7 @@ pub(crate) fn keccak_sponge(
 
     // squeeze
     let mut output = from_state_to_le(state)[0..(bitrate / 8)].to_vec();
-    while output.len() < output_length {
+    while output.len() < output_length / 8 {
         // apply the permutation function to the state
         state = keccak_permutation(state);
         // append the output of the permutation function to the output
