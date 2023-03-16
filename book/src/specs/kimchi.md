@@ -1397,19 +1397,19 @@ gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be
 
 #### Xor
 
-`Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+`Xor` - Chainable XOR constraints for words of multiples of N bits.
 
 * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
-* The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+* The length of `in1`, `in2` and `out` must be the same and a multiple of N bits.
 * This gate operates on the `Curr` and `Next` rows.
 
 It uses three different types of constraints:
 
-* copy          - copy to another cell (32-bits)
-* plookup       - xor-table plookup (4-bits)
+* copy          - copy to another cell
+* plookup       - xor-table plookup (N bits)
 * decomposition - the constraints inside the gate
 
-The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
+The N-bit nybbles are assumed to be laid out with `0` column being the least significant set of bits.
 Given values `in1`, `in2` and `out`, the layout looks like this:
 
 | Column |          `Curr`  |          `Next`  |
@@ -1432,14 +1432,15 @@ Given values `in1`, `in2` and `out`, the layout looks like this:
 
 One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
 that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
-to obtain a gadget for 64-bit words XOR:
+to obtain a gadget for 64-bit words XOR. This assumes the lookup table being used is for 4 bits
+of Xor. This length is configured in the first coefficient of the gate.
 
 | Row | `CircuitGate` | Purpose                                    |
 | --- | ------------- | ------------------------------------------ |
-|   0 | `Xor16`       | Xor 2 least significant bytes of the words |
-|   1 | `Xor16`       | Xor next 2 bytes of the words              |
-|   2 | `Xor16`       | Xor next 2 bytes of the words              |
-|   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+|   0 | `Xor`         | Xor 4N least significant bits of the words |
+|   1 | `Xor`         | Xor next 4N bits of the words              |
+|   2 | `Xor`         | Xor next 4N bits of the words              |
+|   3 | `Xor`         | Xor 4N most significant bits of the words  |
 |   4 | `Generic`     | Zero values, can be reused as generic gate |
 
 ```admonish info

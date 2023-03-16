@@ -84,19 +84,19 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
     lookup::tables::get_table::<F>(GateLookupTable::Xor)
 }
 
-//~ `Xor16` - Chainable XOR constraints for words of multiples of 16 bits.
+//~ `Xor` - Chainable XOR constraints for words of multiples of N bits.
 //~
 //~ * This circuit gate is used to constrain that `in1` xored with `in2` equals `out`
-//~ * The length of `in1`, `in2` and `out` must be the same and a multiple of 16bits.
+//~ * The length of `in1`, `in2` and `out` must be the same and a multiple of N bits.
 //~ * This gate operates on the `Curr` and `Next` rows.
 //~
 //~ It uses three different types of constraints:
 //~
-//~ * copy          - copy to another cell (32-bits)
-//~ * plookup       - xor-table plookup (4-bits)
+//~ * copy          - copy to another cell
+//~ * plookup       - xor-table plookup (N bits)
 //~ * decomposition - the constraints inside the gate
 //~
-//~ The 4-bit nybbles are assumed to be laid out with `0` column being the least significant nybble.
+//~ The N-bit nybbles are assumed to be laid out with `0` column being the least significant set of bits.
 //~ Given values `in1`, `in2` and `out`, the layout looks like this:
 //~
 //~ | Column |          `Curr`  |          `Next`  |
@@ -119,14 +119,15 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~
 //~ One single gate with next values of `in1'`, `in2'` and `out'` being zero can be used to check
 //~ that the original `in1`, `in2` and `out` had 16-bits. We can chain this gate 4 times as follows
-//~ to obtain a gadget for 64-bit words XOR:
+//~ to obtain a gadget for 64-bit words XOR. This assumes the lookup table being used is for 4 bits
+//~ of Xor. This length is configured in the first coefficient of the gate.
 //~
 //~ | Row | `CircuitGate` | Purpose                                    |
 //~ | --- | ------------- | ------------------------------------------ |
-//~ |   0 | `Xor16`       | Xor 2 least significant bytes of the words |
-//~ |   1 | `Xor16`       | Xor next 2 bytes of the words              |
-//~ |   2 | `Xor16`       | Xor next 2 bytes of the words              |
-//~ |   3 | `Xor16`       | Xor 2 most significant bytes of the words  |
+//~ |   0 | `Xor`         | Xor 4N least significant bits of the words |
+//~ |   1 | `Xor`         | Xor next 4N bits of the words              |
+//~ |   2 | `Xor`         | Xor next 4N bits of the words              |
+//~ |   3 | `Xor`         | Xor 4N most significant bits of the words  |
 //~ |   4 | `Generic`     | Zero values, can be reused as generic gate |
 //~
 //~ ```admonish info
@@ -137,31 +138,33 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ ```
 
 #[derive(Default)]
-pub struct Xor16<F>(PhantomData<F>);
+pub struct Xor<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Xor16<F>
+impl<F> Argument<F> for Xor<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Xor16);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Xor);
     const CONSTRAINTS: u32 = 3;
 
     // Constraints for Xor16
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
+    //   * The gate expects to have the value `2^N` in the first coefficient,
+    //     where `N` is the number of bits of the lookup table for Xor
+    //   * At the moment, `N` is 4, so one `Xor` gate can be used to XOR 16 bits
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
-        let two = T::from(2u64);
-        // in1 = in1_0 + in1_1 * 2^4 + in1_2 * 2^8 + in1_3 * 2^12 + next_in1 * 2^16
-        // in2 = in2_0 + in2_1 * 2^4 + in2_2 * 2^8 + in2_3 * 2^12 + next_in2 * 2^16
-        // out = out_0 + out_1 * 2^4 + out_2 * 2^8 + out_3 * 2^12 + next_out * 2^16
+        // in1 = in1_0 + in1_1 * 2^N + in1_2 * (2^N)^2 + in1_3 * (2^N)^3 + next_in1 * (2^N)^4
+        // in2 = in2_0 + in2_1 * 2^N + in2_2 * (2^N)^2 + in2_3 * (2^N)^3 + next_in2 * (2^N)^4
+        // out = out_0 + out_1 * 2^N + out_2 * (2^N)^2 + out_3 * (2^N)^3 + next_out * (2^N)^4
         (0..3)
             .map(|i| {
                 env.witness_curr(3 + 4 * i)
-                    + env.witness_curr(4 + 4 * i) * two.clone().pow(4)
-                    + env.witness_curr(5 + 4 * i) * two.clone().pow(8)
-                    + env.witness_curr(6 + 4 * i) * two.clone().pow(12)
-                    + two.clone().pow(16) * env.witness_next(i)
+                    + env.witness_curr(4 + 4 * i) * env.coeff(0) // 2^N
+                    + env.witness_curr(5 + 4 * i) * env.coeff(0).pow(2) // (2^N)^2
+                    + env.witness_curr(6 + 4 * i) * env.coeff(0).pow(3) // (2^N)^3
+                    + env.witness_next(i) * env.coeff(0).pow(4) // (2^N)^4
                     - env.witness_curr(i)
             })
             .collect::<Vec<T>>()
