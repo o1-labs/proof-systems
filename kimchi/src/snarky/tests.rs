@@ -15,7 +15,9 @@ use super::prelude::*;
 type BaseSponge = DefaultFqSponge<VestaParameters, PlonkSpongeConstantsKimchi>;
 type ScalarSponge = DefaultFrSponge<Fp, PlonkSpongeConstantsKimchi>;
 
-struct TestCircuit {
+struct TestCircuit {}
+
+struct Priv {
     x: Fp,
     y: Fp,
     z: Fp,
@@ -24,6 +26,7 @@ struct TestCircuit {
 impl SnarkyCircuit for TestCircuit {
     type Curve = Vesta;
 
+    type PrivateInput = Priv;
     type PublicInput = Boolean<Fp>;
     type PublicOutput = (Boolean<Fp>, FieldVar<Fp>);
 
@@ -31,10 +34,11 @@ impl SnarkyCircuit for TestCircuit {
         &self,
         sys: &mut RunState<Fp>,
         public: Self::PublicInput,
+        private: Option<&Self::PrivateInput>,
     ) -> SnarkyResult<Self::PublicOutput> {
-        let x: FieldVar<Fp> = sys.compute(&loc!(), |_| self.x)?;
-        let y: FieldVar<Fp> = sys.compute(&loc!(), |_| self.y)?;
-        let z: FieldVar<Fp> = sys.compute(&loc!(), |_| self.z)?;
+        let x: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().x)?;
+        let y: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().y)?;
+        let z: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().z)?;
 
         sys.assert_r1cs(Some("x * y = z"), x, y, z)?;
 
@@ -57,24 +61,48 @@ impl SnarkyCircuit for TestCircuit {
 
 #[test]
 fn test_simple_circuit() {
-    let test_circuit = TestCircuit {
+    // compile
+    let test_circuit = TestCircuit {};
+
+    let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes().unwrap();
+
+    // print ASM
+    println!("{}", prover_index.asm());
+
+    // prove
+    let in1 = Priv {
         x: Fp::one(),
         y: Fp::from(2),
         z: Fp::from(2),
     };
 
-    let (mut prover_index, verifier_index) = test_circuit.compile_to_indexes().unwrap();
-
-    println!("{}", prover_index.asm());
-
     let public_input = true;
     let debug = true;
     let (proof, public_output) = prover_index
-        .prove::<BaseSponge, ScalarSponge>(public_input, debug)
+        .prove::<BaseSponge, ScalarSponge>(public_input, in1, debug)
         .unwrap();
 
     let expected_public_output = (true, Fp::from(4));
     assert_eq!(public_output, expected_public_output);
 
+    // verify proof
+    verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
+
+    // prove a different execution
+    let in2 = Priv {
+        x: Fp::one(),
+        y: Fp::from(2),
+        z: Fp::from(2),
+    };
+    let public_input = true;
+    let debug = true;
+    let (proof, public_output) = prover_index
+        .prove::<BaseSponge, ScalarSponge>(public_input, in2, debug)
+        .unwrap();
+
+    let expected_public_output = (true, Fp::from(4));
+    assert_eq!(public_output, expected_public_output);
+
+    // verify proof
     verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
 }

@@ -13,7 +13,7 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{PrimeField};
+use ark_ff::PrimeField;
 use poly_commitment::commitment::CommitmentCurve;
 
 use super::{checked_runner::RunState, errors::SnarkyResult, traits::SnarkyType};
@@ -63,6 +63,7 @@ where
         // TODO: this should not be mutable ideally
         &mut self,
         public_input: <Circuit::PublicInput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
+        private_input: Circuit::PrivateInput,
         debug: bool,
     ) -> SnarkyResult<(
         ProverProof<Circuit::Curve>,
@@ -85,10 +86,11 @@ where
 
         // run circuit and get return var
         let public_input_var: Circuit::PublicInput = self.compiled_circuit.sys.public_input();
-        let return_var = self
-            .compiled_circuit
-            .circuit
-            .circuit(&mut self.compiled_circuit.sys, public_input_var)?;
+        let return_var = self.compiled_circuit.circuit.circuit(
+            &mut self.compiled_circuit.sys,
+            public_input_var,
+            Some(&private_input),
+        )?;
 
         // get values from private input vec
         let (return_cvars, aux) = return_var.to_cvars();
@@ -198,7 +200,7 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCir
 
     // run circuit and get return var
     let public_input: Circuit::PublicInput = sys.public_input();
-    let return_var = circuit.circuit(&mut sys, public_input)?;
+    let return_var = circuit.circuit(&mut sys, public_input, None)?;
 
     // create constraint between public output var and return var
     // compile to gates
@@ -221,6 +223,7 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCir
 pub trait SnarkyCircuit: Sized {
     type Curve: KimchiCurve;
 
+    type PrivateInput;
     type PublicInput: SnarkyType<ScalarField<Self::Curve>>;
     type PublicOutput: SnarkyType<ScalarField<Self::Curve>>;
 
@@ -228,6 +231,7 @@ pub trait SnarkyCircuit: Sized {
         &self,
         sys: &mut RunState<ScalarField<Self::Curve>>,
         public_input: Self::PublicInput,
+        private_input: Option<&Self::PrivateInput>,
     ) -> SnarkyResult<Self::PublicOutput>;
 
     fn compile_to_indexes(
