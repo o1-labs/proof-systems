@@ -81,6 +81,10 @@ where
         Self(x)
     }
 
+    pub fn to_field_var(&self) -> FieldVar<F> {
+        self.0.clone()
+    }
+
     pub fn not(&self) -> Self {
         Self(Self::true_().0 - &self.0)
     }
