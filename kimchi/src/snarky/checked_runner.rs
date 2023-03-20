@@ -605,9 +605,17 @@ where
         Ok(())
     }
 
-    pub fn compile(&mut self) -> &[CircuitGate<F>] {
+    /// Finalizes the public output using the actual variables returned by the circuit.
+    pub(crate) fn wire_output_and_compile(
+        &mut self,
+        return_var: impl SnarkyType<F>,
+    ) -> SnarkyResult<&[CircuitGate<F>]> {
+        // wire output
+        self.wire_public_output(return_var)?;
+
+        // compile
         if let Some(cs) = &mut self.system {
-            cs.finalize_and_get_gates()
+            Ok(cs.finalize_and_get_gates())
         } else {
             // TODO: do we really want to panic here?
             panic!("woot");

@@ -209,12 +209,11 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCir
     let return_var = circuit.circuit(&mut sys, public_input)?;
 
     // create constraint between public output var and return var
-    // TODO: don't panic here, return an error
-    sys.wire_public_output(return_var).unwrap();
-
     // compile to gates
-    let gates = sys.compile().to_vec();
+    // TODO: don't panic here, return an error
 
+    let gates = sys.wire_output_and_compile(return_var).unwrap();
+    let gates = gates.to_vec();
 
     // return compiled circuit
     let compiled_circuit = CompiledCircuit {
