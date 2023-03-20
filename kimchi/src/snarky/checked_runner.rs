@@ -630,7 +630,8 @@ where
             ));
         }
 
-        assert_eq!(self.next_var, self.num_public_inputs, "compiler bug: the `next_var` counter is not correctly initialized to the number of public inputs");
+        // re-initialize `next_var` (which will grow every time we compile or generate a witness)
+        self.next_var = self.num_public_inputs;
 
         // set the mode to "witness generation"
         self.has_witness = true;
