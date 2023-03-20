@@ -592,9 +592,14 @@ where
     ) -> SnarkyResult<()> {
         // obtain cvars for the returned vars
         let (return_cvars, _aux) = return_var.to_cvars();
-        let public_output_cvars = self.public_output.clone();
 
-        assert_eq!(return_cvars.len(), public_output_cvars.len());
+        // obtain the vars involved in the public output part of the public input
+        let public_output_cvars = self.public_output.clone();
+        if return_cvars.len() != public_output_cvars.len() {
+            return Err(SnarkyError::RuntimeError(
+                SnarkyRuntimeError::CircuitReturnVar(return_cvars.len(), public_output_cvars.len()),
+            ));
+        }
 
         // wire these to the public output part of the public input
         // note: this will reduce the cvars contained in the output vars

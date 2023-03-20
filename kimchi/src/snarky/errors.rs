@@ -57,4 +57,7 @@ pub enum SnarkyRuntimeError {
 
     #[error("the number of public inputs passed ({0}) does not match the number of public inputs expected ({1})")]
     PubInputMismatch(usize, usize),
+
+    #[error("the value returned by the circuit has an incorrect number of field variables. It hardcoded {1} field variables, but returned {0}")]
+    CircuitReturnVar(usize, usize),
 }
