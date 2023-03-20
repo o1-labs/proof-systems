@@ -672,6 +672,9 @@ where
         // set the public inputs
         self.public_input = public_input;
 
+        // reset the private inputs
+        self.private_input = Vec::with_capacity(self.private_input.len());
+
         // reset the constraint counter for better debugging
         self.constraints_counter = 0;
 
