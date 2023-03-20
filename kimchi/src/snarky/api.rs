@@ -100,11 +100,14 @@ where
         }
 
         // create constraint between public output var and return var
-        // TODO: return error instead of panicking
-        self.compiled_circuit
-            .sys
-            .wire_public_output(return_var)
-            .unwrap();
+        // Note: since the values of the public output part are set to zero at this point,
+        // let's also avoid checking the wiring (which would fail)
+        {
+            let eval_constraints = self.compiled_circuit.sys.eval_constraints;
+            self.compiled_circuit.sys.eval_constraints = false;
+            self.compiled_circuit.sys.wire_public_output(return_var)?;
+            self.compiled_circuit.sys.eval_constraints = eval_constraints;
+        }
 
         // finalize
         let mut witness = self.compiled_circuit.sys.generate_witness();
