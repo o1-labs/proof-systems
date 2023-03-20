@@ -25,7 +25,7 @@ impl SnarkyCircuit for TestCircuit {
     type Curve = Vesta;
 
     type PublicInput = Boolean<Fp>;
-    type PublicOutput = Boolean<Fp>;
+    type PublicOutput = (Boolean<Fp>, FieldVar<Fp>);
 
     fn circuit(
         &self,
@@ -36,13 +36,22 @@ impl SnarkyCircuit for TestCircuit {
         let y: FieldVar<Fp> = sys.compute(&loc!(), |_| self.y)?;
         let z: FieldVar<Fp> = sys.compute(&loc!(), |_| self.z)?;
 
-        sys.assert_r1cs(Some("x * y = z"), x, y, z);
+        sys.assert_r1cs(Some("x * y = z"), x, y, z)?;
 
         let other: Boolean<Fp> = sys.compute(&loc!(), |_| true)?;
 
-        let res = public.and(&other, sys, &loc!());
+        // res1 = public & other
+        dbg!(&public);
+        dbg!(&other);
+        let res1 = public.and(&other, sys, &loc!());
+        dbg!(&res1);
 
-        Ok(res)
+        // res2 = res1 + 3;
+        let three = FieldVar::constant(Fp::from(3));
+        let res2 = res1.to_field_var() + three;
+        dbg!(&res2);
+
+        Ok((res1, res2))
     }
 }
 
@@ -63,6 +72,9 @@ fn test_simple_circuit() {
     let (proof, public_output) = prover_index
         .prove::<BaseSponge, ScalarSponge>(public_input, debug)
         .unwrap();
+
+    let expected_public_output = (true, Fp::from(4));
+    assert_eq!(public_output, expected_public_output);
 
     verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
 }
