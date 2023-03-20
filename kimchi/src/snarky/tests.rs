@@ -70,39 +70,66 @@ fn test_simple_circuit() {
     println!("{}", prover_index.asm());
 
     // prove
-    let in1 = Priv {
-        x: Fp::one(),
-        y: Fp::from(2),
-        z: Fp::from(2),
-    };
+    {
+        let private_input = Priv {
+            x: Fp::one(),
+            y: Fp::from(2),
+            z: Fp::from(2),
+        };
 
-    let public_input = true;
-    let debug = true;
-    let (proof, public_output) = prover_index
-        .prove::<BaseSponge, ScalarSponge>(public_input, in1, debug)
-        .unwrap();
+        let public_input = true;
+        let debug = true;
+        let (proof, public_output) = prover_index
+            .prove::<BaseSponge, ScalarSponge>(public_input, private_input, debug)
+            .unwrap();
 
-    let expected_public_output = (true, Fp::from(4));
-    assert_eq!(public_output, expected_public_output);
+        let expected_public_output = (true, Fp::from(4));
+        assert_eq!(public_output, expected_public_output);
 
-    // verify proof
-    verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
+        // verify proof
+        verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
+    }
 
     // prove a different execution
-    let in2 = Priv {
-        x: Fp::one(),
-        y: Fp::from(2),
-        z: Fp::from(2),
-    };
-    let public_input = true;
-    let debug = true;
-    let (proof, public_output) = prover_index
-        .prove::<BaseSponge, ScalarSponge>(public_input, in2, debug)
-        .unwrap();
+    {
+        let private_input = Priv {
+            x: Fp::one(),
+            y: Fp::from(3),
+            z: Fp::from(3),
+        };
+        let public_input = true;
+        let debug = true;
+        let (proof, public_output) = prover_index
+            .prove::<BaseSponge, ScalarSponge>(public_input, private_input, debug)
+            .unwrap();
 
-    let expected_public_output = (true, Fp::from(4));
-    assert_eq!(public_output, expected_public_output);
+        let expected_public_output = (true, Fp::from(4));
+        assert_eq!(public_output, expected_public_output);
 
-    // verify proof
-    verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
+        // verify proof
+        verifier_index.verify::<BaseSponge, ScalarSponge>(proof, public_input, public_output);
+    }
+
+    // prove a bad execution
+    {
+        let private_input = Priv {
+            x: Fp::one(),
+            y: Fp::from(3),
+            z: Fp::from(2),
+        };
+        let public_input = true;
+        let debug = true;
+
+        let res =
+            prover_index.prove::<BaseSponge, ScalarSponge>(public_input, private_input, debug);
+
+        match res.unwrap_err().source {
+            SnarkyError::RuntimeError(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(x, y, z)) => {
+                assert_eq!(x, Fp::one().to_string());
+                assert_eq!(y, Fp::from(3).to_string());
+                assert_eq!(z, Fp::from(2).to_string());
+            }
+            err => panic!("not the err expected: {err}"),
+        }
+    }
 }

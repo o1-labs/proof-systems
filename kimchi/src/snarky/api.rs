@@ -133,6 +133,7 @@ where
         witness.debug();
 
         // verify the witness
+        // TODO: return error instead of panicking
         if debug {
             self.index
                 .verify(&witness.0, &public_input_and_output)
@@ -142,6 +143,7 @@ where
         // produce a proof
         let group_map = <Circuit::Curve as CommitmentCurve>::Map::setup();
 
+        // TODO: return error instead of panicking
         let proof: ProverProof<Circuit::Curve> =
             ProverProof::create::<EFqSponge, EFrSponge>(&group_map, witness.0, &[], &self.index)
                 .unwrap();
