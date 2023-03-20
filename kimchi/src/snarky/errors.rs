@@ -75,7 +75,7 @@ pub enum SnarkyCompilationError {
 #[derive(Debug, Clone, Error)]
 pub enum SnarkyRuntimeError {
     #[error(
-        "unsatisfied constraint: `{0} * {1} + {2} * {3} + {4} * {5} + {6} * {1} * {3} + {7} != 0`"
+        "unsatisfied constraint #{8}: `{0} * {1} + {2} * {3} + {4} * {5} + {6} * {1} * {3} + {7} != 0`"
     )]
     UnsatisfiedGenericConstraint(
         String,
@@ -86,19 +86,20 @@ pub enum SnarkyRuntimeError {
         String,
         String,
         String,
+        usize
     ),
 
-    #[error("unsatisfied constraint: {0} is not a boolean (0 or 1)")]
-    UnsatisfiedBooleanConstraint(String),
+    #[error("unsatisfied constraint #{0}: {1} is not a boolean (0 or 1)")]
+    UnsatisfiedBooleanConstraint(usize, String),
 
-    #[error("unsatisfied constraint: {0} is not equal to {1}")]
-    UnsatisfiedEqualConstraint(String, String),
+    #[error("unsatisfied constraint #{0}: {1} is not equal to {2}")]
+    UnsatisfiedEqualConstraint(usize, String, String),
 
-    #[error("unsatisfied constraint: {0}^2 is not equal to {1}")]
-    UnsatisfiedSquareConstraint(String, String),
+    #[error("unsatisfied constraint #{0}: {1}^2 is not equal to {2}")]
+    UnsatisfiedSquareConstraint(usize, String, String),
 
-    #[error("unsatisfied constraint: {0} * {1} is not equal to {2}")]
-    UnsatisfiedR1CSConstraint(String, String, String),
+    #[error("unsatisfied constraint #{0}: {1} * {2} is not equal to {3}")]
+    UnsatisfiedR1CSConstraint(usize, String, String, String),
 
     #[error("the number of public inputs passed ({0}) does not match the number of public inputs expected ({1})")]
     PubInputMismatch(usize, usize),

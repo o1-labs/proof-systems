@@ -124,7 +124,12 @@ fn test_simple_circuit() {
             prover_index.prove::<BaseSponge, ScalarSponge>(public_input, private_input, debug);
 
         match res.unwrap_err().source {
-            SnarkyError::RuntimeError(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(x, y, z)) => {
+            SnarkyError::RuntimeError(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(
+                _,
+                x,
+                y,
+                z,
+            )) => {
                 assert_eq!(x, Fp::one().to_string());
                 assert_eq!(y, Fp::from(3).to_string());
                 assert_eq!(z, Fp::from(2).to_string());

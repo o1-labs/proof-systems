@@ -1532,6 +1532,7 @@ where
                 let v = env.read_var(v);
                 if !(v.is_one() || v.is_zero()) {
                     return Err(SnarkyRuntimeError::UnsatisfiedBooleanConstraint(
+                        env.constraints_counter(),
                         v.to_string(),
                     ));
                 }
@@ -1541,6 +1542,7 @@ where
                 let v2 = env.read_var(v2);
                 if v1 != v2 {
                     return Err(SnarkyRuntimeError::UnsatisfiedEqualConstraint(
+                        env.constraints_counter(),
                         v1.to_string(),
                         v2.to_string(),
                     ));
@@ -1552,6 +1554,7 @@ where
                 let square = v1.square();
                 if square != v2 {
                     return Err(SnarkyRuntimeError::UnsatisfiedSquareConstraint(
+                        env.constraints_counter(),
                         v1.to_string(),
                         v2.to_string(),
                     ));
@@ -1564,6 +1567,7 @@ where
                 let mul = v1 * v2;
                 if mul != v3 {
                     return Err(SnarkyRuntimeError::UnsatisfiedR1CSConstraint(
+                        env.constraints_counter(),
                         v1.to_string(),
                         v2.to_string(),
                         v3.to_string(),
@@ -1582,7 +1586,7 @@ where
 {
     pub fn check_constraint(
         &self,
-        witness_env: &impl WitnessGeneration<F>,
+        env: &impl WitnessGeneration<F>,
     ) -> Result<(), SnarkyRuntimeError> {
         match self {
             // we only check the basic gate
@@ -1593,9 +1597,9 @@ where
                 m: c3,
                 c: c4,
             }) => {
-                let l = witness_env.read_var(l_var);
-                let r = witness_env.read_var(r_var);
-                let o = witness_env.read_var(o_var);
+                let l = env.read_var(l_var);
+                let r = env.read_var(r_var);
+                let o = env.read_var(o_var);
                 let res = *c0 * l + *c1 * r + *c2 * o + l * r * c3 + c4;
                 if !res.is_zero() {
                     // TODO: return different errors depending on the type of generic gate (e.g. addition, cst, mul, etc.)
@@ -1608,6 +1612,7 @@ where
                         o.to_string(),
                         c3.to_string(),
                         c4.to_string(),
+                        env.constraints_counter(),
                     ));
                 }
             }

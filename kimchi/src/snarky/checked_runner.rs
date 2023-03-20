@@ -96,7 +96,7 @@ where
 
     /// A map from a constraint index to a source location
     /// (usually a file name and line number).
-    constraints_to_loc: Vec<String>,
+    constraints_locations: Vec<String>,
 }
 
 //
@@ -111,17 +111,27 @@ where
 {
     /// Allows the caller to obtain the value behind a circuit variable.
     fn read_var(&self, var: &FieldVar<F>) -> F;
+
+    fn constraints_counter(&self) -> usize;
 }
 
 impl<F: PrimeField, G: WitnessGeneration<F>> WitnessGeneration<F> for &G {
     fn read_var(&self, var: &FieldVar<F>) -> F {
         G::read_var(*self, var)
     }
+
+    fn constraints_counter(&self) -> usize {
+        G::constraints_counter(*self)
+    }
 }
 
 impl<F: PrimeField> WitnessGeneration<F> for &dyn WitnessGeneration<F> {
     fn read_var(&self, var: &FieldVar<F>) -> F {
         (**self).read_var(var)
+    }
+
+    fn constraints_counter(&self) -> usize {
+        (**self).constraints_counter()
     }
 }
 
@@ -131,6 +141,10 @@ where
 {
     fn read_var(&self, var: &FieldVar<F>) -> F {
         var.eval(self)
+    }
+
+    fn constraints_counter(&self) -> usize {
+        self.constraints_counter
     }
 }
 
@@ -266,7 +280,7 @@ where
             as_prover: false,
             labels_stack: vec![],
             constraints_counter: 0,
-            constraints_to_loc: vec![],
+            constraints_locations: vec![],
         };
 
         // allocate the public inputs
@@ -454,14 +468,8 @@ where
         loc: &str,
     ) -> SnarkyResult<()> {
         self.with_label(label, |env| {
+            // increment the constraint counter
             env.constraints_counter += 1;
-
-            // We can't evaluate the constraints if we are not computing over a value.
-            if env.eval_constraints && env.has_witness {
-                constraint
-                    .check_constraint(env)
-                    .map_err(|e| env.runtime_error(e))?;
-            }
 
             // TODO:
             // [START_TODO]
@@ -473,9 +481,16 @@ where
             // have an enum: 1) compile 2) witness generation 3) both
             // and have the both enum variant be used from an API that does both
             // [END_TODO]
-            if !env.has_witness {
-                env.constraints_to_loc.push(loc.to_string());
+            env.constraints_locations.push(loc.to_string());
 
+            // We check the constraint
+            if env.has_witness && env.eval_constraints {
+                constraint
+                    .check_constraint(env)
+                    .map_err(|e| env.runtime_error(e))?;
+            }
+
+            if !env.has_witness {
                 // TODO: we should have a mode "don't create constraints" instead of having an option here
                 let cs = match &mut env.system {
                     Some(cs) => cs,
@@ -636,7 +651,7 @@ where
         let loc = if self.constraints_counter == 0 {
             "error during initialization"
         } else {
-            &self.constraints_to_loc[self.constraints_counter - 1]
+            &self.constraints_locations[self.constraints_counter - 1]
         };
         RealSnarkyError::new_with_ctx(error, loc, self.labels_stack.clone())
     }
@@ -652,6 +667,8 @@ where
     }
 
     pub fn generate_witness_init(&mut self, mut public_input: Vec<F>) -> SnarkyResult<()> {
+        // check that the given public_input is of the correct length
+        // (not including the public output)
         let obtained = public_input.len();
         let expected = self.num_public_inputs - self.public_output.len();
         if expected != obtained {
@@ -677,6 +694,11 @@ where
 
         // reset the constraint counter for better debugging
         self.constraints_counter = 0;
+
+        // reset the constraints' locations
+        // we have to do this to imitate what the OCaml side does
+        // (the OCaml side always starts with a fresh state)
+        self.constraints_locations = Vec::with_capacity(self.constraints_locations.len());
 
         Ok(())
     }
