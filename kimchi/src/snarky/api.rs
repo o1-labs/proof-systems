@@ -99,7 +99,10 @@ where
 
         // get values from private input vec
         let (return_cvars, aux) = return_var.to_cvars();
-        let public_output_values = self.compiled_circuit.sys.public_output_values(return_cvars);
+        let mut public_output_values = vec![];
+        for cvar in &return_cvars {
+            public_output_values.push(cvar.eval(&mut self.compiled_circuit.sys));
+        }
 
         // create constraint between public output var and return var
         // TODO: return error instead of panicking

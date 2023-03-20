@@ -314,22 +314,6 @@ where
         FieldVar::Var(v)
     }
 
-    /// Evaluate the public output returned by a circuit at runtime.
-    pub(crate) fn public_output_values(&self, cvars: Vec<FieldVar<F>>) -> Vec<F> {
-        let mut values = vec![];
-        for cvar in cvars {
-            match cvar {
-                FieldVar::Var(idx) => {
-                    dbg!(&self.private_input, self.num_public_inputs);
-                    let val = self.private_input[idx - self.num_public_inputs];
-                    values.push(val);
-                }
-                _ => panic!("public output must be a variable"),
-            }
-        }
-        values
-    }
-
     /// Useful to debug. Similar to calling [Self::compute] on a unit type.
     pub fn debug() {
         todo!();
