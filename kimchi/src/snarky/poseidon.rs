@@ -58,7 +58,7 @@ pub fn poseidon<F: PrimeField>(
     };
 
     runner
-        .add_constraint(constraint, Some("Poseidon"))
+        .add_constraint(constraint, Some("Poseidon"), loc)
         .expect("compiler bug");
 
     hash

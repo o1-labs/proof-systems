@@ -10,7 +10,7 @@ use std::ops::{Add, Neg, Sub};
 use super::{
     checked_runner::Constraint,
     constraint_system::BasicSnarkyConstraint,
-    errors::{SnarkyCompilationError, SnarkyError, SnarkyResult},
+    errors::{SnarkyCompilationError, SnarkyResult},
 };
 
 /// A circuit variable represents a field element in the circuit.
@@ -160,7 +160,7 @@ where
 
                 let label = label.or(Some("checked_mul"));
 
-                cs.assert_r1cs(label, self.clone(), other.clone(), res.clone())?;
+                cs.assert_r1cs(label, loc, self.clone(), other.clone(), res.clone())?;
 
                 res
             }
@@ -175,14 +175,15 @@ where
     */
     fn equal_constraints(
         state: &mut RunState<F>,
+        loc: &str,
         z: Self,
         z_inv: Self,
         r: Self,
     ) -> SnarkyResult<()> {
         let one_minus_r = FieldVar::Constant(F::one()) - &r;
         let zero = FieldVar::zero();
-        state.assert_r1cs(Some("equals_1"), z_inv, z.clone(), one_minus_r)?;
-        state.assert_r1cs(Some("equals_2"), r, z, zero)
+        state.assert_r1cs(Some("equals_1"), loc, z_inv, z.clone(), one_minus_r)?;
+        state.assert_r1cs(Some("equals_2"), loc, r, z, zero)
     }
 
     /** [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
@@ -218,7 +219,7 @@ where
                 let z_clone = z.clone();
                 let (res, z_inv): (FieldVar<F>, FieldVar<F>) =
                     state.compute(loc, move |env| Self::equal_vars(env, &z_clone))?;
-                Self::equal_constraints(state, z, z_inv, res.clone())?;
+                Self::equal_constraints(state, loc, z, z_inv, res.clone())?;
 
                 Boolean::create_unsafe(res)
             }
@@ -277,7 +278,7 @@ where
         cvars[0].clone()
     }
 
-    fn check(&self, _cs: &mut RunState<F>) -> SnarkyResult<()> {
+    fn check(&self, _cs: &mut RunState<F>, _loc: &str) -> SnarkyResult<()> {
         // do nothing
         Ok(())
     }
@@ -306,7 +307,7 @@ where
     pub fn assert_equals(
         &self,
         state: &mut RunState<F>,
-        _loc: &str,
+        loc: &str,
         other: &FieldVar<F>,
     ) -> SnarkyResult<()> {
         match (self, other) {
@@ -314,9 +315,12 @@ where
                 if x == y {
                     Ok(())
                 } else {
-                    Err(SnarkyError::CompilationError(
-                        SnarkyCompilationError::ConstantAssertEquals(x.to_string(), y.to_string()),
-                    ))
+                    Err(
+                        state.compilation_error(SnarkyCompilationError::ConstantAssertEquals(
+                            x.to_string(),
+                            y.to_string(),
+                        )),
+                    )
                 }
             }
             (_, _) => state.add_constraint(
@@ -325,6 +329,7 @@ where
                     other.clone(),
                 )),
                 Some("assert equals"),
+                loc,
             ),
         }
     }

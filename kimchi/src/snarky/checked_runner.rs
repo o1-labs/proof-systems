@@ -3,13 +3,14 @@
 use super::{
     api::Witness,
     constants::Constants,
-    errors::{SnarkyError, SnarkyResult, SnarkyRuntimeResult},
+    errors::{
+        RealSnarkyError, SnarkyCompilationError, SnarkyError, SnarkyResult, SnarkyRuntimeResult,
+    },
     poseidon::poseidon,
 };
 use crate::{
     circuits::gate::CircuitGate,
     curve::KimchiCurve,
-    loc,
     snarky::{
         boolean::Boolean,
         constraint_system::{BasicSnarkyConstraint, KimchiConstraint, SnarkyConstraintSystem},
@@ -20,20 +21,13 @@ use crate::{
 };
 use ark_ff::PrimeField;
 
-/// A wrapper around [BasicSnarkyConstraint] and [KimchiConstraintSystem] that allows for an optional label (for debugging).
-#[derive(Debug)]
-pub struct AnnotatedConstraint<F: PrimeField> {
-    annotation: Option<&'static str>,
-    constraint: Constraint<F>,
-}
-
-impl<F> AnnotatedConstraint<F>
+impl<F> Constraint<F>
 where
     F: PrimeField,
 {
     /// In witness generation, this checks if the constraint is satisfied by some witness values.
     pub fn check_constraint(&self, env: &impl WitnessGeneration<F>) -> SnarkyRuntimeResult<()> {
-        match &self.constraint {
+        match self {
             Constraint::BasicSnarkyConstraint(c) => c.check_constraint(env),
             Constraint::KimchiConstraint(c) => c.check_constraint(env),
         }
@@ -92,6 +86,17 @@ where
     /// In this mode, we do not want to create constraints.
     // TODO: I think we should be able to safely remove this as we don't use this in Rust
     pub as_prover: bool,
+
+    /// A stack of labels, to get better errors.
+    labels_stack: Vec<&'static str>,
+
+    /// This does not count exactly the number of constraints,
+    /// but rather the number of times we call [RunState::add_constraint].
+    constraints_counter: usize,
+
+    /// A map from a constraint index to a source location
+    /// (usually a file name and line number).
+    constraints_to_loc: Vec<String>,
 }
 
 //
@@ -259,6 +264,9 @@ where
             next_var: 0,
             has_witness: false,
             as_prover: false,
+            labels_stack: vec![],
+            constraints_counter: 0,
+            constraints_to_loc: vec![],
         };
 
         // allocate the public inputs
@@ -348,7 +356,7 @@ where
     fn compute_inner<T, FUNC>(
         &mut self,
         checked: bool,
-        _loc: &str,
+        loc: &str,
         to_compute_value: FUNC,
     ) -> SnarkyResult<T>
     where
@@ -375,7 +383,7 @@ where
 
             // constrain the conversion
             if checked {
-                snarky_type.check(self)?;
+                snarky_type.check(self, loc)?;
             }
 
             // return the snarky type
@@ -396,7 +404,7 @@ where
 
             // constrain the created circuit variables
             if checked {
-                snarky_type.check(self)?;
+                snarky_type.check(self, loc)?;
             }
 
             // return the snarky type
@@ -405,118 +413,94 @@ where
     }
 
     // TODO: get rid of this.
-    /// Handles a list of [BasicSnarkyConstraint].
-    pub fn assert_(
-        &mut self,
-        annotation: Option<&'static str>,
-        basic_constraints: Vec<BasicSnarkyConstraint<FieldVar<F>>>,
-    ) -> SnarkyResult<()> {
-        let constraints: Vec<_> = basic_constraints
-            .into_iter()
-            .map(|c| AnnotatedConstraint {
-                annotation,
-                constraint: Constraint::BasicSnarkyConstraint(c),
-            })
-            .collect();
-
-        self.add_constraints(constraints)
-    }
-
-    // TODO: get rid of this.
     /// Creates a constraint for `assert_eq!(a * b, c)`.
     pub fn assert_r1cs(
         &mut self,
-        annotation: Option<&'static str>,
+        label: Option<&'static str>,
+        loc: &str,
         a: FieldVar<F>,
         b: FieldVar<F>,
         c: FieldVar<F>,
     ) -> SnarkyResult<()> {
-        let constraint = BasicSnarkyConstraint::R1CS(a, b, c);
-        self.assert_(annotation, vec![constraint])
+        self.with_label(label, |env| {
+            let constraint = BasicSnarkyConstraint::R1CS(a, b, c);
+            env.add_constraint(Constraint::BasicSnarkyConstraint(constraint), None, loc)
+        })
     }
 
     // TODO: get rid of this
     /// Creates a constraint for `assert_eq!(x, y)`;
     pub fn assert_eq(
         &mut self,
-        annotation: Option<&'static str>,
+        label: Option<&'static str>,
+        loc: &str,
         x: FieldVar<F>,
         y: FieldVar<F>,
     ) -> SnarkyResult<()> {
-        let constraint = BasicSnarkyConstraint::Equal(x, y);
-        self.assert_(annotation, vec![constraint])
+        self.with_label(label, |env| {
+            let constraint = BasicSnarkyConstraint::Equal(x, y);
+
+            env.add_constraint(Constraint::BasicSnarkyConstraint(constraint), label, loc)
+        })
     }
 
     /// Adds a list of [AnnotatedConstraint]s to the circuit.
     // TODO: clean up all these add constraints functions
-    pub fn add_constraints(
-        &mut self,
-        constraints: Vec<AnnotatedConstraint<F>>,
-    ) -> SnarkyResult<()> {
-        // We can't evaluate the constraints if we are not computing over a value.
-        if self.eval_constraints && self.has_witness {
-            for constraint in &constraints {
-                constraint
-                    .check_constraint(self)
-                    .map_err(SnarkyError::RuntimeError)?;
-            }
-        }
-
-        self.add_constraints_inner(constraints);
-
-        Ok(())
-    }
-
+    // TODO: do I really need to pass a vec?
     pub fn add_constraint(
         &mut self,
         constraint: Constraint<F>,
-        annotation: Option<&'static str>,
+        label: Option<&'static str>,
+        loc: &str,
     ) -> SnarkyResult<()> {
-        self.add_constraints(vec![AnnotatedConstraint {
-            annotation,
-            constraint,
-        }])
-    }
+        self.with_label(label, |env| {
+            env.constraints_counter += 1;
 
-    fn add_constraints_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
-        // TODO:
-        // [START_TODO]
-        // my understanding is that this should work with the OCaml side,
-        // as `generate_witness_conv` on the OCaml side will have an empty constraint_system at this point which means constraints can't be created (see next line)
-        // instead, I just ensure that when we're in witness generation we don't create constraints
-        // I don't think we ever do both at the same time on the OCaml side side anyway.
-        // Note: if we want to address the TODO below, I think we should instead do this:
-        // have an enum: 1) compile 2) witness generation 3) both
-        // and have the both enum variant be used from an API that does both
-        // [END_TODO]
-        if self.has_witness {
-            return;
-        }
+            // We can't evaluate the constraints if we are not computing over a value.
+            if env.eval_constraints && env.has_witness {
+                constraint
+                    .check_constraint(env)
+                    .map_err(|e| env.runtime_error(e))?;
+            }
 
-        // TODO: we should have a mode "don't create constraints" instead of having an option here
-        let cs = match &mut self.system {
-            Some(cs) => cs,
-            None => return, // TODO: why silent fail?
-        };
+            // TODO:
+            // [START_TODO]
+            // my understanding is that this should work with the OCaml side,
+            // as `generate_witness_conv` on the OCaml side will have an empty constraint_system at this point which means constraints can't be created (see next line)
+            // instead, I just ensure that when we're in witness generation we don't create constraints
+            // I don't think we ever do both at the same time on the OCaml side side anyway.
+            // Note: if we want to address the TODO below, I think we should instead do this:
+            // have an enum: 1) compile 2) witness generation 3) both
+            // and have the both enum variant be used from an API that does both
+            // [END_TODO]
+            if !env.has_witness {
+                env.constraints_to_loc.push(loc.to_string());
 
-        for constraint in constraints {
-            let _label = constraint.annotation.unwrap_or("<unknown>");
+                // TODO: we should have a mode "don't create constraints" instead of having an option here
+                let cs = match &mut env.system {
+                    Some(cs) => cs,
+                    None => return Ok(()),
+                };
 
-            match constraint.constraint {
-                Constraint::BasicSnarkyConstraint(c) => {
-                    cs.add_basic_snarky_constraint(c);
-                }
-                Constraint::KimchiConstraint(c) => {
-                    cs.add_constraint(c);
+                match constraint {
+                    Constraint::BasicSnarkyConstraint(c) => {
+                        cs.add_basic_snarky_constraint(c);
+                    }
+                    Constraint::KimchiConstraint(c) => {
+                        cs.add_constraint(c);
+                    }
                 }
             }
-        }
+
+            Ok(())
+        })
     }
 
     /// Adds a constraint that returns `then_` if `b` is `true`, `else_` otherwise.
     /// Equivalent to `if b { then_ } else { else_ }`.
     pub fn if_(
         &mut self,
+        loc: &str,
         b: Boolean<F>,
         then_: FieldVar<F>,
         else_: FieldVar<F>,
@@ -543,7 +527,7 @@ where
                 let b_clone = b.clone();
                 let then_clone = then_.clone();
                 let else_clone = else_.clone();
-                let res: FieldVar<F> = self.compute(&loc!(), move |env| {
+                let res: FieldVar<F> = self.compute(loc, move |env| {
                     let b = env.read_var(&b_clone);
                     let res_var = if b == F::one() {
                         &then_clone
@@ -556,7 +540,7 @@ where
                 let then_ = &then_ - &else_;
                 let else_ = &res - &else_;
                 // TODO: annotation?
-                self.assert_r1cs(Some("if_"), b.clone(), then_, else_)?;
+                self.assert_r1cs(Some("if_"), loc, b.clone(), then_, else_)?;
 
                 Ok(res)
             }
@@ -573,9 +557,10 @@ where
         // obtain the vars involved in the public output part of the public input
         let public_output_cvars = self.public_output.clone();
         if return_cvars.len() != public_output_cvars.len() {
-            return Err(SnarkyError::RuntimeError(
-                SnarkyRuntimeError::CircuitReturnVar(return_cvars.len(), public_output_cvars.len()),
-            ));
+            return Err(self.runtime_error(SnarkyRuntimeError::CircuitReturnVar(
+                return_cvars.len(),
+                public_output_cvars.len(),
+            )));
         }
 
         // wire these to the public output part of the public input
@@ -584,7 +569,12 @@ where
             .into_iter()
             .zip(public_output_cvars.into_iter())
         {
-            self.assert_eq(Some("wiring public output"), a, b)?;
+            self.assert_eq(
+                Some("wiring public output"),
+                "this should never error",
+                a,
+                b,
+            )?;
         }
 
         Ok(())
@@ -612,13 +602,62 @@ where
         self.private_input.clone()
     }
 
+    /// This adds a label in the stack of labels.
+    /// Every error from now one will contain this label,
+    /// until the label is popped (via [Self::pop_label]).
+    pub fn add_label(&mut self, label: Option<&'static str>) {
+        if let Some(label) = label {
+            self.labels_stack.push(label);
+        }
+    }
+
+    /// This removes a label from any error that could come up from now on.
+    /// Normally used shortly after [Self::add_label].
+    pub fn pop_label(&mut self, label: Option<&'static str>) {
+        if let Some(_) = label {
+            self.labels_stack.pop();
+        }
+    }
+
+    /// A wrapper around code that needs to be labeled
+    /// (for better errors).
+    pub fn with_label<FUNC, T>(&mut self, label: Option<&'static str>, closure: FUNC) -> T
+    where
+        FUNC: FnOnce(&mut Self) -> T,
+    {
+        self.add_label(label);
+        let res = closure(self);
+        self.pop_label(label);
+        res
+    }
+
+    /// Creates an [RealSnarkyError] using the current context.
+    pub fn error(&self, error: SnarkyError) -> RealSnarkyError {
+        let loc = if self.constraints_counter == 0 {
+            "error during initialization"
+        } else {
+            &self.constraints_to_loc[self.constraints_counter - 1]
+        };
+        RealSnarkyError::new_with_ctx(error, loc, self.labels_stack.clone())
+    }
+
+    /// Creates a runtime error.
+    pub fn runtime_error(&self, error: SnarkyRuntimeError) -> RealSnarkyError {
+        self.error(SnarkyError::RuntimeError(error))
+    }
+
+    /// Crates a compilation error.
+    pub fn compilation_error(&self, error: SnarkyCompilationError) -> RealSnarkyError {
+        self.error(SnarkyError::CompilationError(error))
+    }
+
     pub fn generate_witness_init(&mut self, mut public_input: Vec<F>) -> SnarkyResult<()> {
         let obtained = public_input.len();
         let expected = self.num_public_inputs - self.public_output.len();
         if expected != obtained {
-            return Err(SnarkyError::RuntimeError(
-                SnarkyRuntimeError::PubInputMismatch(obtained, expected),
-            ));
+            return Err(
+                self.runtime_error(SnarkyRuntimeError::PubInputMismatch(obtained, expected))
+            );
         }
 
         // pad with zeros for the public output part
@@ -632,6 +671,9 @@ where
 
         // set the public inputs
         self.public_input = public_input;
+
+        // reset the constraint counter for better debugging
+        self.constraints_counter = 0;
 
         Ok(())
     }

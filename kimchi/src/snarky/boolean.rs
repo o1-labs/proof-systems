@@ -4,7 +4,7 @@ use crate::snarky::{
 };
 use ark_ff::PrimeField;
 
-use super::errors::SnarkyResult;
+use super::{checked_runner::Constraint, errors::SnarkyResult};
 
 trait OutOfCircuitSnarkyType2<F> {
     type InCircuit;
@@ -40,11 +40,12 @@ where
         Self(cvars[0].clone())
     }
 
-    fn check(&self, cs: &mut RunState<F>) -> SnarkyResult<()> {
-        // TODO: annotation?
-        cs.assert_(
+    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()> {
+        let constraint = BasicSnarkyConstraint::Boolean(self.0.clone());
+        cs.add_constraint(
+            Constraint::BasicSnarkyConstraint(constraint),
             Some("boolean check"),
-            vec![BasicSnarkyConstraint::Boolean(self.0.clone())],
+            loc,
         )
     }
 
@@ -184,7 +185,7 @@ where
                 let z = &self.0 + &other.0 - &res.0;
 
                 // TODO: annotation?
-                state.assert_r1cs(Some("xor"), x, y.clone(), z)?;
+                state.assert_r1cs(Some("xor"), loc, x, y.clone(), z)?;
 
                 res
             }

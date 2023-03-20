@@ -39,7 +39,7 @@ where
     /// For some definition of valid.
     /// For example, a Boolean snarky type would check that the field element representing it is either 0 or 1.
     /// The function does this by adding constraints to your constraint system.
-    fn check(&self, cs: &mut RunState<F>) -> SnarkyResult<()>;
+    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()>;
 
     /// The "default" value of [Self::Auxiliary].
     /// This is passed to [Self::from_cvars_unsafe] when we are not generating a witness,
@@ -104,7 +104,7 @@ where
 
     fn from_cvars_unsafe(_cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {}
 
-    fn check(&self, _cs: &mut RunState<F>) -> SnarkyResult<()> {
+    fn check(&self, _cs: &mut RunState<F>, _loc: &str) -> SnarkyResult<()> {
         Ok(())
     }
 
@@ -146,9 +146,9 @@ where
         )
     }
 
-    fn check(&self, cs: &mut RunState<F>) -> SnarkyResult<()> {
-        self.0.check(cs)?;
-        self.1.check(cs)?;
+    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()> {
+        self.0.check(cs, loc)?;
+        self.1.check(cs, loc)?;
         Ok(())
     }
 
@@ -204,9 +204,9 @@ where
         })
     }
 
-    fn check(&self, cs: &mut RunState<F>) -> SnarkyResult<()> {
+    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()> {
         for t in self.iter() {
-            t.check(cs)?;
+            t.check(cs, loc)?;
         }
         Ok(())
     }

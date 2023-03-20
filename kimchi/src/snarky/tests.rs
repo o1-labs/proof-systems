@@ -1,6 +1,10 @@
 use crate::{
     loc,
-    snarky::{api::SnarkyCircuit, boolean::Boolean},
+    snarky::{
+        api::SnarkyCircuit,
+        boolean::Boolean,
+        errors::{SnarkyError, SnarkyRuntimeError},
+    },
     snarky::{checked_runner::RunState, cvar::FieldVar},
 };
 use ark_ff::One;
@@ -40,20 +44,16 @@ impl SnarkyCircuit for TestCircuit {
         let y: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().y)?;
         let z: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().z)?;
 
-        sys.assert_r1cs(Some("x * y = z"), x, y, z)?;
+        sys.assert_r1cs(Some("x * y = z"), &loc!(), x, y, z)?;
 
         let other: Boolean<Fp> = sys.compute(&loc!(), |_| true)?;
 
         // res1 = public & other
-        dbg!(&public);
-        dbg!(&other);
         let res1 = public.and(&other, sys, &loc!());
-        dbg!(&res1);
 
         // res2 = res1 + 3;
         let three = FieldVar::constant(Fp::from(3));
         let res2 = res1.to_field_var() + three;
-        dbg!(&res2);
 
         Ok((res1, res2))
     }
