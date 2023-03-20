@@ -13,6 +13,7 @@ members = [
     "signer",
     "tools/kimchi-visu",
     "utils",
+    "internal-tracing",
 ]
 
 [profile.release]

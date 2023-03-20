@@ -1021,6 +1021,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "internal-tracing"
+version = "0.1.0"
+dependencies = [
+ "ocaml",
+ "ocaml-gen",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "iovec"
 version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1084,6 +1094,7 @@ dependencies = [
  "groupmap",
  "hex",
  "iai",
+ "internal-tracing",
  "itertools",
  "mina-curves",
  "mina-poseidon",

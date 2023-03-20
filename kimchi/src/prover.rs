@@ -162,6 +162,8 @@ where
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
+        internal_tracing::checkpoint!(internal_traces; create_recursive);
+
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
         if index.srs.max_degree() < d1_size {
@@ -196,6 +198,7 @@ where
 
         //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `ZK_ROWS` of each columns.
+        internal_tracing::checkpoint!(internal_traces; pad_witness);
         for w in &mut witness {
             if w.len() != length_witness {
                 return Err(ProverError::WitnessCsInconsistent);
@@ -211,6 +214,7 @@ where
         }
 
         //~ 1. Setup the Fq-Sponge.
+        internal_tracing::checkpoint!(internal_traces; set_up_fq_sponge);
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
@@ -256,6 +260,7 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
+        internal_tracing::checkpoint!(internal_traces; commit_to_witness_columns);
         let mut w_comm = vec![];
         for col in 0..COLUMNS {
             // witness coeff -> witness eval
@@ -311,6 +316,10 @@ where
 
         //~ 1. If using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
+            internal_tracing::checkpoint!(internal_traces; use_lookup, {
+                "uses_lookup": true,
+                "uses_runtime_tables": lcs.runtime_tables.is_some(),
+            });
             //~~ * if using runtime table:
             if let Some(cfg_runtime_tables) = &lcs.runtime_tables {
                 //~~~ * check that all the provided runtime tables have length and IDs that match the runtime table configuration of the index
@@ -559,6 +568,7 @@ where
         }
 
         //~ 1. Compute the permutation aggregation polynomial $z$.
+        internal_tracing::checkpoint!(internal_traces; z_permutation_aggregation_polynomial);
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
@@ -600,7 +610,9 @@ where
             None
         };
 
+        internal_tracing::checkpoint!(internal_traces; eval_witness_polynomials_over_domains);
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
+        internal_tracing::checkpoint!(internal_traces; compute_index_evals);
         let env = {
             let mut index_evals = HashMap::new();
             use GateType::*;
@@ -674,6 +686,8 @@ where
                 lookup: lookup_env,
             }
         };
+
+        internal_tracing::checkpoint!(internal_traces; compute_quotient_poly);
 
         let quotient_poly = {
             // generic
@@ -907,7 +921,10 @@ where
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
 
+        internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_poly);
         let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
+        internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_omega_poly);
+
         let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
 
         let chunked_evals_for_selector =
@@ -922,6 +939,7 @@ where
                 zeta_omega: vec![zeta_omega_evals.evaluate(p)],
             };
 
+        internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             s: array::from_fn(|i| {
                 chunked_evals_for_evaluations(
@@ -972,6 +990,7 @@ where
 
         //~ 1. Compute the ft polynomial.
         //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
+        internal_tracing::checkpoint!(internal_traces; compute_ft_poly);
         let ft: DensePolynomial<G::ScalarField> = {
             let f_chunked = {
                 // TODO: compute the linearization polynomial in evaluation form so
@@ -1021,6 +1040,7 @@ where
         };
 
         //~ 1. Evaluate the ft polynomial at $\zeta\omega$ only.
+        internal_tracing::checkpoint!(internal_traces; ft_eval_zeta_omega);
         let ft_eval1 = ft.evaluate(&zeta_omega);
 
         //~ 1. Setup the Fr-Sponge
@@ -1043,6 +1063,7 @@ where
         fr_sponge.absorb(&prev_challenge_digest);
 
         //~ 1. Compute evaluations for the previous recursion challenges.
+        internal_tracing::checkpoint!(internal_traces; build_polynomials);
         let polys = prev_challenges
             .iter()
             .map(|RecursionChallenge { chals, comm }| {
@@ -1206,6 +1227,7 @@ where
         }
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
+        internal_tracing::checkpoint!(internal_traces; create_aggregated_evaluation_proof);
         let proof = index.srs.open(
             group_map,
             &polynomials,
@@ -1225,7 +1247,7 @@ where
                 runtime: lookup_context.runtime_table_comm.map(|x| x.commitment),
             });
 
-        Ok(Self {
+        let proof = Self {
             commitments: ProverCommitments {
                 w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
                 z_comm: z_comm.commitment,
@@ -1236,9 +1258,33 @@ where
             evals: chunked_evals,
             ft_eval1,
             prev_challenges,
-        })
+        };
+
+        internal_tracing::checkpoint!(internal_traces; create_recursive_done);
+        Ok(proof)
     }
 }
+
+internal_tracing::decl_traces!(internal_traces;
+    pasta_fp_plonk_proof_create,
+    pasta_fq_plonk_proof_create,
+    create_recursive,
+    pad_witness,
+    set_up_fq_sponge,
+    commit_to_witness_columns,
+    use_lookup,
+    z_permutation_aggregation_polynomial,
+    eval_witness_polynomials_over_domains,
+    compute_index_evals,
+    compute_quotient_poly,
+    lagrange_basis_eval_zeta_poly,
+    lagrange_basis_eval_zeta_omega_poly,
+    chunk_eval_zeta_omega_poly,
+    compute_ft_poly,
+    ft_eval_zeta_omega,
+    build_polynomials,
+    create_aggregated_evaluation_proof,
+    create_recursive_done);
 
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
@@ -1246,6 +1292,9 @@ pub mod caml {
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
     use poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+
+    #[cfg(feature = "internal_tracing")]
+    pub use internal_traces::caml::CamlTraces as CamlProverTraces;
 
     //
     // CamlProverProof<CamlG, CamlF>
