@@ -2,8 +2,7 @@
 //!
 //! Definition of secret key, keypairs and related helpers
 
-use crate::{seckey::SecKeyError, CurvePoint, PubKey, ScalarField, SecKey};
-use ark_ec::{AffineCurve, ProjectiveCurve};
+use crate::{pubkey::PubKeyError, seckey::SecKeyError, CurvePoint, PubKey, ScalarField, SecKey};
 use core::fmt;
 use rand::{self, CryptoRng, RngCore};
 use thiserror::Error;
@@ -14,6 +13,9 @@ pub enum KeypairError {
     /// Invalid secret key
     #[error(transparent)]
     SecretKey(#[from] SecKeyError),
+    /// Public key error
+    #[error(transparent)]
+    PublicKey(#[from] PubKeyError),
     /// point not on curve
     #[error("point not on curve")]
     NonCurvePoint,
@@ -42,16 +44,13 @@ impl Keypair {
 
     /// Create keypair from secret key
     pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
-        let public = CurvePoint::prime_subgroup_generator()
-            .mul(secret_key.clone().into_scalar())
-            .into_affine();
+        let public = PubKey::from_secret_key(secret_key.clone())?;
 
-        if !public.is_on_curve() {
-            return Err(KeypairError::NonCurvePoint);
-        }
-
-        // Safe now because we checked point is on the curve
-        Ok(Self::from_parts_unsafe(secret_key.into_scalar(), public))
+        // Safe now because PubKey::from_secret_key() checked point is on the curve
+        Ok(Self::from_parts_unsafe(
+            secret_key.into_scalar(),
+            public.into_point(),
+        ))
     }
 
     /// Generate random keypair

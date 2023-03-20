@@ -108,9 +108,9 @@ impl PubKey {
     }
 
     /// Create public key from a secret key
-    pub fn from_secret_key(sec_key: SecKey) -> Result<Self> {
+    pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
         let pt = CurvePoint::prime_subgroup_generator()
-            .mul(sec_key.into_scalar())
+            .mul(secret_key.into_scalar())
             .into_affine();
         if !pt.is_on_curve() {
             return Err(PubKeyError::NonCurvePoint);
