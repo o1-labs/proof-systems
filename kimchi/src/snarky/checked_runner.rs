@@ -516,6 +516,20 @@ where
     }
 
     fn add_constraints_inner(&mut self, constraints: Vec<AnnotatedConstraint<F>>) {
+        // TODO:
+        // [START_TODO]
+        // my understanding is that this should work with the OCaml side,
+        // as `generate_witness_conv` on the OCaml side will have an empty constraint_system at this point which means constraints can't be created (see next line)
+        // instead, I just ensure that when we're in witness generation we don't create constraints
+        // I don't think we ever do both at the same time on the OCaml side side anyway.
+        // Note: if we want to address the TODO below, I think we should instead do this:
+        // have an enum: 1) compile 2) witness generation 3) both
+        // and have the both enum variant be used from an API that does both
+        // [END_TODO]
+        if self.has_witness {
+            return;
+        }
+
         // TODO: we should have a mode "don't create constraints" instead of having an option here
         let cs = match &mut self.system {
             Some(cs) => cs,
