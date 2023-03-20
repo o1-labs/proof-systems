@@ -89,7 +89,7 @@ where
 
     /// Indication that we're running in prover mode.
     /// In this mode, we do not want to create constraints.
-    // TODO: perhaps we should try to make the distinction between compile/runtime clearer
+    // TODO: I think we should be able to safely remove this as we don't use this in Rust
     pub as_prover: bool,
 }
 
@@ -314,6 +314,7 @@ where
         FieldVar::Var(v)
     }
 
+    /// Evaluate the public output returned by a circuit at runtime.
     pub(crate) fn public_output_values(&self, cvars: Vec<FieldVar<F>>) -> Vec<F> {
         let mut values = vec![];
         for cvar in cvars {
@@ -385,10 +386,6 @@ where
         // we're in witness generation mode
         if self.has_witness {
             // compute the value by running the closure
-            // let old_as_prover = self.as_prover;
-            // self.as_prover = true;
-            // let value = to_compute_value(self);
-            // self.as_prover = old_as_prover;
             let value = self.as_prover::<T, _>(to_compute_value);
 
             // convert the value into field elements
@@ -589,12 +586,18 @@ where
         }
     }
 
-    pub fn wire_public_output(&mut self, return_var: impl SnarkyType<F>) -> SnarkyResult<()> {
+    pub(crate) fn wire_public_output(
+        &mut self,
+        return_var: impl SnarkyType<F>,
+    ) -> SnarkyResult<()> {
+        // obtain cvars for the returned vars
         let (return_cvars, _aux) = return_var.to_cvars();
         let public_output_cvars = self.public_output.clone();
 
         assert_eq!(return_cvars.len(), public_output_cvars.len());
 
+        // wire these to the public output part of the public input
+        // note: this will reduce the cvars contained in the output vars
         for (a, b) in return_cvars
             .into_iter()
             .zip(public_output_cvars.into_iter())

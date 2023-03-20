@@ -10,7 +10,7 @@ use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
 use crate::circuits::wires::Wire;
 use ark_ff::PrimeField;
 
-use super::api::{ Witness};
+use super::api::Witness;
 
 /// Print a field in a negative form if it's past the half point.
 fn pretty<F: ark_ff::PrimeField>(ff: F) -> String {
@@ -83,12 +83,14 @@ where
                 ) in wires.iter().enumerate()
                 {
                     if row != *to_row || col != *to_col {
+                        // if this gate is generic, use generic variables
                         let col_str = if matches!(typ, GateType::Generic) {
                             format!(".{}", Self::generic_cols(col))
                         } else {
                             format!("[{col}]")
                         };
 
+                        // same for the wired gate
                         let to_col = if matches!(self.gates[*to_row].typ, GateType::Generic) {
                             format!(".{}", Self::generic_cols(*to_col))
                         } else {

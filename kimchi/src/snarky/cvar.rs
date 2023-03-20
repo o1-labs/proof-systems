@@ -52,13 +52,14 @@ where
         Self::constant(F::zero())
     }
 
+    // TODO: should we cache results to avoid recomputation them again and again?
     fn eval_inner(&self, state: &RunState<F>, scale: F, res: &mut F) {
         match self {
             FieldVar::Constant(c) => {
                 *res += scale * c;
             }
             FieldVar::Var(v) => {
-                let v = state.read_var_idx(*v); // TODO: might panic
+                let v = state.read_var_idx(*v);
                 *res += scale * v;
             }
             FieldVar::Add(a, b) => {
