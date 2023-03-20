@@ -259,7 +259,7 @@ where
             public_input: Vec::with_capacity(num_public_inputs),
             public_output: Vec::with_capacity(public_output_size),
             private_input: vec![],
-            eval_constraints: false,
+            eval_constraints: true,
             num_public_inputs,
             next_var: 0,
             has_witness: false,
