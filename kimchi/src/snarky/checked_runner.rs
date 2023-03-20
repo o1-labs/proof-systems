@@ -359,19 +359,6 @@ where
         self.compute_inner(false, loc, to_compute_value)
     }
 
-    /// Computes a closure with `as_prover` set to true.
-    fn as_prover<T, FUNC>(&mut self, to_compute_value: FUNC) -> T::OutOfCircuit
-    where
-        T: SnarkyType<F>,
-        FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
-    {
-        let old_as_prover = self.as_prover;
-        self.as_prover = true;
-        let value = to_compute_value(self);
-        self.as_prover = old_as_prover;
-        value
-    }
-
     // TODO: make loc argument work
     fn compute_inner<T, FUNC>(
         &mut self,
@@ -386,7 +373,7 @@ where
         // we're in witness generation mode
         if self.has_witness {
             // compute the value by running the closure
-            let value = self.as_prover::<T, _>(to_compute_value);
+            let value: T::OutOfCircuit = to_compute_value(self);
 
             // convert the value into field elements
             let (fields, aux) = T::value_to_field_elements(&value);
@@ -394,11 +381,7 @@ where
 
             // convert each field element into a circuit var
             for field in fields {
-                let v = if self.as_prover {
-                    FieldVar::Constant(field)
-                } else {
-                    self.store_field_elt(field)
-                };
+                let v = self.store_field_elt(field);
                 field_vars.push(v);
             }
 
@@ -485,11 +468,6 @@ where
         &mut self,
         constraints: Vec<AnnotatedConstraint<F>>,
     ) -> SnarkyResult<()> {
-        if self.as_prover {
-            // Don't add constraints as the prover, or the constraint system won't match!
-            return Ok(());
-        }
-
         // We can't evaluate the constraints if we are not computing over a value.
         if self.eval_constraints && self.has_witness {
             for constraint in &constraints {

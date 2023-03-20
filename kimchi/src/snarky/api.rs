@@ -215,8 +215,6 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCir
     // compile to gates
     let gates = sys.compile().to_vec();
 
-    // turn as_prover
-    sys.as_prover = true;
 
     // return compiled circuit
     let compiled_circuit = CompiledCircuit {
