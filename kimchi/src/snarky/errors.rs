@@ -35,21 +35,28 @@ pub struct RealSnarkyError {
 impl RealSnarkyError {
     /// Creates a new [RealSnarkyError].
     pub fn new(source: SnarkyError) -> Self {
+        let backtrace = std::env::var("SNARKY_BACKTRACE")
+            .ok()
+            .map(|_| Backtrace::capture());
         Self {
             source,
             loc: None,
             label_stack: None,
-            backtrace: Some(Backtrace::capture()),
+            backtrace,
         }
     }
 
     /// Creates a new [RealSnarkyError].
     pub fn new_with_ctx(source: SnarkyError, loc: &str, label_stack: Vec<&'static str>) -> Self {
+        let backtrace = std::env::var("SNARKY_BACKTRACE")
+            .ok()
+            .map(|_| Backtrace::capture());
+
         Self {
             source,
             loc: Some(loc.to_string()),
             label_stack: Some(label_stack),
-            backtrace: Some(Backtrace::capture()),
+            backtrace,
         }
     }
 }
