@@ -1,13 +1,58 @@
+use std::backtrace::Backtrace;
+
 use thiserror::Error;
 
 /// A result type for Snarky errors.
-pub type SnarkyResult<T> = std::result::Result<T, SnarkyError>;
+pub type SnarkyResult<T> = std::result::Result<T, RealSnarkyError>;
 
 /// A result type for Snarky runtime errors.
 pub type SnarkyRuntimeResult<T> = std::result::Result<T, SnarkyRuntimeError>;
 
 /// A result type for Snarky compilation errors.
 pub type SnarkyCompileResult<T> = std::result::Result<T, SnarkyCompilationError>;
+
+#[derive(Debug, Error)]
+#[error("an error ocurred in snarky")]
+pub struct RealSnarkyError {
+    /// The actual error.
+    pub source: SnarkyError,
+
+    /// A location string, usually a file name and line number.
+    /// Location information is usually useful for:
+    ///
+    /// - assert that failed (so we need to keep track of the location that created each gates)
+    pub loc: Option<String>,
+
+    /// A stack of labels,
+    /// where each label represents an important function call.
+    pub label_stack: Option<Vec<&'static str>>,
+
+    /// A Rust backtrace of where the error came from.
+    /// This can be especially useful for debugging snarky when wrapped by a different language implementation.
+    backtrace: Option<Backtrace>,
+}
+
+impl RealSnarkyError {
+    /// Creates a new [RealSnarkyError].
+    pub fn new(source: SnarkyError) -> Self {
+        Self {
+            source,
+            loc: None,
+            label_stack: None,
+            backtrace: Some(Backtrace::capture()),
+        }
+    }
+
+    /// Creates a new [RealSnarkyError].
+    pub fn new_with_ctx(source: SnarkyError, loc: &str, label_stack: Vec<&'static str>) -> Self {
+        Self {
+            source,
+            loc: Some(loc.to_string()),
+            label_stack: Some(label_stack),
+            backtrace: Some(Backtrace::capture()),
+        }
+    }
+}
 
 /// Snarky errors can come from either a compilation or runtime error.
 #[derive(Debug, Clone, Error)]
