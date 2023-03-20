@@ -13,7 +13,7 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{PrimeField, Zero as _};
+use ark_ff::{PrimeField};
 use poly_commitment::commitment::CommitmentCurve;
 
 use super::{checked_runner::RunState, errors::SnarkyResult, traits::SnarkyType};
@@ -75,20 +75,13 @@ where
         EFrSponge: FrSponge<ScalarField<Circuit::Curve>>,
     {
         // create public input
-        let mut public_input_and_output =
+        let public_input_without_output =
             Circuit::PublicInput::value_to_field_elements(&public_input).0;
-
-        // pad with 0s with the public output for now
-        public_input_and_output.resize(
-            Circuit::PublicInput::SIZE_IN_FIELD_ELEMENTS
-                + Circuit::PublicOutput::SIZE_IN_FIELD_ELEMENTS,
-            ScalarField::<Circuit::Curve>::zero(),
-        );
 
         // init
         self.compiled_circuit
             .sys
-            .generate_witness_init(public_input_and_output.clone())?;
+            .generate_witness_init(public_input_without_output.clone())?;
 
         // run circuit and get return var
         let public_input_var: Circuit::PublicInput = self.compiled_circuit.sys.public_input();
@@ -125,12 +118,8 @@ where
         }
 
         // same but with the full public input
-        for (cell, val) in &mut public_input_and_output[start..end]
-            .iter_mut()
-            .zip(&public_output_values)
-        {
-            *cell = *val;
-        }
+        let mut public_input_and_output = public_input_without_output;
+        public_input_and_output.extend(public_output_values.clone());
 
         // reconstruct public output
         let public_output =

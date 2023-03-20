@@ -75,7 +75,8 @@ where
     /// This is useful to simulate running the circuit and return an error if an assertion fails.
     pub eval_constraints: bool,
 
-    /// The number of public inputs.
+    /// The size of the public input part. This contains the public output as well.
+    // TODO: maybe remove the public output part here? This will affect OCaml-side though.
     num_public_inputs: usize,
 
     /// A counter used to track variables (this includes public inputs) as they're being created.
@@ -611,13 +612,17 @@ where
         self.private_input.clone()
     }
 
-    pub fn generate_witness_init(&mut self, public_input: Vec<F>) -> SnarkyResult<()> {
-        let num_passed_pub_inputs = public_input.len();
-        if self.num_public_inputs != num_passed_pub_inputs {
+    pub fn generate_witness_init(&mut self, mut public_input: Vec<F>) -> SnarkyResult<()> {
+        let obtained = public_input.len();
+        let expected = self.num_public_inputs - self.public_output.len();
+        if expected != obtained {
             return Err(SnarkyError::RuntimeError(
-                SnarkyRuntimeError::PubInputMismatch(num_passed_pub_inputs, self.num_public_inputs),
+                SnarkyRuntimeError::PubInputMismatch(obtained, expected),
             ));
         }
+
+        // pad with zeros for the public output part
+        public_input.extend(std::iter::repeat(F::zero()).take(self.public_output.len()));
 
         // re-initialize `next_var` (which will grow every time we compile or generate a witness)
         self.next_var = self.num_public_inputs;
