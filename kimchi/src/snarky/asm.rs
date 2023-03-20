@@ -97,7 +97,11 @@ where
                             format!("[{to_col}]")
                         };
 
-                        let res = format!("{col_str} -> row{to_row}{to_col}");
+                        let res = if row != *to_row {
+                            format!("{col_str} -> row{to_row}{to_col}")
+                        } else {
+                            format!("{col_str} -> {to_col}")
+                        };
 
                         if matches!(typ, GateType::Generic) && col < GENERIC_REGISTERS {
                             wires1.push(res);
