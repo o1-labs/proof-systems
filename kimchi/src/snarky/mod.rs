@@ -8,11 +8,11 @@ pub mod boolean;
 pub mod checked_runner;
 pub mod constants;
 pub mod constraint_system;
-pub mod union_find;
 pub mod cvar;
 pub mod errors;
 pub mod poseidon;
 pub mod traits;
+pub mod union_find;
 
 #[cfg(test)]
 mod tests;
@@ -23,4 +23,5 @@ pub mod prelude {
     pub use crate::loc;
     pub use checked_runner::RunState;
     pub use cvar::FieldVar;
+    pub use errors::SnarkyResult;
 }

@@ -54,4 +54,7 @@ pub enum SnarkyRuntimeError {
 
     #[error("unsatisfied constraint: {0} * {1} is not equal to {2}")]
     UnsatisfiedR1CSConstraint(String, String, String),
+
+    #[error("the number of public inputs passed ({0}) does not match the number of public inputs expected ({1})")]
+    PubInputMismatch(usize, usize),
 }

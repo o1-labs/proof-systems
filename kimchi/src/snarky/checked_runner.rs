@@ -14,6 +14,7 @@ use crate::{
         boolean::Boolean,
         constraint_system::{BasicSnarkyConstraint, KimchiConstraint, SnarkyConstraintSystem},
         cvar::FieldVar,
+        errors::SnarkyRuntimeError,
         traits::SnarkyType,
     },
 };
@@ -618,13 +619,23 @@ where
         self.private_input.clone()
     }
 
-    pub fn generate_witness_init(&mut self, public_input: Vec<F>) {
-        assert_eq!(self.num_public_inputs, public_input.len(), "the number of public inputs passed ({}) does not match the number of public inputs expected ({})", public_input.len(), self.num_public_inputs);
+    pub fn generate_witness_init(&mut self, public_input: Vec<F>) -> SnarkyResult<()> {
+        let num_passed_pub_inputs = public_input.len();
+        if self.num_public_inputs != num_passed_pub_inputs {
+            return Err(SnarkyError::RuntimeError(
+                SnarkyRuntimeError::PubInputMismatch(num_passed_pub_inputs, self.num_public_inputs),
+            ));
+        }
 
         assert_eq!(self.next_var, self.num_public_inputs, "compiler bug: the `next_var` counter is not correctly initialized to the number of public inputs");
 
+        // set the mode to "witness generation"
         self.has_witness = true;
+
+        // set the public inputs
         self.public_input = public_input;
+
+        Ok(())
     }
 
     /// Returns the public output generated after running the circuit,

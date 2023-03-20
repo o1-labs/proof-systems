@@ -16,7 +16,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{PrimeField, Zero as _};
 use poly_commitment::commitment::CommitmentCurve;
 
-use super::{checked_runner::RunState, traits::SnarkyType};
+use super::{checked_runner::RunState, errors::SnarkyResult, traits::SnarkyType};
 
 // TODO: implement digest function
 pub struct CompiledCircuit<Circuit>
@@ -64,10 +64,10 @@ where
         &mut self,
         public_input: <Circuit::PublicInput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
         debug: bool,
-    ) -> (
+    ) -> SnarkyResult<(
         ProverProof<Circuit::Curve>,
         <Circuit::PublicOutput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
-    )
+    )>
     where
         <Circuit::Curve as AffineCurve>::BaseField: PrimeField,
         EFqSponge: Clone
@@ -85,26 +85,22 @@ where
             ScalarField::<Circuit::Curve>::zero(),
         );
 
-        dbg!("yo");
         // init
         self.compiled_circuit
             .sys
-            .generate_witness_init(public_input_and_output.clone());
+            .generate_witness_init(public_input_and_output.clone())?;
 
-        dbg!("yo");
         // run circuit and get return var
         let public_input_var: Circuit::PublicInput = self.compiled_circuit.sys.public_input();
         let return_var = self
             .compiled_circuit
             .circuit
-            .circuit(&mut self.compiled_circuit.sys, public_input_var);
+            .circuit(&mut self.compiled_circuit.sys, public_input_var)?;
 
-        dbg!("yo");
         // get values from private input vec
         let (return_cvars, aux) = return_var.to_cvars();
         let public_output_values = self.compiled_circuit.sys.public_output_values(return_cvars);
 
-        dbg!("yo");
         // create constraint between public output var and return var
         // TODO: return error instead of panicking
         self.compiled_circuit
@@ -112,11 +108,9 @@ where
             .wire_public_output(return_var)
             .unwrap();
 
-        dbg!("yo");
         // finalize
         let mut witness = self.compiled_circuit.sys.generate_witness();
 
-        dbg!("yo");
         // replace public output part of witness
         let start = Circuit::PublicInput::SIZE_IN_FIELD_ELEMENTS;
         let end = start + Circuit::PublicOutput::SIZE_IN_FIELD_ELEMENTS;
@@ -127,7 +121,6 @@ where
             *cell = *val;
         }
 
-        dbg!("yo");
         // same but with the full public input
         for (cell, val) in &mut public_input_and_output[start..end]
             .iter_mut()
@@ -136,14 +129,12 @@ where
             *cell = *val;
         }
 
-        dbg!("yo");
         // reconstruct public output
         let public_output =
             Circuit::PublicOutput::value_of_field_elements(public_output_values, aux);
 
         witness.debug();
 
-        dbg!("yo");
         // verify the witness
         if debug {
             self.index
@@ -159,7 +150,7 @@ where
                 .unwrap();
 
         // return proof + public output
-        (proof, public_output)
+        Ok((proof, public_output))
     }
 }
 
@@ -201,7 +192,7 @@ where
     }
 }
 
-fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> CompiledCircuit<Circuit> {
+fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCircuit<Circuit>> {
     // calculate public input size
     let public_input_size = Circuit::PublicInput::SIZE_IN_FIELD_ELEMENTS
         + Circuit::PublicOutput::SIZE_IN_FIELD_ELEMENTS;
@@ -215,7 +206,7 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> CompiledCircuit<Circuit>
 
     // run circuit and get return var
     let public_input: Circuit::PublicInput = sys.public_input();
-    let return_var = circuit.circuit(&mut sys, public_input);
+    let return_var = circuit.circuit(&mut sys, public_input)?;
 
     // create constraint between public output var and return var
     // TODO: don't panic here, return an error
@@ -228,13 +219,14 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> CompiledCircuit<Circuit>
     sys.as_prover = true;
 
     // return compiled circuit
-    CompiledCircuit {
+    let compiled_circuit = CompiledCircuit {
         circuit,
         sys,
         public_input_size,
         gates,
         phantom: PhantomData,
-    }
+    };
+    Ok(compiled_circuit)
 }
 
 pub trait SnarkyCircuit: Sized {
@@ -247,13 +239,15 @@ pub trait SnarkyCircuit: Sized {
         &self,
         sys: &mut RunState<ScalarField<Self::Curve>>,
         public_input: Self::PublicInput,
-    ) -> Self::PublicOutput;
+    ) -> SnarkyResult<Self::PublicOutput>;
 
-    fn compile_to_indexes(self) -> (ProverIndexWrapper<Self>, VerifierIndexWrapper<Self>)
+    fn compile_to_indexes(
+        self,
+    ) -> SnarkyResult<(ProverIndexWrapper<Self>, VerifierIndexWrapper<Self>)>
     where
         <Self::Curve as AffineCurve>::BaseField: PrimeField,
     {
-        let compiled_circuit = compile(self);
+        let compiled_circuit = compile(self)?;
 
         // create constraint system
         let cs = ConstraintSystem::create(compiled_circuit.gates.clone())
@@ -285,6 +279,6 @@ pub trait SnarkyCircuit: Sized {
             index: verifier_index,
         };
 
-        (prover_index, verifier_index)
+        Ok((prover_index, verifier_index))
     }
 }
