@@ -44,7 +44,7 @@ impl SnarkyCircuit for TestCircuit {
         let y: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().y)?;
         let z: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().z)?;
 
-        sys.assert_r1cs(Some("x * y = z"), &loc!(), x, y, z)?;
+        sys.assert_r1cs(Some("x * y = z".into()), &loc!(), x, y, z)?;
 
         let other: Boolean<Fp> = sys.compute(&loc!(), |_| true)?;
 

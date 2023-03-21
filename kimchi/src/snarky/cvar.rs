@@ -5,7 +5,7 @@ use crate::snarky::{
     traits::SnarkyType,
 };
 use ark_ff::PrimeField;
-use std::ops::{Add, Neg, Sub};
+use std::{ops::{Add, Neg, Sub}, borrow::Cow};
 
 use super::{
     checked_runner::Constraint,
@@ -140,7 +140,7 @@ where
     pub fn mul(
         &self,
         other: &Self,
-        label: Option<&'static str>,
+        label: Option<Cow<'static, str>>,
         loc: &str,
         cs: &mut RunState<F>,
     ) -> SnarkyResult<Self> {
@@ -158,7 +158,7 @@ where
                     x * y
                 })?;
 
-                let label = label.or(Some("checked_mul"));
+                let label = label.or(Some("checked_mul".into()));
 
                 cs.assert_r1cs(label, loc, self.clone(), other.clone(), res.clone())?;
 
@@ -182,8 +182,8 @@ where
     ) -> SnarkyResult<()> {
         let one_minus_r = FieldVar::Constant(F::one()) - &r;
         let zero = FieldVar::zero();
-        state.assert_r1cs(Some("equals_1"), loc, z_inv, z.clone(), one_minus_r)?;
-        state.assert_r1cs(Some("equals_2"), loc, r, z, zero)
+        state.assert_r1cs(Some("equals_1".into()), loc, z_inv, z.clone(), one_minus_r)?;
+        state.assert_r1cs(Some("equals_2".into()), loc, r, z, zero)
     }
 
     /** [equal_vars z] computes [(r, z_inv)] that satisfy the constraints in
@@ -328,7 +328,7 @@ where
                     self.clone(),
                     other.clone(),
                 )),
-                Some("assert equals"),
+                Some("assert equals".into()),
                 loc,
             ),
         }

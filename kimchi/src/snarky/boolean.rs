@@ -44,7 +44,7 @@ where
         let constraint = BasicSnarkyConstraint::Boolean(self.0.clone());
         cs.add_constraint(
             Constraint::BasicSnarkyConstraint(constraint),
-            Some("boolean check"),
+            Some("boolean check".into()),
             loc,
         )
     }
@@ -93,7 +93,7 @@ where
     pub fn and(&self, other: &Self, cs: &mut RunState<F>, loc: &str) -> Self {
         let res = self
             .0
-            .mul(&other.0, Some("bool.and"), loc, cs)
+            .mul(&other.0, Some("bool.and".into()), loc, cs)
             .expect("compiler bug");
         Self(res)
     }
@@ -185,7 +185,7 @@ where
                 let z = &self.0 + &other.0 - &res.0;
 
                 // TODO: annotation?
-                state.assert_r1cs(Some("xor"), loc, x, y.clone(), z)?;
+                state.assert_r1cs(Some("xor".into()), loc, x, y.clone(), z)?;
 
                 res
             }

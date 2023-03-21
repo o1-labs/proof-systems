@@ -376,10 +376,10 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
 
         // create closure that will read variables from the input
         let external_values = |i| {
-            if i < public_inputs.len() {
+            if i < public_input_size {
                 public_inputs[i]
             } else {
-                private_inputs[i - public_inputs.len()]
+                private_inputs[i - public_input_size]
             }
         };
 

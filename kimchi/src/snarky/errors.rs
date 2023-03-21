@@ -1,4 +1,4 @@
-use std::backtrace::Backtrace;
+use std::{backtrace::Backtrace, borrow::Cow};
 
 use thiserror::Error;
 
@@ -25,7 +25,7 @@ pub struct RealSnarkyError {
 
     /// A stack of labels,
     /// where each label represents an important function call.
-    pub label_stack: Option<Vec<&'static str>>,
+    pub label_stack: Option<Vec<Cow<'static, str>>>,
 
     /// A Rust backtrace of where the error came from.
     /// This can be especially useful for debugging snarky when wrapped by a different language implementation.
@@ -47,7 +47,7 @@ impl RealSnarkyError {
     }
 
     /// Creates a new [RealSnarkyError].
-    pub fn new_with_ctx(source: SnarkyError, loc: &str, label_stack: Vec<&'static str>) -> Self {
+    pub fn new_with_ctx(source: SnarkyError, loc: &str, label_stack: Vec<Cow<'static, str>>) -> Self {
         let backtrace = std::env::var("SNARKY_BACKTRACE")
             .ok()
             .map(|_| Backtrace::capture());
@@ -93,7 +93,7 @@ pub enum SnarkyRuntimeError {
         String,
         String,
         String,
-        usize
+        usize,
     ),
 
     #[error("unsatisfied constraint #{0}: {1} is not a boolean (0 or 1)")]

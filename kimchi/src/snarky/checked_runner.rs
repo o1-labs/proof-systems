@@ -1,5 +1,7 @@
 //! The circuit-generation and witness-generation logic.
 
+use std::borrow::Cow;
+
 use super::{
     api::Witness,
     constants::Constants,
@@ -71,7 +73,7 @@ where
 
     /// The size of the public input part. This contains the public output as well.
     // TODO: maybe remove the public output part here? This will affect OCaml-side though.
-    num_public_inputs: usize,
+    pub num_public_inputs: usize,
 
     /// A counter used to track variables (this includes public inputs) as they're being created.
     pub next_var: usize,
@@ -84,11 +86,11 @@ where
 
     /// Indication that we're running in prover mode.
     /// In this mode, we do not want to create constraints.
-    // TODO: I think we should be able to safely remove this as we don't use this in Rust
+    // TODO: I think we should be able to safely remove this as we don't use this in Rust. Check with snarkyJS if they need this here though.
     pub as_prover: bool,
 
     /// A stack of labels, to get better errors.
-    labels_stack: Vec<&'static str>,
+    labels_stack: Vec<Cow<'static, str>>,
 
     /// This does not count exactly the number of constraints,
     /// but rather the number of times we call [RunState::add_constraint].
@@ -430,32 +432,27 @@ where
     /// Creates a constraint for `assert_eq!(a * b, c)`.
     pub fn assert_r1cs(
         &mut self,
-        label: Option<&'static str>,
+        label: Option<Cow<'static, str>>,
         loc: &str,
         a: FieldVar<F>,
         b: FieldVar<F>,
         c: FieldVar<F>,
     ) -> SnarkyResult<()> {
-        self.with_label(label, |env| {
-            let constraint = BasicSnarkyConstraint::R1CS(a, b, c);
-            env.add_constraint(Constraint::BasicSnarkyConstraint(constraint), None, loc)
-        })
+        let constraint = BasicSnarkyConstraint::R1CS(a, b, c);
+        self.add_constraint(Constraint::BasicSnarkyConstraint(constraint), label, loc)
     }
 
     // TODO: get rid of this
     /// Creates a constraint for `assert_eq!(x, y)`;
     pub fn assert_eq(
         &mut self,
-        label: Option<&'static str>,
+        label: Option<Cow<'static, str>>,
         loc: &str,
         x: FieldVar<F>,
         y: FieldVar<F>,
     ) -> SnarkyResult<()> {
-        self.with_label(label, |env| {
-            let constraint = BasicSnarkyConstraint::Equal(x, y);
-
-            env.add_constraint(Constraint::BasicSnarkyConstraint(constraint), label, loc)
-        })
+        let constraint = BasicSnarkyConstraint::Equal(x, y);
+        self.add_constraint(Constraint::BasicSnarkyConstraint(constraint), label, loc)
     }
 
     /// Adds a list of [AnnotatedConstraint]s to the circuit.
@@ -464,12 +461,21 @@ where
     pub fn add_constraint(
         &mut self,
         constraint: Constraint<F>,
-        label: Option<&'static str>,
+        label: Option<Cow<'static, str>>,
         loc: &str,
     ) -> SnarkyResult<()> {
         self.with_label(label, |env| {
             // increment the constraint counter
             env.constraints_counter += 1;
+
+            // log
+            if std::env::var("SNARKY_LOG_CONSTRAINTS").is_ok() {
+                println!(
+                    "{}: {loc} - {}",
+                    env.constraints_counter,
+                    env.labels_stack.join(", ")
+                );
+            }
 
             // TODO:
             // [START_TODO]
@@ -555,7 +561,7 @@ where
                 let then_ = &then_ - &else_;
                 let else_ = &res - &else_;
                 // TODO: annotation?
-                self.assert_r1cs(Some("if_"), loc, b.clone(), then_, else_)?;
+                self.assert_r1cs(Some("if_".into()), loc, b.clone(), then_, else_)?;
 
                 Ok(res)
             }
@@ -585,7 +591,7 @@ where
             .zip(public_output_cvars.into_iter())
         {
             self.assert_eq(
-                Some("wiring public output"),
+                Some("wiring public output".into()),
                 "this should never error",
                 a,
                 b,
@@ -620,29 +626,34 @@ where
     /// This adds a label in the stack of labels.
     /// Every error from now one will contain this label,
     /// until the label is popped (via [Self::pop_label]).
-    pub fn add_label(&mut self, label: Option<&'static str>) {
-        if let Some(label) = label {
-            self.labels_stack.push(label);
-        }
+    pub fn add_label(&mut self, label: Cow<'static, str>) {
+        self.labels_stack.push(label);
     }
 
     /// This removes a label from any error that could come up from now on.
     /// Normally used shortly after [Self::add_label].
-    pub fn pop_label(&mut self, label: Option<&'static str>) {
-        if let Some(_) = label {
-            self.labels_stack.pop();
-        }
+    pub fn pop_label(&mut self) {
+        self.labels_stack.pop();
     }
 
     /// A wrapper around code that needs to be labeled
     /// (for better errors).
-    pub fn with_label<FUNC, T>(&mut self, label: Option<&'static str>, closure: FUNC) -> T
+    pub fn with_label<FUNC, T>(&mut self, label: Option<Cow<'static, str>>, closure: FUNC) -> T
     where
         FUNC: FnOnce(&mut Self) -> T,
     {
-        self.add_label(label);
+        let need_to_pop = label.is_some();
+
+        if let Some(label) = label {
+            self.add_label(label);
+        }
+
         let res = closure(self);
-        self.pop_label(label);
+
+        if need_to_pop {
+            self.pop_label();
+        }
+
         res
     }
 
