@@ -20,7 +20,7 @@ use num_bigint::BigUint;
 use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Two};
 
 //~ We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
-//~ add an `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
+//~ add an `And16` gate type reusing the same ideas of `Xor` so as to save one final generic gate, at the cost of one additional AND
 //~ lookup table that would have the same size as that of the Xor.
 //~ For now, we are willing to pay this small overhead and produce AND gadget as follows:
 //~
@@ -45,13 +45,13 @@ use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Tw
 //~
 //~ Then, our AND gadget for $n$ bytes looks as follows:
 //~
-//~ * $n/8$ Xor16 gates
+//~ * $n/8$ Xor gates
 //~ * 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
 //~ * 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
 //~
 //~ Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
 //~
-//~ * Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
+//~ * Column 2 of the first Xor row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
 //~ * Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
 //~ Meaning,
 //~
@@ -63,20 +63,21 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// The full operation being performed is the following:
     /// `a AND b = 1/2 * (a + b - (a XOR b))`
     /// Includes:
-    /// - num_xors Xor16 gates to perform `xor = a XOR b`
+    /// - num_xors Xor gates to perform `xor = a XOR b`
     /// - 1 Generic gate to constrain the final row to be zero with itself
     /// - 1 double Generic gate to perform the AND operation as `a + b = sum` and `2 * and = sum - xor`
     /// Input:
     /// - gates    : vector of circuit gates comprising the full circuit
     /// - bytes    : number of bytes of the AND operation
+    /// - len_xor  : length of Xor lookup table
     /// Output:
     /// - next_row  : next row after this gate
     /// Warning:
     /// - if there's any public input for the and, don't forget to wire it
-    pub fn extend_and(gates: &mut Vec<Self>, bytes: usize) -> usize {
+    pub fn extend_and(gates: &mut Vec<Self>, bytes: usize, len_xor: Option<usize>) -> usize {
         assert!(bytes > 0, "Bytes must be a positive number");
         let xor_row = gates.len();
-        let and_row = Self::extend_xor_gadget(gates, bytes * 8);
+        let and_row = Self::extend_xor_gadget(gates, bytes * 8, len_xor);
         let (_, mut and_gates) = Self::create_and(and_row, bytes);
         // extend the whole circuit with the AND gadget
         gates.append(&mut and_gates);
@@ -132,9 +133,14 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 }
 
 /// Create a And for inputs as field elements starting at row 0
-/// Input: first input, second input, and desired byte length
+/// Input: first input, second input, desired byte length, length of inputs of Xor table (default: 4)
 /// Panics if the input is too large for the chosen number of bytes
-pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> [Vec<F>; COLUMNS] {
+pub fn create_and_witness<F: PrimeField>(
+    input1: F,
+    input2: F,
+    bytes: usize,
+    len_xor: Option<usize>,
+) -> [Vec<F>; COLUMNS] {
     let input1_big = input1.to_biguint();
     let input2_big = input2.to_biguint();
     if bytes * 8 < input1_big.bitlen() || bytes * 8 < input2_big.bitlen() {
@@ -149,10 +155,16 @@ pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> 
     let and = big_and.to_field().unwrap();
     let sum = input1 + input2;
 
-    let and_row = num_xors(bytes * 8) + 1;
+    let and_row = num_xors(bytes * 8, len_xor) + 1;
     let mut and_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); and_row + 1]);
 
-    init_xor(&mut and_witness, 0, bytes * 8, (input1, input2, xor));
+    init_xor(
+        &mut and_witness,
+        0,
+        bytes * 8,
+        (input1, input2, xor),
+        len_xor,
+    );
     // Fill in double generic witness
     and_witness[0][and_row] = input1;
     and_witness[1][and_row] = input2;
@@ -165,15 +177,16 @@ pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> 
 }
 
 /// Extends an AND witness to the whole witness
-/// Input: first input, second input, and desired byte length
+/// Input: first input, second input, and desired byte length, length of inputs of Xor table (default: 4)
 /// Panics if the input is too large for the chosen number of bytes
 pub fn extend_and_witness<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     input1: F,
     input2: F,
     bytes: usize,
+    len_xor: Option<usize>,
 ) {
-    let and_witness = create_and_witness(input1, input2, bytes);
+    let and_witness = create_and_witness(input1, input2, bytes, len_xor);
     for col in 0..COLUMNS {
         witness[col].extend(and_witness[col].iter());
     }

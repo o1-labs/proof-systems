@@ -81,7 +81,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     RangeCheck1 => Some(self.verifier_index.range_check1_comm.as_ref()?),
                     ForeignFieldAdd => Some(self.verifier_index.foreign_field_add_comm.as_ref()?),
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
-                    Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
+                    Xor => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
                 }
             }

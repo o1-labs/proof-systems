@@ -542,7 +542,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::Xor16,
+                    GateType::Xor,
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -717,7 +717,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::RangeCheck1 => feature_flags.range_check1 = true,
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
-                GateType::Xor16 => feature_flags.xor = true,
+                GateType::Xor => feature_flags.xor = true,
                 GateType::Rot64 => feature_flags.rot = true,
                 _ => (),
             }

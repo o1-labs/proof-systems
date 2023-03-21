@@ -110,7 +110,7 @@ pub enum GateType {
     ForeignFieldAdd = 18,
     ForeignFieldMul = 19,
     // Gates for Keccak
-    Xor16 = 20,
+    Xor = 20,
     Rot64 = 21,
 }
 
@@ -223,7 +223,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             ForeignFieldMul => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
-            Xor16 => self
+            Xor => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
@@ -311,7 +311,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::ForeignFieldMul => {
                 foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
             }
-            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
+            GateType::Xor => xor::Xor::constraint_checks(&env),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env),
         };
 

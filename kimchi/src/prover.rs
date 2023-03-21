@@ -18,7 +18,7 @@ use crate::{
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
             varbasemul::VarbaseMul,
-            xor::Xor16,
+            xor::Xor,
         },
         wires::{COLUMNS, PERMUTS},
     },
@@ -647,7 +647,7 @@ where
             }
 
             if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
-                index_evals.insert(GateType::Xor16, selector);
+                index_evals.insert(GateType::Xor, selector);
             }
 
             if let Some(selector) = index.column_evaluations.rot_selector8.as_ref() {
@@ -739,7 +739,7 @@ where
                         foreign_field_multiplication_enabled,
                     ),
                     // Xor gate
-                    (&Xor16::default(), xor_enabled),
+                    (&Xor::default(), xor_enabled),
                     // Rot gate
                     (&Rot64::default(), rot_enabled),
                 ]

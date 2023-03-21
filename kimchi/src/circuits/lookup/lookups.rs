@@ -519,7 +519,7 @@ impl LookupPattern {
                 Some(LookupPattern::RangeCheck)
             }
             (ForeignFieldMul, Curr) => Some(LookupPattern::ForeignFieldMul),
-            (Xor16, Curr) => Some(LookupPattern::Xor),
+            (Xor, Curr) => Some(LookupPattern::Xor),
             _ => None,
         }
     }

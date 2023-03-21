@@ -1409,7 +1409,7 @@ It uses three different types of constraints:
 * plookup       - xor-table plookup (N bits)
 * decomposition - the constraints inside the gate
 
-The N-bit nybbles are assumed to be laid out with `0` column being the least significant set of bits.
+The N-bit nibbles are assumed to be laid out with `0` column being the least significant set of bits.
 Given values `in1`, `in2` and `out`, the layout looks like this:
 
 | Column |          `Curr`  |          `Next`  |
@@ -1459,7 +1459,7 @@ Here we describe basic gadgets that we build using a combination of the gates de
 
 We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
 
- The first version of the NOT gadget reuses `Xor16` by making the following observation: *the bitwise NOT operation is equivalent to the
+ The first version of the NOT gadget reuses `Xor` by making the following observation: *the bitwise NOT operation is equivalent to the
 bitwise XOR operation with the all one words of a certain length*. In other words,
 $$\neg x = x \oplus 1^*$$
 where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
@@ -1478,12 +1478,12 @@ This comes with the advantage of holding up to 2 word negations per row (an eigh
 ##### NOT Layout using XOR
 
 Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
-follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
+follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor` gates, that means one XOR row for every 16 bits of the input word.
 
 | Row       | `CircuitGate` | Purpose                                                               |
 | --------- | ------------- | --------------------------------------------------------------------- |
 | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
-| i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
+| i...i+n-1 | `Xor`       | Negate every 4 nybbles of the word, from least to most significant    |
 | i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 
 ##### NOT Layout using Generic gates
@@ -1502,7 +1502,7 @@ to have a given length.
 #### And
 
 We implement the AND gadget making use of the XOR gadget and the Generic gate. A new gate type is not needed, but we could potentially
-add an `And16` gate type reusing the same ideas of `Xor16` so as to save one final generic gate, at the cost of one additional AND
+add an `And16` gate type reusing the same ideas of `Xor` so as to save one final generic gate, at the cost of one additional AND
 lookup table that would have the same size as that of the Xor.
 For now, we are willing to pay this small overhead and produce AND gadget as follows:
 
@@ -1527,13 +1527,13 @@ which can be expressed as a double generic gate.
 
 Then, our AND gadget for $n$ bytes looks as follows:
 
-* $n/8$ Xor16 gates
+* $n/8$ Xor gates
 * 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
 * 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
 
 Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
 
-* Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
+* Column 2 of the first Xor row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
 * Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
 Meaning,
 

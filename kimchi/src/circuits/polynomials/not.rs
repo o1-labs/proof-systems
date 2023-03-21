@@ -1,12 +1,12 @@
 //! This module includes the definition of the NOT gadget and the witness code generation,
-//! for both the implementation running with `Xor16` gates and the one with `Generic` gates.
+//! for both the implementation running with `Xor` gates and the one with `Generic` gates.
 //! Note that this module does not include a `Not` gate type.
 use crate::circuits::{
-    gate::{CircuitGate, Connect, GateType},
+    gate::{CircuitGate, Connect},
     polynomial::COLUMNS,
     wires::Wire,
 };
-use ark_ff::PrimeField;
+use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers};
 use std::{array, cmp::max};
@@ -18,7 +18,7 @@ use super::{
 
 //~ We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
 //~
-//~ The first version of the NOT gadget reuses `Xor16` by making the following observation: *the bitwise NOT operation is equivalent to the
+//~ The first version of the NOT gadget reuses `Xor` by making the following observation: *the bitwise NOT operation is equivalent to the
 //~ bitwise XOR operation with the all one words of a certain length*. In other words,
 //~ $$\neg x = x \oplus 1^*$$
 //~ where $1^*$ denotes a bitstring of all ones of length $|x|$. Let $x_i$ be the $i$-th bit of $x$, the intuition is that if $x_i = 0$ then
@@ -37,12 +37,12 @@ use super::{
 //~ ##### NOT Layout using XOR
 //~
 //~ Here we show the layout of the NOT gadget using the XOR approach. The gadget needs a row with a public input containing the all-one word of the given length. Then, a number of XORs
-//~ follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor16` gates, that means one XOR row for every 16 bits of the input word.
+//~ follow, and a final `Zero` row is needed. In this case, the NOT gadget needs $\ceil(\frac{|x|}{16})$ `Xor` gates, that means one XOR row for every 16 bits of the input word.
 //~
 //~ | Row       | `CircuitGate` | Purpose                                                               |
 //~ | --------- | ------------- | --------------------------------------------------------------------- |
 //~ | pub       | `Generic`     | Leading row with the public $1^*$ value                               |
-//~ | i...i+n-1 | `Xor16`       | Negate every 4 nybbles of the word, from least to most significant    |
+//~ | i...i+n-1 | `Xor`       | Negate every 4 nybbles of the word, from least to most significant    |
 //~ | i+n       | `Generic`     | Constrain that the final row is all zeros for correctness of Xor gate |
 //~
 //~ ##### NOT Layout using Generic gates
@@ -56,7 +56,7 @@ use super::{
 //~ | pub | `Generic`     | Leading row with the public $1^*$ value                                       |
 //~ | i   | `Generic`     | Negate one or two words of the length given by the length of the all-one word |
 //~
-impl<F: PrimeField> CircuitGate<F> {
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Extends a bitwise negation gadget with `n` NOT components of some length previously constrained using a generic gate
     /// (checking that a cell stores `2^bits-1` value). Assumes that the inputs are known to have at most `bits` length.
     /// Starts the gates in the `new_row` position.
@@ -64,7 +64,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - ceil(n/2) Double Generic gates to perform the `( 2^(bits) - 1 ) - input` operation for every two inputs in each row
     /// Input:
     /// - gates     : full circuit
-    /// - n         : number of negations to perform
+    /// - num_neg   : number of negations to perform
     /// - pub_row   : row containing the public input with the all-one word of the given length
     /// Important:
     /// - If the bit length of the input is not fixed, then it must be constrained somewhere else.
@@ -73,16 +73,16 @@ impl<F: PrimeField> CircuitGate<F> {
     /// - don't forget to include a public input in `pub_row` to constrain the left of each generic gate for negation to be `2^bits - 1`
     pub fn extend_not_gadget_unchecked_length(
         gates: &mut Vec<Self>,
-        n: usize,
+        num_neg: usize,
         pub_row: usize,
     ) -> usize {
         // taking advantage of double generic gates to negate two words in each row
         let mut new_row = gates.len();
-        for _ in 0..(n / 2) {
+        for _ in 0..(num_neg / 2) {
             new_row = Self::extend_not_gnrc(gates, pub_row, new_row, true);
         }
         // odd number of NOTs require one more row to negate the last word only
-        if n % 2 == 1 {
+        if num_neg % 2 == 1 {
             new_row = Self::extend_not_gnrc(gates, pub_row, new_row, false);
         }
         new_row
@@ -135,12 +135,13 @@ impl<F: PrimeField> CircuitGate<F> {
     /// Extends a NOT gadget for `bits` length using Xor gates.
     /// It implicitly constrains the length of the input to be at most 16 * num_xors bits.
     /// Includes:
-    /// - num_xors Xor16 gates
+    /// - num_xors Xor gates
     /// - 1 Generic gate to constrain the final row to be zero with itself
     /// Input:
     /// - gates : full circuit
     /// - pub_row : row containing the public input with the all-one word of the given length
     /// - bits    : number of bits of the input
+    /// - len_xor : length of inputs of Xor table
     /// Precndition:
     /// - 1 initial public input generic gate in `all_ones_row` to constrain the input to be `2^bits-1`.
     /// Warning:
@@ -149,26 +150,10 @@ impl<F: PrimeField> CircuitGate<F> {
         gates: &mut Vec<Self>,
         all_ones_row: usize,
         bits: usize,
+        len_xor: Option<usize>,
     ) -> usize {
-        let n = num_xors(bits);
         let new_row = gates.len();
-        let mut not_gates = (0..n)
-            .map(|i| CircuitGate {
-                typ: GateType::Xor16,
-                wires: Wire::for_row(new_row + i),
-                coeffs: vec![],
-            })
-            .collect::<Vec<_>>();
-        let zero_row = new_row + n;
-        not_gates.push(CircuitGate::create_generic_gadget(
-            Wire::for_row(zero_row),
-            GenericGateSpec::Const(F::zero()),
-            None,
-        ));
-        gates.extend(not_gates);
-        // check fin_in1, fin_in2, fin_out are zero
-        gates.connect_cell_pair((zero_row, 0), (zero_row, 1));
-        gates.connect_cell_pair((zero_row, 0), (zero_row, 2));
+        CircuitGate::extend_xor_gadget(gates, bits, len_xor);
         // Integration
         gates.connect_cell_pair((all_ones_row, 0), (new_row, 1)); // input2 of xor is all ones
 
@@ -177,21 +162,22 @@ impl<F: PrimeField> CircuitGate<F> {
 }
 
 /// Extend a NOT witness for less than 255 bits (native field)
-/// Input: full witness, first input and optional bit length
+/// Input: full witness, first input, optional bit length, length of inputs of Xor table
 /// If `bits` is not provided, the negation is performed using the length of the `input` in bits.
 /// If `bits` is provided, the negation takes the maximum length between `bits` and that of `input`.
 /// Warning:
-/// - don't forget to set a row of the witness with public input `2^bits -1` and wire it to the second input of the first `Xor16` gate
+/// - don't forget to set a row of the witness with public input `2^bits -1` and wire it to the second input of the first `Xor` gate
 pub fn extend_not_witness_checked_length<F: PrimeField>(
     witness: &mut [Vec<F>; COLUMNS],
     input: F,
     bits: Option<usize>,
+    len_xor: Option<usize>,
 ) {
     let input = input.to_biguint();
     let output = BigUint::bitwise_not(&input, bits);
     let bits = max(input.bitlen(), bits.unwrap_or(0));
     let mut not_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
+        array::from_fn(|_| vec![F::zero(); num_xors(bits, len_xor) + 1]);
     init_xor(
         &mut not_witness,
         0,
@@ -201,6 +187,7 @@ pub fn extend_not_witness_checked_length<F: PrimeField>(
             F::from(2u8).pow([bits as u64]) - F::one(),
             F::from_biguint(&output).unwrap(),
         ),
+        len_xor,
     );
 
     for col in 0..COLUMNS {

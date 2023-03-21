@@ -274,7 +274,7 @@ TODO: for each gate describe how to create it?
 
 #### Xor
 
-{sections.xor16}
+{sections.xor_gate}
 
 ### Gadgets
 

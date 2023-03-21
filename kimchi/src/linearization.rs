@@ -117,7 +117,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let xor_expr = || xor::Xor16::combined_constraints(&powers_of_alpha);
+        let xor_expr = || xor::Xor::combined_constraints(&powers_of_alpha);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.xor {
                 expr += xor_expr();
