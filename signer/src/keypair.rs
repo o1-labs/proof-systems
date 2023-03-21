@@ -84,7 +84,7 @@ impl Keypair {
         self.public.into_address()
     }
 
-    /// Deserialize kerypair into bytes
+    /// Deserialize keypair into bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         self.secret.to_bytes()
     }
@@ -183,7 +183,7 @@ mod tests {
         ];
         assert_eq!(
             Keypair::from_bytes(&bytes)
-                .expect("failed to decode kerypair")
+                .expect("failed to decode keypair")
                 .to_bytes(),
             bytes
         );

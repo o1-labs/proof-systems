@@ -10,7 +10,7 @@ use sha2::{Digest, Sha256};
 use std::ops::Neg;
 use thiserror::Error;
 
-use crate::{BaseField, CurvePoint, SecKey};
+use crate::{BaseField, CurvePoint, ScalarField, SecKey};
 use o1_utils::FieldHelpers;
 
 /// Public key errors
@@ -52,6 +52,9 @@ pub enum PubKeyError {
     /// Invalid hex
     #[error("invalid public key hex")]
     Hex,
+    /// Invalid secret key
+    #[error("invalid secret key")]
+    SecKey,
 }
 /// Public key Result
 pub type Result<T> = std::result::Result<T, PubKeyError>;
@@ -109,6 +112,9 @@ impl PubKey {
 
     /// Create public key from a secret key
     pub fn from_secret_key(secret_key: SecKey) -> Result<Self> {
+        if secret_key.clone().into_scalar() == ScalarField::zero() {
+            return Err(PubKeyError::SecKey);
+        }
         let pt = CurvePoint::prime_subgroup_generator()
             .mul(secret_key.into_scalar())
             .into_affine();
