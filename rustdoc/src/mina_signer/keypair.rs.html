@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/keypair.rs`."><title>keypair.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (511364e78 2023-03-16)" data-search-js="search-d1bc581867fd0849.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../mina_signer/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `signer/src/keypair.rs`."><title>keypair.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-c4dbdcde0fbd8430.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="mina_signer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (44f518058 2023-03-20)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../static.files/storage-9184409068f70b79.js"></script><script defer src="../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../source-files.js"></script><script defer src="../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../mina_signer/index.html"><img class="rust-logo" src="../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -161,26 +161,70 @@
 <a href="#161" id="161">161</a>
 <a href="#162" id="162">162</a>
 <a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
 </pre><pre class="rust"><code><span class="doccomment">//! Keypair structures and algorithms
 //!
 //! Definition of secret key, keypairs and related helpers
 
-</span><span class="kw">use crate</span>::{CurvePoint, PubKey, ScalarField, SecKey};
-<span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
+</span><span class="kw">use crate</span>::{pubkey::PubKeyError, seckey::SecKeyError, CurvePoint, PubKey, ScalarField, SecKey};
 <span class="kw">use </span>core::fmt;
-<span class="kw">use </span>o1_utils::FieldHelpers;
 <span class="kw">use </span>rand::{<span class="self">self</span>, CryptoRng, RngCore};
 <span class="kw">use </span>thiserror::Error;
 
 <span class="doccomment">/// Keypair error
 </span><span class="attr">#[derive(Error, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>KeypairError {
-    <span class="doccomment">/// Invalid secret key hex
-    </span><span class="attr">#[error(<span class="string">&quot;invalid secret key hex&quot;</span>)]
-    </span>SecretKeyHex,
-    <span class="doccomment">/// Invalid secret key bytes
-    </span><span class="attr">#[error(<span class="string">&quot;Invalid secret key bytes&quot;</span>)]
-    </span>SecretKeyBytes,
+    <span class="doccomment">/// Invalid secret key
+    </span><span class="attr">#[error(transparent)]
+    </span>SecretKey(<span class="attr">#[from] </span>SecKeyError),
+    <span class="doccomment">/// Public key error
+    </span><span class="attr">#[error(transparent)]
+    </span>PublicKey(<span class="attr">#[from] </span>PubKeyError),
     <span class="doccomment">/// point not on curve
     </span><span class="attr">#[error(<span class="string">&quot;point not on curve&quot;</span>)]
     </span>NonCurvePoint,
@@ -198,7 +242,7 @@
 }
 
 <span class="kw">impl </span>Keypair {
-    <span class="doccomment">/// Create a keypair from scalar field `secret` element and curve point `public`
+    <span class="doccomment">/// Create keypair from scalar field `secret` element and curve point `public`
     /// Note: Does not check point `public` is on curve
     </span><span class="kw">pub fn </span>from_parts_unsafe(secret: ScalarField, public: CurvePoint) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
@@ -207,43 +251,56 @@
         }
     }
 
-    <span class="doccomment">/// Generate a random keypair
-    </span><span class="kw">pub fn </span>rand(rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng)) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>sec_key: SecKey = SecKey::rand(rng);
-        <span class="kw">let </span>scalar = sec_key.into_scalar();
-        <span class="kw">let </span>public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(scalar)
-            .into_affine();
+    <span class="doccomment">/// Create keypair from secret key
+    </span><span class="kw">pub fn </span>from_secret_key(secret_key: SecKey) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>public = PubKey::from_secret_key(secret_key.clone())<span class="question-mark">?</span>;
 
-        <span class="comment">// Safe in this case b/c point must be on curve
-        </span><span class="self">Self</span>::from_parts_unsafe(scalar, public)
+        <span class="comment">// Safe now because PubKey::from_secret_key() checked point is on the curve
+        </span><span class="prelude-val">Ok</span>(<span class="self">Self</span>::from_parts_unsafe(
+            secret_key.into_scalar(),
+            public.into_point(),
+        ))
     }
 
-    <span class="doccomment">/// Deserialize a keypair from secret key hex
+    <span class="doccomment">/// Generate random keypair
+    </span><span class="kw">pub fn </span>rand(rng: <span class="kw-2">&amp;mut </span>(<span class="kw">impl </span>RngCore + CryptoRng)) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>sec_key: SecKey = SecKey::rand(rng);
+        Keypair::from_secret_key(sec_key)
+    }
+
+    <span class="doccomment">/// Deserialize keypair from secret key bytes
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `bytes` do not match certain requirements.
+    </span><span class="kw">pub fn </span>from_bytes(secret_bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">let </span>secret = SecKey::from_bytes(secret_bytes)<span class="question-mark">?</span>;
+        Keypair::from_secret_key(secret)
+    }
+
+    <span class="doccomment">/// Deserialize keypair from secret key hex
     ///
     /// # Errors
     ///
     /// Will give error if `hex` string does not match certain requirements.
     </span><span class="kw">pub fn </span>from_hex(secret_hex: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>bytes: Vec&lt;u8&gt; = hex::decode(secret_hex).map_err(|<span class="kw">_</span>| KeypairError::SecretKeyHex)<span class="question-mark">?</span>;
-        bytes.reverse(); <span class="comment">// mina scalars hex format is in big-endian order
-
-        </span><span class="kw">let </span>secret = ScalarField::from_bytes(<span class="kw-2">&amp;</span>bytes).map_err(|<span class="kw">_</span>| KeypairError::SecretKeyBytes)<span class="question-mark">?</span>;
-        <span class="kw">let </span>public: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(secret)
-            .into_affine();
-
-        <span class="kw">if </span>!public.is_on_curve() {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(KeypairError::NonCurvePoint);
-        }
-
-        <span class="comment">// Safe now because we checked point is on the curve
-        </span><span class="prelude-val">Ok</span>(Keypair::from_parts_unsafe(secret, public))
+        <span class="kw">let </span>secret = SecKey::from_hex(secret_hex)<span class="question-mark">?</span>;
+        Keypair::from_secret_key(secret)
     }
 
     <span class="doccomment">/// Obtain the Mina address corresponding to the keypair&#39;s public key
     </span><span class="kw">pub fn </span>get_address(<span class="self">self</span>) -&gt; String {
         <span class="self">self</span>.public.into_address()
+    }
+
+    <span class="doccomment">/// Deserialize keypair into bytes
+    </span><span class="kw">pub fn </span>to_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.secret.to_bytes()
+    }
+
+    <span class="doccomment">/// Deserialize keypair into hex
+    </span><span class="kw">pub fn </span>to_hex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
+        hex::encode(<span class="self">self</span>.to_bytes())
     }
 }
 
@@ -267,22 +324,25 @@
 
     <span class="attr">#[test]
     </span><span class="kw">fn </span>from_hex() {
-        <span class="macro">assert_eq!</span>(Keypair::from_hex(<span class="string">&quot;&quot;</span>), <span class="prelude-val">Err</span>(KeypairError::SecretKeyBytes));
+        <span class="macro">assert_eq!</span>(
+            Keypair::from_hex(<span class="string">&quot;&quot;</span>),
+            <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyBytes))
+        );
         <span class="macro">assert_eq!</span>(
             Keypair::from_hex(<span class="string">&quot;1428fadcf0c02396e620f14f176fddb5d769b7de2027469d027a80142ef8f07&quot;</span>),
-            <span class="prelude-val">Err</span>(KeypairError::SecretKeyHex)
+            <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyHex))
         );
         <span class="macro">assert_eq!</span>(
             Keypair::from_hex(<span class="string">&quot;0f5314f176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;</span>),
-            <span class="prelude-val">Err</span>(KeypairError::SecretKeyHex)
+            <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyHex))
         );
         <span class="macro">assert_eq!</span>(
             Keypair::from_hex(<span class="string">&quot;g64244176fddb5d769b7de2027469d027ad428fadcf0c02396e6280142efb7d8&quot;</span>),
-            <span class="prelude-val">Err</span>(KeypairError::SecretKeyHex)
+            <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyHex))
         );
         <span class="macro">assert_eq!</span>(
-            Keypair::from_hex(<span class="string">&quot;dd4244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718&quot;</span>),
-            <span class="prelude-val">Err</span>(KeypairError::SecretKeyBytes)
+            Keypair::from_hex(<span class="string">&quot;4244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718&quot;</span>),
+            <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyBytes))
         );
 
         Keypair::from_hex(<span class="string">&quot;164244176fddb5d769b7de2027469d027ad428fadcc0c02396e6280142efb718&quot;</span>)
@@ -322,6 +382,38 @@
             <span class="string">&quot;3414fc16e86e6ac272fda03cf8dcb4d7d47af91b4b726494dab43bf773ce1779&quot;</span>,
             <span class="string">&quot;B62qoG5Yk4iVxpyczUrBNpwtx2xunhL48dydN53A2VjoRwF8NUTbVr4&quot;
         </span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>to_bytes() {
+        <span class="kw">let </span>bytes = [
+            <span class="number">61</span>, <span class="number">18</span>, <span class="number">244</span>, <span class="number">30</span>, <span class="number">36</span>, <span class="number">241</span>, <span class="number">5</span>, <span class="number">54</span>, <span class="number">107</span>, <span class="number">96</span>, <span class="number">154</span>, <span class="number">162</span>, <span class="number">58</span>, <span class="number">78</span>, <span class="number">242</span>, <span class="number">140</span>, <span class="number">186</span>, <span class="number">233</span>, <span class="number">25</span>, <span class="number">35</span>,
+            <span class="number">145</span>, <span class="number">119</span>, <span class="number">39</span>, <span class="number">94</span>, <span class="number">162</span>, <span class="number">123</span>, <span class="number">208</span>, <span class="number">202</span>, <span class="number">189</span>, <span class="number">29</span>, <span class="number">235</span>, <span class="number">209</span>,
+        ];
+        <span class="macro">assert_eq!</span>(
+            Keypair::from_bytes(<span class="kw-2">&amp;</span>bytes)
+                .expect(<span class="string">&quot;failed to decode keypair&quot;</span>)
+                .to_bytes(),
+            bytes
+        );
+
+        <span class="comment">// negative test (too many bytes)
+        </span><span class="macro">assert_eq!</span>(
+            Keypair::from_bytes(<span class="kw-2">&amp;</span>[
+                <span class="number">61</span>, <span class="number">18</span>, <span class="number">244</span>, <span class="number">30</span>, <span class="number">36</span>, <span class="number">241</span>, <span class="number">5</span>, <span class="number">54</span>, <span class="number">107</span>, <span class="number">96</span>, <span class="number">154</span>, <span class="number">162</span>, <span class="number">58</span>, <span class="number">78</span>, <span class="number">242</span>, <span class="number">140</span>, <span class="number">186</span>, <span class="number">233</span>, <span class="number">25</span>,
+                <span class="number">35</span>, <span class="number">145</span>, <span class="number">119</span>, <span class="number">39</span>, <span class="number">94</span>, <span class="number">162</span>, <span class="number">123</span>, <span class="number">208</span>, <span class="number">202</span>, <span class="number">189</span>, <span class="number">29</span>, <span class="number">235</span>, <span class="number">209</span>, <span class="number">0
+            </span>]),
+            <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyBytes))
+        );
+
+        <span class="comment">// negative test (too few bytes)
+        </span><span class="macro">assert_eq!</span>(
+            Keypair::from_bytes(<span class="kw-2">&amp;</span>[
+                <span class="number">61</span>, <span class="number">18</span>, <span class="number">244</span>, <span class="number">30</span>, <span class="number">36</span>, <span class="number">241</span>, <span class="number">5</span>, <span class="number">54</span>, <span class="number">107</span>, <span class="number">96</span>, <span class="number">154</span>, <span class="number">162</span>, <span class="number">58</span>, <span class="number">78</span>, <span class="number">242</span>, <span class="number">140</span>, <span class="number">186</span>, <span class="number">233</span>, <span class="number">25</span>,
+                <span class="number">35</span>, <span class="number">145</span>, <span class="number">119</span>, <span class="number">39</span>, <span class="number">94</span>, <span class="number">162</span>, <span class="number">123</span>, <span class="number">208</span>, <span class="number">202</span>, <span class="number">189</span>, <span class="number">29
+            </span>]),
+            <span class="prelude-val">Err</span>(KeypairError::SecretKey(SecKeyError::SecretKeyBytes))
+        );
     }
 }
 </code></pre></div>

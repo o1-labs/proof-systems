@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["SecKey"]};
+window.SIDEBAR_ITEMS = {"enum":["SecKeyError"],"struct":["SecKey"],"type":["Result"]};
