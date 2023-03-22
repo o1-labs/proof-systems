@@ -38,7 +38,11 @@ impl BenchmarkCtx {
     }
 
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
-    pub fn new(num_gates: usize) -> Self {
+    pub fn new(srs_size_log2: u32) -> Self {
+        // there's some overhead that we need to remove (e.g. zk rows)
+
+        let num_gates = ((1 << srs_size_log2) - 10) as usize;
+
         // create the circuit
         let mut gates = vec![];
 
@@ -57,6 +61,8 @@ impl BenchmarkCtx {
 
         // create the index
         let index = new_index_for_test(gates, 0);
+
+        assert_eq!(index.cs.domain.d1.log_size_of_group, srs_size_log2, "the test wanted to use an SRS of size {srs_size_log2} but the domain size ended up being {}", index.cs.domain.d1.log_size_of_group);
 
         // create the verifier index
         let verifier_index = index.verifier_index();
@@ -114,17 +120,19 @@ mod tests {
     fn test_bench() {
         // context created in 21.2235 ms
         let start = Instant::now();
-        let ctx = BenchmarkCtx::new(1 << 4);
-        println!("context created in {}", start.elapsed().as_secs());
+        let srs_size = 4;
+        let ctx = BenchmarkCtx::new(srs_size);
+        println!("testing bench code for SRS of size {srs_size}");
+        println!("context created in {}s", start.elapsed().as_secs());
 
         // proof created in 7.1227 ms
         let start = Instant::now();
         let (proof, public_input) = ctx.create_proof();
-        println!("proof created in {}", start.elapsed().as_millis());
+        println!("proof created in {}s", start.elapsed().as_secs());
 
         // proof verified in 1.710 ms
         let start = Instant::now();
         ctx.batch_verification(&vec![(proof, public_input)]);
-        println!("proof verified in {}", start.elapsed().as_millis());
+        println!("proof verified in {}", start.elapsed().as_secs());
     }
 }

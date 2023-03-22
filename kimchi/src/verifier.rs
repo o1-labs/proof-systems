@@ -433,7 +433,25 @@ where
             .chain((0..COLUMNS).map(Column::Witness))
             .chain((0..COLUMNS).map(Column::Coefficient))
             .chain((0..PERMUTS - 1).map(Column::Permutation))
-            {
+            .chain(
+                index
+                    .lookup_index
+                    .as_ref()
+                    .map(|li| {
+                        (0..li.lookup_info.max_per_row + 1)
+                            .map(Column::LookupSorted)
+                            .chain([Column::LookupAggreg, Column::LookupTable].into_iter())
+                            .chain(
+                                li.runtime_tables_selector
+                                    .as_ref()
+                                    .map(|_| [Column::LookupRuntimeTable].into_iter())
+                                    .into_iter()
+                                    .flatten(),
+                            )
+                    })
+                    .into_iter()
+                    .flatten(),
+            ) {
                 es.push((
                     {
                         let evals = self
@@ -608,6 +626,7 @@ where
         polys,
         zeta1: zeta_to_domain_size,
         ft_eval0,
+        combined_inner_product,
         ..
     } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, public_input)?;
 
@@ -830,6 +849,7 @@ where
         polyscale: oracles.v,
         evalscale: oracles.u,
         opening: &proof.proof,
+        combined_inner_product,
     })
 }
 
