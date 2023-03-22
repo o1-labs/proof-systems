@@ -79,6 +79,14 @@
 <a href="#79" id="79">79</a>
 <a href="#80" id="80">80</a>
 <a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
 </pre><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for serializing and deserializing
 //! [arkworks](http://arkworks.rs/) types that implement [CanonicalSerialize] and [CanonicalDeserialize].
 
@@ -144,7 +152,11 @@
         val.serialize(<span class="kw-2">&amp;mut </span>bytes)
             .map_err(serde::ser::Error::custom)<span class="question-mark">?</span>;
 
-        Bytes::serialize_as(<span class="kw-2">&amp;</span>bytes, serializer)
+        <span class="kw">if </span>serializer.is_human_readable() {
+            hex::serde::serialize(bytes, serializer)
+        } <span class="kw">else </span>{
+            Bytes::serialize_as(<span class="kw-2">&amp;</span>bytes, serializer)
+        }
     }
 }
 
@@ -156,7 +168,11 @@
     <span class="kw">where
         </span>D: serde::Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
     {
-        <span class="kw">let </span>bytes: Vec&lt;u8&gt; = Bytes::deserialize_as(deserializer)<span class="question-mark">?</span>;
+        <span class="kw">let </span>bytes: Vec&lt;u8&gt; = <span class="kw">if </span>deserializer.is_human_readable() {
+            hex::serde::deserialize(deserializer)<span class="question-mark">?
+        </span>} <span class="kw">else </span>{
+            Bytes::deserialize_as(deserializer)<span class="question-mark">?
+        </span>};
         T::deserialize(<span class="kw-2">&amp;mut &amp;</span>bytes[..]).map_err(serde::de::Error::custom)
     }
 }
