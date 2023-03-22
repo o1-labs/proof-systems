@@ -11,6 +11,7 @@ members = [
     "poseidon/export_test_vectors",
     "poly-commitment",
     "signer",
+    "tools/kimchi-asm",
     "tools/kimchi-visu",
     "utils",
 ]

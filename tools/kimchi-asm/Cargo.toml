@@ -1,0 +1,24 @@
+[package]
+name = "kimchi-asm"
+version = "0.1.0"
+description = "A tool to read circuits"
+repository = "https://github.com/o1-labs/proof-systems"
+homepage = "https://o1-labs.github.io/proof-systems/"
+documentation = "https://o1-labs.github.io/proof-systems/rustdoc/"
+readme = "README.md"
+edition = "2021"
+license = "Apache-2.0"
+
+[dependencies]
+ark-ec = "0.3.0"
+ark-ff = "0.3.0"
+serde = { version = "1.0.136", features = ["derive"] }
+serde_json = "1.0.79"
+serde_with = "1.10.0"
+tinytemplate = "1.1"
+
+mina-curves = { path = "../../curves", version = "0.1.0" }
+kimchi = { path = "../../kimchi", version = "0.1.0" }
+o1-utils = { path = "../../utils", version = "0.1.0" }
+mina-poseidon = { path = "../../poseidon", version = "0.1.0" }
+poly-commitment = { path = "../../poly-commitment", version = "0.1.0" }
