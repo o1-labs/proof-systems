@@ -33,6 +33,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         start_row: usize,
         foreign_field_modulus: &BigUint,
     ) -> (usize, Vec<Self>) {
+        if *foreign_field_modulus > BigUint::max_foreign_field_modulus() {
+            panic!(
+                "foreign_field_modulus exceeds maximum: {} > {}",
+                *foreign_field_modulus,
+                BigUint::max_foreign_field_modulus()
+            );
+        }
+
         let neg_foreign_field_modulus = foreign_field_modulus.negate().to_field_limbs::<F>();
         let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let circuit_gates = vec![

@@ -28,7 +28,7 @@ use mina_poseidon::{
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
 use o1_utils::{
-    foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB},
+    foreign_field::{BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers, Two,
 };
 use poly_commitment::srs::{endos, SRS};
@@ -1536,4 +1536,42 @@ fn test_ffadd_finalization() {
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
+}
+
+#[test]
+fn test_gate_max_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_single_ffadd(
+        0,
+        FFOps::Add,
+        &BigUint::max_foreign_field_modulus(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_gate_invalid_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_single_ffadd(
+        0,
+        FFOps::Add,
+        &(BigUint::max_foreign_field_modulus() + BigUint::one()),
+    );
+}
+
+#[test]
+fn test_witness_max_foreign_field_modulus() {
+    short_witness::<PallasField>(
+        &vec![BigUint::zero(), BigUint::zero()],
+        &[FFOps::Add],
+        BigUint::max_foreign_field_modulus(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_witness_invalid_foreign_field_modulus() {
+    short_witness::<PallasField>(
+        &vec![BigUint::zero(), BigUint::zero()],
+        &[FFOps::Add],
+        BigUint::max_foreign_field_modulus() + BigUint::one(),
+    );
 }

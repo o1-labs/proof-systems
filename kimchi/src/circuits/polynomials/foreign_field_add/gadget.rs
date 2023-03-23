@@ -39,6 +39,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         opcodes: &[FFOps],
         foreign_field_modulus: &BigUint,
     ) -> (usize, Vec<Self>) {
+        if *foreign_field_modulus > BigUint::max_foreign_field_modulus() {
+            panic!(
+                "foreign_field_modulus exceeds maximum: {} > {}",
+                *foreign_field_modulus,
+                BigUint::max_foreign_field_modulus()
+            );
+        }
+
         let next_row = start_row;
         let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let mut circuit_gates = vec![];
@@ -87,6 +95,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         operation: FFOps,
         foreign_field_modulus: &BigUint,
     ) -> (usize, Vec<Self>) {
+        if *foreign_field_modulus > BigUint::max_foreign_field_modulus() {
+            panic!(
+                "foreign_field_modulus exceeds maximum: {} > {}",
+                *foreign_field_modulus,
+                BigUint::max_foreign_field_modulus()
+            );
+        }
+
         let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let mut coeffs = foreign_field_modulus.to_vec();
         coeffs.push(operation.sign::<F>());
