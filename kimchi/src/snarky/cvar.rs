@@ -5,7 +5,10 @@ use crate::snarky::{
     traits::SnarkyType,
 };
 use ark_ff::PrimeField;
-use std::{ops::{Add, Neg, Sub}, borrow::Cow};
+use std::{
+    borrow::Cow,
+    ops::{Add, Neg, Sub},
+};
 
 use super::{
     checked_runner::Constraint,
@@ -141,7 +144,7 @@ where
         &self,
         other: &Self,
         label: Option<Cow<'static, str>>,
-        loc: &str,
+        loc: Cow<'static, str>,
         cs: &mut RunState<F>,
     ) -> SnarkyResult<Self> {
         let res = match (self, other) {
@@ -152,7 +155,7 @@ where
             (_, _) => {
                 let self_clone = self.clone();
                 let other_clone = other.clone();
-                let res: FieldVar<F> = cs.compute(&loc, move |env| {
+                let res: FieldVar<F> = cs.compute(loc.clone(), move |env| {
                     let x: F = env.read_var(&self_clone);
                     let y: F = env.read_var(&other_clone);
                     x * y
@@ -175,14 +178,20 @@ where
     */
     fn equal_constraints(
         state: &mut RunState<F>,
-        loc: &str,
+        loc: Cow<'static, str>,
         z: Self,
         z_inv: Self,
         r: Self,
     ) -> SnarkyResult<()> {
         let one_minus_r = FieldVar::Constant(F::one()) - &r;
         let zero = FieldVar::zero();
-        state.assert_r1cs(Some("equals_1".into()), loc, z_inv, z.clone(), one_minus_r)?;
+        state.assert_r1cs(
+            Some("equals_1".into()),
+            loc.clone(),
+            z_inv,
+            z.clone(),
+            one_minus_r,
+        )?;
         state.assert_r1cs(Some("equals_2".into()), loc, r, z, zero)
     }
 
@@ -203,7 +212,7 @@ where
     pub fn equal(
         &self,
         state: &mut RunState<F>,
-        loc: &str,
+        loc: Cow<'static, str>,
         other: &FieldVar<F>,
     ) -> SnarkyResult<Boolean<F>> {
         let res = match (self, other) {
@@ -218,7 +227,7 @@ where
                 let z = self - other;
                 let z_clone = z.clone();
                 let (res, z_inv): (FieldVar<F>, FieldVar<F>) =
-                    state.compute(loc, move |env| Self::equal_vars(env, &z_clone))?;
+                    state.compute(loc.clone(), move |env| Self::equal_vars(env, &z_clone))?;
                 Self::equal_constraints(state, loc, z, z_inv, res.clone())?;
 
                 Boolean::create_unsafe(res)
@@ -238,14 +247,14 @@ where
     /// It is useful to call [`seal`] on a variable that represents a long computation
     /// that hasn't been constrained yet (e.g. by an assert call, or a call to a custom gate),
     /// before using it further in the circuit.
-    pub fn seal(&self, state: &mut RunState<F>, loc: &str) -> SnarkyResult<Self> {
+    pub fn seal(&self, state: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<Self> {
         match self.to_constant_and_terms() {
             (None, terms) if terms.len() == 1 && terms[0].0.is_one() => {
                 Ok(FieldVar::Var(terms[0].1))
             }
             (Some(c), terms) if terms.is_empty() => Ok(FieldVar::Constant(c)),
             _ => {
-                let y: FieldVar<F> = state.compute(loc, |env| env.read_var(self))?;
+                let y: FieldVar<F> = state.compute(loc.clone(), |env| env.read_var(self))?;
                 // this call will reduce [self]
                 self.assert_equals(state, loc, &y)?;
 
@@ -278,7 +287,7 @@ where
         cvars[0].clone()
     }
 
-    fn check(&self, _cs: &mut RunState<F>, _loc: &str) -> SnarkyResult<()> {
+    fn check(&self, _cs: &mut RunState<F>, _loc: Cow<'static, str>) -> SnarkyResult<()> {
         // do nothing
         Ok(())
     }
@@ -307,7 +316,7 @@ where
     pub fn assert_equals(
         &self,
         state: &mut RunState<F>,
-        loc: &str,
+        loc: Cow<'static, str>,
         other: &FieldVar<F>,
     ) -> SnarkyResult<()> {
         match (self, other) {

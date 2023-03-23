@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use crate::snarky::{
     checked_runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::FieldVar,
     traits::SnarkyType,
@@ -40,7 +42,7 @@ where
         Self(cvars[0].clone())
     }
 
-    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()> {
+    fn check(&self, cs: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<()> {
         let constraint = BasicSnarkyConstraint::Boolean(self.0.clone());
         cs.add_constraint(
             Constraint::BasicSnarkyConstraint(constraint),
@@ -90,7 +92,7 @@ where
         Self(Self::true_().0 - &self.0)
     }
 
-    pub fn and(&self, other: &Self, cs: &mut RunState<F>, loc: &str) -> Self {
+    pub fn and(&self, other: &Self, cs: &mut RunState<F>, loc: Cow<'static, str>) -> Self {
         let res = self
             .0
             .mul(&other.0, Some("bool.and".into()), loc, cs)
@@ -98,12 +100,12 @@ where
         Self(res)
     }
 
-    pub fn or(&self, other: &Self, loc: &str, cs: &mut RunState<F>) -> Self {
+    pub fn or(&self, other: &Self, loc: Cow<'static, str>, cs: &mut RunState<F>) -> Self {
         let both_false = self.not().and(&other.not(), cs, loc);
         both_false.not()
     }
 
-    pub fn any(xs: &[&Self], cs: &mut RunState<F>, loc: &str) -> SnarkyResult<Self> {
+    pub fn any(xs: &[&Self], cs: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<Self> {
         if xs.is_empty() {
             return Ok(Self::false_()); // TODO: shouldn't we panic instead?
         } else if xs.len() == 1 {
@@ -123,7 +125,7 @@ where
         Ok(res)
     }
 
-    pub fn all(xs: &[Self], cs: &mut RunState<F>, loc: &str) -> SnarkyResult<Self> {
+    pub fn all(xs: &[Self], cs: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<Self> {
         if xs.is_empty() {
             return Ok(Self::true_()); // TODO: shouldn't we panic instead?
         } else if xs.len() == 1 {
@@ -146,7 +148,12 @@ where
         }
     }
 
-    pub fn xor(&self, other: &Self, state: &mut RunState<F>, loc: &str) -> SnarkyResult<Self> {
+    pub fn xor(
+        &self,
+        other: &Self,
+        state: &mut RunState<F>,
+        loc: Cow<'static, str>,
+    ) -> SnarkyResult<Self> {
         let res = match (self.to_constant(), other.to_constant()) {
             (Some(true), _) => other.not(),
             (_, Some(true)) => self.not(),
@@ -163,7 +170,7 @@ where
 
                 let self_clone = self.clone();
                 let other_clone = other.clone();
-                let res: Boolean<F> = state.compute_unsafe(loc, move |env| {
+                let res: Boolean<F> = state.compute_unsafe(loc.clone(), move |env| {
                     let _b1: bool = self_clone.read(env);
                     let _b2: bool = other_clone.read(env);
 

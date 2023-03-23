@@ -40,16 +40,16 @@ impl SnarkyCircuit for TestCircuit {
         public: Self::PublicInput,
         private: Option<&Self::PrivateInput>,
     ) -> SnarkyResult<Self::PublicOutput> {
-        let x: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().x)?;
-        let y: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().y)?;
-        let z: FieldVar<Fp> = sys.compute(&loc!(), |_| private.unwrap().z)?;
+        let x: FieldVar<Fp> = sys.compute(loc!(), |_| private.unwrap().x)?;
+        let y: FieldVar<Fp> = sys.compute(loc!(), |_| private.unwrap().y)?;
+        let z: FieldVar<Fp> = sys.compute(loc!(), |_| private.unwrap().z)?;
 
-        sys.assert_r1cs(Some("x * y = z".into()), &loc!(), x, y, z)?;
+        sys.assert_r1cs(Some("x * y = z".into()), loc!(), x, y, z)?;
 
-        let other: Boolean<Fp> = sys.compute(&loc!(), |_| true)?;
+        let other: Boolean<Fp> = sys.compute(loc!(), |_| true)?;
 
         // res1 = public & other
-        let res1 = public.and(&other, sys, &loc!());
+        let res1 = public.and(&other, sys, loc!());
 
         // res2 = res1 + 3;
         let three = FieldVar::constant(Fp::from(3));

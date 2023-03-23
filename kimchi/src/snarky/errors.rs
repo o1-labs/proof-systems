@@ -47,7 +47,11 @@ impl RealSnarkyError {
     }
 
     /// Creates a new [RealSnarkyError].
-    pub fn new_with_ctx(source: SnarkyError, loc: &str, label_stack: Vec<Cow<'static, str>>) -> Self {
+    pub fn new_with_ctx(
+        source: SnarkyError,
+        loc: Cow<'static, str>,
+        label_stack: Vec<Cow<'static, str>>,
+    ) -> Self {
         let backtrace = std::env::var("SNARKY_BACKTRACE")
             .ok()
             .map(|_| Backtrace::capture());

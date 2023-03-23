@@ -12,13 +12,13 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi, permutation::full_round2,
     poseidon::ArithmeticSpongeParams,
 };
-use std::iter::successors;
+use std::{borrow::Cow, iter::successors};
 
 use super::constraint_system::PoseidonInput;
 
 pub fn poseidon<F: PrimeField>(
     runner: &mut RunState<F>,
-    loc: &str,
+    loc: Cow<'static, str>,
     preimage: (FieldVar<F>, FieldVar<F>),
 ) -> (FieldVar<F>, FieldVar<F>) {
     let initial_state = [preimage.0, preimage.1, FieldVar::zero()];
@@ -26,7 +26,7 @@ pub fn poseidon<F: PrimeField>(
         let params = runner.poseidon_params();
         let mut iter = successors((initial_state, 0_usize).into(), |(prev, i)| {
             //this case may justify moving to Cow
-            let state = round(runner, loc, prev, *i, &params);
+            let state = round(runner, loc.clone(), prev, *i, &params);
             Some((state, i + 1))
         })
         .take(ROUNDS_PER_HASH + 1)
@@ -66,7 +66,7 @@ pub fn poseidon<F: PrimeField>(
 
 fn round<F: PrimeField>(
     runner: &mut RunState<F>,
-    loc: &str,
+    loc: Cow<'static, str>,
     elements: &[FieldVar<F>; SPONGE_WIDTH],
     round: usize,
     params: &ArithmeticSpongeParams<F>,
@@ -116,7 +116,12 @@ where
     }
 
     /// Absorb.
-    pub fn absorb(&mut self, sys: &mut RunState<F>, inputs: &[FieldVar<F>]) {
+    pub fn absorb(
+        &mut self,
+        sys: &mut RunState<F>,
+        loc: Cow<'static, str>,
+        inputs: &[FieldVar<F>],
+    ) {
         // no need to permute to switch to absorbing
         if !self.absorbing {
             assert!(self.rev_queue.is_empty());
@@ -132,7 +137,7 @@ where
                 let right = self.rev_queue.pop().unwrap();
                 self.state[0] = &self.state[0] + left;
                 self.state[1] = &self.state[1] + right;
-                self.permute(sys);
+                self.permute(sys, loc.clone());
             }
 
             self.rev_queue.insert(0, input.clone());
@@ -141,14 +146,18 @@ where
 
     /// Permute. You should most likely not use this function directly,
     /// and use [Self::absorb] and [Self::squeeze] instead.
-    fn permute(&mut self, sys: &mut RunState<F>) -> (FieldVar<F>, FieldVar<F>) {
+    fn permute(
+        &mut self,
+        sys: &mut RunState<F>,
+        loc: Cow<'static, str>,
+    ) -> (FieldVar<F>, FieldVar<F>) {
         let left = self.state[0].clone();
         let right = self.state[1].clone();
-        sys.poseidon("does poseidon really need a loc?", (left, right))
+        sys.poseidon(loc, (left, right))
     }
 
     /// Squeeze.
-    pub fn squeeze(&mut self, sys: &mut RunState<F>) -> FieldVar<F> {
+    pub fn squeeze(&mut self, sys: &mut RunState<F>, loc: Cow<'static, str>) -> FieldVar<F> {
         // if we're switching to squeezing, don't forget about the queue
         if self.absorbing {
             assert!(self.squeezed.is_none());
@@ -167,7 +176,7 @@ where
         }
 
         // otherwise permute and squeeze
-        let (left, right) = self.permute(sys);
+        let (left, right) = self.permute(sys, loc);
 
         // cache the right, release the left
         self.squeezed = Some(right);

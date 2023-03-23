@@ -13,7 +13,10 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use itertools::Itertools;
-use std::collections::{HashMap, HashSet};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+};
 
 use super::{errors::SnarkyRuntimeError, union_find::DisjointSet};
 
@@ -51,6 +54,14 @@ impl Position<usize> {
             col: self.col,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+struct PendingGate<F, V> {
+    labels: Vec<Cow<'static, str>>,
+    loc: Cow<'static, str>,
+    vars: (Option<V>, Option<V>, Option<V>),
+    coeffs: Vec<F>,
 }
 
 /** A gate/row/constraint consists of a type (kind), a row, the other cells its columns/cells are
@@ -300,12 +311,13 @@ where
     generic_gate_optimization: bool,
 
     /** Queue (of size 1) of generic gate. */
-    pending_generic_gate: Option<(Option<V>, Option<V>, Option<V>, Vec<Field>)>,
+    pending_generic_gate: Option<PendingGate<Field, V>>,
 
     /** V.t's corresponding to constant values. We reuse them so we don't need to
        use a fresh generic constraint each time to create a constant.
     */
     cached_constants: HashMap<Field, V>,
+
     /** The [equivalence_classes](SnarkyConstraintSystem::equivalence_classes) field keeps track of the positions which must be
     enforced to be equivalent due to the fact that they correspond to the same V.t value.
     I.e., positions that are different usages of the same [V.t].
@@ -520,7 +532,19 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     }
 
     /** Adds a row/gate/constraint to a constraint system `sys`. */
-    fn add_row(&mut self, vars: Vec<Option<V>>, kind: GateType, coeffs: Vec<Field>) {
+    fn add_row(
+        &mut self,
+        labels: &[Cow<'static, str>],
+        loc: &Cow<'static, str>,
+        vars: Vec<Option<V>>,
+        kind: GateType,
+        coeffs: Vec<Field>,
+    ) {
+        // TODO: for now we can print the debug info at runtime, but in the future we should allow serialization of these things as well
+        if std::env::var("SNARKY_LOG_CONSTRAINTS").is_ok() {
+            println!("{}: {loc} - {}", self.next_row, labels.join(", "));
+        }
+
         /* As we're adding a row, we're adding new cells.
            If these cells (the first 7) contain variables,
            make sure that they are wired
@@ -566,9 +590,21 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         }
 
         // if we still have some pending gates, deal with it first
-        if let Some((l, r, o, coeffs)) = self.pending_generic_gate.take() {
+        if let Some(PendingGate {
+            labels,
+            loc,
+            vars: (l, r, o),
+            coeffs,
+        }) = self.pending_generic_gate.take()
+        {
             self.pending_generic_gate = None;
-            self.add_row(vec![l, r, o], GateType::Generic, coeffs.clone());
+            self.add_row(
+                &labels,
+                &loc,
+                vec![l, r, o],
+                GateType::Generic,
+                coeffs.clone(),
+            );
         }
 
         // get gates without holding on an immutable reference
@@ -746,6 +782,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     */
     fn add_generic_constraint(
         &mut self,
+        labels: &[Cow<'static, str>],
+        loc: &Cow<'static, str>,
         l: Option<V>,
         r: Option<V>,
         o: Option<V>,
@@ -753,18 +791,40 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     ) {
         if !self.generic_gate_optimization {
             assert!(coeffs.len() <= GENERIC_COEFFS);
-            self.add_row(vec![l, r, o], GateType::Generic, coeffs);
+            self.add_row(labels, loc, vec![l, r, o], GateType::Generic, coeffs);
             return;
         }
 
         match self.pending_generic_gate {
-            None => self.pending_generic_gate = Some((l, r, o, coeffs)),
+            None => {
+                self.pending_generic_gate = Some(PendingGate {
+                    labels: labels.to_vec(),
+                    loc: loc.to_owned(),
+                    vars: (l, r, o),
+                    coeffs,
+                })
+            }
             Some(_) => {
-                if let Some((l2, r2, o2, coeffs2)) =
-                    std::mem::replace(&mut self.pending_generic_gate, None)
+                if let Some(PendingGate {
+                    labels: labels2,
+                    loc: loc2,
+                    vars: (l2, r2, o2),
+                    coeffs: coeffs2,
+                }) = std::mem::replace(&mut self.pending_generic_gate, None)
                 {
+                    let labels1 = labels.join(",");
+                    let labels2 = labels2.join(",");
+                    let labels = vec![Cow::Owned(format!("gen1:[{}] gen2:[{}]", labels1, labels2))];
+                    let loc = format!("gen1:[{}] gen2:[{}]", loc, loc2).into();
+
                     coeffs.extend(coeffs2);
-                    self.add_row(vec![l, r, o, l2, r2, o2], GateType::Generic, coeffs);
+                    self.add_row(
+                        &labels,
+                        &loc,
+                        vec![l, r, o, l2, r2, o2],
+                        GateType::Generic,
+                        coeffs,
+                    );
                 }
             }
         }
@@ -785,7 +845,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     - return (1, internal_var_2)
 
     It assumes that the list of terms is not empty. */
-    fn completely_reduce<Terms>(&mut self, terms: Terms) -> (Field, V)
+    fn completely_reduce<Terms>(
+        &mut self,
+        labels: &[Cow<'static, str>],
+        loc: &Cow<'static, str>,
+        terms: Terms,
+    ) -> (Field, V)
     where
         Terms: IntoIterator<Item = (Field, usize)>,
         <Terms as IntoIterator>::IntoIter: DoubleEndedIterator,
@@ -802,6 +867,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     let lx = V::External(lx);
                     let s1x1_plus_s2x2 = self.create_internal(None, vec![(ls, lx), (rs, rx)]);
                     self.add_generic_constraint(
+                        labels,
+                        loc,
                         Some(lx),
                         Some(rx),
                         Some(s1x1_plus_s2x2),
@@ -818,7 +885,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
       It returns the output variable as (1, `Var res),
       unless the output is a constant, in which case it returns (c, `Constant).
     */
-    fn reduce_lincom<Cvar>(&mut self, x: Cvar) -> (Field, ConstantOrVar)
+    fn reduce_lincom<Cvar>(
+        &mut self,
+        labels: &[Cow<'static, str>],
+        loc: &Cow<'static, str>,
+        x: Cvar,
+    ) -> (Field, ConstantOrVar)
     where
         Cvar: SnarkyCvar<Field = Field>,
     {
@@ -841,6 +913,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 /* res = ls * lx + c */
                 let res = self.create_internal(Some(c), vec![(*ls, V::External(*lx))]);
                 self.add_generic_constraint(
+                    labels,
+                    loc,
                     Some(V::External(*lx)),
                     None,
                     Some(res),
@@ -852,10 +926,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 /* reduce the terms, then add the constant */
                 let mut terms_list_iterator = terms_list.into_iter();
                 let (ls, lx) = terms_list_iterator.next().unwrap();
-                let (rs, rx) = self.completely_reduce(terms_list_iterator);
+                let (rs, rx) = self.completely_reduce(labels, loc, terms_list_iterator);
                 let res = self.create_internal(constant, vec![(ls, V::External(lx)), (rs, rx)]);
                 /* res = ls * lx + rs * rx + c */
                 self.add_generic_constraint(
+                    labels,
+                    loc,
                     Some(V::External(lx)),
                     Some(rx),
                     Some(res),
@@ -873,11 +949,16 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     }
 
     /// reduce any [Cvar] to a single internal variable [V]
-    fn reduce_to_var<Cvar>(&mut self, x: Cvar) -> V
+    fn reduce_to_var<Cvar>(
+        &mut self,
+        labels: &[Cow<'static, str>],
+        loc: &Cow<'static, str>,
+        x: Cvar,
+    ) -> V
     where
         Cvar: SnarkyCvar<Field = Field>,
     {
-        match self.reduce_lincom(x) {
+        match self.reduce_lincom(labels, loc, x) {
             (s, ConstantOrVar::Var(x)) => {
                 if s == Field::one() {
                     x
@@ -885,6 +966,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     let sx = self.create_internal(Some(s), vec![(s, x)]);
                     // s * x - sx = 0
                     self.add_generic_constraint(
+                        labels,
+                        loc,
                         Some(x),
                         None,
                         Some(sx),
@@ -904,6 +987,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 None => {
                     let x = self.create_internal(None, vec![]);
                     self.add_generic_constraint(
+                        labels,
+                        loc,
                         Some(x),
                         None,
                         None,
@@ -928,19 +1013,28 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     /// # Panics
     ///
     /// Will panic if `constant selector` constraints are not matching.
-    pub fn add_basic_snarky_constraint<Cvar>(&mut self, constraint: BasicSnarkyConstraint<Cvar>)
-    where
+    pub fn add_basic_snarky_constraint<Cvar>(
+        &mut self,
+        labels: &[Cow<'static, str>],
+        loc: &Cow<'static, str>,
+        constraint: BasicSnarkyConstraint<Cvar>,
+    ) where
         Cvar: SnarkyCvar<Field = Field>,
     {
         match constraint {
             BasicSnarkyConstraint::Square(v1, v2) => {
-                match (self.reduce_lincom(v1), self.reduce_lincom(v2)) {
+                match (
+                    self.reduce_lincom(labels, loc, v1),
+                    self.reduce_lincom(labels, loc, v2),
+                ) {
                     ((sl, ConstantOrVar::Var(xl)), (so, ConstantOrVar::Var(xo))) =>
                     /* (sl * xl)^2 = so * xo
                        sl^2 * xl * xl - so * xo = 0
                     */
                     {
                         self.add_generic_constraint(
+                            labels,
+                            loc,
                             Some(xl),
                             Some(xl),
                             Some(xo),
@@ -951,6 +1045,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     /* TODO: it's hard to read the array of selector values, name them! */
                     {
                         self.add_generic_constraint(
+                            labels,
+                            loc,
                             Some(xl),
                             Some(xl),
                             None,
@@ -961,6 +1057,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     /* sl^2 = so * xo */
                     {
                         self.add_generic_constraint(
+                            labels,
+                            loc,
                             None,
                             None,
                             Some(xo),
@@ -973,9 +1071,9 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 }
             }
             BasicSnarkyConstraint::R1CS(v1, v2, v3) => match (
-                self.reduce_lincom(v1),
-                self.reduce_lincom(v2),
-                self.reduce_lincom(v3),
+                self.reduce_lincom(labels, loc, v1),
+                self.reduce_lincom(labels, loc, v2),
+                self.reduce_lincom(labels, loc, v3),
             ) {
                 (
                     (s1, ConstantOrVar::Var(x1)),
@@ -987,6 +1085,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 */
                 {
                     self.add_generic_constraint(
+                        labels,
+                        loc,
                         Some(x1),
                         Some(x2),
                         Some(x3),
@@ -998,6 +1098,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     (s2, ConstantOrVar::Var(x2)),
                     (s3, ConstantOrVar::Constant),
                 ) => self.add_generic_constraint(
+                    labels,
+                    loc,
                     Some(x1),
                     Some(x2),
                     None,
@@ -1011,6 +1113,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 /* s1 x1 * s2 = s3 x3 */
                 {
                     self.add_generic_constraint(
+                        labels,
+                        loc,
                         Some(x1),
                         None,
                         Some(x3),
@@ -1022,6 +1126,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     (s2, ConstantOrVar::Var(x2)),
                     (s3, ConstantOrVar::Var(x3)),
                 ) => self.add_generic_constraint(
+                    labels,
+                    loc,
                     None,
                     Some(x2),
                     Some(x3),
@@ -1032,6 +1138,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     (s2, ConstantOrVar::Constant),
                     (s3, ConstantOrVar::Constant),
                 ) => self.add_generic_constraint(
+                    labels,
+                    loc,
                     Some(x1),
                     None,
                     None,
@@ -1042,6 +1150,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     (s2, ConstantOrVar::Var(x2)),
                     (s3, ConstantOrVar::Constant),
                 ) => self.add_generic_constraint(
+                    labels,
+                    loc,
                     None,
                     None,
                     Some(x2),
@@ -1052,6 +1162,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     (s2, ConstantOrVar::Constant),
                     (s3, ConstantOrVar::Var(x3)),
                 ) => self.add_generic_constraint(
+                    labels,
+                    loc,
                     None,
                     None,
                     Some(x3),
@@ -1064,12 +1176,14 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 ) => assert_eq!(s3, s1 * s2),
             },
             BasicSnarkyConstraint::Boolean(v) => {
-                let (s, x) = self.reduce_lincom(v);
+                let (s, x) = self.reduce_lincom(labels, loc, v);
                 match x {
                     ConstantOrVar::Var(x) =>
                     /* -x + x * x = 0  */
                     {
                         self.add_generic_constraint(
+                            labels,
+                            loc,
                             Some(x),
                             Some(x),
                             None,
@@ -1086,7 +1200,10 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 }
             }
             BasicSnarkyConstraint::Equal(v1, v2) => {
-                let ((s1, x1), (s2, x2)) = (self.reduce_lincom(v1), self.reduce_lincom(v2));
+                let ((s1, x1), (s2, x2)) = (
+                    self.reduce_lincom(labels, loc, v1),
+                    self.reduce_lincom(labels, loc, v2),
+                );
                 match (x1, x2) {
                     (ConstantOrVar::Var(x1), ConstantOrVar::Var(x2)) => {
                         /* TODO: This logic is wrong, but matches the OCaml side. Fix both. */
@@ -1100,6 +1217,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                         /* s1 x1 - s2 x2 = 0 */
                         s1 != s2 {
                             self.add_generic_constraint(
+                                labels,
+                                loc,
                                 Some(x1),
                                 Some(x2),
                                 None,
@@ -1107,6 +1226,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                             );
                         } else {
                             self.add_generic_constraint(
+                                labels,
+                                loc,
                                 Some(x1),
                                 Some(x2),
                                 None,
@@ -1128,6 +1249,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                             }
                             None => {
                                 self.add_generic_constraint(
+                                    labels,
+                                    loc,
                                     Some(x1),
                                     None,
                                     None,
@@ -1151,6 +1274,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                             }
                             None => {
                                 self.add_generic_constraint(
+                                    labels,
+                                    loc,
                                     None,
                                     Some(x2),
                                     None,
@@ -1171,8 +1296,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
     /// # Panics
     ///
     /// Will panic if `witness` fields are empty.
-    pub fn add_constraint<Cvar>(&mut self, constraint: KimchiConstraint<Cvar, Field>)
-    where
+    pub fn add_constraint<Cvar>(
+        &mut self,
+        labels: &[Cow<'static, str>],
+        loc: &Cow<'static, str>,
+        constraint: KimchiConstraint<Cvar, Field>,
+    ) where
         Cvar: SnarkyCvar<Field = Field>,
     {
         match constraint {
@@ -1197,7 +1326,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                    + c
                 */
                 let mut c = c;
-                let mut red_pr = |(s, x)| match self.reduce_lincom(x) {
+                let mut red_pr = |(s, x)| match self.reduce_lincom(labels, loc, x) {
                     (s2, ConstantOrVar::Constant) => {
                         c += s * s2;
                         (s2, None)
@@ -1229,6 +1358,8 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     }
                 };
                 self.add_generic_constraint(
+                    labels,
+                    loc,
                     var(l),
                     var(r),
                     var(o),
@@ -1248,7 +1379,11 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 // reduce the state
                 let state: Vec<Vec<_>> = state
                     .into_iter()
-                    .map(|vars| vars.into_iter().map(|x| self.reduce_to_var(x)).collect())
+                    .map(|vars| {
+                        vars.into_iter()
+                            .map(|x| self.reduce_to_var(labels, loc, x))
+                            .collect()
+                    })
                     .collect();
 
                 // retrieve the final state
@@ -1299,7 +1434,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                         self.constants.poseidon.round_constants[round_4][1],
                         self.constants.poseidon.round_constants[round_4][2],
                     ];
-                    self.add_row(vars, GateType::Poseidon, coeffs);
+                    self.add_row(labels, loc, vars, GateType::Poseidon, coeffs);
                 }
 
                 // add_last_row adds the last row containing the output
@@ -1320,7 +1455,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     None,
                     None,
                 ];
-                self.add_row(vars, GateType::Zero, vec![]);
+                self.add_row(labels, loc, vars, GateType::Zero, vec![]);
             }
             KimchiConstraint::Poseidon2(PoseidonInput { states, last }) => {
                 // reduce variables
@@ -1329,7 +1464,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     .map(|round| {
                         round
                             .into_iter()
-                            .map(|x| self.reduce_to_var(x))
+                            .map(|x| self.reduce_to_var(labels, loc, x))
                             .collect_vec()
                     })
                     .collect_vec();
@@ -1350,16 +1485,16 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                                 .zip(round_constants.into_iter())
                         })
                         .unzip();
-                    self.add_row(vars, GateType::Poseidon, coeffs);
+                    self.add_row(labels, loc, vars, GateType::Poseidon, coeffs);
                 }
 
                 // last row is a zero gate to save as output
                 let last = last
                     .into_iter()
-                    .map(|x| self.reduce_to_var(x))
+                    .map(|x| self.reduce_to_var(labels, loc, x))
                     .map(Some)
                     .collect_vec();
-                self.add_row(last, GateType::Zero, vec![]);
+                self.add_row(labels, loc, last, GateType::Zero, vec![]);
             }
 
             KimchiConstraint::EcAddComplete(EcAddCompleteInput {
@@ -1372,8 +1507,12 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                 inf_z,
                 x21_inv,
             }) => {
-                let mut reduce_curve_point =
-                    |(x, y)| (self.reduce_to_var(x), self.reduce_to_var(y));
+                let mut reduce_curve_point = |(x, y)| {
+                    (
+                        self.reduce_to_var(labels, loc, x),
+                        self.reduce_to_var(labels, loc, y),
+                    )
+                };
                 // 0   1   2   3   4   5   6   7      8   9
                 // x1  y1  x2  y2  x3  y3  inf same_x s   inf_z  x21_inv
                 let (x1, y1) = reduce_curve_point(p1);
@@ -1387,13 +1526,13 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     Some(y2),
                     Some(x3),
                     Some(y3),
-                    Some(self.reduce_to_var(inf)),
-                    Some(self.reduce_to_var(same_x)),
-                    Some(self.reduce_to_var(slope)),
-                    Some(self.reduce_to_var(inf_z)),
-                    Some(self.reduce_to_var(x21_inv)),
+                    Some(self.reduce_to_var(labels, loc, inf)),
+                    Some(self.reduce_to_var(labels, loc, same_x)),
+                    Some(self.reduce_to_var(labels, loc, slope)),
+                    Some(self.reduce_to_var(labels, loc, inf_z)),
+                    Some(self.reduce_to_var(labels, loc, x21_inv)),
                 ];
-                self.add_row(vars, GateType::CompleteAdd, vec![]);
+                self.add_row(labels, loc, vars, GateType::CompleteAdd, vec![]);
             }
             KimchiConstraint::EcScale(state) => {
                 for ScaleRound {
@@ -1409,41 +1548,41 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     // xT  yT  x0  y0  n   n'      x1  y1  x2  y2  x3  y3  x4  y4
                     // x5  y5  b0  b1  b2  b3  b4  s0  s1  s2  s3  s4
                     let curr_row = vec![
-                        Some(self.reduce_to_var(base.0)),
-                        Some(self.reduce_to_var(base.1)),
-                        Some(self.reduce_to_var(accs[0].0.clone())),
-                        Some(self.reduce_to_var(accs[0].1.clone())),
-                        Some(self.reduce_to_var(n_prev)),
-                        Some(self.reduce_to_var(n_next)),
+                        Some(self.reduce_to_var(labels, loc, base.0)),
+                        Some(self.reduce_to_var(labels, loc, base.1)),
+                        Some(self.reduce_to_var(labels, loc, accs[0].0.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[0].1.clone())),
+                        Some(self.reduce_to_var(labels, loc, n_prev)),
+                        Some(self.reduce_to_var(labels, loc, n_next)),
                         None,
-                        Some(self.reduce_to_var(accs[1].0.clone())),
-                        Some(self.reduce_to_var(accs[1].1.clone())),
-                        Some(self.reduce_to_var(accs[2].0.clone())),
-                        Some(self.reduce_to_var(accs[2].1.clone())),
-                        Some(self.reduce_to_var(accs[3].0.clone())),
-                        Some(self.reduce_to_var(accs[3].1.clone())),
-                        Some(self.reduce_to_var(accs[4].0.clone())),
-                        Some(self.reduce_to_var(accs[4].1.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[1].0.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[1].1.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[2].0.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[2].1.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[3].0.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[3].1.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[4].0.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[4].1.clone())),
                     ];
 
-                    self.add_row(curr_row, GateType::VarBaseMul, vec![]);
+                    self.add_row(labels, loc, curr_row, GateType::VarBaseMul, vec![]);
 
                     let next_row = vec![
-                        Some(self.reduce_to_var(accs[5].0.clone())),
-                        Some(self.reduce_to_var(accs[5].1.clone())),
-                        Some(self.reduce_to_var(bits[0].clone())),
-                        Some(self.reduce_to_var(bits[1].clone())),
-                        Some(self.reduce_to_var(bits[2].clone())),
-                        Some(self.reduce_to_var(bits[3].clone())),
-                        Some(self.reduce_to_var(bits[4].clone())),
-                        Some(self.reduce_to_var(ss[0].clone())),
-                        Some(self.reduce_to_var(ss[1].clone())),
-                        Some(self.reduce_to_var(ss[2].clone())),
-                        Some(self.reduce_to_var(ss[3].clone())),
-                        Some(self.reduce_to_var(ss[4].clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[5].0.clone())),
+                        Some(self.reduce_to_var(labels, loc, accs[5].1.clone())),
+                        Some(self.reduce_to_var(labels, loc, bits[0].clone())),
+                        Some(self.reduce_to_var(labels, loc, bits[1].clone())),
+                        Some(self.reduce_to_var(labels, loc, bits[2].clone())),
+                        Some(self.reduce_to_var(labels, loc, bits[3].clone())),
+                        Some(self.reduce_to_var(labels, loc, bits[4].clone())),
+                        Some(self.reduce_to_var(labels, loc, ss[0].clone())),
+                        Some(self.reduce_to_var(labels, loc, ss[1].clone())),
+                        Some(self.reduce_to_var(labels, loc, ss[2].clone())),
+                        Some(self.reduce_to_var(labels, loc, ss[3].clone())),
+                        Some(self.reduce_to_var(labels, loc, ss[4].clone())),
                     ];
 
-                    self.add_row(next_row, GateType::Zero, vec![]);
+                    self.add_row(labels, loc, next_row, GateType::Zero, vec![]);
                 }
             }
             KimchiConstraint::EcEndoscale(EcEndoscaleInput {
@@ -1454,24 +1593,24 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             }) => {
                 for round in state {
                     let vars = vec![
-                        Some(self.reduce_to_var(round.xt)),
-                        Some(self.reduce_to_var(round.yt)),
+                        Some(self.reduce_to_var(labels, loc, round.xt)),
+                        Some(self.reduce_to_var(labels, loc, round.yt)),
                         None,
                         None,
-                        Some(self.reduce_to_var(round.xp)),
-                        Some(self.reduce_to_var(round.yp)),
-                        Some(self.reduce_to_var(round.n_acc)),
-                        Some(self.reduce_to_var(round.xr)),
-                        Some(self.reduce_to_var(round.yr)),
-                        Some(self.reduce_to_var(round.s1)),
-                        Some(self.reduce_to_var(round.s3)),
-                        Some(self.reduce_to_var(round.b1)),
-                        Some(self.reduce_to_var(round.b2)),
-                        Some(self.reduce_to_var(round.b3)),
-                        Some(self.reduce_to_var(round.b4)),
+                        Some(self.reduce_to_var(labels, loc, round.xp)),
+                        Some(self.reduce_to_var(labels, loc, round.yp)),
+                        Some(self.reduce_to_var(labels, loc, round.n_acc)),
+                        Some(self.reduce_to_var(labels, loc, round.xr)),
+                        Some(self.reduce_to_var(labels, loc, round.yr)),
+                        Some(self.reduce_to_var(labels, loc, round.s1)),
+                        Some(self.reduce_to_var(labels, loc, round.s3)),
+                        Some(self.reduce_to_var(labels, loc, round.b1)),
+                        Some(self.reduce_to_var(labels, loc, round.b2)),
+                        Some(self.reduce_to_var(labels, loc, round.b3)),
+                        Some(self.reduce_to_var(labels, loc, round.b4)),
                     ];
 
-                    self.add_row(vars, GateType::EndoMul, vec![]);
+                    self.add_row(labels, loc, vars, GateType::EndoMul, vec![]);
                 }
 
                 // last row
@@ -1480,31 +1619,31 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     None,
                     None,
                     None,
-                    Some(self.reduce_to_var(xs)),
-                    Some(self.reduce_to_var(ys)),
-                    Some(self.reduce_to_var(n_acc)),
+                    Some(self.reduce_to_var(labels, loc, xs)),
+                    Some(self.reduce_to_var(labels, loc, ys)),
+                    Some(self.reduce_to_var(labels, loc, n_acc)),
                 ];
-                self.add_row(vars, GateType::Zero, vec![]);
+                self.add_row(labels, loc, vars, GateType::Zero, vec![]);
             }
             KimchiConstraint::EcEndoscalar(state) => {
                 for round in state {
                     let vars = vec![
-                        Some(self.reduce_to_var(round.n0)),
-                        Some(self.reduce_to_var(round.n8)),
-                        Some(self.reduce_to_var(round.a0)),
-                        Some(self.reduce_to_var(round.b0)),
-                        Some(self.reduce_to_var(round.a8)),
-                        Some(self.reduce_to_var(round.b8)),
-                        Some(self.reduce_to_var(round.x0)),
-                        Some(self.reduce_to_var(round.x1)),
-                        Some(self.reduce_to_var(round.x2)),
-                        Some(self.reduce_to_var(round.x3)),
-                        Some(self.reduce_to_var(round.x4)),
-                        Some(self.reduce_to_var(round.x5)),
-                        Some(self.reduce_to_var(round.x6)),
-                        Some(self.reduce_to_var(round.x7)),
+                        Some(self.reduce_to_var(labels, loc, round.n0)),
+                        Some(self.reduce_to_var(labels, loc, round.n8)),
+                        Some(self.reduce_to_var(labels, loc, round.a0)),
+                        Some(self.reduce_to_var(labels, loc, round.b0)),
+                        Some(self.reduce_to_var(labels, loc, round.a8)),
+                        Some(self.reduce_to_var(labels, loc, round.b8)),
+                        Some(self.reduce_to_var(labels, loc, round.x0)),
+                        Some(self.reduce_to_var(labels, loc, round.x1)),
+                        Some(self.reduce_to_var(labels, loc, round.x2)),
+                        Some(self.reduce_to_var(labels, loc, round.x3)),
+                        Some(self.reduce_to_var(labels, loc, round.x4)),
+                        Some(self.reduce_to_var(labels, loc, round.x5)),
+                        Some(self.reduce_to_var(labels, loc, round.x6)),
+                        Some(self.reduce_to_var(labels, loc, round.x7)),
                     ];
-                    self.add_row(vars, GateType::EndoMulScalar, vec![]);
+                    self.add_row(labels, loc, vars, GateType::EndoMulScalar, vec![]);
                 }
             }
         }
@@ -1651,11 +1790,18 @@ mod tests {
         let y = FieldVar::Var(1);
         let z = FieldVar::Var(2);
 
+        let labels = &vec![];
+        let loc = &Cow::Borrowed("");
+
         // x * y = z
-        state.add_basic_snarky_constraint(BasicSnarkyConstraint::R1CS(x.clone(), y.clone(), z));
+        state.add_basic_snarky_constraint(
+            labels,
+            loc,
+            BasicSnarkyConstraint::R1CS(x.clone(), y.clone(), z),
+        );
 
         // x = y
-        state.add_basic_snarky_constraint(BasicSnarkyConstraint::Equal(x, y));
+        state.add_basic_snarky_constraint(labels, loc, BasicSnarkyConstraint::Equal(x, y));
 
         let gates = state.finalize_and_get_gates();
 
@@ -1676,15 +1822,18 @@ mod tests {
         let x = FieldVar::Var(1);
         let y = FieldVar::Var(2);
 
+        let labels = &vec![];
+        let loc = &Cow::Borrowed("");
+
         // x * y = z
-        state.add_basic_snarky_constraint(BasicSnarkyConstraint::R1CS(
-            x.clone(),
-            y.clone(),
-            public,
-        ));
+        state.add_basic_snarky_constraint(
+            labels,
+            loc,
+            BasicSnarkyConstraint::R1CS(x.clone(), y.clone(), public),
+        );
 
         // x = y
-        state.add_basic_snarky_constraint(BasicSnarkyConstraint::Equal(x, y));
+        state.add_basic_snarky_constraint(labels, loc, BasicSnarkyConstraint::Equal(x, y));
 
         state.finalize();
 

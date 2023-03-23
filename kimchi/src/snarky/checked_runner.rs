@@ -98,7 +98,7 @@ where
 
     /// A map from a constraint index to a source location
     /// (usually a file name and line number).
-    constraints_locations: Vec<String>,
+    constraints_locations: Vec<Cow<'static, str>>,
 }
 
 //
@@ -151,97 +151,6 @@ where
 }
 
 //
-// Sponge
-//
-
-pub struct DuplexState<F>
-where
-    F: PrimeField,
-{
-    rev_queue: Vec<FieldVar<F>>,
-    absorbing: bool,
-    squeezed: Option<FieldVar<F>>,
-    state: [FieldVar<F>; 3],
-}
-
-const RATE_SIZE: usize = 2;
-
-impl<F> DuplexState<F>
-where
-    F: PrimeField,
-{
-    /// Creates a new sponge.
-    pub fn new() -> DuplexState<F> {
-        let state = [FieldVar::zero(), FieldVar::zero(), FieldVar::zero()];
-        DuplexState {
-            rev_queue: vec![],
-            absorbing: true,
-            squeezed: None,
-            state,
-        }
-    }
-
-    /// Absorb.
-    pub fn absorb(&mut self, sys: &mut RunState<F>, inputs: &[FieldVar<F>]) {
-        // no need to permute to switch to absorbing
-        if !self.absorbing {
-            assert!(self.rev_queue.is_empty());
-            self.squeezed = None;
-            self.absorbing = true;
-        }
-
-        // absorb
-        for input in inputs {
-            // we only permute when we try to absorb too much (we lazy)
-            if self.rev_queue.len() == RATE_SIZE {
-                let left = self.rev_queue.pop().unwrap();
-                let right = self.rev_queue.pop().unwrap();
-                self.state[0] = &self.state[0] + left;
-                self.state[1] = &self.state[1] + right;
-                self.permute(sys);
-            }
-
-            self.rev_queue.insert(0, input.clone());
-        }
-    }
-
-    /// Permute. You should most likely not use this function directly,
-    /// and use [Self::absorb] and [Self::squeeze] instead.
-    fn permute(&mut self, sys: &mut RunState<F>) -> (FieldVar<F>, FieldVar<F>) {
-        let left = self.state[0].clone();
-        let right = self.state[1].clone();
-        sys.poseidon("does poseidon really need a loc?", (left, right))
-    }
-
-    /// Squeeze.
-    pub fn squeeze(&mut self, sys: &mut RunState<F>) -> FieldVar<F> {
-        // if we're switching to squeezing, don't forget about the queue
-        if self.absorbing {
-            assert!(self.squeezed.is_none());
-            if let Some(left) = self.rev_queue.pop() {
-                self.state[0] = &self.state[0] + left;
-            }
-            if let Some(right) = self.rev_queue.pop() {
-                self.state[1] = &self.state[1] + right;
-            }
-            self.absorbing = false;
-        }
-
-        // if we still have some left over, release that
-        if let Some(squeezed) = self.squeezed.take() {
-            return squeezed;
-        }
-
-        // otherwise permute and squeeze
-        let (left, right) = self.permute(sys);
-
-        // cache the right, release the left
-        self.squeezed = Some(right);
-        left
-    }
-}
-
-//
 // circuit generation
 //
 
@@ -249,8 +158,9 @@ impl<F> RunState<F>
 where
     F: PrimeField,
 {
-    // TODO: builder pattern?
-    /// Creates a new [Self].
+    /// Creates a new [Self] based on the size of the public input,
+    /// and the size of the public output.
+    /// If [with_system] is set it will create a [SnarkyConstraintSystem] in order to compile a new circuit.
     pub fn new<Curve: KimchiCurve<ScalarField = F>>(
         public_input_size: usize,
         public_output_size: usize,
@@ -310,6 +220,8 @@ where
         }
     }
 
+    /// Returns the public input snarky variable.
+    // TODO: perhaps this should be renamed `compile_circuit` and encapsulate more logic (since this is only used to compile a given circuit)
     pub fn public_input<T: SnarkyType<F>>(&self) -> T {
         assert_eq!(
             T::SIZE_IN_FIELD_ELEMENTS,
@@ -339,14 +251,13 @@ where
         FieldVar::Var(v)
     }
 
-    /// Useful to debug. Similar to calling [Self::compute] on a unit type.
-    pub fn debug() {
-        todo!();
-    }
-
     /// Creates a new non-deterministic variable associated to a value type ([SnarkyType]),
     /// and a closure that can compute it when in witness generation mode.
-    pub fn compute<T, FUNC>(&mut self, loc: &str, to_compute_value: FUNC) -> SnarkyResult<T>
+    pub fn compute<T, FUNC>(
+        &mut self,
+        loc: Cow<'static, str>,
+        to_compute_value: FUNC,
+    ) -> SnarkyResult<T>
     where
         T: SnarkyType<F>,
         FUNC: FnOnce(&dyn WitnessGeneration<F>) -> T::OutOfCircuit,
@@ -358,7 +269,7 @@ where
     /// This is to be used internally only, when we know that the value cannot be malformed.
     pub(crate) fn compute_unsafe<T, FUNC>(
         &mut self,
-        loc: &str,
+        loc: Cow<'static, str>,
         to_compute_value: FUNC,
     ) -> SnarkyResult<T>
     where
@@ -368,11 +279,11 @@ where
         self.compute_inner(false, loc, to_compute_value)
     }
 
-    // TODO: make loc argument work
+    /// The logic called by both [Self::compute] and [Self::compute_unsafe].
     fn compute_inner<T, FUNC>(
         &mut self,
         checked: bool,
-        loc: &str,
+        loc: Cow<'static, str>,
         to_compute_value: FUNC,
     ) -> SnarkyResult<T>
     where
@@ -433,7 +344,7 @@ where
     pub fn assert_r1cs(
         &mut self,
         label: Option<Cow<'static, str>>,
-        loc: &str,
+        loc: Cow<'static, str>,
         a: FieldVar<F>,
         b: FieldVar<F>,
         c: FieldVar<F>,
@@ -447,7 +358,7 @@ where
     pub fn assert_eq(
         &mut self,
         label: Option<Cow<'static, str>>,
-        loc: &str,
+        loc: Cow<'static, str>,
         x: FieldVar<F>,
         y: FieldVar<F>,
     ) -> SnarkyResult<()> {
@@ -462,20 +373,11 @@ where
         &mut self,
         constraint: Constraint<F>,
         label: Option<Cow<'static, str>>,
-        loc: &str,
+        loc: Cow<'static, str>,
     ) -> SnarkyResult<()> {
         self.with_label(label, |env| {
             // increment the constraint counter
             env.constraints_counter += 1;
-
-            // log
-            if std::env::var("SNARKY_LOG_CONSTRAINTS").is_ok() {
-                println!(
-                    "{}: {loc} - {}",
-                    env.constraints_counter,
-                    env.labels_stack.join(", ")
-                );
-            }
 
             // TODO:
             // [START_TODO]
@@ -487,9 +389,10 @@ where
             // have an enum: 1) compile 2) witness generation 3) both
             // and have the both enum variant be used from an API that does both
             // [END_TODO]
-            env.constraints_locations.push(loc.to_string());
+            env.constraints_locations.push(loc.clone());
 
             // We check the constraint
+            // TODO: this is checked at the front end level, perhaps we should check at the constraint system / backend level so that we can tell exactly what row is messed up? (for internal debugging that would really help)
             if env.has_witness && env.eval_constraints {
                 constraint
                     .check_constraint(env)
@@ -505,10 +408,10 @@ where
 
                 match constraint {
                     Constraint::BasicSnarkyConstraint(c) => {
-                        cs.add_basic_snarky_constraint(c);
+                        cs.add_basic_snarky_constraint(&env.labels_stack, &loc, c);
                     }
                     Constraint::KimchiConstraint(c) => {
-                        cs.add_constraint(c);
+                        cs.add_constraint(&env.labels_stack, &loc, c);
                     }
                 }
             }
@@ -519,9 +422,10 @@ where
 
     /// Adds a constraint that returns `then_` if `b` is `true`, `else_` otherwise.
     /// Equivalent to `if b { then_ } else { else_ }`.
+    // TODO: move this out
     pub fn if_(
         &mut self,
-        loc: &str,
+        loc: Cow<'static, str>,
         b: Boolean<F>,
         then_: FieldVar<F>,
         else_: FieldVar<F>,
@@ -548,7 +452,7 @@ where
                 let b_clone = b.clone();
                 let then_clone = then_.clone();
                 let else_clone = else_.clone();
-                let res: FieldVar<F> = self.compute(loc, move |env| {
+                let res: FieldVar<F> = self.compute(loc.clone(), move |env| {
                     let b = env.read_var(&b_clone);
                     let res_var = if b == F::one() {
                         &then_clone
@@ -568,6 +472,7 @@ where
         }
     }
 
+    /// Wires the given snarky variable to the public output part of the public input.
     pub(crate) fn wire_public_output(
         &mut self,
         return_var: impl SnarkyType<F>,
@@ -592,7 +497,7 @@ where
         {
             self.assert_eq(
                 Some("wiring public output".into()),
-                "this should never error",
+                "this should never error".into(),
                 a,
                 b,
             )?;
@@ -618,6 +523,7 @@ where
         }
     }
 
+    /// Getter for the OCaml side.
     #[cfg(feature = "ocaml_types")]
     pub fn get_private_inputs(&self) -> Vec<F> {
         self.private_input.clone()
@@ -660,9 +566,9 @@ where
     /// Creates an [RealSnarkyError] using the current context.
     pub fn error(&self, error: SnarkyError) -> RealSnarkyError {
         let loc = if self.constraints_counter == 0 {
-            "error during initialization"
+            "error during initialization".into()
         } else {
-            &self.constraints_locations[self.constraints_counter - 1]
+            self.constraints_locations[self.constraints_counter - 1].clone()
         };
         RealSnarkyError::new_with_ctx(error, loc, self.labels_stack.clone())
     }
@@ -750,7 +656,7 @@ where
 
     pub fn poseidon(
         &mut self,
-        loc: &str,
+        loc: Cow<'static, str>,
         preimage: (FieldVar<F>, FieldVar<F>),
     ) -> (FieldVar<F>, FieldVar<F>) {
         poseidon(self, loc, preimage)

@@ -8,7 +8,7 @@ use super::{
 
 use ark_ff::PrimeField;
 
-use std::fmt::Debug;
+use std::{borrow::Cow, fmt::Debug};
 
 /// A snarky type is a type that can be used in a circuit.
 /// It references an equivalent "out-of-circuit" type that one can use outside of the circuit.
@@ -39,7 +39,7 @@ where
     /// For some definition of valid.
     /// For example, a Boolean snarky type would check that the field element representing it is either 0 or 1.
     /// The function does this by adding constraints to your constraint system.
-    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()>;
+    fn check(&self, cs: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<()>;
 
     /// The "default" value of [Self::Auxiliary].
     /// This is passed to [Self::from_cvars_unsafe] when we are not generating a witness,
@@ -57,7 +57,11 @@ where
     // new functions that might help us with generics?
     //
 
-    fn compute<FUNC>(cs: &mut RunState<F>, loc: &str, to_compute_value: FUNC) -> SnarkyResult<Self>
+    fn compute<FUNC>(
+        cs: &mut RunState<F>,
+        loc: Cow<'static, str>,
+        to_compute_value: FUNC,
+    ) -> SnarkyResult<Self>
     where
         FUNC: Fn(&dyn WitnessGeneration<F>) -> Self::OutOfCircuit,
     {
@@ -104,7 +108,7 @@ where
 
     fn from_cvars_unsafe(_cvars: Vec<FieldVar<F>>, _aux: Self::Auxiliary) -> Self {}
 
-    fn check(&self, _cs: &mut RunState<F>, _loc: &str) -> SnarkyResult<()> {
+    fn check(&self, _cs: &mut RunState<F>, _loc: Cow<'static, str>) -> SnarkyResult<()> {
         Ok(())
     }
 
@@ -146,8 +150,8 @@ where
         )
     }
 
-    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()> {
-        self.0.check(cs, loc)?;
+    fn check(&self, cs: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<()> {
+        self.0.check(cs, loc.clone())?;
         self.1.check(cs, loc)?;
         Ok(())
     }
@@ -204,9 +208,9 @@ where
         })
     }
 
-    fn check(&self, cs: &mut RunState<F>, loc: &str) -> SnarkyResult<()> {
+    fn check(&self, cs: &mut RunState<F>, loc: Cow<'static, str>) -> SnarkyResult<()> {
         for t in self.iter() {
-            t.check(cs, loc)?;
+            t.check(cs, loc.clone())?;
         }
         Ok(())
     }

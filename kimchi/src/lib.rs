@@ -33,7 +33,7 @@ mod tests;
 #[macro_export]
 macro_rules! loc {
     () => {{
-        format!("{}:{}", file!(), line!())
+        ::std::borrow::Cow::Owned(format!("{}:{}", file!(), line!()))
     }};
 }
 
