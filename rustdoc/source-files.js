@@ -1,5 +1,4 @@
 var sourcesIndex = JSON.parse('{\
-"circuit_construction":["",[],["constants.rs","lib.rs","prover.rs","writer.rs"]],\
 "export_test_vectors":["",[],["main.rs","vectors.rs"]],\
 "flamegraph":["",[],["flamegraph.rs"]],\
 "groupmap":["",[],["lib.rs"]],\

@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["fp_constants","fq_constants"],"struct":["Constants"]};
