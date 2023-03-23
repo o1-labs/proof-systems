@@ -1393,7 +1393,10 @@ fn test_constraint_c12() {
 
 #[test]
 fn test_gates_max_foreign_field_modulus() {
-    CircuitGate::<PallasField>::create_foreign_field_mul(0, &BigUint::max_foreign_field_modulus());
+    CircuitGate::<PallasField>::create_foreign_field_mul(
+        0,
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
 }
 
 #[test]
@@ -1401,7 +1404,7 @@ fn test_gates_max_foreign_field_modulus() {
 fn test_gates_invalid_foreign_field_modulus() {
     CircuitGate::<PallasField>::create_foreign_field_mul(
         0,
-        &(BigUint::max_foreign_field_modulus() + BigUint::one()),
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
     );
 }
 
@@ -1410,7 +1413,7 @@ fn test_witness_max_foreign_field_modulus() {
     foreign_field_mul::witness::create::<PallasField>(
         &BigUint::zero(),
         &BigUint::zero(),
-        &BigUint::max_foreign_field_modulus(),
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
     );
 }
 
@@ -1420,6 +1423,6 @@ fn test_witness_invalid_foreign_field_modulus() {
     foreign_field_mul::witness::create::<PallasField>(
         &BigUint::zero(),
         &BigUint::zero(),
-        &(BigUint::max_foreign_field_modulus() + BigUint::one()),
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
     );
 }

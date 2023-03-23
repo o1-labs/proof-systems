@@ -1,7 +1,7 @@
 //! Describes helpers for foreign field arithmetics
 
 use crate::field_helpers::FieldHelpers;
-use ark_ff::{Field, One, PrimeField};
+use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
 use num_traits::Zero;
 use std::array;
@@ -185,7 +185,7 @@ pub trait BigUintForeignFieldHelpers {
     fn binary_modulus() -> Self;
 
     /// 2^259 (see foreign field multiplication RFC)
-    fn max_foreign_field_modulus() -> Self;
+    fn max_foreign_field_modulus<F: PrimeField>() -> Self;
 
     /// Convert to 3 limbs of LIMB_BITS each
     fn to_limbs(&self) -> [BigUint; 3];
@@ -220,8 +220,9 @@ impl BigUintForeignFieldHelpers for BigUint {
         BigUint::two().pow(3 * LIMB_BITS as u32)
     }
 
-    fn max_foreign_field_modulus() -> Self {
-        BigUint::two().pow(259u32) - BigUint::one()
+    fn max_foreign_field_modulus<F: PrimeField>() -> Self {
+        // m = sqrt(2^t * n)
+        (BigUint::binary_modulus() * F::modulus_biguint()).sqrt()
     }
 
     fn to_limbs(&self) -> [Self; 3] {

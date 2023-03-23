@@ -164,11 +164,11 @@ pub fn create<F: PrimeField>(
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
 ) -> ([Vec<F>; COLUMNS], ExternalChecks<F>) {
-    if *foreign_field_modulus > BigUint::max_foreign_field_modulus() {
+    if *foreign_field_modulus > BigUint::max_foreign_field_modulus::<F>() {
         panic!(
             "foreign_field_modulus exceeds maximum: {} > {}",
             *foreign_field_modulus,
-            BigUint::max_foreign_field_modulus()
+            BigUint::max_foreign_field_modulus::<F>()
         );
     }
 

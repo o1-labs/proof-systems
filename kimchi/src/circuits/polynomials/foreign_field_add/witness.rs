@@ -131,11 +131,11 @@ pub fn create_chain<F: PrimeField>(
     opcodes: &[FFOps],
     modulus: BigUint,
 ) -> [Vec<F>; COLUMNS] {
-    if modulus > BigUint::max_foreign_field_modulus() {
+    if modulus > BigUint::max_foreign_field_modulus::<F>() {
         panic!(
             "foreign_field_modulus exceeds maximum: {} > {}",
             modulus,
-            BigUint::max_foreign_field_modulus()
+            BigUint::max_foreign_field_modulus::<F>()
         );
     }
 
@@ -277,11 +277,11 @@ pub fn extend_witness_bound_addition<F: PrimeField>(
     // Convert to types used by this module
     let fe = ForeignElement::<F, 3>::new(*limbs);
     let foreign_field_modulus = ForeignElement::<F, 3>::new(*foreign_field_modulus);
-    if foreign_field_modulus.to_biguint() > BigUint::max_foreign_field_modulus() {
+    if foreign_field_modulus.to_biguint() > BigUint::max_foreign_field_modulus::<F>() {
         panic!(
             "foreign_field_modulus exceeds maximum: {} > {}",
             foreign_field_modulus.to_biguint(),
-            BigUint::max_foreign_field_modulus()
+            BigUint::max_foreign_field_modulus::<F>()
         );
     }
 

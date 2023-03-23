@@ -1543,7 +1543,7 @@ fn test_gate_max_foreign_field_modulus() {
     CircuitGate::<PallasField>::create_single_ffadd(
         0,
         FFOps::Add,
-        &BigUint::max_foreign_field_modulus(),
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
     );
 }
 
@@ -1553,7 +1553,7 @@ fn test_gate_invalid_foreign_field_modulus() {
     CircuitGate::<PallasField>::create_single_ffadd(
         0,
         FFOps::Add,
-        &(BigUint::max_foreign_field_modulus() + BigUint::one()),
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
     );
 }
 
@@ -1562,7 +1562,7 @@ fn test_witness_max_foreign_field_modulus() {
     short_witness::<PallasField>(
         &vec![BigUint::zero(), BigUint::zero()],
         &[FFOps::Add],
-        BigUint::max_foreign_field_modulus(),
+        BigUint::max_foreign_field_modulus::<PallasField>(),
     );
 }
 
@@ -1572,6 +1572,6 @@ fn test_witness_invalid_foreign_field_modulus() {
     short_witness::<PallasField>(
         &vec![BigUint::zero(), BigUint::zero()],
         &[FFOps::Add],
-        BigUint::max_foreign_field_modulus() + BigUint::one(),
+        BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one(),
     );
 }
