@@ -183,7 +183,7 @@ m_{max} &= \frac{258 + 255}{2} = 256.5,
 \end{aligned}
 $$
 
-which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving a maximum modulus $m_{max} = 259$ bits.
+which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving a maximum modulus $m_{max} = 259$ bits.  However, max modulus $2^{259}$ is too course, so to be more precise we actually use $max_{modulus} = \sqrt{2^t \cdot n}$.
 
 #### Choosing the limb configuration
 
