@@ -225,6 +225,7 @@ impl BigUintForeignFieldHelpers for BigUint {
         //     * The maximum prime foreign field modulus satisfying the above inequality
         //       for  both Pallas and Vesta is
         //       926336713898529563388567880069503262826888842373627227613104999999999999999607
+        //     * BigUint::sqrt return truncated principle square root (rounds down to int) ~ floor
         (BigUint::binary_modulus() * F::modulus_biguint()).sqrt()
     }
 
