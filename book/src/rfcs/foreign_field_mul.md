@@ -183,7 +183,15 @@ m_{max} &= \frac{258 + 255}{2} = 256.5,
 \end{aligned}
 $$
 
-which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving a maximum modulus $m_{max} = 259$ bits.  However, max modulus $2^{259}$ is too course, so to be more precise we actually use $max_{modulus} = \sqrt{2^t \cdot n}$.
+which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving $m_{max} = 259$ bits.
+
+The above formula is useful for checking the maximum number of bits supported of the foreign field modulus, but it is not useful for computing the maximum foreign field modulus itself (because $2^{m_{max}}$ is too coarse). For these checks, we can compute our maximum foreign field modulus more precisely with
+
+$$
+max_{mod} = \lfloor \sqrt{2^t \cdot n} \rfloor.
+$$
+
+The max prime foreign field modulus satisfying the above inequality for both Pallas and Vesta is `926336713898529563388567880069503262826888842373627227613104999999999999999607`.
 
 #### Choosing the limb configuration
 

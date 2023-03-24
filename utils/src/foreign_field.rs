@@ -221,7 +221,10 @@ impl BigUintForeignFieldHelpers for BigUint {
     }
 
     fn max_foreign_field_modulus<F: PrimeField>() -> Self {
-        // m = sqrt(2^t * n)
+        // For simplicity and efficiency we use the approximation m = floor(sqrt(2^t * n))
+        //     * The maximum prime foreign field modulus satisfying the above inequality
+        //       for  both Pallas and Vesta is
+        //       926336713898529563388567880069503262826888842373627227613104999999999999999607
         (BigUint::binary_modulus() * F::modulus_biguint()).sqrt()
     }
 
