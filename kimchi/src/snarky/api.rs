@@ -18,25 +18,18 @@ use poly_commitment::commitment::CommitmentCurve;
 
 use super::{checked_runner::RunState, errors::SnarkyResult, traits::SnarkyType};
 
-// TODO: implement digest function
-pub struct CompiledCircuit<Circuit>
-where
-    Circuit: SnarkyCircuit,
-{
-    circuit: Circuit,
-    sys: RunState<ScalarField<Circuit::Curve>>,
-    public_input_size: usize,
-    pub gates: Vec<CircuitGate<ScalarField<Circuit::Curve>>>,
-    phantom: PhantomData<Circuit>,
-}
-
+/// A witness represents the execution trace of a circuit.
 #[derive(Debug)]
 pub struct Witness<F>(pub [Vec<F>; COLUMNS]);
 
-// alias
+//
+// aliases
+//
+
 type ScalarField<C> = <C as AffineCurve>::ScalarField;
 type BaseField<C> = <C as AffineCurve>::BaseField;
 
+/// A prover index.
 pub struct ProverIndexWrapper<Circuit>
 where
     Circuit: SnarkyCircuit,
@@ -155,6 +148,7 @@ where
     }
 }
 
+/// A verifier index.
 pub struct VerifierIndexWrapper<Circuit>
 where
     Circuit: SnarkyCircuit,
@@ -166,6 +160,7 @@ impl<Circuit> VerifierIndexWrapper<Circuit>
 where
     Circuit: SnarkyCircuit,
 {
+    /// Verify a proof for a given public input and public output.
     pub fn verify<EFqSponge, EFrSponge>(
         &self,
         proof: ProverProof<Circuit::Curve>,
@@ -193,6 +188,32 @@ where
     }
 }
 
+//
+// Compilation
+//
+
+/// A compiled circuit.
+// TODO: implement digest function
+pub struct CompiledCircuit<Circuit>
+where
+    Circuit: SnarkyCircuit,
+{
+    /// The snarky circuit itself.
+    circuit: Circuit,
+
+    //// The state after compilation
+    sys: RunState<ScalarField<Circuit::Curve>>,
+
+    /// The public input size.
+    // TODO: can't we get this from `circuit.public_input_size()`? (easy to implement). Or better, this could be a `Circuit` type that contains the gates as well (or the kimchi ConstraintSystem type)
+    public_input_size: usize,
+
+    /// The gates obtained after compilation.
+    pub gates: Vec<CircuitGate<ScalarField<Circuit::Curve>>>,
+    phantom: PhantomData<Circuit>,
+}
+
+/// Compiles a circuit to a [CompiledCircuit].
 fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCircuit<Circuit>> {
     // calculate public input size
     let public_input_size = Circuit::PublicInput::SIZE_IN_FIELD_ELEMENTS
@@ -227,20 +248,45 @@ fn compile<Circuit: SnarkyCircuit>(circuit: Circuit) -> SnarkyResult<CompiledCir
     Ok(compiled_circuit)
 }
 
+//
+// The main user-facing trait for constructing circuits.
+//
+
+/// The main trait. Implement this on your circuit to get access to more functions (specifically [Self::compile_to_indexes]).
 pub trait SnarkyCircuit: Sized {
+    /// A circuit must be defined for a specific field,
+    /// as it might be incorrect to use a different field.
+    /// Currently we specify the field by the curve,
+    /// which is more strict and needed due to implementation details in kimchi.
     type Curve: KimchiCurve;
 
+    /// The private input used by the circuit.
     type PrivateInput;
+
+    /// The public input used by the circuit.
     type PublicInput: SnarkyType<ScalarField<Self::Curve>>;
+
+    /// The public output returned by the circuit.
     type PublicOutput: SnarkyType<ScalarField<Self::Curve>>;
 
+    /// The circuit. It takes:
+    ///
+    /// - `self`: to parameterize it at compile time.
+    /// - `sys`: to construct the circuit or generate the witness (dpeending on mode)
+    /// - `public_input`: the public input (as defined above)
+    /// - `private_input`: the private input as an option, set to `None` for compilation.
+    ///
+    /// It returns a [SnarkyResult] containing the public output.
     fn circuit(
         &self,
+        // TODO: change to an enum that is either the state for compilation or the state for proving ([WitnessGeneration])
+        // TODO: change the name to `runner` everywhere?
         sys: &mut RunState<ScalarField<Self::Curve>>,
         public_input: Self::PublicInput,
         private_input: Option<&Self::PrivateInput>,
     ) -> SnarkyResult<Self::PublicOutput>;
 
+    /// Compiles the circuit to a prover index ([ProverIndexWrapper]) and a verifier index ([VerifierIndexWrapper]).
     fn compile_to_indexes(
         self,
     ) -> SnarkyResult<(ProverIndexWrapper<Self>, VerifierIndexWrapper<Self>)>

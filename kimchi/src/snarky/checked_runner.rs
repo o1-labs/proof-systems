@@ -373,6 +373,7 @@ where
         &mut self,
         constraint: Constraint<F>,
         label: Option<Cow<'static, str>>,
+        // TODO: we don't need to pass that through all the calls down the stack, we can just save it at this point (and the latest loc in the state is the one that threw)
         loc: Cow<'static, str>,
     ) -> SnarkyResult<()> {
         self.with_label(label, |env| {
