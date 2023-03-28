@@ -38,7 +38,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
+) -> (Expr<ConstantExpr<F>, Column>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
