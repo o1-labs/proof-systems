@@ -480,24 +480,26 @@ pub struct RowOffset {
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Expr<C> {
+pub enum Expr<C, Column> {
     Constant(C),
     Cell(Variable<Column>),
-    Double(Box<Expr<C>>),
-    Square(Box<Expr<C>>),
-    BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
+    Double(Box<Expr<C, Column>>),
+    Square(Box<Expr<C, Column>>),
+    BinOp(Op2, Box<Expr<C, Column>>, Box<Expr<C, Column>>),
     VanishesOnZeroKnowledgeAndPreviousRows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(RowOffset),
-    Pow(Box<Expr<C>>, u64),
-    Cache(CacheId, Box<Expr<C>>),
+    Pow(Box<Expr<C, Column>>, u64),
+    Cache(CacheId, Box<Expr<C, Column>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
-    IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
+    IfFeature(FeatureFlag, Box<Expr<C, Column>>, Box<Expr<C, Column>>),
 }
 
-impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
-    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
+impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + PartialEq>
+    Expr<C, Column>
+{
+    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C, Column>, bool) {
         use Expr::*;
         match self {
             Constant(_)
@@ -631,7 +633,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
             }
         }
     }
-    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C> {
+    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C, Column> {
         let (res, _) = self.apply_feature_flags_inner(features);
         res
     }
@@ -831,12 +833,14 @@ impl<F: FftField> PolishToken<F> {
     }
 }
 
-impl<C> Expr<C> {
+impl<C> Expr<C, Column> {
     /// Convenience function for constructing cell variables.
-    pub fn cell(col: Column, row: CurrOrNext) -> Expr<C> {
+    pub fn cell(col: Column, row: CurrOrNext) -> Expr<C, Column> {
         Expr::Cell(Variable { col, row })
     }
+}
 
+impl<C, Column> Expr<C, Column> {
     pub fn double(self) -> Self {
         Expr::Double(Box::new(self))
     }
@@ -846,7 +850,7 @@ impl<C> Expr<C> {
     }
 
     /// Convenience function for constructing constant expressions.
-    pub fn constant(c: C) -> Expr<C> {
+    pub fn constant(c: C) -> Expr<C, Column> {
         Expr::Constant(c)
     }
 
@@ -872,7 +876,7 @@ impl<C> Expr<C> {
     }
 }
 
-impl<F> fmt::Display for Expr<ConstantExpr<F>>
+impl<F> fmt::Display for Expr<ConstantExpr<F>, Column>
 where
     F: PrimeField,
 {
@@ -1428,7 +1432,7 @@ fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     }
 }
 
-impl<F: Field> Expr<ConstantExpr<F>> {
+impl<F: Field> Expr<ConstantExpr<F>, Column> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
@@ -1438,7 +1442,7 @@ impl<F: Field> Expr<ConstantExpr<F>> {
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
     pub fn combine_constraints(alphas: impl Iterator<Item = u32>, cs: Vec<Self>) -> Self {
-        let zero = Expr::<ConstantExpr<F>>::zero();
+        let zero = Expr::<ConstantExpr<F>, Column>::zero();
         cs.into_iter()
             .zip_eq(alphas)
             .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i as u64)) * c)
@@ -1446,7 +1450,7 @@ impl<F: Field> Expr<ConstantExpr<F>> {
     }
 }
 
-impl<F: FftField> Expr<ConstantExpr<F>> {
+impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     /// Compile an expression to an RPN expression.
     pub fn to_polish(&self) -> Vec<PolishToken<F>> {
         let mut res = vec![];
@@ -1536,7 +1540,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         Expr::Constant(ConstantExpr::Beta)
     }
 
-    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F> {
+    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F, Column> {
         use Expr::*;
         // TODO: Use cache
         match self {
@@ -1623,7 +1627,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Evaluate the constant expressions in this expression down into field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F> {
+    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F, Column> {
         self.evaluate_constants_(&env.constants)
     }
 
@@ -1638,7 +1642,7 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField> Expr<F> {
+impl<F: FftField> Expr<F, Column> {
     /// Evaluate an expression into a field element.
     pub fn evaluate(
         &self,
@@ -1901,10 +1905,10 @@ impl<A> Linearization<A> {
     }
 }
 
-impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F>> {
+    pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F, Column>> {
         self.map(|e| e.evaluate_constants(env))
     }
 }
@@ -1939,7 +1943,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
     }
 }
 
-impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial(
@@ -1971,7 +1975,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     }
 }
 
-impl<F: One> Expr<F> {
+impl<F: One, Column> Expr<F, Column> {
     /// Exponentiate an expression
     #[must_use]
     pub fn pow(self, p: u64) -> Self {
@@ -1983,27 +1987,27 @@ impl<F: One> Expr<F> {
     }
 }
 
-type Monomials<F> = HashMap<Vec<Variable<Column>>, Expr<F>>;
+type Monomials<F> = HashMap<Vec<Variable<Column>>, Expr<F, Column>>;
 
 fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
     e1: &Monomials<F>,
     e2: &Monomials<F>,
 ) -> Monomials<F> {
-    let mut res: HashMap<_, Expr<F>> = HashMap::new();
+    let mut res: HashMap<_, Expr<F, Column>> = HashMap::new();
     for (m1, c1) in e1.iter() {
         for (m2, c2) in e2.iter() {
             let mut m = m1.clone();
             m.extend(m2);
             m.sort();
             let c1c2 = c1.clone() * c2.clone();
-            let v = res.entry(m).or_insert_with(Expr::<F>::zero);
+            let v = res.entry(m).or_insert_with(Expr::<F, Column>::zero);
             *v = v.clone() + c1c2;
         }
     }
     res
 }
 
-impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
+impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F, Column> {
     // TODO: This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It's ok for now as we only call that function once on
@@ -2024,13 +2028,13 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         }
     }
 
-    fn monomials(&self, ev: &HashSet<Column>) -> HashMap<Vec<Variable<Column>>, Expr<F>> {
-        let sing = |v: Vec<Variable<Column>>, c: Expr<F>| {
+    fn monomials(&self, ev: &HashSet<Column>) -> HashMap<Vec<Variable<Column>>, Expr<F, Column>> {
+        let sing = |v: Vec<Variable<Column>>, c: Expr<F, Column>| {
             let mut h = HashMap::new();
             h.insert(v, c);
             h
         };
-        let constant = |e: Expr<F>| sing(vec![], e);
+        let constant = |e: Expr<F, Column>| sing(vec![], e);
         use Expr::*;
 
         if self.is_constant(ev) {
@@ -2040,7 +2044,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         match self {
             Pow(x, d) => {
                 // Run the multiplication logic with square and multiply
-                let mut acc = sing(vec![], Expr::<F>::one());
+                let mut acc = sing(vec![], Expr::<F, Column>::one());
                 let mut acc_is_one = true;
                 let x = x.monomials(ev);
 
@@ -2149,9 +2153,9 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     pub fn linearize(
         &self,
         evaluated: HashSet<Column>,
-    ) -> Result<Linearization<Expr<F>>, ExprError<Column>> {
-        let mut res: HashMap<Column, Expr<F>> = HashMap::new();
-        let mut constant_term: Expr<F> = Self::zero();
+    ) -> Result<Linearization<Expr<F, Column>>, ExprError<Column>> {
+        let mut res: HashMap<Column, Expr<F, Column>> = HashMap::new();
+        let mut constant_term: Expr<F, Column> = Self::zero();
         let monomials = self.monomials(&evaluated);
 
         for (m, c) in monomials {
@@ -2283,7 +2287,7 @@ impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     }
 }
 
-impl<F: Zero> Zero for Expr<F> {
+impl<F: Zero, Column> Zero for Expr<F, Column> {
     fn zero() -> Self {
         Expr::Constant(F::zero())
     }
@@ -2296,7 +2300,7 @@ impl<F: Zero> Zero for Expr<F> {
     }
 }
 
-impl<F: Zero + One + PartialEq> One for Expr<F> {
+impl<F: Zero + One + PartialEq, Column: PartialEq> One for Expr<F, Column> {
     fn one() -> Self {
         Expr::Constant(F::one())
     }
@@ -2309,10 +2313,10 @@ impl<F: Zero + One + PartialEq> One for Expr<F> {
     }
 }
 
-impl<F: One + Neg<Output = F>> Neg for Expr<F> {
-    type Output = Expr<F>;
+impl<F: One + Neg<Output = F>, Column> Neg for Expr<F, Column> {
+    type Output = Expr<F, Column>;
 
-    fn neg(self) -> Expr<F> {
+    fn neg(self) -> Expr<F, Column> {
         match self {
             Expr::Constant(x) => Expr::Constant(x.neg()),
             e => Expr::BinOp(
@@ -2324,8 +2328,8 @@ impl<F: One + Neg<Output = F>> Neg for Expr<F> {
     }
 }
 
-impl<F: Zero> Add<Expr<F>> for Expr<F> {
-    type Output = Expr<F>;
+impl<F: Zero, Column> Add<Expr<F, Column>> for Expr<F, Column> {
+    type Output = Expr<F, Column>;
     fn add(self, other: Self) -> Self {
         if self.is_zero() {
             return other;
@@ -2337,7 +2341,7 @@ impl<F: Zero> Add<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
+impl<F: Zero + Clone, Column: Clone> AddAssign<Expr<F, Column>> for Expr<F, Column> {
     fn add_assign(&mut self, other: Self) {
         if self.is_zero() {
             *self = other;
@@ -2347,8 +2351,8 @@ impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
-    type Output = Expr<F>;
+impl<F: Zero + One + PartialEq, Column: PartialEq> Mul<Expr<F, Column>> for Expr<F, Column> {
+    type Output = Expr<F, Column>;
     fn mul(self, other: Self) -> Self {
         if self.is_zero() || other.is_zero() {
             return Self::zero();
@@ -2364,9 +2368,10 @@ impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F> MulAssign<Expr<F>> for Expr<F>
+impl<F, Column> MulAssign<Expr<F, Column>> for Expr<F, Column>
 where
     F: Zero + One + PartialEq + Clone,
+    Column: PartialEq + Clone,
 {
     fn mul_assign(&mut self, other: Self) {
         if self.is_zero() || other.is_zero() {
@@ -2379,8 +2384,8 @@ where
     }
 }
 
-impl<F: Zero> Sub<Expr<F>> for Expr<F> {
-    type Output = Expr<F>;
+impl<F: Zero, Column> Sub<Expr<F, Column>> for Expr<F, Column> {
+    type Output = Expr<F, Column>;
     fn sub(self, other: Self) -> Self {
         if other.is_zero() {
             return self;
@@ -2389,13 +2394,13 @@ impl<F: Zero> Sub<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F: Field> From<u64> for Expr<F> {
+impl<F: Field, Column> From<u64> for Expr<F, Column> {
     fn from(x: u64) -> Self {
         Expr::Constant(F::from(x))
     }
 }
 
-impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
+impl<F: Field, Column> From<u64> for Expr<ConstantExpr<F>, Column> {
     fn from(x: u64) -> Self {
         Expr::Constant(ConstantExpr::Literal(F::from(x)))
     }
@@ -2407,8 +2412,8 @@ impl<F: Field> From<u64> for ConstantExpr<F> {
     }
 }
 
-impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
-    type Output = Expr<ConstantExpr<F>>;
+impl<F: Field, Column: PartialEq> Mul<F> for Expr<ConstantExpr<F>, Column> {
+    type Output = Expr<ConstantExpr<F>, Column>;
 
     fn mul(self, y: F) -> Self::Output {
         Expr::Constant(ConstantExpr::Literal(y)) * self
@@ -2484,7 +2489,7 @@ where
     }
 }
 
-impl<F> Expr<ConstantExpr<F>>
+impl<F> Expr<ConstantExpr<F>, Column>
 where
     F: PrimeField,
 {
@@ -2511,7 +2516,7 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
@@ -2564,7 +2569,7 @@ where
         res
     }
 
-    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
@@ -2600,7 +2605,7 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.text(cache)),
@@ -2733,24 +2738,25 @@ pub mod constraints {
         fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F> ExprOps<F> for Expr<ConstantExpr<F>>
+    impl<F> ExprOps<F> for Expr<ConstantExpr<F>, Column>
     where
         F: PrimeField,
+        Expr<ConstantExpr<F>, Column>: std::fmt::Display,
     {
         fn two_pow(pow: u64) -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as Two<F>>::two_pow(pow))
+            Expr::<ConstantExpr<F>, Column>::literal(<F as Two<F>>::two_pow(pow))
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
+            Expr::<ConstantExpr<F>, Column>::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
+            Expr::<ConstantExpr<F>, Column>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_3limb())
+            Expr::<ConstantExpr<F>, Column>::literal(<F as ForeignFieldHelpers<F>>::two_to_3limb())
         }
 
         fn double(&self) -> Self {
@@ -2886,7 +2892,7 @@ pub mod constraints {
 //
 
 /// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F>>;
+pub type E<F> = Expr<ConstantExpr<F>, Column>;
 
 /// Convenience function to create a constant as [Expr].
 pub fn constant<F>(x: F) -> E<F> {
