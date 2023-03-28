@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/turshi.rs`."><title>turshi.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-d8cc97c322676e1b.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (1459b3128 2023-03-23)" data-search-js="search-a6dd7f063a44c279.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../../../static.files/storage-9184409068f70b79.js"></script><script defer src="../../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-f5a2577c5297a973.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/turshi.rs`."><title>turshi.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-fbd14db5c88ed452.css" id="mainThemeStyle"><div id="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.70.0-nightly (2036fdd24 2023-03-27)" data-search-js="search-bc5a112813b5d712.js" data-settings-js="settings-f0c5c39777a9a2f6.js" data-settings-css="settings-0bcba95ff279c1db.css" data-theme-light-css="light-db279b6232be9c13.css" data-theme-dark-css="dark-cf923f49f397b216.css" data-theme-ayu-css="ayu-be46fdc453a55015.css" ></div><script src="../../../../static.files/storage-d4a1a279bad1a0c0.js"></script><script defer src="../../../../static.files/source-script-1b95b7cca98b26e5.js"></script><script defer src="../../../../source-files.js"></script><script defer src="../../../../static.files/main-9ade54abd4bd73c8.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../static.files/light-db279b6232be9c13.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../static.files/dark-cf923f49f397b216.css"><link rel="stylesheet" href="../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../kimchi/index.html"><img class="rust-logo" src="../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1027,6 +1027,10 @@
 <a href="#1027" id="1027">1027</a>
 <a href="#1028" id="1028">1028</a>
 <a href="#1029" id="1029">1029</a>
+<a href="#1030" id="1030">1030</a>
+<a href="#1031" id="1031">1031</a>
+<a href="#1032" id="1032">1032</a>
+<a href="#1033" id="1033">1033</a>
 </pre><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1237,7 +1241,8 @@
         alphas.register(ArgumentType::Gate(<span class="self">self</span>.typ), Instruction::&lt;F&gt;::CONSTRAINTS);
 
         <span class="comment">// Get constraints for this circuit gate
-        </span><span class="kw">let </span>constraints = circuit_gate_combined_constraints(<span class="self">self</span>.typ, <span class="kw-2">&amp;</span>alphas);
+        </span><span class="kw">let </span>constraints =
+            circuit_gate_combined_constraints(<span class="self">self</span>.typ, <span class="kw-2">&amp;</span>alphas, <span class="kw-2">&amp;mut </span>Cache::default());
 
         <span class="comment">// Linearize
         </span><span class="kw">let </span>linearized = constraints.linearize(polys).unwrap();
@@ -1766,12 +1771,16 @@
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-</span><span class="kw">pub fn </span>circuit_gate_combined_constraints&lt;F: PrimeField&gt;(typ: GateType, alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;) -&gt; E&lt;F&gt; {
+</span><span class="kw">pub fn </span>circuit_gate_combined_constraints&lt;F: PrimeField&gt;(
+    typ: GateType,
+    alphas: <span class="kw-2">&amp;</span>Alphas&lt;F&gt;,
+    cache: <span class="kw-2">&amp;mut </span>Cache,
+) -&gt; E&lt;F&gt; {
     <span class="kw">match </span>typ {
-        GateType::CairoClaim =&gt; Claim::combined_constraints(alphas),
-        GateType::CairoInstruction =&gt; Instruction::combined_constraints(alphas),
-        GateType::CairoFlags =&gt; Flags::combined_constraints(alphas),
-        GateType::CairoTransition =&gt; Transition::combined_constraints(alphas),
+        GateType::CairoClaim =&gt; Claim::combined_constraints(alphas, cache),
+        GateType::CairoInstruction =&gt; Instruction::combined_constraints(alphas, cache),
+        GateType::CairoFlags =&gt; Flags::combined_constraints(alphas, cache),
+        GateType::CairoTransition =&gt; Transition::combined_constraints(alphas, cache),
         GateType::Zero =&gt; E::literal(F::zero()),
         <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid gate type&quot;</span>),
     }
@@ -1788,7 +1797,7 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
         <span class="kw">let </span>pc_ini = env.witness_curr(<span class="number">0</span>); <span class="comment">// copy from public input
         </span><span class="kw">let </span>ap_ini = env.witness_curr(<span class="number">1</span>); <span class="comment">// copy from public input
         </span><span class="kw">let </span>pc_fin = env.witness_curr(<span class="number">2</span>); <span class="comment">// copy from public input
@@ -1825,7 +1834,7 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
         <span class="comment">// load all variables of the witness corresponding to Cairoinstruction gates
         </span><span class="kw">let </span>pc = env.witness_curr(<span class="number">0</span>);
         <span class="kw">let </span>ap = env.witness_curr(<span class="number">1</span>);
@@ -1865,7 +1874,6 @@
         <span class="comment">// LIST OF CONSTRAINTS
         // -------------------
         </span><span class="kw">let </span><span class="kw-2">mut </span>constraints: Vec&lt;T&gt; = <span class="macro">vec!</span>[];
-        <span class="kw">let </span><span class="kw-2">mut </span>cache = Cache::default();
 
         <span class="comment">// INSTRUCTIONS RELATED
 
@@ -1972,7 +1980,7 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
         <span class="comment">// Load current row
         </span><span class="kw">let </span>f_pc_abs = env.witness_curr(<span class="number">7</span>);
         <span class="kw">let </span>f_pc_rel = env.witness_curr(<span class="number">8</span>);
@@ -2039,7 +2047,7 @@
 
     <span class="doccomment">/// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;) -&gt; Vec&lt;T&gt; {
+    </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
         <span class="comment">// load computed updated registers
         </span><span class="kw">let </span>pcup = env.witness_curr(<span class="number">7</span>);
         <span class="kw">let </span>apup = env.witness_curr(<span class="number">8</span>);
