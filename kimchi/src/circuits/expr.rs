@@ -290,7 +290,7 @@ pub enum ConstantExpr<F> {
 }
 
 impl<F: Copy> ConstantExpr<F> {
-    fn to_polish_(&self, res: &mut Vec<PolishToken<F>>) {
+    fn to_polish_<Column>(&self, res: &mut Vec<PolishToken<F, Column>>) {
         match self {
             ConstantExpr::Alpha => res.push(PolishToken::Alpha),
             ConstantExpr::Beta => res.push(PolishToken::Beta),
@@ -425,7 +425,7 @@ pub enum Op2 {
 }
 
 impl Op2 {
-    fn to_polish<A>(&self) -> PolishToken<A> {
+    fn to_polish<A, Column>(&self) -> PolishToken<A, Column> {
         use Op2::*;
         match self {
             Add => PolishToken::Add,
@@ -643,7 +643,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone, Column: Clone + Partia
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PolishToken<F> {
+pub enum PolishToken<F, Column> {
     Alpha,
     Beta,
     Gamma,
@@ -743,10 +743,10 @@ impl Variable<Column> {
     }
 }
 
-impl<F: FftField> PolishToken<F> {
+impl<F: FftField> PolishToken<F, Column> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate(
-        toks: &[PolishToken<F>],
+        toks: &[PolishToken<F, Column>],
         d: D<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
@@ -1450,16 +1450,20 @@ impl<F: Field> Expr<ConstantExpr<F>, Column> {
     }
 }
 
-impl<F: FftField> Expr<ConstantExpr<F>, Column> {
+impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
     /// Compile an expression to an RPN expression.
-    pub fn to_polish(&self) -> Vec<PolishToken<F>> {
+    pub fn to_polish(&self) -> Vec<PolishToken<F, Column>> {
         let mut res = vec![];
         let mut cache = HashMap::new();
         self.to_polish_(&mut cache, &mut res);
         res
     }
 
-    fn to_polish_(&self, cache: &mut HashMap<CacheId, usize>, res: &mut Vec<PolishToken<F>>) {
+    fn to_polish_(
+        &self,
+        cache: &mut HashMap<CacheId, usize>,
+        res: &mut Vec<PolishToken<F, Column>>,
+    ) {
         match self {
             Expr::Double(x) => {
                 x.to_polish_(cache, res);
@@ -1539,7 +1543,9 @@ impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     pub fn beta() -> Self {
         Expr::Constant(ConstantExpr::Beta)
     }
+}
 
+impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F, Column> {
         use Expr::*;
         // TODO: Use cache
@@ -1913,7 +1919,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
     }
 }
 
-impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
+impl<F: FftField> Linearization<Vec<PolishToken<F, Column>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial(

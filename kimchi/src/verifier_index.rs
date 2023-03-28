@@ -4,7 +4,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        expr::{Linearization, PolishToken},
+        expr::{Column, Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},
@@ -144,7 +144,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField, Column>>>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,

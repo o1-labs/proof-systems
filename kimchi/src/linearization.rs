@@ -339,7 +339,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
+) -> (Linearization<Vec<PolishToken<F, Column>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
     let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
