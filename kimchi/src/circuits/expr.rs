@@ -49,7 +49,7 @@ pub enum ExprError<Column> {
     MissingIndexEvaluation(Column),
 
     #[error("Linearization failed (too many unevaluated columns: {0:?}")]
-    FailedLinearization(Vec<Variable>),
+    FailedLinearization(Vec<Variable<Column>>),
 
     #[error("runtime table not available")]
     MissingRuntime,
@@ -232,14 +232,14 @@ impl Column {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
-pub struct Variable {
+pub struct Variable<Column> {
     /// The column of this variable
     pub col: Column,
     /// The row (Curr of Next) of this variable
     pub row: CurrOrNext,
 }
 
-impl Variable {
+impl Variable<Column> {
     fn ocaml(&self) -> String {
         format!("var({:?}, {:?})", self.col, self.row)
     }
@@ -473,7 +473,7 @@ impl FeatureFlag {
 #[derive(Clone, Debug, PartialEq)]
 pub enum Expr<C> {
     Constant(C),
-    Cell(Variable),
+    Cell(Variable<Column>),
     Double(Box<Expr<C>>),
     Square(Box<Expr<C>>),
     BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
@@ -642,7 +642,7 @@ pub enum PolishToken<F> {
         col: usize,
     },
     Literal(F),
-    Cell(Variable),
+    Cell(Variable<Column>),
     Dup,
     Pow(u64),
     Add,
@@ -658,7 +658,7 @@ pub enum PolishToken<F> {
     SkipIfNot(FeatureFlag, usize),
 }
 
-impl Variable {
+impl Variable<Column> {
     fn evaluate<F: Field>(
         &self,
         evals: &ProofEvaluations<PointEvaluations<F>>,
@@ -1899,7 +1899,7 @@ impl<F: One> Expr<F> {
     }
 }
 
-type Monomials<F> = HashMap<Vec<Variable>, Expr<F>>;
+type Monomials<F> = HashMap<Vec<Variable<Column>>, Expr<F>>;
 
 fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
     e1: &Monomials<F>,
@@ -1940,8 +1940,8 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         }
     }
 
-    fn monomials(&self, ev: &HashSet<Column>) -> HashMap<Vec<Variable>, Expr<F>> {
-        let sing = |v: Vec<Variable>, c: Expr<F>| {
+    fn monomials(&self, ev: &HashSet<Column>) -> HashMap<Vec<Variable<Column>>, Expr<F>> {
+        let sing = |v: Vec<Variable<Column>>, c: Expr<F>| {
             let mut h = HashMap::new();
             h.insert(v, c);
             h
