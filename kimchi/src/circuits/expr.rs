@@ -25,14 +25,17 @@ use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
-use std::{fmt, iter::FromIterator};
+use std::{
+    fmt::{self, Debug},
+    iter::FromIterator,
+};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
 use self::constraints::ExprOps;
 
 #[derive(Debug, Error)]
-pub enum ExprError {
+pub enum ExprError<Column> {
     #[error("Empty stack")]
     EmptyStack,
 
@@ -659,7 +662,7 @@ impl Variable {
     fn evaluate<F: Field>(
         &self,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<Column>> {
         let point_evaluations = {
             use Column::*;
             let l = evals
@@ -697,7 +700,7 @@ impl<F: FftField> PolishToken<F> {
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
 
@@ -1505,7 +1508,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
         env: &Environment<F>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<Column>> {
         self.evaluate_(d, pt, evals, &env.constants)
     }
 
@@ -1516,7 +1519,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<Column>> {
         use Expr::*;
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
@@ -1575,7 +1578,7 @@ impl<F: FftField> Expr<F> {
         d: D<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<Column>> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -2060,7 +2063,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     pub fn linearize(
         &self,
         evaluated: HashSet<Column>,
-    ) -> Result<Linearization<Expr<F>>, ExprError> {
+    ) -> Result<Linearization<Expr<F>>, ExprError<Column>> {
         let mut res: HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term: Expr<F> = Self::zero();
         let monomials = self.monomials(&evaluated);
