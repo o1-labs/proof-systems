@@ -848,14 +848,12 @@ impl<F: FftField, Column: Copy> PolishToken<F, Column> {
     }
 }
 
-impl<C> Expr<C, Column> {
+impl<C, Column> Expr<C, Column> {
     /// Convenience function for constructing cell variables.
     pub fn cell(col: Column, row: CurrOrNext) -> Expr<C, Column> {
         Expr::Cell(Variable { col, row })
     }
-}
 
-impl<C, Column> Expr<C, Column> {
     pub fn double(self) -> Self {
         Expr::Double(Box::new(self))
     }
