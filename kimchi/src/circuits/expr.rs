@@ -119,7 +119,14 @@ pub struct Environment<'a, F: FftField> {
     pub lookup: Option<LookupEnvironment<'a, F>>,
 }
 
-impl<'a, F: FftField> Environment<'a, F> {
+trait ColumnEnvironment<'a, F: FftField> {
+    type Column;
+    fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>>;
+}
+
+impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
+    type Column = Column;
+
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
         use Column::*;
         let lookup = self.lookup.as_ref();
