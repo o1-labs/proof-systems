@@ -903,10 +903,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         let (constant, terms) = x.to_constant_and_terms();
         let terms = accumulate_terms(terms);
         let mut terms_list: Vec<_> = terms.into_iter().map(|(key, data)| (data, key)).collect();
-        /* WARNING: The order here may differ from the OCaml order, since that depends on the order
-        of the map. */
         terms_list.sort();
-        terms_list.reverse();
         match (constant, terms_list.len()) {
             (Some(c), 0) => (c, ConstantOrVar::Constant),
             (None, 0) => (Field::zero(), ConstantOrVar::Constant),
