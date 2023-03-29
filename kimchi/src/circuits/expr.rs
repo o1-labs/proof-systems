@@ -677,7 +677,7 @@ pub enum PolishToken<F, Column> {
     SkipIfNot(FeatureFlag, usize),
 }
 
-trait ColumnEvaluations<F> {
+pub trait ColumnEvaluations<F> {
     type Column;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>>;
 }
@@ -745,10 +745,10 @@ impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
     }
 }
 
-impl Variable<Column> {
-    fn evaluate<F: Field>(
+impl<Column: Copy> Variable<Column> {
+    fn evaluate<F: Field, Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &Evaluations,
     ) -> Result<F, ExprError<Column>> {
         let point_evaluations = evals.evaluate(self.col)?;
         match self.row {
@@ -758,13 +758,13 @@ impl Variable<Column> {
     }
 }
 
-impl<F: FftField> PolishToken<F, Column> {
+impl<F: FftField, Column: Copy> PolishToken<F, Column> {
     /// Evaluate an RPN expression to a field element.
-    pub fn evaluate(
+    pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         toks: &[PolishToken<F, Column>],
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &Evaluations,
         c: &Constants<F>,
     ) -> Result<F, ExprError<Column>> {
         let mut stack = vec![];
