@@ -1,9 +1,11 @@
+//! Functions associated to the Poseidon hash function.
+
 use crate::{
     circuits::polynomials::poseidon::{ROUNDS_PER_HASH, ROUNDS_PER_ROW, SPONGE_WIDTH},
     snarky::{
-        checked_runner::Constraint,
         constraint_system::KimchiConstraint,
         prelude::{FieldVar, RunState},
+        runner::Constraint,
     },
 };
 use ark_ff::PrimeField;

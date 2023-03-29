@@ -1,8 +1,8 @@
 use crate::snarky::{
     boolean::Boolean,
-    checked_runner::{RunState, WitnessGeneration},
+    runner::{RunState, WitnessGeneration},
     constraint_system::SnarkyCvar,
-    traits::SnarkyType,
+    snarky_type::SnarkyType,
 };
 use ark_ff::PrimeField;
 use std::{
@@ -11,20 +11,35 @@ use std::{
 };
 
 use super::{
-    checked_runner::Constraint,
+    runner::Constraint,
     constraint_system::BasicSnarkyConstraint,
     errors::{SnarkyCompilationError, SnarkyResult},
 };
 
 /// A circuit variable represents a field element in the circuit.
+/// Note that a [`FieldVar`] currently represents a small AST that can hide nested additions and multiplications of [`FieldVar`]s.
+/// The reason behind this decision is that converting additions and multiplications directly into constraints is not optimal.
+/// So we most often wait until some additions have been accumulated before reducing them down to constraints.
+///
+/// Note: this design decision also leads to optimization issues,
+/// when we end up cloning and then reducing the same mini-ASTs multiple times.
+/// To force reduction of a [`FieldVar`] (most often before cloning),
+/// the [Self::seal] function can be used.
 #[derive(Clone, Debug)]
 pub enum FieldVar<F>
 where
     F: PrimeField,
 {
+    /// A constant (a field element).
     Constant(F),
+
+    /// A variable, tracked by a counter.
     Var(usize),
+
+    /// Addition of two [`FieldVar`]s.
     Add(Box<FieldVar<F>>, Box<FieldVar<F>>),
+
+    /// Multiplication of a [`FieldVar`] by a constant.
     Scale(F, Box<FieldVar<F>>),
 }
 
@@ -39,18 +54,22 @@ where
     }
 }
 
+// TODO: create a real type for this
 pub type Term<F> = (F, usize);
 
+// TODO: create a real type for this
 pub type ScaledCVar<F> = (F, FieldVar<F>);
 
 impl<F> FieldVar<F>
 where
     F: PrimeField,
 {
+    /// Converts a field element `c` into a [`FieldVar`].
     pub fn constant(c: F) -> Self {
         FieldVar::Constant(c)
     }
 
+    /// Returns the zero constant.
     pub fn zero() -> Self {
         Self::constant(F::zero())
     }
@@ -265,7 +284,7 @@ where
 }
 
 //
-// Our Traits
+// Traits
 //
 
 impl<F> SnarkyType<F> for FieldVar<F>

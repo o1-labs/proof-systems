@@ -5,7 +5,7 @@ use crate::{
         boolean::Boolean,
         errors::{SnarkyError, SnarkyRuntimeError},
     },
-    snarky::{checked_runner::RunState, cvar::FieldVar},
+    snarky::{cvar::FieldVar, runner::RunState},
 };
 use ark_ff::One;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};

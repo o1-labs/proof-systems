@@ -1,3 +1,7 @@
+//! The main interface to using Snarky.
+//!
+//! To use Snarky, simply implements the [SnarkyCircuit] trait.
+
 use std::marker::PhantomData;
 
 use crate::{
@@ -16,7 +20,7 @@ use ark_ec::AffineCurve;
 use ark_ff::PrimeField;
 use poly_commitment::commitment::CommitmentCurve;
 
-use super::{checked_runner::RunState, errors::SnarkyResult, traits::SnarkyType};
+use super::{runner::RunState, errors::SnarkyResult, snarky_type::SnarkyType};
 
 /// A witness represents the execution trace of a circuit.
 #[derive(Debug)]
@@ -57,6 +61,7 @@ where
         &mut self,
         public_input: <Circuit::PublicInput as SnarkyType<ScalarField<Circuit::Curve>>>::OutOfCircuit,
         private_input: Circuit::PrivateInput,
+        // TODO: rename to verify_witness?
         debug: bool,
     ) -> SnarkyResult<(
         ProverProof<Circuit::Curve>,
@@ -258,6 +263,7 @@ pub trait SnarkyCircuit: Sized {
     /// as it might be incorrect to use a different field.
     /// Currently we specify the field by the curve,
     /// which is more strict and needed due to implementation details in kimchi.
+    // TODO: if we remove `sponge_params` from KimchiCurve and move it to the Field then we could specify a field here instead.
     type Curve: KimchiCurve;
 
     /// The private input used by the circuit.

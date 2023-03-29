@@ -1,12 +1,14 @@
+//! The [Boolean] type is a snarky type that represents a boolean variable.
+
 use std::borrow::Cow;
 
 use crate::snarky::{
-    checked_runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::FieldVar,
-    traits::SnarkyType,
+    runner::RunState, constraint_system::BasicSnarkyConstraint, cvar::FieldVar,
+    snarky_type::SnarkyType,
 };
 use ark_ff::PrimeField;
 
-use super::{checked_runner::Constraint, errors::SnarkyResult};
+use super::{runner::Constraint, errors::SnarkyResult};
 
 trait OutOfCircuitSnarkyType2<F> {
     type InCircuit;

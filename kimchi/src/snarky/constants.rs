@@ -1,5 +1,7 @@
 //! Constants used for poseidon.
 
+// TODO: move to `poseidon.rs`?
+
 use ark_ec::AffineCurve;
 use ark_ff::Field;
 use mina_poseidon::poseidon::ArithmeticSpongeParams;

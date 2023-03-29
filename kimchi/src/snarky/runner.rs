@@ -18,7 +18,7 @@ use crate::{
         constraint_system::{BasicSnarkyConstraint, KimchiConstraint, SnarkyConstraintSystem},
         cvar::FieldVar,
         errors::SnarkyRuntimeError,
-        traits::SnarkyType,
+        snarky_type::SnarkyType,
     },
 };
 use ark_ff::PrimeField;
@@ -321,6 +321,7 @@ where
             // create enough variables to store the given type
             let mut cvars = vec![];
             for _ in 0..T::SIZE_IN_FIELD_ELEMENTS {
+                // TODO: rename to alloc_cvar
                 let v = self.alloc_var();
                 cvars.push(v);
             }

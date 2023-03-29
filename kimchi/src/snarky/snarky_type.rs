@@ -1,9 +1,15 @@
-//! Traits.
+//! The [SnarkyType] trait is a useful trait that allows us to define our own snarky variables on top of [FieldVar].
+//! Without it, we'd be limited to using the [FieldVar] type directly, handling and returning arrays of [FieldVar]s all the time.
+//! So this is useful for the same reason that programming languages allow users to define their own types,
+//! instead of relying only on `usize`.
+//!
+//! To define your own snarky type, implement the [SnarkyType] trait.
+//! A good example is the [Boolean] type.
 
 use super::{
-    checked_runner::{RunState, WitnessGeneration},
     cvar::FieldVar,
     errors::SnarkyResult,
+    runner::{RunState, WitnessGeneration},
 };
 
 use ark_ff::PrimeField;

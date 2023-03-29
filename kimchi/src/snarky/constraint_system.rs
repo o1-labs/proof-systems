@@ -1,5 +1,10 @@
 #![allow(clippy::all)]
 
+//! The backend used by Snarky, gluing snarky to kimchi.
+//! This module holds the actual logic that constructs the circuit using kimchi's gates,
+//! as well as the logic that constructs the permutation,
+//! and the symbolic execution trace table (both for compilation and at runtime).
+
 use crate::{
     circuits::{
         gate::{CircuitGate, GateType},
@@ -9,7 +14,7 @@ use crate::{
         },
         wires::{Wire, COLUMNS, PERMUTS},
     },
-    snarky::{checked_runner::WitnessGeneration, constants::Constants, cvar::FieldVar},
+    snarky::{constants::Constants, cvar::FieldVar, runner::WitnessGeneration},
 };
 use ark_ff::PrimeField;
 use itertools::Itertools;
@@ -541,6 +546,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         coeffs: Vec<Field>,
     ) {
         // TODO: for now we can print the debug info at runtime, but in the future we should allow serialization of these things as well
+        // TODO: this ignores the public gates!!
         if std::env::var("SNARKY_LOG_CONSTRAINTS").is_ok() {
             println!("{}: {loc} - {}", self.next_row, labels.join(", "));
         }
