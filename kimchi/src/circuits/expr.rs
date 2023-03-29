@@ -667,33 +667,40 @@ pub enum PolishToken<F, Column> {
     SkipIfNot(FeatureFlag, usize),
 }
 
+trait ColumnEvaluations<F> {
+    type Column;
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>>;
+}
+
+impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
+    type Column = Column;
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
+        use Column::*;
+        let l = self.lookup.as_ref().ok_or(ExprError::LookupShouldNotBeUsed);
+        match col {
+            Witness(i) => Ok(self.w[i]),
+            Z => Ok(self.z),
+            LookupSorted(i) => l.map(|l| l.sorted[i]),
+            LookupAggreg => l.map(|l| l.aggreg),
+            LookupTable => l.map(|l| l.table),
+            LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
+            Index(GateType::Poseidon) => Ok(self.poseidon_selector),
+            Index(GateType::Generic) => Ok(self.generic_selector),
+            Permutation(i) => Ok(self.s[i]),
+            Coefficient(i) => Ok(self.coefficients[i]),
+            LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
+                Err(ExprError::MissingIndexEvaluation(col))
+            }
+        }
+    }
+}
+
 impl Variable<Column> {
     fn evaluate<F: Field>(
         &self,
         evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> Result<F, ExprError<Column>> {
-        let point_evaluations = {
-            use Column::*;
-            let l = evals
-                .lookup
-                .as_ref()
-                .ok_or(ExprError::LookupShouldNotBeUsed);
-            match self.col {
-                Witness(i) => Ok(evals.w[i]),
-                Z => Ok(evals.z),
-                LookupSorted(i) => l.map(|l| l.sorted[i]),
-                LookupAggreg => l.map(|l| l.aggreg),
-                LookupTable => l.map(|l| l.table),
-                LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
-                Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-                Index(GateType::Generic) => Ok(evals.generic_selector),
-                Permutation(i) => Ok(evals.s[i]),
-                Coefficient(i) => Ok(evals.coefficients[i]),
-                LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                    Err(ExprError::MissingIndexEvaluation(self.col))
-                }
-            }
-        }?;
+        let point_evaluations = evals.evaluate(self.col)?;
         match self.row {
             CurrOrNext::Curr => Ok(point_evaluations.zeta),
             CurrOrNext::Next => Ok(point_evaluations.zeta_omega),
