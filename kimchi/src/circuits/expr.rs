@@ -677,72 +677,80 @@ pub enum PolishToken<F, Column> {
     SkipIfNot(FeatureFlag, usize),
 }
 
+trait ColumnEvaluations<F> {
+    type Column;
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>>;
+}
+
+impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
+    type Column = Column;
+    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
+        use Column::*;
+        match col {
+            Witness(i) => Ok(self.w[i]),
+            Z => Ok(self.z),
+            LookupSorted(i) => self.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupAggreg => self
+                .lookup_aggregation
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupTable => self
+                .lookup_table
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupRuntimeTable => self
+                .runtime_lookup_table
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(GateType::Poseidon) => Ok(self.poseidon_selector),
+            Index(GateType::Generic) => Ok(self.generic_selector),
+            Index(GateType::CompleteAdd) => Ok(self.complete_add_selector),
+            Index(GateType::VarBaseMul) => Ok(self.mul_selector),
+            Index(GateType::EndoMul) => Ok(self.emul_selector),
+            Index(GateType::EndoMulScalar) => Ok(self.endomul_scalar_selector),
+            Index(GateType::RangeCheck0) => self
+                .range_check0_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(GateType::RangeCheck1) => self
+                .range_check1_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(GateType::ForeignFieldAdd) => self
+                .foreign_field_add_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(GateType::ForeignFieldMul) => self
+                .foreign_field_mul_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(GateType::Xor16) => self
+                .xor_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(GateType::Rot64) => self
+                .rot_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Permutation(i) => Ok(self.s[i]),
+            Coefficient(i) => Ok(self.coefficients[i]),
+            LookupKindIndex(LookupPattern::Xor) => self
+                .xor_lookup_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupKindIndex(LookupPattern::Lookup) => self
+                .lookup_gate_lookup_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupKindIndex(LookupPattern::RangeCheck) => self
+                .range_check_lookup_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupKindIndex(LookupPattern::ForeignFieldMul) => self
+                .foreign_field_mul_lookup_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupRuntimeSelector => self
+                .runtime_lookup_table_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(_) => Err(ExprError::MissingIndexEvaluation(col)),
+        }
+    }
+}
+
 impl Variable<Column> {
     fn evaluate<F: Field>(
         &self,
         evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> Result<F, ExprError<Column>> {
-        let point_evaluations = {
-            use Column::*;
-            match self.col {
-                Witness(i) => Ok(evals.w[i]),
-                Z => Ok(evals.z),
-                LookupSorted(i) => {
-                    evals.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(self.col))
-                }
-                LookupAggreg => evals
-                    .lookup_aggregation
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                LookupTable => evals
-                    .lookup_table
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                LookupRuntimeTable => evals
-                    .runtime_lookup_table
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-                Index(GateType::Generic) => Ok(evals.generic_selector),
-                Index(GateType::CompleteAdd) => Ok(evals.complete_add_selector),
-                Index(GateType::VarBaseMul) => Ok(evals.mul_selector),
-                Index(GateType::EndoMul) => Ok(evals.emul_selector),
-                Index(GateType::EndoMulScalar) => Ok(evals.endomul_scalar_selector),
-                Index(GateType::RangeCheck0) => evals
-                    .range_check0_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::RangeCheck1) => evals
-                    .range_check1_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::ForeignFieldAdd) => evals
-                    .foreign_field_add_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::ForeignFieldMul) => evals
-                    .foreign_field_mul_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::Xor16) => evals
-                    .xor_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::Rot64) => evals
-                    .rot_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Permutation(i) => Ok(evals.s[i]),
-                Coefficient(i) => Ok(evals.coefficients[i]),
-                Column::LookupKindIndex(LookupPattern::Xor) => evals
-                    .xor_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupKindIndex(LookupPattern::Lookup) => evals
-                    .lookup_gate_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupKindIndex(LookupPattern::RangeCheck) => evals
-                    .range_check_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => evals
-                    .foreign_field_mul_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupRuntimeSelector => evals
-                    .runtime_lookup_table_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(_) => Err(ExprError::MissingIndexEvaluation(self.col)),
-            }
-        }?;
+        let point_evaluations = evals.evaluate(self.col)?;
         match self.row {
             CurrOrNext::Curr => Ok(point_evaluations.zeta),
             CurrOrNext::Next => Ok(point_evaluations.zeta_omega),
