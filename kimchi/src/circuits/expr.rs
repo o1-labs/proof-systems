@@ -1847,14 +1847,14 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
     }
 }
 
-impl<F: FftField> Linearization<Vec<PolishToken<F, Column>>> {
+impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(
+    pub fn to_polynomial<ColEvaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ColEvaluations,
     ) -> (F, Evaluations<F, D<F>>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
