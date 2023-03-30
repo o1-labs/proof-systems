@@ -119,10 +119,11 @@ pub struct Environment<'a, F: FftField> {
     pub lookup: Option<LookupEnvironment<'a, F>>,
 }
 
-trait ColumnEnvironment<'a, F: FftField> {
+pub trait ColumnEnvironment<'a, F: FftField> {
     type Column;
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>>;
     fn get_domain(&self, d: Domain) -> D<F>;
+    fn get_constants(&self) -> &Constants<F>;
 }
 
 impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
@@ -156,6 +157,10 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
             Domain::D4 => self.domain.d4,
             Domain::D8 => self.domain.d8,
         }
+    }
+
+    fn get_constants(&self) -> &Constants<F> {
+        &self.constants
     }
 }
 
@@ -909,7 +914,7 @@ where
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-enum Domain {
+pub enum Domain {
     D1 = 1,
     D2 = 2,
     D4 = 4,
@@ -1936,17 +1941,22 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
 impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial<ColEvaluations: ColumnEvaluations<F, Column = Column>>(
+    pub fn to_polynomial<
+        'a,
+        ColEvaluations: ColumnEvaluations<F, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Column = Column>,
+    >(
         &self,
-        env: &Environment<F>,
+        env: &Environment,
         pt: F,
         evals: &ColEvaluations,
     ) -> (F, Evaluations<F, D<F>>) {
-        let cs = &env.constants;
-        let n = env.domain.d1.size();
+        let cs = env.get_constants();
+        let d1 = env.get_domain(Domain::D1);
+        let n = d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
+            let c = PolishToken::evaluate(c, d1, pt, evals, cs).unwrap();
             let e = env
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
@@ -1955,9 +1965,9 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
                 .enumerate()
                 .for_each(|(i, r)| *r += c * e.evals[scale * i]);
         });
-        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1);
+        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, d1);
         (
-            PolishToken::evaluate(&self.constant_term, env.domain.d1, pt, evals, cs).unwrap(),
+            PolishToken::evaluate(&self.constant_term, d1, pt, evals, cs).unwrap(),
             p,
         )
     }
