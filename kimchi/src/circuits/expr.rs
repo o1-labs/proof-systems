@@ -982,11 +982,11 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-fn unnormalized_lagrange_evals<F: FftField>(
+fn unnormalized_lagrange_evals<'a, F: FftField, Environment: ColumnEnvironment<'a, F>>(
     l0_1: F,
     i: i32,
     res_domain: Domain,
-    env: &Environment<F>,
+    env: &Environment,
 ) -> Evaluations<F, D<F>> {
     let k = match res_domain {
         Domain::D1 => 1,
@@ -996,7 +996,7 @@ fn unnormalized_lagrange_evals<F: FftField>(
     };
     let res_domain = env.get_domain(res_domain);
 
-    let d1 = env.domain.d1;
+    let d1 = env.get_domain(Domain::D1);
     let n = d1.size;
     // Renormalize negative values to wrap around at domain size
     let i = if i < 0 {
