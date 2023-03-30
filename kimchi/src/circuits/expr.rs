@@ -118,7 +118,7 @@ pub struct Environment<'a, F: FftField> {
 
 pub trait ColumnEnvironment<'a, F: FftField> {
     type Column;
-    fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>>;
+    fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>>;
     fn get_domain(&self, d: Domain) -> D<F>;
     fn get_constants(&self) -> &Constants<F>;
     fn vanishes_on_last_4_rows(&self) -> &'a Evaluations<F, D<F>>;
@@ -128,7 +128,7 @@ pub trait ColumnEnvironment<'a, F: FftField> {
 impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
     type Column = Column;
 
-    fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
+    fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
         use Column::*;
         let lookup = self.lookup.as_ref();
         match col {
@@ -215,7 +215,11 @@ pub enum Column {
     Permutation(usize),
 }
 
-impl Column {
+pub trait GenericColumn {
+    fn domain(&self) -> Domain;
+}
+
+impl GenericColumn for Column {
     fn domain(&self) -> Domain {
         match self {
             Column::Index(GateType::Generic) => Domain::D4,
@@ -223,7 +227,9 @@ impl Column {
             _ => Domain::D8,
         }
     }
+}
 
+impl Column {
     fn latex(&self) -> String {
         match self {
             Column::Witness(i) => format!("w_{{{i}}}"),
@@ -1515,7 +1521,7 @@ impl<F: FftField, Column: Copy> Expr<ConstantExpr<F>, Column> {
     }
 }
 
-impl<F: FftField> Expr<ConstantExpr<F>, Column> {
+impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>, Column> {
     fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F, Column> {
         use Expr::*;
         // TODO: Use cache
@@ -1606,7 +1612,10 @@ impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+        &self,
+        env: &Environment,
+    ) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
     }
 }
@@ -1616,7 +1625,7 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField> Expr<F, Column> {
+impl<F: FftField, Column: Copy + GenericColumn> Expr<F, Column> {
     /// Evaluate an expression into a field element.
     pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
@@ -1660,8 +1669,11 @@ impl<F: FftField> Expr<F, Column> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
-        let d1_size = env.domain.d1.size;
+    pub fn evaluations<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+        &self,
+        env: &Environment,
+    ) -> Evaluations<F, D<F>> {
+        let d1_size = env.get_domain(Domain::D1).size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
             Domain::D1
@@ -1838,12 +1850,12 @@ impl<F: FftField> Expr<F, Column> {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 /// A "linearization", which is linear combination with `E` coefficients of
 /// columns.
-pub struct Linearization<E> {
+pub struct Linearization<E, Column> {
     pub constant_term: E,
     pub index_terms: Vec<(Column, E)>,
 }
 
-impl<E: Default> Default for Linearization<E> {
+impl<E: Default, Column> Default for Linearization<E, Column> {
     fn default() -> Self {
         Linearization {
             constant_term: E::default(),
@@ -1852,9 +1864,9 @@ impl<E: Default> Default for Linearization<E> {
     }
 }
 
-impl<A> Linearization<A> {
+impl<A, Column: Copy> Linearization<A, Column> {
     /// Apply a function to all the coefficients in the linearization.
-    pub fn map<B, F: Fn(&A) -> B>(&self, f: F) -> Linearization<B> {
+    pub fn map<B, F: Fn(&A) -> B>(&self, f: F) -> Linearization<B, Column> {
         Linearization {
             constant_term: f(&self.constant_term),
             index_terms: self.index_terms.iter().map(|(c, x)| (*c, f(x))).collect(),
@@ -1862,15 +1874,20 @@ impl<A> Linearization<A> {
     }
 }
 
-impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
+impl<F: FftField, Column: PartialEq + Copy + GenericColumn>
+    Linearization<Expr<ConstantExpr<F>, Column>, Column>
+{
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F, Column>> {
+    pub fn evaluate_constants<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+        &self,
+        env: &Environment,
+    ) -> Linearization<Expr<F, Column>, Column> {
         self.map(|e| e.evaluate_constants(env))
     }
 }
 
-impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>>> {
+impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>>, Column> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial<
@@ -1905,7 +1922,7 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
     }
 }
 
-impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
+impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>, Column> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial<
@@ -2113,7 +2130,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F, Column> {
     pub fn linearize(
         &self,
         evaluated: HashSet<Column>,
-    ) -> Result<Linearization<Expr<F, Column>>, ExprError<Column>> {
+    ) -> Result<Linearization<Expr<F, Column>, Column>, ExprError<Column>> {
         let mut res: HashMap<Column, Expr<F, Column>> = HashMap::new();
         let mut constant_term: Expr<F, Column> = Self::zero();
         let monomials = self.monomials(&evaluated);
