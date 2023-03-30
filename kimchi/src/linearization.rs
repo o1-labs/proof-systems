@@ -23,8 +23,9 @@ use crate::circuits::polynomials::{
 };
 
 use crate::circuits::{
+    berkeley_columns::Column,
     constraints::FeatureFlags,
-    expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
+    expr::{ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
     wires::COLUMNS,
 };

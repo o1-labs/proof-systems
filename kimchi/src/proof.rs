@@ -1,7 +1,7 @@
 //! This module implements the data structures of a proof.
 
 use crate::circuits::{
-    expr::Column,
+    berkeley_columns::Column,
     gate::GateType,
     wires::{COLUMNS, PERMUTS},
 };

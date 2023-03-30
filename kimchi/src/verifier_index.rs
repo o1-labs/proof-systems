@@ -4,7 +4,8 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        expr::{Column, Linearization, PolishToken},
+        berkeley_columns::Column,
+        expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{zk_polynomial, zk_w3},
         wires::{COLUMNS, PERMUTS},
