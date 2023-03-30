@@ -1983,17 +1983,22 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial<ColEvaluations: ColumnEvaluations<F, Column = Column>>(
+    pub fn to_polynomial<
+        'a,
+        ColEvaluations: ColumnEvaluations<F, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Column = Column>,
+    >(
         &self,
-        env: &Environment<F>,
+        env: &Environment,
         pt: F,
         evals: &ColEvaluations,
     ) -> (F, DensePolynomial<F>) {
-        let cs = &env.constants;
-        let n = env.domain.d1.size();
+        let cs = env.get_constants();
+        let d1 = env.get_domain(Domain::D1);
+        let n = d1.size();
         let mut res = vec![F::zero(); n];
         self.index_terms.iter().for_each(|(idx, c)| {
-            let c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();
+            let c = c.evaluate_(d1, pt, evals, cs).unwrap();
             let e = env
                 .get_column(idx)
                 .unwrap_or_else(|| panic!("Index polynomial {idx:?} not found"));
@@ -2002,13 +2007,8 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
                 .enumerate()
                 .for_each(|(i, r)| *r += c * e.evals[scale * i])
         });
-        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, env.domain.d1).interpolate();
-        (
-            self.constant_term
-                .evaluate_(env.domain.d1, pt, evals, cs)
-                .unwrap(),
-            p,
-        )
+        let p = Evaluations::<F, D<F>>::from_vec_and_domain(res, d1).interpolate();
+        (self.constant_term.evaluate_(d1, pt, evals, cs).unwrap(), p)
     }
 }
 
