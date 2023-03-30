@@ -124,6 +124,8 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>>;
     fn get_domain(&self, d: Domain) -> D<F>;
     fn get_constants(&self) -> &Constants<F>;
+    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>>;
+    fn l0_1(&self) -> F;
 }
 
 impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
@@ -161,6 +163,14 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
 
     fn get_constants(&self) -> &Constants<F> {
         &self.constants
+    }
+
+    fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
+        &self.vanishes_on_zero_knowledge_and_previous_rows
+    }
+
+    fn l0_1(&self) -> F {
+        self.l0_1
     }
 }
 
@@ -1769,11 +1779,11 @@ impl<F: FftField> Expr<F, Column> {
         }
     }
 
-    fn evaluations_helper<'a, 'b>(
+    fn evaluations_helper<'a, 'b, Environment: ColumnEnvironment<'a, F, Column = Column>>(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
-        env: &Environment<'a, F>,
+        env: &Environment,
     ) -> Either<EvalResult<'a, F>, CacheId>
     where
         'a: 'b,
@@ -1849,18 +1859,18 @@ impl<F: FftField> Expr<F, Column> {
             Expr::VanishesOnZeroKnowledgeAndPreviousRows => EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: 0,
-                evals: env.vanishes_on_zero_knowledge_and_previous_rows,
+                evals: env.vanishes_on_zero_knowledge_and_previous_rows(),
             },
             Expr::Constant(x) => EvalResult::Constant(*x),
             Expr::UnnormalizedLagrangeBasis(i) => {
                 let offset = if i.zk_rows {
-                    -(env.constants.zk_rows as i32) + i.offset
+                    -(env.get_constants().zk_rows as i32) + i.offset
                 } else {
                     i.offset
                 };
                 EvalResult::Evals {
                     domain: d,
-                    evals: unnormalized_lagrange_evals(env.l0_1, offset, d, env),
+                    evals: unnormalized_lagrange_evals(env.l0_1(), offset, d, env),
                 }
             }
             Expr::Cell(Variable { col, row }) => {
