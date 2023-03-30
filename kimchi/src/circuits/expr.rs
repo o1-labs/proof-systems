@@ -1386,7 +1386,7 @@ fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
     }
 }
 
-impl<F: Field> Expr<ConstantExpr<F>, Column> {
+impl<F: Field, Column: PartialEq> Expr<ConstantExpr<F>, Column> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
@@ -1535,11 +1535,11 @@ impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     }
 
     /// Evaluate an expression as a field element against the constants.
-    pub fn evaluate_(
+    pub fn evaluate_<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &Evaluations,
         c: &Constants<F>,
     ) -> Result<F, ExprError<Column>> {
         use Expr::*;
