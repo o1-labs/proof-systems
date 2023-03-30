@@ -1,5 +1,6 @@
 use crate::{
     circuits::{
+        berkeley_columns,
         constraints::FeatureFlags,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
@@ -129,10 +130,10 @@ pub trait ColumnEnvironment<'a, F: FftField> {
 }
 
 impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
-    type Column = Column;
+    type Column = berkeley_columns::Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
-        use Column::*;
+        use berkeley_columns::Column::*;
         let lookup = self.lookup.as_ref();
         match col {
             Witness(i) => Some(&self.witness[*i]),
@@ -202,72 +203,8 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
     domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-/// A type representing one of the polynomials involved in the PLONK IOP.
-pub enum Column {
-    Witness(usize),
-    Z,
-    LookupSorted(usize),
-    LookupAggreg,
-    LookupTable,
-    LookupKindIndex(LookupPattern),
-    LookupRuntimeSelector,
-    LookupRuntimeTable,
-    Index(GateType),
-    Coefficient(usize),
-    Permutation(usize),
-}
-
 pub trait GenericColumn {
     fn domain(&self) -> Domain;
-}
-
-impl GenericColumn for Column {
-    fn domain(&self) -> Domain {
-        match self {
-            Column::Index(GateType::Generic) => Domain::D4,
-            Column::Index(GateType::CompleteAdd) => Domain::D4,
-            _ => Domain::D8,
-        }
-    }
-}
-
-impl Column {
-    fn latex(&self) -> String {
-        match self {
-            Column::Witness(i) => format!("w_{{{i}}}"),
-            Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s_{{{i}}}"),
-            Column::LookupAggreg => "a".to_string(),
-            Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k_{{{i:?}}}"),
-            Column::LookupRuntimeSelector => "rts".to_string(),
-            Column::LookupRuntimeTable => "rt".to_string(),
-            Column::Index(gate) => {
-                format!("{gate:?}")
-            }
-            Column::Coefficient(i) => format!("c_{{{i}}}"),
-            Column::Permutation(i) => format!("sigma_{{{i}}}"),
-        }
-    }
-
-    fn text(&self) -> String {
-        match self {
-            Column::Witness(i) => format!("w[{i}]"),
-            Column::Z => "Z".to_string(),
-            Column::LookupSorted(i) => format!("s[{i}]"),
-            Column::LookupAggreg => "a".to_string(),
-            Column::LookupTable => "t".to_string(),
-            Column::LookupKindIndex(i) => format!("k[{i:?}]"),
-            Column::LookupRuntimeSelector => "rts".to_string(),
-            Column::LookupRuntimeTable => "rt".to_string(),
-            Column::Index(gate) => {
-                format!("{gate:?}")
-            }
-            Column::Coefficient(i) => format!("c[{i}]"),
-            Column::Permutation(i) => format!("sigma_[{i}]"),
-        }
-    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -278,28 +215,6 @@ pub struct Variable<Column> {
     pub col: Column,
     /// The row (Curr of Next) of this variable
     pub row: CurrOrNext,
-}
-
-impl Variable<Column> {
-    fn ocaml(&self) -> String {
-        format!("var({:?}, {:?})", self.col, self.row)
-    }
-
-    fn latex(&self) -> String {
-        let col = self.col.latex();
-        match self.row {
-            Curr => col,
-            Next => format!("\\tilde{{{col}}}"),
-        }
-    }
-
-    fn text(&self) -> String {
-        let col = self.col.text();
-        match self.row {
-            Curr => format!("Curr({col})"),
-            Next => format!("Next({col})"),
-        }
-    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -714,9 +629,9 @@ pub trait ColumnEvaluations<F> {
 }
 
 impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
-    type Column = Column;
+    type Column = berkeley_columns::Column;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
-        use Column::*;
+        use berkeley_columns::Column::*;
         match col {
             Witness(i) => Ok(self.w[i]),
             Z => Ok(self.z),
@@ -920,7 +835,7 @@ impl<C, Column> Expr<C, Column> {
     }
 }
 
-impl<F> fmt::Display for Expr<ConstantExpr<F>, Column>
+impl<F> fmt::Display for Expr<ConstantExpr<F>, berkeley_columns::Column>
 where
     F: PrimeField,
 {
@@ -2560,7 +2475,7 @@ where
     }
 }
 
-impl<F> Expr<ConstantExpr<F>, Column>
+impl<F> Expr<ConstantExpr<F>, berkeley_columns::Column>
 where
     F: PrimeField,
 {
@@ -2587,7 +2502,10 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
+    fn ocaml(
+        &self,
+        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
+    ) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
@@ -2640,7 +2558,10 @@ where
         res
     }
 
-    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
+    fn latex(
+        &self,
+        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
+    ) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
@@ -2676,7 +2597,10 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, Column>>) -> String {
+    fn text(
+        &self,
+        cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, berkeley_columns::Column>>,
+    ) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.text(cache)),
@@ -2809,25 +2733,34 @@ pub mod constraints {
         fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F> ExprOps<F> for Expr<ConstantExpr<F>, Column>
+    impl<F> ExprOps<F> for Expr<ConstantExpr<F>, berkeley_columns::Column>
     where
         F: PrimeField,
-        Expr<ConstantExpr<F>, Column>: std::fmt::Display,
+        Expr<ConstantExpr<F>, berkeley_columns::Column>: std::fmt::Display,
     {
         fn two_pow(pow: u64) -> Self {
-            Expr::<ConstantExpr<F>, Column>::literal(<F as Two<F>>::two_pow(pow))
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as Two<F>>::two_pow(pow))
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F>, Column>::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
+                F,
+            >>::two_to_limb(
+            ))
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F>, Column>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
+                F,
+            >>::two_to_2limb(
+            ))
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F>, Column>::literal(<F as ForeignFieldHelpers<F>>::two_to_3limb())
+            Expr::<ConstantExpr<F>, berkeley_columns::Column>::literal(<F as ForeignFieldHelpers<
+                F,
+            >>::two_to_3limb(
+            ))
         }
 
         fn double(&self) -> Self {
@@ -2963,7 +2896,7 @@ pub mod constraints {
 //
 
 /// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F>, Column>;
+pub type E<F> = Expr<ConstantExpr<F>, berkeley_columns::Column>;
 
 /// Convenience function to create a constant as [Expr].
 pub fn constant<F>(x: F) -> E<F> {
@@ -2972,7 +2905,7 @@ pub fn constant<F>(x: F) -> E<F> {
 
 /// Helper function to quickly create an expression for a witness.
 pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
-    E::<F>::cell(Column::Witness(i), row)
+    E::<F>::cell(berkeley_columns::Column::Witness(i), row)
 }
 
 /// Same as [witness] but for the current row.
@@ -2987,11 +2920,11 @@ pub fn witness_next<F>(i: usize) -> E<F> {
 
 /// Handy function to quickly create an expression for a gate.
 pub fn index<F>(g: GateType) -> E<F> {
-    E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
+    E::<F>::cell(berkeley_columns::Column::Index(g), CurrOrNext::Curr)
 }
 
 pub fn coeff<F>(i: usize) -> E<F> {
-    E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
+    E::<F>::cell(berkeley_columns::Column::Coefficient(i), CurrOrNext::Curr)
 }
 
 /// Auto clone macro - Helps make constraints more readable

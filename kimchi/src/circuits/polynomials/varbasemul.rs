@@ -12,7 +12,8 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache, Column, Variable as VariableGen},
+    berkeley_columns::Column,
+    expr::{constraints::ExprOps, Cache, Variable as VariableGen},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };

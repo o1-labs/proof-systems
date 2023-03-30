@@ -3,8 +3,9 @@
 use crate::{
     circuits::{
         argument::ArgumentType,
+        berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{Column, Constants, PolishToken},
+        expr::{Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
