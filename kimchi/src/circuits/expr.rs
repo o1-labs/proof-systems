@@ -2007,7 +2007,9 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
     }
 }
 
-impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>, Column> {
+impl<F: FftField, Column: Debug + PartialEq + Copy + GenericColumn>
+    Linearization<Expr<ConstantExpr<F>, Column>, Column>
+{
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial<
