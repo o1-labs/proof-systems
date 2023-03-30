@@ -11,7 +11,7 @@ use crate::{
         polynomials::permutation::eval_vanishes_on_last_4_rows,
         wires::COLUMNS,
     },
-    proof::{PointEvaluations, ProofEvaluations},
+    proof::PointEvaluations,
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
@@ -616,29 +616,6 @@ pub enum PolishToken<F, Column> {
 pub trait ColumnEvaluations<F> {
     type Column;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>>;
-}
-
-impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
-    type Column = berkeley_columns::Column;
-    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
-        use berkeley_columns::Column::*;
-        let l = self.lookup.as_ref().ok_or(ExprError::LookupShouldNotBeUsed);
-        match col {
-            Witness(i) => Ok(self.w[i]),
-            Z => Ok(self.z),
-            LookupSorted(i) => l.map(|l| l.sorted[i]),
-            LookupAggreg => l.map(|l| l.aggreg),
-            LookupTable => l.map(|l| l.table),
-            LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
-            Index(GateType::Poseidon) => Ok(self.poseidon_selector),
-            Index(GateType::Generic) => Ok(self.generic_selector),
-            Permutation(i) => Ok(self.s[i]),
-            Coefficient(i) => Ok(self.coefficients[i]),
-            LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                Err(ExprError::MissingIndexEvaluation(col))
-            }
-        }
-    }
 }
 
 impl<Column: Copy> Variable<Column> {
