@@ -2053,12 +2053,15 @@ impl<F: One, Column> Expr<F, Column> {
     }
 }
 
-type Monomials<F> = HashMap<Vec<Variable<Column>>, Expr<F, Column>>;
+type Monomials<F, Column> = HashMap<Vec<Variable<Column>>, Expr<F, Column>>;
 
-fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
-    e1: &Monomials<F>,
-    e2: &Monomials<F>,
-) -> Monomials<F> {
+fn mul_monomials<
+    F: Neg<Output = F> + Clone + One + Zero + PartialEq,
+    Column: Ord + Copy + std::hash::Hash,
+>(
+    e1: &Monomials<F, Column>,
+    e2: &Monomials<F, Column>,
+) -> Monomials<F, Column> {
     let mut res: HashMap<_, Expr<F, Column>> = HashMap::new();
     for (m1, c1) in e1.iter() {
         for (m2, c2) in e2.iter() {
@@ -2073,7 +2076,9 @@ fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
     res
 }
 
-impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F, Column> {
+impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq, Column: Ord + Copy + std::hash::Hash>
+    Expr<F, Column>
+{
     // TODO: This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It's ok for now as we only call that function once on
