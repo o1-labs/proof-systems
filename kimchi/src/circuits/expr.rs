@@ -1524,11 +1524,11 @@ impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     }
 
     /// Evaluate an expression as a field element against an environment.
-    pub fn evaluate(
+    pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &Evaluations,
         env: &Environment<F>,
     ) -> Result<F, ExprError<Column>> {
         self.evaluate_(d, pt, evals, &env.constants)
@@ -1595,11 +1595,11 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F, Column> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(
+    pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &Evaluations,
     ) -> Result<F, ExprError<Column>> {
         use Expr::*;
         match self {
@@ -1880,11 +1880,11 @@ impl<F: FftField, Column: Copy + Debug> Linearization<Vec<PolishToken<F, Column>
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>, Column>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(
+    pub fn to_polynomial<ColEvaluations: ColumnEvaluations<F, Column = Column>>(
         &self,
         env: &Environment<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ColEvaluations,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
