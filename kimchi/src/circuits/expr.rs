@@ -122,6 +122,7 @@ pub struct Environment<'a, F: FftField> {
 trait ColumnEnvironment<'a, F: FftField> {
     type Column;
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>>;
+    fn get_domain(&self, d: Domain) -> D<F>;
 }
 
 impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
@@ -145,6 +146,15 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
                 Some(e) => Some(e),
             },
             Permutation(_) => None,
+        }
+    }
+
+    fn get_domain(&self, d: Domain) -> D<F> {
+        match d {
+            Domain::D1 => self.domain.d1,
+            Domain::D2 => self.domain.d2,
+            Domain::D4 => self.domain.d4,
+            Domain::D8 => self.domain.d8,
         }
     }
 }
@@ -984,7 +994,7 @@ fn unnormalized_lagrange_evals<F: FftField>(
         Domain::D4 => 4,
         Domain::D8 => 8,
     };
-    let res_domain = get_domain(res_domain, env);
+    let res_domain = env.get_domain(res_domain);
 
     let d1 = env.domain.d1;
     let n = d1.size;
@@ -1436,15 +1446,6 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 }
 
-fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
-    match d {
-        Domain::D1 => env.domain.d1,
-        Domain::D2 => env.domain.d2,
-        Domain::D4 => env.domain.d4,
-        Domain::D8 => env.domain.d8,
-    }
-}
-
 impl<F: Field, Column: PartialEq> Expr<ConstantExpr<F>, Column> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
@@ -1740,13 +1741,13 @@ impl<F: FftField> Expr<F, Column> {
                 assert_eq!(domain, d);
                 evals
             }
-            EvalResult::Constant(x) => EvalResult::init_((d, get_domain(d, env)), |_| x),
+            EvalResult::Constant(x) => EvalResult::init_((d, env.get_domain(d)), |_| x),
             EvalResult::SubEvals {
                 evals,
                 domain: d_sub,
                 shift: s,
             } => {
-                let res_domain = get_domain(d, env);
+                let res_domain = env.get_domain(d);
                 let scale = (d_sub as usize) / (d as usize);
                 assert!(scale != 0);
                 EvalResult::init_((d, res_domain), |i| {
@@ -1765,7 +1766,7 @@ impl<F: FftField> Expr<F, Column> {
     where
         'a: 'b,
     {
-        let dom = (d, get_domain(d, env));
+        let dom = (d, env.get_domain(d));
 
         let res: EvalResult<'a, F> = match self {
             Expr::Square(x) => match x.evaluations_helper(cache, d, env) {
@@ -1827,9 +1828,9 @@ impl<F: FftField> Expr<F, Column> {
             Expr::Pow(x, p) => {
                 let x = x.evaluations_helper(cache, d, env);
                 match x {
-                    Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
+                    Either::Left(x) => x.pow(*p, (d, env.get_domain(d))),
                     Either::Right(id) => {
-                        id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env)))
+                        id.get_from(cache).unwrap().pow(*p, (d, env.get_domain(d)))
                     }
                 }
             }
@@ -1864,7 +1865,7 @@ impl<F: FftField> Expr<F, Column> {
                 }
             }
             Expr::BinOp(op, e1, e2) => {
-                let dom = (d, get_domain(d, env));
+                let dom = (d, env.get_domain(d));
                 let f = |x: EvalResult<F>, y: EvalResult<F>| match op {
                     Op2::Mul => x.mul(y, dom),
                     Op2::Add => x.add(y, dom),
