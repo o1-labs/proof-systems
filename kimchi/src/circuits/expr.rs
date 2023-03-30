@@ -1589,14 +1589,18 @@ impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     }
 
     /// Evaluate an expression as a field element against an environment.
-    pub fn evaluate<Evaluations: ColumnEvaluations<F, Column = Column>>(
+    pub fn evaluate<
+        'a,
+        Evaluations: ColumnEvaluations<F, Column = Column>,
+        Environment: ColumnEnvironment<'a, F, Column = Column>,
+    >(
         &self,
         d: D<F>,
         pt: F,
         evals: &Evaluations,
-        env: &Environment<F>,
+        env: &Environment,
     ) -> Result<F, ExprError<Column>> {
-        self.evaluate_(d, pt, evals, &env.constants)
+        self.evaluate_(d, pt, evals, &env.get_constants())
     }
 
     /// Evaluate an expression as a field element against the constants.
@@ -1652,8 +1656,11 @@ impl<F: FftField> Expr<ConstantExpr<F>, Column> {
     }
 
     /// Evaluate the constant expressions in this expression down into field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F, Column> {
-        self.evaluate_constants_(&env.constants)
+    pub fn evaluate_constants<'a, Environment: ColumnEnvironment<'a, F, Column = Column>>(
+        &self,
+        env: &Environment,
+    ) -> Expr<F, Column> {
+        self.evaluate_constants_(env.get_constants())
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
