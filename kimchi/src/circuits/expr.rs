@@ -11,7 +11,7 @@ use crate::{
         polynomials::permutation::eval_vanishes_on_last_n_rows,
         wires::COLUMNS,
     },
-    proof::{PointEvaluations, ProofEvaluations},
+    proof::PointEvaluations,
 };
 use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
@@ -626,69 +626,6 @@ pub enum PolishToken<F, Column> {
 pub trait ColumnEvaluations<F> {
     type Column;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>>;
-}
-
-impl<F: Copy> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>> {
-    type Column = berkeley_columns::Column;
-    fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
-        use berkeley_columns::Column::*;
-        match col {
-            Witness(i) => Ok(self.w[i]),
-            Z => Ok(self.z),
-            LookupSorted(i) => self.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupAggreg => self
-                .lookup_aggregation
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupTable => self
-                .lookup_table
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupRuntimeTable => self
-                .runtime_lookup_table
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(GateType::Poseidon) => Ok(self.poseidon_selector),
-            Index(GateType::Generic) => Ok(self.generic_selector),
-            Index(GateType::CompleteAdd) => Ok(self.complete_add_selector),
-            Index(GateType::VarBaseMul) => Ok(self.mul_selector),
-            Index(GateType::EndoMul) => Ok(self.emul_selector),
-            Index(GateType::EndoMulScalar) => Ok(self.endomul_scalar_selector),
-            Index(GateType::RangeCheck0) => self
-                .range_check0_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(GateType::RangeCheck1) => self
-                .range_check1_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(GateType::ForeignFieldAdd) => self
-                .foreign_field_add_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(GateType::ForeignFieldMul) => self
-                .foreign_field_mul_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(GateType::Xor16) => self
-                .xor_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(GateType::Rot64) => self
-                .rot_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Permutation(i) => Ok(self.s[i]),
-            Coefficient(i) => Ok(self.coefficients[i]),
-            LookupKindIndex(LookupPattern::Xor) => self
-                .xor_lookup_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupKindIndex(LookupPattern::Lookup) => self
-                .lookup_gate_lookup_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupKindIndex(LookupPattern::RangeCheck) => self
-                .range_check_lookup_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupKindIndex(LookupPattern::ForeignFieldMul) => self
-                .foreign_field_mul_lookup_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupRuntimeSelector => self
-                .runtime_lookup_table_selector
-                .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(_) => Err(ExprError::MissingIndexEvaluation(col)),
-        }
-    }
 }
 
 impl<Column: Copy> Variable<Column> {
