@@ -172,7 +172,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let boolean_op_expr = || boolean_op::BooleanOp::combined_constraints(&powers_of_alpha, &mut cache);
+        let mut boolean_op_expr =
+            || boolean_op::BooleanOp::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.boolean_op {
                 expr += boolean_op_expr();

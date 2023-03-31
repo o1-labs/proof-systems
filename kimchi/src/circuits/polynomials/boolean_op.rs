@@ -55,7 +55,7 @@ use ark_ff::{PrimeField, SquareRootField};
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::constraints::ExprOps,
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         polynomial::COLUMNS,
         wires::Wire,
@@ -87,7 +87,7 @@ where
     const CONSTRAINTS: u32 = 6;
     // DEGREE is 3
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
         // Left operands

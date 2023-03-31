@@ -600,6 +600,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
+                    self.disable_gates_checks,
                 ))
             }
         };
