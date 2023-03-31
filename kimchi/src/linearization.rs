@@ -10,11 +10,11 @@ use crate::circuits::lookup::{
 };
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
+    conditional,
     endomul_scalar::EndomulScalar,
     endosclmul::EndosclMul,
     foreign_field_add::circuitgates::ForeignFieldAdd,
     foreign_field_mul::circuitgates::ForeignFieldMul,
-    conditional,
     generic, permutation,
     poseidon::Poseidon,
     range_check::circuitgates::{RangeCheck0, RangeCheck1},
@@ -155,7 +155,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let conditional_expr = || conditional::Conditional::combined_constraints(&powers_of_alpha, &mut cache);
+        let mut conditional_expr =
+            || conditional::Conditional::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.conditional {
                 expr += conditional_expr();
