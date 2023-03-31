@@ -25,48 +25,89 @@ use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers, Tw
 //~ For now, we are willing to pay this small overhead and produce AND gadget as follows:
 //~
 //~ We observe that we can express bitwise addition as follows:
-//~ $$ A + B = (A \oplus B) + 2 \cdot (A \& B) $$
-//~ where $\oplus$ is the bitwise XOR operation, $\&$ is the bitwise AND operation, and $+$ is the addition operation.
+//~ $$A + B = (A \oplus B) + 2 \cdot (A \wedge B)$$
+//~
+//~ where $\oplus$ is the bitwise XOR operation, $\wedge$ is the bitwise AND operation, and $+$ is the addition operation.
 //~ In other words, the value of the addition is nothing but the XOR of its operands, plus the carry bit if both operands are 1.
 //~ Thus, we can rewrite the above equation to obtain a definition of the AND operation as follows:
-//~ $$ A \& B = \frac{A + B - (A \oplus B)}{2} $$
+//~ $$A \wedge B = \frac{A + B - (A \oplus B)}{2}$$
 //~ Let us define the following operations for better readability:
-//~ ```
+//~
+//~ ```text
 //~ a + b = sum
-//~ a ^ b = xor
-//~ a & b = and
+//~ a x b = xor
+//~ a ^ b = and
 //~ ```
+//~
 //~ Then, we can rewrite the above equation as follows:
 //~ $$ 2 \cdot and = sum - xor $$
 //~ which can be expressed as a double generic gate.
 //~
 //~ Then, our AND gadget for $n$ bytes looks as follows:
+//~
 //~ * $n/8$ Xor16 gates
 //~ * 1 (single) Generic gate to check that the final row of the XOR chain is all zeros.
 //~ * 1 (double) Generic gate to check sum $a + b = sum$ and the conjunction equation $2\cdot and = sum - xor$.
 //~
 //~ Finally, we connect the wires in the following positions (apart from the ones already connected for the XOR gates):
+//~
 //~ * Column 2 of the first Xor16 row (the output of the XOR operation) is connected to the right input of the second generic operation of the last row.
 //~ * Column 2 of the first generic operation of the last row is connected to the left input of the second generic operation of the last row.
 //~ Meaning,
-//~ * the `xor` in `a ^ b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
+//~
+//~ * the `xor` in `a x b = xor` is connected to the `xor` in `2 \cdot and = sum - xor`
 //~ * the `sum` in `a + b = sum` is connected to the `sum` in `2 \cdot and = sum - xor`
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
-    /// Creates an AND gadget for `bytes` length.
+    /// Extends an AND gadget for `bytes` length.
     /// The full operation being performed is the following:
     /// `a AND b = 1/2 * (a + b - (a XOR b))`
     /// Includes:
     /// - num_xors Xor16 gates to perform `xor = a XOR b`
     /// - 1 Generic gate to constrain the final row to be zero with itself
     /// - 1 double Generic gate to perform the AND operation as `a + b = sum` and `2 * and = sum - xor`
-    /// Outputs tuple (next_row, circuit_gates) where
+    /// Input:
+    /// - gates    : vector of circuit gates comprising the full circuit
+    /// - bytes    : number of bytes of the AND operation
+    /// Output:
     /// - next_row  : next row after this gate
-    /// - gates     : vector of circuit gates comprising this gate
-    pub fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
+    /// Warning:
+    /// - if there's any public input for the and, don't forget to wire it
+    pub fn extend_and(gates: &mut Vec<Self>, bytes: usize) -> usize {
         assert!(bytes > 0, "Bytes must be a positive number");
-        let xor_row = new_row;
-        let (and_row, mut gates) = Self::create_xor_gadget(xor_row, bytes * 8);
+        let xor_row = gates.len();
+        let and_row = Self::extend_xor_gadget(gates, bytes * 8);
+        let (_, mut and_gates) = Self::create_and(and_row, bytes);
+        // extend the whole circuit with the AND gadget
+        gates.append(&mut and_gates);
+
+        // connect the XOR inputs to the inputs of the first generic gate
+        gates.connect_cell_pair((xor_row, 0), (and_row, 0));
+        gates.connect_cell_pair((xor_row, 1), (and_row, 1));
+        // connect the sum output of the first generic gate to the left input of the second generic gate
+        gates.connect_cell_pair((and_row, 2), (and_row, 3));
+        // connect the XOR output to the right input of the second generic gate
+        gates.connect_cell_pair((xor_row, 2), (and_row, 4));
+
+        gates.len()
+    }
+
+    // Creates an AND gadget for `bytes` length.
+    // The full operation being performed is the following:
+    // `a AND b = 1/2 * (a + b - (a XOR b))`
+    // Includes:
+    // - 1 double Generic gate to perform the AND operation as `a + b = sum` and `2 * and = sum - xor`
+    // Input:
+    // - new_row  : row where the AND generic gate starts
+    // - bytes    : number of bytes of the AND operation
+    // Outputs tuple (next_row, circuit_gates) where
+    // - next_row  : next row after this gate
+    // - gates     : vector of circuit gates comprising the AND double generic gate
+    // Warning:
+    // - don't forget to connect the wiring from the and
+    fn create_and(new_row: usize, bytes: usize) -> (usize, Vec<Self>) {
+        assert!(bytes > 0, "Bytes must be a positive number");
+
         // a + b = sum
         let sum = GenericGateSpec::Add {
             left_coeff: None,
@@ -79,20 +120,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             right_coeff: Some(-F::one()),
             output_coeff: Some(-F::two()),
         };
-        gates.push(Self::create_generic_gadget(
-            Wire::for_row(and_row),
-            sum,
-            Some(and),
-        ));
-        // connect the XOR inputs to the inputs of the first generic gate
-        gates.connect_cell_pair((xor_row, 0), (and_row, 0));
-        gates.connect_cell_pair((xor_row, 1), (and_row, 1));
-        // connect the sum output of the first generic gate to the left input of the second generic gate
-        gates.connect_cell_pair((and_row, 2), (and_row, 3));
-        // connect the XOR output to the right input of the second generic gate
-        gates.connect_cell_pair((xor_row, 2), (and_row, 4));
+        let gates = vec![(Self::create_generic_gadget(Wire::for_row(new_row), sum, Some(and)))];
 
-        (gates.len(), gates)
+        (new_row + gates.len(), gates)
     }
 }
 
@@ -132,4 +162,19 @@ pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> 
     and_witness[5][and_row] = and;
 
     and_witness
+}
+
+/// Extends an AND witness to the whole witness
+/// Input: first input, second input, and desired byte length
+/// Panics if the input is too large for the chosen number of bytes
+pub fn extend_and_witness<F: PrimeField>(
+    witness: &mut [Vec<F>; COLUMNS],
+    input1: F,
+    input2: F,
+    bytes: usize,
+) {
+    let and_witness = create_and_witness(input1, input2, bytes);
+    for col in 0..COLUMNS {
+        witness[col].extend(and_witness[col].iter());
+    }
 }

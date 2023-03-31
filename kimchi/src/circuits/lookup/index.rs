@@ -38,15 +38,13 @@ pub enum LookupError {
 /// Lookup selectors
 #[derive(Clone, Serialize, Deserialize, Debug, Default)]
 pub struct LookupSelectors<T> {
-    /// Chacha pattern lookup selector
+    /// XOR pattern lookup selector
     pub xor: Option<T>,
-    /// ChachaFinal pattern lookup selector
-    pub chacha_final: Option<T>,
     /// Lookup pattern lookup selector
     pub lookup: Option<T>,
-    /// RangeCheck pattern lookup selector
+    /// Range check pattern lookup selector
     pub range_check: Option<T>,
-    /// FFMul pattern lookup selector
+    /// Foreign field multiplication pattern lookup selector
     pub ffmul: Option<T>,
 }
 
@@ -55,8 +53,6 @@ pub struct LookupSelectors<T> {
 struct LookupSelectorsSerdeAs<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub xor: Option<E<F, D<F>>>,
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub chacha_final: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub lookup: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -74,7 +70,6 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
     {
         let repr = LookupSelectorsSerdeAs {
             xor: val.xor.clone(),
-            chacha_final: val.chacha_final.clone(),
             lookup: val.lookup.clone(),
             range_check: val.range_check.clone(),
             ffmul: val.ffmul.clone(),
@@ -92,14 +87,12 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
     {
         let LookupSelectorsSerdeAs {
             xor,
-            chacha_final,
             lookup,
             range_check,
             ffmul,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
             xor,
-            chacha_final,
             lookup,
             range_check,
             ffmul,
@@ -113,7 +106,6 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
     fn index(&self, index: LookupPattern) -> &Self::Output {
         match index {
             LookupPattern::Xor => &self.xor,
-            LookupPattern::ChaChaFinal => &self.chacha_final,
             LookupPattern::Lookup => &self.lookup,
             LookupPattern::RangeCheck => &self.range_check,
             LookupPattern::ForeignFieldMul => &self.ffmul,
@@ -125,7 +117,6 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
     fn index_mut(&mut self, index: LookupPattern) -> &mut Self::Output {
         match index {
             LookupPattern::Xor => &mut self.xor,
-            LookupPattern::ChaChaFinal => &mut self.chacha_final,
             LookupPattern::Lookup => &mut self.lookup,
             LookupPattern::RangeCheck => &mut self.range_check,
             LookupPattern::ForeignFieldMul => &mut self.ffmul,
@@ -137,7 +128,6 @@ impl<T> LookupSelectors<T> {
     pub fn map<U, F: Fn(T) -> U>(self, f: F) -> LookupSelectors<U> {
         let LookupSelectors {
             xor,
-            chacha_final,
             lookup,
             range_check,
             ffmul,
@@ -148,7 +138,6 @@ impl<T> LookupSelectors<T> {
         let f = |x| f(x);
         LookupSelectors {
             xor: xor.map(f),
-            chacha_final: chacha_final.map(f),
             lookup: lookup.map(f),
             range_check: range_check.map(f),
             ffmul: ffmul.map(f),
@@ -158,7 +147,6 @@ impl<T> LookupSelectors<T> {
     pub fn as_ref(&self) -> LookupSelectors<&T> {
         LookupSelectors {
             xor: self.xor.as_ref(),
-            chacha_final: self.chacha_final.as_ref(),
             lookup: self.lookup.as_ref(),
             range_check: self.range_check.as_ref(),
             ffmul: self.ffmul.as_ref(),
@@ -377,12 +365,12 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         non_zero_table_id = true;
                     }
 
-                    //~~ - Update the corresponding entries in a table id vector (of size the domain as well)
+                    //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
                     let table_id: F = i32_to_field(table.id);
                     table_ids.extend(repeat_n(table_id, table_len));
 
-                    //~~ - Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
+                    //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
@@ -390,7 +378,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         lookup_table[i].extend(col);
                     }
 
-                    //~~ - Fill in any unused columns with 0 (to match the dummy value)
+                    //~~ * Fill in any unused columns with 0 (to match the dummy value)
                     for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }

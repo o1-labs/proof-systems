@@ -8,7 +8,6 @@ use crate::{
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
-        polynomials::range_check,
         wires::*,
     },
     curve::KimchiCurve,
@@ -34,10 +33,10 @@ use std::sync::Arc;
 /// Flags for optional features in the constraint system
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureFlags {
-    /// ChaCha gates
-    pub chacha: bool,
-    /// Range check gates
-    pub range_check: bool,
+    /// RangeCheck0 gate
+    pub range_check0: bool,
+    /// RangeCheck1 gate
+    pub range_check1: bool,
     /// Foreign field addition gate
     pub foreign_field_add: bool,
     /// Foreign field multiplication gate
@@ -106,17 +105,17 @@ pub struct ColumnEvaluations<F: PrimeField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub emul_selector8: E<F, D<F>>,
 
-    /// ChaCha selectors over domain d8
-    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; 4]>")]
-    pub chacha_selectors8: Option<[E<F, D<F>>; 4]>,
-
     /// EC point addition selector over domain d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar_selector8: E<F, D<F>>,
 
-    /// Range check gate selector over domain d8
-    #[serde_as(as = "Option<[o1_utils::serialization::SerdeAs; range_check::gadget::GATE_COUNT]>")]
-    pub range_check_selectors8: Option<[E<F, D<F>>; range_check::gadget::GATE_COUNT]>,
+    /// RangeCheck0 gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub range_check0_selector8: Option<E<F, D<F>>>,
+
+    /// RangeCheck1 gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub range_check1_selector8: Option<E<F, D<F>>>,
 
     /// Foreign field addition gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -174,6 +173,9 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// precomputes
     #[serde(skip)]
     precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+
+    /// Disable gates checks (for testing; only enables with development builds)
+    pub disable_gates_checks: bool,
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -194,6 +196,7 @@ pub struct Builder<F: PrimeField> {
     lookup_tables: Vec<LookupTable<F>>,
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
+    disable_gates_checks: bool,
 }
 
 /// Create selector polynomial for a circuit gate
@@ -202,24 +205,29 @@ pub fn selector_polynomial<F: PrimeField>(
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
     target_domain: &D<F>,
+    disable_gates_checks: bool,
 ) -> E<F, D<F>> {
-    // Coefficient form
-    let coeff = E::<F, D<F>>::from_vec_and_domain(
-        gates
-            .iter()
-            .map(|gate| {
-                if gate.typ == gate_type {
-                    F::one()
-                } else {
-                    F::zero()
-                }
-            })
-            .collect(),
-        domain.d1,
-    )
-    .interpolate();
+    if cfg!(debug_assertions) && disable_gates_checks {
+        DP::<F>::zero().evaluate_over_domain_by_ref(*target_domain)
+    } else {
+        // Coefficient form
+        let coeff = E::<F, D<F>>::from_vec_and_domain(
+            gates
+                .iter()
+                .map(|gate| {
+                    if gate.typ == gate_type {
+                        F::one()
+                    } else {
+                        F::zero()
+                    }
+                })
+                .collect(),
+            domain.d1,
+        )
+        .interpolate();
 
-    coeff.evaluate_over_domain_by_ref(*target_domain)
+        coeff.evaluate_over_domain_by_ref(*target_domain)
+    }
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
@@ -231,6 +239,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// - `lookup_tables: vec![]`,
     /// - `runtime_tables: None`,
     /// - `precomputations: None`,
+    /// - `disable_gates_checks: false`,
     ///
     /// How to use it:
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
@@ -244,6 +253,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             lookup_tables: vec![],
             runtime_tables: None,
             precomputations: None,
+            disable_gates_checks: false,
         }
     }
 
@@ -282,10 +292,7 @@ impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverInd
                 if wire.col >= PERMUTS {
                     return Err(GateError::Custom {
                         row,
-                        err: format!(
-                            "a wire can only be connected to the first {} columns",
-                            PERMUTS
-                        ),
+                        err: format!("a wire can only be connected to the first {PERMUTS} columns"),
                     });
                 }
 
@@ -445,6 +452,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             &self.gates,
             &self.domain,
             &self.domain.d4,
+            self.disable_gates_checks,
         );
 
         let mul_selector8 = selector_polynomial(
@@ -452,6 +460,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             &self.gates,
             &self.domain,
             &self.domain.d8,
+            self.disable_gates_checks,
         );
 
         let emul_selector8 = selector_polynomial(
@@ -459,6 +468,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             &self.gates,
             &self.domain,
             &self.domain.d8,
+            self.disable_gates_checks,
         );
 
         let endomul_scalar_selector8 = selector_polynomial(
@@ -466,65 +476,40 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             &self.gates,
             &self.domain,
             &self.domain.d8,
+            self.disable_gates_checks,
         );
 
         let generic_selector4 = evaluated_column_coefficients
             .generic_selector
             .evaluate_over_domain_by_ref(self.domain.d4);
 
-        // chacha gate
-        let chacha_selectors8 = {
-            if !self.feature_flags.chacha {
+        // RangeCheck0 constraint selector polynomials
+        let range_check0_selector8 = {
+            if !self.feature_flags.range_check0 {
                 None
             } else {
-                Some([
-                    selector_polynomial(
-                        GateType::ChaCha0,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::ChaCha1,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::ChaCha2,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::ChaChaFinal,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                    ),
-                ])
+                Some(selector_polynomial(
+                    GateType::RangeCheck0,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                    self.disable_gates_checks,
+                ))
             }
         };
 
-        // Range check constraint selector polynomials
-        let range_check_selectors8 = {
-            if !self.feature_flags.range_check {
+        // RangeCheck1 constraint selector polynomials
+        let range_check1_selector8 = {
+            if !self.feature_flags.range_check1 {
                 None
             } else {
-                Some([
-                    selector_polynomial(
-                        GateType::RangeCheck0,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                    ),
-                    selector_polynomial(
-                        GateType::RangeCheck1,
-                        &self.gates,
-                        &self.domain,
-                        &self.domain.d8,
-                    ),
-                ])
+                Some(selector_polynomial(
+                    GateType::RangeCheck1,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                    self.disable_gates_checks,
+                ))
             }
         };
 
@@ -538,6 +523,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
+                    self.disable_gates_checks,
                 ))
             }
         };
@@ -552,6 +538,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
+                    self.disable_gates_checks,
                 ))
             }
         };
@@ -565,6 +552,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
+                    self.disable_gates_checks,
                 ))
             }
         };
@@ -578,6 +566,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
+                    self.disable_gates_checks,
                 ))
             }
         };
@@ -609,9 +598,9 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             complete_add_selector4,
             mul_selector8,
             emul_selector8,
-            chacha_selectors8,
             endomul_scalar_selector8,
-            range_check_selectors8,
+            range_check0_selector8,
+            range_check1_selector8,
             foreign_field_add_selector8,
             foreign_field_mul_selector8,
             xor_selector8,
@@ -668,6 +657,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
+    /// Disable gates checks (for testing; only enables with development builds)
+    pub fn disable_gates_checks(mut self, disable_gates_checks: bool) -> Self {
+        self.disable_gates_checks = disable_gates_checks;
+        self
+    }
+
     /// Build the [ConstraintSystem] from a [Builder].
     pub fn build(self) -> Result<ConstraintSystem<F>, SetupError> {
         let mut gates = self.gates;
@@ -678,10 +673,39 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
+        let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
+
+        let num_lookups = {
+            let mut num_lookups: usize = lookup_tables
+                .iter()
+                .map(
+                    |LookupTable { data, id: _ }| {
+                        if data.is_empty() {
+                            0
+                        } else {
+                            data[0].len()
+                        }
+                    },
+                )
+                .sum();
+            for runtime_table in runtime_tables.iter() {
+                num_lookups += runtime_table.len();
+            }
+            let LookupFeatures { patterns, .. } = &lookup_features;
+            for pattern in patterns.into_iter() {
+                if let Some(gate_table) = pattern.table() {
+                    num_lookups += gate_table.table_size();
+                }
+            }
+            num_lookups
+        };
+
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
-        let domain = EvaluationDomains::<F>::create(gates.len() + ZK_ROWS as usize)?;
+        let domain_size_lower_bound =
+            std::cmp::max(gates.len(), num_lookups + 1) + ZK_ROWS as usize;
+        let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
 
         assert!(domain.d1.size > ZK_ROWS);
 
@@ -697,11 +721,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             .collect();
         gates.append(&mut padding);
 
-        let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
-
         let mut feature_flags = FeatureFlags {
-            chacha: false,
-            range_check: false,
+            range_check0: false,
+            range_check1: false,
             lookup_features,
             foreign_field_add: false,
             foreign_field_mul: false,
@@ -712,11 +734,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         for gate in &gates {
             match gate.typ {
-                GateType::ChaCha0
-                | GateType::ChaCha1
-                | GateType::ChaCha2
-                | GateType::ChaChaFinal => feature_flags.chacha = true,
-                GateType::RangeCheck0 | GateType::RangeCheck1 => feature_flags.range_check = true,
+                GateType::RangeCheck0 => feature_flags.range_check0 = true,
+                GateType::RangeCheck1 => feature_flags.range_check1 = true,
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
@@ -755,6 +774,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             lookup_constraint_system,
             feature_flags,
             precomputations: domain_constant_evaluation,
+            disable_gates_checks: self.disable_gates_checks,
         };
 
         match self.precomputations {

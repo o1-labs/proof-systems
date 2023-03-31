@@ -14,9 +14,8 @@ fn test_group_map_on_curve() {
 
 fn first_xy(xs: &[Fq; 3]) -> (Fq, Fq) {
     for x in xs.iter() {
-        match groupmap::get_y::<G>(*x) {
-            Some(y) => return (*x, y),
-            None => (),
+        if let Some(y) = groupmap::get_y::<G>(*x) {
+            return (*x, y);
         }
     }
     panic!("get_xy")

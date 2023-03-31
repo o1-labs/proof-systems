@@ -14,7 +14,7 @@ use std::cmp::min;
 use std::collections::HashMap;
 
 #[serde_as]
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
 pub struct SRS<G: CommitmentCurve> {
     /// The vector of group elements for committing to polynomials in coefficient form
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
@@ -27,6 +27,15 @@ pub struct SRS<G: CommitmentCurve> {
     /// Commitments to Lagrange bases, per domain size
     #[serde(skip)]
     pub lagrange_bases: HashMap<usize, Vec<PolyComm<G>>>,
+}
+
+impl<G> PartialEq for SRS<G>
+where
+    G: CommitmentCurve,
+{
+    fn eq(&self, other: &Self) -> bool {
+        self.g == other.g && self.h == other.h
+    }
 }
 
 pub fn endos<G: CommitmentCurve>() -> (G::BaseField, G::ScalarField)
@@ -217,7 +226,7 @@ where
         let g: Vec<_> = (0..depth)
             .map(|i| {
                 let mut h = Blake2b512::new();
-                h.update(&(i as u32).to_be_bytes());
+                h.update((i as u32).to_be_bytes());
                 point_of_random_bytes(&m, &h.finalize())
             })
             .collect();
@@ -226,7 +235,7 @@ where
         let [h]: [G; MISC] = array::from_fn(|i| {
             let mut h = Blake2b512::new();
             h.update("srs_misc".as_bytes());
-            h.update(&(i as u32).to_be_bytes());
+            h.update((i as u32).to_be_bytes());
             point_of_random_bytes(&m, &h.finalize())
         });
 

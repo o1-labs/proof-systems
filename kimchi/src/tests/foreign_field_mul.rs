@@ -1,4 +1,4 @@
-use std::ops::{Div, Neg};
+use std::ops::Div;
 
 use crate::{
     auto_clone_array,
@@ -7,14 +7,13 @@ use crate::{
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
         polynomials::{foreign_field_add::witness::FFOps, foreign_field_mul, range_check},
-        wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     tests::framework::TestFramework,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{PrimeField, Zero};
+use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_traits::One;
@@ -77,7 +76,7 @@ fn pallas_sqrt() -> BigUint {
 fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
     full: bool,
     external_gates: bool,
-    target_plookups: bool,
+    disable_gates_checks: bool,
     left_input: &BigUint,
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
@@ -98,16 +97,16 @@ where
 
     // Optionally also add external gate checks to circuit
     if external_gates {
-        // Layout for this test (just an example, circuit designer has complete flexibility, where to put the checks)
+        // Layout for this test (just an example, circuit designer has complete flexibility where to put the checks)
         //      0-1  ForeignFieldMul
         //      2-3  ForeignFieldAdd (result bound addition)
         //      4-7  multi-range-check (left multiplicand)
         //      8-11 multi-range-check (right multiplicand)
-        //     12-15 multi-range-check (product1_lo, product1_hi_0, carry1_lo)
+        //     12-15 multi-range-check (carry1_lo, product1_lo, product1_hi_0)
         //     16-19 multi-range-check (result range check)
-        //     20-23 multi-range-check (quotient range check)
+        //     20-23 compact-multi-range-check (quotient bound range check)
 
-        // Bound addition for multiplication result
+        // Result bound addition
         CircuitGate::extend_single_ffadd(
             &mut gates,
             &mut next_row,
@@ -134,7 +133,7 @@ where
         gates.connect_cell_pair((0, 5), (10, 0));
         range_check::witness::extend_multi_limbs(&mut witness, &right_input.to_field_limbs());
 
-        // Multiplication witness value product1_lo, product1_hi_0, carry1_lo multi-range-check
+        // Multiplication witness value carry1_lo, product1_lo, product1_hi_0 multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((0, 6), (12, 0)); // carry1_lo
         gates.connect_cell_pair((1, 5), (13, 0)); // product1_lo
@@ -143,34 +142,25 @@ where
 
         // Result/remainder bound multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((3, 0), (16, 0));
-        gates.connect_cell_pair((3, 1), (17, 0));
-        gates.connect_cell_pair((3, 2), (18, 0));
+        gates.connect_ffadd_range_checks(2, None, None, 16);
         // Witness updated below
 
-        // Add witness for external multi-range checks (product1_lo, product1_hi_0, carry1_lo and result)
+        // Add witness for external multi-range checks (carry1_lo, product1_lo, product1_hi_0 and result)
         external_checks.extend_witness_multi_range_checks(&mut witness);
 
-        // Quotient bound multi-range-check
+        // Quotient bound compact-multi-range-check
         CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((1, 3), (22, 1));
         gates.connect_cell_pair((1, 4), (20, 0));
         external_checks.extend_witness_compact_multi_range_checks(&mut witness);
     }
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
     let runner = if full {
         // Create prover index with test framework
         Some(
             TestFramework::<G>::default()
+                .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
-                .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup(),
         )
     } else {
@@ -178,7 +168,7 @@ where
     };
 
     let cs = if let Some(runner) = runner.as_ref() {
-        runner.prover_index().cs.clone()
+        runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
         ConstraintSystem::create(gates.clone()).build().unwrap()
@@ -192,9 +182,15 @@ where
         }
     }
 
-    if let Some(runner) = runner {
+    if let Some(runner) = runner.as_ref() {
         // Perform full test that everything is ok before invalidation
-        assert_eq!(runner.prove_and_verify::<EFqSponge, EFrSponge>(), Ok(()));
+        assert_eq!(
+            runner
+                .clone()
+                .witness(witness.clone())
+                .prove_and_verify::<EFqSponge, EFrSponge>(),
+            Ok(())
+        );
     }
 
     if !invalidations.is_empty() {
@@ -209,7 +205,7 @@ where
             witness[col][row] = value;
         }
 
-        if !target_plookups {
+        if !disable_gates_checks {
             // Check witness verification fails
             // When targeting the plookup constraints the invalidated values would cause custom constraint
             // failures, so we want to suppress these witness verification checks when doing plookup tests.
@@ -222,13 +218,11 @@ where
             }
         }
 
-        // Catch plookup failures caused by invalidation of witness
-        if full {
-            match TestFramework::<G>::default()
-                .gates(gates.clone())
+        // Run test on invalid witness
+        if let Some(runner) = runner.as_ref() {
+            match runner
+                .clone()
                 .witness(witness.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
-                .setup()
                 .prove_and_verify::<EFqSponge, EFrSponge>()
             {
                 Err(err_msg) => {
@@ -907,44 +901,72 @@ fn test_invalid_carry1_hi_plookup() {
     let a = BigUint::zero();
     let b = BigUint::zero();
 
-    // Valid witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false, // positive full checks done as part of negative tests below
-        false,
-        true,
-        &a,
-        &b,
-        &secp256k1_modulus(),
-        vec![],
-    );
-
-    assert_eq!(result, Ok(()));
-    assert_eq!(witness[7][0], PallasField::zero()); // carry1_hi <= 3-bits (valid)
-    assert_eq!(
-        &a * &b % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
-    );
-
     // Invalid carry1_hi witness test
-    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         true,
         false, // Disable external checks so we can catch carry1_hi plookup failure
-        true,  // Target tests at lookup constraints
+        true,  // Target tests at lookup constraints only
         &a,
         &b,
         &secp256k1_modulus(),
         vec![
-            // Get 2^L * carry1_hi + carry1_lo to cancel to zero, while everything else is also zero
-            (
-                (0, 6),
-                PallasField::two_to_limb() * PallasField::from(8u32).neg(),
-            ), // carry1_lo
             ((0, 7), PallasField::from(8u32)), // carry1_hi > 3 bits (invalid)
         ],
     );
-    assert!(witness[6][0] > PallasField::two_to_limb()); // carry1_lo > two_to_limb()
-                                                         // Note: carry1_lo is invalid, but intentionally not caught because external
-                                                         //       gates are off and carry1_lo is range-checked externally.
+    assert_eq!(
+        result,
+        Err(CircuitGateError::InvalidLookupConstraint(
+            GateType::ForeignFieldMul
+        )),
+    );
+}
+
+#[test]
+fn test_invalid_wraparound_carry1_hi_plookup() {
+    let a = BigUint::zero();
+    let b = BigUint::zero();
+
+    // Sanity check wraparound values
+    let two_to_9 = PallasField::from(2u32).pow([9]);
+    // Wraparound (exploit) value x s.t. x >= 2^12 AND 2^9 * x < 2^12
+    // (credit to querolita for computing the real instances of this value for these test cases!)
+    let wraparound_0 = two_to_9.inverse().expect("failed to get inverse");
+    for i in 0..8 {
+        let wraparound_i = wraparound_0 + PallasField::from(i);
+        assert!(wraparound_i >= PallasField::from(2u32).pow([12u64]));
+        assert!(two_to_9 * wraparound_i < PallasField::from(2u32).pow([12u64]));
+        // Wraparound!!!
+    }
+    // edge case: x - 1 is not a wraparound value
+    assert!(wraparound_0 - PallasField::one() >= PallasField::from(2u32).pow([12u64]));
+    assert!(two_to_9 * (wraparound_0 - PallasField::one()) >= PallasField::from(2u32).pow([12u64]));
+    // edge case: x + 8 is not a wraparound value
+    assert!(wraparound_0 + PallasField::from(8) >= PallasField::from(2u32).pow([12u64]));
+    assert!(
+        two_to_9 * (wraparound_0 + PallasField::from(8)) >= PallasField::from(2u32).pow([12u64])
+    );
+
+    // Invalid carry1_hi witness that causes wrap around to something less than 3-bits
+    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        true,
+        false, // Disable external checks so we can catch carry1_hi plookup failure
+        true,  // Target tests at lookup constraints only
+        &a,
+        &b,
+        &secp256k1_modulus(),
+        vec![
+            // Invalidate carry1_hi by wrapping
+            // carry1_hi > 12 bits > 3 bits, but wraps around < 12-bits when scaled by 2^9
+            (
+                (0, 7),
+                PallasField::from(512u32) // wraparound_0 + 1
+                    .inverse()
+                    .expect("failed to get inverse"),
+            ),
+        ],
+    );
+    assert!(witness[7][0] >= PallasField::from(2u32).pow([12u64]));
+    assert!(two_to_9 * witness[7][0] < PallasField::from(2u32).pow([12u64]));
     assert_eq!(
         result,
         Err(CircuitGateError::InvalidLookupConstraint(
@@ -1366,5 +1388,41 @@ fn test_constraint_c12() {
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+    );
+}
+
+#[test]
+fn test_gates_max_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_foreign_field_mul(
+        0,
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_gates_invalid_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_foreign_field_mul(
+        0,
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
+    );
+}
+
+#[test]
+fn test_witness_max_foreign_field_modulus() {
+    foreign_field_mul::witness::create::<PallasField>(
+        &BigUint::zero(),
+        &BigUint::zero(),
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_witness_invalid_foreign_field_modulus() {
+    foreign_field_mul::witness::create::<PallasField>(
+        &BigUint::zero(),
+        &BigUint::zero(),
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
     );
 }

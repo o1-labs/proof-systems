@@ -2,7 +2,10 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::{compact_limb, ExprOps},
+    expr::{
+        constraints::{compact_limb, ExprOps},
+        Cache,
+    },
     gate::GateType,
 };
 use ark_ff::PrimeField;
@@ -38,9 +41,10 @@ use std::{array, marker::PhantomData};
 //~```
 //~
 //~ Note: Our limbs are 88-bit long. We denote with:
-//~  - `lo` the least significant limb (in little-endian, this is from 0 to 87)
-//~  - `mi` the middle limb            (in little-endian, this is from 88 to 175)
-//~  - `hi` the most significant limb  (in little-endian, this is from 176 to 263)
+//~
+//~ * `lo` the least significant limb (in little-endian, this is from 0 to 87)
+//~ * `mi` the middle limb            (in little-endian, this is from 88 to 175)
+//~ * `hi` the most significant limb  (in little-endian, this is from 176 to 263)
 //~
 //~ Let `left_input_lo`, `left_input_mi`, `left_input_hi` be 88-bit limbs of the left element
 //~
@@ -50,9 +54,9 @@ use std::{array, marker::PhantomData};
 //~
 //~ Then the limbs of the result are
 //~
-//~ - `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
-//~ - `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
-//~ - `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
+//~ * `result_lo = left_input_lo +/- right_input_lo - field_overflow * foreign_modulus_lo - 2^{88} * result_carry_lo`
+//~ * `result_mi = left_input_mi +/- right_input_mi - field_overflow * foreign_modulus_mi - 2^{88} * result_carry_mi + result_carry_lo`
+//~ * `result_hi = left_input_hi +/- right_input_hi - field_overflow * foreign_modulus_hi + result_carry_mi`
 //~
 //~ `field_overflow` $=0$ or $1$ or $-1$ handles overflows in the field
 //~
@@ -63,15 +67,17 @@ use std::{array, marker::PhantomData};
 //~ (This can be computed easily from the limbs of the modulus)
 //~ Note that `2^{264}` as limbs represents: (0, 0, 0, 1) then:
 //~
-//~ The upper-bound check can be calculated as
-//~ - `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
-//~ - `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
-//~ - `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
+//~ The upper-bound check can be calculated as:
+//~
+//~ * `bound_lo = result_lo - foreign_modulus_lo - bound_carry_lo * 2^{88}`
+//~ * `bound_mi = result_mi - foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+//~ * `bound_hi = result_hi - foreign_modulus_hi + 2^{88} + bound_carry_mi`
 //~
 //~ Which is equivalent to another foreign field addition with right input 2^{264}, q = 1 and s = 1
-//~ - `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
-//~ - `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
-//~ - `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
+//~
+//~ * `bound_lo = result_lo + s *      0 - q * foreign_modulus_lo - bound_carry_lo * 2^{88}`
+//~ * `bound_mi = result_mi + s *      0 - q * foreign_modulus_mi - bound_carry_mi * 2^{88} + bound_carry_lo`
+//~ * `bound_hi = result_hi + s * 2^{88} - q * foreign_modulus_hi                           + bound_carry_mi`
 //~
 //~ `bound_carry_i` $= 0$ or $1$ or $-1$ are auxiliary variables that handle carries between limbs
 //~
@@ -120,8 +126,8 @@ use std::{array, marker::PhantomData};
 //~
 //~ ##### Integration
 //~
-//~ - Copy final overflow bit from public input containing value 1
-//~ - Range check the final bound
+//~ * Copy final overflow bit from public input containing value 1
+//~ * Range check the final bound
 //~
 
 /// Implementation of the foreign field addition gate
@@ -136,7 +142,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 4;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved

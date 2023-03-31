@@ -32,3 +32,34 @@
 \rounds:{k}
 \degree:{d}
 
+\and:{\small \mathsf{AND}}
+\xor:{\small \mathsf{XOR}}
+\inv:{\small \mathsf{INV}}
+
+\sC:{\small \mathsf{C}}
+\sI:{\small \mathsf{I}}
+\sH:{\small \mathsf{H}}
+\sX:{\small \mathsf{X}}
+\sY:{\small \mathsf{Y}}
+
+\S:{\small S}
+\G:{\small G}
+\R:{\small R}
+\T:{\small T}
+
+
+\bF:{\small \mathbb{F}}
+\bG:{\small \mathbb{G}}
+
+
+\lsb:{\small \mathsf{LSB}}
+\sha:{\small\mathsf{SHA}256}
+\aes:{\small \mathsf{AES}}
+\gc:{\small \mathcal{GC}}
+\bit:{\{0,1\}}
+\zero:{\color{red}{0}}
+\one:{\color{blue}{1}}
+\enc:{\small \mathsf{Enc}}
+\gid:{\mathsf{gid}}
+\counter:{\mathsf{counter}}
+\prg:{\small \mathsf{PRG}}

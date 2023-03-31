@@ -43,7 +43,7 @@ impl<F: Field> Display for CairoMemory<F> {
                 writeln!(f, "{0:>6}: 0x{1:}", i, elem.word().to_hex_be())
                     .map_err(|_| core::fmt::Error)?;
             } else {
-                writeln!(f, "{0:>6}: None", i).map_err(|_| core::fmt::Error)?;
+                writeln!(f, "{i:>6}: None").map_err(|_| core::fmt::Error)?;
             }
         }
         Ok(())
@@ -123,7 +123,7 @@ mod tests {
         memory.write(F::from(memory.len()), F::from(7u64));
         memory.write(F::from(memory.len()), F::from(7u64));
         memory.write(F::from(memory.len()), F::from(10u64));
-        println!("{}", memory);
+        println!("{memory}");
         // Check content of an address
         assert_eq!(
             memory.read(F::one()).unwrap(),

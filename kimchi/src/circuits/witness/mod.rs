@@ -160,7 +160,7 @@ mod tests {
         // Local variable (witness computation) with same names as VariableCell above
         let sum_of_products = PallasField::from(1337u32);
         let something_else = sum_of_products * PallasField::from(5u32);
-        let final_value = (something_else + PallasField::one()).pow(&[2u64]);
+        let final_value = (something_else + PallasField::one()).pow([2u64]);
 
         init_row(
             &mut witness,

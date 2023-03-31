@@ -17,7 +17,7 @@ pub fn ceil_log2(d: usize) -> usize {
     ceil_log2
 }
 
-/// This function is bound to be stable soon. See https://github.com/rust-lang/rust/issues/88581
+/// This function is bound to be stable soon. See <https://github.com/rust-lang/rust/issues/88581>
 pub fn div_ceil(a: usize, b: usize) -> usize {
     (a + b - 1) / b
 }
@@ -39,7 +39,7 @@ mod tests {
         ];
         for (d, expected_res) in tests.iter() {
             let res = ceil_log2(*d);
-            println!("ceil(log2({})) = {}, expected = {}", d, res, expected_res);
+            println!("ceil(log2({d})) = {res}, expected = {expected_res}");
             assert!(res == *expected_res)
         }
     }

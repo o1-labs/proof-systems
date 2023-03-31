@@ -1,5 +1,4 @@
 mod and;
-mod chacha;
 mod conditional;
 mod ec;
 mod endomul;

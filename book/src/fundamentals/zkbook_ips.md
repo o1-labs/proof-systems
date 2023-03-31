@@ -1,6 +1,6 @@
 # Inductive proof systems
 
-Earlier we defined zero-knowledge proofs as being being proofs of a computation of a function $f \colon A \times W \to \mathsf{Bool}$.
+Earlier we defined zero-knowledge proofs as being proofs of a computation of a function $f \colon A \times W \to \mathsf{Bool}$.
 
 We will now go beyond this, and try to define zero-knowledge proof systems for computations that proceed **inductively**. That is, in pieces, and potentially over different locations involving different parties in a distributed manner.
 
@@ -16,7 +16,7 @@ You can imagine the whole computation of verifying the chain, from a global view
 
 But, at the end of the day, we end up with exactly one proof which summarizes this entire computation.
 
-That is what **inductive SNARKs** (or in my opinion less evocatively recursive SNARKs, or proof-carrying data) allow us to do: create a single proof certifying the correctness of a big computation that occured in steps, possibly across multiple parties, and possibly with party-local private information.
+That is what **inductive SNARKs** (or in my opinion less evocatively recursive SNARKs, or proof-carrying data) allow us to do: create a single proof certifying the correctness of a big computation that occurred in steps, possibly across multiple parties, and possibly with party-local private information.
 
 Ok, so what are inductive SNARKs? Well, first let's describe precisely the aforementioned class of distributed computations.
 

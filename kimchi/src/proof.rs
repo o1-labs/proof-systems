@@ -8,11 +8,11 @@ use crate::circuits::{
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
-use commitment_dlog::{
+use o1_utils::ExtendedDensePolynomial;
+use poly_commitment::{
     commitment::{b_poly, b_poly_coefficients, PolyComm},
     evaluation_proof::OpeningProof,
 };
-use o1_utils::ExtendedDensePolynomial;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -123,10 +123,6 @@ pub struct ProverProof<G: AffineCurve> {
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub ft_eval1: G::ScalarField,
-
-    /// The public input
-    #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub public: Vec<G::ScalarField>,
 
     /// The challenges underlying the optional polynomials folded into the proof
     pub prev_challenges: Vec<RecursionChallenge<G>>,
@@ -424,7 +420,7 @@ impl<F> ProofEvaluations<F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use commitment_dlog::commitment::caml::CamlPolyComm;
+    use poly_commitment::commitment::caml::CamlPolyComm;
 
     //
     // CamlRecursionChallenge<CamlG, CamlF>

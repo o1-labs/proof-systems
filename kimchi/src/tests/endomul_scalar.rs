@@ -7,12 +7,12 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ff::{BigInteger, BitIteratorLE, PrimeField, UniformRand};
-use commitment_dlog::srs::endos;
 use mina_curves::pasta::{Fp as F, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge, ScalarChallenge},
 };
+use poly_commitment::srs::endos;
 use rand::{rngs::StdRng, SeedableRng};
 use std::array;
 
@@ -64,10 +64,10 @@ fn endomul_scalar_test() {
         );
     }
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
