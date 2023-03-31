@@ -1,6 +1,6 @@
 # Intro
 
-The purpose of this document is to give the reader mathematical, cryptographic, and programming context sufficient to become an effective practictioner of zero-knowledge proofs and ZK-SNARKs specifically.
+The purpose of this document is to give the reader mathematical, cryptographic, and programming context sufficient to become an effective practitioner of zero-knowledge proofs and ZK-SNARKs specifically.
 
 # Some fundamental mathematical objects
 
@@ -155,6 +155,6 @@ Actually, on a practical level, it's more accurate to model the complexity in te
 
 As a result you can see it's the smaller $n$ is the better, especially with respect to multiplication, which dominates performance considerations for implementations of zk-SNARKs, since they are dominated by elliptic curve operations that consist of field operations.
 
-While still in devolpment, Mina used to use a field of 753 bits or 12 limbs and now uses a field of 255 bits or 4 limbs. As a result, field multiplication became automatically sped up by a factor of $12^2 / 4^2 = 9$, so you can see it's very useful to try to shrink the field size.
+While still in development, Mina used to use a field of 753 bits or 12 limbs and now uses a field of 255 bits or 4 limbs. As a result, field multiplication became automatically sped up by a factor of $12^2 / 4^2 = 9$, so you can see it's very useful to try to shrink the field size.
 
 

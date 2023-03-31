@@ -2,23 +2,28 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::expr;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
     constraints::LookupConfiguration,
     lookups::{LookupFeatures, LookupInfo, LookupPatterns},
 };
-// TODO JES: CLEAN UP
-use crate::circuits::polynomials::chacha::{ChaCha0, ChaCha1, ChaCha2, ChaChaFinal};
-use crate::circuits::polynomials::complete_add::CompleteAdd;
-use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
-use crate::circuits::polynomials::endosclmul::EndosclMul;
-use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
-use crate::circuits::polynomials::foreign_field_mul::circuitgates::ForeignFieldMul;
-use crate::circuits::polynomials::poseidon::Poseidon;
-use crate::circuits::polynomials::varbasemul::VarbaseMul;
 use crate::circuits::polynomials::{
-    boolean_op, conditional, generic, permutation, range_check, rot, xor,
+    boolean_op,
+    complete_add::CompleteAdd,
+    conditional,
+    endomul_scalar::EndomulScalar,
+    endosclmul::EndosclMul,
+    foreign_field_add::circuitgates::ForeignFieldAdd,
+    foreign_field_mul::circuitgates::ForeignFieldMul,
+    generic, permutation,
+    poseidon::Poseidon,
+    range_check::circuitgates::{RangeCheck0, RangeCheck1},
+    rot,
+    varbasemul::VarbaseMul,
+    xor,
 };
+
 use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
@@ -46,51 +51,51 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         VarbaseMul::<F>::CONSTRAINTS,
     );
 
-    let mut expr = Poseidon::combined_constraints(&powers_of_alpha);
-    expr += VarbaseMul::combined_constraints(&powers_of_alpha);
-    expr += CompleteAdd::combined_constraints(&powers_of_alpha);
-    expr += EndosclMul::combined_constraints(&powers_of_alpha);
-    expr += EndomulScalar::combined_constraints(&powers_of_alpha);
+    let mut cache = expr::Cache::default();
+
+    let mut expr = Poseidon::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += VarbaseMul::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += CompleteAdd::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndosclMul::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndomulScalar::combined_constraints(&powers_of_alpha, &mut cache);
 
     {
-        let chacha_expr = || {
-            let mut expr = ChaCha0::combined_constraints(&powers_of_alpha);
-            expr += ChaCha1::combined_constraints(&powers_of_alpha);
-            expr += ChaCha2::combined_constraints(&powers_of_alpha);
-            expr += ChaChaFinal::combined_constraints(&powers_of_alpha);
-            expr
-        };
+        let mut range_check0_expr =
+            || RangeCheck0::combined_constraints(&powers_of_alpha, &mut cache);
+
         if let Some(feature_flags) = feature_flags {
-            if feature_flags.chacha {
-                expr += chacha_expr();
+            if feature_flags.range_check0 {
+                expr += range_check0_expr();
             }
         } else {
             expr += Expr::IfFeature(
-                FeatureFlag::ChaCha,
-                Box::new(chacha_expr()),
+                FeatureFlag::RangeCheck0,
+                Box::new(range_check0_expr()),
                 Box::new(Expr::zero()),
             );
         }
     }
 
     {
-        let range_check_expr = || range_check::gadget::combined_constraints(&powers_of_alpha);
+        let mut range_check1_expr =
+            || RangeCheck1::combined_constraints(&powers_of_alpha, &mut cache);
 
         if let Some(feature_flags) = feature_flags {
-            if feature_flags.range_check {
-                expr += range_check_expr();
+            if feature_flags.range_check1 {
+                expr += range_check1_expr();
             }
         } else {
             expr += Expr::IfFeature(
-                FeatureFlag::RangeCheck,
-                Box::new(range_check_expr()),
+                FeatureFlag::RangeCheck1,
+                Box::new(range_check1_expr()),
                 Box::new(Expr::zero()),
             );
         }
     }
 
     {
-        let foreign_field_add_expr = || ForeignFieldAdd::combined_constraints(&powers_of_alpha);
+        let mut foreign_field_add_expr =
+            || ForeignFieldAdd::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_add {
                 expr += foreign_field_add_expr();
@@ -105,7 +110,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let foreign_field_mul_expr = || ForeignFieldMul::combined_constraints(&powers_of_alpha);
+        let mut foreign_field_mul_expr =
+            || ForeignFieldMul::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_mul {
                 expr += foreign_field_mul_expr();
@@ -120,7 +126,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let xor_expr = || xor::Xor16::combined_constraints(&powers_of_alpha);
+        let mut xor_expr = || xor::Xor16::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.xor {
                 expr += xor_expr();
@@ -135,7 +141,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let rot_expr = || rot::Rot64::combined_constraints(&powers_of_alpha);
+        let mut rot_expr = || rot::Rot64::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.rot {
                 expr += rot_expr();
@@ -150,7 +156,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let conditional_expr = || conditional::Conditional::combined_constraints(&powers_of_alpha);
+        let mut conditional_expr =
+            || conditional::Conditional::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.conditional {
                 expr += conditional_expr();
@@ -165,7 +172,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let boolean_op_expr = || boolean_op::BooleanOp::combined_constraints(&powers_of_alpha);
+        let boolean_op_expr = || boolean_op::BooleanOp::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.boolean_op {
                 expr += boolean_op_expr();
@@ -180,7 +187,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     if generic {
-        expr += generic::Generic::combined_constraints(&powers_of_alpha);
+        expr += generic::Generic::combined_constraints(&powers_of_alpha, &mut cache);
     }
 
     // permutation
@@ -209,7 +216,6 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         let all_features = LookupFeatures {
             patterns: LookupPatterns {
                 xor: true,
-                chacha_final: true,
                 lookup: true,
                 range_check: true,
                 foreign_field_mul: true,
@@ -273,8 +279,8 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         // Generating using `IfFeature`, turn on all feature flags.
         {
             FeatureFlags {
-                chacha: true,
-                range_check: true,
+                range_check0: true,
+                range_check1: true,
                 foreign_field_add: true,
                 foreign_field_mul: true,
                 xor: true,
@@ -284,7 +290,6 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,
-                        chacha_final: true,
                         lookup: true,
                         range_check: true,
                         foreign_field_mul: true,

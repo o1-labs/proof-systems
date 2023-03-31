@@ -146,7 +146,7 @@ where
         &<G::BaseField as PrimeField>::Params::MODULUS.to_bits_le()[..],
     );
     let two: G::ScalarField = (2u64).into();
-    let two_pow = two.pow(&[<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
+    let two_pow = two.pow([<G::ScalarField as PrimeField>::Params::MODULUS_BITS as u64]);
     if n1 < n2 {
         (x - (two_pow + G::ScalarField::one())) / two
     } else {
@@ -473,7 +473,7 @@ pub fn combined_inner_product<F: PrimeField>(
             let shifted_evals: Vec<_> = evaluation_points
                 .iter()
                 .zip(&last_evals)
-                .map(|(elm, f_elm)| elm.pow(&[(srs_length - (*m) % srs_length) as u64]) * f_elm)
+                .map(|(elm, f_elm)| elm.pow([(srs_length - (*m) % srs_length) as u64]) * f_elm)
                 .collect();
 
             res += &(xi_i * DensePolynomial::<F>::eval_polynomial(&shifted_evals, *evalscale));
@@ -515,6 +515,7 @@ where
     pub evalscale: G::ScalarField,
     /// batched opening proof
     pub opening: &'a OpeningProof<G>,
+    pub combined_inner_product: G::ScalarField,
 }
 
 impl<G: CommitmentCurve> SRS<G> {
@@ -718,35 +719,10 @@ impl<G: CommitmentCurve> SRS<G> {
             evalscale,
             evaluations,
             opening,
+            combined_inner_product,
         } in batch.iter_mut()
         {
-            // TODO: This computation is repeated in ProverProof::oracles
-            let combined_inner_product0 = {
-                let es: Vec<_> = evaluations
-                    .iter()
-                    .map(
-                        |Evaluation {
-                             commitment,
-                             evaluations,
-                             degree_bound,
-                         }| {
-                            let bound: Option<usize> = (|| {
-                                let b = (*degree_bound)?;
-                                let x = commitment.shifted?;
-                                if x.is_zero() {
-                                    None
-                                } else {
-                                    Some(b)
-                                }
-                            })();
-                            (evaluations.clone(), bound)
-                        },
-                    )
-                    .collect();
-                combined_inner_product(evaluation_points, polyscale, evalscale, &es, self.g.len())
-            };
-
-            sponge.absorb_fr(&[shift_scalar::<G>(combined_inner_product0)]);
+            sponge.absorb_fr(&[shift_scalar::<G>(*combined_inner_product)]);
 
             let t = sponge.challenge_fq();
             let u: G = to_group(group_map, t);
@@ -855,7 +831,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 }
             };
 
-            scalars.push(rand_base_i_c_i * combined_inner_product0);
+            scalars.push(rand_base_i_c_i * *combined_inner_product);
             points.push(u);
 
             scalars.push(rand_base_i);
@@ -888,7 +864,7 @@ mod tests {
     use super::*;
 
     use crate::srs::SRS;
-    use ark_poly::{Polynomial, UVPolynomial};
+    use ark_poly::{Polynomial, Radix2EvaluationDomain, UVPolynomial};
     use mina_curves::pasta::{Fp, Vesta as VestaG};
     use mina_poseidon::constants::PlonkSpongeConstantsKimchi as SC;
     use mina_poseidon::sponge::DefaultFqSponge;
@@ -995,9 +971,21 @@ mod tests {
         let sponge =
             DefaultFqSponge::<_, SC>::new(mina_poseidon::pasta::fq_kimchi::static_params());
 
-        let polys = vec![
-            (&poly1, None, commitment.blinders),
-            (&poly2, Some(upperbound), bounded_commitment.blinders),
+        let polys: Vec<(
+            DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
+            Option<usize>,
+            PolyComm<_>,
+        )> = vec![
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(&poly1),
+                None,
+                commitment.blinders,
+            ),
+            (
+                DensePolynomialOrEvaluations::DensePolynomial(&poly2),
+                Some(upperbound),
+                bounded_commitment.blinders,
+            ),
         ];
         let elm = vec![Fp::rand(rng), Fp::rand(rng)];
 
@@ -1032,25 +1020,53 @@ mod tests {
         assert_eq!(sum(&poly2_chunked_evals[0]), poly2.evaluate(&elm[0]));
         assert_eq!(sum(&poly2_chunked_evals[1]), poly2.evaluate(&elm[1]));
 
+        let evaluations = vec![
+            Evaluation {
+                commitment: commitment.commitment,
+                evaluations: poly1_chunked_evals,
+                degree_bound: None,
+            },
+            Evaluation {
+                commitment: bounded_commitment.commitment,
+                evaluations: poly2_chunked_evals,
+                degree_bound: Some(upperbound),
+            },
+        ];
+
+        let combined_inner_product = {
+            let es: Vec<_> = evaluations
+                .iter()
+                .map(
+                    |Evaluation {
+                         commitment,
+                         evaluations,
+                         degree_bound,
+                     }| {
+                        let bound: Option<usize> = (|| {
+                            let b = (*degree_bound)?;
+                            let x = commitment.shifted?;
+                            if x.is_zero() {
+                                None
+                            } else {
+                                Some(b)
+                            }
+                        })();
+                        (evaluations.clone(), bound)
+                    },
+                )
+                .collect();
+            combined_inner_product(&elm, &v, &u, &es, srs.g.len())
+        };
+
         // verify the proof
         let mut batch = vec![BatchEvaluationProof {
             sponge,
             evaluation_points: elm.clone(),
             polyscale: v,
             evalscale: u,
-            evaluations: vec![
-                Evaluation {
-                    commitment: commitment.commitment,
-                    evaluations: poly1_chunked_evals,
-                    degree_bound: None,
-                },
-                Evaluation {
-                    commitment: bounded_commitment.commitment,
-                    evaluations: poly2_chunked_evals,
-                    degree_bound: Some(upperbound),
-                },
-            ],
+            evaluations,
             opening: &opening_proof,
+            combined_inner_product,
         }];
 
         assert!(srs.verify(&group_map, &mut batch, rng));

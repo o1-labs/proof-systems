@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            chacha, complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
             poseidon, range_check, turshi, varbasemul,
         },
         wires::*,
@@ -97,11 +97,6 @@ pub enum GateType {
     EndoMul = 5,
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar = 6,
-    /// ChaCha
-    ChaCha0 = 7,
-    ChaCha1 = 8,
-    ChaCha2 = 9,
-    ChaChaFinal = 10,
     // Lookup
     Lookup = 11,
     /// Cairo
@@ -216,8 +211,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             VarBaseMul => self.verify_vbmul(row, witness),
             EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
             EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
-            // TODO: implement the verification for chacha
-            ChaCha0 | ChaCha1 | ChaCha2 | ChaChaFinal => Ok(()),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
@@ -292,6 +285,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
         }
 
+        let mut cache = expr::Cache::default();
+
         // Perform witness verification on each constraint for this gate
         let results = match self.typ {
             GateType::Zero => {
@@ -301,39 +296,41 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 // TODO: implement the verification for the generic gate
                 vec![]
             }
-            GateType::Poseidon => poseidon::Poseidon::constraint_checks(&env),
-            GateType::CompleteAdd => complete_add::CompleteAdd::constraint_checks(&env),
-            GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env),
-            GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env),
-            GateType::EndoMulScalar => endomul_scalar::EndomulScalar::constraint_checks(&env),
-            GateType::ChaCha0 => chacha::ChaCha0::constraint_checks(&env),
-            GateType::ChaCha1 => chacha::ChaCha1::constraint_checks(&env),
-            GateType::ChaCha2 => chacha::ChaCha2::constraint_checks(&env),
-            GateType::ChaChaFinal => chacha::ChaChaFinal::constraint_checks(&env),
+            GateType::Poseidon => poseidon::Poseidon::constraint_checks(&env, &mut cache),
+            GateType::CompleteAdd => complete_add::CompleteAdd::constraint_checks(&env, &mut cache),
+            GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env, &mut cache),
+            GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env, &mut cache),
+            GateType::EndoMulScalar => {
+                endomul_scalar::EndomulScalar::constraint_checks(&env, &mut cache)
+            }
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
                 vec![]
             }
-            GateType::CairoClaim => turshi::Claim::constraint_checks(&env),
-            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env),
-            GateType::CairoFlags => turshi::Flags::constraint_checks(&env),
-            GateType::CairoTransition => turshi::Transition::constraint_checks(&env),
+            GateType::CairoClaim => turshi::Claim::constraint_checks(&env, &mut cache),
+            GateType::CairoInstruction => turshi::Instruction::constraint_checks(&env, &mut cache),
+            GateType::CairoFlags => turshi::Flags::constraint_checks(&env, &mut cache),
+            GateType::CairoTransition => turshi::Transition::constraint_checks(&env, &mut cache),
             GateType::RangeCheck0 => {
-                range_check::circuitgates::RangeCheck0::constraint_checks(&env)
+                range_check::circuitgates::RangeCheck0::constraint_checks(&env, &mut cache)
             }
             GateType::RangeCheck1 => {
-                range_check::circuitgates::RangeCheck1::constraint_checks(&env)
+                range_check::circuitgates::RangeCheck1::constraint_checks(&env, &mut cache)
             }
             GateType::ForeignFieldAdd => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(&env)
+                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(
+                    &env, &mut cache,
+                )
             }
             GateType::ForeignFieldMul => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(&env)
+                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(
+                    &env, &mut cache,
+                )
             }
-            GateType::Xor16 => xor::Xor16::constraint_checks(&env),
-            GateType::Rot64 => rot::Rot64::constraint_checks(&env),
-            GateType::Conditional => conditional::Conditional::constraint_checks(&env),
-            GateType::BooleanOp => boolean_op::BooleanOp::constraint_checks(&env),
+            GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
+            GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
+            GateType::Conditional => conditional::Conditional::constraint_checks(&env, &mut cache),
+            GateType::BooleanOp => boolean_op::BooleanOp::constraint_checks(&env, &mut cache),
         };
 
         // Check for failed constraints
@@ -390,6 +387,22 @@ pub trait Connect {
 
     /// Connects a generic gate cell with zeros to a given row for 64bit range check
     fn connect_64bit(&mut self, zero_row: usize, start_row: usize);
+
+    /// Connects the wires of the range checks in a single foreign field addition
+    /// Inputs:
+    /// - `ffadd_row`: the row of the foreign field addition gate
+    /// - `left_rc`: the first row of the range check for the left input
+    /// - `right_rc`: the first row of the range check for the right input
+    /// - `out_rc`: the first row of the range check for the output of the addition
+    /// Note:
+    /// If run with `left_rc = None` and `right_rc = None` then it can be used for the bound check range check
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    );
 }
 
 impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
@@ -404,6 +417,39 @@ impl<F: PrimeField> Connect for Vec<CircuitGate<F>> {
         self.connect_cell_pair((start_row, 1), (start_row, 2));
         self.connect_cell_pair((start_row, 2), (zero_row, 0));
         self.connect_cell_pair((zero_row, 0), (start_row, 1));
+    }
+
+    fn connect_ffadd_range_checks(
+        &mut self,
+        ffadd_row: usize,
+        left_rc: Option<usize>,
+        right_rc: Option<usize>,
+        out_rc: usize,
+    ) {
+        if let Some(left_rc) = left_rc {
+            // Copy left_input_lo -> Curr(0)
+            self.connect_cell_pair((left_rc, 0), (ffadd_row, 0));
+            // Copy left_input_mi -> Curr(1)
+            self.connect_cell_pair((left_rc + 1, 0), (ffadd_row, 1));
+            // Copy left_input_hi -> Curr(2)
+            self.connect_cell_pair((left_rc + 2, 0), (ffadd_row, 2));
+        }
+
+        if let Some(right_rc) = right_rc {
+            // Copy right_input_lo -> Curr(3)
+            self.connect_cell_pair((right_rc, 0), (ffadd_row, 3));
+            // Copy right_input_mi -> Curr(4)
+            self.connect_cell_pair((right_rc + 1, 0), (ffadd_row, 4));
+            // Copy right_input_hi -> Curr(5)
+            self.connect_cell_pair((right_rc + 2, 0), (ffadd_row, 5));
+        }
+
+        // Copy result_lo -> Next(0)
+        self.connect_cell_pair((out_rc, 0), (ffadd_row + 1, 0));
+        // Copy result_mi -> Next(1)
+        self.connect_cell_pair((out_rc + 1, 0), (ffadd_row + 1, 1));
+        // Copy result_hi -> Next(2)
+        self.connect_cell_pair((out_rc + 2, 0), (ffadd_row + 1, 2));
     }
 }
 

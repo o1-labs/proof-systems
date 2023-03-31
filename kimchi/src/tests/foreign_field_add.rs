@@ -19,7 +19,6 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, SquareRootField, Zero};
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::{endos, SRS};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::FqSponge;
 use mina_poseidon::{
@@ -29,9 +28,10 @@ use mina_poseidon::{
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
 use o1_utils::{
-    foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB},
+    foreign_field::{BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers, Two,
 };
+use poly_commitment::srs::{endos, SRS};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::array;
 use std::sync::Arc;
@@ -254,41 +254,15 @@ fn full_circuit<F: PrimeField + SquareRootField>(
     // Connect the num FFAdd gates with the range-check cells
     for i in 0..num {
         let ffadd_row = i + 1;
-        let left_row = num + 3 + 8 * i;
-        let right_row = num + 7 + 8 * i;
-        let out_row = num + 11 + 8 * i;
-
-        // Copy left_input_lo -> Curr(0)
-        gates.connect_cell_pair((left_row, 0), (ffadd_row, 0));
-        // Copy left_input_mi -> Curr(1)
-        gates.connect_cell_pair((left_row + 1, 0), (ffadd_row, 1));
-        // Copy left_input_hi -> Curr(2)
-        gates.connect_cell_pair((left_row + 2, 0), (ffadd_row, 2));
-
-        // Copy right_input_lo -> Curr(3)
-        gates.connect_cell_pair((right_row, 0), (ffadd_row, 3));
-        // Copy right_input_mi -> Curr(4)
-        gates.connect_cell_pair((right_row + 1, 0), (ffadd_row, 4));
-        // Copy right_input_hi -> Curr(5)
-        gates.connect_cell_pair((right_row + 2, 0), (ffadd_row, 5));
-
-        // Copy result_lo -> Next(0)
-        gates.connect_cell_pair((out_row, 0), (ffadd_row + 1, 0));
-        // Copy result_mi -> Next(1)
-        gates.connect_cell_pair((out_row + 1, 0), (ffadd_row + 1, 1));
-        // Copy result_hi -> Next(2)
-        gates.connect_cell_pair((out_row + 2, 0), (ffadd_row + 1, 2));
+        let left_rc = num + 3 + 8 * i;
+        let right_rc = num + 7 + 8 * i;
+        let out_rc = num + 11 + 8 * i;
+        gates.connect_ffadd_range_checks(ffadd_row, Some(left_rc), Some(right_rc), out_rc);
     }
     // Connect final bound gate to range-check cells
-    let final_row = num + 2;
-    let bound_row = 9 * num + 7;
-    // Copy bound_lo -> Next(3)
-    gates.connect_cell_pair((bound_row, 0), (final_row, 0));
-    // Copy bound_mi -> Next(4)
-    gates.connect_cell_pair((bound_row + 1, 0), (final_row, 1));
-    // Copy bound_hi -> Next(5)
-    gates.connect_cell_pair((bound_row + 2, 0), (final_row, 2));
-
+    let check_row = num + 1;
+    let bound_rc = 9 * num + 7;
+    gates.connect_ffadd_range_checks(check_row, None, None, bound_rc);
     (next_row, gates)
 }
 
@@ -348,19 +322,13 @@ fn create_test_constraint_system_ffadd(
     foreign_field_modulus: BigUint,
     full: bool,
 ) -> ProverIndex<Vesta> {
-    let (mut next_row, mut gates) = if full {
+    let (_next_row, gates) = if full {
         full_circuit(opcodes, &foreign_field_modulus)
     } else {
         short_circuit(opcodes, &foreign_field_modulus)
     };
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
-    let cs = ConstraintSystem::create(gates).build().unwrap();
+    let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
     let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
     srs.add_lagrange_basis(cs.domain.d1);
     let srs = Arc::new(srs);
@@ -1298,15 +1266,9 @@ fn prove_and_verify(operation_count: usize) {
 
     // Create circuit
     // Initialize public input
-    let (mut next_row, mut gates) = short_circuit(&operations, &foreign_field_modulus);
+    let (_next_row, gates) = short_circuit(&operations, &foreign_field_modulus);
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
-    // Create randm inputs
+    // Create random inputs
     let inputs = (0..operation_count + 1)
         .into_iter()
         .map(|_| BigUint::from_bytes_be(&random_input(rng, foreign_field_modulus.clone(), true)))
@@ -1315,13 +1277,13 @@ fn prove_and_verify(operation_count: usize) {
     // Create witness
     let witness = short_witness(&inputs, &operations, foreign_field_modulus);
 
-    assert!(TestFramework::<Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![PallasField::one()])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
-        .is_ok());
+        .unwrap();
 }
 
 // Prove and verify a randomly generated operation (only ffadd)
@@ -1338,12 +1300,10 @@ fn prove_and_verify_50() {
 
 // Extends a gate with the final bound range check
 fn extend_gate_bound_rc(gates: &mut Vec<CircuitGate<PallasField>>) -> usize {
-    let bound_row = gates.len() - 1;
+    let bound_row = gates.len() - 2;
     let mut new_row = gates.len();
     CircuitGate::extend_multi_range_check(gates, &mut new_row);
-    gates.connect_cell_pair((bound_row, 0), (bound_row + 1, 0));
-    gates.connect_cell_pair((bound_row, 1), (bound_row + 2, 0));
-    gates.connect_cell_pair((bound_row, 2), (bound_row + 3, 0));
+    gates.connect_ffadd_range_checks(bound_row, None, None, bound_row + 2);
     new_row
 }
 
@@ -1372,17 +1332,11 @@ fn test_ffadd_no_rc() {
         .collect::<Vec<_>>();
 
     // Create circuit
-    let (mut next_row, mut gates) = short_circuit(&operations, &foreign_mod);
+    let (_next_row, mut gates) = short_circuit(&operations, &foreign_mod);
 
     extend_gate_bound_rc(&mut gates);
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
-    let cs = ConstraintSystem::create(gates).build().unwrap();
+    let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
 
     // Create inputs
     let inputs = (0..operation_count + 1)
@@ -1449,7 +1403,7 @@ where
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
     // Create foreign field addition gates
-    let (mut next_row, mut gates) = short_circuit(&[FFOps::Add], foreign_field_modulus);
+    let (_next_row, gates) = short_circuit(&[FFOps::Add], foreign_field_modulus);
 
     let left_input =
         BigUint::from_bytes_be(&random_input(rng, foreign_field_modulus.clone(), true));
@@ -1463,13 +1417,10 @@ where
         foreign_field_modulus.clone(),
     );
 
-    // Temporary workaround for lookup-table/domain-size issue
-    for _ in 0..(1 << 13) {
-        gates.push(CircuitGate::zero(Wire::for_row(next_row)));
-        next_row += 1;
-    }
-
-    let cs = ConstraintSystem::create(gates.clone()).build().unwrap();
+    let cs = ConstraintSystem::create(gates.clone())
+        .public(1)
+        .build()
+        .unwrap();
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
@@ -1480,4 +1431,147 @@ where
     }
 
     (Ok(()), witness)
+}
+
+#[test]
+// Finalization test
+fn test_ffadd_finalization() {
+    // Includes a row to store value 1
+    let num_public_inputs = 1;
+    let operation = &[FFOps::Add];
+    let modulus = BigUint::from_bytes_be(&[
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF, 0xFF, 0xFF,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFE, 0xFF, 0xFF,
+        0xFC, 0x2F,
+    ]);
+
+    // circuit
+    // [0]       -> Public input row to store the value 1
+    // [1]       -> 1 ForeignFieldAdd row
+    // [2]       -> 1 ForeignFieldAdd row for final bound
+    // [3]       -> 1 Zero row for bound result
+    // [4..=7]   -> 1 Multi RangeCheck for left input
+    // [8..=11]  -> 1 Multi RangeCheck for right input
+    // [12..=15] -> 1 Multi RangeCheck for result
+    // [16..=19] -> 1 Multi RangeCheck for bound check
+    let gates = {
+        // Public input row
+        let mut gates = vec![CircuitGate::<Fp>::create_generic_gadget(
+            Wire::for_row(0),
+            GenericGateSpec::Pub,
+            None,
+        )];
+
+        let mut curr_row = num_public_inputs;
+        // Foreign field addition and bound check
+        CircuitGate::<Fp>::extend_chain_ffadd(&mut gates, 0, &mut curr_row, operation, &modulus);
+
+        // Extend rangechecks of left input, right input, result, and bound
+        for _ in 0..4 {
+            CircuitGate::extend_multi_range_check(&mut gates, &mut curr_row);
+        }
+        // Connect the witnesses of the addition to the corresponding range checks
+        gates.connect_ffadd_range_checks(1, Some(4), Some(8), 12);
+        // Connect the bound check range checks
+        gates.connect_ffadd_range_checks(2, None, None, 16);
+
+        gates
+    };
+
+    // witness
+    let witness = {
+        // create row for the public value 1
+        let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 1]);
+        witness[0][0] = Fp::one();
+        // create inputs to the addition
+        let left = modulus.clone() - BigUint::one();
+        let right = modulus.clone() - BigUint::one();
+        // create a chain of 1 addition
+        let add_witness = witness::create_chain::<Fp>(&vec![left, right], operation, modulus);
+        for col in 0..COLUMNS {
+            witness[col].extend(add_witness[col].iter());
+        }
+        // extend range checks for all of left, right, output, and bound
+        let left = (witness[0][1], witness[1][1], witness[2][1]);
+        range_check::witness::extend_multi(&mut witness, left.0, left.1, left.2);
+        let right = (witness[3][1], witness[4][1], witness[5][1]);
+        range_check::witness::extend_multi(&mut witness, right.0, right.1, right.2);
+        let output = (witness[0][2], witness[1][2], witness[2][2]);
+        range_check::witness::extend_multi(&mut witness, output.0, output.1, output.2);
+        let bound = (witness[0][3], witness[1][3], witness[2][3]);
+        range_check::witness::extend_multi(&mut witness, bound.0, bound.1, bound.2);
+        witness
+    };
+
+    let index = {
+        let cs = ConstraintSystem::create(gates.clone())
+            .lookup(vec![range_check::gadget::lookup_table()])
+            .public(num_public_inputs)
+            .build()
+            .unwrap();
+        let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
+        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Pallas>();
+        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+    };
+
+    for row in 0..witness[0].len() {
+        assert_eq!(
+            index.cs.gates[row].verify_witness::<Vesta>(
+                row,
+                &witness,
+                &index.cs,
+                &witness[0][0..index.cs.public]
+            ),
+            Ok(())
+        );
+    }
+
+    TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness.clone())
+        .public_inputs(vec![witness[0][0]])
+        .setup()
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .unwrap();
+}
+
+#[test]
+fn test_gate_max_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_single_ffadd(
+        0,
+        FFOps::Add,
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_gate_invalid_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_single_ffadd(
+        0,
+        FFOps::Add,
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
+    );
+}
+
+#[test]
+fn test_witness_max_foreign_field_modulus() {
+    short_witness::<PallasField>(
+        &vec![BigUint::zero(), BigUint::zero()],
+        &[FFOps::Add],
+        BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_witness_invalid_foreign_field_modulus() {
+    short_witness::<PallasField>(
+        &vec![BigUint::zero(), BigUint::zero()],
+        &[FFOps::Add],
+        BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one(),
+    );
 }

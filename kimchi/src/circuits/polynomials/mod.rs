@@ -1,6 +1,5 @@
 pub mod and;
 pub mod boolean_op;
-pub mod chacha;
 pub mod complete_add;
 pub mod conditional;
 pub mod endomul_scalar;

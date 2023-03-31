@@ -1,31 +1,38 @@
+//! This module contains a useful trait for recursion: [KimchiCurve],
+//! which defines how a pair of curves interact.
+
 use ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
-use commitment_dlog::{commitment::CommitmentCurve, srs::endos};
 use mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
+use poly_commitment::{commitment::CommitmentCurve, srs::endos};
 
-///Represents additional information that a curve needs in order to be used with Kimchi
+/// Represents additional information that a curve needs in order to be used with Kimchi
 pub trait KimchiCurve: CommitmentCurve {
-    /// The other curve that forms the cycle used for recursion
+    /// A human readable name.
+    const NAME: &'static str;
+
+    /// The other curve that forms the cycle used for recursion.
     type OtherCurve: KimchiCurve<
         ScalarField = Self::BaseField,
         BaseField = Self::ScalarField,
         OtherCurve = Self,
     >;
 
-    /// Provides the sponge params to be used with this curve
-    /// If the params for the base field are needed, they can be obtained from [`KimchiCurve::OtherCurve`]
+    /// Provides the sponge params to be used with this curve.
+    /// If the params for the base field are needed, they can be obtained from [`KimchiCurve::OtherCurve`].
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField>;
 
-    /// Provides the coefficients for the curve endomorphism
-    // called (q,r) in some places
+    /// Provides the coefficients for the curve endomorphism called (q,r) in some places.
     fn endos() -> &'static (Self::BaseField, Self::ScalarField);
 }
 
 impl KimchiCurve for GroupAffine<VestaParameters> {
+    const NAME: &'static str = "vesta";
+
     type OtherCurve = GroupAffine<PallasParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
@@ -42,6 +49,8 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
 }
 
 impl KimchiCurve for GroupAffine<PallasParameters> {
+    const NAME: &'static str = "pallas";
+
     type OtherCurve = GroupAffine<VestaParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
@@ -58,10 +67,12 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
 }
 
 //
-// legacy curves
+// Legacy curves
 //
 
 impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
+    const NAME: &'static str = "legacy_vesta";
+
     type OtherCurve = GroupAffine<LegacyPallasParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
@@ -72,7 +83,10 @@ impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
         GroupAffine::<VestaParameters>::endos()
     }
 }
+
 impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
+    const NAME: &'static str = "legacy_pallas";
+
     type OtherCurve = GroupAffine<LegacyVestaParameters>;
 
     fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {

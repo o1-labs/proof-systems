@@ -1,8 +1,9 @@
 use crate::srs::SRS;
 use crate::{commitment::*, srs::endos};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
-use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{EvaluationDomain, Evaluations};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::math;
 use rand_core::{CryptoRng, RngCore};
@@ -21,6 +22,11 @@ enum OptShiftedPolynomial<P> {
 // where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
 #[derive(Default)]
 struct ScaledChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
+
+pub enum DensePolynomialOrEvaluations<'a, F: FftField, D: EvaluationDomain<F>> {
+    DensePolynomial(&'a DensePolynomial<F>),
+    Evaluations(&'a Evaluations<F, D>, D),
+}
 
 impl<F, P> ScaledChunkedPolynomial<F, P> {
     fn add_unshifted(&mut self, scale: F, p: P) {
@@ -76,12 +82,12 @@ impl<G: CommitmentCurve> SRS<G> {
     #[allow(clippy::too_many_arguments)]
     #[allow(clippy::type_complexity)]
     #[allow(clippy::many_single_char_names)]
-    pub fn open<EFqSponge, RNG>(
+    pub fn open<EFqSponge, RNG, D: EvaluationDomain<G::ScalarField>>(
         &self,
         group_map: &G::Map,
         // TODO(mimoo): create a type for that entry
         plnms: &[(
-            &DensePolynomial<G::ScalarField>,
+            DensePolynomialOrEvaluations<G::ScalarField, D>,
             Option<usize>,
             PolyComm<G::ScalarField>,
         )], // vector of polynomial with optional degree bound and commitment randomness
@@ -108,6 +114,26 @@ impl<G: CommitmentCurve> SRS<G> {
 
         let (p, blinding_factor) = {
             let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
+            let mut plnm_evals_part = {
+                // For now just check that all the evaluation polynomials are the same degree so that we
+                // can do just a single FFT.
+                // Furthermore we check they have size less than the SRS size so we don't have to do chunking.
+                // If/when we change this, we can add more complicated code to handle different degrees.
+                let degree = plnms
+                    .iter()
+                    .fold(None, |acc, (p, _, _)| match p {
+                        DensePolynomialOrEvaluations::DensePolynomial(_) => acc,
+                        DensePolynomialOrEvaluations::Evaluations(_, d) => {
+                            if let Some(n) = acc {
+                                assert_eq!(n, d.size());
+                            }
+                            Some(d.size())
+                        }
+                    })
+                    .unwrap_or(0);
+                assert!(degree <= padded_length);
+                vec![G::ScalarField::zero(); degree]
+            };
             // let mut plnm_chunks: Vec<(G::ScalarField, OptShiftedPolynomial<_>)> = vec![];
 
             let mut omega = G::ScalarField::zero();
@@ -115,36 +141,65 @@ impl<G: CommitmentCurve> SRS<G> {
 
             // iterating over polynomials in the batch
             for (p_i, degree_bound, omegas) in plnms {
-                let mut offset = 0;
-                // iterating over chunks of the polynomial
-                if let Some(m) = degree_bound {
-                    assert!(p_i.coeffs.len() <= m + 1);
-                } else {
-                    assert!(omegas.shifted.is_none());
-                }
-                for j in 0..omegas.unshifted.len() {
-                    let segment =
-                        &p_i.coeffs[offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
-                    // always mixing in the unshifted segments
-                    plnm.add_unshifted(scale, segment);
+                match p_i {
+                    DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) => {
+                        let stride = evals_i.evals.len() / sub_domain.size();
+                        let evals = &evals_i.evals;
+                        plnm_evals_part
+                            .par_iter_mut()
+                            .enumerate()
+                            .for_each(|(i, x)| {
+                                *x += scale * evals[i * stride];
+                            });
+                        assert_eq!(omegas.unshifted.len(), 1);
+                        omega += &(omegas.unshifted[0] * scale);
+                        scale *= &polyscale;
+                    }
 
-                    omega += &(omegas.unshifted[j] * scale);
-                    scale *= &polyscale;
-                    offset += self.g.len();
-                    if let Some(m) = degree_bound {
-                        if offset >= *m {
-                            if offset > *m {
-                                // mixing in the shifted segment since degree is bounded
-                                plnm.add_shifted(scale, self.g.len() - m % self.g.len(), segment);
-                            }
-                            omega += &(omegas.shifted.unwrap() * scale);
+                    DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
+                        let mut offset = 0;
+                        // iterating over chunks of the polynomial
+                        if let Some(m) = degree_bound {
+                            assert!(p_i.coeffs.len() <= m + 1);
+                        } else {
+                            assert!(omegas.shifted.is_none());
+                        }
+                        for j in 0..omegas.unshifted.len() {
+                            let segment = &p_i.coeffs
+                                [offset..std::cmp::min(offset + self.g.len(), p_i.coeffs.len())];
+                            // always mixing in the unshifted segments
+                            plnm.add_unshifted(scale, segment);
+
+                            omega += &(omegas.unshifted[j] * scale);
                             scale *= &polyscale;
+                            offset += self.g.len();
+                            if let Some(m) = degree_bound {
+                                if offset >= *m {
+                                    if offset > *m {
+                                        // mixing in the shifted segment since degree is bounded
+                                        plnm.add_shifted(
+                                            scale,
+                                            self.g.len() - m % self.g.len(),
+                                            segment,
+                                        );
+                                    }
+                                    omega += &(omegas.shifted.unwrap() * scale);
+                                    scale *= &polyscale;
+                                }
+                            }
                         }
                     }
                 }
             }
 
-            (plnm.to_dense_polynomial(), omega)
+            let mut plnm = plnm.to_dense_polynomial();
+            if !plnm_evals_part.is_empty() {
+                let n = plnm_evals_part.len();
+                plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
+                    .interpolate();
+            }
+
+            (plnm, omega)
         };
 
         let rounds = math::ceil_log2(self.g.len());
