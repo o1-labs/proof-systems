@@ -9,8 +9,7 @@ use crate::circuits::lookup::{
     lookups::{LookupFeatures, LookupInfo, LookupPatterns},
 };
 use crate::circuits::polynomials::{
-    boolean,
-    boolean_op,
+    boolean, boolean_op,
     complete_add::CompleteAdd,
     conditional,
     endomul_scalar::EndomulScalar,
@@ -189,7 +188,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let boolean_expr = || boolean::Boolean::combined_constraints(&powers_of_alpha, &mut cache);
+        let mut boolean_expr =
+            || boolean::Boolean::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.boolean {
                 expr += boolean_expr();

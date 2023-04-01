@@ -42,7 +42,7 @@ use ark_ff::{PrimeField, SquareRootField};
 use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::constraints::ExprOps,
+        expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
         polynomial::COLUMNS,
         wires::{Wire, PERMUTS},
@@ -65,7 +65,7 @@ where
     const CONSTRAINTS: u32 = 7;
     // DEGREE is 2
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // C1-C7: Constrain b0, ..., b6 as boolean values
         (0..PERMUTS)
             .map(|i| env.witness_curr(i).boolean())

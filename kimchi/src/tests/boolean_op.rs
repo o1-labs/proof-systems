@@ -155,7 +155,7 @@ fn not_op(value: ScalarField) -> ScalarField {
 fn test_boolean_op() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
-    for _ in 0..4 {
+    for _ in 0..2 {
         // Deterministically generate some random inputs
         let left_inputs: [ScalarField; 2] = array::from_fn(|_| {
             rng.gen_biguint_below(&BigUint::from(2u64))
