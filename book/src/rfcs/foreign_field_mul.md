@@ -183,7 +183,15 @@ m_{max} &= \frac{258 + 255}{2} = 256.5,
 \end{aligned}
 $$
 
-which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving a maximum modulus $m_{max} = 259$ bits.
+which is not enough space to handle anything larger than 256 bit moduli.  Instead, we will use $t=264$, giving $m_{max} = 259$ bits.
+
+The above formula is useful for checking the maximum number of bits supported of the foreign field modulus, but it is not useful for computing the maximum foreign field modulus itself (because $2^{m_{max}}$ is too coarse). For these checks, we can compute our maximum foreign field modulus more precisely with
+
+$$
+max_{mod} = \lfloor \sqrt{2^t \cdot n} \rfloor.
+$$
+
+The max prime foreign field modulus satisfying the above inequality for both Pallas and Vesta is `926336713898529563388567880069503262826888842373627227613104999999999999999607`.
 
 #### Choosing the limb configuration
 
@@ -1095,7 +1103,7 @@ To check that $v_{11} \in [0, 2^3)$ (i.e. that $v_{11}$ is at most 3 bits long) 
 - Check $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$
 - Check $\mathsf{scaled}_{v_{11}}$ is a 12-bit value with a 12-bit plookup
 
-Kimchi plookup supports optional scaling of the lookup target value as part of the lookup operation.  Thus, we do not require two witness elements, two plookups, nor the $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$ custom constraint.  Instead we can just store $v_{11}$ in the witness and define this as a 12-bit plookup scaled by $2^9$ yielding a 3-bit check.  This eliminates one plookup and reduces the total number of constraints by two.
+Kimchi's plookup implementation is extremely flexible and supports optional scaling of the lookup target value as part of the lookup operation.  Thus, we do not require two witness elements, two lookup columns, nor the $\mathsf{scaled}_{v_{11}} = 2^9 \cdot v_{11}$ custom constraint.  Instead we can just store $v_{11}$ in the witness and define this column as a "joint lookup" comprised of one 12-bit plookup on the original cell value and another 12-bit plookup on the cell value scaled by $2^9$, thus, yielding a 3-bit check.  This eliminates one plookup column and reduces the total number of constraints.
 
 ### 9. Native modulus constraint
 

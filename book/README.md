@@ -5,14 +5,10 @@ This directory holds the code related to documentation and specifications of the
 It is built with [mdbook](https://rust-lang.github.io/mdBook/), which you can use to serve the page via the following command:
 
 ```console
-$ # setup
-$ cargo install mdbook
-$ cargo install mdbook-katex
-$ cargo install mdbook-admonish
-$ cargo install mdbook-mermaid
-$ cargo install mdbook-toc
+$ # install dependencies
+$ make deps
 $ # serve the page locally
-$ mdbook serve
+$ make
 ```
 
 The specifications in the book are dynamically generated. Refer to the [specifications/](specifications/) directory.

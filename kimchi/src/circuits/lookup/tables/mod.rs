@@ -1,5 +1,5 @@
 use ark_ff::{FftField, One, Zero};
-use commitment_dlog::PolyComm;
+use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
 
 pub mod range_check;
@@ -11,7 +11,6 @@ pub const XOR_TABLE_ID: i32 = 0;
 
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
-
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
@@ -67,6 +66,16 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     }
 }
 
+impl GateLookupTable {
+    /// Returns the lookup table associated to a [`GateLookupTable`].
+    pub fn table_size(&self) -> usize {
+        match self {
+            GateLookupTable::Xor => xor::TABLE_SIZE,
+            GateLookupTable::RangeCheck => range_check::TABLE_SIZE,
+        }
+    }
+}
+
 /// Let's say we want to do a lookup in a "vector-valued" table `T: Vec<[F; n]>` (here I
 /// am using `[F; n]` to model a vector of length `n`).
 ///
@@ -111,7 +120,7 @@ pub fn combine_table<G>(
     runtime_vector: Option<&PolyComm<G>>,
 ) -> PolyComm<G>
 where
-    G: commitment_dlog::commitment::CommitmentCurve,
+    G: poly_commitment::commitment::CommitmentCurve,
 {
     assert!(!columns.is_empty());
 

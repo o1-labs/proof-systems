@@ -3,7 +3,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        constraints::{ColumnEvaluations, ConstraintSystem, EvaluatedColumnCoefficients},
+        constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
     },
     curve::KimchiCurve,
@@ -11,15 +11,15 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_poly::EvaluationDomain;
-use commitment_dlog::srs::SRS;
 use mina_poseidon::FqSponge;
+use poly_commitment::srs::SRS;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
 
 /// The index used by the prover
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 //~spec:startcode
 pub struct ProverIndex<G: KimchiCurve> {
     /// constraints system polynomials
@@ -40,9 +40,6 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
-
-    #[serde(bound = "EvaluatedColumnCoefficients<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub evaluated_column_coefficients: EvaluatedColumnCoefficients<G::ScalarField>,
 
     #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
     pub column_evaluations: ColumnEvaluations<G::ScalarField>,
@@ -90,7 +87,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
             powers_of_alpha,
             srs,
             max_poly_size,
-            evaluated_column_coefficients,
             column_evaluations,
             verifier_index: None,
             verifier_index_digest: None,
@@ -137,12 +133,15 @@ impl<G: KimchiCurve> ProverIndex<G> {
 
 pub mod testing {
     use super::*;
-    use crate::circuits::{
-        gate::CircuitGate,
-        lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+    use crate::{
+        circuits::{
+            gate::CircuitGate,
+            lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
+        },
+        precomputed_srs,
     };
     use ark_ff::{PrimeField, SquareRootField};
-    use commitment_dlog::srs::endos;
+    use poly_commitment::srs::endos;
 
     /// Create new index for lookups.
     ///
@@ -155,6 +154,7 @@ pub mod testing {
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
+        disable_gates_checks: bool,
     ) -> ProverIndex<G>
     where
         G::BaseField: PrimeField,
@@ -166,9 +166,18 @@ pub mod testing {
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
+            .disable_gates_checks(disable_gates_checks)
             .build()
             .unwrap();
-        let mut srs = SRS::<G>::create(cs.domain.d1.size());
+
+        let mut srs = if cs.domain.d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
+            // TODO: we should trim it if it's smaller
+            precomputed_srs::get_srs()
+        } else {
+            // TODO: we should resume the SRS generation starting from the serialized one
+            SRS::<G>::create(cs.domain.d1.size())
+        };
+
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
@@ -184,6 +193,6 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None)
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
     }
 }

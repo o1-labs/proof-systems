@@ -35,7 +35,7 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::constraints::ExprOps,
+    expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::GateWires,
@@ -74,7 +74,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
     const CONSTRAINTS: u32 = 2;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);
         let right_coeff1 = env.coeff(1);
@@ -213,7 +213,7 @@ impl<F: PrimeField> CircuitGate<F> {
 //~ * $w_0 \cdot c_0 + w_1 \cdot c_1 + w_2 \cdot c_2 + w_0 \cdot w_1 \cdot c_3 + c_4$
 //~ * $w_3 \cdot c_5 + w_4 \cdot c_6 + w_5 \cdot c_7 + w_3 w_4 c_8 + c_9$
 //~
-//~ where the $c_i$ are the [coefficients]().
+//~ where the $c_i$ are the `coefficients`.
 
 // -------------------------------------------------
 
@@ -314,7 +314,13 @@ pub mod testing {
             res += public;
 
             // selector poly
-            res = &res * &self.evaluated_column_coefficients.generic_selector;
+            res = &res
+                * &self
+                    .column_evaluations
+                    .generic_selector4
+                    .interpolate_by_ref();
+            // Interpolation above is inefficient, as is the rest of the function,
+            // would be better just to check the equation on all the rows.
 
             // verify that it is divisible by Z_H
             match res.divide_by_vanishing_poly(self.cs.domain.d1) {

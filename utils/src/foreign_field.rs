@@ -162,11 +162,11 @@ pub trait ForeignFieldHelpers<T> {
 
 impl<F: Field> ForeignFieldHelpers<F> for F {
     fn two_to_limb() -> Self {
-        F::from(2u64).pow(&[LIMB_BITS as u64])
+        F::from(2u64).pow([LIMB_BITS as u64])
     }
 
     fn two_to_2limb() -> Self {
-        F::from(2u64).pow(&[2 * LIMB_BITS as u64])
+        F::from(2u64).pow([2 * LIMB_BITS as u64])
     }
 }
 
@@ -183,6 +183,9 @@ pub trait BigUintForeignFieldHelpers {
 
     /// 2^t
     fn binary_modulus() -> Self;
+
+    /// 2^259 (see foreign field multiplication RFC)
+    fn max_foreign_field_modulus<F: PrimeField>() -> Self;
 
     /// Convert to 3 limbs of LIMB_BITS each
     fn to_limbs(&self) -> [BigUint; 3];
@@ -215,6 +218,15 @@ impl BigUintForeignFieldHelpers for BigUint {
 
     fn binary_modulus() -> Self {
         BigUint::two().pow(3 * LIMB_BITS as u32)
+    }
+
+    fn max_foreign_field_modulus<F: PrimeField>() -> Self {
+        // For simplicity and efficiency we use the approximation m = floor(sqrt(2^t * n))
+        //     * Distinct from this approximation is the maximum prime foreign field modulus
+        //       for both Pallas and Vesta given our CRT scheme:
+        //       926336713898529563388567880069503262826888842373627227613104999999999999999607
+        //     * BigUint::sqrt return truncated principle square root (rounds down to int) ~ floor
+        (BigUint::binary_modulus() * F::modulus_biguint()).sqrt()
     }
 
     fn to_limbs(&self) -> [Self; 3] {

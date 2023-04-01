@@ -2,11 +2,12 @@
 //! verification of a batch of batched opening proofs of polynomial commitments
 
 use crate::{
-    commitment::{BatchEvaluationProof, CommitmentCurve, Evaluation},
+    commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
+    evaluation_proof::DensePolynomialOrEvaluations,
     srs::SRS,
 };
 use ark_ff::{UniformRand, Zero};
-use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
 use colored::Colorize;
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
@@ -89,10 +90,20 @@ where
             commit += start.elapsed();
 
             start = Instant::now();
-            let polys: Vec<_> = (0..a.len())
-                .map(|i| (&a[i], bounds[i], (comm[i].0).blinders.clone()))
+            let polys: Vec<(
+                DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
+                _,
+                _,
+            )> = (0..a.len())
+                .map(|i| {
+                    (
+                        DensePolynomialOrEvaluations::DensePolynomial(&a[i]),
+                        bounds[i],
+                        (comm[i].0).blinders.clone(),
+                    )
+                })
                 .collect();
-            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _>(
+            let proof = srs.open::<DefaultFqSponge<VestaParameters, SC>, _, _>(
                 &group_map,
                 &polys,
                 &x,
@@ -103,7 +114,34 @@ where
             );
             open += start.elapsed();
 
-            (sponge.clone(), x.clone(), polymask, evalmask, comm, proof)
+            let combined_inner_product = {
+                let es: Vec<_> = comm
+                    .iter()
+                    .map(|(commitment, evaluations, degree_bound)| {
+                        let bound: Option<usize> = (|| {
+                            let b = (*degree_bound)?;
+                            let x = commitment.commitment.shifted?;
+                            if x.is_zero() {
+                                None
+                            } else {
+                                Some(b)
+                            }
+                        })();
+                        (evaluations.clone(), bound)
+                    })
+                    .collect();
+                combined_inner_product(&x, &polymask, &evalmask, &es, srs.g.len())
+            };
+
+            (
+                sponge.clone(),
+                x,
+                polymask,
+                evalmask,
+                comm,
+                proof,
+                combined_inner_product,
+            )
         })
         .collect::<Vec<_>>();
 
@@ -124,6 +162,7 @@ where
                 })
                 .collect::<Vec<_>>(),
             opening: &proof.5,
+            combined_inner_product: proof.6,
         })
         .collect::<Vec<_>>();
 

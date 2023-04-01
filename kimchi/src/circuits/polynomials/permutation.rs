@@ -1,6 +1,5 @@
 //! This module implements permutation constraint polynomials.
 
-//~
 //~ The permutation constraints are the following 4 constraints:
 //~
 //~ The two sides of the coin (with $\text{shift}_0 = 1$):
@@ -39,7 +38,6 @@
 //~
 //~ You can read more about why it looks like that in [this post](https://minaprotocol.com/blog/a-more-efficient-approach-to-zero-knowledge-for-plonk).
 //~
-
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
@@ -60,6 +58,7 @@ use ark_poly::{Polynomial, UVPolynomial};
 use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
 use rand::{CryptoRng, RngCore};
+use rayon::prelude::*;
 use std::array;
 
 /// Number of constraints produced by the argument.
@@ -68,7 +67,7 @@ pub const ZK_ROWS: u64 = 3;
 /// Evaluates the polynomial
 /// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
 pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -80,7 +79,7 @@ pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
 pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
     let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
     let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow(&[domain.size - (ZK_ROWS + 1)]);
+    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
     let w3 = domain.group_gen * w4;
     let w2 = domain.group_gen * w3;
     let w1 = domain.group_gen * w2;
@@ -89,7 +88,7 @@ pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> 
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
 pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow(&[domain.size - (ZK_ROWS)])
+    domain.group_gen.pow([domain.size - (ZK_ROWS)])
 }
 
 /// Evaluates the polynomial
@@ -171,7 +170,7 @@ where
         let mut h = Blake2b512::new();
 
         *input += 1;
-        h.update(&input.to_be_bytes());
+        h.update(input.to_be_bytes());
 
         let mut shift = F::from_random_bytes(&h.finalize()[..31])
             .expect("our field elements fit in more than 31 bytes");
@@ -179,7 +178,7 @@ where
         while !shift.legendre().is_qnr() || domain.evaluate_vanishing_polynomial(shift).is_zero() {
             let mut h = Blake2b512::new();
             *input += 1;
-            h.update(&input.to_be_bytes());
+            h.update(input.to_be_bytes());
             shift = F::from_random_bytes(&h.finalize()[..31])
                 .expect("our field elements fit in more than 31 bytes");
         }
@@ -319,7 +318,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
             &bnd1.scale(alpha1) + &bnd2.scale(alpha2)
         };
 
-        //
         Ok((perm, bnd))
     }
 
@@ -331,7 +329,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         beta: F,
         gamma: F,
         alphas: impl Iterator<Item = F>,
-    ) -> DensePolynomial<F> {
+    ) -> Evaluations<F, D<F>> {
         //~
         //~ The linearization:
         //~
@@ -339,7 +337,14 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~
         let zkpm_zeta = self.cs.precomputations().zkpm.evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
-        self.evaluated_column_coefficients.permutation_coefficients[PERMUTS - 1].scale(scalar)
+        let evals8 = &self.column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
+        const STRIDE: usize = 8;
+        let n = evals8.len() / STRIDE;
+        let evals = (0..n)
+            .into_par_iter()
+            .map(|i| scalar * evals8[STRIDE * i])
+            .collect();
+        Evaluations::from_vec_and_domain(evals, D::new(n).unwrap())
     }
 }
 
@@ -447,7 +452,6 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
         //~ &\ (w_6(g^i) + \sigma_6 \cdot beta + \gamma)
         //~ \end{align}
         //~ $$
-        //~
         //~
         for j in 0..n - 3 {
             z[j + 1] = witness
