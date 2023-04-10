@@ -208,7 +208,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         alphas.register(ArgumentType::Gate(self.typ), Instruction::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
-        let constraints = circuit_gate_combined_constraints(self.typ, &alphas);
+        let constraints =
+            circuit_gate_combined_constraints(self.typ, &alphas, &mut Cache::default());
 
         // Linearize
         let linearized = constraints.linearize(polys).unwrap();
@@ -737,12 +738,16 @@ fn two<F: Field, T: ExprOps<F>>() -> T {
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-pub fn circuit_gate_combined_constraints<F: PrimeField>(typ: GateType, alphas: &Alphas<F>) -> E<F> {
+pub fn circuit_gate_combined_constraints<F: PrimeField>(
+    typ: GateType,
+    alphas: &Alphas<F>,
+    cache: &mut Cache,
+) -> E<F> {
     match typ {
-        GateType::CairoClaim => Claim::combined_constraints(alphas),
-        GateType::CairoInstruction => Instruction::combined_constraints(alphas),
-        GateType::CairoFlags => Flags::combined_constraints(alphas),
-        GateType::CairoTransition => Transition::combined_constraints(alphas),
+        GateType::CairoClaim => Claim::combined_constraints(alphas, cache),
+        GateType::CairoInstruction => Instruction::combined_constraints(alphas, cache),
+        GateType::CairoFlags => Flags::combined_constraints(alphas, cache),
+        GateType::CairoTransition => Transition::combined_constraints(alphas, cache),
         GateType::Zero => E::literal(F::zero()),
         _ => panic!("invalid gate type"),
     }
@@ -759,7 +764,7 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let pc_ini = env.witness_curr(0); // copy from public input
         let ap_ini = env.witness_curr(1); // copy from public input
         let pc_fin = env.witness_curr(2); // copy from public input
@@ -796,7 +801,7 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         // load all variables of the witness corresponding to Cairoinstruction gates
         let pc = env.witness_curr(0);
         let ap = env.witness_curr(1);
@@ -836,7 +841,6 @@ where
         // LIST OF CONSTRAINTS
         // -------------------
         let mut constraints: Vec<T> = vec![];
-        let mut cache = Cache::default();
 
         // INSTRUCTIONS RELATED
 
@@ -943,7 +947,7 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // Load current row
         let f_pc_abs = env.witness_curr(7);
         let f_pc_rel = env.witness_curr(8);
@@ -1010,7 +1014,7 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // load computed updated registers
         let pcup = env.witness_curr(7);
         let apup = env.witness_curr(8);

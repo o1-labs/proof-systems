@@ -97,16 +97,16 @@ where
 
     // Optionally also add external gate checks to circuit
     if external_gates {
-        // Layout for this test (just an example, circuit designer has complete flexibility, where to put the checks)
+        // Layout for this test (just an example, circuit designer has complete flexibility where to put the checks)
         //      0-1  ForeignFieldMul
         //      2-3  ForeignFieldAdd (result bound addition)
         //      4-7  multi-range-check (left multiplicand)
         //      8-11 multi-range-check (right multiplicand)
-        //     12-15 multi-range-check (product1_lo, product1_hi_0, carry1_lo)
+        //     12-15 multi-range-check (carry1_lo, product1_lo, product1_hi_0)
         //     16-19 multi-range-check (result range check)
-        //     20-23 multi-range-check (quotient range check)
+        //     20-23 compact-multi-range-check (quotient bound range check)
 
-        // Bound addition for multiplication result
+        // Result bound addition
         CircuitGate::extend_single_ffadd(
             &mut gates,
             &mut next_row,
@@ -133,7 +133,7 @@ where
         gates.connect_cell_pair((0, 5), (10, 0));
         range_check::witness::extend_multi_limbs(&mut witness, &right_input.to_field_limbs());
 
-        // Multiplication witness value product1_lo, product1_hi_0, carry1_lo multi-range-check
+        // Multiplication witness value carry1_lo, product1_lo, product1_hi_0 multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((0, 6), (12, 0)); // carry1_lo
         gates.connect_cell_pair((1, 5), (13, 0)); // product1_lo
@@ -145,10 +145,10 @@ where
         gates.connect_ffadd_range_checks(2, None, None, 16);
         // Witness updated below
 
-        // Add witness for external multi-range checks (product1_lo, product1_hi_0, carry1_lo and result)
+        // Add witness for external multi-range checks (carry1_lo, product1_lo, product1_hi_0 and result)
         external_checks.extend_witness_multi_range_checks(&mut witness);
 
-        // Quotient bound multi-range-check
+        // Quotient bound compact-multi-range-check
         CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((1, 3), (22, 1));
         gates.connect_cell_pair((1, 4), (20, 0));
@@ -1388,5 +1388,41 @@ fn test_constraint_c12() {
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+    );
+}
+
+#[test]
+fn test_gates_max_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_foreign_field_mul(
+        0,
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_gates_invalid_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_foreign_field_mul(
+        0,
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
+    );
+}
+
+#[test]
+fn test_witness_max_foreign_field_modulus() {
+    foreign_field_mul::witness::create::<PallasField>(
+        &BigUint::zero(),
+        &BigUint::zero(),
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_witness_invalid_foreign_field_modulus() {
+    foreign_field_mul::witness::create::<PallasField>(
+        &BigUint::zero(),
+        &BigUint::zero(),
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
     );
 }

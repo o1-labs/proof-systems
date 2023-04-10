@@ -12,7 +12,7 @@ const PROOFS: usize = 10;
 pub fn amortization(c: &mut Criterion) {
     let mut group = c.benchmark_group("amortization");
 
-    let ctx = BenchmarkCtx::new(1 << 16);
+    let ctx = BenchmarkCtx::new(16);
     let proof_and_public = ctx.create_proof();
     let proofs: Vec<_> = std::iter::repeat(proof_and_public)
         .take(1 << PROOFS)
