@@ -107,3 +107,26 @@ This is similar to snarky time, mostly differing in the overhead of the recursio
 ### Pickles memory
 
 Similar to snarky, this will probably be mostly regression tests and maybe some example application to give users an idea of what to expect.
+
+## Benchmarks
+
+Here is a non exhaustive list of benchmarks.
+
+### Kimchi hash chain
+
+Benchmarking different aspects of a circuit proving a hash chain.
+
+- The length of the hash chain can easily be a parameter allowing to measure different lengths. 
+- We want memory and time for compilation, proving and verification, it will be implemented as several benchmarks but they will share most code.
+- The number of constraints can be easily shown for each length.
+- This benchmark with some specific length can be used as regression tests in CI.
+- The full benchmark with several lengths can be shown at discretion of those interested running locally, or even added as optional to CI with some way to trigger it.
+
+### Pickles hash chain
+
+Same as kimchi hash chain but in pickles, we have less to cover here because we already have the kimchi ones, some time and memory benchmarks could be used for regressions and to observe the overhead, but having parameters like different circuits sizes may be redundant.
+A new benchmark possible would be to have an alternative circuit that uses recursion to make the hash chain instead of a single circuit, it could be interesting to have a comparison to the non recursive approach.
+
+### General kimchi benchmarks
+
+Some general benchmarks covering compilation, proving and verifying, both time and memory. Ideally all of them will parameterized with different circuit sizes and a subset can be used as regression tests. We could also add here benchmarks for the different operations of our polynomial commitments scheme.
