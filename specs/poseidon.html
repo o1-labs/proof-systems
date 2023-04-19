@@ -152,7 +152,7 @@
 <p>Poseidon is a hash function that can efficiently run in a zk circuit. (See <a href="https://www.poseidon-hash.info/">poseidon-hash.info</a>)
 It is based on the <a href="https://keccak.team/sponge_duplex.html#:~:text=A%20sponge%20function%20is%20a,or%20the%20retrieval%20of%20output.">sponge function</a>, with a state composed of field elements and a permutation based on field element operation (addition and exponentiation).</p>
 <p>The permutation contains an S-box (exponentiation of a group element), adding constants to the state, and matrix multiplication of the state (multiplications and additions) with an <a href="https://en.wikipedia.org/wiki/MDS_matrix">MDS matrix</a>.</p>
-<p>Since a field element is around 255-bit, a single field element is enough as the capacity of the sponge to provide around 128-bit security.</p>
+<p>Since a field element is around 255-bit, a single field element is enough as the capacity of the sponge to provide around 116-bit security.</p>
 <div id="admonition-note" class="admonition note">
 <div class="admonition-title">
 <p>Note</p>
