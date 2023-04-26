@@ -10,28 +10,30 @@ There are different metrics that we can collect, and different ways of presentin
 
 We can differentiate to groups of people interested in benchmarks:
 
-- Developers working in the crypto stack, mostly our crypto team, where the main interest is to avoid regressions or make performance improvements.
-- People working outside of it, mostly users of our libraries, but could also include decision makers comparing other options or our marketing team, here the interest is more about more general metrics that can be compared with the competition or used to learn how to most efficiently use our technology.
+- Developers working in the crypto stack, mostly our crypto team, where the main interests are to avoid regressions and make performance improvements.
+- People not directly working on the crypto stack, mostly users of our libraries. This group could also include decision makers comparing other options or our own marketing team. The focus here is about more general metrics that can be compared with the competition or used to learn how to most efficiently use our technology.
 
-Must be mentioned that some overlap should be expected, some benchmarks may be useful for anyone while other just to some.
+Note that some overlap is expected. Some benchmarks will be useful to everyone while others just to some.
 
 ### Metrics
 
-There are two main metrics, performance and memory, and a smaller one hardware utilization.
+Three metrics are considered: performance, memory, and hardware utilization. The main metrics are performance and memory. The hardware utilization metric has a more limited scope.
 
 #### Performance
 
-Basically execution time, this may be the hardest to measure, because the environment can have a considerable effect over the results, some high quality machine would be required, ideally a fully dedicated one to minimize noise, there is a way of measuring that overcomes noise problems that will be mentioned.
-It can be subdivided it 2 other metrics or alternative approaches:
+Performance basically amounts to execution time. Nonetheless, this may be the hardest to measure, because the environment can have a considerable effect over the results. Some high quality machine would be required, ideally a fully dedicated one to minimize noise. Further in this document, we mention a way of measuring that overcomes noise problem.
+It can be subdivided into 2 other metrics or alternative approaches:
 
-- Execution time: The most simple, run the program in question several times and take the average, it may become quite expensive if the program measured takes some time because that time will be multiplied by the number of samples, in those cases it can be made faster sacrificing precision. This benchmark is one of the most interesting for external users, and one of the main comparison point for evaluating the competition. It can also serve for internal developer as a regression test or to verify performance improvements.
+: Execution time
+The simplest approach. It runs the program several times and returns the overall average execution time. This benchmark might become slow in cases where the program takes too much time to run. In such scenarios, this benchmark can be made faster by reducing the number of samples (i.e., worst precision) it uses. This is one of the most interesting metrics for external users and a key datapoint to compare how our proof-system fares against competitors. The execution time metric can also help our engineering teams as a metric to identify regressions or to verify performance improvements.
 
-- CPU instructions: This method instead of recording execution time counts the number of cpu instructions used, not very useful for external developer given that it doesn't translate directly to time. It is mostly useful to internal developer as an alternative to execution time, it is faster given that you only have to run it once to collect the information and can be run on cheap machines without significative noise given that execution time doesn't affect the number of instructions. Additionally the tools used to measure it also collect some other metrics that can be useful to aide optimization like cache misses and branch mispredictions.
+: CPU instructions
+Instead of recording execution time, this method counts the number of cpu instructions used in a program execution, not very useful for external developer given that it doesn't translate directly to time. It is mostly useful to our engineering teams as an alternative to execution time, it is faster given that you only have to run it once to collect the information, and can be run on cheap machines without significative noise given that execution time doesn't affect the number of instructions. Additionally, the tools used to measure it also collect some other metrics that can be useful to aide optimization like cache misses and branch mispredictions.
 
 #### Memory
 
-Memory usage is another interesting metric, there are different ways of measuring memory but the most useful for us is peak memory, peak memory will many times define if something can even be used in a particular environment. It can also help finding errors related to unusual memory usage.
-It is easier to measure, as long as there is enough memory, noise shouldn't affect the results.
+Memory usage is another interesting metric. There are different ways of measuring memory but the most useful for us is peak memory, as this will tell whether something can even be used in a particular environment. It can also help finding errors related to unusual memory usage.
+Memory usage is easier to measure, as it does not appear to depend as much on the noise of the environment as long as there is enough memory.
 
 #### Hardware utilization
 
@@ -49,7 +51,7 @@ To start everyone with the resources should be able to run the benchmarks locall
 
 ## Parameters
 
-We may be interested in parameterizing some benchmark, for example benchmarking verification time but doing it with different circuits sizes, that would show how performance scales with the size of the circuit.
+We may be interested in parameterizing some benchmarks, for example benchmarking verification time but doing it with different circuits sizes, that would show how performance scales with the size of the circuit.
 The introduction of parameters doesn't cause any fundamental change to the benchmarks, but it can considerably increase the cost of running them, making them more the kind of benchmarks that we may not want to run every single time in CI.
 
 ## Benchmarks
@@ -68,15 +70,15 @@ Next the classes of benchmarks to consider, they are different combinations of m
 | pickles time             | mina/pickles* | time     | yes              | yes              | yes             | yes              |
 | pickles memory           | mina/pickles* | memory   | yes              | yes              | yes             | no               |
 
-\* these have to be in Mina now because pickles is in Mina, and while snarky has it's repo, to use it requires a few things still in Mina, if it were possible change that it would make these benchmarks easier and probably cheaper.
+\* these have to be in Mina now because pickles is in Mina, and while snarky has its own repository, using it requires a few things still in Mina, so that we might want to consider some changes to make these benchmarks easier and probably cheaper.
 
 ### Kimchi time
 
-One of the simplest measuring running time, can be an specific case or allow more flexibility by introducing parameters like for example different circuit sizes. We already have most of the infrastructure for this with criterion. Would ideally have a dedicated computer, considering that there aren't that many PRs in proof-systems the requirements shouldn't be that high.
+One of the simplest measuring running time, can be a specific case or allow more flexibility by introducing parameters like for example different circuit sizes. We already have most of the infrastructure for this with criterion. We would ideally have a dedicated computer. However, considering that there aren't that many PRs in proof-systems, the requirements shouldn't be that high.
 
 ### Kimchi time flamegraph
 
-This can be considered a variant of the previous, some more research is required but ideally can be generated from the already existing benchmarks with little to no changes.
+This can be considered a variant of the previous. Some more research is required but this information ideally can be generated from the already existing benchmarks with little to no changes.
 This may not be as interesting to have in CI, but can be useful to run locally for those working in optimizations.
 
 ### Kimchi instructions
@@ -86,7 +88,7 @@ Is worth mentioning that the result are specific to the code and even the comput
 
 ### Kimchi memory
 
-Similar to time, but with memory, the constraints are different in some ways, noise is not generally a problem and any computer cab be used, and also requires less sampling and should run faster. This is to some degree already implemented through a custom measurement for criterion, and in practice can be slower than measuring time, the instrumentation makes it run slower and the some limitations in criterion require to run the code more than necessary. With that in mind the best would be to run just a subset of these benchmark for regressions and let the others be run at discretion.
+Similar to time, but with memory, the constraints are different in some ways, noise is not generally a problem and any computer can be used, and also requires less sampling and should run faster. This is to some degree already implemented through a custom measurement for criterion, and in practice can be slower than measuring time, the instrumentation makes it run slower and the some limitations in criterion require to run the code more than necessary. With that in mind, the best would be to run just a subset of these benchmark for regressions and let the others be run at discretion.
 
 ### Kimchi memory flamegraph
 
@@ -125,8 +127,8 @@ Benchmarking different aspects of a circuit proving a hash chain.
 ### Pickles hash chain
 
 Same as kimchi hash chain but in pickles, we have less to cover here because we already have the kimchi ones, some time and memory benchmarks could be used for regressions and to observe the overhead, but having parameters like different circuits sizes may be redundant.
-A new benchmark possible would be to have an alternative circuit that uses recursion to make the hash chain instead of a single circuit, it could be interesting to have a comparison to the non recursive approach.
+A new  possible benchmark would be to have an alternative circuit that uses recursion to make the hash chain instead of a single circuit. It could be interesting to have a comparison to the non recursive approach.
 
 ### General kimchi benchmarks
 
-Some general benchmarks covering compilation, proving and verifying, both time and memory. Ideally all of them will parameterized with different circuit sizes and a subset can be used as regression tests. We could also add here benchmarks for the different operations of our polynomial commitments scheme.
+Some general benchmarks covering compilation, proving and verifying, both time and memory. Ideally all of them will be parameterized with different circuit sizes and a subset can be used as regression tests. We could also add here benchmarks for the different operations of our polynomial commitments scheme.
