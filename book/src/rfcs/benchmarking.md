@@ -1,10 +1,18 @@
-# Benchmarking RFC
 
+# Summary
+
+Adds a benchmarking infrastructure for the crypto stack and some specific benchmarks.
+
+# Motivation
+
+There are two main motivations, to aid development and to facilitate comparisons with other technologies.
 This document proposes a high level approach to benchmarking the crypto stack, mostly kimchi, snarky and pickles. The main concern is to set up an infrastructure where it is possible to integrate different kinds of benchmarks with minimal effort. While the specific benchmarks are not an immediate concern, a few benchmarks of interest will be mentioned later.
+
+# Detailed design
 
 ## Types of benchmarks
 
-There are different metrics that we can collect, and different ways of presenting them depending of who is interested in them.
+There are different [metrics](#metrics) that we can collect, and different ways of presenting them depending of [who is interested](#audience) in them.
 
 ### Audience
 
@@ -17,7 +25,7 @@ Note that some overlap is expected. Some benchmarks will be useful to everyone w
 
 ### Metrics
 
-Three metrics are considered: performance, memory, and hardware utilization. The main metrics are performance and memory. The hardware utilization metric has a more limited scope.
+Three metrics are considered: [performance](#performance), [memory](#memory), and [hardware utilization](#hardware-utilization). The main metrics are performance and memory. The hardware utilization metric has a more limited scope.
 
 #### Performance
 
@@ -51,10 +59,10 @@ To start everyone with the resources should be able to run the benchmarks locall
 
 ## Parameters
 
-We may be interested in parameterizing some benchmarks, for example benchmarking verification time but doing it with different circuits sizes, that would show how performance scales with the size of the circuit.
+It will be of interest parameterizing some benchmarks, for example benchmarking verification time but doing it with different circuits sizes, that would show how performance scales with the size of the circuit.
 The introduction of parameters doesn't cause any fundamental change to the benchmarks, but it can considerably increase the cost of running them, making them more the kind of benchmarks that we may not want to run every single time in CI.
 
-## Benchmarks
+## Benchmark classes
 
 Next the classes of benchmarks to consider, they are different combinations of metrics, layers and consumers.
   
@@ -74,16 +82,16 @@ Next the classes of benchmarks to consider, they are different combinations of m
 
 ### Kimchi time
 
-One of the simplest measuring running time, can be a specific case or allow more flexibility by introducing parameters like for example different circuit sizes. We already have most of the infrastructure for this with criterion. We would ideally have a dedicated computer. However, considering that there aren't that many PRs in proof-systems, the requirements shouldn't be that high.
+One of the simplest measuring running time, can be a specific case or allow more flexibility by introducing parameters like for example different circuit sizes. We already have most of the infrastructure for this with [criterion](https://crates.io/crates/criterion). We would ideally have a dedicated computer. However, considering that there aren't that many PRs in proof-systems, the requirements shouldn't be that high.
 
 ### Kimchi time flamegraph
 
-This can be considered a variant of the previous. Some more research is required but this information ideally can be generated from the already existing benchmarks with little to no changes.
+This can be considered a variant of the [previous](#kimchi-time). Some more research is required but this information ideally can be generated from the already existing benchmarks with little to no changes.
 This may not be as interesting to have in CI, but can be useful to run locally for those working in optimizations.
 
 ### Kimchi instructions
 
-This is basically counting the CPU instructions that takes to run some code, could be use as an alternative for CI given that it won't be affected by noise and can work in any computer. It would also be faster by running the code only once. The implementation will require a bit more research but one option is the crate iai, with some thinking it could be possible to have this and the time benchmarks share the same code.
+This is basically counting the CPU instructions that takes to run some code, could be use as an alternative for CI given that it won't be affected by noise and can work in any computer. It would also be faster by running the code only once. The implementation will require a bit more research but one option is the crate [iai](https://crates.io/crates/iai), with some thinking it could be possible to have this and the time benchmarks share the same code.
 Is worth mentioning that the result are specific to the code and even the computer running the benchmark and thus not useful for comparisons with other projects.
 
 ### Kimchi memory
@@ -132,3 +140,23 @@ A new  possible benchmark would be to have an alternative circuit that uses recu
 ### General kimchi benchmarks
 
 Some general benchmarks covering compilation, proving and verifying, both time and memory. Ideally all of them will be parameterized with different circuit sizes and a subset can be used as regression tests. We could also add here benchmarks for the different operations of our polynomial commitments scheme.
+
+# Drawbacks
+
+Beyond the possibility of spending the time in any other project the main drawback I would be the cost, both in CI running time and dollars. This will probably be a tradeoff between how much to spend and how much to run in CI.
+
+# Rationale and alternatives
+
+The alternative would be to handle benchmarks in a case by case basis, it may be cheaper at short term to not have to design and implement this shared infrastructure. Ultimately would be a matter of how much work will be saved working on benchmarks. The suggested design may also incentivize the creation of more benchmarks by lowering to barriers to create them.
+
+# Prior art
+
+Right now there are just a few benchmarks covering specific cases that can be run for command line, mostly in the proof-systems repo. Almost all benchmarks are also limited to measuring only time.
+
+# Unresolved questions
+
+- While the tools for rust are mostly covered, specific tools for ocaml have yet to be decided
+- Specific machines, while generally more expensive machines will work better, funds are limited and some tradeoff will have to be decided, it will probably become clearer when some benchmarks are already set up in CI.
+- Benchmarking in the browser has been left out but could be added at some point.
+
+
