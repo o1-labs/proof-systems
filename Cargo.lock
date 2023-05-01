@@ -59,6 +59,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ark-bls12-381"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "65be532f9dd1e98ad0150b037276cde464c6f371059e6dd02c0222395761f6aa"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "ark-std",
+]
+
+[[package]]
 name = "ark-ec"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -112,6 +123,19 @@ dependencies = [
  "num-traits",
  "quote 1.0.23",
  "syn 1.0.107",
+]
+
+[[package]]
+name = "ark-msm"
+version = "0.3.0-alpha.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4b30da4a5c16f7ef918db8baf41ecc82c1449a9209fcd44899c8dac862426aa8"
+dependencies = [
+ "ark-bls12-381",
+ "ark-ec",
+ "ark-ff",
+ "ark-std",
+ "num-bigint",
 ]
 
 [[package]]
@@ -1715,6 +1739,7 @@ version = "0.1.0"
 dependencies = [
  "ark-ec",
  "ark-ff",
+ "ark-msm",
  "ark-poly",
  "ark-serialize",
  "blake2",
