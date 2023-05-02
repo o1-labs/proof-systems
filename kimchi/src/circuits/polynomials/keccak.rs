@@ -38,11 +38,11 @@ impl<T: Clone> KeccakState<T> {
 pub const MATRIX_DIM: usize = 5;
 /// value `l` in Keccak, ranges from 0 to 6 (7 possible values)
 pub const LENGTH: usize = 6;
-/// width of the lane of the state, meaning the length of each word in bits
+/// width of the lane of the state, meaning the length of each word in bits (64)
 pub const WORD: usize = 2u32.pow(LENGTH as u32) as usize;
-/// length of the state in bits, meaning the 5x5 matrix of words in bits
+/// length of the state in bits, meaning the 5x5 matrix of words in bits (1600)
 pub const STATE: usize = MATRIX_DIM.pow(2) * WORD;
-/// number of rounds of the Keccak permutation function depending on the value `l`
+/// number of rounds of the Keccak permutation function depending on the value `l` (24)
 pub const ROUNDS: usize = 12 + 2 * LENGTH;
 /// Output length
 pub const ETH_OUTPUT: usize = 256;
@@ -251,7 +251,7 @@ pub(crate) fn keccak_sponge(
             STATE,
             "Padded block does not have 1600 bits"
         );
-        let block_state = from_le_to_state(&padded_block);
+        let block_state = from_bytes_to_state(&padded_block);
         // xor the state with the padded block
         state = xor_state(state, block_state);
         // apply the permutation function to the xored state
@@ -259,12 +259,12 @@ pub(crate) fn keccak_sponge(
     }
 
     // squeeze
-    let mut output = from_state_to_le(state)[0..(bitrate / 8)].to_vec();
+    let mut output = from_state_to_bytes(state)[0..(bitrate / 8)].to_vec();
     while output.len() < output_length / 8 {
         // apply the permutation function to the state
         state = keccak_permutation(state);
         // append the output of the permutation function to the output
-        output.append(&mut from_state_to_le(state)[0..(bitrate / 8)].to_vec());
+        output.append(&mut from_state_to_bytes(state)[0..(bitrate / 8)].to_vec());
     }
     // return the first 256 bits of the output
     let hashed = output[0..(output_length / 8)].to_vec().try_into().unwrap();
@@ -373,8 +373,9 @@ pub(crate) fn pi_rho(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DI
     // for all x in {0..4} and y in {0..4}: B[y, 2x+3y] = ROT(E[x,y], r[x,y])
     for x in 0..MATRIX_DIM {
         for y in 0..MATRIX_DIM {
-            let two_x_plus_three_y = modulo((2 * x + 3 * y) as i32, MATRIX_DIM as i32) as usize;
-            state_b[y][two_x_plus_three_y] = state_e[x][y].rotate_left(ROT_TAB[x][y]);
+            let new_x = y;
+            let new_y = modulo((2 * x + 3 * y) as i32, MATRIX_DIM as i32) as usize;
+            state_b[new_x][new_y] = state_e[x][y].rotate_left(ROT_TAB[x][y]);
         }
     }
     state_b
@@ -413,17 +414,42 @@ pub(crate) fn iota(
     state_g
 }
 
-// Transforms a vector of bytes in little endian into a state of 64-bit words
-// Assuming that the first 5 words correspond to the x=0 row.
+pub(crate) fn _print_state(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) {
+    for y in 0..MATRIX_DIM {
+        for x in 0..MATRIX_DIM {
+            print!("{:016x} ", state[x][y]);
+        }
+        println!();
+    }
+}
+
+pub(crate) fn _print_hash(hash: &[u8]) {
+    for i in 0..hash.len() {
+        print!("{:02x}", hash[i]);
+    }
+    println!();
+}
+
+// Transforms a vector of bytes into a state of 64-bit words
+// This is the order of the 64-bit words in the state:
+//
+// | 0 | 5 | 10 | 15 | 20 |
+// | 1 | 6 | 11 | 16 | 21 |
+// | 2 | 7 | 12 | 17 | 22 |
+// | 3 | 8 | 13 | 18 | 23 |
+// | 4 | 9 | 14 | 19 | 24 |
+// 
+// Assumes that the first 5 words correspond to the y=0 column.
 // The first byte of the vector corresponds to the least significant byte of the first word of the state (x=0, y=0).
-pub(crate) fn from_le_to_state(block: &[u8]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+// 
+pub(crate) fn from_bytes_to_state(block: &[u8]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
     assert_eq!(block.len() * 8, 1600, "The block must have 1600 bits");
     let mut state = [[0u64; MATRIX_DIM]; MATRIX_DIM];
-    for x in 0..MATRIX_DIM {
-        for y in 0..MATRIX_DIM {
+    for y in 0..MATRIX_DIM {
+        for x in 0..MATRIX_DIM {
             // each word has 8 bytes -> 64 bits
             for z in 0..(WORD / 8) {
-                let index = 8 * (MATRIX_DIM * x + y) + z;
+                let index = 8 * (MATRIX_DIM * y + x) + z;
                 state[x][y] |= (block[index] as u64) << 8 * z;
             }
         }
@@ -431,11 +457,11 @@ pub(crate) fn from_le_to_state(block: &[u8]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] 
     state
 }
 
-// Transforms a state of 64-bit words into a vector of bytes in little endian
-pub(crate) fn from_state_to_le(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> Vec<u8> {
+// Transforms a state of 64-bit words into a vector of bytes
+pub(crate) fn from_state_to_bytes(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> Vec<u8> {
     let mut block = vec![];
-    for x in 0..MATRIX_DIM {
-        for y in 0..MATRIX_DIM {
+    for y in 0..MATRIX_DIM {
+        for x in 0..MATRIX_DIM {
             for z in 0..(WORD / 8) {
                 block.push(((state[x][y] >> 8 * z) & 0xFF) as u8);
             }
