@@ -1,6 +1,6 @@
 # Plookup in Kimchi
 
-In 2020, [plookup](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate Plookup into Plonk.
+In 2020, [plookup](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate Plookup into $\plonk$.
 
 This document specifies how we integrate plookup in kimchi. It assumes that the reader understands the basics behind plookup.
 
@@ -38,7 +38,7 @@ where $\text{diff}$ is a new set derived by applying a "randomized difference" b
 
 > Note: This assumes that the lookup table is a single column. You will see in the next section how to address lookup tables with more than one column.
 
-The equality between the multisets can be proved with the permutation argument of plonk, which would look like enforcing constraints on the following accumulator:
+The equality between the multisets can be proved with the permutation argument of $\plonk$, which would look like enforcing constraints on the following accumulator:
 
 * init: $\mathsf{acc}_0 = 1$
 * final: $\mathsf{acc}_n = 1$
@@ -208,7 +208,7 @@ What about the second vector $s$?
 
 ## The sorted vector $s$
 
-We said earlier that in original plonk the size of $s$ is equal to $|s| = |f|+|t|$, where $f$ encodes queries, and $t$ encodes the lookup table.
+We said earlier that in original $\plonk$ the size of $s$ is equal to $|s| = |f|+|t|$, where $f$ encodes queries, and $t$ encodes the lookup table.
 With our multi-query approach, the second vector $s$ is of the size
 
 $$n \cdot |\#\text{queries}| + |\text{lookup\_table}|$$
@@ -216,7 +216,7 @@ $$n \cdot |\#\text{queries}| + |\text{lookup\_table}|$$
 That is, it contains the $n$ elements of each **query vectors** (the actual values being looked up, after being combined with the joint combinator, that's $4$ per row), as well as the elements of our lookup table (after being combined as well).
 
 Because the vector $s$ is larger than the domain size $n$, it is split into several vectors of size $n$. Specifically, in the plonkup paper, the two halves of $s$, which are then interpolated as $h_1$ and $h_2$.
-The denominator in plonk in the vector form is
+The denominator in $\plonk$ in the vector form is
 $$
 \big(\gamma(1+\beta) + s_{i-1} + \beta s_{i}\big)\big(\gamma(1+\beta)+s_{n+i-1} + \beta s_{n+i}\big)
 $$
