@@ -4,10 +4,15 @@ Kimchi is based on [plonk](https://eprint.iacr.org/2019/953.pdf), a zk-SNARK pro
 
 ## Benchmarks
 
-To bench kimchi, we have two types of benchmark engines. 
+To bench kimchi, we have two types of benchmark engines.
 
-[Criterion](https://bheisler.github.io/criterion.rs/) is used to benchmark time:
+[Criterion](https://bheisler.github.io/criterion.rs/) is used to benchmark time. First install the [criterion cargo extension](https://crates.io/crates/cargo-criterion):
 
+```console
+$ cargo install cargo-criterion
+```
+
+And after that, you can run the benchmark with:
 ```console
 $ cargo criterion -p kimchi --bench proof_criterion
 ```
