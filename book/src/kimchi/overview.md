@@ -45,10 +45,10 @@ So what is the simplest way one could think of to perform this one-time check? P
 
 So instead, we can multiply each term in the sum by a random number. The reason why this trick works is the independence between random numbers. That is, if two different polynomials $f(X)$ and $g(X)$ are both equal to zero on a given $X=x$, then with very high probability the same $x$ will be a root of the random combination $\alpha\cdot f(x) + \beta\cdot g(x) = 0$. If applied to the whole statement, we could transform the $n$ equations into a single equation,
 
-$$\bigwedge_{i_n} p_i(X) =_? 0 \iff_{w.h.p.} \sum_{i=0}^{n} \rho_i \cdot p_i(X) =_? 0 $$
+$$\bigwedge_{i_n} p_i(X) =_? 0 \Leftrightarrow_{w.h.p.} \sum_{i=0}^{n} \rho_i \cdot p_i(X) =_? 0$$
 
 This sounds great so far. But we are forgetting about an important part of proof systems which is proof length. For the above claim to be sound, the random values used for aggregation should be verifier-chosen, or at least prover-independent. So if the verifier had to communicate with the prover to inform about the random values being used, we would get an overhead of $n$ field elements.
 
 Instead, we take advantage of another technique that is called **powers-of-alpha**. Here, we make the assumption that powers of a random value $\alpha^i$ are indistinguishable from actual random values $\rho_i$. Then, we can twist the above claim to use only one random element $\alpha$ to be agreed with the prover as:
 
-$$\bigwedge_{i_n} p_i(X) =_? 0 \iff_{w.h.p.} \sum_{i=0}^{n} \alpha^i \cdot p_i(X) =_? 0 $$
+$$\bigwedge_{i_n} p_i(X) =_? 0 \Leftrightarrow_{w.h.p.} \sum_{i=0}^{n} \alpha^i \cdot p_i(X) =_? 0$$
