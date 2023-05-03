@@ -15,7 +15,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup OCaml (because of ocaml-gen)
-        run: sudo apt update && sudo apt install ocaml
+        uses: ocaml/setup-ocaml@v2
+        with:
+          # Must be in sync with MinaProtocol/mina
+          ocaml-compiler: "4.14.0"
 
       - name: Build Rust Documentation
         run: |
