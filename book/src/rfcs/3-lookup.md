@@ -1,17 +1,31 @@
-# RFC: $\plookup$ in kimchi
+# RFC: $\plookup$ in $\kimchi$
 
-In 2020, [$\plookup$](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate $\Plookup$ into $\plonk$.
+In 2020, the lookup argument [$\plookup$](https://eprint.iacr.org/2020/315.pdf) showed how to create
+lookup proofs. Proofs that some witness values are part of a [lookup
+table](https://en.wikipedia.org/wiki/Lookup_table). Two
+years later, an
+independent team published [plonkup](https://eprint.iacr.org/2022/086) showing
+how to integrate $\plookup$ into $\plonk$.
+The idea behind lookups is
+to avoid performing expensive runtime computations and therefore
+avoiding to increase the
+circuit size. In $\plonk$, it is translated by verifying that a set of registers
+on given rows are in a pre-computed table. Lookups are interesting to use when
+the set of possible values registers can take is relatively small and computing
+them would be expensive in terms of constraints.
 
-This document specifies how we integrate $\plookup$ in kimchi. It assumes that the reader understands the basics behind $\plookup$.
+This document specifies how we integrate $\plookup$ in $\kimchi$. It assumes that
+the reader understands the basics behind $\plookup$. Note that other lookup
+arguments exist but it is not in the scope of this section.
 
 ## Overview
 
-We integrate $\plookup$ in kimchi with the following differences:
+We integrate $\plookup$ in $\kimchi$ with the following differences:
 
 * we snake-ify the sorted table instead of wrapping it around (see later)
-* we allow fixed-ahead-of-time linear combinations of columns of the queries we make
-* we only use a single table (XOR) at the moment of this writing
-* we allow several lookups (or queries) to be performed within the same row
+* we allow fixed-ahead-of-time (TODO DW ????) linear combinations of columns of the queries we make
+* we only use a single table (XOR) at the moment of this writing. TODO DW: CHECK. Not true. We use lookups for multiple
+* we allow several lookups (or queries) to be performed within the same row. TODO DW: check how it is translated into the code
 * zero-knowledgeness is added in a specific way (see later)
 
 The following document explains the protocol in more detail
@@ -71,7 +85,7 @@ $$
 
 ### Lookup tables
 
-Kimchi uses a single **lookup table** at the moment of this writing; the XOR table. The XOR table for values of 1 bit is the following:
+$\kimchi$ uses a single **lookup table** at the moment of this writing; the XOR table (TODO DW: Check. Not true). The XOR table for values of 1 bit is the following:
 
 
 | l   | r   | o   |
@@ -81,7 +95,7 @@ Kimchi uses a single **lookup table** at the moment of this writing; the XOR tab
 | 1   | 1   | 0   |
 | 0   | 0   | 0   |
 
-Whereas kimchi uses the XOR table for values of 4 bits, which has $2^{8}$ entries.
+Whereas $\kimchi$ uses the XOR table for values of 4 bits, which has $2^{8}$ entries.
 
 Note: the (0, 0, 0) **entry** is at the very end on purpose (as it will be used as dummy entry for rows of the witness that don't care about lookups).
 
@@ -100,7 +114,7 @@ For example, the following **query** tells us that we want to check if $r_0 \opl
 | :---: | :---: | :---: |
 | 1, r0 | 1, r2 | 2, r1 |
 
-The grand product argument for the lookup consraint will look like this at this point:
+The grand product argument for the lookup constraint will look like this at this point:
 
 $$
 acc_i = acc_{i-1} \cdot \frac{\color{green}{(1+\beta)(\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i))}(\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})}
@@ -118,7 +132,7 @@ The associated **query selector** tells us on which rows the query into the XOR 
 |   1   |       0        |
 
 
-Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time. Currently only the ChaCha gates make use of the lookups.
+Both the (XOR) lookup table and the query are built-ins in $\kimchi$. The query selector is derived from the circuit at setup time. Currently only the ChaCha gates make use of the lookups.
 
 The grand product argument for the lookup constraint looks like this now:
 
@@ -235,9 +249,9 @@ which is equivalent with checking that
 
 $$h_1(g^{n-1}) = h_2(1)$$
 
-## The sorted vector $s$ in kimchi
+## The sorted vector $s$ in $\kimchi$
 
-Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the polynomial. To do this in kimchi, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial.
+Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the polynomial. To do this in $\kimchi$, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial.
 
 This means two things for the lookup grand product argument:
 
@@ -249,7 +263,7 @@ The first problem can be solved in two ways:
 * **Zig-zag technique**. By reorganizing $s$ to alternate its values between the columns. For example, $h_1 = (s_0, s_2, s_4, \cdots)$ and $h_2 = (s_1, s_3, s_5, \cdots)$ so that you can simply write the denominator of the grand product argument as
     $$(\gamma(1+\beta) + h_1(x) + \beta h_2(x))(\gamma(1+\beta)+ h_2(x) + \beta h_1(x \cdot g))$$
     this is what the [plonkup](https://eprint.iacr.org/2022/086) paper does.
-* **Snake technique**. by reorganizing $s$ as a snake. This is what is done in kimchi currently.
+* **Snake technique**. by reorganizing $s$ as a snake. This is what is done in $\kimchi$ currently.
 
 The snake technique rearranges $s$ into the following shape:
 
