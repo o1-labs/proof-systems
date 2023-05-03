@@ -60,7 +60,6 @@ mod tests {
     use mina_curves::pasta::Fp;
 
     #[test]
-    #[ignore] // TODO(mimoo): wait for fix upstream (https://github.com/arkworks-rs/algebra/pull/307)
     fn test_create_domain() {
         if let Ok(d) = EvaluationDomains::<Fp>::create(usize::MAX) {
             assert!(d.d4.group_gen.pow([4]) == d.d1.group_gen);
