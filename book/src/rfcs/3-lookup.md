@@ -1,6 +1,6 @@
 # RFC: Plookup in kimchi
 
-In 2020, [plookup](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate Plookup into Plonk.
+In 2020, [plookup](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate Plookup into $\plonk$.
 
 This document specifies how we integrate plookup in kimchi. It assumes that the reader understands the basics behind plookup.
 
@@ -48,7 +48,7 @@ we have:
 
 > Note: This assumes that the lookup table is a single column. You will see in the next section how to address lookup tables with more than one column.
 
-The equality between the multisets can be proved with the permutation argument of plonk, which would look like enforcing constraints on the following accumulator:
+The equality between the multisets can be proved with the permutation argument of $\plonk$, which would look like enforcing constraints on the following accumulator:
 
 * init: $acc_0 = 1$
 * final: $acc_n = 1$

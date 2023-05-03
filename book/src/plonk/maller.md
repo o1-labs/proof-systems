@@ -1,6 +1,6 @@
 # Maller optimization to reduce proof size
 
-In the PLONK paper, they make use of an optimization from Mary Maller in order to reduce the proof size.
+In the $\plonk$ paper, they make use of an optimization from Mary Maller in order to reduce the proof size.
 
 ## Explanation
 
@@ -87,9 +87,9 @@ The problem here is that you can't multiply the commitments together without usi
 
 If you're using an inner-product-based commitment, you can't even multiply commitments.
 
-question: where does the multiplication of commitment occurs in the pairing-based protocol of PLONK? And how come we can use bootleproof if we need that multiplication of commitment?
+question: where does the multiplication of commitment occurs in the pairing-based protocol of $\plonk$? And how come we can use bootleproof if we need that multiplication of commitment?
 
-## Appendix: Original explanation from the PLONK paper
+## Appendix: Original explanation from the $\plonk$ paper
 
 https://eprint.iacr.org/2019/953.pdf
 

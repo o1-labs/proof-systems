@@ -63,3 +63,5 @@
 \gid:{\mathsf{gid}}
 \counter:{\mathsf{counter}}
 \prg:{\small \mathsf{PRG}}
+
+\plonk:\textsf{PLONK}
