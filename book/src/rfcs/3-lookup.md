@@ -24,7 +24,9 @@ We integrate $\plookup$ in $\kimchi$ with the following differences:
 
 * we snake-ify the sorted table instead of wrapping it around (see later)
 * we allow fixed-ahead-of-time (TODO DW ????) linear combinations of columns of the queries we make
-* we only use a single table (XOR) at the moment of this writing. TODO DW: CHECK. Not true. We use lookups for multiple
+* we have two lookup tables: XOR and RangeCheck. <!-- This must be consistent
+  with the enum GateLookupTable in kimchi/src/circuits/lookup/tables/mod.rs and
+  with the lookup tables section below -->
 * we allow several lookups (or queries) to be performed within the same row. TODO DW: check how it is translated into the code
 * zero-knowledgeness is added in a specific way (see later)
 
@@ -85,8 +87,10 @@ $$
 
 ### Lookup tables
 
-$\kimchi$ uses a single **lookup table** at the moment of this writing; the XOR table (TODO DW: Check. Not true). The XOR table for values of 1 bit is the following:
-
+<!-- This must be consistent with the enum GateLookupTable in kimchi/src/circuits/lookup/tables/mod.rs -->
+<!-- This must be consistent with the intro of this file -->
+$\kimchi$ uses two **lookup tables**; the XOR table and the RangeCheck table. In the rest of the document, we will focus on the XOR table as an example.
+The XOR table for values of 1 bit is the following:
 
 | l   | r   | o   |
 | --- | --- | --- |
@@ -217,7 +221,7 @@ Note:
 
 There are two things that we haven't touched on:
 
-* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit (for now only one, the XOR lookup table, can be used in the circuit).
+* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit.
 * The vector $s$ representing the sorted multiset of both the queries and the lookup table. This is created by the prover and sent as commitment to the verifier.
 
 The first vector $t$ is quite straightforward to think about:

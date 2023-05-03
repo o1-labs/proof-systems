@@ -14,6 +14,7 @@ pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
+// This must be consistent with book/src/rfcs/3-lookup.md
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GateLookupTable {
     Xor,
