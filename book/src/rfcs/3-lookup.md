@@ -1,12 +1,12 @@
-# RFC: Plookup in kimchi
+# RFC: $\plookup$ in kimchi
 
-In 2020, [plookup](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate Plookup into $\plonk$.
+In 2020, [$\plookup$](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate $\Plookup$ into $\plonk$.
 
-This document specifies how we integrate plookup in kimchi. It assumes that the reader understands the basics behind plookup.
+This document specifies how we integrate $\plookup$ in kimchi. It assumes that the reader understands the basics behind $\plookup$.
 
 ## Overview
 
-We integrate plookup in kimchi with the following differences:
+We integrate $\plookup$ in kimchi with the following differences:
 
 * we snake-ify the sorted table instead of wrapping it around (see later)
 * we allow fixed-ahead-of-time linear combinations of columns of the queries we make
@@ -16,15 +16,15 @@ We integrate plookup in kimchi with the following differences:
 
 The following document explains the protocol in more detail
 
-### Recap on the grand product argument of plookup
+### Recap on the grand product argument of $\plookup$
 
-As per the Plookup paper, the prover will have to compute three vectors:
+As per the $\plookup$ paper, the prover will have to compute three vectors:
 
 * $f$, the (secret) **query vector**, containing the witness values that the prover wants to prove are part of the lookup table.
 * $t$, the (public) **lookup table**.
 * $s$, the (secret) concatenation of $f$ and $t$, sorted by $t$ (where elements are listed in the order they are listed in $t$).
 
-Essentially, plookup proves that all the elements in $f$ are indeed in the lookup table $t$ if and only if the following multisets are equal:
+Essentially, $\plookup$ proves that all the elements in $f$ are indeed in the lookup table $t$ if and only if the following multisets are equal:
 
 * $\{(1+\beta)f, \text{diff}(t)\}$
 * $\text{diff}(\text{sorted}(f, t))$
@@ -48,7 +48,9 @@ we have:
 
 > Note: This assumes that the lookup table is a single column. You will see in the next section how to address lookup tables with more than one column.
 
-The equality between the multisets can be proved with the permutation argument of $\plonk$, which would look like enforcing constraints on the following accumulator:
+The equality between the multisets can be proved with the permutation argument
+of $\plonk$, which would look like enforcing constraints on the following
+accumulator:
 
 * init: $acc_0 = 1$
 * final: $acc_n = 1$
@@ -57,13 +59,15 @@ The equality between the multisets can be proved with the permutation argument o
     acc_i = acc_{i-1} \cdot \frac{(\gamma + (1+\beta) f_{i-1})(\gamma + t_{i-1} + \beta t_i)}{(\gamma + s_{i-1} + \beta s_{i})}
     $$
 
-Note that the plookup paper uses a slightly different equation to make the proof work. I believe the proof would work with the above equation, but for simplicity let's just use the equation published in plookup:
+Note that the $\plookup$ paper uses a slightly different equation to make the proof
+work. I believe the proof would work with the above equation, but for simplicity
+let's just use the equation published in $\plookup$:
 
 $$
 acc_i = acc_{i-1} \cdot \frac{(1+\beta)(\gamma + f_{i-1})(\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})}
 $$
 
-> Note: in plookup $s$ is too large, and so needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. We ignore this for now.
+> Note: in $\plookup$ $s$ is too large, and so needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. We ignore this for now.
 
 ### Lookup tables
 
@@ -83,7 +87,7 @@ Note: the (0, 0, 0) **entry** is at the very end on purpose (as it will be used 
 
 ### Querying the table
 
-The plookup paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
+The $\plookup$ paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
 
 * a **query** tells us what registers, in what order, and scaled by how much, are part of a query
 * a **query selector** tells us which rows are using the query. It is pretty much the same as a [gate selector]().
@@ -237,7 +241,7 @@ Since this vector is known only by the prover, and is evaluated as part of the p
 
 This means two things for the lookup grand product argument:
 
-1. we cannot use the wrap around trick to make sure that the list is split in two correctly (enforced by $L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$ which is equivalent to $h_1(g^{n-1}) = h_2(1)$ in the plookup paper)
+1. we cannot use the wrap around trick to make sure that the list is split in two correctly (enforced by $L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$ which is equivalent to $h_1(g^{n-1}) = h_2(1)$ in the $\plookup$ paper)
 2. we have even less space to store an entire query vector. Which is actually super correct, as the witness also has some zero-knowledge rows at the end that should not be part of the queries anyway.
 
 The first problem can be solved in two ways:
