@@ -29,10 +29,20 @@ Essentially, plookup proves that all the elements in $f$ are indeed in the looku
 * $\{(1+\beta)f, \text{diff}(t)\}$
 * $\text{diff}(\text{sorted}(f, t))$
 
-where $\text{diff}$ is a new set derived by applying a "randomized difference" between every successive pairs of a vector. For example:
+where $\text{diff}$ is a new set derived by applying a "randomized difference"
+between every successive pairs of a vector, and $(f, t)$ is the set union of $f$ et $t$.
+
+More precisely, for a set $S =
+\{s_{0}, s_{1}, \cdots, s_{n} \}$, $\text{diff}(S)$ is defined as the set
+$\{s_{0} + \beta s_{1}, s_{1} + \beta s_{2}, \cdots, s_{n - 1} + \beta s_{n}\}$.
+
+For example, with:
 
 * $f = \{5, 4, 1, 5\}$
 * $t = \{1, 4, 5\}$
+
+we have:
+* $\text{sorted}(f,t) = \{1, 1, 4, 4, 5, 5, 5\}$
 * $\{\color{red}{(1+\beta)f}, \color{green}{\text{diff}(t)}\} = \{\color{red}{(1+\beta)5, (1+\beta)4, (1+\beta)1, (1+\beta)5}, \color{green}{1+\beta 4, 4+\beta 5}\}$
 * $\text{diff}(\text{sorted}(f, t)) = \{1+\beta 1, 1+\beta 4, 4+\beta 4, 4+\beta 5, 5+\beta 5, 5+\beta 5\}$
 
