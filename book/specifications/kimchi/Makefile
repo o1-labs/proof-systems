@@ -9,10 +9,10 @@ OUT_FILE := ../../src/specs/kimchi.md
 # - MD012: Multiple consecutive blank lines
 #   · because the template file can look awkward sometimes
 # - MD013: Line length
-#   · because we do not want to break the lines when we spec long tables 
+#   · because we do not want to break the lines when we spec long tables
 # - MD024: Multiple headers with the same content
 #   · because otherwise we cannot have a common structure for the sub-headers in FFMul and FFAdd
-# - MD049: Emphasis style should be consistent 
+# - MD049: Emphasis style should be consistent
 # 	· because it interprets the underscore in LaTeX as emphasis
 build:
 	cargo spec build --output-file $(OUT_FILE)

@@ -15,7 +15,7 @@ This is important as our technique to transform an interactive protocol to a non
 The whole idea is to replace the verifier by a random oracle, which in practice is a hash function.
 Note that by doing this, we remove potential leaks that can happen when the verifier acts dishonestly.
 
-Initially the Fiat-Shamir transformation was only applied to sigma protocols, named after the greek letter $\Sigma$ due to its shape resembling the direction of messages (prover sends a commit to a verifier, verifier sends a challenge to a prover, prover sends the final proof to a verifier). 
+Initially the Fiat-Shamir transformation was only applied to sigma protocols, named after the greek letter $\Sigma$ due to its shape resembling the direction of messages (prover sends a commit to a verifier, verifier sends a challenge to a prover, prover sends the final proof to a verifier).
 A $Z$ would have made more sense but here we are.
 
 ## Generalization of Fiat-Shamir
@@ -27,6 +27,6 @@ This is simple: every verifier move can be replaced by a hash of the transcript 
 
 While we use a hash function for that, a different construction called the [duplex construction](https://keccak.team/sponge_duplex.html) is particularly useful in such situations as they allow to continuously absorb the transcript and produce challenges, while automatically authenticating the fact that they produced a challenge.
 
-[Merlin](https://merlin.cool/) is a standardization of such a construction using the [Strobe protocol framework](https://strobe.sourceforge.io/) (a framework to make use of a duplex construction). 
-Note that the more recent [Xoodyak](https://keccak.team/xoodyak.html) (part of NIST's lightweight competition) could have been used for this as well. 
+[Merlin](https://merlin.cool/) is a standardization of such a construction using the [Strobe protocol framework](https://strobe.sourceforge.io/) (a framework to make use of a duplex construction).
+Note that the more recent [Xoodyak](https://keccak.team/xoodyak.html) (part of NIST's lightweight competition) could have been used for this as well.
 Note also that Mina uses none of these standards, instead it simply uses Poseidon (see section on poseidon).

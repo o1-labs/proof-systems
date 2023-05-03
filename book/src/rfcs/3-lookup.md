@@ -33,20 +33,20 @@ where $\text{diff}$ is a new set derived by applying a "randomized difference" b
 
 * $f = \{5, 4, 1, 5\}$
 * $t = \{1, 4, 5\}$
-* $\{\color{blue}{(1+\beta)f}, \color{green}{\text{diff}(t)}\} = \{\color{blue}{(1+\beta)5, (1+\beta)4, (1+\beta)1, (1+\beta)5}, \color{green}{1+\beta 4, 4+\beta 5}\}$
+* $\{\color{red}{(1+\beta)f}, \color{green}{\text{diff}(t)}\} = \{\color{red}{(1+\beta)5, (1+\beta)4, (1+\beta)1, (1+\beta)5}, \color{green}{1+\beta 4, 4+\beta 5}\}$
 * $\text{diff}(\text{sorted}(f, t)) = \{1+\beta 1, 1+\beta 4, 4+\beta 4, 4+\beta 5, 5+\beta 5, 5+\beta 5\}$
 
 > Note: This assumes that the lookup table is a single column. You will see in the next section how to address lookup tables with more than one column.
 
 The equality between the multisets can be proved with the permutation argument of plonk, which would look like enforcing constraints on the following accumulator:
 
-* init: $acc_0 = 1$ 
+* init: $acc_0 = 1$
 * final: $acc_n = 1$
 * for every $0 < i \leq n$:
     $$
     acc_i = acc_{i-1} \cdot \frac{(\gamma + (1+\beta) f_{i-1})(\gamma + t_{i-1} + \beta t_i)}{(\gamma + s_{i-1} + \beta s_{i})}
     $$
- 
+
 Note that the plookup paper uses a slightly different equation to make the proof work. I believe the proof would work with the above equation, but for simplicity let's just use the equation published in plookup:
 
 $$
@@ -123,7 +123,7 @@ $$
 
 ### Queries, not query
 
-Since we allow multiple queries per row, we define multiple **queries**, where each query is associated with a **lookup selector**. 
+Since we allow multiple queries per row, we define multiple **queries**, where each query is associated with a **lookup selector**.
 
 At the moment of this writing, the `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
 
@@ -192,7 +192,7 @@ There are two things that we haven't touched on:
 * The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit (for now only one, the XOR lookup table, can be used in the circuit).
 * The vector $s$ representing the sorted multiset of both the queries and the lookup table. This is created by the prover and sent as commitment to the verifier.
 
-The first vector $t$ is quite straightforward to think about: 
+The first vector $t$ is quite straightforward to think about:
 
 * if it is smaller than the domain (of size $n$), then we can repeat the last entry enough times to make the table of size $n$.
 * if it is larger than the domain, then we can either increase the domain or split the vector in two (or more) vectors. This is most likely what we will have to do to support multiple lookup tables later.
@@ -201,7 +201,7 @@ What about the second vector?
 
 ## The sorted vector $s$
 
-The second vector $s$ is of size 
+The second vector $s$ is of size
 
 $$n \cdot |\text{queries}| + |\text{lookup\_table}|$$
 
@@ -213,7 +213,7 @@ $$
 acc_i = acc_{i-1} \cdot \frac{\color{green}{(1+\beta)^4 \cdot query} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta)+s_{n+i-1} + \beta s_{n+i})}
 $$
 
-Since you must compute the difference of every contiguous pairs, the last element of the first half is the replicated as the first element of the second half ($s_{n-1} = s_{n}$), and a separate constraint enforces that continuity on the interpolated polynomials $h_1$ and $h_2$: 
+Since you must compute the difference of every contiguous pairs, the last element of the first half is the replicated as the first element of the second half ($s_{n-1} = s_{n}$), and a separate constraint enforces that continuity on the interpolated polynomials $h_1$ and $h_2$:
 
 $$L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$$
 
@@ -223,7 +223,7 @@ $$h_1(g^{n-1}) = h_2(1)$$
 
 ## The sorted vector $s$ in kimchi
 
-Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the polynomial. To do this in kimchi, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial. 
+Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the polynomial. To do this in kimchi, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial.
 
 This means two things for the lookup grand product argument:
 
@@ -232,9 +232,9 @@ This means two things for the lookup grand product argument:
 
 The first problem can be solved in two ways:
 
-* **Zig-zag technique**. By reorganizing $s$ to alternate its values between the columns. For example, $h_1 = (s_0, s_2, s_4, \cdots)$ and $h_2 = (s_1, s_3, s_5, \cdots)$ so that you can simply write the denominator of the grand product argument as 
+* **Zig-zag technique**. By reorganizing $s$ to alternate its values between the columns. For example, $h_1 = (s_0, s_2, s_4, \cdots)$ and $h_2 = (s_1, s_3, s_5, \cdots)$ so that you can simply write the denominator of the grand product argument as
     $$(\gamma(1+\beta) + h_1(x) + \beta h_2(x))(\gamma(1+\beta)+ h_2(x) + \beta h_1(x \cdot g))$$
-    this is what the [plonkup](https://eprint.iacr.org/2022/086) paper does. 
+    this is what the [plonkup](https://eprint.iacr.org/2022/086) paper does.
 * **Snake technique**. by reorganizing $s$ as a snake. This is what is done in kimchi currently.
 
 The snake technique rearranges $s$ into the following shape:
