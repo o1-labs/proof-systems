@@ -73,6 +73,13 @@ RUSTDOCFLAGS="--enable-index-page -Zunstable-options" cargo +nightly doc --all -
 
 You can visualize the documentation by opening the file `target/doc/index.html`.
 
+## Specifications
+
+Specifications are generated from code, using [cargo-spec](https://github.com/mimoo/cargo-specification).
+When contributing by adding a new module or feature, it is recommended to write
+a specification directly in the code. You can read more about cargo-spec on [our
+blog](https://eng-blog.o1labs.org/posts/cargo-spec/).
+
 ## CI
 
 <!-- Please update this section if you add more workflows -->
