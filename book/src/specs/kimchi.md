@@ -367,6 +367,12 @@ The range check table is a single-column table containing the numbers from 0 to 
 This is used to check that the value fits in 12 bits.
 
 
+##### Runtime tables
+
+Another type of lookup tables have been suggested in the [Extended Lookup tables RFC](../rfcs/extended-lookup-tables.md).
+
+
+
 #### The Lookup Selectors
 
 **XorSelector**. Performs 4 queries to the XOR lookup table.
