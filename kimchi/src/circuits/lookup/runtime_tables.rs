@@ -104,3 +104,15 @@ where
 
     vec![rt_check]
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    //
+    // CamlRuntimeTable<CamlF>
+    //
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRuntimeTable<CamlF> {
+        pub id: i32,
+        pub data: Vec<CamlF>,
+    }
+}
