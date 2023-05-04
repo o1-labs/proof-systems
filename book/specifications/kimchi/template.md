@@ -213,6 +213,12 @@ Kimchi currently supports two lookup tables:
 
 {sections.table_12bit}
 
+##### Runtime tables
+
+Another type of lookup tables have been suggested in the [Extended Lookup tables RFC](../rfcs/extended-lookup-tables.md).
+
+{sections.runtime_tables}
+
 #### The Lookup Selectors
 
 **XorSelector**. Performs 4 queries to the XOR lookup table.

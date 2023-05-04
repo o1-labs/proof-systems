@@ -2,6 +2,8 @@
 //! The setup has to prepare for their presence using [`RuntimeTableCfg`].
 //! At proving time, the prover can use [`RuntimeTable`] to specify the actual tables.
 
+// TODO: write cargo specifications
+
 use crate::circuits::{
     expr::{prologue::*, Column},
     gate::CurrOrNext,
