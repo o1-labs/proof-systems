@@ -164,7 +164,10 @@ where
 
         let (_, endo_r) = G::endos();
 
-        let num_chunks = d1_size / index.max_poly_size;
+        // TODO?: num chunks is derived or is an argument of the index?
+        let num_chunks = std::cmp::max (1, d1_size / index.max_poly_size);
+
+        println!("#chunks {num_chunks}, #d1 {d1_size}, poly size {}", index.max_poly_size);
 
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
