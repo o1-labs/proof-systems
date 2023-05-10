@@ -194,7 +194,7 @@ pub(crate) fn keccak_hash(
         "Output length needs to be a multiple of 8"
     );
     let padded = pad(message, bitrate);
-    let hash = keccak_sponge(padded, bitrate, capacity, output_length);
+    let hash = sponge(padded, bitrate, capacity, output_length);
     hash
 }
 
@@ -221,7 +221,7 @@ pub(crate) fn pad(message: &[u8], bitrate: usize) -> Vec<u8> {
 
 // Keccak sponge function for 1600 bits of state width
 // Need to split the message into blocks of 1088 bits
-pub(crate) fn keccak_sponge(
+pub(crate) fn sponge(
     padded_message: Vec<u8>,
     bitrate: usize,
     capacity: usize,
@@ -255,14 +255,14 @@ pub(crate) fn keccak_sponge(
         // xor the state with the padded block
         state = xor_state(state, block_state);
         // apply the permutation function to the xored state
-        state = keccak_permutation(state);
+        state = permutation(state);
     }
 
     // squeeze
     let mut output = from_state_to_bytes(state)[0..(bitrate / 8)].to_vec();
     while output.len() < output_length / 8 {
         // apply the permutation function to the state
-        state = keccak_permutation(state);
+        state = permutation(state);
         // append the output of the permutation function to the output
         output.append(&mut from_state_to_bytes(state)[0..(bitrate / 8)].to_vec());
     }
@@ -286,9 +286,7 @@ pub(crate) fn xor_state(
 }
 
 /// Keccak permutation function for 1600 bits of state
-pub fn keccak_permutation(
-    state: [[u64; MATRIX_DIM]; MATRIX_DIM],
-) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+pub fn permutation(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
     let mut state = state;
     // length could be anything between 0 and 6
     // In our use case, words have 64 bits, and thus length = 6
@@ -312,7 +310,7 @@ pub(crate) fn round(
     let state_e = theta(state_a);
     let state_b = pi_rho(state_e);
     let state_f = chi(state_b);
-    let state_d = iota(state_f, RC[round_number]);
+    let state_d = iota(state_f, round_number);
     state_d
 }
 
@@ -393,8 +391,8 @@ pub(crate) fn chi(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM];
     let state_b = state;
     let mut state_f = [[0u64; MATRIX_DIM]; MATRIX_DIM];
     // for all x in {0..4} and y in {0..4}: F[x,y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y])
-    for y in 0..MATRIX_DIM {
-        for x in 0..MATRIX_DIM {
+    for x in 0..MATRIX_DIM {
+        for y in 0..MATRIX_DIM {
             let x_plus_one = modulo((x as i32) + 1, MATRIX_DIM as i32) as usize;
             let x_plus_two = modulo((x as i32) + 2, MATRIX_DIM as i32) as usize;
             state_f[x][y] = state_b[x][y] ^ ((!state_b[x_plus_one][y]) & state_b[x_plus_two][y]);
@@ -407,10 +405,10 @@ pub(crate) fn chi(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM];
 // It takes the word located at the position (0,0) of the state and XORs it with the round constant.
 pub(crate) fn iota(
     state: [[u64; MATRIX_DIM]; MATRIX_DIM],
-    round_constant: u64,
+    round_number: usize,
 ) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
     let mut state_g = state;
-    state_g[0][0] ^= round_constant;
+    state_g[0][0] ^= RC[round_number];
     state_g
 }
 
@@ -438,10 +436,10 @@ pub(crate) fn _print_hash(hash: &[u8]) {
 // | 2 | 7 | 12 | 17 | 22 |
 // | 3 | 8 | 13 | 18 | 23 |
 // | 4 | 9 | 14 | 19 | 24 |
-// 
+//
 // Assumes that the first 5 words correspond to the y=0 column.
 // The first byte of the vector corresponds to the least significant byte of the first word of the state (x=0, y=0).
-// 
+//
 pub(crate) fn from_bytes_to_state(block: &[u8]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
     assert_eq!(block.len() * 8, 1600, "The block must have 1600 bits");
     let mut state = [[0u64; MATRIX_DIM]; MATRIX_DIM];
