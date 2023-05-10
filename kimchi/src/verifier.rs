@@ -314,7 +314,7 @@ where
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         let v = v_chal.to_field(endo_r);
 
-        println!("v: {}", v);
+        println!("v: {v}");
 
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
@@ -322,7 +322,7 @@ where
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
         let u = u_chal.to_field(endo_r);
 
-        println!("u: {}", u);
+        println!("u: {u}");
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
 
