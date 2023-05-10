@@ -48,8 +48,6 @@ pub const ROUNDS: usize = 12 + 2 * LENGTH;
 pub const ETH_OUTPUT: usize = 256;
 /// Capacity in Keccak256
 pub const ETH_CAPACITY: usize = 512;
-/// Bitrate in Keccak256 (1088)
-pub const ETH_BITRATE: usize = STATE - ETH_CAPACITY;
 
 /// Creates the 5x5 table of rotation offset for Keccak modulo 64
 /// | x \ y |  0 |  1 |  2 |  3 |  4 |
@@ -160,41 +158,48 @@ pub(crate) fn modulo(number: i32, modulo: i32) -> u64 {
 }
 
 pub fn keccak_eth(message: &[u8]) -> Vec<u8> {
-    keccak_hash(message, ETH_BITRATE, ETH_CAPACITY, ETH_OUTPUT)
+    keccak_hash(message, ETH_OUTPUT, ETH_CAPACITY, false)
+}
+
+pub fn sha3_224(message: &[u8]) -> Vec<u8> {
+    keccak_hash(message, 224, 448, true)
 }
 
 pub fn sha3_256(message: &[u8]) -> Vec<u8> {
-    keccak_hash(message, 1088, 512, 256)
+    keccak_hash(message, 256, 512, true)
+}
+
+pub fn sha3_384(message: &[u8]) -> Vec<u8> {
+    keccak_hash(message, 384, 768, true)
 }
 
 pub fn sha3_512(message: &[u8]) -> Vec<u8> {
-    keccak_hash(message, 576, 1024, 512)
+    keccak_hash(message, 512, 1024, true)
 }
 
 /// Keccak hash function, does not accept messages whose length is not a multiple of 8 bits.
 /// The message will be parsed as follows:
 /// - the first byte of the message will be the least significant byte of the first word of the state (A[0][0])
-/// - the 10*1 pad will take place after the message, until reaching the bit length BITRATE.
+/// - the 10*1 pad will take place after the message, until reaching the bit length rate.
 /// - then, {0} pad will take place to finish the 1600 bits of the state.
 pub(crate) fn keccak_hash(
     message: &[u8],
-    bitrate: usize,
-    capacity: usize,
     output_length: usize,
+    capacity: usize,
+    nist: bool,
 ) -> Vec<u8> {
-    assert_eq!(
-        capacity + bitrate,
-        STATE,
-        "Bitrate and capacity must sum up to 1600"
-    );
-    assert_eq!(bitrate % 8, 0, "Bitrate needs to be a multiple of 8");
     assert_eq!(
         output_length % 8,
         0,
         "Output length needs to be a multiple of 8"
     );
-    let padded = pad(message, bitrate);
-    let hash = sponge(padded, bitrate, capacity, output_length);
+    let rate = STATE - capacity;
+    let padded = if nist {
+        pad_nist(message, rate)
+    } else {
+        pad101(message, rate)
+    };
+    let hash = sponge(padded, rate, capacity, output_length);
     hash
 }
 
@@ -202,14 +207,35 @@ pub(crate) fn keccak_hash(
 /// M || pad[x](|M|)
 /// Padding rule 10*1.
 /// The padded message vector will start with the message vector
-/// followed by the 10*1 rule to fulfil a length that is a multiple of bitrate.
-pub(crate) fn pad(message: &[u8], bitrate: usize) -> Vec<u8> {
+/// followed by the 10*1 rule to fulfil a length that is a multiple of rate.
+pub(crate) fn pad101(message: &[u8], rate: usize) -> Vec<u8> {
     // copy the message to the first part of the padded message
     let mut padded_message = message.clone().to_vec();
     // Add first 1 of the rule 10*1
     padded_message.push(0x01);
-    while ((padded_message.len() * 8) % bitrate) != 0 {
-        // keep adding 0s until the message (with a final 1) is a multiple of the bitrate
+    while ((padded_message.len() * 8) % rate) != 0 {
+        // keep adding 0s until the message (with a final 1) is a multiple of the rate
+        padded_message.push(0x00);
+    }
+    // Include the final 1
+    let last_byte = padded_message.len() - 1;
+    padded_message[last_byte] |= 0x80;
+
+    padded_message
+}
+
+/// Pads a message M as:
+/// M || pad[x](|M|)
+/// Padding rule 0x06 0*1.
+/// The padded message vector will start with the message vector
+/// followed by the 10*1 rule to fulfil a length that is a multiple of rate.
+pub(crate) fn pad_nist(message: &[u8], rate: usize) -> Vec<u8> {
+    // copy the message to the first part of the padded message
+    let mut padded_message = message.clone().to_vec();
+    // Add first 0x06 of the rule
+    padded_message.push(0x06);
+    while ((padded_message.len() * 8) % rate) != 0 {
+        // keep adding 0s until the message (with a final 1) is a multiple of the rate
         padded_message.push(0x00);
     }
     // Include the final 1
@@ -223,22 +249,22 @@ pub(crate) fn pad(message: &[u8], bitrate: usize) -> Vec<u8> {
 // Need to split the message into blocks of 1088 bits
 pub(crate) fn sponge(
     padded_message: Vec<u8>,
-    bitrate: usize,
+    rate: usize,
     capacity: usize,
     output_length: usize,
 ) -> Vec<u8> {
     assert_eq!(
-        (padded_message.len() * 8) % bitrate,
+        (padded_message.len() * 8) % rate,
         0,
-        "Padded message needs to be a multiple of bitrate"
+        "Padded message needs to be a multiple of rate"
     );
 
     // absorb
     let root_state = [[0u64; MATRIX_DIM]; MATRIX_DIM];
     let mut state = root_state;
-    // split into blocks of bitrate bits
-    // for each block of bitrate bits in the padded message -> this is bitrate/8 bytes
-    for block in padded_message.chunks(bitrate / 8) {
+    // split into blocks of rate bits
+    // for each block of rate bits in the padded message -> this is rate/8 bytes
+    for block in padded_message.chunks(rate / 8) {
         let mut padded_block = block.to_vec();
         // pad the block with 0s to up to 1600 bits
         for _ in 0..(capacity / 8) {
@@ -259,12 +285,12 @@ pub(crate) fn sponge(
     }
 
     // squeeze
-    let mut output = from_state_to_bytes(state)[0..(bitrate / 8)].to_vec();
+    let mut output = from_state_to_bytes(state)[0..(rate / 8)].to_vec();
     while output.len() < output_length / 8 {
         // apply the permutation function to the state
         state = permutation(state);
         // append the output of the permutation function to the output
-        output.append(&mut from_state_to_bytes(state)[0..(bitrate / 8)].to_vec());
+        output.append(&mut from_state_to_bytes(state)[0..(rate / 8)].to_vec());
     }
     // return the first 256 bits of the output
     let hashed = output[0..(output_length / 8)].to_vec().try_into().unwrap();
