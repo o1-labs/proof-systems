@@ -165,9 +165,12 @@ where
         let (_, endo_r) = G::endos();
 
         // TODO?: num chunks is derived or is an argument of the index?
-        let num_chunks = std::cmp::max (1, d1_size / index.max_poly_size);
+        let num_chunks = d1_size / index.max_poly_size;
 
-        println!("#chunks {num_chunks}, #d1 {d1_size}, poly size {}", index.max_poly_size);
+        println!(
+            "#chunks {num_chunks}, #d1 {d1_size}, poly size {}",
+            index.max_poly_size
+        );
 
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
@@ -189,7 +192,14 @@ where
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        let zero_knowledge_limit = (16 * num_chunks - 4) / 7 ;
+        let zero_knowledge_limit = if num_chunks == 0 {
+            0
+        } else {
+            (16 * num_chunks - 4) / 7
+        };
+
+        println!("debug {num_chunks}, zkl {zero_knowledge_limit}");
+
         if (index.cs.zk_rows as usize) < zero_knowledge_limit {
             return Err(ProverError::NotZeroKnowledge(
                 zero_knowledge_limit,
@@ -197,9 +207,12 @@ where
             ));
         }
 
+        println! {"passed"};
+
         if length_padding < index.cs.zk_rows as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
+        println! {"passed"};
 
         //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
         //~    Then, randomize the last `zk_rows` of each columns.
