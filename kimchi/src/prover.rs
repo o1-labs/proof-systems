@@ -165,7 +165,7 @@ where
         let (_, endo_r) = G::endos();
 
         // TODO?: num chunks is derived or is an argument of the index?
-        let num_chunks = std::cmp::max (1, d1_size / index.max_poly_size);
+        let num_chunks = 1; // std::cmp::max (1, d1_size / index.max_poly_size);
 
         println!("#chunks {num_chunks}, #d1 {d1_size}, poly size {}", index.max_poly_size);
 
