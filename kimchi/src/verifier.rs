@@ -216,7 +216,7 @@ where
         let alpha = alpha_chal.to_field(endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size 7.
-        if self.commitments.t_comm.unshifted.len() != chunk_size * 7 {
+        if self.commitments.t_comm.unshifted.len() <= chunk_size * 7 {
             return Err(VerifyError::IncorrectCommitmentLength(
                 "t",
                 chunk_size * 7,
@@ -576,7 +576,14 @@ where
     }
 
     //~ 1. Check the length of evaluations inside the proof.
-    let chunk_size = verifier_index.domain.size() / verifier_index.max_poly_size;
+    let chunk_size = {
+        let d1_size = verifier_index.domain.size();
+        if d1_size < verifier_index.max_poly_size {
+            1
+        } else {
+            d1_size / verifier_index.max_poly_size
+        }
+    };
     check_proof_evals_len(proof, chunk_size)?;
 
     //~ 1. Commit to the negated public input polynomial.

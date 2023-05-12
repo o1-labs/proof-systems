@@ -171,7 +171,11 @@ where
 
         let (_, endo_r) = G::endos();
 
-        let num_chunks = d1_size / index.max_poly_size;
+        let num_chunks = if d1_size < index.max_poly_size {
+            1
+        } else {
+            d1_size / index.max_poly_size
+        };
 
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
