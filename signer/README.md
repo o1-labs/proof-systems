@@ -19,7 +19,7 @@ use rand;
 use mina_signer::{NetworkId, Keypair, PubKey, Signer};
 use transaction::Transaction;
 
-let keypair = Keypair::rand(&mut rand::rngs::OsRng);
+let keypair = Keypair::rand(&mut rand::rngs::OsRng).expect("failed to generate keypair");
 
 let tx = Transaction::new_payment(
                 keypair.public.clone(),
