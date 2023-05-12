@@ -5,7 +5,7 @@ It is based on the [sponge function](https://keccak.team/sponge_duplex.html#:~:t
 
 The permutation contains an S-box (exponentiation of a group element), adding constants to the state, and matrix multiplication of the state (multiplications and additions) with an [MDS matrix](https://en.wikipedia.org/wiki/MDS_matrix).
 
-Since a field element is around 255-bit, a single field element is enough as the capacity of the sponge to provide around 128-bit security.
+Since a field element is around 255-bit, a single field element is enough as the capacity of the sponge to provide around 116-bit security.
 
 ```admonish
 We might want to piggy back on the [zcash poseidon spec](https://github.com/C2SP/C2SP/pull/3) at some point (perhaps by making this an extension of the zcash poseidon spec).

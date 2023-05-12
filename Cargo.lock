@@ -377,38 +377,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "circuit-construction"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "ark-poly",
- "ark-serialize",
- "blake2",
- "colored",
- "criterion",
- "groupmap",
- "iai",
- "itertools",
- "kimchi",
- "mina-curves",
- "mina-poseidon",
- "num-derive",
- "num-traits",
- "o1-utils",
- "poly-commitment",
- "proptest",
- "proptest-derive",
- "rand",
- "rand_core",
- "rayon",
- "rmp-serde",
- "serde",
- "serde_with",
- "thiserror",
-]
-
-[[package]]
 name = "clap"
 version = "2.34.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -962,6 +930,9 @@ name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "humansize"
@@ -1018,6 +989,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a5bbe824c507c5da5956355e86a746d82e0e1464f65d862cc5e71da70e94b2c"
 dependencies = [
  "cfg-if 1.0.0",
+]
+
+[[package]]
+name = "internal-tracing"
+version = "0.1.0"
+dependencies = [
+ "ocaml",
+ "ocaml-gen",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -1084,6 +1065,7 @@ dependencies = [
  "groupmap",
  "hex",
  "iai",
+ "internal-tracing",
  "itertools",
  "mina-curves",
  "mina-poseidon",
@@ -1111,6 +1093,23 @@ dependencies = [
  "thiserror",
  "turshi",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "kimchi-asm"
+version = "0.1.0"
+dependencies = [
+ "ark-ec",
+ "ark-ff",
+ "kimchi",
+ "mina-curves",
+ "mina-poseidon",
+ "o1-utils",
+ "poly-commitment",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "tinytemplate",
 ]
 
 [[package]]
@@ -1743,6 +1742,7 @@ dependencies = [
  "rand_chacha",
  "rand_core",
  "rayon",
+ "rmp-serde",
  "serde",
  "serde_with",
  "thiserror",
@@ -2136,9 +2136,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.93"
+version = "1.0.94"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cad406b69c91885b5107daf2c29572f6c8cdb3c66826821e286c533490c0bc76"
+checksum = "1c533a59c9d8a93a09c6ab31f0fd5e5f4dd1b8fc9434804029839884765d04ea"
 dependencies = [
  "itoa",
  "ryu",

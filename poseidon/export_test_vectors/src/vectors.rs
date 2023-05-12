@@ -96,7 +96,10 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
         // add vector
         test_vectors.push(TestVector {
             input,
-            output: hex::encode(&output_bytes),
+            output: match mode {
+                Mode::Hex => hex::encode(&output_bytes),
+                Mode::B10 => BigUint::from_bytes_le(&output_bytes).to_string(),
+            },
         })
     }
 
