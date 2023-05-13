@@ -120,7 +120,14 @@ where
         let n = index.domain.size;
         let (_, endo_r) = G::endos();
 
-        let chunk_size = index.domain.size() / index.max_poly_size;
+        let chunk_size = {
+            let d1_size = index.domain.size();
+            if d1_size < index.max_poly_size {
+                1
+            } else {
+                d1_size / index.max_poly_size
+            }
+        };
 
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
