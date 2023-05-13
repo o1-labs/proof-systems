@@ -216,7 +216,7 @@ where
         let alpha = alpha_chal.to_field(endo_r);
 
         //~ 1. Enforce that the length of the $t$ commitment is of size 7.
-        if self.commitments.t_comm.unshifted.len() <= chunk_size * 7 {
+        if self.commitments.t_comm.unshifted.len() > chunk_size * 7 {
             return Err(VerifyError::IncorrectCommitmentLength(
                 "t",
                 chunk_size * 7,
