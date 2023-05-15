@@ -474,7 +474,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
 
         ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
 
-        //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` order to add
+        //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
         //~ zero-knowledge to the protocol.
         //~
         for j in 0..n - 1 {

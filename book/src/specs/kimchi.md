@@ -310,7 +310,7 @@ z_2 = &\ (w_0(g^i) + \sigma_0 \cdot beta + \gamma) \cdot \\
 \end{align}
 $$
 
-We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` order to add
+We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
 zero-knowledge to the protocol.
 
 If computed correctly, we should have $z(g^{n-zk_rows}) = 1$.
