@@ -136,7 +136,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     }
 
     pub fn new(max_poly_size: usize, domain: D<F>, x: F) -> LagrangeBasisEvaluations<F> {
-        if domain.size() == max_poly_size {
+        if domain.size() <= max_poly_size {
             Self::new_with_segment_size_1(domain, x)
         } else {
             Self::new_with_chunked_segments(max_poly_size, domain, x)
