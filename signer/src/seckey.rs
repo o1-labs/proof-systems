@@ -4,7 +4,7 @@ use crate::ScalarField;
 use ark_ff::UniformRand;
 use o1_utils::FieldHelpers;
 use rand::{self, CryptoRng, RngCore};
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 /// Keypair error
@@ -78,7 +78,7 @@ impl SecKey {
         let bytes: Vec<u8> = hex::decode(secret_hex).map_err(|_| SecKeyError::SecretKeyHex)?;
         SecKey::from_bytes(&bytes)
     }
-    
+
     /// Deserialize base58 encoded secret key
     ///
     /// # Errors
@@ -218,6 +218,34 @@ mod tests {
                 241, 55, 160, 105, 164, 137, 47, 80, 230, 9, 16, 247
             ]),
             Err(SecKeyError::SecretKeyBytes)
+        );
+    }
+
+    #[test]
+    fn base58() {
+        assert_eq!(
+            SecKey::from_base58("EKFS3M4Fe1VkVjPMn2jauXa1Vv6w6gRES5oLbH3vZmP26uQESodY")
+                .expect("failed to decode sec key")
+                .to_base58(),
+            "EKFS3M4Fe1VkVjPMn2jauXa1Vv6w6gRES5oLbH3vZmP26uQESodY"
+        );
+
+        // invalid checksum
+        assert_eq!(
+            SecKey::from_base58("EKFS3M4Fe1VkVjPMn2jauXa1Vv6w6gRES5oLbH3vZmP26uQESodZ"),
+            Err(SecKeyError::SecretKeyChecksum)
+        );
+
+        // invalid version
+        assert_eq!(
+            SecKey::from_base58("ETq4cWR9pAQtUFQ8L78UhhfVkMJaw6gxbXRU9jQ24F8jPEh7tn3q"),
+            Err(SecKeyError::SecretKeyVersion)
+        );
+
+        // invalid length
+        assert_eq!(
+            SecKey::from_base58("EKFS3M4Fe1VkVjPMn2a1Vv6w6gRES5oLbH3vZmP26uQESodY"),
+            Err(SecKeyError::SecretKeyLength)
         );
     }
 }
