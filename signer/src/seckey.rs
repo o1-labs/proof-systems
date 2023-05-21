@@ -111,7 +111,7 @@ impl SecKey {
 
         scalar_bytes.reverse();
 
-        Ok(Self::from_bytes(&scalar_bytes)?)
+        Self::from_bytes(&scalar_bytes)
     }
 
     /// Borrows secret key as scalar field element
