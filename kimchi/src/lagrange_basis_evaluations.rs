@@ -121,6 +121,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     ) -> LagrangeBasisEvaluations<F> {
         let n = domain.size();
         let num_chunks = n / max_poly_size;
+        assert!(num_chunks > 0);
         let mut evals = Vec::with_capacity(num_chunks);
         for i in 0..num_chunks {
             let mut x_pow = F::one();
