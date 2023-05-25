@@ -408,6 +408,8 @@ where
         //~~ * poseidon selector
         //~~ * the 15 register/witness
         //~~ * 6 sigmas evaluations (the last one is not evaluated)
+        fr_sponge.absorb_multiple(&public_evals[0]);
+        fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
