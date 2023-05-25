@@ -110,7 +110,7 @@ where
         &self,
         index: &VerifierIndex<G>,
         public_comm: &PolyComm<G>,
-        public_input: &[G::ScalarField],
+        public_input: Option<&[G::ScalarField]>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
@@ -290,16 +290,54 @@ where
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
 
-        // compute Lagrange base evaluation denominators
-        let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
+        let public_evals = if let Some(public_evals) = &self.evals.public {
+            [public_evals.zeta.clone(), public_evals.zeta_omega.clone()]
+        } else if chunk_size > 1 {
+            return Err(VerifyError::MissingPublicInputEvaluation);
+        } else if let Some(public_input) = public_input {
+            // compute Lagrange base evaluation denominators
+            let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
 
-        let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
+            let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
 
-        w.iter()
-            .take(public_input.len())
-            .for_each(|w| zeta_minus_x.push(zetaw - w));
+            w.iter()
+                .take(public_input.len())
+                .for_each(|w| zeta_minus_x.push(zetaw - w));
 
-        ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
+            ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
+
+            //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+            //~
+            //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+            if public_input.is_empty() {
+                [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
+            } else {
+                [
+                    vec![
+                        (public_input
+                            .iter()
+                            .zip(zeta_minus_x.iter())
+                            .zip(index.domain.elements())
+                            .map(|((p, l), w)| -*l * p * w)
+                            .fold(G::ScalarField::zero(), |x, y| x + y))
+                            * (zeta1 - G::ScalarField::one())
+                            * index.domain.size_inv,
+                    ],
+                    vec![
+                        (public_input
+                            .iter()
+                            .zip(zeta_minus_x[public_input.len()..].iter())
+                            .zip(index.domain.elements())
+                            .map(|((p, l), w)| -*l * p * w)
+                            .fold(G::ScalarField::zero(), |x, y| x + y))
+                            * index.domain.size_inv
+                            * (zetaw.pow([n]) - G::ScalarField::one()),
+                    ],
+                ]
+            }
+        } else {
+            return Err(VerifyError::MissingPublicInputEvaluation);
+        };
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
@@ -311,6 +349,8 @@ where
         //~~ * poseidon selector
         //~~ * the 15 register/witness
         //~~ * 6 sigmas evaluations (the last one is not evaluated)
+        fr_sponge.absorb_multiple(&public_evals[0]);
+        fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge.
@@ -355,7 +395,7 @@ where
                 .fold(init, |x, y| x * y);
 
             ft_eval0 -= DensePolynomial::eval_polynomial(
-                &self.evals.public.zeta,
+                &public_evals[0],
                 powers_of_eval_points_for_chunks.zeta,
             );
 
@@ -403,13 +443,7 @@ where
             #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((
-                vec![
-                    self.evals.public.zeta.clone(),
-                    self.evals.public.zeta_omega.clone(),
-                ],
-                None,
-            ));
+            es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             for col in [
                 Column::Z,
@@ -473,6 +507,7 @@ where
             digest,
             oracles,
             all_alphas,
+            public_evals,
             powers_of_eval_points_for_chunks,
             polys,
             zeta1,
@@ -517,7 +552,9 @@ where
         }
     };
 
-    check_eval_len(public, "public input")?;
+    if let Some(public) = public {
+        check_eval_len(public, "public input")?;
+    }
 
     for w_i in w {
         check_eval_len(w_i, "witness")?;
@@ -627,13 +664,14 @@ where
         fq_sponge,
         oracles,
         all_alphas,
+        public_evals,
         powers_of_eval_points_for_chunks,
         polys,
         zeta1: zeta_to_domain_size,
         ft_eval0,
         combined_inner_product,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, public_input)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, Some(public_input))?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
@@ -728,10 +766,7 @@ where
     //~~ * public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
-        evaluations: vec![
-            proof.evals.public.zeta.clone(),
-            proof.evals.public.zeta_omega.clone(),
-        ],
+        evaluations: public_evals.to_vec(),
         degree_bound: None,
     });
 
