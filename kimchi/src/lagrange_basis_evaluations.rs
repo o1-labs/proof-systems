@@ -129,6 +129,8 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
                 chunked_evals[i * max_poly_size + j] = x_pow;
                 x_pow *= x;
             }
+            // This uses the same trick as `poly_commitment::srs::SRS::add_lagrange_basis`, but
+            // applied to field elements instead of group elements.
             domain.ifft_in_place(&mut chunked_evals);
             evals.push(chunked_evals);
         }
