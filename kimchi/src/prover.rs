@@ -938,10 +938,10 @@ where
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             public: {
                 let chunked = public_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
-                PointEvaluations {
+                Some(PointEvaluations {
                     zeta: chunked.evaluate_chunks(zeta),
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
+                })
             },
             s: array::from_fn(|i| {
                 chunked_evals_for_evaluations(
@@ -1087,6 +1087,8 @@ where
         //~~ * poseidon selector
         //~~ * the 15 register/witness
         //~~ * 6 sigmas evaluations (the last one is not evaluated)
+        fr_sponge.absorb_multiple(&chunked_evals.public.as_ref().unwrap().zeta);
+        fr_sponge.absorb_multiple(&chunked_evals.public.as_ref().unwrap().zeta_omega);
         fr_sponge.absorb_evaluations(&chunked_evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
@@ -1298,7 +1300,7 @@ pub mod caml {
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofWithPublic<CamlG, CamlF> {
-        pub public_evals: PointEvaluations<Vec<CamlF>>,
+        pub public_evals: Option<PointEvaluations<Vec<CamlF>>>,
         pub proof: CamlProverProof<CamlG, CamlF>,
     }
 

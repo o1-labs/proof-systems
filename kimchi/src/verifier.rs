@@ -90,35 +90,34 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
     }
 }
 
-pub struct OraclesBeforeEvaluations<Fp, EFqSponge> {
-    fq_sponge: EFqSponge,
-    fq_sponge_digest: Fp,
-    endo_r: Fp,
-    alpha_chal: ScalarChallenge<Fp>,
-    alpha: Fp,
-    beta: Fp,
-    gamma: Fp,
-    joint_combiner: Option<(ScalarChallenge<Fp>, Fp)>,
-    zeta_chal: ScalarChallenge<Fp>,
-    zeta: Fp,
-}
-
 impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    pub fn oracles_before_evaluations<
+    /// This function runs the random oracle argument
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `PolishToken` evaluation is invalid.
+    pub fn oracles<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
         index: &VerifierIndex<G>,
         public_comm: &PolyComm<G>,
-    ) -> Result<OraclesBeforeEvaluations<G::ScalarField, EFqSponge>> {
+        public_input: Option<&[G::ScalarField]>,
+    ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
         //~
         //~ We run the following algorithm:
         //~
+        let n = index.domain.size;
         let (_, endo_r) = G::endos();
 
         let chunk_size = {
@@ -240,111 +239,9 @@ where
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta = zeta_chal.to_field(endo_r);
-        let digest = fq_sponge.clone().digest();
-
-        Ok(OraclesBeforeEvaluations {
-            fq_sponge,
-            fq_sponge_digest: digest,
-            endo_r: *endo_r,
-            alpha_chal,
-            alpha,
-            beta,
-            gamma,
-            joint_combiner,
-            zeta_chal,
-            zeta,
-        })
-    }
-
-    pub fn public_input_evals_unchunked<EFqSponge>(
-        &self,
-        index: &VerifierIndex<G>,
-        oracles_before_evaluations: &OraclesBeforeEvaluations<G::ScalarField, EFqSponge>,
-        public_input: &[G::ScalarField],
-    ) -> PointEvaluations<Vec<G::ScalarField>> {
-        let OraclesBeforeEvaluations { zeta, .. } = oracles_before_evaluations;
-        // compute Lagrange base evaluation denominators
-        let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
-
-        let mut zeta_minus_x: Vec<_> = w.iter().map(|w| *zeta - w).collect();
-
-        let n = index.domain.size;
-        let zeta1 = zeta.pow([n]);
-        let zetaw = *zeta * index.domain.group_gen;
-
-        w.iter()
-            .take(public_input.len())
-            .for_each(|w| zeta_minus_x.push(zetaw - w));
-
-        ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
-
-        // 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-        //
-        //    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
-        if public_input.is_empty() {
-            PointEvaluations {
-                zeta: vec![G::ScalarField::zero()],
-                zeta_omega: vec![G::ScalarField::zero()],
-            }
-        } else {
-            PointEvaluations {
-                zeta: vec![
-                    (public_input
-                        .iter()
-                        .zip(zeta_minus_x.iter())
-                        .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * w)
-                        .fold(G::ScalarField::zero(), |x, y| x + y))
-                        * (zeta1 - G::ScalarField::one())
-                        * index.domain.size_inv,
-                ],
-                zeta_omega: vec![
-                    (public_input
-                        .iter()
-                        .zip(zeta_minus_x[public_input.len()..].iter())
-                        .zip(index.domain.elements())
-                        .map(|((p, l), w)| -*l * p * w)
-                        .fold(G::ScalarField::zero(), |x, y| x + y))
-                        * index.domain.size_inv
-                        * (zetaw.pow([n]) - G::ScalarField::one()),
-                ],
-            }
-        }
-    }
-
-    /// This function runs the random oracle argument
-    ///
-    /// # Errors
-    ///
-    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `PolishToken` evaluation is invalid.
-    pub fn oracles_finalize<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-    >(
-        &self,
-        index: &VerifierIndex<G>,
-        oracles: OraclesBeforeEvaluations<G::ScalarField, EFqSponge>,
-    ) -> Result<OraclesResult<G, EFqSponge>> {
-        let OraclesBeforeEvaluations {
-            fq_sponge,
-            fq_sponge_digest: digest,
-            endo_r,
-            alpha_chal,
-            alpha,
-            beta,
-            gamma,
-            joint_combiner,
-            zeta_chal,
-            zeta,
-        } = oracles;
-
-        let n = index.domain.size;
 
         //~ 1. Setup the Fr-Sponge.
+        let digest = fq_sponge.clone().digest();
         let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
@@ -393,10 +290,54 @@ where
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
 
-        let public_evals = [
-            self.evals.public.zeta.clone(),
-            self.evals.public.zeta_omega.clone(),
-        ];
+        let public_evals = if let Some(public_evals) = &self.evals.public {
+            [public_evals.zeta.clone(), public_evals.zeta_omega.clone()]
+        } else if chunk_size > 1 {
+            return Err(VerifyError::MissingPublicInputEvaluation);
+        } else if let Some(public_input) = public_input {
+            // compute Lagrange base evaluation denominators
+            let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
+
+            let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
+
+            w.iter()
+                .take(public_input.len())
+                .for_each(|w| zeta_minus_x.push(zetaw - w));
+
+            ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
+
+            //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+            //~
+            //~    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+            if public_input.is_empty() {
+                [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
+            } else {
+                [
+                    vec![
+                        (public_input
+                            .iter()
+                            .zip(zeta_minus_x.iter())
+                            .zip(index.domain.elements())
+                            .map(|((p, l), w)| -*l * p * w)
+                            .fold(G::ScalarField::zero(), |x, y| x + y))
+                            * (zeta1 - G::ScalarField::one())
+                            * index.domain.size_inv,
+                    ],
+                    vec![
+                        (public_input
+                            .iter()
+                            .zip(zeta_minus_x[public_input.len()..].iter())
+                            .zip(index.domain.elements())
+                            .map(|((p, l), w)| -*l * p * w)
+                            .fold(G::ScalarField::zero(), |x, y| x + y))
+                            * index.domain.size_inv
+                            * (zetaw.pow([n]) - G::ScalarField::one()),
+                    ],
+                ]
+            }
+        } else {
+            return Err(VerifyError::MissingPublicInputEvaluation);
+        };
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
@@ -416,13 +357,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v = v_chal.to_field(&endo_r);
+        let v = v_chal.to_field(endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-        let u = u_chal.to_field(&endo_r);
+        let u = u_chal.to_field(endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
 
@@ -574,42 +515,6 @@ where
             combined_inner_product,
         })
     }
-
-    pub fn oracles_with_unchunked_public_input<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-    >(
-        &mut self,
-        index: &VerifierIndex<G>,
-        public_comm: &PolyComm<G>,
-        public_input: &[G::ScalarField],
-    ) -> Result<OraclesResult<G, EFqSponge>> {
-        let oracles = self.oracles_before_evaluations::<EFqSponge>(index, public_comm)?;
-        let public_input_evals = self.public_input_evals_unchunked(index, &oracles, public_input);
-        self.evals.public = public_input_evals;
-        self.oracles_finalize::<EFqSponge, EFrSponge>(index, oracles)
-    }
-
-    /// This function runs the random oracle argument
-    ///
-    /// # Errors
-    ///
-    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `PolishToken` evaluation is invalid.
-    pub fn oracles<
-        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
-    >(
-        &self,
-        index: &VerifierIndex<G>,
-        public_comm: &PolyComm<G>,
-    ) -> Result<OraclesResult<G, EFqSponge>> {
-        let oracles = self.oracles_before_evaluations::<EFqSponge>(index, public_comm)?;
-        self.oracles_finalize::<EFqSponge, EFrSponge>(index, oracles)
-    }
 }
 
 /// Enforce the length of evaluations inside [`Proof`].
@@ -647,7 +552,9 @@ where
         }
     };
 
-    check_eval_len(public, "public input")?;
+    if let Some(public) = public {
+        check_eval_len(public, "public input")?;
+    }
 
     for w_i in w {
         check_eval_len(w_i, "witness")?;
@@ -764,7 +671,7 @@ where
         ft_eval0,
         combined_inner_product,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, Some(public_input))?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)
