@@ -90,33 +90,35 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
     }
 }
 
+pub struct OraclesBeforeEvaluations<Fp, EFqSponge> {
+    fq_sponge: EFqSponge,
+    fq_sponge_digest: Fp,
+    endo_r: Fp,
+    alpha_chal: ScalarChallenge<Fp>,
+    alpha: Fp,
+    beta: Fp,
+    gamma: Fp,
+    joint_combiner: Option<(ScalarChallenge<Fp>, Fp)>,
+    zeta_chal: ScalarChallenge<Fp>,
+    zeta: Fp,
+}
+
 impl<G: KimchiCurve> ProverProof<G>
 where
     G::BaseField: PrimeField,
 {
-    /// This function runs the random oracle argument
-    ///
-    /// # Errors
-    ///
-    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `PolishToken` evaluation is invalid.
-    pub fn oracles<
+    pub fn oracles_before_evaluations<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
         index: &VerifierIndex<G>,
         public_comm: &PolyComm<G>,
-    ) -> Result<OraclesResult<G, EFqSponge>> {
+    ) -> Result<OraclesBeforeEvaluations<G::ScalarField, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
         //~
         //~ We run the following algorithm:
         //~
-        let n = index.domain.size;
         let (_, endo_r) = G::endos();
 
         let chunk_size = {
@@ -238,9 +240,55 @@ where
 
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
         let zeta = zeta_chal.to_field(endo_r);
+        let digest = fq_sponge.clone().digest();
+
+        Ok(OraclesBeforeEvaluations {
+            fq_sponge,
+            fq_sponge_digest: digest,
+            endo_r: *endo_r,
+            alpha_chal,
+            alpha,
+            beta,
+            gamma,
+            joint_combiner,
+            zeta_chal,
+            zeta,
+        })
+    }
+
+    /// This function runs the random oracle argument
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `PolishToken` evaluation is invalid.
+    pub fn oracles<
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    >(
+        &self,
+        index: &VerifierIndex<G>,
+        public_comm: &PolyComm<G>,
+    ) -> Result<OraclesResult<G, EFqSponge>> {
+        let OraclesBeforeEvaluations {
+            fq_sponge,
+            fq_sponge_digest: digest,
+            endo_r,
+            alpha_chal,
+            alpha,
+            beta,
+            gamma,
+            joint_combiner,
+            zeta_chal,
+            zeta,
+        } = self.oracles_before_evaluations::<EFqSponge>(index, public_comm)?;
+
+        let n = index.domain.size;
 
         //~ 1. Setup the Fr-Sponge.
-        let digest = fq_sponge.clone().digest();
         let mut fr_sponge = EFrSponge::new(G::sponge_params());
 
         //~ 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
@@ -305,13 +353,13 @@ where
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-        let v = v_chal.to_field(endo_r);
+        let v = v_chal.to_field(&endo_r);
 
         //~ 1. Sample $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
-        let u = u_chal.to_field(endo_r);
+        let u = u_chal.to_field(&endo_r);
 
         //~ 1. Create a list of all polynomials that have an evaluation proof.
 
