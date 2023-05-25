@@ -454,7 +454,7 @@ where
                 .fold(init, |x, y| x * y);
 
             ft_eval0 -= DensePolynomial::eval_polynomial(
-                &self.evals.public.zeta,
+                &public_evals[0],
                 powers_of_eval_points_for_chunks.zeta,
             );
 
@@ -502,13 +502,7 @@ where
             #[allow(clippy::type_complexity)]
             let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
                 polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((
-                vec![
-                    self.evals.public.zeta.clone(),
-                    self.evals.public.zeta_omega.clone(),
-                ],
-                None,
-            ));
+            es.push((public_evals.to_vec(), None));
             es.push((vec![ft_eval0, ft_eval1], None));
             for col in [
                 Column::Z,
@@ -763,6 +757,7 @@ where
         fq_sponge,
         oracles,
         all_alphas,
+        public_evals,
         powers_of_eval_points_for_chunks,
         polys,
         zeta1: zeta_to_domain_size,
@@ -864,10 +859,7 @@ where
     //~~ * public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
-        evaluations: vec![
-            proof.evals.public.zeta.clone(),
-            proof.evals.public.zeta_omega.clone(),
-        ],
+        evaluations: public_evals.to_vec(),
         degree_bound: None,
     });
 
