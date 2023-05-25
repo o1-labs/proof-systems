@@ -120,6 +120,16 @@ impl<G: KimchiCurve> ProverIndex<G> {
             Some(verifier_index) => verifier_index.digest::<EFqSponge>(),
         }
     }
+
+    pub fn num_chunks(
+        &self
+    ) -> usize {
+        let max_poly_size = self.max_poly_size;
+        let d1_size = self.cs.domain.d1.size();
+
+        if d1_size < max_poly_size { 1 } else { d1_size / max_poly_size }
+    }
+
 }
 
 pub mod testing {
