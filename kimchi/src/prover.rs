@@ -1296,6 +1296,7 @@ pub mod caml {
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;
 
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofWithPublic<CamlG, CamlF> {
         pub public_evals: PointEvaluations<Vec<CamlF>>,
         pub proof: CamlProverProof<CamlG, CamlF>,
