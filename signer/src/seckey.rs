@@ -4,6 +4,7 @@ use crate::ScalarField;
 use ark_ff::UniformRand;
 use o1_utils::FieldHelpers;
 use rand::{self, CryptoRng, RngCore};
+use sha2::{Digest, Sha256};
 use thiserror::Error;
 
 /// Keypair error
@@ -15,9 +16,24 @@ pub enum SecKeyError {
     /// Invalid secret key bytes
     #[error("Invalid secret key bytes")]
     SecretKeyBytes,
+    /// Invalid secrey key length
+    #[error("Invalid secret key length")]
+    SecretKeyLength,
+    /// Invalid base58 secret key
+    #[error("Invalid secret key base58")]
+    SecretKeyBase58,
+    /// Invalid secret key checksum
+    #[error("Invalid secret key checksum")]
+    SecretKeyChecksum,
+    /// Invalid secret key version
+    #[error("Invalid secret key version")]
+    SecretKeyVersion,
 }
 /// Keypair result
 pub type Result<T> = std::result::Result<T, SecKeyError>;
+
+/// Secret key length
+pub const MINA_SEC_KEY_LEN: usize = 52;
 
 /// Secret key
 #[derive(Clone, Debug, PartialEq, Eq)] // No Debug nor Display
@@ -63,6 +79,41 @@ impl SecKey {
         SecKey::from_bytes(&bytes)
     }
 
+    /// Deserialize base58 encoded secret key
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `base58` string does not match certain requirements.
+    pub fn from_base58(base58: &str) -> Result<Self> {
+        if base58.len() != MINA_SEC_KEY_LEN {
+            return Err(SecKeyError::SecretKeyLength);
+        }
+
+        let bytes = bs58::decode(base58)
+            .into_vec()
+            .map_err(|_| SecKeyError::SecretKeyBase58)?;
+
+        let (raw, checksum) = (&bytes[..bytes.len() - 4], &bytes[bytes.len() - 4..]);
+
+        let hash = Sha256::digest(&Sha256::digest(raw)[..]);
+
+        if checksum != &hash[..4] {
+            return Err(SecKeyError::SecretKeyChecksum);
+        }
+
+        let (version, scalar_bytes) = (&raw[..2], &raw[2..raw.len()]);
+
+        if version != [0x5a, 0x01] {
+            return Err(SecKeyError::SecretKeyVersion);
+        }
+
+        let mut scalar_bytes = scalar_bytes.to_vec();
+
+        scalar_bytes.reverse();
+
+        Self::from_bytes(&scalar_bytes)
+    }
+
     /// Borrows secret key as scalar field element
     pub fn scalar(&self) -> &ScalarField {
         &self.0
@@ -83,6 +134,21 @@ impl SecKey {
     /// Deserialize secret key into hex
     pub fn to_hex(&self) -> String {
         hex::encode(self.to_bytes())
+    }
+
+    /// Deserialize secret key into base58
+    pub fn to_base58(&self) -> String {
+        let mut raw: Vec<u8> = vec![0x5a, 0x01];
+
+        let mut scalar_bytes = self.to_bytes();
+        scalar_bytes.reverse();
+
+        raw.extend(scalar_bytes);
+
+        let checksum = Sha256::digest(&Sha256::digest(&raw[..])[..]);
+        raw.extend(&checksum[..4]);
+
+        bs58::encode(raw).into_string()
     }
 }
 
@@ -152,6 +218,34 @@ mod tests {
                 241, 55, 160, 105, 164, 137, 47, 80, 230, 9, 16, 247
             ]),
             Err(SecKeyError::SecretKeyBytes)
+        );
+    }
+
+    #[test]
+    fn base58() {
+        assert_eq!(
+            SecKey::from_base58("EKFS3M4Fe1VkVjPMn2jauXa1Vv6w6gRES5oLbH3vZmP26uQESodY")
+                .expect("failed to decode sec key")
+                .to_base58(),
+            "EKFS3M4Fe1VkVjPMn2jauXa1Vv6w6gRES5oLbH3vZmP26uQESodY"
+        );
+
+        // invalid checksum
+        assert_eq!(
+            SecKey::from_base58("EKFS3M4Fe1VkVjPMn2jauXa1Vv6w6gRES5oLbH3vZmP26uQESodZ"),
+            Err(SecKeyError::SecretKeyChecksum)
+        );
+
+        // invalid version
+        assert_eq!(
+            SecKey::from_base58("ETq4cWR9pAQtUFQ8L78UhhfVkMJaw6gxbXRU9jQ24F8jPEh7tn3q"),
+            Err(SecKeyError::SecretKeyVersion)
+        );
+
+        // invalid length
+        assert_eq!(
+            SecKey::from_base58("EKFS3M4Fe1VkVjPMn2a1Vv6w6gRES5oLbH3vZmP26uQESodY"),
+            Err(SecKeyError::SecretKeyLength)
         );
     }
 }

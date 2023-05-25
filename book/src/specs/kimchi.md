@@ -1958,7 +1958,7 @@ pub struct LookupEvaluations<Evals> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
     /// public input polynomials
-    pub public: Evals,
+    pub public: Option<Evals>,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -2243,6 +2243,9 @@ We run the following algorithm:
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Absorb the previous recursion challenges.
 1. Compute evaluations for the previous recursion challenges.
+1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+
+   NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	* the public polynomial

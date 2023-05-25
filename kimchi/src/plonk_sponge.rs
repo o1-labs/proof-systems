@@ -60,7 +60,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.last_squeezed = vec![];
 
         let ProofEvaluations {
-            public,
+            public: _, // Must be absorbed first manually for now, to handle Mina annoyances
             w,
             z,
             s,
@@ -70,7 +70,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             poseidon_selector,
         } = e;
 
-        let mut points = vec![public, z, generic_selector, poseidon_selector];
+        let mut points = vec![z, generic_selector, poseidon_selector];
         w.iter().for_each(|w_i| points.push(w_i));
         coefficients.iter().for_each(|c_i| points.push(c_i));
         s.iter().for_each(|s_i| points.push(s_i));

@@ -62,7 +62,7 @@ pub struct LookupEvaluations<Evals> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
     /// public input polynomials
-    pub public: Evals,
+    pub public: Option<Evals>,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -210,7 +210,7 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector,
         } = self;
         ProofEvaluations {
-            public: f(public),
+            public: public.map(f),
             w: w.map(f),
             z: f(z),
             s: s.map(f),
@@ -233,7 +233,7 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector,
         } = self;
         ProofEvaluations {
-            public: f(public),
+            public: public.as_ref().map(f),
             w: [
                 f(w0),
                 f(w1),
@@ -295,7 +295,13 @@ impl<F> ProofEvaluations<F> {
         ProofEvaluations {
             generic_selector: array::from_fn(|i| &evals[i].generic_selector),
             poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
-            public: array::from_fn(|i| &evals[i].public),
+            public: {
+                if evals.iter().all(|e| e.public.is_some()) {
+                    Some(array::from_fn(|i| evals[i].public.as_ref().unwrap()))
+                } else {
+                    None
+                }
+            },
             z: array::from_fn(|i| &evals[i].z),
             w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
             s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
@@ -380,7 +386,7 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             zeta_omega: next,
         };
         ProofEvaluations {
-            public: pt(F::zero(), F::zero()),
+            public: Some(pt(F::zero(), F::zero())),
             w: array::from_fn(|i| pt(curr[i], next[i])),
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
@@ -531,7 +537,6 @@ pub mod caml {
     #[allow(clippy::type_complexity)]
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
-        pub public: PointEvaluations<Vec<CamlF>>,
         pub w: (
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
@@ -585,7 +590,11 @@ pub mod caml {
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
 
-    impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>> for CamlProofEvaluations<CamlF>
+    impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>>
+        for (
+            Option<PointEvaluations<Vec<CamlF>>>,
+            CamlProofEvaluations<CamlF>,
+        )
     where
         F: Clone,
         CamlF: From<F>,
@@ -706,29 +715,41 @@ pub mod caml {
                     .map(&|x| x.into_iter().map(Into::into).collect()),
             );
 
-            Self {
-                public: pe.public.map(&|x| x.into_iter().map(Into::into).collect()),
-                w,
-                coefficients,
-                z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
-                s,
-                generic_selector: pe
-                    .generic_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                poseidon_selector: pe
-                    .poseidon_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                lookup: pe.lookup.map(Into::into),
-            }
+            (
+                pe.public
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                CamlProofEvaluations {
+                    w,
+                    coefficients,
+                    z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
+                    s,
+                    generic_selector: pe
+                        .generic_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    poseidon_selector: pe
+                        .poseidon_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    lookup: pe.lookup.map(Into::into),
+                },
+            )
         }
     }
 
-    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<PointEvaluations<Vec<F>>>
+    impl<F, CamlF>
+        From<(
+            Option<PointEvaluations<Vec<CamlF>>>,
+            CamlProofEvaluations<CamlF>,
+        )> for ProofEvaluations<PointEvaluations<Vec<F>>>
     where
         F: Clone,
         F: From<CamlF>,
     {
-        fn from(cpe: CamlProofEvaluations<CamlF>) -> Self {
+        fn from(
+            (public, cpe): (
+                Option<PointEvaluations<Vec<CamlF>>>,
+                CamlProofEvaluations<CamlF>,
+            ),
+        ) -> Self {
             let w = [
                 cpe.w.0.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.1.map(&|x| x.into_iter().map(Into::into).collect()),
@@ -803,7 +824,7 @@ pub mod caml {
             ];
 
             Self {
-                public: cpe.public.map(&|x| x.into_iter().map(Into::into).collect()),
+                public: public.map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
                 w,
                 coefficients,
                 z: cpe.z.map(&|x| x.into_iter().map(Into::into).collect()),
