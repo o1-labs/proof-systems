@@ -113,7 +113,7 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
     }
 
     /// Compute all evaluations of the normalized lagrange basis polynomials of the
-    /// given domain at the given point. Runs in time O(domain size).
+    /// given domain at the given point. Runs in time O(n log(n)) for n = domain size.
     fn new_with_chunked_segments(
         max_poly_size: usize,
         domain: D<F>,
