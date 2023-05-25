@@ -256,6 +256,62 @@ where
         })
     }
 
+    pub fn public_input_evals_unchunked<EFqSponge>(
+        &self,
+        index: &VerifierIndex<G>,
+        oracles_before_evaluations: &OraclesBeforeEvaluations<G::ScalarField, EFqSponge>,
+        public_input: &[G::ScalarField],
+    ) -> PointEvaluations<Vec<G::ScalarField>> {
+        let OraclesBeforeEvaluations { zeta, .. } = oracles_before_evaluations;
+        // compute Lagrange base evaluation denominators
+        let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
+
+        let mut zeta_minus_x: Vec<_> = w.iter().map(|w| *zeta - w).collect();
+
+        let n = index.domain.size;
+        let zeta1 = zeta.pow([n]);
+        let zetaw = *zeta * index.domain.group_gen;
+
+        w.iter()
+            .take(public_input.len())
+            .for_each(|w| zeta_minus_x.push(zetaw - w));
+
+        ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
+
+        // 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
+        //
+        //    NOTE: this works only in the case when the poly segment size is not smaller than that of the domain.
+        if public_input.is_empty() {
+            PointEvaluations {
+                zeta: vec![G::ScalarField::zero()],
+                zeta_omega: vec![G::ScalarField::zero()],
+            }
+        } else {
+            PointEvaluations {
+                zeta: vec![
+                    (public_input
+                        .iter()
+                        .zip(zeta_minus_x.iter())
+                        .zip(index.domain.elements())
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(G::ScalarField::zero(), |x, y| x + y))
+                        * (zeta1 - G::ScalarField::one())
+                        * index.domain.size_inv,
+                ],
+                zeta_omega: vec![
+                    (public_input
+                        .iter()
+                        .zip(zeta_minus_x[public_input.len()..].iter())
+                        .zip(index.domain.elements())
+                        .map(|((p, l), w)| -*l * p * w)
+                        .fold(G::ScalarField::zero(), |x, y| x + y))
+                        * index.domain.size_inv
+                        * (zetaw.pow([n]) - G::ScalarField::one()),
+                ],
+            }
+        }
+    }
+
     /// This function runs the random oracle argument
     ///
     /// # Errors
