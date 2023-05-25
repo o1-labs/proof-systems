@@ -321,13 +321,13 @@ where
     /// # Panics
     ///
     /// Will panic if `PolishToken` evaluation is invalid.
-    pub fn oracles<
+    pub fn oracles_finalize<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
         index: &VerifierIndex<G>,
-        public_comm: &PolyComm<G>,
+        oracles: OraclesBeforeEvaluations<G::ScalarField, EFqSponge>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
         let OraclesBeforeEvaluations {
             fq_sponge,
@@ -340,7 +340,7 @@ where
             joint_combiner,
             zeta_chal,
             zeta,
-        } = self.oracles_before_evaluations::<EFqSponge>(index, public_comm)?;
+        } = oracles;
 
         let n = index.domain.size;
 
@@ -571,6 +571,42 @@ where
             ft_eval0,
             combined_inner_product,
         })
+    }
+
+    pub fn oracles_with_unchunked_public_input<
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    >(
+        &mut self,
+        index: &VerifierIndex<G>,
+        public_comm: &PolyComm<G>,
+        public_input: &[G::ScalarField],
+    ) -> Result<OraclesResult<G, EFqSponge>> {
+        let oracles = self.oracles_before_evaluations::<EFqSponge>(index, public_comm)?;
+        let public_input_evals = self.public_input_evals_unchunked(index, &oracles, public_input);
+        self.evals.public = public_input_evals;
+        self.oracles_finalize::<EFqSponge, EFrSponge>(index, oracles)
+    }
+
+    /// This function runs the random oracle argument
+    ///
+    /// # Errors
+    ///
+    /// Will give error if `commitment(s)` are invalid(missing or wrong length), or `proof` is verified as invalid.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `PolishToken` evaluation is invalid.
+    pub fn oracles<
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    >(
+        &self,
+        index: &VerifierIndex<G>,
+        public_comm: &PolyComm<G>,
+    ) -> Result<OraclesResult<G, EFqSponge>> {
+        let oracles = self.oracles_before_evaluations::<EFqSponge>(index, public_comm)?;
+        self.oracles_finalize::<EFqSponge, EFrSponge>(index, oracles)
     }
 }
 
