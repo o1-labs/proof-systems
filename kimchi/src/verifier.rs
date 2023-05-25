@@ -393,6 +393,11 @@ where
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
 
+        let public_evals = [
+            self.evals.public.zeta.clone(),
+            self.evals.public.zeta_omega.clone(),
+        ];
+
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
 
@@ -565,6 +570,7 @@ where
             digest,
             oracles,
             all_alphas,
+            public_evals,
             powers_of_eval_points_for_chunks,
             polys,
             zeta1,
