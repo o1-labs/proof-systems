@@ -110,7 +110,6 @@ where
         &self,
         index: &VerifierIndex<G>,
         public_comm: &PolyComm<G>,
-        public_input: &[G::ScalarField],
     ) -> Result<OraclesResult<G, EFqSponge>> {
         //~
         //~ #### Fiat-Shamir argument
@@ -289,17 +288,6 @@ where
         // retrieve ranges for the powers of alphas
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
-
-        // compute Lagrange base evaluation denominators
-        let w: Vec<_> = index.domain.elements().take(public_input.len()).collect();
-
-        let mut zeta_minus_x: Vec<_> = w.iter().map(|w| zeta - w).collect();
-
-        w.iter()
-            .take(public_input.len())
-            .for_each(|w| zeta_minus_x.push(zetaw - w));
-
-        ark_ff::fields::batch_inversion::<G::ScalarField>(&mut zeta_minus_x);
 
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&self.ft_eval1);
@@ -633,7 +621,7 @@ where
         ft_eval0,
         combined_inner_product,
         ..
-    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm, public_input)?;
+    } = proof.oracles::<EFqSponge, EFrSponge>(verifier_index, &public_comm)?;
 
     //~ 1. Combine the chunked polynomials' evaluations
     //~    (TODO: most likely only the quotient polynomial is chunked)

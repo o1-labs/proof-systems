@@ -72,8 +72,7 @@ pub mod caml {
 
         let p_comm = PolyComm::<G>::multi_scalar_mul(&lgr_comm_refs, &negated_public);
 
-        let oracles_result =
-            proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm, public_input)?;
+        let oracles_result = proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm)?;
 
         let (mut sponge, combined_inner_product, digest, oracles) = (
             oracles_result.fq_sponge,
