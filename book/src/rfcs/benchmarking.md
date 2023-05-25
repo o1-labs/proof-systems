@@ -1,18 +1,16 @@
-
 # Summary
 
 Adds a benchmarking infrastructure for the crypto stack and some specific
-benchmarks.
+benchmarks. This RFC focuses in proofs-systems, a future RFC will address the Ocaml codebase.
 
 # Motivation
 
 There are two main motivations, to aid development and to facilitate comparisons
 with other technologies.  This document proposes a high level approach to
-benchmarking the crypto stack, mostly kimchi, snarky and pickles. The main
-concern is to set up an infrastructure where it is possible to integrate
-different kinds of benchmarks with minimal effort. While the specific benchmarks
-are not an immediate concern, a few benchmarks of interest will be mentioned
-later.
+benchmarking the proof-systems. The main concern is to set up an infrastructure
+where it is possible to integrate different kinds of benchmarks with minimal
+effort. While the specific benchmarks are not an immediate concern, a few
+benchmarks of interest will be mentioned later.
 
 # Detailed design
 
@@ -91,12 +89,6 @@ improved.  Hardware utilization could include many things, GPU acceleration for
 example if we were to start using it, but for now will only include CPU/core
 utilization.
 
-### Layers
-
-There are 3 main layers of the stack that we want to consider, kimchi, snarky
-and pickles. Given that they are implemented in different languages and exist in
-different repositories special considerations each layer will be required.
-
 ## Where to run the benchmarks
 
 To start everyone with the resources should be able to run the benchmarks
@@ -117,24 +109,15 @@ benchmarks that we may not want to run every single time in CI.
 ## Benchmark classes
 
 Next the classes of benchmarks to consider, they are different combinations of
-metrics, layers and consumers.
+metrics and consumers.
 
-| benchmarks               | repository    | metric   | for external use | for internal use | regression test | noise sensitive  |
-| ------------------------ | ------------- | -------- | ---------------- | ---------------- | --------------- | ---------------- |
-| kimchi time              | proof-systems | time     | yes              | yes              | yes             | yes              |
-| kimchi time flamegraph   | proof-systems | time     | no               | yes              | no              | no               |
-| kimchi instructions      | proof-systems | time     | no               | yes              | yes             | no               |
-| kimchi memory            | proof-systems | memory   | yes              | yes              | yes             | no               |
-| kimchi memory flamegraph | proof-systems | memory   | no               | yes              | no              | no               |
-| snarky time              | mina/snarky*  | time     | yes              | yes              | yes             | yes              |
-| snarky memory            | mina/snarky*  | memory   | yes              | yes              | yes             | no               |
-| pickles time             | mina/pickles* | time     | yes              | yes              | yes             | yes              |
-| pickles memory           | mina/pickles* | memory   | yes              | yes              | yes             | no               |
-
-\* these have to be in Mina now because pickles is in Mina, and while snarky has
-its own repository, using it requires a few things still in Mina, so that we
-might want to consider some changes to make these benchmarks easier and probably
-cheaper.
+| benchmarks        | metric   | for external use | for internal use | regression test | noise sensitive  |
+| ----------------- | -------- | ---------------- | ---------------- | --------------- | ---------------- |
+| time              | time     | yes              | yes              | yes             | yes              |
+| time flamegraph   | time     | no               | yes              | no              | no               |
+| instructions      | time     | no               | yes              | yes             | no               |
+| memory            | memory   | yes              | yes              | yes             | no               |
+| memory flamegraph | memory   | no               | yes              | no              | no               |
 
 ### Kimchi time
 
@@ -170,7 +153,7 @@ Similar to time, but with memory, the constraints are different in some ways,
 noise is not generally a problem and any computer can be used, and also requires
 less sampling and should run faster. This is to some degree already implemented
 through a custom measurement for criterion, and in practice can be slower than
-measuring time, the instrumentation makes it run slower and the some limitations
+measuring time, the instrumentation makes it run slower and some limitations
 in criterion require to run the code more than necessary. With that in mind, the
 best would be to run just a subset of these benchmark for regressions and let
 the others be run at discretion.
@@ -179,28 +162,6 @@ the others be run at discretion.
 
 Similar to the time flamegraph, ideally can be made from the memory benchmark
 without much additional work.
-
-### Snarky time
-
-This is similar to kimchi time, but the fact that it will be in the mina repo
-should be considered, CI will run much more often and costs may be higher, this
-would be a reason to prefer to have benchmarks in kimchi when possible.
-
-### Snarky memory
-
-Here the main interest may be regressions, everything else can probably done at
-the kimchi level more precisely.
-
-### Pickles time
-
-This is similar to snarky time, mostly differing in the overhead of the
-recursion. At this level beyond some regression we will probably have mostly
-application circuits being benchmarked.
-
-### Pickles memory
-
-Similar to snarky, this will probably be mostly regression tests and maybe some
-example application to give users an idea of what to expect.
 
 ## Benchmarks
 
@@ -219,16 +180,6 @@ implemented as several benchmarks but they will share most code.
 - The full benchmark with several lengths can be shown at discretion of those
 interested running locally, or even added as optional to CI with some way to
 trigger it.
-
-### Pickles hash chain
-
-Same as kimchi hash chain but in pickles, we have less to cover here because we
-already have the kimchi ones, some time and memory benchmarks could be used for
-regressions and to observe the overhead, but having parameters like different
-circuits sizes may be redundant.  A new  possible benchmark would be to have an
-alternative circuit that uses recursion to make the hash chain instead of a
-single circuit. It could be interesting to have a comparison to the non
-recursive approach.
 
 ### General kimchi benchmarks
 
@@ -258,9 +209,3 @@ run for command line, mostly in the proof-systems repo. Almost all benchmarks
 are also limited to measuring only time.
 
 # Unresolved questions
-
-- While the tools for rust are mostly covered, specific tools for ocaml have yet
-to be decided - Specific machines, while generally more expensive machines will
-work better, funds are limited and some tradeoff will have to be decided, it
-will probably become clearer when some benchmarks are already set up in CI.  -
-Benchmarking in the browser has been left out but could be added at some point.
