@@ -1296,6 +1296,11 @@ pub mod caml {
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;
 
+    pub struct CamlProofWithPublic<CamlG, CamlF> {
+        pub public_evals: PointEvaluations<Vec<CamlF>>,
+        pub proof: CamlProverProof<CamlG, CamlF>,
+    }
+
     //
     // CamlProverProof<CamlG, CamlF>
     //
@@ -1493,37 +1498,49 @@ pub mod caml {
     }
 
     //
-    // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
+    // ProverProof<G> <-> CamlProofWithPublic<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)>
+        for CamlProofWithPublic<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
         fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
-            Self {
-                commitments: pp.0.commitments.into(),
-                proof: pp.0.proof.into(),
-                evals: pp.0.evals.into(),
-                ft_eval1: pp.0.ft_eval1.into(),
-                public: pp.1.into_iter().map(Into::into).collect(),
-                prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
+            let (public_evals, evals) = pp.0.evals.into();
+            CamlProofWithPublic {
+                public_evals,
+                proof: CamlProverProof {
+                    commitments: pp.0.commitments.into(),
+                    proof: pp.0.proof.into(),
+                    evals,
+                    ft_eval1: pp.0.ft_eval1.into(),
+                    public: pp.1.into_iter().map(Into::into).collect(),
+                    prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
+                },
             }
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
+    impl<G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
+        for (ProverProof<G>, Vec<G::ScalarField>)
     where
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> (ProverProof<G>, Vec<G::ScalarField>) {
+        fn from(
+            caml_pp: CamlProofWithPublic<CamlG, CamlF>,
+        ) -> (ProverProof<G>, Vec<G::ScalarField>) {
+            let CamlProofWithPublic {
+                public_evals,
+                proof: caml_pp,
+            } = caml_pp;
             let proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),
-                evals: caml_pp.evals.into(),
+                evals: (public_evals, caml_pp.evals).into(),
                 ft_eval1: caml_pp.ft_eval1.into(),
                 prev_challenges: caml_pp
                     .prev_challenges
