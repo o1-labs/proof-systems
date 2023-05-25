@@ -335,6 +335,8 @@ where
 
         let evals = self.evals.combine(&powers_of_eval_points_for_chunks);
 
+        println!("evals: {:?}", evals);
+
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
             let permutation_vanishing_polynomial =
@@ -410,6 +412,8 @@ where
             ft_eval0
         };
 
+        println!("ft_eval0: {}", ft_eval0);
+
         let combined_inner_product = {
             let ft_eval0 = vec![ft_eval0];
             let ft_eval1 = vec![self.ft_eval1];
@@ -481,6 +485,8 @@ where
             v_chal,
             u_chal,
         };
+
+        println!("beta: {beta}\nzeta: {zeta}\nalpha: {alpha}\ngamma: {gamma}");
 
         Ok(OraclesResult {
             fq_sponge,
