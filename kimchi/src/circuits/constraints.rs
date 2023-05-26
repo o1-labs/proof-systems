@@ -699,9 +699,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             num_lookups
         };
 
-        //~ 2. Create a domain for the circuit. That is,
-        //~    compute the smallest subgroup of the field that
-        //~    has order greater or equal to `n + zk_rows` elements.
         let (zk_rows, domain_size_lower_bound) = {
             let circuit_lower_bound = std::cmp::max(gates.len(), num_lookups + 1);
             let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
@@ -726,6 +723,10 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
             (zk_rows, domain_size_lower_bound)
         };
+
+        //~ 2. Create a domain for the circuit. That is,
+        //~    compute the smallest subgroup of the field that
+        //~    has order greater or equal to `n + zk_rows` elements.
         let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
 
         assert!(domain.d1.size > zk_rows);
