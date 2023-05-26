@@ -1617,10 +1617,12 @@ The compilation steps to create the common index are as follow:
    This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
    We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
    `zk_rows` and `domain_size` satisfying the fixpoint
-   ```
+
+   ```text
    zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
    domain_size = circuit_size + zk_rows
    ```
+
 2. Create a domain for the circuit. That is,
    compute the smallest subgroup of the field that
    has order greater or equal to `n + zk_rows` elements.

@@ -716,10 +716,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~    This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
         //~    We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
         //~    `zk_rows` and `domain_size` satisfying the fixpoint
-        //~    ```
+        //~
+        //~    ```text
         //~    zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
         //~    domain_size = circuit_size + zk_rows
         //~    ```
+        //~
         let (zk_rows, domain_size_lower_bound) = {
             let circuit_lower_bound = std::cmp::max(gates.len(), num_lookups + 1);
             let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
