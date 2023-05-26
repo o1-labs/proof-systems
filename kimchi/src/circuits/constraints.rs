@@ -699,6 +699,27 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             num_lookups
         };
 
+        //~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
+        //~    achieve zero-knowledge. The following constraints apply to `zk_rows`:
+        //~    - The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
+        //~      each column for `2*c` evaluations per column, so `zk_rows >= 2*c + 1`.
+        //~    - The permutation argument interacts with the `c` chunks in parallel, so it is
+        //~      possible to cross-correlate between them to compromise zero knowledge. We know
+        //~      that there is some `c >= 1` such that `zk_rows = 2*c + k` from the above. Thus,
+        //~      attempting to find the evaluation at a new point, we find that:
+        //~      * the evaluation of every witness column in the permutation contains `k` unknowns;
+        //~      * the evaluations of the permutation argument aggregation has `k-1` unknowns;
+        //~      * the permutation argument applies on all but `zk_rows - 3` rows;
+        //~      * and thus we form the equation `zk_rows - 3 < 7 * k + (k - 1)` to ensure that we
+        //~        can construct fewer equations than we have unknowns.
+        //~
+        //~    This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
+        //~    We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
+        //~    `zk_rows` and `domain_size` satisfying the fixpoint
+        //~    ```
+        //~    zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
+        //~    domain_size = circuit_size + zk_rows
+        //~    ```
         let (zk_rows, domain_size_lower_bound) = {
             let circuit_lower_bound = std::cmp::max(gates.len(), num_lookups + 1);
             let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
@@ -716,7 +737,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                         .ok_or(SetupError::DomainCreation(
                             "could not compute size of domain",
                         ))?;
-                    zk_rows = ((16 * (domain_size / max_poly_size) + 4) / 7) as u64;
+                    zk_rows = ((16 * (domain_size / max_poly_size) + 5) / 7) as u64;
                     domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
                     domain_size < domain_size_lower_bound
                 } {}

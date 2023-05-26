@@ -1600,6 +1600,27 @@ def sample(domain, i):
 The compilation steps to create the common index are as follow:
 
 1. If the circuit is less than 2 gates, abort.
+1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
+   achieve zero-knowledge. The following constraints apply to `zk_rows`:
+   - The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
+     each column for `2*c` evaluations per column, so `zk_rows >= 2*c + 1`.
+   - The permutation argument interacts with the `c` chunks in parallel, so it is
+     possible to cross-correlate between them to compromise zero knowledge. We know
+     that there is some `c >= 1` such that `zk_rows = 2*c + k` from the above. Thus,
+     attempting to find the evaluation at a new point, we find that:
+     * the evaluation of every witness column in the permutation contains `k` unknowns;
+     * the evaluations of the permutation argument aggregation has `k-1` unknowns;
+     * the permutation argument applies on all but `zk_rows - 3` rows;
+     * and thus we form the equation `zk_rows - 3 < 7 * k + (k - 1)` to ensure that we
+       can construct fewer equations than we have unknowns.
+
+   This simplifies to `k > (2 * c - 2) / 7`, giving `zk_rows > (16 * c - 2) / 7`.
+   We can derive `c` from the `max_poly_size` supported by the URS, and thus we find
+   `zk_rows` and `domain_size` satisfying the fixpoint
+   ```
+   zk_rows = (16 * (domain_size / max_poly_size) + 5) / 7
+   domain_size = circuit_size + zk_rows
+   ```
 2. Create a domain for the circuit. That is,
    compute the smallest subgroup of the field that
    has order greater or equal to `n + zk_rows` elements.
