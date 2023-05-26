@@ -191,7 +191,7 @@ where
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        let zero_knowledge_limit = (16 * num_chunks - 2) / PERMUTS;
+        let zero_knowledge_limit = (2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS;
         if (index.cs.zk_rows as usize) < zero_knowledge_limit {
             return Err(ProverError::NotZeroKnowledge(
                 zero_knowledge_limit,
