@@ -365,8 +365,9 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         // compute permutation polynomials
         let shifts = Shifts::new(&self.domain.d1);
 
-        let mut sigmal1: [Vec<F>; PERMUTS] =
-            array::from_fn(|_| vec![F::zero(); self.domain.d1.size()]);
+        let n = self.domain.d1.size();
+
+        let mut sigmal1: [Vec<F>; PERMUTS] = array::from_fn(|_| vec![F::zero(); n]);
 
         for (row, gate) in self.gates.iter().enumerate() {
             for (cell, sigma) in gate.wires.iter().zip(sigmal1.iter_mut()) {
@@ -376,7 +377,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 
         // Zero out the sigmas in the zk rows, to ensure that the permutation aggregation is
         // quasi-random for those rows.
-        for row in self.domain.d1.size() + 2 - (self.zk_rows as usize)..self.domain.d1.size() - 1 {
+        for row in n + 2 - (self.zk_rows as usize)..n - 1 {
             for sigma in sigmal1.iter_mut() {
                 sigma[row] = F::zero();
             }
