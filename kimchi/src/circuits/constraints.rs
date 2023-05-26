@@ -739,7 +739,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                         .ok_or(SetupError::DomainCreation(
                             "could not compute size of domain",
                         ))?;
-                    zk_rows = ((16 * (domain_size / max_poly_size) + 5) / 7) as u64;
+                    zk_rows = ((16 * (domain_size / max_poly_size) + 5) / PERMUTS) as u64;
                     domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
                     domain_size < domain_size_lower_bound
                 } {}
