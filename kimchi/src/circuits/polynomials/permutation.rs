@@ -490,7 +490,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
             }
         }
 
-        //~ If computed correctly, we should have $z(g^{n-zk_rows}) = 1$.
+        //~ For a valid witness, we then have have $z(g^{n-zk_rows}) = 1$.
         //~
         if z[n - zk_rows] != F::one() {
             return Err(ProverError::Permutation("final value"));
