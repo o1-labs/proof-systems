@@ -3,6 +3,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
+        constraints::zk_rows_strict_lower_bound,
         expr::{self, l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
@@ -191,7 +192,7 @@ where
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        let zero_knowledge_limit = (2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS;
+        let zero_knowledge_limit = zk_rows_strict_lower_bound(num_chunks);
         if (index.cs.zk_rows as usize) < zero_knowledge_limit {
             return Err(ProverError::NotZeroKnowledge(
                 zero_knowledge_limit,

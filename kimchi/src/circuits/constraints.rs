@@ -604,6 +604,10 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
     }
 }
 
+pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
+    (2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS
+}
+
 impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
@@ -740,7 +744,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                             "could not compute size of domain",
                         ))?;
                     let num_chunks = domain_size / max_poly_size;
-                    zk_rows = ((2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS + 1) as u64;
+                    zk_rows = (zk_rows_strict_lower_bound(num_chunks) + 1) as u64;
                     domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
                     domain_size < domain_size_lower_bound
                 } {}
