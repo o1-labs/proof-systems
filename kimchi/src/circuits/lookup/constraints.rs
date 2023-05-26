@@ -37,8 +37,9 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 ) -> Evaluations<F, D<F>> {
     let n = d.size();
     let k = e.len();
-    assert!(k <= n - zk_rows);
-    e.extend((0..((n - zk_rows) - k)).map(|_| F::zero()));
+    let last_non_zk_row = n - zk_rows;
+    assert!(k <= last_non_zk_row);
+    e.extend((0..(last_non_zk_row - k)).map(|_| F::zero()));
     e.extend((0..zk_rows).map(|_| F::rand(rng)));
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
