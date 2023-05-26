@@ -703,8 +703,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~    has order greater or equal to `n + zk_rows` elements.
         let (zk_rows, domain_size_lower_bound) = {
             let mut zk_rows = 3;
-            let get_domain_size_lower_bound =
-                |zk_rows: u64| std::cmp::max(gates.len(), num_lookups + 1) + zk_rows as usize;
+            let circuit_lower_bound = std::cmp::max(gates.len(), num_lookups + 1);
+            let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
             let mut domain_size_lower_bound = get_domain_size_lower_bound(zk_rows);
             if let Some(max_poly_size) = self.max_poly_size {
                 // Iterate to find a fixed-point where zk_rows is sufficient for the number of
