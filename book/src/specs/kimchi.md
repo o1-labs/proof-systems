@@ -1602,9 +1602,9 @@ The compilation steps to create the common index are as follow:
 1. If the circuit is less than 2 gates, abort.
 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
    achieve zero-knowledge. The following constraints apply to `zk_rows`:
-   - The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
+   * The number of chunks `c` results in an evaluation at `zeta` and `zeta * omega` in
      each column for `2*c` evaluations per column, so `zk_rows >= 2*c + 1`.
-   - The permutation argument interacts with the `c` chunks in parallel, so it is
+   * The permutation argument interacts with the `c` chunks in parallel, so it is
      possible to cross-correlate between them to compromise zero knowledge. We know
      that there is some `c >= 1` such that `zk_rows = 2*c + k` from the above. Thus,
      attempting to find the evaluation at a new point, we find that:
@@ -1623,10 +1623,10 @@ The compilation steps to create the common index are as follow:
    domain_size = circuit_size + zk_rows
    ```
 
-2. Create a domain for the circuit. That is,
+1. Create a domain for the circuit. That is,
    compute the smallest subgroup of the field that
    has order greater or equal to `n + zk_rows` elements.
-3. Pad the circuit: add zero gates to reach the domain size.
+1. Pad the circuit: add zero gates to reach the domain size.
 4. sample the `PERMUTS` shifts.
 
 
