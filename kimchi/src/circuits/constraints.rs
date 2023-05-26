@@ -788,7 +788,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
         }
 
-        //~ 4. sample the `PERMUTS` shifts.
+        //~ 1. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
 
         //

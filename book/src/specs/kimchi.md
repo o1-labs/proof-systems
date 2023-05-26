@@ -1627,7 +1627,7 @@ The compilation steps to create the common index are as follow:
    compute the smallest subgroup of the field that
    has order greater or equal to `n + zk_rows` elements.
 1. Pad the circuit: add zero gates to reach the domain size.
-4. sample the `PERMUTS` shifts.
+1. sample the `PERMUTS` shifts.
 
 
 ### Lookup Index
