@@ -806,7 +806,6 @@ where
                     let constraints = lookup::constraints::constraints(
                         &lcs.configuration,
                         false,
-                        index.cs.zk_rows as usize,
                     );
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");

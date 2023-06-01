@@ -38,7 +38,6 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-    zk_rows: usize,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -167,7 +166,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
             let lookup_configuration =
                 LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
             let constraints =
-                lookup::constraints::constraints(&lookup_configuration, false, zk_rows);
+                lookup::constraints::constraints(&lookup_configuration, false);
 
             // note: the number of constraints depends on the lookup configuration,
             // specifically the presence of runtime tables.
@@ -193,7 +192,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
             joint_lookup_used: true,
         };
         let lookup_configuration = LookupConfiguration::new(LookupInfo::create(all_features));
-        let constraints = lookup::constraints::constraints(&lookup_configuration, true, zk_rows);
+        let constraints = lookup::constraints::constraints(&lookup_configuration, true);
 
         // note: the number of constraints depends on the lookup configuration,
         // specifically the presence of runtime tables.
@@ -224,7 +223,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(None, generic, zk_rows);
+            let (feature_flagged_expr, _) = constraints_expr(None, generic);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -321,11 +320,10 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-    zk_rows: usize,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic, zk_rows);
+    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)

@@ -1,6 +1,6 @@
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr},
+        expr::{prologue::*, Column, ConstantExpr, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -371,7 +371,6 @@ impl<F: Zero> LookupConfiguration<F> {
 pub fn constraints<F: FftField>(
     configuration: &LookupConfiguration<F>,
     generate_feature_flags: bool,
-    zk_rows: usize,
 ) -> Vec<E<F>> {
     // Something important to keep in mind is that the last 2 rows of
     // all columns will have random values in them to maintain zero-knowledge.
@@ -601,14 +600,20 @@ pub fn constraints<F: FftField>(
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    let final_lookup_row: i32 = -(zk_rows as i32) - 1;
+    let final_lookup_row = RowOffset {
+        zk_rows: true,
+        offset: -1,
+    };
 
     let mut res = vec![
         // the accumulator except for the last zk_rows+1 rows
         // (contains the zk-rows and the last value of the accumulator)
         E::VanishesOnZeroKnowledgeAndPreviousRows * aggreg_equation,
         // the initial value of the accumulator
-        E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        E::UnnormalizedLagrangeBasis(RowOffset {
+            zk_rows: false,
+            offset: 0,
+        }) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the final value of the accumulator is 1
         E::UnnormalizedLagrangeBasis(final_lookup_row)
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
@@ -622,7 +627,10 @@ pub fn constraints<F: FftField>(
                 final_lookup_row
             } else {
                 // Check compatibility of the first elements
-                0
+                RowOffset {
+                    zk_rows: false,
+                    offset: 0,
+                }
             };
             let mut expr = E::UnnormalizedLagrangeBasis(first_or_last)
                 * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)));

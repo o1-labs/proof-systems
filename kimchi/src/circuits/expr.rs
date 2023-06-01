@@ -459,6 +459,12 @@ impl FeatureFlag {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RowOffset {
+    pub zk_rows: bool,
+    pub offset: i32,
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
@@ -479,7 +485,7 @@ pub enum Expr<C> {
     VanishesOnZeroKnowledgeAndPreviousRows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(i32),
+    UnnormalizedLagrangeBasis(RowOffset),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
@@ -649,7 +655,7 @@ pub enum PolishToken<F> {
     Mul,
     Sub,
     VanishesOnZeroKnowledgeAndPreviousRows,
-    UnnormalizedLagrangeBasis(i32),
+    UnnormalizedLagrangeBasis(RowOffset),
     Store,
     Load(usize),
     /// Skip the given number of tokens if the feature is enabled.
@@ -725,7 +731,12 @@ impl<F: FftField> PolishToken<F> {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
                 }
                 UnnormalizedLagrangeBasis(i) => {
-                    stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
+                    let offset = if i.zk_rows {
+                        -(c.zk_rows as i32) + i.offset
+                    } else {
+                        i.offset
+                    };
+                    stack.push(unnormalized_lagrange_basis(&d, offset, &pt))
                 }
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
@@ -1548,7 +1559,14 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             VanishesOnZeroKnowledgeAndPreviousRows => {
                 Ok(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
             }
-            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
+            UnnormalizedLagrangeBasis(i) => {
+                let offset = if i.zk_rows {
+                    -(c.zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                Ok(unnormalized_lagrange_basis(&d, offset, &pt))
+            }
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
             IfFeature(feature, e1, e2) => {
@@ -1610,7 +1628,14 @@ impl<F: FftField> Expr<F> {
             VanishesOnZeroKnowledgeAndPreviousRows => {
                 Ok(eval_vanishes_on_last_n_rows(d, zk_rows + 1, pt))
             }
-            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
+            UnnormalizedLagrangeBasis(i) => {
+                let offset = if i.zk_rows {
+                    -(zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                Ok(unnormalized_lagrange_basis(&d, offset, &pt))
+            }
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate(d, pt, zk_rows, evals),
             IfFeature(feature, e1, e2) => {
@@ -1748,10 +1773,17 @@ impl<F: FftField> Expr<F> {
                 evals: env.vanishes_on_zero_knowledge_and_previous_rows,
             },
             Expr::Constant(x) => EvalResult::Constant(*x),
-            Expr::UnnormalizedLagrangeBasis(i) => EvalResult::Evals {
-                domain: d,
-                evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env),
-            },
+            Expr::UnnormalizedLagrangeBasis(i) => {
+                let offset = if i.zk_rows {
+                    -(env.constants.zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                EvalResult::Evals {
+                    domain: d,
+                    evals: unnormalized_lagrange_evals(env.l0_1, offset, d, env),
+                }
+            }
             Expr::Cell(Variable { col, row }) => {
                 let evals: &'a Evaluations<F, D<F>> = {
                     match env.get_column(col) {
@@ -2442,7 +2474,9 @@ where
             Double(x) => format!("double({})", x.ocaml(cache)),
             Constant(x) => x.ocaml(),
             Cell(v) => format!("cell({})", v.ocaml()),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
+            UnnormalizedLagrangeBasis(i) => {
+                format!("unnormalized_lagrange_basis({}, {})", i.zk_rows, i.offset)
+            }
             VanishesOnZeroKnowledgeAndPreviousRows => {
                 "vanishes_on_zero_knowledge_and_previous_rows".to_string()
             }
@@ -2493,7 +2527,18 @@ where
             Double(x) => format!("2 ({})", x.latex(cache)),
             Constant(x) => x.latex(),
             Cell(v) => v.latex(),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized\\_lagrange\\_basis({})", *i),
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: true,
+                offset: i,
+            }) => {
+                format!("unnormalized\\_lagrange\\_basis(zk\\_rows + {})", *i)
+            }
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: false,
+                offset: i,
+            }) => {
+                format!("unnormalized\\_lagrange\\_basis({})", *i)
+            }
             VanishesOnZeroKnowledgeAndPreviousRows => {
                 "vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row".to_string()
             }
@@ -2518,7 +2563,24 @@ where
             Double(x) => format!("double({})", x.text(cache)),
             Constant(x) => x.text(),
             Cell(v) => v.text(),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: true,
+                offset: i,
+            }) => {
+                if *i > 0 {
+                    format!("unnormalized_lagrange_basis(zk_rows + {})", *i)
+                } else if *i == 0 {
+                    format!("unnormalized_lagrange_basis(zk_rows)")
+                } else {
+                    format!("unnormalized_lagrange_basis(zk_rows - {})", (-*i))
+                }
+            }
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: false,
+                offset: i,
+            }) => {
+                format!("unnormalized_lagrange_basis({})", *i)
+            }
             VanishesOnZeroKnowledgeAndPreviousRows => {
                 "vanishes_on_zero_knowledge_and_previous_rows".to_string()
             }
