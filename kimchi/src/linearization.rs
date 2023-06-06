@@ -165,8 +165,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         if feature_flags.lookup_features.patterns != LookupPatterns::default() {
             let lookup_configuration =
                 LookupConfiguration::new(LookupInfo::create(feature_flags.lookup_features));
-            let constraints =
-                lookup::constraints::constraints(&lookup_configuration, false);
+            let constraints = lookup::constraints::constraints(&lookup_configuration, false);
 
             // note: the number of constraints depends on the lookup configuration,
             // specifically the presence of runtime tables.
