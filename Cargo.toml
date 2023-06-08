@@ -12,7 +12,14 @@ members = [
     "signer",
     "tools/kimchi-asm",
     "tools/kimchi-visu",
+    "tools/benchmarking",
     "utils",
+]
+default-members = [
+    "kimchi",
+]
+exclude = [
+    "srs",
 ]
 
 [profile.release]

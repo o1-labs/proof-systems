@@ -83,6 +83,29 @@ where
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
+    pub fn trim_to_log(self, n: usize) -> Self {
+        let new_len = 1 << n;
+        if new_len == self.g.len() {
+            self
+        } else {
+            let Self {
+                mut g,
+                h,
+                lagrange_bases,
+            } = self;
+            assert!(new_len <= g.len());
+            g.truncate(new_len);
+            let lagrange_bases = lagrange_bases
+                .into_iter()
+                .filter(|(k, _)| k <= &n)
+                .collect();
+            Self {
+                g,
+                h,
+                lagrange_bases,
+            }
+        }
+    }
 
     /// Compute commitments to the lagrange basis corresponding to the given domain and
     /// cache them in the SRS
