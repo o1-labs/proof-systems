@@ -41,6 +41,15 @@ At the time of this writing:
 |      2^15       | 4947  |
 |      2^16       | 5018  |
 
+## Benchmarks
+Right now there are only runtime benchmarks in kimchi, can be run this way
+> cargo criterion --bench time
+It requires cargo-criterion
+> cargo install cargo-criterion
+it is possible to filter the benchmarks to be run with a regular expression, for example
+to only run Proving benchmarks:
+> cargo criterion --bench time -- Proving
+
 ## Organization
 
 The project is organized in the following way:
