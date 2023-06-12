@@ -1,3 +1,14 @@
+use std::array;
+
+use groupmap::{BWParameters, GroupMap};
+use mina_curves::pasta::{Fp, Vesta, VestaParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+};
+use o1_utils::math;
+use poly_commitment::commitment::CommitmentCurve;
+
 use crate::{
     circuits::{
         gate::CircuitGate,
@@ -9,16 +20,6 @@ use crate::{
     verifier::{batch_verify, Context},
     verifier_index::VerifierIndex,
 };
-use ark_ec::AffineCurve;
-use groupmap::{BWParameters, GroupMap};
-use mina_curves::pasta::{Fp, Vesta, VestaParameters};
-use mina_poseidon::{
-    constants::PlonkSpongeConstantsKimchi,
-    sponge::{DefaultFqSponge, DefaultFrSponge},
-};
-use o1_utils::math;
-use poly_commitment::commitment::CommitmentCurve;
-use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -31,16 +32,15 @@ pub struct BenchmarkCtx {
     verifier_index: VerifierIndex<Vesta>,
 }
 
-#[derive(Clone)]
-pub struct GatesToCompile(Vec<CircuitGate<<Vesta as AffineCurve>::ScalarField>>);
-#[derive(Clone)]
-pub struct Group(<Vesta as CommitmentCurve>::Map);
 impl BenchmarkCtx {
     pub fn srs_size(&self) -> usize {
         math::ceil_log2(self.index.srs.max_degree())
     }
 
-    pub fn create_gates(srs_size_log2: u32) -> GatesToCompile {
+    /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
+    pub fn new(srs_size_log2: u32) -> Self {
+        // there's some overhead that we need to remove (e.g. zk rows)
+
         let num_gates = ((1 << srs_size_log2) - 10) as usize;
 
         // create the circuit
@@ -55,15 +55,9 @@ impl BenchmarkCtx {
                 None,
             ));
         }
-        GatesToCompile(gates)
-    }
-    pub fn compile_gates(
-        srs_size_log2: u32,
-        gates: GatesToCompile,
-        group_map: Group,
-    ) -> BenchmarkCtx {
-        let gates = gates.0;
-        let num_gates = gates.len();
+
+        // group map
+        let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         // create the index
         let index = new_index_for_test(gates, 0);
@@ -72,27 +66,14 @@ impl BenchmarkCtx {
 
         // create the verifier index
         let verifier_index = index.verifier_index();
-        let group_map = group_map.0;
 
+        //
         BenchmarkCtx {
             num_gates,
             group_map,
             index,
             verifier_index,
         }
-    }
-    pub fn group() -> Group {
-        Group(<Vesta as CommitmentCurve>::Map::setup())
-    }
-    /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
-    pub fn new(srs_size_log2: u32) -> Self {
-        // there's some overhead that we need to remove (e.g. zk rows)
-        let gates = Self::create_gates(srs_size_log2);
-
-        // group map
-        let group_map = Self::group();
-
-        Self::compile_gates(srs_size_log2, gates, group_map)
     }
 
     /// Produces a proof

@@ -17,11 +17,7 @@ fn main() {
     match mode.as_deref() {
         Some("prove") => {
             let ctx = BenchmarkCtx::new(14);
-            // loop {
-            // let proof_and_public = ctx.create_proof();
-            // black_box(proof_and_public);
-            // }
-            for _ in 0..100 {
+            loop {
                 let proof_and_public = ctx.create_proof();
                 black_box(proof_and_public);
             }
@@ -29,8 +25,7 @@ fn main() {
         Some("verify") => {
             let ctx = BenchmarkCtx::new(4);
             let proof_and_public = ctx.create_proof();
-            // loop {
-            for _ in 0..100 {
+            loop {
                 ctx.batch_verification(black_box(&vec![proof_and_public.clone()]));
             }
         }

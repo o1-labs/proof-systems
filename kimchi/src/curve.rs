@@ -28,10 +28,6 @@ pub trait KimchiCurve: CommitmentCurve {
 
     /// Provides the coefficients for the curve endomorphism called (q,r) in some places.
     fn endos() -> &'static (Self::BaseField, Self::ScalarField);
-    /// Provides serialized precomputed srs
-    fn precomputed_srs() -> Option<&'static [u8]> {
-        None
-    }
 }
 
 impl KimchiCurve for GroupAffine<VestaParameters> {
@@ -50,10 +46,6 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
         )> = Lazy::new(endos::<GroupAffine<VestaParameters>>);
         &VESTA_ENDOS
     }
-    fn precomputed_srs() -> Option<&'static [u8]> {
-        let srs = include_bytes!("../../srs/vesta.srs");
-        Some(srs)
-    }
 }
 
 impl KimchiCurve for GroupAffine<PallasParameters> {
@@ -71,10 +63,6 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
             <PallasParameters as ModelParameters>::ScalarField,
         )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
         &PALLAS_ENDOS
-    }
-    fn precomputed_srs() -> Option<&'static [u8]> {
-        let srs = include_bytes!("../../srs/pallas.srs");
-        Some(srs)
     }
 }
 
