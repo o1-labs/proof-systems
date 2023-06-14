@@ -98,20 +98,20 @@ pub enum GateType {
     /// Gate for computing the scalar corresponding to an endoscaling
     EndoMulScalar = 6,
     // Lookup
-    Lookup = 11,
+    Lookup = 7,
     /// Cairo
-    CairoClaim = 12,
-    CairoInstruction = 13,
-    CairoFlags = 14,
-    CairoTransition = 15,
+    CairoClaim = 8,
+    CairoInstruction = 9,
+    CairoFlags = 10,
+    CairoTransition = 11,
     /// Range check
-    RangeCheck0 = 16,
-    RangeCheck1 = 17,
-    ForeignFieldAdd = 18,
-    ForeignFieldMul = 19,
+    RangeCheck0 = 12,
+    RangeCheck1 = 13,
+    ForeignFieldAdd = 14,
+    ForeignFieldMul = 15,
     // Gates for Keccak
-    Xor16 = 20,
-    Rot64 = 21,
+    Xor16 = 16,
+    Rot64 = 17,
 }
 
 /// Gate error
