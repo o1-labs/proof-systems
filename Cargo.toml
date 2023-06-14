@@ -16,6 +16,9 @@ members = [
     "internal-tracing",
 ]
 
+default-members = [
+    "kimchi",
+]
 [profile.release]
 lto = true
 panic = 'abort'
