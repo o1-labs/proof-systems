@@ -24,7 +24,7 @@ fn get_srs_path<G: KimchiCurve>() -> PathBuf {
 }
 
 /// Obtains an SRS for a specific curve from disk.
-pub fn get_srs2<G>() -> Option<SRS<G>>
+pub fn get_srs<G>() -> Option<SRS<G>>
 where
     G: KimchiCurve,
 {
@@ -66,7 +66,7 @@ mod tests {
         }
 
         // get SRS from disk
-        let srs_on_disk = get_srs2::<G>().unwrap();
+        let srs_on_disk = get_srs::<G>().unwrap();
 
         // check that it matches what we just generated
         assert_eq!(srs, srs_on_disk);
