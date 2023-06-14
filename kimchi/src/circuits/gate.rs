@@ -84,34 +84,34 @@ impl CurrOrNext {
 pub enum GateType {
     #[default]
     /// Zero gate
-    Zero = 0,
+    Zero,
     /// Generic arithmetic gate
-    Generic = 1,
+    Generic,
     /// Poseidon permutation gate
-    Poseidon = 2,
+    Poseidon,
     /// Complete EC addition in Affine form
-    CompleteAdd = 3,
+    CompleteAdd,
     /// EC variable base scalar multiplication
-    VarBaseMul = 4,
+    VarBaseMul,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    EndoMul = 5,
+    EndoMul,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndoMulScalar = 6,
+    EndoMulScalar,
     // Lookup
-    Lookup = 7,
+    Lookup,
     /// Cairo
-    CairoClaim = 8,
-    CairoInstruction = 9,
-    CairoFlags = 10,
-    CairoTransition = 11,
+    CairoClaim,
+    CairoInstruction,
+    CairoFlags,
+    CairoTransition,
     /// Range check
-    RangeCheck0 = 12,
-    RangeCheck1 = 13,
-    ForeignFieldAdd = 14,
-    ForeignFieldMul = 15,
+    RangeCheck0,
+    RangeCheck1,
+    ForeignFieldAdd,
+    ForeignFieldMul,
     // Gates for Keccak
-    Xor16 = 16,
-    Rot64 = 17,
+    Xor16,
+    Rot64,
 }
 
 /// Gate error
