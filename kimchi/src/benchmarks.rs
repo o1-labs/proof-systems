@@ -1,9 +1,8 @@
-use benchmarking::Benchmark;
-use criterion::black_box;
-use kimchi::{
+use crate::{
     bench::{self, BenchmarkCtx},
     proof::ProverProof,
 };
+use benchmarking::{Benchmark, BlackBox};
 use mina_curves::pasta::{Fp, Vesta};
 
 pub struct Proving;
@@ -13,9 +12,7 @@ impl Benchmark for Proving {
 
     type RefinedData = BenchmarkCtx;
 
-    fn prepare_data() -> Self::Data {
-        ()
-    }
+    fn prepare_data() -> Self::Data {}
 
     fn refine_data(parameter: usize, _data: &Self::Data) -> Self::RefinedData {
         BenchmarkCtx::new(parameter as u32)
@@ -25,8 +22,8 @@ impl Benchmark for Proving {
         Some(vec![8, 9, 10, 12, 14, 16])
     }
 
-    fn function(_parameter: usize, data: &Self::RefinedData) {
-        black_box(data.create_proof());
+    fn function<B: BlackBox>(_parameter: usize, data: &Self::RefinedData) {
+        B::black_box(data.create_proof());
     }
 }
 
@@ -36,9 +33,7 @@ impl Benchmark for Verifying {
 
     type RefinedData = (BenchmarkCtx, Vec<(ProverProof<Vesta>, Vec<Fp>)>);
 
-    fn prepare_data() -> Self::Data {
-        ()
-    }
+    fn prepare_data() -> Self::Data {}
 
     fn refine_data(parameter: usize, _data: &Self::Data) -> Self::RefinedData {
         let ctx = BenchmarkCtx::new(parameter as u32);
@@ -50,7 +45,7 @@ impl Benchmark for Verifying {
         Some(vec![8, 9, 10, 12, 14, 16])
     }
 
-    fn function(_parameter: usize, data: &Self::RefinedData) {
+    fn function<B: BlackBox>(_parameter: usize, data: &Self::RefinedData) {
         let (ctx, proof) = data;
         ctx.batch_verification(proof);
     }
@@ -62,9 +57,7 @@ impl Benchmark for Compiling {
 
     type RefinedData = (bench::GatesToCompile, bench::Group);
 
-    fn prepare_data() -> Self::Data {
-        ()
-    }
+    fn prepare_data() -> Self::Data {}
 
     fn refine_data(parameter: usize, _data: &Self::Data) -> Self::RefinedData {
         let gates = BenchmarkCtx::create_gates(parameter as u32);
@@ -76,9 +69,9 @@ impl Benchmark for Compiling {
         Some(vec![8, 9, 10, 12, 14, 16])
     }
 
-    fn function(parameter: usize, data: &Self::RefinedData) {
+    fn function<B: BlackBox>(parameter: usize, data: &Self::RefinedData) {
         let (gates, group_map) = data.clone();
-        black_box(BenchmarkCtx::compile_gates(
+        B::black_box(BenchmarkCtx::compile_gates(
             parameter as u32,
             gates,
             group_map,

@@ -10,7 +10,7 @@ use groupmap::GroupMap;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
-use std::cmp::min;
+use std::cmp::{min, Ordering};
 use std::collections::HashMap;
 
 #[serde_as]
@@ -83,27 +83,30 @@ where
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
-    pub fn trim_to_log(self, n: usize) -> Self {
+    pub fn resize(self, n: usize) -> Self {
         let new_len = 1 << n;
-        if new_len == self.g.len() {
-            self
-        } else {
-            let Self {
-                mut g,
-                h,
-                lagrange_bases,
-            } = self;
-            assert!(new_len <= g.len());
-            g.truncate(new_len);
-            let lagrange_bases = lagrange_bases
-                .into_iter()
-                .filter(|(k, _)| k <= &n)
-                .collect();
-            Self {
-                g,
-                h,
-                lagrange_bases,
+        match new_len.cmp(&self.g.len()) {
+            Ordering::Less => {
+                let Self {
+                    mut g,
+                    h,
+                    lagrange_bases,
+                } = self;
+                assert!(new_len <= g.len());
+                g.truncate(new_len);
+                let lagrange_bases = lagrange_bases
+                    .into_iter()
+                    .filter(|(k, _)| k <= &n)
+                    .collect();
+                Self {
+                    g,
+                    h,
+                    lagrange_bases,
+                }
             }
+            Ordering::Equal => self,
+            //TODO: extend self instead of creating again
+            Ordering::Greater => Self::create(n),
         }
     }
 

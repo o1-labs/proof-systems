@@ -16,9 +16,6 @@ members = [
     "utils",
     "internal-tracing",
 ]
-default-members = [
-    "kimchi",
-]
 exclude = [
     "srs",
 ]

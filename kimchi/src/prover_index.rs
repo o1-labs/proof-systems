@@ -171,8 +171,8 @@ pub mod testing {
             .unwrap();
 
         let log = cs.domain.d1.log_size_of_group;
-        let mut srs = match precomputed_srs::get_srs2() {
-            Some(srs) => srs.trim_to_log(log as usize),
+        let mut srs = match precomputed_srs::get_srs() {
+            Some(srs) => srs.resize(log as usize),
             None => SRS::<G>::create(cs.domain.d1.size()),
         };
 
