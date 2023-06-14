@@ -62,8 +62,8 @@ fn new_benchmark<B: Benchmark>() -> AddBenchmark<B, ()> {
 fn params() -> Option<Vec<usize>> {
     match std::env::var("PARAMS") {
         Ok(var) => Some(
-            (&*var)
-                .split(",")
+            (*var)
+                .split(',')
                 .map(|x| x.trim().parse::<usize>().unwrap())
                 .collect(),
         ),
