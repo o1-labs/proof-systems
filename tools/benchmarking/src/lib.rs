@@ -1,7 +1,7 @@
 /// Represents a measurement agnostic benchmark, implement this trait for an empty struct
 /// and the type can be used in any place that runs [Benchmark]s, ideally by just adding
 /// a line like this:
-/// ```
+/// ```rust,ignore
 ///  let benches = benches.add::<MyBenchmark>();
 /// ```
 pub trait Benchmark {
