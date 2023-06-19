@@ -598,7 +598,7 @@ fn verify_range_check0_v0_test_lookups() {
                 .witness(witness)
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
-                "the lookup failed to find a match in the table: row=1"
+                "the lookup failed to find a match in the table: row=0"
             ))
         );
     }
@@ -651,7 +651,7 @@ fn verify_range_check0_v1_test_lookups() {
                 .witness(witness)
                 .prove_and_verify::<BaseSponge, ScalarSponge>(),
             Err(String::from(
-                "the lookup failed to find a match in the table: row=0"
+                "the lookup failed to find a match in the table: row=1"
             ))
         );
     }
