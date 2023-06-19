@@ -361,7 +361,7 @@ fn test_bad_xor() {
             .setup()
             .prove_and_verify::<VestaBaseSponge, VestaScalarSponge>(),
         Err(String::from(
-            "the lookup failed to find a match in the table"
+            "the lookup failed to find a match in the table: row=0"
         ))
     );
 }
