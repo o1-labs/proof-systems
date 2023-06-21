@@ -9,7 +9,6 @@ use crate::{
         wires::Wire,
     },
     curve::KimchiCurve,
-    plonk_sponge::FrSponge,
     prover_index::testing::new_index_for_test_with_lookups,
     tests::xor::{all_ones, check_xor},
 };
@@ -17,11 +16,10 @@ use crate::{
 use super::framework::TestFramework;
 use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
-    FqSponge,
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
@@ -32,8 +30,6 @@ type VestaField = <Vesta as AffineCurve>::BaseField;
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
-type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 const NOT: bool = false;
 
@@ -76,7 +72,7 @@ fn create_not_witness_checked_length<F: PrimeField>(
 }
 
 // Constraint system for Not gadget using Xor16
-fn create_test_constraint_system_not_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn create_test_constraint_system_not_xor<G: KimchiCurve>(
     bits: usize,
 ) -> ConstraintSystem<G::ScalarField>
 where
@@ -97,7 +93,7 @@ where
 }
 
 // Constraint system for Not gadget using generic gates
-fn create_test_constraint_system_not_gnrc<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn create_test_constraint_system_not_gnrc<G: KimchiCurve>(
     num_nots: usize,
 ) -> ConstraintSystem<G::ScalarField>
 where
@@ -115,7 +111,7 @@ where
 }
 
 // Creates the witness and circuit for NOT gadget using XOR
-fn setup_not_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn setup_not_xor<G: KimchiCurve>(
     input: Option<G::ScalarField>,
     bits: Option<usize>,
 ) -> (
@@ -124,8 +120,6 @@ fn setup_not_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
 )
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
@@ -135,7 +129,7 @@ where
     // Otherwise, use the length of the input
     let bits_real = max(input.to_biguint().bitlen(), bits.unwrap_or(0));
 
-    let cs = create_test_constraint_system_not_xor::<G, EFqSponge, EFrSponge>(bits_real);
+    let cs = create_test_constraint_system_not_xor::<G>(bits_real);
 
     let witness = create_not_witness_checked_length::<G::ScalarField>(input, bits);
 
@@ -145,16 +139,14 @@ where
 }
 
 // Tester for not gate
-fn test_not_xor<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn test_not_xor<G: KimchiCurve>(
     input: Option<G::ScalarField>,
     bits: Option<usize>,
 ) -> [Vec<G::ScalarField>; COLUMNS]
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
 {
-    let (witness, cs) = setup_not_xor::<G, EFqSponge, EFrSponge>(input, bits);
+    let (witness, cs) = setup_not_xor::<G>(input, bits);
 
     for row in 0..witness[0].len() {
         assert_eq!(
@@ -167,7 +159,7 @@ where
 }
 
 // Creates the witness and circuit for NOT gadget using generic
-fn setup_not_gnrc<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn setup_not_gnrc<G: KimchiCurve>(
     inputs: Option<Vec<G::ScalarField>>,
     bits: usize,
     len: Option<usize>,
@@ -177,8 +169,6 @@ fn setup_not_gnrc<G: KimchiCurve, EFqSponge, EFrSponge>(
 )
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
@@ -193,7 +183,7 @@ where
             .collect::<Vec<G::ScalarField>>()
     };
 
-    let cs = create_test_constraint_system_not_gnrc::<G, EFqSponge, EFrSponge>(inputs.len());
+    let cs = create_test_constraint_system_not_gnrc::<G>(inputs.len());
 
     let witness = create_not_witness_unchecked_length::<G::ScalarField>(&inputs, bits);
 
@@ -203,17 +193,15 @@ where
 }
 
 // Tester for not gate generic
-fn test_not_gnrc<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn test_not_gnrc<G: KimchiCurve>(
     inputs: Option<Vec<G::ScalarField>>,
     bits: usize,
     len: Option<usize>,
 ) -> [Vec<G::ScalarField>; COLUMNS]
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
 {
-    let (witness, cs) = setup_not_gnrc::<G, EFqSponge, EFrSponge>(inputs, bits, len);
+    let (witness, cs) = setup_not_gnrc::<G>(inputs, bits, len);
 
     // test public input and not generic gate
     for row in 0..witness[0].len() {
@@ -337,10 +325,10 @@ fn test_prove_and_verify_five_not_gnrc() {
 fn test_not_xor_all_crumb() {
     for i in 0..2u8.pow(4) {
         let input = PallasField::from(i);
-        test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), None);
+        test_not_xor::<Vesta>(Some(input), None);
         for c in (4..=16).step_by(4) {
             let bits = Some(c);
-            test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), bits);
+            test_not_xor::<Vesta>(Some(input), bits);
         }
     }
 }
@@ -352,8 +340,8 @@ fn test_not_xor_crumbs_random() {
         let bits = 2u32.pow(i) as usize;
         let rng = &mut StdRng::from_seed(RNG_SEED);
         let input = rng.gen_field_with_bits(bits);
-        test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), Some(bits));
-        test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), None);
+        test_not_xor::<Vesta>(Some(input), Some(bits));
+        test_not_xor::<Vesta>(Some(input), None);
     }
 }
 
@@ -362,23 +350,23 @@ fn test_not_xor_crumbs_random() {
 fn test_not_xor_big_random() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let input = rng.gen_field_with_bits(200);
-    test_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(input), None);
+    test_not_xor::<Vesta>(Some(input), None);
     let input = rng.gen_field_with_bits(200);
-    test_not_xor::<Pallas, PallasBaseSponge, PallasScalarSponge>(Some(input), None);
+    test_not_xor::<Pallas>(Some(input), None);
 }
 
 #[test]
 // Tests two NOTs with the generic builder
 fn test_not_gnrc_double() {
-    test_not_gnrc::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, 64, Some(2));
-    test_not_gnrc::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, 64, Some(2));
+    test_not_gnrc::<Vesta>(None, 64, Some(2));
+    test_not_gnrc::<Pallas>(None, 64, Some(2));
 }
 
 #[test]
 // Tests one NOT with the generic builder
 fn test_not_gnrc_single() {
-    test_not_gnrc::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, 64, Some(1));
-    test_not_gnrc::<Pallas, PallasBaseSponge, PallasScalarSponge>(None, 64, Some(1));
+    test_not_gnrc::<Vesta>(None, 64, Some(1));
+    test_not_gnrc::<Pallas>(None, 64, Some(1));
 }
 
 #[test]
@@ -389,18 +377,17 @@ fn test_not_gnrc_vector() {
     let inputs = (0..5)
         .map(|i| rng.gen_field_with_bits(4 + i))
         .collect::<Vec<PallasField>>();
-    test_not_gnrc::<Vesta, VestaBaseSponge, VestaScalarSponge>(Some(inputs), 254, None);
+    test_not_gnrc::<Vesta>(Some(inputs), 254, None);
     let inputs = (0..5)
         .map(|i| rng.gen_field_with_bits(4 + i))
         .collect::<Vec<VestaField>>();
-    test_not_gnrc::<Pallas, PallasBaseSponge, PallasScalarSponge>(Some(inputs), 254, None);
+    test_not_gnrc::<Pallas>(Some(inputs), 254, None);
 }
 
 #[test]
 // Test a bad NOT with gnrc builder
 fn test_bad_not_gnrc() {
-    let (mut witness, cs) =
-        setup_not_gnrc::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, 64, Some(1));
+    let (mut witness, cs) = setup_not_gnrc::<Vesta>(None, 64, Some(1));
     // modify public input row to make sure the copy constraint fails and the generic gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(
@@ -423,8 +410,7 @@ fn test_bad_not_gnrc() {
 #[test]
 // Test a bad NOT with XOR builder
 fn test_bad_not_xor() {
-    let (mut witness, cs) =
-        setup_not_xor::<Vesta, VestaBaseSponge, VestaScalarSponge>(None, Some(16));
+    let (mut witness, cs) = setup_not_xor::<Vesta>(None, Some(16));
     // modify public input row to make sure the copy constraint fails and the XOR gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(

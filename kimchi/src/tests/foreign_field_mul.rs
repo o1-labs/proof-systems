@@ -292,7 +292,7 @@ where
 ///
 /// This proof means that, since they are never used, we can safely remove the witness for the carry bit of
 /// addition of the most significant bound addition limbs and its corresponding boolean constraint.
-pub fn rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
+pub fn rand_foreign_field_element_with_bound_overflows(
     rng: &mut StdRng,
     foreign_field_modulus: &BigUint,
 ) -> Result<BigUint, &'static str> {
@@ -339,7 +339,7 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     let neg_foreign_field_modulus = foreign_field_modulus.negate();
 
     // Select a random x that would overflow on lowest limb
-    let x = rand_foreign_field_element_with_bound_overflows::<F>(rng, foreign_field_modulus)
+    let x = rand_foreign_field_element_with_bound_overflows(rng, foreign_field_modulus)
         .expect("Failed to get element with bound overflow");
 
     // Check it obeys the modulus
@@ -1318,11 +1318,8 @@ fn test_rand_foreign_field_element_with_bound_overflows_6() {
 // Cannot have overflow when f'0 is zero
 fn test_rand_foreign_field_element_with_bound_overflows_7() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
-    rand_foreign_field_element_with_bound_overflows::<PallasField>(
-        rng,
-        &BigUint::from(2u32).pow(257),
-    )
-    .expect("Failed to get element with bound overflow");
+    rand_foreign_field_element_with_bound_overflows(rng, &BigUint::from(2u32).pow(257))
+        .expect("Failed to get element with bound overflow");
 }
 
 #[test]
