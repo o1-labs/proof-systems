@@ -223,7 +223,7 @@ impl fmt::Display for PubKey {
 }
 
 /// Compressed public keys consist of x-coordinate and y-coordinate parity.
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct CompressedPubKey {
     /// X-coordinate
     pub x: BaseField,
