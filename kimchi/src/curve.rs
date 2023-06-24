@@ -8,10 +8,13 @@ use mina_curves::pasta::curves::{
 };
 use mina_poseidon::poseidon::ArithmeticSpongeParams;
 use once_cell::sync::Lazy;
-use poly_commitment::{commitment::CommitmentCurve, srs::endos};
+use poly_commitment::{
+    commitment::{CommitmentCurve, EndoCurve},
+    srs::endos,
+};
 
 /// Represents additional information that a curve needs in order to be used with Kimchi
-pub trait KimchiCurve: CommitmentCurve {
+pub trait KimchiCurve: CommitmentCurve + EndoCurve {
     /// A human readable name.
     const NAME: &'static str;
 

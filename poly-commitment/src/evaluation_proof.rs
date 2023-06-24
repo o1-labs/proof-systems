@@ -195,6 +195,7 @@ impl<G: CommitmentCurve> SRS<G> {
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         RNG: RngCore + CryptoRng,
         G::BaseField: PrimeField,
+        G: EndoCurve,
     {
         let (endo_q, endo_r) = endos::<G>();
 

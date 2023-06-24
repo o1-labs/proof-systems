@@ -357,7 +357,12 @@ pub trait CommitmentCurve: AffineCurve {
 
     fn to_coordinates(&self) -> Option<(Self::BaseField, Self::BaseField)>;
     fn of_coordinates(x: Self::BaseField, y: Self::BaseField) -> Self;
+}
 
+/// A trait extending CommitmentCurve for endomorphisms.
+/// Unfortunately, we can't specify that `AffineCurve<BaseField : PrimeField>`,
+/// so usage of this traits must manually bind `G::BaseField: PrimeField`.
+pub trait EndoCurve: CommitmentCurve {
     /// Combine where x1 = one
     fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::window_combine(g1, g2, Self::ScalarField::one(), x2)
@@ -384,10 +389,7 @@ pub trait CommitmentCurve: AffineCurve {
     }
 }
 
-impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P>
-where
-    P::BaseField: PrimeField,
-{
+impl<P: SWModelParameters + Clone> CommitmentCurve for SWJAffine<P> {
     type Params = P;
     type Map = BWParameters<P>;
 
@@ -402,7 +404,12 @@ where
     fn of_coordinates(x: P::BaseField, y: P::BaseField) -> SWJAffine<P> {
         SWJAffine::<P>::new(x, y, false)
     }
+}
 
+impl<P: SWModelParameters + Clone> EndoCurve for SWJAffine<P>
+where
+    P::BaseField: PrimeField,
+{
     fn combine_one(g1: &[Self], g2: &[Self], x2: Self::ScalarField) -> Vec<Self> {
         crate::combine::affine_window_combine_one(g1, g2, x2)
     }
