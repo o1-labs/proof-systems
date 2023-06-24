@@ -518,6 +518,45 @@ where
     pub combined_inner_product: G::ScalarField,
 }
 
+pub fn combine_commitments<G: CommitmentCurve>(
+    evaluations: &Vec<Evaluation<G>>,
+    scalars: &mut Vec<G::ScalarField>,
+    points: &mut Vec<G>,
+    polyscale: G::ScalarField,
+    rand_base: G::ScalarField,
+) {
+    let mut xi_i = G::ScalarField::one();
+
+    for Evaluation {
+        commitment,
+        degree_bound,
+        ..
+    } in evaluations
+        .iter()
+        .filter(|x| !x.commitment.unshifted.is_empty())
+    {
+        // iterating over the polynomial segments
+        for comm_ch in &commitment.unshifted {
+            scalars.push(rand_base * xi_i);
+            points.push(*comm_ch);
+
+            xi_i *= polyscale;
+        }
+
+        if let Some(_m) = degree_bound {
+            if let Some(comm_ch) = commitment.shifted {
+                if !comm_ch.is_zero() {
+                    // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
+                    scalars.push(rand_base * xi_i);
+                    points.push(comm_ch);
+
+                    xi_i *= polyscale;
+                }
+            }
+        }
+    }
+}
+
 impl<G: CommitmentCurve> SRS<G> {
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     pub fn commit(
@@ -798,38 +837,13 @@ impl<G: CommitmentCurve> SRS<G> {
             // sum_j evalscale^j (sum_i polyscale^i f_i) (elm_j)
             // == sum_j sum_i evalscale^j polyscale^i f_i(elm_j)
             // == sum_i polyscale^i sum_j evalscale^j f_i(elm_j)
-            {
-                let mut xi_i = G::ScalarField::one();
-
-                for Evaluation {
-                    commitment,
-                    degree_bound,
-                    ..
-                } in evaluations
-                    .iter()
-                    .filter(|x| !x.commitment.unshifted.is_empty())
-                {
-                    // iterating over the polynomial segments
-                    for comm_ch in &commitment.unshifted {
-                        scalars.push(rand_base_i_c_i * xi_i);
-                        points.push(*comm_ch);
-
-                        xi_i *= *polyscale;
-                    }
-
-                    if let Some(_m) = degree_bound {
-                        if let Some(comm_ch) = commitment.shifted {
-                            if !comm_ch.is_zero() {
-                                // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-                                scalars.push(rand_base_i_c_i * xi_i);
-                                points.push(comm_ch);
-
-                                xi_i *= *polyscale;
-                            }
-                        }
-                    }
-                }
-            };
+            combine_commitments(
+                evaluations,
+                &mut scalars,
+                &mut points,
+                *polyscale,
+                rand_base_i_c_i,
+            );
 
             scalars.push(rand_base_i_c_i * *combined_inner_product);
             points.push(u);
