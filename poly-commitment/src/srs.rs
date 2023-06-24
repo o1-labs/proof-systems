@@ -5,6 +5,7 @@ use crate::PolyComm;
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
 use serde::{Deserialize, Serialize};
@@ -15,7 +16,8 @@ use std::collections::HashMap;
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
-pub struct SRS<G: CommitmentCurve> {
+#[serde(bound = "G: CanonicalDeserialize + CanonicalSerialize")]
+pub struct SRS<G> {
     /// The vector of group elements for committing to polynomials in coefficient form
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub g: Vec<G>,
@@ -31,7 +33,7 @@ pub struct SRS<G: CommitmentCurve> {
 
 impl<G> PartialEq for SRS<G>
 where
-    G: CommitmentCurve,
+    G: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
         self.g == other.g && self.h == other.h
@@ -88,8 +90,6 @@ where
 }
 
 impl<G: CommitmentCurve> SRS<G>
-where
-    G::BaseField: PrimeField,
 {
     pub fn max_degree(&self) -> usize {
         self.g.len()
@@ -229,7 +229,12 @@ where
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
     }
+}
 
+impl<G: CommitmentCurve> SRS<G>
+where
+    G::BaseField: PrimeField,
+{
     /// This function creates SRS instance for circuits with number of rows up to `depth`.
     pub fn create(depth: usize) -> Self {
         let m = G::Map::setup();
