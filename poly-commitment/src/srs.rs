@@ -3,7 +3,7 @@
 use crate::commitment::CommitmentCurve;
 use crate::PolyComm;
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::{BigInteger, PrimeField, Zero};
+use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
 use blake2::{Blake2b512, Digest};
 use groupmap::GroupMap;
@@ -59,19 +59,30 @@ where
 
 fn point_of_random_bytes<G: CommitmentCurve>(map: &G::Map, random_bytes: &[u8]) -> G
 where
-    G::BaseField: PrimeField,
+    G::BaseField: Field,
 {
     // packing in bit-representation
     const N: usize = 31;
-    let mut bits = [false; 8 * N];
-    for i in 0..N {
-        for j in 0..8 {
-            bits[8 * i + j] = (random_bytes[i] >> j) & 1 == 1;
-        }
-    }
+    let extension_degree = G::BaseField::extension_degree() as usize;
 
-    let n = <G::BaseField as PrimeField>::BigInt::from_bits_be(&bits);
-    let t = G::BaseField::from_repr(n).expect("packing code has a bug");
+    let mut base_fields = Vec::with_capacity(N * extension_degree);
+
+    for base_count in 0..extension_degree {
+        let mut bits = [false; 8 * N];
+        let offset = base_count * N;
+        for i in 0..N {
+            for j in 0..8 {
+                bits[8 * i + j] = (random_bytes[offset + i] >> j) & 1 == 1;
+            }
+        }
+
+        let n =
+            <<G::BaseField as Field>::BasePrimeField as PrimeField>::BigInt::from_bits_be(&bits);
+        let t = <<G::BaseField as Field>::BasePrimeField as PrimeField>::from_repr(n)
+            .expect("packing code has a bug");
+        base_fields.push(t)
+    }
+    let t = G::BaseField::from_base_prime_field_elems(&base_fields).unwrap();
     let (x, y) = map.to_group(t);
     G::of_coordinates(x, y)
 }
