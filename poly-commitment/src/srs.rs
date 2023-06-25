@@ -89,8 +89,7 @@ where
     G::of_coordinates(x, y)
 }
 
-impl<G: CommitmentCurve> SRS<G>
-{
+impl<G: CommitmentCurve> SRS<G> {
     pub fn max_degree(&self) -> usize {
         self.g.len()
     }
