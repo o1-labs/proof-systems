@@ -3,6 +3,7 @@ mod combine;
 pub mod commitment;
 pub mod error;
 pub mod evaluation_proof;
+pub mod pairing_proof;
 pub mod srs;
 
 #[cfg(test)]

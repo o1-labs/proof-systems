@@ -165,3 +165,40 @@ impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
             .unwrap()
     }
 }
+
+#[cfg(feature = "bn254")]
+use mina_poseidon::dummy_values::kimchi_dummy;
+
+#[cfg(feature = "bn254")]
+impl KimchiCurve for GroupAffine<ark_bn254::g1::Parameters> {
+    const NAME: &'static str = "bn254";
+
+    fn sponge_params() -> &'static ArithmeticSpongeParams<Self::ScalarField> {
+        // TODO: Generate some params
+        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fr>> = Lazy::new(kimchi_dummy);
+        &PARAMS
+    }
+
+    fn other_curve_sponge_params() -> &'static ArithmeticSpongeParams<Self::BaseField> {
+        // TODO: Generate some params
+        static PARAMS: Lazy<ArithmeticSpongeParams<ark_bn254::Fq>> = Lazy::new(kimchi_dummy);
+        &PARAMS
+    }
+
+    fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
+        static ENDOS: Lazy<(ark_bn254::Fq, ark_bn254::Fr)> =
+            Lazy::new(endos::<ark_bn254::G1Affine>);
+        &ENDOS
+    }
+
+    fn other_curve_endo() -> &'static Self::ScalarField {
+        // TODO: Dummy value, this is definitely not right
+        static ENDO: Lazy<ark_bn254::Fr> = Lazy::new(|| 13u64.into());
+        &ENDO
+    }
+
+    fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
+        // TODO: Dummy value, this is definitely not right
+        (44u64.into(), 88u64.into())
+    }
+}
