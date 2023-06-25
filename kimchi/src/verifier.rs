@@ -24,26 +24,29 @@ use ark_ec::AffineCurve;
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Polynomial};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use poly_commitment::commitment::{
-    absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+use poly_commitment::{
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    evaluation_proof::OpeningProof,
 };
 use rand::thread_rng;
 
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
-pub struct Context<'a, G: KimchiCurve> {
+pub struct Context<'a, G: KimchiCurve, OpeningProof> {
     /// The [VerifierIndex] associated to the proof
     pub verifier_index: &'a VerifierIndex<G>,
 
     /// The proof to verify
-    pub proof: &'a ProverProof<G>,
+    pub proof: &'a ProverProof<G, OpeningProof>,
 
     /// The public input used in the creation of the proof
     pub public_input: &'a [G::ScalarField],
 }
 
-impl<'a, G: KimchiCurve> Context<'a, G> {
+impl<'a, G: KimchiCurve, OpeningProof> Context<'a, G, OpeningProof> {
     pub fn get_column(&self, col: Column) -> Option<&'a PolyComm<G>> {
         use Column::*;
         match col {
@@ -89,7 +92,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
     }
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve> ProverProof<G, OpeningProof<G>>
 where
     G::BaseField: PrimeField,
 {
@@ -499,7 +502,7 @@ where
 /// Enforce the length of evaluations inside [`Proof`].
 /// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
 /// The length value is prone to future change.
-fn check_proof_evals_len<G>(proof: &ProverProof<G>) -> Result<()>
+fn check_proof_evals_len<G, OpeningProof>(proof: &ProverProof<G, OpeningProof>) -> Result<()>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
@@ -556,7 +559,7 @@ where
 
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
     verifier_index: &VerifierIndex<G>,
-    proof: &'a ProverProof<G>,
+    proof: &'a ProverProof<G, OpeningProof<G>>,
     public_input: &'a [<G as AffineCurve>::ScalarField],
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
@@ -861,7 +864,7 @@ where
 pub fn verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
     verifier_index: &VerifierIndex<G>,
-    proof: &ProverProof<G>,
+    proof: &ProverProof<G, OpeningProof<G>>,
     public_input: &[G::ScalarField],
 ) -> Result<()>
 where
@@ -887,7 +890,7 @@ where
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
 pub fn batch_verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    proofs: &[Context<G>],
+    proofs: &[Context<G, OpeningProof<G>>],
 ) -> Result<()>
 where
     G: KimchiCurve,

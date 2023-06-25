@@ -45,7 +45,7 @@ use poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
-    evaluation_proof::DensePolynomialOrEvaluations,
+    evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
 };
 use rayon::prelude::*;
 use std::array;
@@ -114,7 +114,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve> ProverProof<G, OpeningProof<G>>
 where
     G::BaseField: PrimeField,
 {
@@ -1294,7 +1294,10 @@ pub mod caml {
     use super::*;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
-    use poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+    use poly_commitment::{
+        commitment::caml::{CamlOpeningProof, CamlPolyComm},
+        evaluation_proof::OpeningProof,
+    };
 
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;
@@ -1499,13 +1502,14 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<(ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)>
+        for CamlProverProof<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
+        fn from(pp: (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)) -> Self {
             Self {
                 commitments: pp.0.commitments.into(),
                 proof: pp.0.proof.into(),
@@ -1517,12 +1521,15 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>>
+        for (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)
     where
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> (ProverProof<G>, Vec<G::ScalarField>) {
+        fn from(
+            caml_pp: CamlProverProof<CamlG, CamlF>,
+        ) -> (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>) {
             let proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),

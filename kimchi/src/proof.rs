@@ -9,10 +9,7 @@ use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
 use o1_utils::ExtendedDensePolynomial;
-use poly_commitment::{
-    commitment::{b_poly, b_poly_coefficients, PolyComm},
-    evaluation_proof::OpeningProof,
-};
+use poly_commitment::commitment::{b_poly, b_poly_coefficients, PolyComm};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -110,12 +107,16 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<G: AffineCurve, OpeningProof> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
-    pub proof: OpeningProof<G>,
+    #[serde(bound(
+        serialize = "OpeningProof: Serialize",
+        deserialize = "OpeningProof: Deserialize<'de>"
+    ))]
+    pub proof: OpeningProof,
 
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,

@@ -17,7 +17,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, srs::SRS};
 use std::array;
 use std::time::Instant;
 
@@ -41,7 +41,8 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
+        let de_pf: ProverProof<Vesta, OpeningProof<Vesta>> =
+            rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
         ctx.batch_verification(&vec![(de_pf, public_input)]);
