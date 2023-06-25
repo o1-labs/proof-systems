@@ -7,6 +7,7 @@
 //! 3. Verify batch of batched opening proofs
 
 use crate::srs::endos;
+use crate::SRS as SRSTrait;
 use crate::{error::CommitmentError, srs::SRS};
 use ark_ec::{
     models::short_weierstrass_jacobian::GroupAffine as SWJAffine, msm::VariableBaseMSM,
@@ -564,9 +565,52 @@ pub fn combine_commitments<G: CommitmentCurve>(
     }
 }
 
-impl<G: CommitmentCurve> SRS<G> {
+pub fn combine_evaluations<G: CommitmentCurve>(
+    evaluations: &Vec<Evaluation<G>>,
+    polyscale: G::ScalarField,
+) -> Vec<G::ScalarField> {
+    let mut xi_i = G::ScalarField::one();
+    let mut acc = {
+        let num_evals = if evaluations.len() > 0 {
+            evaluations[0].evaluations.len()
+        } else {
+            0
+        };
+        vec![G::ScalarField::zero(); num_evals]
+    };
+
+    for Evaluation {
+        evaluations,
+        degree_bound,
+        ..
+    } in evaluations
+        .iter()
+        .filter(|x| !x.commitment.unshifted.is_empty())
+    {
+        // iterating over the polynomial segments
+        for j in 0..evaluations[0].len() {
+            for i in 0..evaluations.len() {
+                acc[i] += evaluations[i][j] * xi_i;
+            }
+            xi_i *= polyscale;
+        }
+
+        if let Some(_m) = degree_bound {
+            todo!("Misaligned chunked commitments are not supported")
+        }
+    }
+
+    acc
+}
+
+impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
+    /// The maximum polynomial degree that can be committed to
+    fn max_poly_size(&self) -> usize {
+        self.g.len()
+    }
+
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
-    pub fn commit(
+    fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         max: Option<usize>,
@@ -576,7 +620,7 @@ impl<G: CommitmentCurve> SRS<G> {
     }
 
     /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
-    pub fn mask(
+    fn mask(
         &self,
         comm: PolyComm<G>,
         rng: &mut (impl RngCore + CryptoRng),
@@ -586,7 +630,7 @@ impl<G: CommitmentCurve> SRS<G> {
     }
 
     /// Same as [SRS::mask] except that you can pass the blinders manually.
-    pub fn mask_custom(
+    fn mask_custom(
         &self,
         com: PolyComm<G>,
         blinders: &PolyComm<G::ScalarField>,
@@ -611,7 +655,7 @@ impl<G: CommitmentCurve> SRS<G> {
     /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
     /// as well as an optional bounded commitment (if `max` is set).
     /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
-    pub fn commit_non_hiding(
+    fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         max: Option<usize>,
@@ -659,7 +703,7 @@ impl<G: CommitmentCurve> SRS<G> {
         PolyComm::<G> { unshifted, shifted }
     }
 
-    pub fn commit_evaluations_non_hiding(
+    fn commit_evaluations_non_hiding(
         &self,
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
@@ -684,7 +728,7 @@ impl<G: CommitmentCurve> SRS<G> {
         }
     }
 
-    pub fn commit_evaluations(
+    fn commit_evaluations(
         &self,
         domain: D<G::ScalarField>,
         plnm: &Evaluations<G::ScalarField, D<G::ScalarField>>,
@@ -692,7 +736,9 @@ impl<G: CommitmentCurve> SRS<G> {
     ) -> BlindedCommitment<G> {
         self.mask(self.commit_evaluations_non_hiding(domain, plnm), rng)
     }
+}
 
+impl<G: CommitmentCurve> SRS<G> {
     /// This function verifies batch of batched polynomial commitment opening proofs
     ///     batch: batch of batched polynomial commitment opening proofs
     ///          vector of evaluation points

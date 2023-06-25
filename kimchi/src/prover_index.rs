@@ -10,9 +10,10 @@ use crate::{
     linearization::expr_linearization,
     verifier_index::VerifierIndex,
 };
+use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use mina_poseidon::FqSponge;
-use poly_commitment::srs::SRS;
+use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof, SRS as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -21,7 +22,7 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 //~spec:startcode
-pub struct ProverIndex<G: KimchiCurve> {
+pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -36,7 +37,8 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -46,7 +48,7 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G>>,
+    pub verifier_index: Option<VerifierIndex<G, OpeningProof>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -54,7 +56,10 @@ pub struct ProverIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<G: KimchiCurve> ProverIndex<G> {
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverIndex<G, OpeningProof>
+where
+    G::BaseField: PrimeField,
+{
     /// this function compiles the index from constraints
     ///
     /// # Panics
@@ -63,9 +68,9 @@ impl<G: KimchiCurve> ProverIndex<G> {
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
-        srs: Arc<SRS<G>>,
+        srs: Arc<OpeningProof::SRS>,
     ) -> Self {
-        let max_poly_size = srs.g.len();
+        let max_poly_size = srs.max_poly_size();
         if cs.public > 0 {
             assert!(
                 max_poly_size >= cs.domain.d1.size(),
@@ -99,7 +104,10 @@ impl<G: KimchiCurve> ProverIndex<G> {
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     >(
         &mut self,
-    ) -> G::BaseField {
+    ) -> G::BaseField
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
         }
@@ -116,7 +124,10 @@ impl<G: KimchiCurve> ProverIndex<G> {
     /// Retrieve or compute the digest for the corresponding verifier index.
     pub fn verifier_index_digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
-    ) -> G::BaseField {
+    ) -> G::BaseField
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
         }
@@ -154,7 +165,7 @@ pub mod testing {
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
-    ) -> ProverIndex<G>
+    ) -> ProverIndex<G, OpeningProof<G>>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
@@ -181,13 +192,13 @@ pub mod testing {
         let srs = Arc::new(srs);
 
         let &endo_q = G::other_curve_endo();
-        ProverIndex::<G>::create(cs, endo_q, srs)
+        ProverIndex::create(cs, endo_q, srs)
     }
 
     pub fn new_index_for_test<G: KimchiCurve>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
-    ) -> ProverIndex<G>
+    ) -> ProverIndex<G, OpeningProof<G>>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,

@@ -29,15 +29,16 @@ use poly_commitment::{
         absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
     },
     evaluation_proof::OpeningProof,
+    OpenProof, SRS as _,
 };
 use rand::thread_rng;
 
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
-pub struct Context<'a, G: KimchiCurve, OpeningProof> {
+pub struct Context<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// The [VerifierIndex] associated to the proof
-    pub verifier_index: &'a VerifierIndex<G>,
+    pub verifier_index: &'a VerifierIndex<G, OpeningProof>,
 
     /// The proof to verify
     pub proof: &'a ProverProof<G, OpeningProof>,
@@ -46,7 +47,7 @@ pub struct Context<'a, G: KimchiCurve, OpeningProof> {
     pub public_input: &'a [G::ScalarField],
 }
 
-impl<'a, G: KimchiCurve, OpeningProof> Context<'a, G, OpeningProof> {
+impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof> {
     pub fn get_column(&self, col: Column) -> Option<&'a PolyComm<G>> {
         use Column::*;
         match col {
@@ -110,7 +111,7 @@ where
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
-        index: &VerifierIndex<G>,
+        index: &VerifierIndex<G, OpeningProof<G>>,
         public_comm: &PolyComm<G>,
         public_input: &[G::ScalarField],
     ) -> Result<OraclesResult<G, EFqSponge>> {
@@ -558,7 +559,7 @@ where
 }
 
 fn to_batch<'a, G, EFqSponge, EFrSponge>(
-    verifier_index: &VerifierIndex<G>,
+    verifier_index: &VerifierIndex<G, OpeningProof<G>>,
     proof: &'a ProverProof<G, OpeningProof<G>>,
     public_input: &'a [<G as AffineCurve>::ScalarField],
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
@@ -863,7 +864,7 @@ where
 /// Will give error if `proof(s)` are not verified as valid.
 pub fn verify<G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    verifier_index: &VerifierIndex<G>,
+    verifier_index: &VerifierIndex<G, OpeningProof<G>>,
     proof: &ProverProof<G, OpeningProof<G>>,
     public_input: &[G::ScalarField],
 ) -> Result<()>

@@ -57,7 +57,7 @@ pub mod caml {
 
     pub fn create_caml_oracles<G, CamlF, EFqSponge, EFrSponge, CurveParams>(
         lgr_comm: Vec<PolyComm<G>>,
-        index: VerifierIndex<G>,
+        index: VerifierIndex<G, OpeningProof<G>>,
         proof: ProverProof<G, OpeningProof<G>>,
         public_input: &[G::ScalarField],
     ) -> Result<CamlOracles<CamlF>, VerifyError>

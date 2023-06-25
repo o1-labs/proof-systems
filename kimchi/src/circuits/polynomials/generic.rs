@@ -43,6 +43,7 @@ use crate::circuits::{
 use crate::{curve::KimchiCurve, prover_index::ProverIndex};
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
+use poly_commitment::OpenProof;
 use std::array;
 use std::marker::PhantomData;
 
@@ -278,7 +279,9 @@ pub mod testing {
         }
     }
 
-    impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+    impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
+        ProverIndex<G, OpeningProof>
+    {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,

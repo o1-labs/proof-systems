@@ -11,7 +11,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::commitment::b_poly_coefficients;
+use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
 use rand::prelude::*;
 use std::array;
 

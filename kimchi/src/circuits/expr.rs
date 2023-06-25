@@ -2832,7 +2832,10 @@ pub mod test {
     };
     use ark_ff::UniformRand;
     use mina_curves::pasta::{Fp, Pallas, Vesta};
-    use poly_commitment::srs::{endos, SRS};
+    use poly_commitment::{
+        evaluation_proof::OpeningProof,
+        srs::{endos, SRS},
+    };
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
     use std::sync::Arc;
@@ -2882,7 +2885,7 @@ pub mod test {
             let srs = Arc::new(srs);
 
             let (endo_q, _endo_r) = endos::<Pallas>();
-            ProverIndex::<Vesta>::create(constraint_system, endo_q, srs)
+            ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
         };
 
         let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());

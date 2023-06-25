@@ -10,7 +10,6 @@ use crate::{
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
-    error::VerifierIndexError,
     prover_index::ProverIndex,
 };
 use ark_ff::{One, PrimeField};
@@ -19,7 +18,7 @@ use mina_poseidon::FqSponge;
 use once_cell::sync::OnceCell;
 use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
-    srs::SRS,
+    OpenProof, SRS as _,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -56,7 +55,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve> {
+pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -64,7 +63,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub max_poly_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: OnceCell<Arc<SRS<G>>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -149,13 +149,19 @@ pub struct VerifierIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<G: KimchiCurve> ProverIndex<G> {
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverIndex<G, OpeningProof>
+where
+    G::BaseField: PrimeField,
+{
     /// Produces the [`VerifierIndex`] from the prover's [`ProverIndex`].
     ///
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    pub fn verifier_index(&self) -> VerifierIndex<G> {
+    pub fn verifier_index(&self) -> VerifierIndex<G, OpeningProof>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
         }
@@ -203,11 +209,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             powers_of_alpha: self.powers_of_alpha.clone(),
             public: self.cs.public,
             prev_challenges: self.cs.prev_challenges,
-            srs: {
-                let cell = OnceCell::new();
-                cell.set(Arc::clone(&self.srs)).unwrap();
-                cell
-            },
+            srs: Arc::clone(&self.srs),
 
             sigma_comm: array::from_fn(|i| {
                 self.srs.commit_evaluations_non_hiding(
@@ -301,17 +303,13 @@ impl<G: KimchiCurve> ProverIndex<G> {
     }
 }
 
-impl<G: KimchiCurve> VerifierIndex<G> {
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> {
     /// Gets srs from [`VerifierIndex`] lazily
-    pub fn srs(&self) -> &Arc<SRS<G>>
+    pub fn srs(&self) -> &Arc<OpeningProof::SRS>
     where
         G::BaseField: PrimeField,
     {
-        self.srs.get_or_init(|| {
-            let mut srs = SRS::<G>::create(self.max_poly_size);
-            srs.add_lagrange_basis(self.domain);
-            Arc::new(srs)
-        })
+        &self.srs
     }
 
     /// Gets zkpm from [`VerifierIndex`] lazily
@@ -330,12 +328,15 @@ impl<G: KimchiCurve> VerifierIndex<G> {
     ///
     /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
     pub fn from_file(
-        srs: Option<Arc<SRS<G>>>,
+        srs: Arc<OpeningProof::SRS>,
         path: &Path,
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, String>
+    where
+        OpeningProof::SRS: Default,
+    {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;
 
@@ -350,13 +351,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             .map_err(|e| e.to_string())?;
 
         // fill in the rest
-        if let Some(srs) = srs {
-            verifier_index
-                .srs
-                .set(srs)
-                .map_err(|_| VerifierIndexError::SRSHasBeenSet.to_string())?;
-        };
-
+        verifier_index.srs = srs;
         verifier_index.endo = endo;
 
         Ok(verifier_index)

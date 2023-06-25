@@ -228,6 +228,34 @@ impl<G: CommitmentCurve> SRS<G> {
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
     }
+
+    /// This function creates a trusted-setup SRS instance for circuits with number of rows up to `depth`.
+    pub fn create_trusted_setup(x: G::ScalarField, depth: usize) -> Self {
+        let m = G::Map::setup();
+
+        let mut x_pow = G::ScalarField::one();
+        let g: Vec<_> = (0..depth)
+            .map(|_| {
+                let res = G::prime_subgroup_generator().mul(x_pow);
+                x_pow *= x;
+                res.into_affine()
+            })
+            .collect();
+
+        const MISC: usize = 1;
+        let [h]: [G; MISC] = array::from_fn(|i| {
+            let mut h = Blake2b512::new();
+            h.update("srs_misc".as_bytes());
+            h.update((i as u32).to_be_bytes());
+            point_of_random_bytes(&m, &h.finalize())
+        });
+
+        SRS {
+            g,
+            h,
+            lagrange_bases: HashMap::new(),
+        }
+    }
 }
 
 impl<G: CommitmentCurve> SRS<G>

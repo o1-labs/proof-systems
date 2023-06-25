@@ -31,6 +31,7 @@ use crate::{
         ProverCommitments, ProverProof, RecursionChallenge,
     },
     prover_index::ProverIndex,
+    verifier_index::VerifierIndex,
 };
 use ark_ec::ProjectiveCurve;
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
@@ -47,7 +48,7 @@ use poly_commitment::{
     },
     evaluation_proof::DensePolynomialOrEvaluations,
     srs::SRS,
-    OpenProof,
+    OpenProof, SRS as _,
 };
 use rayon::prelude::*;
 use std::array;
@@ -116,7 +117,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G = G, SRS = SRS<G>>> ProverProof<G, OpeningProof>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G, SRS = SRS<G>>> ProverProof<G, OpeningProof>
 where
     G::BaseField: PrimeField,
 {
@@ -132,8 +133,11 @@ where
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
-    ) -> Result<Self> {
+        index: &ProverIndex<G, OpeningProof>,
+    ) -> Result<Self>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
             witness,
@@ -160,10 +164,13 @@ where
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, OpeningProof>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
 
         // make sure that the SRS is not smaller than the domain size

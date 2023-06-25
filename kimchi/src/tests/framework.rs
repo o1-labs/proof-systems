@@ -20,13 +20,16 @@ use ark_ff::PrimeField;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
 use std::{fmt::Write, mem, time::Instant};
 
 // aliases
 
 #[derive(Default, Clone)]
-pub(crate) struct TestFramework<G: KimchiCurve> {
+pub(crate) struct TestFramework<G: KimchiCurve>
+where
+    G::BaseField: PrimeField,
+{
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
     public_inputs: Vec<G::ScalarField>,
@@ -37,12 +40,14 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     num_prev_challenges: usize,
     disable_gates_checks: bool,
 
-    prover_index: Option<ProverIndex<G>>,
-    verifier_index: Option<VerifierIndex<G>>,
+    prover_index: Option<ProverIndex<G, OpeningProof<G>>>,
+    verifier_index: Option<VerifierIndex<G, OpeningProof<G>>>,
 }
 
 #[derive(Clone)]
-pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>);
+pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>)
+where
+    G::BaseField: PrimeField;
 
 impl<G: KimchiCurve> TestFramework<G>
 where
@@ -148,7 +153,7 @@ where
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<G> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof<G>> {
         self.0.prover_index.as_ref().unwrap()
     }
 

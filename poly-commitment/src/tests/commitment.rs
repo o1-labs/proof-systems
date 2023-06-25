@@ -5,6 +5,7 @@ use crate::{
     },
     evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
     srs::SRS,
+    SRS as _,
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};

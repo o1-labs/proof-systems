@@ -73,7 +73,7 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>> =
+        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>, _> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases

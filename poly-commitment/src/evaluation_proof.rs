@@ -374,32 +374,27 @@ pub struct OpeningProof<G: AffineCurve> {
 impl<
         BaseField: PrimeField,
         G: AffineCurve<BaseField = BaseField> + CommitmentCurve + EndoCurve,
-    > crate::OpenProof for OpeningProof<G>
+    > crate::OpenProof<G> for OpeningProof<G>
 {
-    type G = G;
     type SRS = SRS<G>;
 
-    fn open<EFqSponge, RNG, D: EvaluationDomain<<Self::G as AffineCurve>::ScalarField>>(
+    fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
         srs: &Self::SRS,
-        group_map: &<Self::G as CommitmentCurve>::Map,
+        group_map: &<G as CommitmentCurve>::Map,
         plnms: &[(
-            DensePolynomialOrEvaluations<<Self::G as AffineCurve>::ScalarField, D>,
+            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
             Option<usize>,
-            PolyComm<<Self::G as AffineCurve>::ScalarField>,
+            PolyComm<<G as AffineCurve>::ScalarField>,
         )], // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[<Self::G as AffineCurve>::ScalarField], // vector of evaluation points
-        polyscale: <Self::G as AffineCurve>::ScalarField, // scaling factor for polynoms
-        evalscale: <Self::G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
-        sponge: EFqSponge,                                // sponge
+        elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
+        polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
+        evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
+        sponge: EFqSponge,                       // sponge
         rng: &mut RNG,
     ) -> Self
     where
-        EFqSponge: Clone
-            + FqSponge<
-                <Self::G as AffineCurve>::BaseField,
-                Self::G,
-                <Self::G as AffineCurve>::ScalarField,
-            >,
+        EFqSponge:
+            Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
         RNG: RngCore + CryptoRng,
     {
         srs.open(group_map, plnms, elm, polyscale, evalscale, sponge, rng)

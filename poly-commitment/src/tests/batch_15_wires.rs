@@ -5,6 +5,7 @@ use crate::{
     commitment::{combined_inner_product, BatchEvaluationProof, CommitmentCurve, Evaluation},
     evaluation_proof::DensePolynomialOrEvaluations,
     srs::SRS,
+    SRS as _,
 };
 use ark_ff::{UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, Radix2EvaluationDomain, UVPolynomial};
