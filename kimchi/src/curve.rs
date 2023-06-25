@@ -36,6 +36,28 @@ pub trait KimchiCurve: CommitmentCurve + EndoCurve {
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField);
 }
 
+fn vesta_endos() -> &'static (
+    <VestaParameters as ModelParameters>::BaseField,
+    <VestaParameters as ModelParameters>::ScalarField,
+) {
+    static VESTA_ENDOS: Lazy<(
+        <VestaParameters as ModelParameters>::BaseField,
+        <VestaParameters as ModelParameters>::ScalarField,
+    )> = Lazy::new(endos::<GroupAffine<VestaParameters>>);
+    &VESTA_ENDOS
+}
+
+fn pallas_endos() -> &'static (
+    <PallasParameters as ModelParameters>::BaseField,
+    <PallasParameters as ModelParameters>::ScalarField,
+) {
+    static PALLAS_ENDOS: Lazy<(
+        <PallasParameters as ModelParameters>::BaseField,
+        <PallasParameters as ModelParameters>::ScalarField,
+    )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
+    &PALLAS_ENDOS
+}
+
 impl KimchiCurve for GroupAffine<VestaParameters> {
     const NAME: &'static str = "vesta";
 
@@ -48,17 +70,11 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        static VESTA_ENDOS: Lazy<(
-            <VestaParameters as ModelParameters>::BaseField,
-            <VestaParameters as ModelParameters>::ScalarField,
-        )> = Lazy::new(endos::<GroupAffine<VestaParameters>>);
-        &VESTA_ENDOS
+        vesta_endos()
     }
 
     fn other_curve_endo() -> &'static Self::ScalarField {
-        static PALLAS_ENDOS: Lazy<<PallasParameters as ModelParameters>::BaseField> =
-            Lazy::new(|| endos::<GroupAffine<PallasParameters>>().0);
-        &PALLAS_ENDOS
+        &pallas_endos().0
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
@@ -80,17 +96,11 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        static PALLAS_ENDOS: Lazy<(
-            <PallasParameters as ModelParameters>::BaseField,
-            <PallasParameters as ModelParameters>::ScalarField,
-        )> = Lazy::new(endos::<GroupAffine<PallasParameters>>);
-        &PALLAS_ENDOS
+        pallas_endos()
     }
 
     fn other_curve_endo() -> &'static Self::ScalarField {
-        static VESTA_ENDOS: Lazy<<VestaParameters as ModelParameters>::BaseField> =
-            Lazy::new(|| endos::<GroupAffine<VestaParameters>>().0);
-        &VESTA_ENDOS
+        &vesta_endos().0
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
@@ -116,13 +126,11 @@ impl KimchiCurve for GroupAffine<LegacyVestaParameters> {
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        GroupAffine::<VestaParameters>::endos()
+        vesta_endos()
     }
 
     fn other_curve_endo() -> &'static Self::ScalarField {
-        static PALLAS_ENDOS: Lazy<<PallasParameters as ModelParameters>::BaseField> =
-            Lazy::new(|| endos::<GroupAffine<PallasParameters>>().0);
-        &PALLAS_ENDOS
+        &pallas_endos().0
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
@@ -144,13 +152,11 @@ impl KimchiCurve for GroupAffine<LegacyPallasParameters> {
     }
 
     fn endos() -> &'static (Self::BaseField, Self::ScalarField) {
-        GroupAffine::<PallasParameters>::endos()
+        pallas_endos()
     }
 
     fn other_curve_endo() -> &'static Self::ScalarField {
-        static VESTA_ENDOS: Lazy<<VestaParameters as ModelParameters>::BaseField> =
-            Lazy::new(|| endos::<GroupAffine<VestaParameters>>().0);
-        &VESTA_ENDOS
+        &vesta_endos().0
     }
 
     fn other_curve_prime_subgroup_generator() -> (Self::ScalarField, Self::ScalarField) {
