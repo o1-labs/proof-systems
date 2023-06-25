@@ -81,6 +81,7 @@ mod tests {
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
+        verifier_index_deserialize.srs = std::sync::Arc::new(srs);
 
         // verify the proof
         let start = Instant::now();
