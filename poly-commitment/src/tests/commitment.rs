@@ -77,7 +77,8 @@ impl AggregatedEvaluationProof {
     pub fn verify_type(
         &self,
         srs: &SRS<Vesta>,
-    ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>> {
+    ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
+    {
         let mut coms = vec![];
         for eval_com in &self.eval_commitments {
             assert_eq!(self.eval_points.len(), eval_com.chunked_evals.len());

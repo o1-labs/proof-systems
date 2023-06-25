@@ -562,7 +562,7 @@ fn to_batch<'a, G, EFqSponge, EFrSponge>(
     verifier_index: &VerifierIndex<G, OpeningProof<G>>,
     proof: &'a ProverProof<G, OpeningProof<G>>,
     public_input: &'a [<G as AffineCurve>::ScalarField],
-) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
+) -> Result<BatchEvaluationProof<'a, G, EFqSponge, OpeningProof<G>>>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,

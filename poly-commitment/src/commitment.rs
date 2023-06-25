@@ -508,7 +508,7 @@ where
 
 /// Contains the batch evaluation
 // TODO: I think we should really change this name to something more correct
-pub struct BatchEvaluationProof<'a, G, EFqSponge>
+pub struct BatchEvaluationProof<'a, G, EFqSponge, OpeningProof>
 where
     G: AffineCurve,
     EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
@@ -522,7 +522,7 @@ where
     /// scaling factor for polynomials
     pub evalscale: G::ScalarField,
     /// batched opening proof
-    pub opening: &'a OpeningProof<G>,
+    pub opening: &'a OpeningProof,
     pub combined_inner_product: G::ScalarField,
 }
 
@@ -752,7 +752,7 @@ impl<G: CommitmentCurve> SRS<G> {
     pub fn verify<EFqSponge, RNG>(
         &self,
         group_map: &G::Map,
-        batch: &mut [BatchEvaluationProof<G, EFqSponge>],
+        batch: &mut [BatchEvaluationProof<G, EFqSponge, OpeningProof<G>>],
         rng: &mut RNG,
     ) -> bool
     where
