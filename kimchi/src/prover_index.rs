@@ -13,7 +13,7 @@ use crate::{
 use ark_ff::PrimeField;
 use ark_poly::EvaluationDomain;
 use mina_poseidon::FqSponge;
-use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof, SRS as _};
+use poly_commitment::{OpenProof, SRS as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -152,6 +152,7 @@ pub mod testing {
         precomputed_srs,
     };
     use ark_ff::{PrimeField, SquareRootField};
+    use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS};
 
     /// Create new index for lookups.
     ///
