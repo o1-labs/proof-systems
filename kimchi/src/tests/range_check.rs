@@ -1221,7 +1221,7 @@ fn verify_range_check_valid_proof1() {
     let verifier_index = prover_index.verifier_index();
 
     // Verify proof
-    let res = verify::<Vesta, BaseSponge, ScalarSponge>(
+    let res = verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
         &group_map,
         &verifier_index,
         &proof,

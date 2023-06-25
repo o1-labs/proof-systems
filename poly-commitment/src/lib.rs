@@ -25,6 +25,9 @@ pub trait SRS<G: CommitmentCurve> {
     /// The maximum polynomial degree that can be committed to
     fn max_poly_size(&self) -> usize;
 
+    /// Retrieve the precomputed Lagrange basis for the given domain size
+    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>>;
+
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     fn commit(
         &self,

@@ -192,7 +192,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge>(
+        verify::<G, EFqSponge, EFrSponge, OpeningProof<G>>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

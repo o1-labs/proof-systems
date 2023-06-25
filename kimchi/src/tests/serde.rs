@@ -84,7 +84,7 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge>(
+        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

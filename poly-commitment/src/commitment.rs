@@ -609,6 +609,10 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         self.g.len()
     }
 
+    fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>> {
+        self.lagrange_bases.get(&domain_size)
+    }
+
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     fn commit(
         &self,

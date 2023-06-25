@@ -106,7 +106,11 @@ impl BenchmarkCtx {
                 public_input: public,
             })
             .collect();
-        batch_verify::<Vesta, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
+        batch_verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+            &self.group_map,
+            &batch,
+        )
+        .unwrap();
     }
 }
 
