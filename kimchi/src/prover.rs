@@ -45,7 +45,9 @@ use poly_commitment::{
     commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
-    evaluation_proof::{DensePolynomialOrEvaluations, OpeningProof},
+    evaluation_proof::DensePolynomialOrEvaluations,
+    srs::SRS,
+    OpenProof,
 };
 use rayon::prelude::*;
 use std::array;
@@ -114,7 +116,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve> ProverProof<G, OpeningProof<G>>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G = G, SRS = SRS<G>>> ProverProof<G, OpeningProof>
 where
     G::BaseField: PrimeField,
 {
@@ -1231,7 +1233,8 @@ where
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         internal_tracing::checkpoint!(internal_traces; create_aggregated_evaluation_proof);
-        let proof = index.srs.open(
+        let proof = OpenProof::open(
+            &*index.srs,
             group_map,
             &polynomials,
             &[zeta, zeta_omega],
