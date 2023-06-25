@@ -399,6 +399,19 @@ impl<
     {
         srs.open(group_map, plnms, elm, polyscale, evalscale, sponge, rng)
     }
+
+    fn verify<EFqSponge, RNG>(
+        srs: &Self::SRS,
+        group_map: &G::Map,
+        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self>],
+        rng: &mut RNG,
+    ) -> bool
+    where
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
+        RNG: RngCore + CryptoRng,
+    {
+        srs.verify(group_map, batch, rng)
+    }
 }
 
 pub struct Challenges<F> {

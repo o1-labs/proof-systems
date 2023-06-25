@@ -10,7 +10,7 @@ mod tests;
 
 pub use commitment::PolyComm;
 
-use crate::commitment::{BlindedCommitment, CommitmentCurve};
+use crate::commitment::{BatchEvaluationProof, BlindedCommitment, CommitmentCurve};
 use crate::error::CommitmentError;
 use crate::evaluation_proof::DensePolynomialOrEvaluations;
 use ark_ec::AffineCurve;
@@ -76,7 +76,7 @@ pub trait SRS<G: CommitmentCurve> {
     ) -> BlindedCommitment<G>;
 }
 
-pub trait OpenProof<G: CommitmentCurve> {
+pub trait OpenProof<G: CommitmentCurve>: Sized {
     type SRS: SRS<G>;
 
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
@@ -96,5 +96,15 @@ pub trait OpenProof<G: CommitmentCurve> {
     where
         EFqSponge:
             Clone + FqSponge<<G as AffineCurve>::BaseField, G, <G as AffineCurve>::ScalarField>,
+        RNG: RngCore + CryptoRng;
+
+    fn verify<EFqSponge, RNG>(
+        srs: &Self::SRS,
+        group_map: &G::Map,
+        batch: &mut [BatchEvaluationProof<G, EFqSponge, Self>],
+        rng: &mut RNG,
+    ) -> bool
+    where
+        EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>,
         RNG: RngCore + CryptoRng;
 }
