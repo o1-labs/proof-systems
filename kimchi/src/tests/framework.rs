@@ -12,15 +12,23 @@ use crate::{
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::{ProverProof, RecursionChallenge},
-    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+    prover_index::{
+        testing::{
+            new_index_for_test_with_lookups, new_index_for_test_with_lookups_and_custom_srs,
+        },
+        ProverIndex,
+    },
     verifier::verify,
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
+use ark_poly::Radix2EvaluationDomain as D;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof};
+use poly_commitment::{
+    commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof,
+};
 use std::{fmt::Write, mem, time::Instant};
 
 // aliases
@@ -47,7 +55,9 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct TestRunner<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>(TestFramework<G, OpeningProof>)
+pub(crate) struct TestRunner<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>(
+    TestFramework<G, OpeningProof>,
+)
 where
     G::BaseField: PrimeField,
     OpeningProof::SRS: Clone,
@@ -102,6 +112,37 @@ where
     pub(crate) fn disable_gates_checks(mut self, disable_gates_checks: bool) -> Self {
         self.disable_gates_checks = disable_gates_checks;
         self
+    }
+
+    /// creates the indexes
+    #[must_use]
+    pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>) -> OpeningProof::SRS>(
+        mut self,
+        get_srs: F,
+    ) -> TestRunner<G, OpeningProof> {
+        let start = Instant::now();
+
+        let lookup_tables = std::mem::take(&mut self.lookup_tables);
+        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+
+        let index = new_index_for_test_with_lookups_and_custom_srs(
+            self.gates.take().unwrap(),
+            self.public_inputs.len(),
+            self.num_prev_challenges,
+            lookup_tables,
+            runtime_tables_setup,
+            self.disable_gates_checks,
+            get_srs,
+        );
+        println!(
+            "- time to create prover index: {:?}s",
+            start.elapsed().as_secs()
+        );
+
+        self.verifier_index = Some(index.verifier_index());
+        self.prover_index = Some(index);
+
+        TestRunner(self)
     }
 }
 

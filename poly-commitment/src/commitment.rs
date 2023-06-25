@@ -613,7 +613,9 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         self.lagrange_bases.get(&domain_size)
     }
 
-    fn blinding_commitment(&self) -> G { self.h }
+    fn blinding_commitment(&self) -> G {
+        self.h
+    }
 
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     fn commit(

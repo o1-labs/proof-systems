@@ -152,7 +152,42 @@ pub mod testing {
         precomputed_srs,
     };
     use ark_ff::{PrimeField, SquareRootField};
-    use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS};
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+    use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
+
+    pub fn new_index_for_test_with_lookups_and_custom_srs<
+        G: KimchiCurve,
+        OpeningProof: OpenProof<G>,
+        F: FnMut(D<G::ScalarField>) -> OpeningProof::SRS,
+    >(
+        gates: Vec<CircuitGate<G::ScalarField>>,
+        public: usize,
+        prev_challenges: usize,
+        lookup_tables: Vec<LookupTable<G::ScalarField>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
+        disable_gates_checks: bool,
+        mut get_srs: F,
+    ) -> ProverIndex<G, OpeningProof>
+    where
+        G::BaseField: PrimeField,
+        G::ScalarField: PrimeField + SquareRootField,
+    {
+        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        let cs = ConstraintSystem::<G::ScalarField>::create(gates)
+            .lookup(lookup_tables)
+            .runtime(runtime_tables)
+            .public(public)
+            .prev_challenges(prev_challenges)
+            .disable_gates_checks(disable_gates_checks)
+            .build()
+            .unwrap();
+
+        let srs = get_srs(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let &endo_q = G::other_curve_endo();
+        ProverIndex::create(cs, endo_q, srs)
+    }
 
     /// Create new index for lookups.
     ///
@@ -171,29 +206,26 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<G::ScalarField>::create(gates)
-            .lookup(lookup_tables)
-            .runtime(runtime_tables)
-            .public(public)
-            .prev_challenges(prev_challenges)
-            .disable_gates_checks(disable_gates_checks)
-            .build()
-            .unwrap();
+        new_index_for_test_with_lookups_and_custom_srs(
+            gates,
+            public,
+            prev_challenges,
+            lookup_tables,
+            runtime_tables,
+            disable_gates_checks,
+            |d1: D<G::ScalarField>| {
+                let mut srs = if d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
+                    // TODO: we should trim it if it's smaller
+                    precomputed_srs::get_srs()
+                } else {
+                    // TODO: we should resume the SRS generation starting from the serialized one
+                    SRS::<G>::create(d1.size())
+                };
 
-        let mut srs = if cs.domain.d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
-            // TODO: we should trim it if it's smaller
-            precomputed_srs::get_srs()
-        } else {
-            // TODO: we should resume the SRS generation starting from the serialized one
-            SRS::<G>::create(cs.domain.d1.size())
-        };
-
-        srs.add_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
-
-        let &endo_q = G::other_curve_endo();
-        ProverIndex::create(cs, endo_q, srs)
+                srs.add_lagrange_basis(d1);
+                srs
+            },
+        )
     }
 
     pub fn new_index_for_test<G: KimchiCurve>(
