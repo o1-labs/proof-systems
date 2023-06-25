@@ -1969,6 +1969,14 @@ pub struct ProofEvaluations<Evals> {
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the EC addition selector polynomial
+    pub complete_add_selector: Evals,
+    /// evaluation of the EC variable base scalar multiplication selector polynomial
+    pub mul_selector: Evals,
+    /// evaluation of the endoscalar multiplication selector polynomial
+    pub emul_selector: Evals,
+    /// evaluation of the endoscalar multiplication scalar computation selector polynomial
+    pub endomul_scalar_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature

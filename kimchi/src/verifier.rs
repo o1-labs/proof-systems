@@ -428,6 +428,10 @@ where
                 Column::Z,
                 Column::Index(GateType::Generic),
                 Column::Index(GateType::Poseidon),
+                Column::Index(GateType::CompleteAdd),
+                Column::Index(GateType::VarBaseMul),
+                Column::Index(GateType::EndoMul),
+                Column::Index(GateType::EndoMulScalar),
             ]
             .into_iter()
             .chain((0..COLUMNS).map(Column::Witness))
@@ -512,6 +516,10 @@ where
         lookup,
         generic_selector,
         poseidon_selector,
+        complete_add_selector,
+        mul_selector,
+        emul_selector,
+        endomul_scalar_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
@@ -550,6 +558,10 @@ where
     }
     check_eval_len(generic_selector)?;
     check_eval_len(poseidon_selector)?;
+    check_eval_len(complete_add_selector)?;
+    check_eval_len(mul_selector)?;
+    check_eval_len(emul_selector)?;
+    check_eval_len(endomul_scalar_selector)?;
 
     Ok(())
 }
@@ -740,6 +752,10 @@ where
         //~~ * index commitments that use the coefficients
         Column::Index(GateType::Generic),
         Column::Index(GateType::Poseidon),
+        Column::Index(GateType::CompleteAdd),
+        Column::Index(GateType::VarBaseMul),
+        Column::Index(GateType::EndoMul),
+        Column::Index(GateType::EndoMulScalar),
     ]
     .into_iter()
     //~~ * witness commitments
