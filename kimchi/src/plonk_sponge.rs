@@ -12,7 +12,9 @@ pub trait FrSponge<Fr: Field> {
     fn new(p: &'static ArithmeticSpongeParams<Fr>) -> Self;
 
     /// Absorbs the field element into the sponge.
-    fn absorb(&mut self, x: &Fr);
+    fn absorb(&mut self, x: &Fr) {
+        self.absorb_multiple(&[*x])
+    }
 
     /// Absorbs a slice of field elements into the sponge.
     fn absorb_multiple(&mut self, x: &[Fr]);
@@ -24,41 +26,7 @@ pub trait FrSponge<Fr: Field> {
     fn digest(self) -> Fr;
 
     /// Absorbs the given evaluations into the sponge.
-    // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>);
-}
-
-impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
-    fn new(params: &'static ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
-        DefaultFrSponge {
-            sponge: ArithmeticSponge::new(params),
-            last_squeezed: vec![],
-        }
-    }
-
-    fn absorb(&mut self, x: &Fr) {
-        self.last_squeezed = vec![];
-        self.sponge.absorb(&[*x]);
-    }
-
-    fn absorb_multiple(&mut self, x: &[Fr]) {
-        self.last_squeezed = vec![];
-        self.sponge.absorb(x);
-    }
-
-    fn challenge(&mut self) -> ScalarChallenge<Fr> {
-        // TODO: why involve sponge_5_wires here?
-        ScalarChallenge(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
-    }
-
-    fn digest(mut self) -> Fr {
-        self.sponge.squeeze()
-    }
-
-    // We absorb all evaluations of the same polynomial at the same time
     fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>>) {
-        self.last_squeezed = vec![];
-
         let ProofEvaluations {
             w,
             z,
@@ -88,8 +56,36 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         }
 
         points.into_iter().for_each(|p| {
-            self.sponge.absorb(&p.zeta);
-            self.sponge.absorb(&p.zeta_omega);
+            self.absorb_multiple(&p.zeta);
+            self.absorb_multiple(&p.zeta_omega);
         })
+    }
+}
+
+impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
+    fn new(params: &'static ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
+        DefaultFrSponge {
+            sponge: ArithmeticSponge::new(params),
+            last_squeezed: vec![],
+        }
+    }
+
+    fn absorb(&mut self, x: &Fr) {
+        self.last_squeezed = vec![];
+        self.sponge.absorb(&[*x]);
+    }
+
+    fn absorb_multiple(&mut self, x: &[Fr]) {
+        self.last_squeezed = vec![];
+        self.sponge.absorb(x);
+    }
+
+    fn challenge(&mut self) -> ScalarChallenge<Fr> {
+        // TODO: why involve sponge_5_wires here?
+        ScalarChallenge(self.squeeze(mina_poseidon::sponge::CHALLENGE_LENGTH_IN_LIMBS))
+    }
+
+    fn digest(mut self) -> Fr {
+        self.sponge.squeeze()
     }
 }

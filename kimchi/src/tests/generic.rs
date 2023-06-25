@@ -124,3 +124,42 @@ fn test_generic_gate_pairing() {
     .prove_and_verify::<BaseSponge, ScalarSponge>()
     .unwrap();
 }
+
+#[cfg(feature = "bn254")]
+#[cfg(feature = "keccak-sponges")]
+#[test]
+fn test_generic_gate_pairing_keccak() {
+    type Fp = ark_bn254::Fr;
+    type BaseSponge =
+        crate::keccak_sponge::Keccak256FqSponge<ark_bn254::Fq, ark_bn254::G1Affine, Fp>;
+    type ScalarSponge = crate::keccak_sponge::Keccak256FrSponge<Fp>;
+
+    use ark_ff::UniformRand;
+    use ark_poly::EvaluationDomain;
+
+    let public = vec![Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+
+    let rng = &mut rand::rngs::OsRng;
+    let x = Fp::rand(rng);
+
+    // create witness
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+    fill_in_witness(0, &mut witness, &public);
+
+    // create and verify proof based on the witness
+    <TestFramework<
+        _,
+        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+    > as Default>::default()
+    .gates(gates)
+    .witness(witness)
+    .public_inputs(public)
+    .setup_with_custom_srs(|d1| {
+        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, d1.size());
+        srs.full_srs.add_lagrange_basis(d1);
+        srs
+    })
+    .prove_and_verify::<BaseSponge, ScalarSponge>()
+    .unwrap();
+}
