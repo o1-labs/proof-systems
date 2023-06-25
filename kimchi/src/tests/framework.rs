@@ -20,15 +20,17 @@ use ark_ff::PrimeField;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
-use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof};
 use std::{fmt::Write, mem, time::Instant};
 
 // aliases
 
 #[derive(Default, Clone)]
-pub(crate) struct TestFramework<G: KimchiCurve>
+pub(crate) struct TestFramework<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>
 where
     G::BaseField: PrimeField,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone,
 {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
@@ -40,19 +42,22 @@ where
     num_prev_challenges: usize,
     disable_gates_checks: bool,
 
-    prover_index: Option<ProverIndex<G, OpeningProof<G>>>,
-    verifier_index: Option<VerifierIndex<G, OpeningProof<G>>>,
+    prover_index: Option<ProverIndex<G, OpeningProof>>,
+    verifier_index: Option<VerifierIndex<G, OpeningProof>>,
 }
 
 #[derive(Clone)]
-pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>)
-where
-    G::BaseField: PrimeField;
-
-impl<G: KimchiCurve> TestFramework<G>
+pub(crate) struct TestRunner<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>(TestFramework<G, OpeningProof>)
 where
     G::BaseField: PrimeField,
-    G::ScalarField: PrimeField,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone;
+
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestFramework<G, OpeningProof>
+where
+    G::BaseField: PrimeField,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone,
 {
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
@@ -98,7 +103,12 @@ where
         self.disable_gates_checks = disable_gates_checks;
         self
     }
+}
 
+impl<G: KimchiCurve> TestFramework<G>
+where
+    G::BaseField: PrimeField,
+{
     /// creates the indexes
     #[must_use]
     pub(crate) fn setup(mut self) -> TestRunner<G> {
@@ -127,10 +137,12 @@ where
     }
 }
 
-impl<G: KimchiCurve> TestRunner<G>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestRunner<G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone,
 {
     #[must_use]
     pub(crate) fn runtime_tables(
@@ -153,7 +165,7 @@ where
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof<G>> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -192,7 +204,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge, OpeningProof<G>>(
+        verify::<G, EFqSponge, EFrSponge, OpeningProof>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

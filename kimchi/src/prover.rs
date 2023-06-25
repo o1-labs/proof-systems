@@ -47,7 +47,6 @@ use poly_commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
     evaluation_proof::DensePolynomialOrEvaluations,
-    srs::SRS,
     OpenProof, SRS as _,
 };
 use rayon::prelude::*;
@@ -117,7 +116,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G, SRS = SRS<G>>> ProverProof<G, OpeningProof>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
 where
     G::BaseField: PrimeField,
 {
@@ -175,7 +174,7 @@ where
 
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_degree() < d1_size {
+        if index.srs.max_poly_size() < d1_size {
             return Err(ProverError::SRSTooSmall);
         }
 
@@ -850,7 +849,7 @@ where
                 t_comm
                     .commitment
                     .unshifted
-                    .push(index.srs.h.mul(w).into_affine());
+                    .push(index.srs.blinding_commitment().mul(w).into_affine());
                 t_comm.blinders.unshifted.push(w);
             }
             t_comm

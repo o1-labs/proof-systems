@@ -28,6 +28,9 @@ pub trait SRS<G: CommitmentCurve> {
     /// Retrieve the precomputed Lagrange basis for the given domain size
     fn get_lagrange_basis(&self, domain_size: usize) -> Option<&Vec<PolyComm<G>>>;
 
+    /// Get the group element used for blinding commitments
+    fn blinding_commitment(&self) -> G;
+
     /// Commits a polynomial, potentially splitting the result in multiple commitments.
     fn commit(
         &self,
