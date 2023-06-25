@@ -389,7 +389,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
     pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
     ) -> G::BaseField {
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
         // We fully expand this to make the compiler check that we aren't missing any commitments
         let VerifierIndex {
             domain: _,

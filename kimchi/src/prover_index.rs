@@ -141,7 +141,6 @@ pub mod testing {
         precomputed_srs,
     };
     use ark_ff::{PrimeField, SquareRootField};
-    use poly_commitment::srs::endos;
 
     /// Create new index for lookups.
     ///
@@ -181,7 +180,7 @@ pub mod testing {
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
-        let (endo_q, _endo_r) = endos::<G::OtherCurve>();
+        let &endo_q = G::other_curve_endo();
         ProverIndex::<G>::create(cs, endo_q, srs)
     }
 

@@ -120,7 +120,7 @@ where
         let (_, endo_r) = G::endos();
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
         let verifier_index_digest = index.digest::<EFqSponge>();

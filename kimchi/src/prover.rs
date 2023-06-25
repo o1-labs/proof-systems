@@ -215,7 +215,7 @@ where
 
         //~ 1. Setup the Fq-Sponge.
         internal_tracing::checkpoint!(internal_traces; set_up_fq_sponge);
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
         let verifier_index_digest = index.verifier_index_digest::<EFqSponge>();
