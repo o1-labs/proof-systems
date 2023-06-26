@@ -1146,22 +1146,22 @@ where
         polynomials.push((
             evaluations_form(&index.column_evaluations.complete_add_selector4),
             None,
-            non_hiding(1),
+            fixed_hiding(1),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.mul_selector8),
             None,
-            non_hiding(1),
+            fixed_hiding(1),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.emul_selector8),
             None,
-            non_hiding(1),
+            fixed_hiding(1),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
             None,
-            non_hiding(1),
+            fixed_hiding(1),
         ));
         polynomials.extend(
             witness_poly
