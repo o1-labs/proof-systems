@@ -295,55 +295,6 @@ impl<Eval> ProofEvaluations<Eval> {
     }
 }
 
-impl<F> ProofEvaluations<F> {
-    /// Transpose the `ProofEvaluations`.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `ProofEvaluation` is None.
-    pub fn transpose<const N: usize>(
-        evals: [&ProofEvaluations<F>; N],
-    ) -> ProofEvaluations<[&F; N]> {
-        let has_lookup = evals.iter().all(|e| e.lookup.is_some());
-        let has_runtime = has_lookup
-            && evals
-                .iter()
-                .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
-
-        ProofEvaluations {
-            generic_selector: array::from_fn(|i| &evals[i].generic_selector),
-            poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
-            complete_add_selector: array::from_fn(|i| &evals[i].complete_add_selector),
-            mul_selector: array::from_fn(|i| &evals[i].mul_selector),
-            emul_selector: array::from_fn(|i| &evals[i].emul_selector),
-            endomul_scalar_selector: array::from_fn(|i| &evals[i].endomul_scalar_selector),
-            z: array::from_fn(|i| &evals[i].z),
-            w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
-            s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
-            coefficients: array::from_fn(|j| array::from_fn(|i| &evals[i].coefficients[j])),
-            lookup: if has_lookup {
-                let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
-                Some(LookupEvaluations {
-                    aggreg: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
-                    table: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().table),
-                    sorted: (0..sorted_length)
-                        .map(|j| array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
-                        .collect(),
-                    runtime: if has_runtime {
-                        Some(array::from_fn(|i| {
-                            evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
-                        }))
-                    } else {
-                        None
-                    },
-                })
-            } else {
-                None
-            },
-        }
-    }
-}
-
 impl<G: AffineCurve> RecursionChallenge<G> {
     pub fn new(chals: Vec<G::ScalarField>, comm: PolyComm<G>) -> RecursionChallenge<G> {
         RecursionChallenge { chals, comm }
