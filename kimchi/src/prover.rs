@@ -965,6 +965,37 @@ where
             endomul_scalar_selector: chunked_evals_for_selector(
                 &index.column_evaluations.endomul_scalar_selector8,
             ),
+
+            range_check0_selector: index
+                .column_evaluations
+                .range_check0_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            range_check1_selector: index
+                .column_evaluations
+                .range_check1_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            foreign_field_add_selector: index
+                .column_evaluations
+                .foreign_field_add_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            foreign_field_mul_selector: index
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            xor_selector: index
+                .column_evaluations
+                .xor_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            rot_selector: index
+                .column_evaluations
+                .rot_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);

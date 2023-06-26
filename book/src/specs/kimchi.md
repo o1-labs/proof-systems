@@ -1977,6 +1977,20 @@ pub struct ProofEvaluations<Evals> {
     pub emul_selector: Evals,
     /// evaluation of the endoscalar multiplication scalar computation selector polynomial
     pub endomul_scalar_selector: Evals,
+
+    // Optional gates
+    /// evaluation of the RangeCheck0 selector polynomial
+    pub range_check0_selector: Option<Evals>,
+    /// evaluation of the RangeCheck1 selector polynomial
+    pub range_check1_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldAdd selector polynomial
+    pub foreign_field_add_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul selector polynomial
+    pub foreign_field_mul_selector: Option<Evals>,
+    /// evaluation of the Xor selector polynomial
+    pub xor_selector: Option<Evals>,
+    /// evaluation of the Rot selector polynomial
+    pub rot_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature

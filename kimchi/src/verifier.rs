@@ -520,6 +520,12 @@ where
         mul_selector,
         emul_selector,
         endomul_scalar_selector,
+        range_check0_selector,
+        range_check1_selector,
+        foreign_field_add_selector,
+        foreign_field_mul_selector,
+        xor_selector,
+        rot_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
@@ -562,6 +568,27 @@ where
     check_eval_len(mul_selector)?;
     check_eval_len(emul_selector)?;
     check_eval_len(endomul_scalar_selector)?;
+
+    // Optional gates
+
+    if let Some(range_check0_selector) = range_check0_selector {
+        check_eval_len(range_check0_selector)?
+    }
+    if let Some(range_check1_selector) = range_check1_selector {
+        check_eval_len(range_check1_selector)?
+    }
+    if let Some(foreign_field_add_selector) = foreign_field_add_selector {
+        check_eval_len(foreign_field_add_selector)?
+    }
+    if let Some(foreign_field_mul_selector) = foreign_field_mul_selector {
+        check_eval_len(foreign_field_mul_selector)?
+    }
+    if let Some(xor_selector) = xor_selector {
+        check_eval_len(xor_selector)?
+    }
+    if let Some(rot_selector) = rot_selector {
+        check_eval_len(rot_selector)?
+    }
 
     Ok(())
 }
