@@ -2216,6 +2216,7 @@ The prover then follows the following steps to create the proof:
 	* the poseidon selector
 	* the 15 registers/witness columns
 	* the 6 sigmas
+	* the optional gates
 	* optionally, the runtime table
 1. if using lookup:
 	* add the lookup sorted polynomials
@@ -2312,6 +2313,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	* witness commitments
 	* coefficient commitments
 	* sigma commitments
+	* optional gate commitments
 	* lookup commitments
 
 #### Batch verification of proofs

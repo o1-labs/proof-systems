@@ -437,6 +437,36 @@ where
             .chain((0..COLUMNS).map(Column::Witness))
             .chain((0..COLUMNS).map(Column::Coefficient))
             .chain((0..PERMUTS - 1).map(Column::Permutation))
+            .chain(if index.range_check0_comm.is_some() {
+                Some(Column::Index(GateType::RangeCheck0))
+            } else {
+                None
+            })
+            .chain(if index.range_check1_comm.is_some() {
+                Some(Column::Index(GateType::RangeCheck1))
+            } else {
+                None
+            })
+            .chain(if index.foreign_field_add_comm.is_some() {
+                Some(Column::Index(GateType::ForeignFieldAdd))
+            } else {
+                None
+            })
+            .chain(if index.foreign_field_mul_comm.is_some() {
+                Some(Column::Index(GateType::ForeignFieldMul))
+            } else {
+                None
+            })
+            .chain(if index.xor_comm.is_some() {
+                Some(Column::Index(GateType::Xor16))
+            } else {
+                None
+            })
+            .chain(if index.rot_comm.is_some() {
+                Some(Column::Index(GateType::Rot64))
+            } else {
+                None
+            })
             .chain(
                 index
                     .lookup_index
@@ -791,6 +821,37 @@ where
     .chain((0..COLUMNS).map(Column::Coefficient))
     //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
+    //~~ * optional gate commitments
+    .chain(if verifier_index.range_check0_comm.is_some() {
+        Some(Column::Index(GateType::RangeCheck0))
+    } else {
+        None
+    })
+    .chain(if verifier_index.range_check1_comm.is_some() {
+        Some(Column::Index(GateType::RangeCheck1))
+    } else {
+        None
+    })
+    .chain(if verifier_index.foreign_field_add_comm.is_some() {
+        Some(Column::Index(GateType::ForeignFieldAdd))
+    } else {
+        None
+    })
+    .chain(if verifier_index.foreign_field_mul_comm.is_some() {
+        Some(Column::Index(GateType::ForeignFieldMul))
+    } else {
+        None
+    })
+    .chain(if verifier_index.xor_comm.is_some() {
+        Some(Column::Index(GateType::Xor16))
+    } else {
+        None
+    })
+    .chain(if verifier_index.rot_comm.is_some() {
+        Some(Column::Index(GateType::Rot64))
+    } else {
+        None
+    })
     //~~ * lookup commitments
     //~
     .chain(
