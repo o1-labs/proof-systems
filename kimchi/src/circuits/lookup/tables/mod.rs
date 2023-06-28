@@ -22,7 +22,7 @@ pub enum GateLookupTable {
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LookupTable<F> {
     pub id: i32,
     pub data: Vec<Vec<F>>,
