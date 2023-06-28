@@ -1346,25 +1346,25 @@ which is doable with the constraints in a `RangeCheck0` gate. Since our current 
 is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
 and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
 
-| Gate   | `Rot64`             | `RangeCheck0`    |
-| ------ | ------------------- | ---------------- |
-| Column | `Curr`              | `Next`           |
-| ------ | ------------------- | ---------------- |
-|      0 | copy `word`         |`shifted`         |
-|      1 | copy `rotated`      | 0                |
-|      2 |      `excess`       | 0                |
-|      3 |      `bound_limb0`  | `shifted_limb0`  |
-|      4 |      `bound_limb1`  | `shifted_limb1`  |
-|      5 |      `bound_limb2`  | `shifted_limb2`  |
-|      6 |      `bound_limb3`  | `shifted_limb3`  |
-|      7 |      `bound_crumb0` | `shifted_crumb0` |
-|      8 |      `bound_crumb1` | `shifted_crumb1` |
-|      9 |      `bound_crumb2` | `shifted_crumb2` |
-|     10 |      `bound_crumb3` | `shifted_crumb3` |
-|     11 |      `bound_crumb4` | `shifted_crumb4` |
-|     12 |      `bound_crumb5` | `shifted_crumb5` |
-|     13 |      `bound_crumb6` | `shifted_crumb6` |
-|     14 |      `bound_crumb7` | `shifted_crumb7` |
+| Gate   | `Rot64`             | `RangeCheck0` gadgets (designer's duty)                   |
+| ------ | ------------------- | --------------------------------------------------------- |
+| Column | `Curr`              | `Next`           | `Next` + 1      | `Next`+ 2, if needed |
+| ------ | ------------------- | ---------------- | --------------- | -------------------- |
+|      0 | copy `word`         |`shifted`         |   copy `excess` |    copy      `word`  |
+|      1 | copy `rotated`      | 0                |              0  |                  0   |
+|      2 |      `excess`       | 0                |              0  |                  0   |
+|      3 |      `bound_limb0`  | `shifted_limb0`  |  `excess_limb0` |        `word_limb0`  |
+|      4 |      `bound_limb1`  | `shifted_limb1`  |  `excess_limb1` |        `word_limb1`  |
+|      5 |      `bound_limb2`  | `shifted_limb2`  |  `excess_limb2` |        `word_limb2`  |
+|      6 |      `bound_limb3`  | `shifted_limb3`  |  `excess_limb3` |        `word_limb3`  |
+|      7 |      `bound_crumb0` | `shifted_crumb0` | `excess_crumb0` |       `word_crumb0`  |
+|      8 |      `bound_crumb1` | `shifted_crumb1` | `excess_crumb1` |       `word_crumb1`  |
+|      9 |      `bound_crumb2` | `shifted_crumb2` | `excess_crumb2` |       `word_crumb2`  |
+|     10 |      `bound_crumb3` | `shifted_crumb3` | `excess_crumb3` |       `word_crumb3`  |
+|     11 |      `bound_crumb4` | `shifted_crumb4` | `excess_crumb4` |       `word_crumb4`  |
+|     12 |      `bound_crumb5` | `shifted_crumb5` | `excess_crumb5` |       `word_crumb5`  |
+|     13 |      `bound_crumb6` | `shifted_crumb6` | `excess_crumb6` |       `word_crumb6`  |
+|     14 |      `bound_crumb7` | `shifted_crumb7` | `excess_crumb7` |       `word_crumb7`  |
 
 In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
 to perform the rotation are fixed, public, and known in advance, according to the following table,

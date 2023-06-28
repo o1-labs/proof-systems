@@ -246,11 +246,17 @@ fn test_bad_constraints() {
 
     // modify excess
     witness[2][1] += PallasField::one();
+    witness[0][3] += PallasField::one();
     assert_eq!(
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Rot64, 9))
     );
+    assert_eq!(
+        cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+    );
     witness[2][1] -= PallasField::one();
+    witness[0][3] -= PallasField::one();
 
     // modify shifted
     witness[0][2] += PallasField::one();
@@ -262,6 +268,7 @@ fn test_bad_constraints() {
         cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
     );
+    witness[0][2] -= PallasField::one();
 
     // modify value of shifted to be more than 64 bits
     witness[0][2] += PallasField::two_pow(64);
@@ -278,6 +285,27 @@ fn test_bad_constraints() {
             typ: GateType::RangeCheck0,
             src: Wire { row: 2, col: 2 },
             dst: Wire { row: 0, col: 0 }
+        })
+    );
+    witness[2][2] -= PallasField::one();
+    witness[0][2] -= PallasField::two_pow(64);
+
+    // modify value of excess to be more than 64 bits
+    witness[0][3] += PallasField::two_pow(64);
+    witness[2][1] += PallasField::two_pow(64);
+    assert_eq!(
+        cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+    );
+    // Update decomposition
+    witness[2][3] += PallasField::one();
+    // Make sure the 64-bit check fails
+    assert_eq!(
+        cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
+        Err(CircuitGateError::CopyConstraint {
+            typ: GateType::RangeCheck0,
+            src: Wire { row: 3, col: 2 },
+            dst: Wire { row: 2, col: 2 }
         })
     );
 }
