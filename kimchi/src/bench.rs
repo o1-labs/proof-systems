@@ -21,8 +21,8 @@ use poly_commitment::commitment::CommitmentCurve;
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+pub type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
+pub type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 pub struct BenchmarkCtx {
     num_gates: usize,

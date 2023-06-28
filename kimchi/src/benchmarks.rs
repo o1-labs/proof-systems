@@ -140,6 +140,8 @@ fn test() {
     let wiring = update_array(Wire::for_row(0), 0, Wire { row: last, col: 0 });
     let wiring = update_array(wiring, 1, Wire { row: last, col: 1 });
     let wiring = update_array(wiring, 2, Wire { row: last, col: 2 });
+    //to remove this wiring
+    // let wiring = Wire::for_row(0);
     gates.push(CircuitGate::create_generic_gadget(
         wiring,
         GenericGateSpec::Pub,
@@ -166,6 +168,8 @@ fn test() {
             let pre = update_array(pre, 1, Wire { row, col: 1 });
             update_array(pre, 2, Wire { row, col: 2 })
         };
+        //to remove this wiring
+        // let preimage = Wire::for_row(row);
         let image = Wire::for_row(last_row);
         let (poseidon, _) =
             CircuitGate::<Fp>::create_poseidon_gadget(row, [preimage, image], round_constants);
@@ -189,16 +193,16 @@ fn test() {
     let param = Vesta::sponge_params();
     for i in 0..CHAIN_LEN {
         let w = &witness;
-        // let input = if i.is_zero() {
+        // let input = if i.is_zero()
         // input
         let input = { [&w[0], &w[1], &w[2]].map(|c| c[(POS_ROWS_PER_HASH + 1) * i + 1]) };
         let row = i * (POS_ROWS_PER_HASH + 1) + 2;
         generate_witness(row, param, &mut witness, input);
         let cr = row + POS_ROWS_PER_HASH;
         //do it at the start
-        witness[0][cr] = witness[0][cr - 1];
-        witness[1][cr] = witness[1][cr - 1];
-        witness[2][cr] = witness[2][cr - 1];
+        // witness[0][cr] = witness[0][cr - 1];
+        // witness[1][cr] = witness[1][cr - 1];
+        // witness[2][cr] = witness[2][cr - 1];
     }
     let last = witness[0].len() - 1;
     println!("last: {last}");
