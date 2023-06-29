@@ -437,32 +437,32 @@ where
             .chain((0..COLUMNS).map(Column::Witness))
             .chain((0..COLUMNS).map(Column::Coefficient))
             .chain((0..PERMUTS - 1).map(Column::Permutation))
-            .chain(if index.range_check0_comm.is_some() {
+            .chain(if self.evals.range_check0_selector.is_some() {
                 Some(Column::Index(GateType::RangeCheck0))
             } else {
                 None
             })
-            .chain(if index.range_check1_comm.is_some() {
+            .chain(if self.evals.range_check1_selector.is_some() {
                 Some(Column::Index(GateType::RangeCheck1))
             } else {
                 None
             })
-            .chain(if index.foreign_field_add_comm.is_some() {
+            .chain(if self.evals.foreign_field_add_selector.is_some() {
                 Some(Column::Index(GateType::ForeignFieldAdd))
             } else {
                 None
             })
-            .chain(if index.foreign_field_mul_comm.is_some() {
+            .chain(if self.evals.foreign_field_mul_selector.is_some() {
                 Some(Column::Index(GateType::ForeignFieldMul))
             } else {
                 None
             })
-            .chain(if index.xor_comm.is_some() {
+            .chain(if self.evals.xor_selector.is_some() {
                 Some(Column::Index(GateType::Xor16))
             } else {
                 None
             })
-            .chain(if index.rot_comm.is_some() {
+            .chain(if self.evals.rot_selector.is_some() {
                 Some(Column::Index(GateType::Rot64))
             } else {
                 None
