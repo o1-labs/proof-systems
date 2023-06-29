@@ -92,6 +92,7 @@ fn all_benches(c: &mut Criterion) {
     let benches = new_benchmark::<Compiling>();
     let benches = benches.add::<Proving>();
     let benches = benches.add::<Verifying>();
+    let benches = benches.add::<HashChain>();
     //add a line here to add your benchmark
 
     benches.run(c, &params);
