@@ -125,7 +125,7 @@ pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
             + left_input(1) * right_input(0)
             + quotient(0) * neg_foreign_field_modulus(1)
             + quotient(1) * neg_foreign_field_modulus(0),
-        // p2 = a0 * b2 + a2 * b0 + a1 * b1 - q0 * f'2 + q2 * f'0 + q1 * f'1
+        // p2 = a0 * b2 + a2 * b0 + a1 * b1 + q0 * f'2 + q2 * f'0 + q1 * f'1
         left_input(0) * right_input(2)
             + left_input(2) * right_input(0)
             + left_input(1) * right_input(1)
