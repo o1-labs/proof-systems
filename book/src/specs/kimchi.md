@@ -1931,22 +1931,6 @@ pub struct PointEvaluations<Evals> {
     pub zeta_omega: Evals,
 }
 
-/// Evaluations of lookup polynomials
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LookupEvaluations<Evals> {
-    /// sorted lookup table polynomial
-    pub sorted: Vec<Evals>,
-    /// lookup aggregation polynomial
-    pub aggreg: Evals,
-    // TODO: May be possible to optimize this away?
-    /// lookup table polynomial
-    pub table: Evals,
-
-    /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Evals>,
-}
-
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
@@ -1963,8 +1947,6 @@ pub struct ProofEvaluations<Evals> {
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
     pub coefficients: [Evals; COLUMNS],
-    /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
@@ -1991,6 +1973,16 @@ pub struct ProofEvaluations<Evals> {
     pub xor_selector: Option<Evals>,
     /// evaluation of the Rot selector polynomial
     pub rot_selector: Option<Evals>,
+
+    // lookup-related evaluations
+    /// evaluation of lookup aggregation polynomial
+    pub lookup_aggregation: Option<Evals>,
+    /// evaluation of lookup table polynomial
+    pub lookup_table: Option<Evals>,
+    /// evaluation of lookup sorted polynomials
+    pub lookup_sorted: [Option<Evals>; 5],
+    /// evaluation of runtime lookup table polynomial
+    pub runtime_lookup_table: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature

@@ -662,17 +662,21 @@ impl Variable {
     ) -> Result<F, ExprError> {
         let point_evaluations = {
             use Column::*;
-            let l = evals
-                .lookup
-                .as_ref()
-                .ok_or(ExprError::LookupShouldNotBeUsed);
             match self.col {
                 Witness(i) => Ok(evals.w[i]),
                 Z => Ok(evals.z),
-                LookupSorted(i) => l.map(|l| l.sorted[i]),
-                LookupAggreg => l.map(|l| l.aggreg),
-                LookupTable => l.map(|l| l.table),
-                LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
+                LookupSorted(i) => {
+                    evals.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(self.col))
+                }
+                LookupAggreg => evals
+                    .lookup_aggregation
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                LookupTable => evals
+                    .lookup_table
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                LookupRuntimeTable => evals
+                    .runtime_lookup_table
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
                 Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
                 Index(GateType::Generic) => Ok(evals.generic_selector),
                 Index(GateType::CompleteAdd) => Ok(evals.complete_add_selector),

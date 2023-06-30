@@ -15,9 +15,7 @@ use crate::{
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{
-        LookupEvaluations, PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge,
-    },
+    proof::{PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
@@ -543,7 +541,6 @@ where
         z,
         s,
         coefficients,
-        lookup,
         generic_selector,
         poseidon_selector,
         complete_add_selector,
@@ -556,6 +553,10 @@ where
         foreign_field_mul_selector,
         xor_selector,
         rot_selector,
+        lookup_aggregation,
+        lookup_table,
+        lookup_sorted,
+        runtime_lookup_table,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
@@ -576,22 +577,23 @@ where
     for coeff in coefficients {
         check_eval_len(coeff)?;
     }
-    if let Some(LookupEvaluations {
-        sorted,
-        aggreg,
-        table,
-        runtime,
-    }) = lookup
-    {
-        for sorted_i in sorted {
-            check_eval_len(sorted_i)?;
-        }
-        check_eval_len(aggreg)?;
-        check_eval_len(table)?;
-        if let Some(runtime) = &runtime {
-            check_eval_len(runtime)?;
+
+    // Lookup evaluations
+    for sorted in lookup_sorted {
+        if let Some(sorted) = sorted {
+            check_eval_len(sorted)?;
         }
     }
+    if let Some(lookup_aggregation) = lookup_aggregation {
+        check_eval_len(lookup_aggregation)?;
+    }
+    if let Some(lookup_table) = lookup_table {
+        check_eval_len(lookup_table)?;
+    }
+    if let Some(runtime_lookup_table) = runtime_lookup_table {
+        check_eval_len(runtime_lookup_table)?;
+    }
+
     check_eval_len(generic_selector)?;
     check_eval_len(poseidon_selector)?;
     check_eval_len(complete_add_selector)?;
@@ -888,11 +890,13 @@ where
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupCommitmentMissing)?;
-        let lookup_eval = proof
+
+        let lookup_table = proof
             .evals
-            .lookup
+            .lookup_table
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
+        let runtime_lookup_table = proof.evals.runtime_lookup_table.as_ref();
 
         // compute table commitment
         let table_comm = {
@@ -917,10 +921,7 @@ where
         // add evaluation of the table polynomial
         evaluations.push(Evaluation {
             commitment: table_comm,
-            evaluations: vec![
-                lookup_eval.table.zeta.clone(),
-                lookup_eval.table.zeta_omega.clone(),
-            ],
+            evaluations: vec![lookup_table.zeta.clone(), lookup_table.zeta_omega.clone()],
             degree_bound: None,
         });
 
@@ -930,8 +931,7 @@ where
                 .runtime
                 .as_ref()
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
-            let runtime_eval = lookup_eval
-                .runtime
+            let runtime_eval = runtime_lookup_table
                 .as_ref()
                 .map(|x| x.map_ref(&|x| x.clone()))
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
