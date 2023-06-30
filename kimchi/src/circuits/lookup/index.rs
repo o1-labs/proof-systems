@@ -1,4 +1,4 @@
-use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
+use super::runtime_tables::{CustomRuntimeTableSpec, RuntimeTableCfg, RuntimeTableSpec};
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::CircuitGate,
@@ -275,7 +275,9 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                                     let indexes = (0..(len as u32)).map(F::from).collect();
                                     (id, indexes)
                                 }
-                                Custom { id, first_column } => (*id, first_column.clone()),
+                                Custom(CustomRuntimeTableSpec { id, first_column }) => {
+                                    (*id, first_column.clone())
+                                }
                             };
 
                             // record if table ID 0 is used in one of the runtime tables

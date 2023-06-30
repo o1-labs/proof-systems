@@ -20,6 +20,14 @@ pub struct RuntimeTableSpec {
     pub len: usize,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CustomRuntimeTableSpec<F> {
+    /// The table ID.
+    pub id: i32,
+    /// The content of the first column of the runtime table.
+    pub first_column: Vec<F>,
+}
+
 /// Use this type at setup time, to list all the runtime tables.
 ///
 /// Note: care must be taken as table IDs can collide with IDs of other types of lookup tables.
@@ -28,12 +36,7 @@ pub enum RuntimeTableCfg<F> {
     /// An indexed runtime table has a counter (starting at zero) in its first column.
     Indexed(RuntimeTableSpec),
     /// A custom runtime table can contain arbitrary values in its first column.
-    Custom {
-        /// The table ID.
-        id: i32,
-        /// The content of the first column of the runtime table.
-        first_column: Vec<F>,
-    },
+    Custom(CustomRuntimeTableSpec<F>),
 }
 
 impl<F> RuntimeTableCfg<F> {
@@ -42,7 +45,7 @@ impl<F> RuntimeTableCfg<F> {
         use RuntimeTableCfg::{Custom, Indexed};
         match self {
             Indexed(cfg) => cfg.id,
-            &Custom { id, .. } => id,
+            Custom(cfg) => cfg.id,
         }
     }
 
@@ -51,7 +54,7 @@ impl<F> RuntimeTableCfg<F> {
         use RuntimeTableCfg::{Custom, Indexed};
         match self {
             Indexed(cfg) => cfg.len,
-            Custom { first_column, .. } => first_column.len(),
+            Custom(cfg) => cfg.first_column.len(),
         }
     }
 
@@ -60,7 +63,7 @@ impl<F> RuntimeTableCfg<F> {
         use RuntimeTableCfg::{Custom, Indexed};
         match self {
             Indexed(cfg) => cfg.len == 0,
-            Custom { first_column, .. } => first_column.is_empty(),
+            Custom(cfg) => cfg.first_column.is_empty(),
         }
     }
 }
@@ -70,7 +73,7 @@ impl<F> From<RuntimeTableCfg<F>> for RuntimeTableSpec {
         use RuntimeTableCfg::{Custom, Indexed};
         match from {
             Indexed(cfg) => cfg,
-            Custom { id, first_column } => RuntimeTableSpec {
+            Custom(CustomRuntimeTableSpec { id, first_column }) => RuntimeTableSpec {
                 id,
                 len: first_column.len(),
             },
@@ -107,7 +110,8 @@ where
 
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
-    use super::RuntimeTable;
+    use super::{CustomRuntimeTableSpec, RuntimeTable, RuntimeTableCfg, RuntimeTableSpec};
+
     use ark_ff::PrimeField;
 
     //
@@ -142,6 +146,126 @@ pub mod caml {
             Self {
                 id: caml_rt.id,
                 data: caml_rt.data.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRuntimeTableSpec {
+        pub id: i32,
+        pub len: usize,
+    }
+
+    // TODO: check if it is necessary. The conversion is done below for RuntimeTableCfg
+    impl From<RuntimeTableSpec> for CamlRuntimeTableSpec {
+        fn from(rt_spec: RuntimeTableSpec) -> Self {
+            Self {
+                id: rt_spec.id,
+                len: rt_spec.len,
+            }
+        }
+    }
+
+    impl From<CamlRuntimeTableSpec> for RuntimeTableSpec {
+        fn from(caml_rt_spec: CamlRuntimeTableSpec) -> Self {
+            Self {
+                id: caml_rt_spec.id,
+                len: caml_rt_spec.len,
+            }
+        }
+    }
+
+    // CamlCustomRuntimetableSpec
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlCustomRuntimeTableSpec<CamlF> {
+        pub id: i32,
+        pub first_column: Vec<CamlF>,
+    }
+
+    // CamlCustomRuntimeTableSpec <--> CustomRuntimeTableSpec
+    // TODO: check if it is necessary. The conversion is done below for RuntimeTableCfg
+    impl<F, CamlF> From<CustomRuntimeTableSpec<F>> for CamlCustomRuntimeTableSpec<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(custom_rt_spec: CustomRuntimeTableSpec<F>) -> Self {
+            Self {
+                id: custom_rt_spec.id,
+                first_column: custom_rt_spec
+                    .first_column
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<CamlCustomRuntimeTableSpec<CamlF>> for CustomRuntimeTableSpec<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_custom_rt_spec: CamlCustomRuntimeTableSpec<CamlF>) -> Self {
+            Self {
+                id: caml_custom_rt_spec.id,
+                first_column: caml_custom_rt_spec
+                    .first_column
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            }
+        }
+    }
+
+    // CamlRuntimeTableCfg
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)]
+    pub enum CamlRuntimeTableCfg<CamlF> {
+        Indexed(CamlRuntimeTableSpec),
+        Custom(CamlCustomRuntimeTableSpec<CamlF>),
+    }
+
+    // CamlRuntimeTableCfg <--> RuntimeTableCfg
+    impl<F, CamlF> From<CamlRuntimeTableCfg<CamlF>> for RuntimeTableCfg<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_runtime_table_cfg: CamlRuntimeTableCfg<CamlF>) -> Self {
+            match caml_runtime_table_cfg {
+                CamlRuntimeTableCfg::Indexed(cfg) => RuntimeTableCfg::Indexed(RuntimeTableSpec {
+                    id: cfg.id,
+                    len: cfg.len,
+                }),
+                CamlRuntimeTableCfg::Custom(cfg) => {
+                    RuntimeTableCfg::Custom(CustomRuntimeTableSpec {
+                        id: cfg.id,
+                        first_column: cfg.first_column.into_iter().map(Into::into).collect(),
+                    })
+                }
+            }
+        }
+    }
+
+    impl<F, CamlF> From<RuntimeTableCfg<F>> for CamlRuntimeTableCfg<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(runtime_table_cfg: RuntimeTableCfg<F>) -> Self {
+            match runtime_table_cfg {
+                RuntimeTableCfg::Indexed(cfg) => {
+                    CamlRuntimeTableCfg::Indexed(CamlRuntimeTableSpec {
+                        id: cfg.id,
+                        len: cfg.len,
+                    })
+                }
+                RuntimeTableCfg::Custom(cfg) => {
+                    CamlRuntimeTableCfg::Custom(CamlCustomRuntimeTableSpec {
+                        id: cfg.id,
+                        first_column: cfg.first_column.into_iter().map(Into::into).collect(),
+                    })
+                }
             }
         }
     }

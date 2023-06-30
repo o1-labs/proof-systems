@@ -2,7 +2,7 @@ use super::framework::{print_witness, TestFramework};
 use crate::circuits::{
     gate::{CircuitGate, GateType},
     lookup::{
-        runtime_tables::{RuntimeTable, RuntimeTableCfg, RuntimeTableSpec},
+        runtime_tables::{CustomRuntimeTableSpec, RuntimeTable, RuntimeTableCfg, RuntimeTableSpec},
         tables::LookupTable,
     },
     polynomial::COLUMNS,
@@ -135,10 +135,10 @@ fn runtime_table(num: usize, indexed: bool) {
                 len: 5,
             })
         } else {
-            RuntimeTableCfg::Custom {
+            RuntimeTableCfg::Custom(CustomRuntimeTableSpec {
                 id: table_id as i32,
                 first_column: [8u32, 9, 8, 7, 1].into_iter().map(Into::into).collect(),
-            }
+            })
         };
         runtime_tables_setup.push(cfg);
     }
