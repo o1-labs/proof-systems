@@ -1285,7 +1285,7 @@ The foreign field multiplication gate's rows are laid out like this
 |   0 | `left_input0`         (copy) | `remainder0`       (copy) |
 |   1 | `left_input1`         (copy) | `remainder1`       (copy) |
 |   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-|   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
+|   3 | `right_input0`        (copy) | `quotient12`       (copy) |
 |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
@@ -1295,8 +1295,8 @@ The foreign field multiplication gate's rows are laid out like this
 |  10 | `quotient1`                  |                           |
 |  11 | `quotient2`                  |                           |
 |  12 | `quotient_bound_carry`       |                           |
-|  13 | `product1_hi_1`              |                           |
-|  14 |                              |                           |
+|  13 | `quotient_bound01`           |                           |
+|  14 | `product1_hi_1`              |                           |
 
 
 

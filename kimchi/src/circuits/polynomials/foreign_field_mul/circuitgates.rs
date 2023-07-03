@@ -76,7 +76,7 @@
 //~ |   0 | `left_input0`         (copy) | `remainder0`       (copy) |
 //~ |   1 | `left_input1`         (copy) | `remainder1`       (copy) |
 //~ |   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-//~ |   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
+//~ |   3 | `right_input0`        (copy) | `quotient12`       (copy) |
 //~ |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 //~ |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 //~ |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
@@ -86,8 +86,8 @@
 //~ |  10 | `quotient1`                  |                           |
 //~ |  11 | `quotient2`                  |                           |
 //~ |  12 | `quotient_bound_carry`       |                           |
-//~ |  13 | `product1_hi_1`              |                           |
-//~ |  14 |                              |                           |
+//~ |  13 | `quotient_bound01`           |                           |
+//~ |  14 | `product1_hi_1`              |                           |
 //~
 
 use crate::{
@@ -100,6 +100,179 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use std::{array, marker::PhantomData};
+
+// ForeignFieldMul - foreign field multiplication gate
+///    * This gate operates on the Curr and Next rows
+///    * It uses copy, plookup, crumb and custom constraints
+#[derive(Default)]
+pub struct ForeignFieldMul<F>(PhantomData<F>);
+
+impl<F> Argument<F> for ForeignFieldMul<F>
+where
+    F: PrimeField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
+    const CONSTRAINTS: u32 = 10;
+    // DEGREE is 4
+
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+        let mut constraints = vec![];
+
+        //
+        // Define some helper variables to refer to the witness elements
+        // described in the layout.  Note that the limbs below are
+        // defined with least significant bits in lower limbs indexes.
+        //
+
+        // Left multiplicand a
+        let left_input = [
+            // Copied for multi-range-check
+            env.witness_curr(0),
+            env.witness_curr(1),
+            env.witness_curr(2),
+        ];
+
+        // Right multiplicand b
+        let right_input = [
+            // Copied for multi-range-check
+            env.witness_curr(3),
+            env.witness_curr(4),
+            env.witness_curr(5),
+        ];
+
+        // Carry bits v10 (L bits) and original v11 that is 3 bits
+        let carry1_lo = env.witness_curr(6); // Copied for multi-range-check
+        let carry1_hi = env.witness_curr(7); // 12-bit plookup
+
+        // Carry bits v0
+        let carry0 = env.witness_curr(8);
+
+        // Quotient q
+        let quotient = [
+            env.witness_curr(9),
+            env.witness_curr(10),
+            env.witness_curr(11),
+        ];
+
+        // Compressed high and middle limbs of quotient q
+        let quotient12 = env.witness_next(3);
+
+        // Carry bits for quotient_bound_carry and quotient_bound_carry2
+        let quotient_bound_carry = env.witness_curr(12);
+
+        // Remainder r (a.k.a. result)
+        let remainder = [
+            // Copied for multi-range-check
+            env.witness_next(0),
+            env.witness_next(1),
+            env.witness_next(2),
+        ];
+
+        // Quotient bound (copied for multi-range-check)
+        let quotient_bound01 = env.witness_next(13);
+        let quotient_bound2 = env.witness_next(4);
+
+        // Decomposition of the middle intermediate product
+        let product1_lo = env.witness_next(5); // Copied for multi-range-check
+        let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
+        let product1_hi_1 = env.witness_curr(14);
+
+        // Foreign field modulus limbs
+        let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
+
+        // Negated foreign field modulus limbs
+        let neg_foreign_field_modulus = array::from_fn(|i| env.coeff(3 + i));
+
+        // Compute intermediate products
+        auto_clone_array!(
+            products,
+            compute_intermediate_products(
+                &left_input,
+                &right_input,
+                &quotient,
+                &neg_foreign_field_modulus,
+            )
+        );
+
+        // Compute intermediate sums
+        let [sum01, sum2] = compute_intermediate_sums(&quotient, &neg_foreign_field_modulus);
+
+        // Compute native modulus values
+        let [left_input_n, right_input_n, quotient_n, remainder_n, foreign_field_modulus_n] =
+            compute_native_modulus_values(
+                &left_input,
+                &right_input,
+                &quotient,
+                &remainder,
+                &foreign_field_modulus,
+            );
+
+        // Define the constraints
+        //   For more the details on each constraint please see the
+        //   Foreign Field Multiplication RFC where each of the constraints
+        //   numbered below are described in full detail.
+
+        // C1: Constrain intermediate product fragment product1_hi_1 \in [0, 2^2)
+        constraints.push(product1_hi_1.crumb());
+
+        // C2: multi-range-check: v10, p10, p110
+        //     That is, check carry1_lo, product1_lo, product1_hi_0 each in [0, 2^L)
+        //     Must be done externally with a multi-range-check gadget
+
+        // C3: Constrain decomposition of middle intermediate product p1
+        //         p1 = 2^L*p11 + p10
+        //     where p11 = 2^L * p111 + p110
+        let product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
+        let product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
+        constraints.push(products(1) - product1);
+
+        // C4: Constrain first carry witness value v0 \in [0, 2^2)
+        constraints.push(carry0.crumb());
+
+        // C5: Constrain that 2^2L * v0 = p0 + 2^L * p10 - 2^L * r1 - r0.  That is, that
+        //         2^2L * carry0 = rhs
+        constraints.push(
+            T::two_to_2limb() * carry0.clone()
+                - (products(0) + T::two_to_limb() * product1_lo
+                    - remainder[0].clone()
+                    - T::two_to_limb() * remainder[1].clone()),
+        );
+
+        // C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
+
+        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
+        //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
+        constraints.push(
+            T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
+                - (products(2) + product1_hi + carry0 - remainder[2].clone()),
+        );
+
+        // C8: Native modulus constraint a_n * b_n - q_n * f_n = r_n
+        constraints.push(
+            left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
+        );
+
+        // C9: multi-range-check q1 q2
+        //      Constrain q12 = q1 + 2^L * q2
+        //      Must be done externally with a multi-range-check gadget
+        //      configured to constrain q12 with compressed mode of RangeCheck1
+        // Make sure that q12 is well formed from q1 and q2
+        constraints
+            .push(quotient12 - (quotient[1].clone() + T::two_to_limb() * quotient[2].clone()));
+
+        // C10: Constrain q'_carry01 is boolean
+        constraints.push(quotient_bound_carry.boolean());
+
+        // C11: Constrain that 2^2L * q'_carry01 = s01 - q'01
+        constraints
+            .push(T::two_to_2limb() * quotient_bound_carry.clone() - sum01 + quotient_bound01);
+
+        // C12: Constrain that q'_2 = s2 + q'_carry01
+        constraints.push(quotient_bound2 - sum2 - quotient_bound_carry);
+
+        constraints
+    }
+}
 
 /// Compute non-zero intermediate products
 ///
@@ -190,171 +363,4 @@ pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
             + T::two_to_limb() * foreign_field_modulus(1)
             + foreign_field_modulus(0),
     ]
-}
-
-// ForeignFieldMul - foreign field multiplication gate
-///    * This gate operates on the Curr and Next rows
-///    * It uses copy, plookup, crumb and custom constraints
-#[derive(Default)]
-pub struct ForeignFieldMul<F>(PhantomData<F>);
-
-impl<F> Argument<F> for ForeignFieldMul<F>
-where
-    F: PrimeField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 9;
-    // DEGREE is 4
-
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
-        let mut constraints = vec![];
-
-        //
-        // Define some helper variables to refer to the witness elements
-        // described in the layout.  Note that the limbs below are
-        // defined with least significant bits in lower limbs indexes.
-        //
-
-        // Left multiplicand a
-        let left_input = [
-            // Copied for multi-range-check
-            env.witness_curr(0),
-            env.witness_curr(1),
-            env.witness_curr(2),
-        ];
-
-        // Right multiplicand b
-        let right_input = [
-            // Copied for multi-range-check
-            env.witness_curr(3),
-            env.witness_curr(4),
-            env.witness_curr(5),
-        ];
-
-        // Carry bits v10 (L bits) and original v11 that is 3 bits
-        let carry1_lo = env.witness_curr(6); // Copied for multi-range-check
-        let carry1_hi = env.witness_curr(7); // 12-bit plookup
-
-        // Carry bits v0
-        let carry0 = env.witness_curr(8);
-
-        // Quotient q
-        let quotient = [
-            env.witness_curr(9),
-            env.witness_curr(10),
-            env.witness_curr(11),
-        ];
-
-        // Carry bits for quotient_bound_carry and quotient_bound_carry2
-        let quotient_bound_carry = env.witness_curr(12);
-
-        // Remainder r (a.k.a. result)
-        let remainder = [
-            // Copied for multi-range-check
-            env.witness_next(0),
-            env.witness_next(1),
-            env.witness_next(2),
-        ];
-
-        // Quotient bound (copied for multi-range-check)
-        let quotient_bound01 = env.witness_next(3);
-        let quotient_bound2 = env.witness_next(4);
-
-        // Decomposition of the middle intermediate product
-        let product1_lo = env.witness_next(5); // Copied for multi-range-check
-        let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
-        let product1_hi_1 = env.witness_curr(13);
-
-        // Foreign field modulus limbs
-        let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
-
-        // Negated foreign field modulus limbs
-        let neg_foreign_field_modulus = array::from_fn(|i| env.coeff(3 + i));
-
-        // Compute intermediate products
-        auto_clone_array!(
-            products,
-            compute_intermediate_products(
-                &left_input,
-                &right_input,
-                &quotient,
-                &neg_foreign_field_modulus,
-            )
-        );
-
-        // Compute intermediate sums
-        let [sum01, sum2] = compute_intermediate_sums(&quotient, &neg_foreign_field_modulus);
-
-        // Compute native modulus values
-        let [left_input_n, right_input_n, quotient_n, remainder_n, foreign_field_modulus_n] =
-            compute_native_modulus_values(
-                &left_input,
-                &right_input,
-                &quotient,
-                &remainder,
-                &foreign_field_modulus,
-            );
-
-        // Define the constraints
-        //   For more the details on each constraint please see the
-        //   Foreign Field Multiplication RFC where each of the constraints
-        //   numbered below are described in full detail.
-
-        // C1: Constrain intermediate product fragment product1_hi_1 \in [0, 2^2)
-        constraints.push(product1_hi_1.crumb());
-
-        // C2: multi-range-check: v10, p10, p110
-        //     That is, check carry1_lo, product1_lo, product1_hi_0 each in [0, 2^L)
-        //     Must be done externally with a multi-range-check gadget
-
-        // C3: Constrain decomposition of middle intermediate product p1
-        //         p1 = 2^L*p11 + p10
-        //     where p11 = 2^L * p111 + p110
-        let product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
-        let product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
-        constraints.push(products(1) - product1);
-
-        // C4: Constrain first carry witness value v0 \in [0, 2^2)
-        constraints.push(carry0.crumb());
-
-        // C5: Constrain that 2^2L * v0 = p0 + 2^L * p10 - 2^L * r1 - r0.  That is, that
-        //         2^2L * carry0 = rhs
-        constraints.push(
-            T::two_to_2limb() * carry0.clone()
-                - (products(0) + T::two_to_limb() * product1_lo
-                    - remainder[0].clone()
-                    - T::two_to_limb() * remainder[1].clone()),
-        );
-
-        // C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
-
-        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
-        //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
-        constraints.push(
-            T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
-                - (products(2) + product1_hi + carry0 - remainder[2].clone()),
-        );
-
-        // C8: Native modulus constraint a_n * b_n - q_n * f_n = r_n
-        constraints.push(
-            left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
-        );
-
-        // C9: multi-range-check q0', q1' q2'
-        //      Constrain q'01 = q'0 + 2^L * q'1
-        //      Must be done externally with a multi-range-check gadget
-        //      configured to constrain q'12
-
-        // C10: Constrain q'_carry01 is boolean
-        constraints.push(quotient_bound_carry.boolean());
-
-        // C11: Constrain that 2^2L * q'_carry01 = s01 - q'01
-        constraints
-            .push(T::two_to_2limb() * quotient_bound_carry.clone() - sum01 + quotient_bound01);
-
-        // C12: Constrain that q'_2 = s2 + q'_carry01
-        constraints.push(quotient_bound2 - sum2 - quotient_bound_carry);
-
-        constraints
-    }
 }

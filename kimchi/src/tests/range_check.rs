@@ -1156,7 +1156,7 @@ fn compact_multi_range_check() {
         // Generate some random limbs in compact format
         let limbs: [PallasField; 3] =
             array::from_fn(|_| rng.gen_biguint_below(&BigUint::two_to_limb())).to_fields();
-        let limbs = limbs.to_compact_limbs();
+        let limbs = limbs.to_bot_compact_limbs();
 
         // Create witness
         let mut witness = range_check::witness::create_multi_compact_limbs::<PallasField>(&limbs);
@@ -1233,7 +1233,7 @@ fn verify_compact_multi_range_check_proof() {
 
     let limbs: [PallasField; 3] =
         array::from_fn(|_| rng.gen_biguint_below(&BigUint::two_to_limb())).to_fields();
-    let limbs = limbs.to_compact_limbs();
+    let limbs = limbs.to_bot_compact_limbs();
 
     // Create witness
     let witness = range_check::witness::create_multi_compact_limbs::<PallasField>(&limbs);

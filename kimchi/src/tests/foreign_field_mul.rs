@@ -303,7 +303,7 @@ pub fn rand_foreign_field_element_with_bound_overflows(
 
     auto_clone_array!(
         neg_foreign_field_modulus,
-        foreign_field_modulus.negate().to_compact_limbs()
+        foreign_field_modulus.negate().to_bot_compact_limbs()
     );
 
     if neg_foreign_field_modulus(0) == BigUint::zero() {
@@ -356,7 +356,7 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     );
 
     // Convert bound to field limbs in order to do checks
-    let bound = bound.to_compact_field_limbs::<F>();
+    let bound = bound.to_bot_compact_field_limbs::<F>();
 
     // Check there is an overflow
     assert!(sums[0] >= F::two_to_2limb());
@@ -390,7 +390,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 13), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
+            vec![((0, 14), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -540,6 +540,14 @@ where
     }
 }
 
+fn print_witness(witness: &[Vec<PallasField>; 15]) {
+    for i in 0..witness[0].len() {
+        for j in 0..15 {
+            println!("W {}:{}: {:?}", i, j, PallasField::to_biguint(&witness[j][i]));
+        }
+    }
+}
+
 #[test]
 // Test the multiplication of two zeros.
 // This checks that small amounts get packed into limbs
@@ -553,6 +561,7 @@ fn test_zero_mul() {
         &secp256k1_modulus(),
         vec![],
     );
+    print_witness(&witness);
     assert_eq!(result, Ok(()));
 
     // Check remainder is zero
@@ -1425,7 +1434,7 @@ fn test_witness_invalid_foreign_field_modulus() {
     );
 }
 
-/* 
+/*
 #[test]
 fn test_counter_example_quotient_bound() {
     fn limbify<F: PrimeField>(x: &BigInt) -> [F; 3] {

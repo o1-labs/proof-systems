@@ -190,14 +190,20 @@ pub trait BigUintForeignFieldHelpers {
     /// Convert to 3 limbs of LIMB_BITS each
     fn to_limbs(&self) -> [BigUint; 3];
 
-    /// Convert to 2 limbs of 2 * LIMB_BITS each
-    fn to_compact_limbs(&self) -> [BigUint; 2];
+    /// Convert to 2 limbs of 2 * LIMB_BITS each. The compressed term is the bottom part
+    fn to_bot_compact_limbs(&self) -> [BigUint; 2];
+
+    /// Convert to 2 limbs of 2 * LIMB_BITS at most. The compressed term is the top part.
+    fn to_top_compact_limbs(&self) -> [BigUint; 2];
 
     /// Convert to 3 PrimeField limbs of LIMB_BITS each
     fn to_field_limbs<F: Field>(&self) -> [F; 3];
 
-    /// Convert to 2 PrimeField limbs of 2 * LIMB_BITS each
-    fn to_compact_field_limbs<F: Field>(&self) -> [F; 2];
+    /// Convert to 2 PrimeField limbs of 2 * LIMB_BITS each. The compressed term is the bottom part.
+    fn to_bot_compact_field_limbs<F: Field>(&self) -> [F; 2];
+
+    /// Convert to 2 PrimeField limbs of 2 * LIMB_BITS at most. The compressed term is the top part.
+    fn to_top_compact_field_limbs<F: Field>(&self) -> [F; 2];
 
     /// Negate: 2^T - self
     fn negate(&self) -> BigUint;
@@ -237,7 +243,7 @@ impl BigUintForeignFieldHelpers for BigUint {
         array::from_fn(|i| limbs[i].clone())
     }
 
-    fn to_compact_limbs(&self) -> [Self; 2] {
+    fn to_bot_compact_limbs(&self) -> [Self; 2] {
         let mut limbs = biguint_to_limbs(self, 2 * LIMB_BITS);
         assert!(limbs.len() <= 2);
         limbs.resize(2, BigUint::zero());
@@ -245,12 +251,25 @@ impl BigUintForeignFieldHelpers for BigUint {
         array::from_fn(|i| limbs[i].clone())
     }
 
+    fn to_top_compact_limbs(&self) -> [Self; 2] {
+        let mut limbs = biguint_to_limbs(self, LIMB_BITS);
+        assert!(limbs.len() <= 3);
+        limbs.resize(3, BigUint::zero());
+        let top = limbs[2].clone() * BigUint::two_to_limb() + limbs[1].clone();
+        let low = limbs[0].clone();
+        [low, top]
+    }
+
     fn to_field_limbs<F: Field>(&self) -> [F; 3] {
         self.to_limbs().to_field_limbs()
     }
 
-    fn to_compact_field_limbs<F: Field>(&self) -> [F; 2] {
-        self.to_compact_limbs().to_field_limbs()
+    fn to_bot_compact_field_limbs<F: Field>(&self) -> [F; 2] {
+        self.to_bot_compact_limbs().to_field_limbs()
+    }
+
+    fn to_top_compact_field_limbs<F: Field>(&self) -> [F; 2] {
+        self.to_bot_compact_limbs().to_field_limbs()
     }
 
     fn negate(&self) -> BigUint {
@@ -299,11 +318,11 @@ impl<F: PrimeField> FieldArrayCompose<F, 3> for [F; 3] {
 /// PrimeField array compact limbs
 pub trait FieldArrayCompact<F: PrimeField> {
     /// Compose field limbs into BigUint
-    fn to_compact_limbs(&self) -> [F; 2];
+    fn to_bot_compact_limbs(&self) -> [F; 2];
 }
 
 impl<F: PrimeField> FieldArrayCompact<F> for [F; 3] {
-    fn to_compact_limbs(&self) -> [F; 2] {
+    fn to_bot_compact_limbs(&self) -> [F; 2] {
         [self[0] + F::two_to_limb() * self[1], self[2]]
     }
 }
@@ -487,16 +506,16 @@ mod tests {
             let x = rng.gen_biguint(264);
             assert_eq!(x.to_limbs().len(), 3);
             assert_eq!(x.to_limbs().compose(), x);
-            assert_eq!(x.to_compact_limbs().len(), 2);
-            assert_eq!(x.to_compact_limbs().compose(), x);
-            assert_eq!(x.to_compact_limbs().compose(), x.to_limbs().compose());
+            assert_eq!(x.to_bot_compact_limbs().len(), 2);
+            assert_eq!(x.to_bot_compact_limbs().compose(), x);
+            assert_eq!(x.to_bot_compact_limbs().compose(), x.to_limbs().compose());
 
             assert_eq!(x.to_field_limbs::<BaseField>().len(), 3);
             assert_eq!(x.to_field_limbs::<BaseField>().compose(), x);
-            assert_eq!(x.to_compact_field_limbs::<BaseField>().len(), 2);
-            assert_eq!(x.to_compact_field_limbs::<BaseField>().compose(), x);
+            assert_eq!(x.to_bot_compact_field_limbs::<BaseField>().len(), 2);
+            assert_eq!(x.to_bot_compact_field_limbs::<BaseField>().compose(), x);
             assert_eq!(
-                x.to_compact_field_limbs::<BaseField>().compose(),
+                x.to_bot_compact_field_limbs::<BaseField>().compose(),
                 x.to_field_limbs::<BaseField>().compose()
             );
 
@@ -516,7 +535,7 @@ mod tests {
     #[should_panic]
     fn check_bad_limbs_2() {
         let rng = &mut StdRng::from_seed(RNG_SEED);
-        assert_ne!(rng.gen_biguint(265).to_compact_limbs().len(), 2);
+        assert_ne!(rng.gen_biguint(265).to_bot_compact_limbs().len(), 2);
     }
 
     #[test]
@@ -532,7 +551,7 @@ mod tests {
         let rng = &mut StdRng::from_seed(RNG_SEED);
         assert_ne!(
             rng.gen_biguint(265)
-                .to_compact_field_limbs::<BaseField>()
+                .to_bot_compact_field_limbs::<BaseField>()
                 .len(),
             2
         );
