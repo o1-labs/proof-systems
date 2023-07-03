@@ -15,7 +15,7 @@ use num_integer::Integer;
 
 use o1_utils::{
     foreign_field::{
-        BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+        BigUintArrayFieldHelpers, ForeignFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
     },
     BigUintFieldHelpers,
 };
@@ -70,7 +70,7 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("remainder0"),
             VariableCell::create("remainder1"),
             VariableCell::create("remainder2"),
-            VariableCell::create("quotient12"),
+            VariableCell::create("quotient01"),
             VariableCell::create("quotient_bound2"),
             VariableCell::create("product1_lo"), // Copied for multi-range-check
             VariableCell::create("product1_hi_0"), // Copied for multi-range-check
@@ -206,20 +206,21 @@ pub fn create<F: PrimeField>(
     let quotient_bound = compute_bound(&quotient, &neg_foreign_field_modulus);
     let remainder_bound = compute_bound(&remainder, &neg_foreign_field_modulus);
 
-    // Create optimized quotient bound computing: [q12, q'2]
-    let [_quotient0, quotient12] = quotient.to_top_compact_limbs();
+    // Create optimized quotient bound computing: [q01, q'2]
+    let quotient_limbs = quotient.to_limbs();
+    let quotient01 = quotient_limbs[0].clone() + BigUint::two_to_limb() * quotient_limbs[1].clone();
     let quotient_bound_limbs = quotient_bound.to_limbs();
     let optimized_quotient =
-        quotient12.clone() + BigUint::two_to_2limb() * quotient_bound_limbs[2].clone();
+        quotient01.clone() + BigUint::two_to_2limb() * quotient_bound_limbs[2].clone();
 
     // Track witness data for external multi-range-checks on quotient and remainder bounds
-    external_checks.add_compact_multi_range_check(&optimized_quotient.to_bot_compact_field_limbs());
+    external_checks.add_compact_multi_range_check(&optimized_quotient.to_compact_field_limbs());
     external_checks.add_multi_range_check(&remainder_bound.to_field_limbs());
     external_checks.add_bound_check(&remainder.to_field_limbs());
 
     // Compute quotient bound addition witness variables
     let quotient_bound_carry =
-        compute_bound_witness_carry(&sums.to_biguints(), &quotient_bound.to_bot_compact_limbs());
+        compute_bound_witness_carry(&sums.to_biguints(), &quotient_bound.to_compact_limbs());
 
     // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
@@ -231,8 +232,7 @@ pub fn create<F: PrimeField>(
     let right_input = right_input.to_field_limbs();
     let remainder = remainder.to_field_limbs();
     let quotient = quotient.to_field_limbs();
-    let quotient12 = quotient12.to_field().unwrap();
-    let quotient_bound = quotient_bound.to_bot_compact_field_limbs();
+    let quotient_bound = quotient_bound.to_compact_field_limbs();
     witness::init(
         &mut witness,
         0,
@@ -251,11 +251,11 @@ pub fn create<F: PrimeField>(
             "quotient0" => quotient[0],
             "quotient1" => quotient[1],
             "quotient2" => quotient[2],
-            "quotient12" => quotient12,
             "quotient_bound_carry" => quotient_bound_carry,
             "remainder0" => remainder[0],
             "remainder1" => remainder[1],
             "remainder2" => remainder[2],
+            "quotient01" => quotient01.into(),
             "quotient_bound01" => quotient_bound[0],
             "quotient_bound2" => quotient_bound[1],
             "product1_lo" => product1_lo,

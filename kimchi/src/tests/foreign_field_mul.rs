@@ -303,7 +303,7 @@ pub fn rand_foreign_field_element_with_bound_overflows(
 
     auto_clone_array!(
         neg_foreign_field_modulus,
-        foreign_field_modulus.negate().to_bot_compact_limbs()
+        foreign_field_modulus.negate().to_compact_limbs()
     );
 
     if neg_foreign_field_modulus(0) == BigUint::zero() {
@@ -356,7 +356,7 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     );
 
     // Convert bound to field limbs in order to do checks
-    let bound = bound.to_bot_compact_field_limbs::<F>();
+    let bound = bound.to_compact_field_limbs::<F>();
 
     // Check there is an overflow
     assert!(sums[0] >= F::two_to_2limb());
@@ -481,7 +481,26 @@ where
         //     Triggering constraint C8 is challenging, so this is done with
         //     the test_native_modulus_constraint() test below
 
-        // Test 7th constraint (C10): invalidate q'_carry is boolean
+        // Test 7th constraint (C9): invalidate compact quotient check
+        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
+            false,
+            false,
+            false,
+            &left_input,
+            &right_input,
+            foreign_field_modulus,
+            vec![((1, 3), G::ScalarField::from(1u32))], // Make quotient01 wrong
+        );
+        assert_eq!(
+            (&left_input * &right_input) % foreign_field_modulus,
+            [witness[0][1], witness[1][1], witness[2][1]].compose()
+        );
+        assert_eq!(
+            result,
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
+        );
+
+        // Test 8th constraint (C10): invalidate q'_carry is boolean
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -497,10 +516,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
         );
 
-        // Test 8th constraint (C11): invalidate first bound addition zero check
+        // Test 9th constraint (C11): invalidate first bound addition zero check
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -516,10 +535,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
         );
 
-        // Test 9th constraint (C12): invalidate second bound addition zero check
+        // Test 10th constraint (C12): invalidate second bound addition zero check
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
             false,
             false,
@@ -535,16 +554,8 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
         );
-    }
-}
-
-fn print_witness(witness: &[Vec<PallasField>; 15]) {
-    for i in 0..witness[0].len() {
-        for j in 0..15 {
-            println!("W {}:{}: {:?}", i, j, PallasField::to_biguint(&witness[j][i]));
-        }
     }
 }
 
@@ -561,7 +572,6 @@ fn test_zero_mul() {
         &secp256k1_modulus(),
         vec![],
     );
-    print_witness(&witness);
     assert_eq!(result, Ok(()));
 
     // Check remainder is zero
@@ -1383,7 +1393,7 @@ fn test_constraint_c12() {
         vec![
             ((0, 12), PallasField::one()), // invalidate q'_carry
             (
-                (1, 3),
+                (0, 13),
                 PallasField::from_bytes(&[
                     210, 3, 0, 0, 238, 48, 45, 153, 27, 249, 76, 9, 252, 152, 70, 34, 0, 0, 0, 0,
                     0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63,
@@ -1394,7 +1404,7 @@ fn test_constraint_c12() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
     );
 }
 
@@ -1433,139 +1443,3 @@ fn test_witness_invalid_foreign_field_modulus() {
         &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
     );
 }
-
-/*
-#[test]
-fn test_counter_example_quotient_bound() {
-    fn limbify<F: PrimeField>(x: &BigInt) -> [F; 3] {
-        let nmod = F::modulus_biguint().to_bigint().unwrap();
-        let limb = BigInt::from(2u32).pow(88);
-        let (x12, mut x0) = x.div_rem(&limb);
-        let (mut x2, mut x1) = x12.div_rem(&limb);
-        println!("x0: {}", x0);
-        println!("x1: {}", x1);
-        println!("x2: {}", x2);
-        positivize(&mut x0, &nmod);
-        positivize(&mut x1, &nmod);
-        positivize(&mut x2, &nmod);
-        println!("x0: {}", x0);
-        println!("x1: {}", x1);
-        println!("x2: {}", x2);
-        return [
-            bigint_to_field(&x0),
-            bigint_to_field(&x1),
-            bigint_to_field(&x2),
-        ];
-    }
-
-    fn positivize(x: &mut BigInt, n: &BigInt) {
-        if *x < BigInt::zero() {
-            *x += n;
-        }
-    }
-
-    fn bigint_to_field<F: PrimeField>(x: &BigInt) -> F {
-        return F::from_biguint(&x.to_biguint().unwrap()).unwrap();
-    }
-
-    let binmod = BigUint::from(2u32).pow(264);
-    let f = secp256k1_modulus();
-    let n = PallasField::modulus_biguint();
-    let fneg_big = f.negate();
-    println!("fneg_big: {}", fneg_big);
-    println!("n: {}", n);
-    let fneg = fneg_big.to_field_limbs::<PallasField>();
-    let k = BigUint::from_u16(256).unwrap(); // floor(2^264 / f)
-
-    // fake q: -k * n = -7410693711188236507108543040556026102620942459377039543284397251673591713366272
-    // Cannot negate in 2^264 since it is larger, this or wrapping in native field?
-    let q = BigInt::from_biguint(num_bigint::Sign::Minus, k.clone() * n.clone());
-    let q = limbify::<PallasField>(&q);
-    let r = BigUint::zero();
-    let a = (BigUint::two().pow(264) - k.clone() * f.clone()).to_field_limbs::<PallasField>(); // 2^264 - k * f
-    let b = n.to_field_limbs::<PallasField>();
-
-    let a_n = (a[0] + a[1] * PallasField::two_to_limb() + a[2] * PallasField::two_to_2limb())
-        .to_biguint();
-
-    let b_n = (b[0] + b[1] * PallasField::two_to_limb() + b[2] * PallasField::two_to_2limb())
-        .to_biguint();
-
-    let q_n = (q[0] + q[1] * PallasField::two_to_limb() + q[2] * PallasField::two_to_2limb())
-        .to_biguint();
-
-    let f_n = (PallasField::from_biguint(&f).unwrap()).to_biguint();
-
-    let prods = foreign_field_mul::circuitgates::compute_intermediate_products(&a, &b, &q, &fneg);
-    let sums = foreign_field_mul::circuitgates::compute_intermediate_sums(&q, &fneg);
-
-    let [p1_lo, p1_hi_0, p1_hi_1, c0, c1_lo, c1_hi] =
-        foreign_field_mul::witness::compute_witness_variables::<PallasField>(
-            &prods.to_limbs(),
-            &r.to_limbs(),
-        );
-    let [p1_lo, p1_hi_0, p1_hi_1, c0, c1_lo, c1_hi] = [
-        p1_lo.to_biguint(),
-        p1_hi_0.to_biguint(),
-        p1_hi_1.to_biguint(),
-        c0.to_biguint(),
-        c1_lo.to_biguint(),
-        c1_hi.to_biguint(),
-    ];
-    let prods = [
-        prods[0].to_biguint(),
-        prods[1].to_biguint(),
-        prods[2].to_biguint(),
-    ];
-    let sums = [sums[0].to_biguint(), sums[1].to_biguint()];
-
-    println!("p1_lo: {:?}", p1_lo);
-    println!("p1_hi_0: {:?}", p1_hi_0);
-    println!("p1_hi_1: {:?}", p1_hi_1);
-    println!("c0: {:?}", c0);
-    println!("c1_lo: {:?}", c1_lo);
-    println!("c1_hi: {:?}", c1_hi);
-
-    let rbound = foreign_field_mul::witness::compute_bound(&r, &fneg_big);
-    // - k * n + fneg_big = 22116289044327393325902058136659390399962903630361304286777286670344260639785681 < 2^264
-    let qbound = binmod - f - k * n.clone();
-    assert!(rbound < BigUint::two().pow(264));
-    assert!(qbound < BigUint::two().pow(264));
-    println!("qbound: {:?}", qbound);
-    println!("rbound: {:?}", rbound);
-    let r_limbs = r.to_limbs();
-    let two_to_limb = BigUint::two().pow(88);
-    let two_bits = BigUint::from(4u32);
-    let three_bits = BigUint::from(8u32);
-
-    // Checking constraints
-    // C1: KO! : p1_hi_1 is at most two bits
-    assert!(p1_hi_1 >= two_bits);
-    // C2: OK! : c1_lo, p1_lo, p1_hi_1 are in [0, 2^88)
-    assert!(c1_lo < two_to_limb);
-    assert!(p1_lo < two_to_limb);
-    assert!(p1_hi_1 < two_to_limb);
-    // C3: OK! : p1 = 2^L*p11 + p10 with p11 = 2^L * p111 + p110
-    let p11 = BigUint::two_to_limb() * p1_hi_1 + p1_hi_0;
-    assert!(prods[1] == BigUint::two_to_limb() * p11.clone() + p1_lo.clone());
-    // C4: OK! : c0 is at most two bits
-    assert!(c0 < two_bits);
-    // C5: KO! : 2^2L * c0 = p0 + 2^L * p1_lo - 2^L * r1 - r0
-    assert!(
-        BigUint::two_to_2limb() * c0.clone()
-            != prods[0].clone() + BigUint::two_to_limb() * p1_lo
-                - BigUint::two_to_limb() * r_limbs[1].clone()
-                - r_limbs[0].clone()
-    );
-    // C6: KO! : v11 is 3 bits
-    assert!(c1_hi >= three_bits);
-    // C7: KO! : 2^L * v1 = p2 + p11 + v0 - r
-    assert_eq!(
-        (
-            prods[2].clone() + p11 + c0 - r_limbs[2].clone() - (BigUint::two_to_limb() * (BigUint::two_to_limb() * c1_hi + c1_lo))) % n, BigUint::zero()
-    );
-    // C8: OK! : native modulus constrain
-    assert!(a_n * b_n == q_n * f_n + r);
-
-}
-*/

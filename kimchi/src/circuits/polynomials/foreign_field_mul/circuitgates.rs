@@ -76,7 +76,7 @@
 //~ |   0 | `left_input0`         (copy) | `remainder0`       (copy) |
 //~ |   1 | `left_input1`         (copy) | `remainder1`       (copy) |
 //~ |   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-//~ |   3 | `right_input0`        (copy) | `quotient12`       (copy) |
+//~ |   3 | `right_input0`        (copy) | `quotient01`       (copy) |
 //~ |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
 //~ |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
 //~ |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
@@ -154,11 +154,9 @@ where
             env.witness_curr(11),
         ];
 
-        // Compressed high and middle limbs of quotient q
-        let quotient12 = env.witness_next(3);
-
         // Carry bits for quotient_bound_carry and quotient_bound_carry2
         let quotient_bound_carry = env.witness_curr(12);
+        let quotient_bound01 = env.witness_curr(13);
 
         // Remainder r (a.k.a. result)
         let remainder = [
@@ -168,8 +166,9 @@ where
             env.witness_next(2),
         ];
 
+        // Compressed low and middle limbs of quotient q
+        let quotient01 = env.witness_next(3);
         // Quotient bound (copied for multi-range-check)
-        let quotient_bound01 = env.witness_next(13);
         let quotient_bound2 = env.witness_next(4);
 
         // Decomposition of the middle intermediate product
@@ -252,13 +251,13 @@ where
             left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
         );
 
-        // C9: multi-range-check q1 q2
+        // C9: multi-range-check q0 q1
         //      Constrain q12 = q1 + 2^L * q2
         //      Must be done externally with a multi-range-check gadget
         //      configured to constrain q12 with compressed mode of RangeCheck1
         // Make sure that q12 is well formed from q1 and q2
         constraints
-            .push(quotient12 - (quotient[1].clone() + T::two_to_limb() * quotient[2].clone()));
+            .push(quotient01 - (quotient[0].clone() + T::two_to_limb() * quotient[1].clone()));
 
         // C10: Constrain q'_carry01 is boolean
         constraints.push(quotient_bound_carry.boolean());
