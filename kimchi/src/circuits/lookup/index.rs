@@ -1,4 +1,4 @@
-use super::runtime_tables::{CustomRuntimeTableSpec, RuntimeTableCfg, RuntimeTableSpec};
+use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::CircuitGate,
@@ -269,16 +269,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                         // create fixed tables for indexing the runtime tables
                         for runtime_table in runtime_tables {
-                            use RuntimeTableCfg::{Custom, Indexed};
-                            let (id, first_column) = match runtime_table {
-                                &Indexed(RuntimeTableSpec { id, len }) => {
-                                    let indexes = (0..(len as u32)).map(F::from).collect();
-                                    (id, indexes)
-                                }
-                                Custom(CustomRuntimeTableSpec { id, first_column }) => {
-                                    (*id, first_column.clone())
-                                }
-                            };
+                            let (id, first_column) =
+                                (runtime_table.id, runtime_table.first_column.clone());
 
                             // record if table ID 0 is used in one of the runtime tables
                             // note: the check later will still force you to have a fixed table with ID 0
