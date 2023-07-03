@@ -49,7 +49,19 @@ enum Event {
 /// note that the report will always say cycles
 const EVENT: Event = Event::Hardware(HardwareEventType::CPUCycles);
 
-#[cfg(test)]
+fn config() -> Criterion<Perf> {
+    let perf = match EVENT {
+        Event::Hardware(h) => PerfCounterBuilderLinux::from_hardware_event(h),
+        Event::Software(s) => PerfCounterBuilderLinux::from_software_event(s),
+        Event::Cache {
+            cache_id,
+            cache_op_id,
+            cache_op_result_id,
+        } => PerfCounterBuilderLinux::from_cache_event(cache_id, cache_op_id, cache_op_result_id),
+    };
+    Criterion::default().with_measurement(Perf::new(perf))
+}
+
 fn all_benches(c: &mut Criterion<Perf>) {
     use kimchi::benchmarks::*;
 
@@ -62,18 +74,6 @@ fn all_benches(c: &mut Criterion<Perf>) {
     //add a line here to add your benchmark
 
     benches.run(c, &params);
-}
-fn config() -> Criterion<Perf> {
-    let perf = match EVENT {
-        Event::Hardware(h) => PerfCounterBuilderLinux::from_hardware_event(h),
-        Event::Software(s) => PerfCounterBuilderLinux::from_software_event(s),
-        Event::Cache {
-            cache_id,
-            cache_op_id,
-            cache_op_result_id,
-        } => PerfCounterBuilderLinux::from_cache_event(cache_id, cache_op_id, cache_op_result_id),
-    };
-    Criterion::default().with_measurement(Perf::new(perf))
 }
 
 criterion_group!(
