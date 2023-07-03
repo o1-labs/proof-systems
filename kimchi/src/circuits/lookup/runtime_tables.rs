@@ -22,56 +22,35 @@ pub struct RuntimeTableSpec {
 ///
 /// Note: care must be taken as table IDs can collide with IDs of other types of lookup tables.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum RuntimeTableCfg<F> {
-    /// An indexed runtime table has a counter (starting at zero) in its first column.
-    Indexed(RuntimeTableSpec),
-    /// A custom runtime table can contain arbitrary values in its first column.
-    Custom {
-        /// The table ID.
-        id: i32,
-        /// The content of the first column of the runtime table.
-        first_column: Vec<F>,
-    },
+pub struct RuntimeTableCfg<F> {
+    /// The table ID.
+    pub id: i32,
+    /// The content of the first column of the runtime table.
+    pub first_column: Vec<F>,
 }
 
 impl<F> RuntimeTableCfg<F> {
     /// Returns the ID of the runtime table.
     pub fn id(&self) -> i32 {
-        use RuntimeTableCfg::{Custom, Indexed};
-        match self {
-            Indexed(cfg) => cfg.id,
-            &Custom { id, .. } => id,
-        }
+        self.id
     }
 
     /// Returns the length of the runtime table.
     pub fn len(&self) -> usize {
-        use RuntimeTableCfg::{Custom, Indexed};
-        match self {
-            Indexed(cfg) => cfg.len,
-            Custom { first_column, .. } => first_column.len(),
-        }
+        self.first_column.len()
     }
 
     /// Returns `true` if the runtime table is empty.
     pub fn is_empty(&self) -> bool {
-        use RuntimeTableCfg::{Custom, Indexed};
-        match self {
-            Indexed(cfg) => cfg.len == 0,
-            Custom { first_column, .. } => first_column.is_empty(),
-        }
+        self.first_column.is_empty()
     }
 }
 
 impl<F> From<RuntimeTableCfg<F>> for RuntimeTableSpec {
-    fn from(from: RuntimeTableCfg<F>) -> Self {
-        use RuntimeTableCfg::{Custom, Indexed};
-        match from {
-            Indexed(cfg) => cfg,
-            Custom { id, first_column } => RuntimeTableSpec {
-                id,
-                len: first_column.len(),
-            },
+    fn from(rt_cfg: RuntimeTableCfg<F>) -> Self {
+        Self {
+            id: rt_cfg.id,
+            len: rt_cfg.first_column.len(),
         }
     }
 }
