@@ -16,9 +16,7 @@ use num_integer::Integer;
 use o1_utils::{
     foreign_field::{
         BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
-        ForeignFieldHelpers,
-    },
-    BigUintFieldHelpers,
+    }
 };
 use std::{array, ops::Div};
 
@@ -89,8 +87,8 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
 
 /// Perform integer bound addition computation for high limb x'2 = x2 + f'2
 pub fn compute_high_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
-    let x_hi = x.to_limbs()[2];
-    let neg_f_hi = neg_foreign_field_modulus.to_limbs()[2];
+    let x_hi = &x.to_limbs()[2];
+    let neg_f_hi = &neg_foreign_field_modulus.to_limbs()[2];
     let x_hi_bound = x_hi + neg_f_hi;
     assert!(x_hi_bound < BigUint::binary_modulus());
     x_hi_bound
@@ -186,7 +184,6 @@ pub fn create<F: PrimeField>(
 
     // Compute high bounds for multi-range-checks on quotient and remainder, making 3 limbs (with zero)
     // Assumes that right's and left's high bounds are range checked at a different stage.
-    let right_hi_bound = compute_high_bound(&right_input, &neg_foreign_field_modulus);
     let quotient_hi_bound = compute_high_bound(&quotient, &neg_foreign_field_modulus);
     let remainder_hi_bound = compute_high_bound(&remainder, &neg_foreign_field_modulus);
 
@@ -228,11 +225,11 @@ pub fn create<F: PrimeField>(
             "product1_hi_1" => product1_hi_1,
             "remainder01" => remainder[0],
             "remainder2" => remainder[1],
-            "quotient0" => quotient[0],
+            "quotient1" => quotient[0],
             "quotient1" => quotient[1],
             "quotient2" => quotient[2],
             "product1_lo" => product1_lo,
-            "product1_hi_0" => product1_hi_0,
+            "product1_hi_0" => product1_hi_0
         ],
     );
 
@@ -244,6 +241,7 @@ pub fn create<F: PrimeField>(
 pub struct ExternalChecks<F: PrimeField> {
     pub multi_ranges: Vec<[F; 3]>,
     pub compact_multi_ranges: Vec<[F; 2]>,
+    pub bounds: Vec<[F; 3]>,
     pub high_bounds: Vec<[F; 2]>,
 }
 
@@ -277,7 +275,22 @@ impl<F: PrimeField> ExternalChecks<F> {
         }
     }
 
-    /// Extend the witness with external bound addition
+    /// Extend the witness with external bound addition as foreign field addition
+    pub fn extend_witness_bound_addition(
+        &self,
+        witness: &mut [Vec<F>; COLUMNS],
+        foreign_field_modulus: &[F; 3],
+    ) {
+        for bound in self.bounds.clone() {
+            foreign_field_add::witness::extend_witness_bound_addition(
+                witness,
+                &bound,
+                foreign_field_modulus,
+            );
+        }
+    }
+
+    /// Extend the witness with external high bounds additions as generic gates
     pub fn extend_witness_high_bounds(
         &self,
         witness: &mut [Vec<F>; COLUMNS],
