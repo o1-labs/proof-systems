@@ -22,7 +22,7 @@ use o1_utils::{
 };
 use std::{array, ops::Div};
 
-use super::circuitgates;
+use super::constraints;
 
 // Witness layout
 //   * The values and cell contents are in little-endian order, which
@@ -183,7 +183,7 @@ pub fn create<F: PrimeField>(
     let neg_foreign_field_modulus = foreign_field_modulus.negate();
 
     // Compute the intermediate products
-    let products: [F; 3] = circuitgates::compute_intermediate_products(
+    let products: [F; 3] = constraints::compute_intermediate_products(
         &left_input.to_field_limbs(),
         &right_input.to_field_limbs(),
         &quotient.to_field_limbs(),
@@ -191,7 +191,7 @@ pub fn create<F: PrimeField>(
     );
 
     // Compute the intermediate sums [sum01, sum2] for quotient bound addition
-    let sums: [F; 2] = circuitgates::compute_intermediate_sums(
+    let sums: [F; 2] = constraints::compute_intermediate_sums(
         &quotient.to_field_limbs(),
         &neg_foreign_field_modulus.to_field_limbs(),
     );

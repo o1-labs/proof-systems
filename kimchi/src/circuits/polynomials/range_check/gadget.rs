@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-use super::circuitgates::{RangeCheck0, RangeCheck1};
+use super::constraints::{RangeCheck0, RangeCheck1};
 
 pub const GATE_COUNT: usize = 2;
 

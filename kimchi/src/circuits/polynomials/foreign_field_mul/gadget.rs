@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-use super::circuitgates::ForeignFieldMul;
+use super::constraints::ForeignFieldMul;
 
 /// Number of gates in this gadget
 pub const GATE_COUNT: usize = 1;

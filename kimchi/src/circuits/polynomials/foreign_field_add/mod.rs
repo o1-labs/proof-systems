@@ -1,5 +1,5 @@
 //! Foreign Field Addition module
 
-pub mod circuitgates;
+pub mod constraints;
 pub mod gadget;
 pub mod witness;

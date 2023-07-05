@@ -350,7 +350,7 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     let bound = foreign_field_mul::witness::compute_bound(&x, &neg_foreign_field_modulus);
 
     // Compute bound separately on limbs
-    let sums: [F; 2] = foreign_field_mul::circuitgates::compute_intermediate_sums(
+    let sums: [F; 2] = foreign_field_mul::constraints::compute_intermediate_sums(
         &x.to_field_limbs::<F>(),
         &neg_foreign_field_modulus.to_field_limbs(),
     );

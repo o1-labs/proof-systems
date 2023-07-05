@@ -304,18 +304,18 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::CairoFlags => turshi::Flags::constraint_checks(&env, &mut cache),
             GateType::CairoTransition => turshi::Transition::constraint_checks(&env, &mut cache),
             GateType::RangeCheck0 => {
-                range_check::circuitgates::RangeCheck0::constraint_checks(&env, &mut cache)
+                range_check::constraints::RangeCheck0::constraint_checks(&env, &mut cache)
             }
             GateType::RangeCheck1 => {
-                range_check::circuitgates::RangeCheck1::constraint_checks(&env, &mut cache)
+                range_check::constraints::RangeCheck1::constraint_checks(&env, &mut cache)
             }
             GateType::ForeignFieldAdd => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::constraint_checks(
+                foreign_field_add::constraints::ForeignFieldAdd::constraint_checks(
                     &env, &mut cache,
                 )
             }
             GateType::ForeignFieldMul => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::constraint_checks(
+                foreign_field_mul::constraints::ForeignFieldMul::constraint_checks(
                     &env, &mut cache,
                 )
             }
