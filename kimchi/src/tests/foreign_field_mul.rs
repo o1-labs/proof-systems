@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::{foreign_field_mul, range_check},
+        polynomials::{foreign_field_mul},
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -19,8 +19,7 @@ use num_bigint::BigUint;
 use num_traits::One;
 use o1_utils::{
     foreign_field::{
-        BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose, ForeignElement,
-        ForeignFieldHelpers,
+        BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose,
     },
     FieldHelpers,
 };
@@ -72,6 +71,36 @@ fn pallas_sqrt() -> BigUint {
     pallas_max().sqrt()
 }
 
+// Perform integer bound addition computation x' = x + f'
+fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
+    let x_bound = x + neg_foreign_field_modulus;
+    assert!(x_bound < BigUint::binary_modulus());
+    x_bound
+}
+
+// Compute intermediate sums
+fn compute_intermediate_sums<F: PrimeField, T: crate::circuits::expr::constraints::ExprOps<F>>(
+    quotient: &[T; 3],
+    neg_foreign_field_modulus: &[T; 3],
+) -> [T; 2] {
+    auto_clone_array!(quotient);
+    auto_clone_array!(neg_foreign_field_modulus);
+
+    // q01 = q0 + 2^L * q1
+    let quotient01 = quotient(0) + T::two_to_limb() * quotient(1);
+
+    // f'01 = f'0 + 2^L * f'1
+    let neg_foreign_field_modulus01 =
+        neg_foreign_field_modulus(0) + T::two_to_limb() * neg_foreign_field_modulus(1);
+
+    [
+        // q'01 = q01 + f'01
+        quotient01 + neg_foreign_field_modulus01,
+        // q'2 = q2 + f'2
+        quotient(2) + neg_foreign_field_modulus(2),
+    ]
+}
+
 // Boilerplate for tests
 fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
     full: bool,
@@ -92,7 +121,7 @@ where
         CircuitGate::<G::ScalarField>::create_foreign_field_mul(0, foreign_field_modulus);
 
     // Compute multiplication witness
-    let (mut witness, external_checks) =
+    let (mut witness, mut external_checks) =
         foreign_field_mul::witness::create(left_input, right_input, foreign_field_modulus);
 
     // Optionally also add external gate checks to circuit
@@ -146,6 +175,7 @@ where
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((6, 2), (15, 0)); // result_bound
         gates.connect_cell_pair((6, 5), (16, 0)); // quotient_bound
+                                                  // Witness updated below
 
         // Add witness for external multi-range checks:
         // [quotient0, quotient1, quotient2]
@@ -154,44 +184,51 @@ where
         external_checks.extend_witness_multi_range_checks(&mut witness);
 
         // DESIGNER CHOICE: left and right
+        let left_limbs = left_input.to_field_limbs();
+        let right_limbs = right_input.to_field_limbs();
         // Constant Double Generic gate for result and quotient bounds
-        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field);
+        external_checks.add_high_bounds_computation(&[left_limbs[2], right_limbs[2]]);
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field_modulus);
         gates.connect_cell_pair((19, 0), (0, 2)); // left2
         gates.connect_cell_pair((19, 3), (0, 5)); // right2
-        external_checks.extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field);
+        external_checks
+            .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
 
         // Left input multi-range-check
+        external_checks.add_multi_range_check(&left_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((0, 0), (20, 0)); // left_input0
         gates.connect_cell_pair((0, 1), (21, 0)); // left_input1
         gates.connect_cell_pair((0, 2), (22, 0)); // left_input2
-        range_check::witness::extend_multi_limbs(&mut witness, &left_input.to_field_limbs());
+                                                  // Witness updated below
 
         // Right input multi-range-check
+        external_checks.add_multi_range_check(&right_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((0, 3), (24, 0)); // right_input0
         gates.connect_cell_pair((0, 4), (25, 0)); // right_input1
         gates.connect_cell_pair((0, 5), (26, 0)); // right_input2
-        range_check::witness::extend_multi_limbs(&mut witness, &right_input.to_field_limbs());
+                                                  // Witness updated below
 
         // Multi-range check bounds for left and right inputs
-        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((19, 2), (28, 0)); // left_bound
-        gates.connect_cell_pair((19, 5), (29, 0)); // right_bound
         let left_hi_bound =
             foreign_field_mul::witness::compute_high_bound(&left_input, &neg_foreign_field_modulus);
         let right_hi_bound = foreign_field_mul::witness::compute_high_bound(
             &right_input,
             &neg_foreign_field_modulus,
         );
-        range_check::witness::extend_multi_limbs(
-            &mut witness,
-            &[
-                left_hi_bound.into(),
-                right_hi_bound.into(),
-                <G::ScalarField>::zero(),
-            ],
-        );
+        external_checks.add_multi_range_check(&[
+            left_hi_bound.into(),
+            right_hi_bound.into(),
+            <G::ScalarField>::zero(),
+        ]);
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((19, 2), (28, 0)); // left_bound
+        gates.connect_cell_pair((19, 5), (29, 0)); // right_bound
+
+        // Add witness for external multi-range checks:
+        // left, right, and bounds
+        external_checks.extend_witness_multi_range_checks(&mut witness);
     }
 
     let runner = if full {
@@ -290,13 +327,13 @@ where
 }
 
 /// Generate a random foreign field element x whose addition with the negated foreign field modulus f' = 2^t - f results
-/// in an overflow in the lest significant limb x0.  The limbs are in 2 limb compact representation:
+/// in an overflow in the lest significant limb x0. The limbs are in 2 limb compact representation:
 ///
 ///     x  = x0  + 2^2L * x1
 ///     f' = f'0 + 2^2L * f'1
 ///
-/// Note that it is not possible to have an overflow in the most significant limb.  This is because if there were an overflow
-/// when adding f'1 to x1, then we'd have a contradiction.  To see this, first note that to get an overflow in the highest limbs,
+/// Note that it is not possible to have an overflow in the most significant limb. This is because if there were an overflow
+/// when adding f'1 to x1, then we'd have a contradiction. To see this, first note that to get an overflow in the highest limbs,
 /// we need
 ///
 ///     2^L < x1 + o0 + f'1 <= 2^L - 1 + o0 + f'1
@@ -321,7 +358,7 @@ where
 /// so
 ///     2^L - f'1 < f/2^2L
 ///
-/// Notice that f/2^2L = f1.  Now we have
+/// Notice that f/2^2L = f1. Now we have
 ///
 ///     2^L - f'1 < f1
 ///     <=>
@@ -385,10 +422,10 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     assert!(x < *foreign_field_modulus);
 
     // Compute bound directly as BigUint
-    let bound = foreign_field_mul::witness::compute_bound(&x, &neg_foreign_field_modulus);
+    let bound = compute_bound(&x, &neg_foreign_field_modulus);
 
     // Compute bound separately on limbs
-    let sums: [F; 2] = foreign_field_mul::constraints::compute_intermediate_sums(
+    let sums: [F; 2] = compute_intermediate_sums(
         &x.to_field_limbs::<F>(),
         &neg_foreign_field_modulus.to_field_limbs(),
     );
@@ -397,10 +434,10 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     let bound = bound.to_compact_field_limbs::<F>();
 
     // Check there is an overflow
-    assert!(sums[0] >= F::two_to_2limb());
-    assert!(sums[1] < F::two_to_limb());
-    assert!(bound[0] < F::two_to_2limb());
-    assert!(bound[1] < F::two_to_limb());
+    assert!(sums[0] >= <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_2limb());
+    assert!(sums[1] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_limb());
+    assert!(bound[0] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_2limb());
+    assert!(bound[1] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_limb());
 
     // Check that limbs don't match sums
     assert_ne!(bound[0], sums[0]);
@@ -428,7 +465,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((0, 14), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
+            vec![((0, 9), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -518,82 +555,6 @@ where
         // Test 6th constraint (C8): invalid native modulus check but binary modulus checks ok
         //     Triggering constraint C8 is challenging, so this is done with
         //     the test_native_modulus_constraint() test below
-
-        // Test 7th constraint (C9): invalidate compact quotient check
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            foreign_field_modulus,
-            vec![((1, 3), G::ScalarField::from(1u32))], // Make quotient01 wrong
-        );
-        assert_eq!(
-            (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
-        );
-
-        // Test 8th constraint (C10): invalidate q'_carry is boolean
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            foreign_field_modulus,
-            vec![((0, 12), G::ScalarField::from(2u32))], // Make q'_carry non-boolean
-        );
-        assert_eq!(
-            (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
-        );
-
-        // Test 9th constraint (C11): invalidate first bound addition zero check
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            foreign_field_modulus,
-            vec![((0, 12), G::ScalarField::one())], // Make q'_carry invalid
-        );
-        assert_eq!(
-            (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
-        );
-
-        // Test 10th constraint (C12): invalidate second bound addition zero check
-        let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
-            false,
-            false,
-            false,
-            &left_input,
-            &right_input,
-            foreign_field_modulus,
-            vec![((1, 4), G::ScalarField::zero())], // Make quotient_bound2 invalid
-        );
-        assert_eq!(
-            (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
-        );
     }
 }
 
@@ -613,14 +574,13 @@ fn test_zero_mul() {
     assert_eq!(result, Ok(()));
 
     // Check remainder is zero
-    assert_eq!(witness[0][1], PallasField::zero());
-    assert_eq!(witness[1][1], PallasField::zero());
-    assert_eq!(witness[2][1], PallasField::zero());
+    assert_eq!(witness[0][1], PallasField::zero()); // remainder01
+    assert_eq!(witness[1][1], PallasField::zero()); // remainder2
 
     // Check quotient is zero
-    assert_eq!(witness[10][0], PallasField::zero());
-    assert_eq!(witness[11][0], PallasField::zero());
-    assert_eq!(witness[12][0], PallasField::zero());
+    assert_eq!(witness[2][1], PallasField::zero());
+    assert_eq!(witness[3][1], PallasField::zero());
+    assert_eq!(witness[4][1], PallasField::zero());
 }
 
 #[test]
@@ -638,15 +598,14 @@ fn test_one_mul() {
     assert_eq!(result, Ok(()));
 
     // Check remainder is secp256k1_max()
-    let target = secp256k1_max().to_field_limbs();
+    let target = secp256k1_max().to_compact_field_limbs();
     assert_eq!(witness[0][1], target[0]);
     assert_eq!(witness[1][1], target[1]);
-    assert_eq!(witness[2][1], target[2]);
 
     // Check quotient is zero
-    assert_eq!(witness[10][0], PallasField::zero());
-    assert_eq!(witness[11][0], PallasField::zero());
-    assert_eq!(witness[12][0], PallasField::zero());
+    assert_eq!(witness[2][1], PallasField::zero());
+    assert_eq!(witness[3][1], PallasField::zero());
+    assert_eq!(witness[4][1], PallasField::zero());
 }
 
 #[test]
@@ -667,15 +626,14 @@ fn test_max_native_square() {
     // Check remainder is the square
     let multiplicand = pallas_sqrt();
     let square = multiplicand.pow(2u32);
-    let product = ForeignElement::<PallasField, 3>::from_biguint(square);
+    let product = square.to_compact_field_limbs();
     assert_eq!(witness[0][1], product[0]);
     assert_eq!(witness[1][1], product[1]);
-    assert_eq!(witness[2][1], product[2]);
 
     // Check quotient is zero
-    assert_eq!(witness[10][0], PallasField::zero());
-    assert_eq!(witness[11][0], PallasField::zero());
-    assert_eq!(witness[12][0], PallasField::zero());
+    assert_eq!(witness[2][1], PallasField::zero());
+    assert_eq!(witness[3][1], PallasField::zero());
+    assert_eq!(witness[4][1], PallasField::zero());
 }
 
 #[test]
@@ -696,15 +654,14 @@ fn test_max_foreign_square() {
     // Check remainder is the square
     let multiplicand = secp256k1_sqrt();
     let square = multiplicand.pow(2u32);
-    let product = ForeignElement::<PallasField, 3>::from_biguint(square);
+    let product = square.to_compact_field_limbs();
     assert_eq!(witness[0][1], product[0]);
     assert_eq!(witness[1][1], product[1]);
-    assert_eq!(witness[2][1], product[2]);
 
     // Check quotient is zero
-    assert_eq!(witness[10][0], PallasField::zero());
-    assert_eq!(witness[11][0], PallasField::zero());
-    assert_eq!(witness[12][0], PallasField::zero());
+    assert_eq!(witness[2][1], PallasField::zero());
+    assert_eq!(witness[3][1], PallasField::zero());
+    assert_eq!(witness[4][1], PallasField::zero());
 }
 
 #[test]
@@ -723,7 +680,7 @@ fn test_max_native_multiplicands() {
     assert_eq!(result, Ok(()));
     assert_eq!(
         pallas_max() * pallas_max() % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        [witness[0][1], witness[1][1]].compose()
     );
 }
 
@@ -743,7 +700,7 @@ fn test_max_foreign_multiplicands() {
     assert_eq!(result, Ok(()));
     assert_eq!(
         secp256k1_max() * secp256k1_max() % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        [witness[0][1], witness[1][1]].compose()
     );
 }
 
@@ -775,10 +732,10 @@ fn test_nonzero_carry0() {
             vec![],
         );
         assert_eq!(result, Ok(()));
-        assert_ne!(witness[9][0], PallasField::zero()); // carry0 is not zero
+        assert_ne!(witness[8][0], PallasField::zero()); // carry0 is not zero
         assert_eq!(
             &a * &b % secp256k1_modulus(),
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
 
         // Invalid carry0 witness test
@@ -798,7 +755,7 @@ fn test_nonzero_carry0() {
         );
         assert_eq!(
             a * b % secp256k1_modulus(),
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
     }
 }
@@ -830,8 +787,9 @@ fn test_nonzero_carry10() {
     assert_ne!(witness[6][0], PallasField::zero()); // carry10 is definitely not zero
     assert_eq!(
         &a * &b % &foreign_field_modulus,
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        [witness[0][1], witness[1][1]].compose()
     );
+    println!("up to here");
 
     // Invalid carry0 witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -850,7 +808,7 @@ fn test_nonzero_carry10() {
     );
     assert_eq!(
         a * b % &foreign_field_modulus,
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        [witness[0][1], witness[1][1]].compose()
     );
 }
 

@@ -186,11 +186,11 @@ pub fn create<F: PrimeField>(
     let remainder_hi = remainder.to_field_limbs()[2];
     let quotient_hi = quotient.to_field_limbs()[2];
 
-    // Track witness data for external multi-range-check on certain components of intermediate product and carry
-    external_checks.add_multi_range_check(&[carry1_lo, product1_lo, product1_hi_0]);
-
     // Track witness data for external multi-range-check quotient limbs
     external_checks.add_multi_range_check(&quotient.to_field_limbs());
+
+    // Track witness data for external multi-range-check on certain components of intermediate product and carry
+    external_checks.add_multi_range_check(&[carry1_lo, product1_lo, product1_hi_0]);
 
     // Track witness data for external multi-range-checks on quotient and remainder
     external_checks.add_compact_multi_range_check(&remainder.to_compact_field_limbs());
@@ -230,7 +230,7 @@ pub fn create<F: PrimeField>(
             "product1_hi_1" => product1_hi_1,
             "remainder01" => remainder[0],
             "remainder2" => remainder[1],
-            "quotient1" => quotient[0],
+            "quotient0" => quotient[0],
             "quotient1" => quotient[1],
             "quotient2" => quotient[2],
             "product1_lo" => product1_lo,
@@ -252,6 +252,11 @@ pub struct ExternalChecks<F: PrimeField> {
 
 impl<F: PrimeField> ExternalChecks<F> {
     /// Track a bound check
+    pub fn add_bound_check(&mut self, limbs: &[F; 3]) {
+        self.bounds.push(*limbs);
+    }
+
+    /// Track a high bound computation
     pub fn add_high_bounds_computation(&mut self, limbs: &[F; 2]) {
         self.high_bounds.push(*limbs);
     }
@@ -267,22 +272,24 @@ impl<F: PrimeField> ExternalChecks<F> {
     }
 
     /// Extend the witness with external multi range_checks
-    pub fn extend_witness_multi_range_checks(&self, witness: &mut [Vec<F>; COLUMNS]) {
+    pub fn extend_witness_multi_range_checks(&mut self, witness: &mut [Vec<F>; COLUMNS]) {
         for [v0, v1, v2] in self.multi_ranges.clone() {
             range_check::witness::extend_multi(witness, v0, v1, v2)
         }
+        self.multi_ranges = vec![];
     }
 
     /// Extend the witness with external compact multi range_checks
-    pub fn extend_witness_compact_multi_range_checks(&self, witness: &mut [Vec<F>; COLUMNS]) {
+    pub fn extend_witness_compact_multi_range_checks(&mut self, witness: &mut [Vec<F>; COLUMNS]) {
         for [v01, v2] in self.compact_multi_ranges.clone() {
             range_check::witness::extend_multi_compact(witness, v01, v2)
         }
+        self.compact_multi_ranges = vec![];
     }
 
     /// Extend the witness with external bound addition as foreign field addition
     pub fn extend_witness_bound_addition(
-        &self,
+        &mut self,
         witness: &mut [Vec<F>; COLUMNS],
         foreign_field_modulus: &[F; 3],
     ) {
@@ -293,11 +300,12 @@ impl<F: PrimeField> ExternalChecks<F> {
                 foreign_field_modulus,
             );
         }
+        self.bounds = vec![];
     }
 
     /// Extend the witness with external high bounds additions as generic gates
     pub fn extend_witness_high_bounds_computation(
-        &self,
+        &mut self,
         witness: &mut [Vec<F>; COLUMNS],
         neg_foreign_field_modulus: &BigUint,
     ) {
@@ -317,5 +325,7 @@ impl<F: PrimeField> ExternalChecks<F> {
             witness[3][last_row] = bound[1];
             witness[5][last_row] = out1;
         }
+        // Empty the high bounds
+        self.high_bounds = vec![];
     }
 }
