@@ -13,10 +13,8 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
 
-use o1_utils::{
-    foreign_field::{
-        BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
-    }
+use o1_utils::foreign_field::{
+    BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
 };
 use std::{array, ops::Div};
 
@@ -71,7 +69,7 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("quotient0"),
             VariableCell::create("quotient1"),
             VariableCell::create("quotient2"),
-            VariableCell::create("product1_lo"), 
+            VariableCell::create("product1_lo"),
             VariableCell::create("product1_hi_0"),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -179,9 +177,6 @@ pub fn create<F: PrimeField>(
     let [product1_lo, product1_hi_0, product1_hi_1, carry0, carry1_lo, carry1_hi] =
         compute_witness_variables(&products.to_limbs(), &remainder.to_limbs());
 
-    // Track witness data for external multi-range-check on certain components of intermediate product and carry
-    external_checks.add_multi_range_check(&[carry1_lo, product1_lo, product1_hi_0]);
-
     // Compute high bounds for multi-range-checks on quotient and remainder, making 3 limbs (with zero)
     // Assumes that right's and left's high bounds are range checked at a different stage.
     let quotient_hi_bound = compute_high_bound(&quotient, &neg_foreign_field_modulus);
@@ -191,10 +186,20 @@ pub fn create<F: PrimeField>(
     let remainder_hi = remainder.to_field_limbs()[2];
     let quotient_hi = quotient.to_field_limbs()[2];
 
+    // Track witness data for external multi-range-check on certain components of intermediate product and carry
+    external_checks.add_multi_range_check(&[carry1_lo, product1_lo, product1_hi_0]);
+
+    // Track witness data for external multi-range-check quotient limbs
+    external_checks.add_multi_range_check(&quotient.to_field_limbs());
+
     // Track witness data for external multi-range-checks on quotient and remainder
     external_checks.add_compact_multi_range_check(&remainder.to_compact_field_limbs());
-    external_checks.add_multi_range_check(&[remainder_hi_bound.into(), quotient_hi_bound.into(), F::zero()]);
-    external_checks.add_high_bound_check(&[remainder_hi, quotient_hi]);
+    external_checks.add_multi_range_check(&[
+        remainder_hi_bound.into(),
+        quotient_hi_bound.into(),
+        F::zero(),
+    ]);
+    external_checks.add_high_bounds_computation(&[remainder_hi, quotient_hi]);
 
     // NOTE: high bound checks and multi range checks for left and right should be done somewhere else
 
@@ -247,7 +252,7 @@ pub struct ExternalChecks<F: PrimeField> {
 
 impl<F: PrimeField> ExternalChecks<F> {
     /// Track a bound check
-    pub fn add_high_bound_check(&mut self, limbs: &[F; 2]) {
+    pub fn add_high_bounds_computation(&mut self, limbs: &[F; 2]) {
         self.high_bounds.push(*limbs);
     }
 
@@ -291,26 +296,25 @@ impl<F: PrimeField> ExternalChecks<F> {
     }
 
     /// Extend the witness with external high bounds additions as generic gates
-    pub fn extend_witness_high_bounds(
+    pub fn extend_witness_high_bounds_computation(
         &self,
         witness: &mut [Vec<F>; COLUMNS],
-        neg_foreign_field_modulus: &[F; 3],
+        neg_foreign_field_modulus: &BigUint,
     ) {
+        let neg_f2 = neg_foreign_field_modulus.to_field_limbs::<F>()[2];
         for bound in self.high_bounds.clone() {
-            let out0 = bound[0] + neg_foreign_field_modulus[2];
-            let out1 = bound[1] + neg_foreign_field_modulus[2];
+            let out0 = bound[0] + neg_f2;
+            let out1 = bound[1] + neg_f2;
             // Extend the witness for the generic gate
             for col in witness.iter_mut().take(COLUMNS) {
                 col.extend(std::iter::repeat(F::zero()).take(1))
             }
             // Fill values for the new generic row
-            // l1 r1 o1 l2 r2 o2
-            let last_row = witness[0].len()-1;
+            // l1 0 o1 l2 0 o2
+            let last_row = witness[0].len() - 1;
             witness[0][last_row] = bound[0];
-            witness[1][last_row] = neg_foreign_field_modulus[2];
             witness[2][last_row] = out0;
             witness[3][last_row] = bound[1];
-            witness[4][last_row] = neg_foreign_field_modulus[2];
             witness[5][last_row] = out1;
         }
     }

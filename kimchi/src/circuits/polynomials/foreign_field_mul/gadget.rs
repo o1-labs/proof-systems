@@ -14,6 +14,7 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
+        polynomials::generic::GenericGateSpec,
         wires::Wire,
     },
 };
@@ -71,6 +72,17 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Self::create_foreign_field_mul(*curr_row, foreign_field_modulus);
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
+    }
+
+    pub fn extend_high_bounds(
+        gates: &mut Vec<Self>,
+        curr_row: &mut usize,
+        neg_foreign_field_modulus: &BigUint,
+    ) {
+        let r = gates.len();
+        let neg_f2 = neg_foreign_field_modulus.to_field_limbs()[2];
+        let g = GenericGateSpec::Plus(neg_f2);
+        CircuitGate::extend_generic(gates, curr_row, Wire::for_row(r), g.clone(), Some(g));
     }
 }
 

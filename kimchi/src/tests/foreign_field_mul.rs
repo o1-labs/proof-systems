@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::{foreign_field_add::witness::FFOps, foreign_field_mul, range_check},
+        polynomials::{foreign_field_mul, range_check},
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -15,13 +15,12 @@ use crate::{
 use ark_ec::AffineCurve;
 use ark_ff::{Field, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
-use num_bigint::{BigInt, BigUint, ToBigInt};
-use num_integer::Integer;
-use num_traits::{FromPrimitive, One};
+use num_bigint::BigUint;
+use num_traits::One;
 use o1_utils::{
     foreign_field::{
-        BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
-        FieldArrayCompose, ForeignElement, ForeignFieldHelpers,
+        BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose, ForeignElement,
+        ForeignFieldHelpers,
     },
     FieldHelpers,
 };
@@ -99,61 +98,100 @@ where
     // Optionally also add external gate checks to circuit
     if external_gates {
         // Layout for this test (just an example, circuit designer has complete flexibility where to put the checks)
-        //      0-1  ForeignFieldMul
-        //      2-3  ForeignFieldAdd (result bound addition)
-        //      4-7  multi-range-check (left multiplicand)
-        //      8-11 multi-range-check (right multiplicand)
-        //     12-15 multi-range-check (carry1_lo, product1_lo, product1_hi_0)
-        //     16-19 multi-range-check (result range check)
-        //     20-23 compact-multi-range-check (quotient bound range check)
+        //    BASIC:
+        //      0-1  ForeignFieldMul | Zero
+        // EXTERNAL:
+        //      2-5  compact-multi-range-check (result range check)
+        //        6  Generic (result and quotient bounds)
+        //      7-10 multi-range-check (quotient range check)
+        //     11-14 multi-range-check (carry1_lo, product1_lo, product1_hi_0)
+        //     15-18 multi-range-check (result bound, quotient bound, 0)
+        // DESIGNER:
+        //        19 Generic (left and right bounds)
+        //     20-23 multi-range-check (left multiplicand)
+        //     24-27 multi-range-check (right multiplicand)
+        //     28-31 multi-range-check (left bound, right bound, 0)
 
-        // Result bound addition
-        CircuitGate::extend_single_ffadd(
-            &mut gates,
-            &mut next_row,
-            FFOps::Add,
-            foreign_field_modulus,
-        );
-        gates.connect_cell_pair((1, 0), (2, 0));
-        gates.connect_cell_pair((1, 1), (2, 1));
-        gates.connect_cell_pair((1, 2), (2, 2));
+        // Result compact-multi-range-check
+        CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((1, 0), (4, 1)); // remainder01
+        gates.connect_cell_pair((1, 1), (2, 0)); // remainder2
+        external_checks.extend_witness_compact_multi_range_checks(&mut witness);
+        // These are the coordinates (row, col) of the remainder limbs in the witness
+        // remainder0 -> (3, 0), remainder1 -> (4, 0), remainder2 -> (2,0)
+
+        // Constant Double Generic gate for result and quotient bounds
+        let neg_foreign_field_modulus = foreign_field_modulus.negate();
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field_modulus);
+        gates.connect_cell_pair((6, 0), (1, 1)); // remainder2
+        gates.connect_cell_pair((6, 3), (1, 4)); // quotient2
         external_checks
-            .extend_witness_bound_addition(&mut witness, &foreign_field_modulus.to_field_limbs());
+            .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
+
+        // Quotient multi-range-check
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((1, 2), (7, 0)); // quotient0
+        gates.connect_cell_pair((1, 3), (8, 0)); // quotient1
+        gates.connect_cell_pair((1, 4), (9, 0)); // quotient2
+                                                 // Witness updated below
+
+        // Multiplication witness value carry1_lo, product1_lo, product1_hi_0 multi-range-check
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((0, 6), (11, 0)); // carry1_lo
+        gates.connect_cell_pair((1, 5), (12, 0)); // product1_lo
+        gates.connect_cell_pair((1, 6), (13, 0)); // product1_hi_0
+                                                  // Witness updated below
+
+        // Bounds for result and quotient range checks
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((6, 2), (15, 0)); // result_bound
+        gates.connect_cell_pair((6, 5), (16, 0)); // quotient_bound
+
+        // Add witness for external multi-range checks:
+        // [quotient0, quotient1, quotient2]
+        // [carry1_lo, product1_lo, product1_hi_0]
+        // [result_bound, quotient_bound, 0]
+        external_checks.extend_witness_multi_range_checks(&mut witness);
+
+        // DESIGNER CHOICE: left and right
+        // Constant Double Generic gate for result and quotient bounds
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field);
+        gates.connect_cell_pair((19, 0), (0, 2)); // left2
+        gates.connect_cell_pair((19, 3), (0, 5)); // right2
+        external_checks.extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field);
 
         // Left input multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((0, 0), (4, 0));
-        gates.connect_cell_pair((0, 1), (5, 0));
-        gates.connect_cell_pair((0, 2), (6, 0));
+        gates.connect_cell_pair((0, 0), (20, 0)); // left_input0
+        gates.connect_cell_pair((0, 1), (21, 0)); // left_input1
+        gates.connect_cell_pair((0, 2), (22, 0)); // left_input2
         range_check::witness::extend_multi_limbs(&mut witness, &left_input.to_field_limbs());
 
         // Right input multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((0, 3), (8, 0));
-        gates.connect_cell_pair((0, 4), (9, 0));
-        gates.connect_cell_pair((0, 5), (10, 0));
+        gates.connect_cell_pair((0, 3), (24, 0)); // right_input0
+        gates.connect_cell_pair((0, 4), (25, 0)); // right_input1
+        gates.connect_cell_pair((0, 5), (26, 0)); // right_input2
         range_check::witness::extend_multi_limbs(&mut witness, &right_input.to_field_limbs());
 
-        // Multiplication witness value carry1_lo, product1_lo, product1_hi_0 multi-range-check
+        // Multi-range check bounds for left and right inputs
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((0, 6), (12, 0)); // carry1_lo
-        gates.connect_cell_pair((1, 5), (13, 0)); // product1_lo
-        gates.connect_cell_pair((1, 6), (14, 0)); // product1_hi_0
-                                                  // Witness updated below
-
-        // Result/remainder bound multi-range-check
-        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_ffadd_range_checks(2, None, None, 16);
-        // Witness updated below
-
-        // Add witness for external multi-range checks (carry1_lo, product1_lo, product1_hi_0 and result)
-        external_checks.extend_witness_multi_range_checks(&mut witness);
-
-        // Quotient bound compact-multi-range-check
-        CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((1, 3), (22, 1));
-        gates.connect_cell_pair((1, 4), (20, 0));
-        external_checks.extend_witness_compact_multi_range_checks(&mut witness);
+        gates.connect_cell_pair((19, 2), (28, 0)); // left_bound
+        gates.connect_cell_pair((19, 5), (29, 0)); // right_bound
+        let left_hi_bound =
+            foreign_field_mul::witness::compute_high_bound(&left_input, &neg_foreign_field_modulus);
+        let right_hi_bound = foreign_field_mul::witness::compute_high_bound(
+            &right_input,
+            &neg_foreign_field_modulus,
+        );
+        range_check::witness::extend_multi_limbs(
+            &mut witness,
+            &[
+                left_hi_bound.into(),
+                right_hi_bound.into(),
+                <G::ScalarField>::zero(),
+            ],
+        );
     }
 
     let runner = if full {

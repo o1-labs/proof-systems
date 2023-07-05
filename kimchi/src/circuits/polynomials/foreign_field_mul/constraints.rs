@@ -218,8 +218,7 @@ where
         //         2^2L * carry0 = rhs
         constraints.push(
             T::two_to_2limb() * carry0.clone()
-                - (products(0) + T::two_to_limb() * product1_lo
-                    - remainder[0].clone())
+                - (products(0) + T::two_to_limb() * product1_lo - remainder[0].clone()),
         );
 
         // C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
@@ -282,7 +281,6 @@ pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
     remainder: &[T; 2],
     foreign_field_modulus: &[T; 3],
 ) -> [T; 5] {
-
     auto_clone_array!(left_input);
     auto_clone_array!(right_input);
     auto_clone_array!(quotient);
