@@ -15,7 +15,8 @@ use num_integer::Integer;
 
 use o1_utils::{
     foreign_field::{
-        BigUintArrayFieldHelpers, ForeignFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+        BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+        ForeignFieldHelpers,
     },
     BigUintFieldHelpers,
 };
