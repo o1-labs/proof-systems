@@ -193,7 +193,7 @@ where
         gates.connect_cell_pair((19, 3), (0, 5)); // right2
         external_checks
             .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
-
+ 
         // Left input multi-range-check
         external_checks.add_multi_range_check(&left_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
@@ -201,7 +201,7 @@ where
         gates.connect_cell_pair((0, 1), (21, 0)); // left_input1
         gates.connect_cell_pair((0, 2), (22, 0)); // left_input2
                                                   // Witness updated below
-
+ 
         // Right input multi-range-check
         external_checks.add_multi_range_check(&right_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
@@ -209,7 +209,7 @@ where
         gates.connect_cell_pair((0, 4), (25, 0)); // right_input1
         gates.connect_cell_pair((0, 5), (26, 0)); // right_input2
                                                   // Witness updated below
-
+ 
         // Multi-range check bounds for left and right inputs
         let left_hi_bound =
             foreign_field_mul::witness::compute_high_bound(&left_input, &neg_foreign_field_modulus);
@@ -225,10 +225,11 @@ where
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((19, 2), (28, 0)); // left_bound
         gates.connect_cell_pair((19, 5), (29, 0)); // right_bound
-
+ 
         // Add witness for external multi-range checks:
         // left, right, and bounds
         external_checks.extend_witness_multi_range_checks(&mut witness);
+        
     }
 
     let runner = if full {
@@ -469,7 +470,7 @@ where
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(
             result,
@@ -488,7 +489,7 @@ where
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(
             result,
@@ -507,7 +508,7 @@ where
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(
             result,
@@ -526,7 +527,7 @@ where
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(
             result,
@@ -545,7 +546,7 @@ where
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(
             result,
@@ -771,7 +772,7 @@ fn test_nonzero_carry10() {
 
     // Compute operands
     let a = &foreign_field_modulus / BigUint::two().pow(5);
-    let b = (&q * &foreign_field_modulus) / &a;
+    let b = ((&q * &foreign_field_modulus) / &a) % &foreign_field_modulus;
 
     // Valid witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -789,7 +790,6 @@ fn test_nonzero_carry10() {
         &a * &b % &foreign_field_modulus,
         [witness[0][1], witness[1][1]].compose()
     );
-    println!("up to here");
 
     // Invalid carry0 witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -818,12 +818,8 @@ fn test_nonzero_carry1_hi() {
     // Big (rubbish) modulus
     let foreign_field_modulus = BigUint::two().pow(259u32) - BigUint::one();
 
-    // Maximum quotient
-    let q = &foreign_field_modulus - BigUint::one();
-
-    // Compute operands
-    let a = &foreign_field_modulus / BigUint::two().pow(4);
-    let b = (&q * &foreign_field_modulus) / &a;
+    // Maximum operands
+    let a = &foreign_field_modulus - BigUint::one();
 
     // Valid witness test
     let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -831,15 +827,15 @@ fn test_nonzero_carry1_hi() {
         true,
         false,
         &a,
-        &b,
+        &a,
         &foreign_field_modulus,
         vec![],
     );
     assert_eq!(result, Ok(()));
     assert_ne!(witness[7][0], PallasField::zero()); // carry1_hi is definitely not zero
     assert_eq!(
-        &a * &b % &foreign_field_modulus,
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        &a * &a % &foreign_field_modulus,
+        [witness[0][1], witness[1][1]].compose()
     );
 
     // Invalid carry1_hi witness test
@@ -848,7 +844,7 @@ fn test_nonzero_carry1_hi() {
         false, // Disable copy constraints so we can catch carry1_hi custom constraint failure
         false,
         &a,
-        &b,
+        &a,
         &foreign_field_modulus,
         vec![((0, 7), PallasField::zero())], // Invalidate carry1_hi
     );
@@ -858,8 +854,8 @@ fn test_nonzero_carry1_hi() {
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
     );
     assert_eq!(
-        a * b % &foreign_field_modulus,
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        &a * &a % &foreign_field_modulus,
+        [witness[0][1], witness[1][1]].compose()
     );
 }
 
@@ -887,7 +883,7 @@ fn test_nonzero_second_bit_carry1_hi() {
     assert_eq!(witness[7][0], PallasField::from(2u32)); // carry1_hi is not zero
     assert_eq!(
         &a * &b % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        [witness[0][1], witness[1][1]].compose()
     );
 
     // Invalid carry1_hi witness test
@@ -907,7 +903,7 @@ fn test_nonzero_second_bit_carry1_hi() {
     );
     assert_eq!(
         a * b % secp256k1_modulus(),
-        [witness[0][1], witness[1][1], witness[2][1]].compose()
+        [witness[0][1], witness[1][1]].compose()
     );
 }
 
@@ -1001,7 +997,7 @@ fn test_zero_mul_invalid_quotient() {
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((0, 9), PallasField::one())], // Invalidate q0
+        vec![((1, 2), PallasField::one())], // Invalidate q0
     );
     assert_eq!(
         result,
@@ -1015,7 +1011,7 @@ fn test_zero_mul_invalid_quotient() {
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((0, 10), PallasField::one())], // Invalidate q1
+        vec![((1, 3), PallasField::one())], // Invalidate q1
     );
     assert_eq!(
         result,
@@ -1029,7 +1025,7 @@ fn test_zero_mul_invalid_quotient() {
         &BigUint::zero(),
         &BigUint::zero(),
         &secp256k1_modulus(),
-        vec![((0, 11), PallasField::one())], // Invalidate q2
+        vec![((1, 4), PallasField::one())], // Invalidate q2
     );
     assert_eq!(
         result,
@@ -1043,7 +1039,7 @@ fn test_zero_mul_invalid_quotient() {
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((0, 9), PallasField::one())], // Invalidate q0
+        vec![((1, 2), PallasField::one())], // Invalidate q0
     );
     assert_eq!(
         result,
@@ -1057,7 +1053,7 @@ fn test_zero_mul_invalid_quotient() {
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((0, 10), PallasField::one())], // Invalidate q1
+        vec![((1, 3), PallasField::one())], // Invalidate q1
     );
     assert_eq!(
         result,
@@ -1071,7 +1067,7 @@ fn test_zero_mul_invalid_quotient() {
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((0, 11), PallasField::one())], // Invalidate q2
+        vec![((1, 4), PallasField::one())], // Invalidate q2
     );
     assert_eq!(
         result,
@@ -1082,21 +1078,20 @@ fn test_zero_mul_invalid_quotient() {
 #[test]
 // Test witness with invalid remainder fails
 fn test_mul_invalid_remainder() {
-    for col in 0..1 {
-        let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
             false,
             false,
             &secp256k1_sqrt(),
             &secp256k1_sqrt(),
             &secp256k1_modulus(),
-            vec![((1, col), PallasField::zero())], // Invalidate ri
+            vec![((1, 0), PallasField::zero())], // Invalidate r01
         );
         assert_eq!(
             result,
             Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
         );
-    }
+    
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,
@@ -1105,7 +1100,7 @@ fn test_mul_invalid_remainder() {
         &secp256k1_sqrt(),
         &secp256k1_sqrt(),
         &secp256k1_modulus(),
-        vec![((1, 2), PallasField::one())], // Invalidate r2
+        vec![((1, 1), PallasField::one())], // Invalidate r2
     );
     assert_eq!(
         result,
@@ -1133,7 +1128,7 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(
             result,
@@ -1162,7 +1157,7 @@ fn test_random_multiplicands_valid() {
         );
         assert_eq!(
             (&left_input * &right_input) % secp256k1_modulus(),
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(result, Ok(()),);
     }
@@ -1190,7 +1185,7 @@ fn test_smaller_foreign_field_modulus() {
         );
         assert_eq!(
             (&left_input * &right_input) % &foreign_field_modulus,
-            [witness[0][1], witness[1][1], witness[2][1]].compose()
+            [witness[0][1], witness[1][1]].compose()
         );
         assert_eq!(result, Ok(()),);
     }
@@ -1361,7 +1356,7 @@ fn test_native_modulus_constraint() {
             // Targeted attack on constraint 6
             ((0, 7), PallasField::from(8u32)),
             (
-                (1, 2),
+                (1, 1),
                 PallasField::from_bytes(&[
                     89, 18, 0, 0, 237, 48, 45, 153, 27, 249, 76, 9, 252, 152, 70, 34, 0, 0, 0, 0,
                     0, 0, 249, 255, 255, 255, 255, 255, 255, 255, 255, 63,
@@ -1373,34 +1368,6 @@ fn test_native_modulus_constraint() {
     assert_eq!(
         result,
         Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6))
-    );
-}
-
-#[test]
-fn test_constraint_c12() {
-    // Attack C12 (i.e. the 9th custom constraint) another way
-    let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-        false,
-        false,
-        false,
-        &BigUint::zero(),
-        &BigUint::zero(),
-        &secp256k1_modulus(),
-        vec![
-            ((0, 12), PallasField::one()), // invalidate q'_carry
-            (
-                (0, 13),
-                PallasField::from_bytes(&[
-                    210, 3, 0, 0, 238, 48, 45, 153, 27, 249, 76, 9, 252, 152, 70, 34, 0, 0, 0, 0,
-                    0, 0, 255, 255, 255, 255, 255, 255, 255, 255, 255, 63,
-                ])
-                .unwrap(),
-            ), // Pacify 8th constraint by getting s01 - q'01 to cancel
-        ],
-    );
-    assert_eq!(
-        result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
     );
 }
 

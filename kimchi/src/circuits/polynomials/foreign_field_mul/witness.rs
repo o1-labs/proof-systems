@@ -83,14 +83,22 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     ]
 }
 
-/// Perform integer bound addition computation for high limb x'2 = x2 + f'2
+/// Perform integer bound computation for high limb x'2 = x2 + f'2
 pub fn compute_high_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
     let x_hi = &x.to_limbs()[2];
     let neg_f_hi = &neg_foreign_field_modulus.to_limbs()[2];
     let x_hi_bound = x_hi + neg_f_hi;
-    assert!(x_hi_bound < BigUint::binary_modulus());
+    assert!(x_hi_bound < BigUint::two_to_limb());
     x_hi_bound
 }
+
+/// Perform integer bound addition for all limbs x' = x + f'
+pub fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
+    let x_bound = x + neg_foreign_field_modulus;
+    assert!(x_bound < BigUint::binary_modulus());
+    x_bound
+}
+
 
 // Compute witness variables related to foreign field multiplication
 pub(crate) fn compute_witness_variables<F: PrimeField>(
