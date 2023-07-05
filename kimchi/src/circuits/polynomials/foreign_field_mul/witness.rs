@@ -18,7 +18,7 @@ use o1_utils::foreign_field::{
 };
 use std::{array, ops::Div};
 
-use super::constraints;
+use super::gate_constraints;
 
 // Witness layout
 //   * The values and cell contents are in little-endian order, which
@@ -174,7 +174,7 @@ pub fn create<F: PrimeField>(
     let neg_foreign_field_modulus = foreign_field_modulus.negate();
 
     // Compute the intermediate products
-    let products: [F; 3] = constraints::compute_intermediate_products(
+    let products: [F; 3] = gate_constraints::compute_intermediate_products(
         &left_input.to_field_limbs(),
         &right_input.to_field_limbs(),
         &quotient.to_field_limbs(),

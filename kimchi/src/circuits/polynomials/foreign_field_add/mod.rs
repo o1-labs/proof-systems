@@ -1,5 +1,5 @@
 //! Foreign Field Addition module
 
-pub mod constraints;
+pub mod gate_constraints;
 pub mod gadget;
 pub mod witness;
