@@ -112,7 +112,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 10;
+    const CONSTRAINTS: u32 = 6;
     // DEGREE is 4
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -149,32 +149,21 @@ where
 
         // Quotient q
         let quotient = [
-            env.witness_curr(9),
-            env.witness_curr(10),
-            env.witness_curr(11),
-        ];
-
-        // Carry bits for quotient_bound_carry and quotient_bound_carry2
-        let quotient_bound_carry = env.witness_curr(12);
-        let quotient_bound01 = env.witness_curr(13);
-
-        // Remainder r (a.k.a. result)
-        let remainder = [
-            // Copied for multi-range-check
-            env.witness_next(0),
-            env.witness_next(1),
             env.witness_next(2),
+            env.witness_next(3),
+            env.witness_next(4),
         ];
 
-        // Compressed low and middle limbs of quotient q
-        let quotient01 = env.witness_next(3);
-        // Quotient bound (copied for multi-range-check)
-        let quotient_bound2 = env.witness_next(4);
+        // Remainder r (a.k.a. result) in compact format
+        // remainder01 := remainder0 + remainder1 * 2^88
+        // Actual limbs of the result will be obtained from the multi-range-check
+        // Copiable for multi-range-check
+        let remainder = [env.witness_next(0), env.witness_next(1)];
 
         // Decomposition of the middle intermediate product
         let product1_lo = env.witness_next(5); // Copied for multi-range-check
         let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
-        let product1_hi_1 = env.witness_curr(14);
+        let product1_hi_1 = env.witness_curr(9);
 
         // Foreign field modulus limbs
         let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
@@ -192,9 +181,6 @@ where
                 &neg_foreign_field_modulus,
             )
         );
-
-        // Compute intermediate sums
-        let [sum01, sum2] = compute_intermediate_sums(&quotient, &neg_foreign_field_modulus);
 
         // Compute native modulus values
         let [left_input_n, right_input_n, quotient_n, remainder_n, foreign_field_modulus_n] =
@@ -233,8 +219,7 @@ where
         constraints.push(
             T::two_to_2limb() * carry0.clone()
                 - (products(0) + T::two_to_limb() * product1_lo
-                    - remainder[0].clone()
-                    - T::two_to_limb() * remainder[1].clone()),
+                    - remainder[0].clone())
         );
 
         // C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
@@ -243,31 +228,13 @@ where
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         constraints.push(
             T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
-                - (products(2) + product1_hi + carry0 - remainder[2].clone()),
+                - (products(2) + product1_hi + carry0 - remainder[1].clone()),
         );
 
         // C8: Native modulus constraint a_n * b_n - q_n * f_n = r_n
         constraints.push(
             left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
         );
-
-        // C9: multi-range-check q0 q1
-        //      Constrain q12 = q1 + 2^L * q2
-        //      Must be done externally with a multi-range-check gadget
-        //      configured to constrain q12 with compressed mode of RangeCheck1
-        // Make sure that q12 is well formed from q1 and q2
-        constraints
-            .push(quotient01 - (quotient[0].clone() + T::two_to_limb() * quotient[1].clone()));
-
-        // C10: Constrain q'_carry01 is boolean
-        constraints.push(quotient_bound_carry.boolean());
-
-        // C11: Constrain that 2^2L * q'_carry01 = s01 - q'01
-        constraints
-            .push(T::two_to_2limb() * quotient_bound_carry.clone() - sum01 + quotient_bound01);
-
-        // C12: Constrain that q'_2 = s2 + q'_carry01
-        constraints.push(quotient_bound2 - sum2 - quotient_bound_carry);
 
         constraints
     }
@@ -307,41 +274,15 @@ pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
     ]
 }
 
-/// Compute intermediate sums
-///
-/// For more details see the "Optimizations" Section of
-/// the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
-///
-pub fn compute_intermediate_sums<F: PrimeField, T: ExprOps<F>>(
-    quotient: &[T; 3],
-    neg_foreign_field_modulus: &[T; 3],
-) -> [T; 2] {
-    auto_clone_array!(quotient);
-    auto_clone_array!(neg_foreign_field_modulus);
-
-    // q01 = q0 + 2^L * q1
-    let quotient01 = quotient(0) + T::two_to_limb() * quotient(1);
-
-    // f'01 = f'0 + 2^L * f'1
-    let neg_foreign_field_modulus01 =
-        neg_foreign_field_modulus(0) + T::two_to_limb() * neg_foreign_field_modulus(1);
-
-    [
-        // q'01 = q01 + f'01
-        quotient01 + neg_foreign_field_modulus01,
-        // q'2 = q2 + f'2
-        quotient(2) + neg_foreign_field_modulus(2),
-    ]
-}
-
 // Compute native modulus values
 pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
     left_input: &[T; 3],
     right_input: &[T; 3],
     quotient: &[T; 3],
-    remainder: &[T; 3],
+    remainder: &[T; 2],
     foreign_field_modulus: &[T; 3],
 ) -> [T; 5] {
+
     auto_clone_array!(left_input);
     auto_clone_array!(right_input);
     auto_clone_array!(quotient);
@@ -355,8 +296,8 @@ pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
         T::two_to_2limb() * right_input(2) + T::two_to_limb() * right_input(1) + right_input(0),
         // qn = 2^2L * q2 + 2^L * q1 + b0
         T::two_to_2limb() * quotient(2) + T::two_to_limb() * quotient(1) + quotient(0),
-        // rn = 2^2L * r2 + 2^L * r1 + r0
-        T::two_to_2limb() * remainder(2) + T::two_to_limb() * remainder(1) + remainder(0),
+        // rn = 2^2L * r2 + 2^L * r1 + r0 = 2^2L * r2 + r01
+        T::two_to_2limb() * remainder(1) + remainder(0),
         // fn = 2^2L * f2 + 2^L * f1 + f0
         T::two_to_2limb() * foreign_field_modulus(2)
             + T::two_to_limb() * foreign_field_modulus(1)

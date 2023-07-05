@@ -58,23 +58,23 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("carry1_lo"), // Copied for multi-range-check
             VariableCell::create("carry1_hi"), // 12-bit lookup
             VariableCell::create("carry0"),
-            VariableCell::create("quotient0"),
-            VariableCell::create("quotient1"),
-            VariableCell::create("quotient2"),
-            VariableCell::create("quotient_bound_carry"),
-            VariableCell::create("quotient_bound01"),
             VariableCell::create("product1_hi_1"),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
+            ConstantCell::create(F::zero()),
         ],
         // Zero row
         [
             // Copied for multi-range-check
-            VariableCell::create("remainder0"),
-            VariableCell::create("remainder1"),
+            VariableCell::create("remainder01"),
             VariableCell::create("remainder2"),
-            VariableCell::create("quotient01"),
-            VariableCell::create("quotient_bound2"),
-            VariableCell::create("product1_lo"), // Copied for multi-range-check
-            VariableCell::create("product1_hi_0"), // Copied for multi-range-check
+            VariableCell::create("quotient0"),
+            VariableCell::create("quotient1"),
+            VariableCell::create("quotient2"),
+            VariableCell::create("product1_lo"), 
+            VariableCell::create("product1_hi_0"),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -87,11 +87,13 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     ]
 }
 
-/// Perform integer bound addition computation x' = x + f'
-pub fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
-    let x_bound = x + neg_foreign_field_modulus;
-    assert!(x_bound < BigUint::binary_modulus());
-    x_bound
+/// Perform integer bound addition computation for high limb x'2 = x2 + f'2
+pub fn compute_high_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
+    let x_hi = x.to_limbs()[2];
+    let neg_f_hi = neg_foreign_field_modulus.to_limbs()[2];
+    let x_hi_bound = x_hi + neg_f_hi;
+    assert!(x_hi_bound < BigUint::binary_modulus());
+    x_hi_bound
 }
 
 // Compute witness variables related to foreign field multiplication
@@ -143,21 +145,6 @@ pub(crate) fn compute_witness_variables<F: PrimeField>(
     .to_fields()
 }
 
-fn compute_bound_witness_carry<F: PrimeField>(
-    sums: &[BigUint; 2],  // [sum01, sum2]
-    bound: &[BigUint; 2], // [bound01, bound2]
-) -> F {
-    auto_clone_array!(sums);
-    auto_clone_array!(bound);
-
-    // C9: witness data is created by externally by called and multi-range-check gate
-
-    // C10-C11: Compute q'_carry01 = (s01 - q'01)/2^2L
-    let (quotient_bound_carry, _) = (sums(0) - bound(0)).div_rem(&BigUint::two_to_2limb());
-
-    quotient_bound_carry.to_field::<F>().unwrap()
-}
-
 /// Create a foreign field multiplication witness
 /// Input: multiplicands left_input and right_input
 pub fn create<F: PrimeField>(
@@ -190,12 +177,6 @@ pub fn create<F: PrimeField>(
         &neg_foreign_field_modulus.to_field_limbs(),
     );
 
-    // Compute the intermediate sums [sum01, sum2] for quotient bound addition
-    let sums: [F; 2] = constraints::compute_intermediate_sums(
-        &quotient.to_field_limbs(),
-        &neg_foreign_field_modulus.to_field_limbs(),
-    );
-
     // Compute witness variables
     let [product1_lo, product1_hi_0, product1_hi_1, carry0, carry1_lo, carry1_hi] =
         compute_witness_variables(&products.to_limbs(), &remainder.to_limbs());
@@ -203,25 +184,22 @@ pub fn create<F: PrimeField>(
     // Track witness data for external multi-range-check on certain components of intermediate product and carry
     external_checks.add_multi_range_check(&[carry1_lo, product1_lo, product1_hi_0]);
 
-    // Compute bounds for multi-range-checks on quotient and remainder
-    let quotient_bound = compute_bound(&quotient, &neg_foreign_field_modulus);
-    let remainder_bound = compute_bound(&remainder, &neg_foreign_field_modulus);
+    // Compute high bounds for multi-range-checks on quotient and remainder, making 3 limbs (with zero)
+    // Assumes that right's and left's high bounds are range checked at a different stage.
+    let right_hi_bound = compute_high_bound(&right_input, &neg_foreign_field_modulus);
+    let quotient_hi_bound = compute_high_bound(&quotient, &neg_foreign_field_modulus);
+    let remainder_hi_bound = compute_high_bound(&remainder, &neg_foreign_field_modulus);
 
-    // Create optimized quotient bound computing: [q01, q'2]
-    let quotient_limbs = quotient.to_limbs();
-    let quotient01 = quotient_limbs[0].clone() + BigUint::two_to_limb() * quotient_limbs[1].clone();
-    let quotient_bound_limbs = quotient_bound.to_limbs();
-    let optimized_quotient =
-        quotient01.clone() + BigUint::two_to_2limb() * quotient_bound_limbs[2].clone();
+    // Extract the high limb of remainder and quotient to create a high bound check (Double generic)
+    let remainder_hi = remainder.to_field_limbs()[2];
+    let quotient_hi = quotient.to_field_limbs()[2];
 
-    // Track witness data for external multi-range-checks on quotient and remainder bounds
-    external_checks.add_compact_multi_range_check(&optimized_quotient.to_compact_field_limbs());
-    external_checks.add_multi_range_check(&remainder_bound.to_field_limbs());
-    external_checks.add_bound_check(&remainder.to_field_limbs());
+    // Track witness data for external multi-range-checks on quotient and remainder
+    external_checks.add_compact_multi_range_check(&remainder.to_compact_field_limbs());
+    external_checks.add_multi_range_check(&[remainder_hi_bound.into(), quotient_hi_bound.into(), F::zero()]);
+    external_checks.add_high_bound_check(&[remainder_hi, quotient_hi]);
 
-    // Compute quotient bound addition witness variables
-    let quotient_bound_carry =
-        compute_bound_witness_carry(&sums.to_biguints(), &quotient_bound.to_compact_limbs());
+    // NOTE: high bound checks and multi range checks for left and right should be done somewhere else
 
     // Extend the witness by two rows for foreign field multiplication
     for w in &mut witness {
@@ -231,9 +209,8 @@ pub fn create<F: PrimeField>(
     // Create the foreign field multiplication witness rows
     let left_input = left_input.to_field_limbs();
     let right_input = right_input.to_field_limbs();
-    let remainder = remainder.to_field_limbs();
+    let remainder = remainder.to_compact_field_limbs();
     let quotient = quotient.to_field_limbs();
-    let quotient_bound = quotient_bound.to_compact_field_limbs();
     witness::init(
         &mut witness,
         0,
@@ -247,20 +224,15 @@ pub fn create<F: PrimeField>(
             "right_input2" => right_input[2],
             "carry1_lo" => carry1_lo,
             "carry1_hi" => carry1_hi,
-            "product1_hi_1" => product1_hi_1,
             "carry0" => carry0,
+            "product1_hi_1" => product1_hi_1,
+            "remainder01" => remainder[0],
+            "remainder2" => remainder[1],
             "quotient0" => quotient[0],
             "quotient1" => quotient[1],
             "quotient2" => quotient[2],
-            "quotient_bound_carry" => quotient_bound_carry,
-            "remainder0" => remainder[0],
-            "remainder1" => remainder[1],
-            "remainder2" => remainder[2],
-            "quotient01" => quotient01.into(),
-            "quotient_bound01" => quotient_bound[0],
-            "quotient_bound2" => quotient_bound[1],
             "product1_lo" => product1_lo,
-            "product1_hi_0" => product1_hi_0
+            "product1_hi_0" => product1_hi_0,
         ],
     );
 
@@ -272,13 +244,13 @@ pub fn create<F: PrimeField>(
 pub struct ExternalChecks<F: PrimeField> {
     pub multi_ranges: Vec<[F; 3]>,
     pub compact_multi_ranges: Vec<[F; 2]>,
-    pub bounds: Vec<[F; 3]>,
+    pub high_bounds: Vec<[F; 2]>,
 }
 
 impl<F: PrimeField> ExternalChecks<F> {
     /// Track a bound check
-    pub fn add_bound_check(&mut self, limbs: &[F; 3]) {
-        self.bounds.push(*limbs);
+    pub fn add_high_bound_check(&mut self, limbs: &[F; 2]) {
+        self.high_bounds.push(*limbs);
     }
 
     /// Track a multi-range-check
@@ -306,17 +278,27 @@ impl<F: PrimeField> ExternalChecks<F> {
     }
 
     /// Extend the witness with external bound addition
-    pub fn extend_witness_bound_addition(
+    pub fn extend_witness_high_bounds(
         &self,
         witness: &mut [Vec<F>; COLUMNS],
-        foreign_field_modulus: &[F; 3],
+        neg_foreign_field_modulus: &[F; 3],
     ) {
-        for bound in self.bounds.clone() {
-            foreign_field_add::witness::extend_witness_bound_addition(
-                witness,
-                &bound,
-                foreign_field_modulus,
-            );
+        for bound in self.high_bounds.clone() {
+            let out0 = bound[0] + neg_foreign_field_modulus[2];
+            let out1 = bound[1] + neg_foreign_field_modulus[2];
+            // Extend the witness for the generic gate
+            for col in witness.iter_mut().take(COLUMNS) {
+                col.extend(std::iter::repeat(F::zero()).take(1))
+            }
+            // Fill values for the new generic row
+            // l1 r1 o1 l2 r2 o2
+            let last_row = witness[0].len()-1;
+            witness[0][last_row] = bound[0];
+            witness[1][last_row] = neg_foreign_field_modulus[2];
+            witness[2][last_row] = out0;
+            witness[3][last_row] = bound[1];
+            witness[4][last_row] = neg_foreign_field_modulus[2];
+            witness[5][last_row] = out1;
         }
     }
 }
