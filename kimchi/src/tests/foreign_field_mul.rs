@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
         polynomial::COLUMNS,
-        polynomials::{foreign_field_mul},
+        polynomials::foreign_field_mul,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -18,9 +18,7 @@ use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameter
 use num_bigint::BigUint;
 use num_traits::One;
 use o1_utils::{
-    foreign_field::{
-        BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose,
-    },
+    foreign_field::{BigUintArrayCompose, BigUintForeignFieldHelpers, FieldArrayCompose},
     FieldHelpers,
 };
 
@@ -193,7 +191,7 @@ where
         gates.connect_cell_pair((19, 3), (0, 5)); // right2
         external_checks
             .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
- 
+
         // Left input multi-range-check
         external_checks.add_multi_range_check(&left_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
@@ -201,7 +199,7 @@ where
         gates.connect_cell_pair((0, 1), (21, 0)); // left_input1
         gates.connect_cell_pair((0, 2), (22, 0)); // left_input2
                                                   // Witness updated below
- 
+
         // Right input multi-range-check
         external_checks.add_multi_range_check(&right_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
@@ -209,7 +207,7 @@ where
         gates.connect_cell_pair((0, 4), (25, 0)); // right_input1
         gates.connect_cell_pair((0, 5), (26, 0)); // right_input2
                                                   // Witness updated below
- 
+
         // Multi-range check bounds for left and right inputs
         let left_hi_bound =
             foreign_field_mul::witness::compute_high_bound(&left_input, &neg_foreign_field_modulus);
@@ -225,11 +223,10 @@ where
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
         gates.connect_cell_pair((19, 2), (28, 0)); // left_bound
         gates.connect_cell_pair((19, 5), (29, 0)); // right_bound
- 
+
         // Add witness for external multi-range checks:
         // left, right, and bounds
         external_checks.extend_witness_multi_range_checks(&mut witness);
-        
     }
 
     let runner = if full {
@@ -1079,19 +1076,18 @@ fn test_zero_mul_invalid_quotient() {
 // Test witness with invalid remainder fails
 fn test_mul_invalid_remainder() {
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
-            false,
-            false,
-            false,
-            &secp256k1_sqrt(),
-            &secp256k1_sqrt(),
-            &secp256k1_modulus(),
-            vec![((1, 0), PallasField::zero())], // Invalidate r01
-        );
-        assert_eq!(
-            result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
-        );
-    
+        false,
+        false,
+        false,
+        &secp256k1_sqrt(),
+        &secp256k1_sqrt(),
+        &secp256k1_modulus(),
+        vec![((1, 0), PallasField::zero())], // Invalidate r01
+    );
+    assert_eq!(
+        result,
+        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
+    );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
         false,

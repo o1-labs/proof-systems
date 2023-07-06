@@ -99,7 +99,6 @@ pub fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUin
     x_bound
 }
 
-
 // Compute witness variables related to foreign field multiplication
 pub(crate) fn compute_witness_variables<F: PrimeField>(
     products: &[BigUint; 3],

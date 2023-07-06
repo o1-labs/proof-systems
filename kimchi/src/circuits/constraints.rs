@@ -648,19 +648,19 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         let mut gates = self.gates;
         let lookup_tables = self.lookup_tables;
         let runtime_tables = self.runtime_tables;
-/* 
-        println!("\nGates:");
-        println!("  {:?}", gates.len());
-        for (i, gate) in gates.clone().iter().enumerate() {
-            println!("Row {:?}", i);
-            println!("Type {:?}", gate.typ);
-            println!("    wires  = {:?}", gate.wires);
-            for coeff in &gate.coeffs {
-                println!("    coeff  = {:?}", coeff.to_string());
-            }
-            println!("");
-        }
-*/
+        /*
+                println!("\nGates:");
+                println!("  {:?}", gates.len());
+                for (i, gate) in gates.clone().iter().enumerate() {
+                    println!("Row {:?}", i);
+                    println!("Type {:?}", gate.typ);
+                    println!("    wires  = {:?}", gate.wires);
+                    for coeff in &gate.coeffs {
+                        println!("    coeff  = {:?}", coeff.to_string());
+                    }
+                    println!("");
+                }
+        */
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);

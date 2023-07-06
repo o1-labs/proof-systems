@@ -310,10 +310,14 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 range_check::gate_constraints::RangeCheck1::constraint_checks(&env, &mut cache)
             }
             GateType::ForeignFieldAdd => {
-                foreign_field_add::gate_constraints::ForeignFieldAdd::constraint_checks(&env, &mut cache)
+                foreign_field_add::gate_constraints::ForeignFieldAdd::constraint_checks(
+                    &env, &mut cache,
+                )
             }
             GateType::ForeignFieldMul => {
-                foreign_field_mul::gate_constraints::ForeignFieldMul::constraint_checks(&env, &mut cache)
+                foreign_field_mul::gate_constraints::ForeignFieldMul::constraint_checks(
+                    &env, &mut cache,
+                )
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
