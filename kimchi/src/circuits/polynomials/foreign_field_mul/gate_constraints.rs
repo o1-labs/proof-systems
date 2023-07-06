@@ -71,23 +71,23 @@
 //~
 //~ The foreign field multiplication gate's rows are laid out like this
 //~
-//~ | col | `ForeignFieldMul`            | `Zero`                 |
-//~ | --- | ---------------------------- | ---------------------- |
-//~ |   0 | `left_input0`         (copy) | `remainder01`   (copy) |
-//~ |   1 | `left_input1`         (copy) | `remainder2`    (copy) |
-//~ |   2 | `left_input2`         (copy) | `quotient0`     (copy) |
-//~ |   3 | `right_input0`        (copy) | `quotient1`     (copy) |
-//~ |   4 | `right_input1`        (copy) | `quotient2`     (copy) |
-//~ |   5 | `right_input2`        (copy) | `product1_lo`   (copy) |
-//~ |   6 | `carry1_lo`           (copy) | `product1_hi_0` (copy) |
-//~ |   7 | `carry1_hi`        (plookup) |                        |
-//~ |   8 | `carry0`                     |                        |
-//~ |   9 | `product1_hi_1`              |                        |
-//~ |  10 |                              |                        |
-//~ |  11 |                              |                        |
-//~ |  12 |                              |                        |
-//~ |  13 |                              |                        |
-//~ |  14 |                              |                        |
+//~ | col | `ForeignFieldMul`            | `Zero`                  |
+//~ | --- | ---------------------------- | ----------------------- |
+//~ |   0 | `left_input0`         (copy) | `remainder01`     (copy) |
+//~ |   1 | `left_input1`         (copy) | `remainder2`      (copy) |
+//~ |   2 | `left_input2`         (copy) | `quotient0`       (copy) |
+//~ |   3 | `right_input0`        (copy) | `quotient1`       (copy) |
+//~ |   4 | `right_input1`        (copy) | `quotient2`       (copy) |
+//~ |   5 | `right_input2`        (copy) | `quotient_bound`  (copy) |
+//~ |   6 | `product1_lo`         (copy) | `product1_hi_0`   (copy) |
+//~ |   7 | `carry1_0_11`      (plookup) | `product1_hi_1`          |
+//~ |   8 | `carry1_12_23`     (plookup) | `carry1_48_59` (plookup) |
+//~ |   9 | `carry1_24_35`     (plookup) | `carry1_60_71` (plookup) |
+//~ |  10 | `carry1_36_47`     (plookup) | `carry1_72_83` (plookup) |
+//~ |  11 | `carry1_84_85`               | `carry0`                 |
+//~ |  12 | `carry1_86_87`               |                          |
+//~ |  13 | `carry1_88_89`               |                          |
+//~ |  14 | `carry1_90`                  |                          |
 //~
 
 use crate::{
@@ -112,7 +112,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 6;
+    const CONSTRAINTS: u32 = 11;
     // DEGREE is 4
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -140,12 +140,28 @@ where
             env.witness_curr(5),
         ];
 
-        // Carry bits v10 (L bits) and original v11 that is 3 bits
-        let carry1_lo = env.witness_curr(6); // Copied for multi-range-check
-        let carry1_hi = env.witness_curr(7); // 12-bit plookup
+        // Carry bits v1 decomposed into 7 sublimbs of 12 bits, 3 crumbs of 2 bits, and 1 bit
+        // Total is 91 bits (v11 3 bits + v10 88 bits)
+        let carry1_crumb0 = env.witness_curr(11);
+        let carry1_crumb1 = env.witness_curr(12);
+        let carry1_crumb2 = env.witness_curr(13);
+        let carry1_bit = env.witness_curr(14);
+        let carry1 = compose_carry(&[
+            env.witness_curr(7),   // 12-bit lookup
+            env.witness_curr(8),   // 12-bit lookup
+            env.witness_curr(9),   // 12-bit lookup
+            env.witness_curr(10),  // 12-bit lookup
+            env.witness_next(8),   // 12-bit lookup
+            env.witness_next(9),   // 12-bit lookup
+            env.witness_next(10),  // 12-bit lookup
+            carry1_crumb0.clone(), // 2-bit crumb
+            carry1_crumb1.clone(), // 2-bit crumb
+            carry1_crumb2.clone(), // 2-bit crumb
+            carry1_bit.clone(),    // 1-bit
+        ]);
 
         // Carry bits v0
-        let carry0 = env.witness_curr(8);
+        let carry0 = env.witness_next(11);
 
         // Quotient q
         let quotient = [
@@ -154,6 +170,10 @@ where
             env.witness_next(4),
         ];
 
+        // Quotient high bound: q2 + 2^88 - f2
+        // Copied for multi-range-check
+        let quotient_bound = env.witness_next(5);
+
         // Remainder r (a.k.a. result) in compact format
         // remainder01 := remainder0 + remainder1 * 2^88
         // Actual limbs of the result will be obtained from the multi-range-check
@@ -161,9 +181,9 @@ where
         let remainder = [env.witness_next(0), env.witness_next(1)];
 
         // Decomposition of the middle intermediate product
-        let product1_lo = env.witness_next(5); // Copied for multi-range-check
+        let product1_lo = env.witness_curr(6); // Copied for multi-range-check
         let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
-        let product1_hi_1 = env.witness_curr(9);
+        let product1_hi_1 = env.witness_next(7);
 
         // Foreign field modulus limbs
         let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
@@ -192,6 +212,8 @@ where
                 &foreign_field_modulus,
             );
 
+        let bound = compute_high_bound(&quotient, &foreign_field_modulus);
+
         // Define the constraints
         //   For more the details on each constraint please see the
         //   Foreign Field Multiplication RFC where each of the constraints
@@ -200,8 +222,8 @@ where
         // C1: Constrain intermediate product fragment product1_hi_1 \in [0, 2^2)
         constraints.push(product1_hi_1.crumb());
 
-        // C2: multi-range-check: v10, p10, p110
-        //     That is, check carry1_lo, product1_lo, product1_hi_0 each in [0, 2^L)
+        // C2: multi-range-check: q'2, p10, p110
+        //     That is, check bound, product1_lo, product1_hi_0 each in [0, 2^L)
         //     Must be done externally with a multi-range-check gadget
 
         // C3: Constrain decomposition of middle intermediate product p1
@@ -221,12 +243,20 @@ where
                 - (products(0) + T::two_to_limb() * product1_lo - remainder[0].clone()),
         );
 
-        // C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
+        // C6: Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
+        // C6a
+        constraints.push(carry1_crumb0.crumb());
+        // C6b
+        constraints.push(carry1_crumb1.crumb());
+        // C6c
+        constraints.push(carry1_crumb2.crumb());
+        // C6d
+        constraints.push(carry1_bit.boolean());
 
-        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
+        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         constraints.push(
-            T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
+            T::two_to_limb() * carry1.clone()
                 - (products(2) + product1_hi + carry0 - remainder[1].clone()),
         );
 
@@ -235,8 +265,36 @@ where
             left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
         );
 
+        // C9: Constrain that q'2 is correct
+        constraints.push(quotient_bound - bound);
+
         constraints
     }
+}
+
+/// Composes the 91-bit carry1 value from its parts
+pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
+    auto_clone_array!(carry);
+    carry(0)
+        + T::two_pow(12) * carry(1)
+        + T::two_pow(24) * carry(2)
+        + T::two_pow(36) * carry(3)
+        + T::two_pow(48) * carry(4)
+        + T::two_pow(60) * carry(5)
+        + T::two_pow(72) * carry(6)
+        + T::two_pow(84) * carry(7)
+        + T::two_pow(86) * carry(8)
+        + T::two_pow(88) * carry(9)
+        + T::two_pow(90) * carry(10)
+}
+
+/// Compute high bound
+pub fn compute_high_bound<F: PrimeField, T: ExprOps<F>>(
+    term: &[T; 3],
+    neg_foreign_field_modulus: &[T; 3],
+) -> T {
+    // x'2 = x2 + x'2
+    term[2].clone() + neg_foreign_field_modulus[2].clone()
 }
 
 /// Compute non-zero intermediate products

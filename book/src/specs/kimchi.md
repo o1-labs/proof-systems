@@ -1280,23 +1280,23 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 
 The foreign field multiplication gate's rows are laid out like this
 
-| col | `ForeignFieldMul`            | `Zero`                 |
-| --- | ---------------------------- | ---------------------- |
-|   0 | `left_input0`         (copy) | `remainder01`   (copy) |
-|   1 | `left_input1`         (copy) | `remainder2`    (copy) |
-|   2 | `left_input2`         (copy) | `quotient0`     (copy) |
-|   3 | `right_input0`        (copy) | `quotient1`     (copy) |
-|   4 | `right_input1`        (copy) | `quotient2`     (copy) |
-|   5 | `right_input2`        (copy) | `product1_lo`   (copy) |
-|   6 | `carry1_lo`           (copy) | `product1_hi_0` (copy) |
-|   7 | `carry1_hi`        (plookup) |                        |
-|   8 | `carry0`                     |                        |
-|   9 | `product1_hi_1`              |                        |
-|  10 |                              |                        |
-|  11 |                              |                        |
-|  12 |                              |                        |
-|  13 |                              |                        |
-|  14 |                              |                        |
+| col | `ForeignFieldMul`            | `Zero`                  |
+| --- | ---------------------------- | ----------------------- |
+|   0 | `left_input0`         (copy) | `remainder01`     (copy) |
+|   1 | `left_input1`         (copy) | `remainder2`      (copy) |
+|   2 | `left_input2`         (copy) | `quotient0`       (copy) |
+|   3 | `right_input0`        (copy) | `quotient1`       (copy) |
+|   4 | `right_input1`        (copy) | `quotient2`       (copy) |
+|   5 | `right_input2`        (copy) | `quotient_bound`  (copy) |
+|   6 | `product1_lo`         (copy) | `product1_hi_0`   (copy) |
+|   7 | `carry1_0_11`      (plookup) | `product1_hi_1`          |
+|   8 | `carry1_12_23`     (plookup) | `carry1_48_59` (plookup) |
+|   9 | `carry1_24_35`     (plookup) | `carry1_60_71` (plookup) |
+|  10 | `carry1_36_47`     (plookup) | `carry1_72_83` (plookup) |
+|  11 | `carry1_84_85`               | `carry0`                 |
+|  12 | `carry1_86_87`               |                          |
+|  13 | `carry1_88_89`               |                          |
+|  14 | `carry1_90`                  |                          |
 
 
 
