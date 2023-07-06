@@ -212,7 +212,7 @@ where
                 &foreign_field_modulus,
             );
 
-        let bound = compute_high_bound(&quotient, &foreign_field_modulus);
+        let bound = quotient[2].clone() + neg_foreign_field_modulus[2].clone();
 
         // Define the constraints
         //   For more the details on each constraint please see the
@@ -276,25 +276,16 @@ where
 pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
     auto_clone_array!(carry);
     carry(0)
-        + T::two_pow(12) * carry(1)
-        + T::two_pow(24) * carry(2)
-        + T::two_pow(36) * carry(3)
-        + T::two_pow(48) * carry(4)
-        + T::two_pow(60) * carry(5)
-        + T::two_pow(72) * carry(6)
-        + T::two_pow(84) * carry(7)
+        + T::two_pow(1 * 12) * carry(1)
+        + T::two_pow(2 * 12) * carry(2)
+        + T::two_pow(3 * 12) * carry(3)
+        + T::two_pow(4 * 12) * carry(4)
+        + T::two_pow(5 * 12) * carry(5)
+        + T::two_pow(6 * 12) * carry(6)
+        + T::two_pow(7 * 12) * carry(7)
         + T::two_pow(86) * carry(8)
         + T::two_pow(88) * carry(9)
         + T::two_pow(90) * carry(10)
-}
-
-/// Compute high bound
-pub fn compute_high_bound<F: PrimeField, T: ExprOps<F>>(
-    term: &[T; 3],
-    neg_foreign_field_modulus: &[T; 3],
-) -> T {
-    // x'2 = x2 + x'2
-    term[2].clone() + neg_foreign_field_modulus[2].clone()
 }
 
 /// Compute non-zero intermediate products
