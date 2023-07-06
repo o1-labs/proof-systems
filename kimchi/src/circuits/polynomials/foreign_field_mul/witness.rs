@@ -194,8 +194,8 @@ pub fn create<F: PrimeField>(
 
     // Track witness data for external multi-range-checks on quotient and remainder
     external_checks.add_compact_multi_range_check(&remainder.to_compact_field_limbs());
-    // This only takes 1.33 of a row, but in Snarky we can easily compress 3 limbs into one single MRC
-    external_checks.add_multi_range_check(&[remainder_hi_bound.into(), F::zero(), F::zero()]);
+    // This only takes 1.33 of a row, but this can be used to aggregate 3 limbs into 1 MRC
+    external_checks.add_limb_check(&remainder_hi_bound.into());
     external_checks.add_high_bound_computation(&remainder_hi);
 
     // NOTE: high bound checks and multi range checks for left and right should be done somewhere else
@@ -242,6 +242,7 @@ pub fn create<F: PrimeField>(
 #[derive(Default)]
 pub struct ExternalChecks<F: PrimeField> {
     pub multi_ranges: Vec<[F; 3]>,
+    pub limb_ranges: Vec<F>,
     pub compact_multi_ranges: Vec<[F; 2]>,
     pub bounds: Vec<[F; 3]>,
     pub high_bounds: Vec<F>,
@@ -256,6 +257,11 @@ impl<F: PrimeField> ExternalChecks<F> {
     /// Track a high bound computation
     pub fn add_high_bound_computation(&mut self, limb: &F) {
         self.high_bounds.push(*limb);
+    }
+
+    /// Track a limb-range-check
+    pub fn add_limb_check(&mut self, limb: &F) {
+        self.limb_ranges.push(*limb);
     }
 
     /// Track a multi-range-check
@@ -282,6 +288,21 @@ impl<F: PrimeField> ExternalChecks<F> {
             range_check::witness::extend_multi_compact(witness, v01, v2)
         }
         self.compact_multi_ranges = vec![];
+    }
+
+    /// Extend the witness with external compact multi range_checks
+    pub fn extend_witness_limb_checks(&mut self, witness: &mut [Vec<F>; COLUMNS]) {
+        for chunk in self.limb_ranges.clone().chunks(3) {
+            // Pad with zeros if necessary
+            let limbs = match chunk.len() {
+                1 => [chunk[0], F::zero(), F::zero()],
+                2 => [chunk[0], chunk[1], F::zero()],
+                3 => [chunk[0], chunk[1], chunk[2]],
+                _ => panic!("Invalid chunk length"),
+            };
+            range_check::witness::extend_multi(witness, limbs[0], limbs[1], limbs[2])
+        }
+        self.limb_ranges = vec![];
     }
 
     /// Extend the witness with external bound addition as foreign field addition

@@ -69,13 +69,6 @@ fn pallas_sqrt() -> BigUint {
     pallas_max().sqrt()
 }
 
-// Perform integer bound addition computation x' = x + f'
-fn compute_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
-    let x_bound = x + neg_foreign_field_modulus;
-    assert!(x_bound < BigUint::binary_modulus());
-    x_bound
-}
-
 // Compute intermediate sums
 fn compute_intermediate_sums<F: PrimeField, T: crate::circuits::expr::constraints::ExprOps<F>>(
     quotient: &[T; 3],
@@ -129,15 +122,15 @@ where
         //      0-1  ForeignFieldMul | Zero
         // EXTERNAL:
         //      2-5  compact-multi-range-check (result range check)
-        //        6  Generic (result and quotient bounds)
+        //        6  "single" Generic (result bound)
         //      7-10 multi-range-check (quotient range check)
-        //     11-14 multi-range-check (carry1_lo, product1_lo, product1_hi_0)
-        //     15-18 multi-range-check (result bound, quotient bound, 0)
+        //     11-14 multi-range-check (quotient_bound, product1_lo, product1_hi_0)
+        //     later limb-check result bound
         // DESIGNER:
-        //        19 Generic (left and right bounds)
-        //     20-23 multi-range-check (left multiplicand)
-        //     24-27 multi-range-check (right multiplicand)
-        //     28-31 multi-range-check (left bound, right bound, 0)
+        //        15 Generic (left and right bounds)
+        //     16-19 multi-range-check (left multiplicand)
+        //     20-23 multi-range-check (right multiplicand)
+        //     24-27 multi-range-check (result bound, left bound, right bound)
 
         // Result compact-multi-range-check
         CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
@@ -147,11 +140,10 @@ where
         // These are the coordinates (row, col) of the remainder limbs in the witness
         // remainder0 -> (3, 0), remainder1 -> (4, 0), remainder2 -> (2,0)
 
-        // Constant Double Generic gate for result and quotient bounds
+        // Constant single Generic gate for result bound
         let neg_foreign_field_modulus = foreign_field_modulus.negate();
         CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field_modulus);
         gates.connect_cell_pair((6, 0), (1, 1)); // remainder2
-        gates.connect_cell_pair((6, 3), (1, 4)); // quotient2
         external_checks
             .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
 
@@ -162,50 +154,54 @@ where
         gates.connect_cell_pair((1, 4), (9, 0)); // quotient2
                                                  // Witness updated below
 
-        // Multiplication witness value carry1_lo, product1_lo, product1_hi_0 multi-range-check
+        // Multiplication witness value quotient_bound, product1_lo, product1_hi_0 multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((0, 6), (11, 0)); // carry1_lo
-        gates.connect_cell_pair((1, 5), (12, 0)); // product1_lo
+        gates.connect_cell_pair((1, 5), (11, 0)); // quotient_bound
+        gates.connect_cell_pair((0, 6), (12, 0)); // product1_lo
         gates.connect_cell_pair((1, 6), (13, 0)); // product1_hi_0
-                                                  // Witness updated below
-
-        // Bounds for result and quotient range checks
-        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((6, 2), (15, 0)); // result_bound
-        gates.connect_cell_pair((6, 5), (16, 0)); // quotient_bound
                                                   // Witness updated below
 
         // Add witness for external multi-range checks:
         // [quotient0, quotient1, quotient2]
-        // [carry1_lo, product1_lo, product1_hi_0]
-        // [result_bound, quotient_bound, 0]
+        // [quotient_bound, product1_lo, product1_hi_0]
         external_checks.extend_witness_multi_range_checks(&mut witness);
 
-        // DESIGNER CHOICE: left and right
+        // DESIGNER CHOICE: left and right (and result bound from before)
         let left_limbs = left_input.to_field_limbs();
         let right_limbs = right_input.to_field_limbs();
         // Constant Double Generic gate for result and quotient bounds
-        external_checks.add_high_bounds_computation(&[left_limbs[2], right_limbs[2]]);
+        external_checks.add_high_bound_computation(&left_limbs[2]);
+        external_checks.add_high_bound_computation(&right_limbs[2]);
         CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field_modulus);
-        gates.connect_cell_pair((19, 0), (0, 2)); // left2
-        gates.connect_cell_pair((19, 3), (0, 5)); // right2
+        gates.connect_cell_pair((15, 0), (0, 2)); // left2
+        gates.connect_cell_pair((15, 3), (0, 5)); // right2
         external_checks
             .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
 
         // Left input multi-range-check
         external_checks.add_multi_range_check(&left_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((0, 0), (20, 0)); // left_input0
-        gates.connect_cell_pair((0, 1), (21, 0)); // left_input1
-        gates.connect_cell_pair((0, 2), (22, 0)); // left_input2
+        gates.connect_cell_pair((0, 0), (16, 0)); // left_input0
+        gates.connect_cell_pair((0, 1), (17, 0)); // left_input1
+        gates.connect_cell_pair((0, 2), (18, 0)); // left_input2
                                                   // Witness updated below
 
         // Right input multi-range-check
         external_checks.add_multi_range_check(&right_limbs);
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((0, 3), (24, 0)); // right_input0
-        gates.connect_cell_pair((0, 4), (25, 0)); // right_input1
-        gates.connect_cell_pair((0, 5), (26, 0)); // right_input2
+        gates.connect_cell_pair((0, 3), (20, 0)); // right_input0
+        gates.connect_cell_pair((0, 4), (21, 0)); // right_input1
+        gates.connect_cell_pair((0, 5), (22, 0)); // right_input2
+                                                  // Witness updated below
+
+        // Add witness for external multi-range checks:
+        // left and right limbs
+        external_checks.extend_witness_multi_range_checks(&mut witness);
+
+        // [result_bound, 0, 0]
+        // Bounds for result limb range checks
+        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
+        gates.connect_cell_pair((6, 2), (24, 0)); // result_bound
                                                   // Witness updated below
 
         // Multi-range check bounds for left and right inputs
@@ -215,18 +211,12 @@ where
             &right_input,
             &neg_foreign_field_modulus,
         );
-        external_checks.add_multi_range_check(&[
-            left_hi_bound.into(),
-            right_hi_bound.into(),
-            <G::ScalarField>::zero(),
-        ]);
-        CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
-        gates.connect_cell_pair((19, 2), (28, 0)); // left_bound
-        gates.connect_cell_pair((19, 5), (29, 0)); // right_bound
+        external_checks.add_limb_check(&left_hi_bound.into());
+        external_checks.add_limb_check(&right_hi_bound.into());
+        gates.connect_cell_pair((15, 2), (25, 0)); // left_bound
+        gates.connect_cell_pair((15, 5), (26, 0)); // right_bound
 
-        // Add witness for external multi-range checks:
-        // left, right, and bounds
-        external_checks.extend_witness_multi_range_checks(&mut witness);
+        external_checks.extend_witness_limb_checks(&mut witness);
     }
 
     let runner = if full {
@@ -420,7 +410,7 @@ fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
     assert!(x < *foreign_field_modulus);
 
     // Compute bound directly as BigUint
-    let bound = compute_bound(&x, &neg_foreign_field_modulus);
+    let bound = foreign_field_mul::witness::compute_bound(&x, &neg_foreign_field_modulus);
 
     // Compute bound separately on limbs
     let sums: [F; 2] = compute_intermediate_sums(
