@@ -141,10 +141,9 @@ optimizations.
 This is basically counting the CPU instructions that takes to run some code,
 could be use as an alternative for CI given that it won't be affected by noise
 and can work in any computer. It would also be faster by running the code only
-once. The implementation will require a bit more research but one option is the
-crate [iai](https://crates.io/crates/iai), with some thinking it could be
-possible to have this and the time benchmarks share the same code.  Is worth
-mentioning that the result are specific to the code and even the computer
+once. It will be implemented through performance counters, which don't have
+significative overhead compared to binary instrumentation.
+Is worth mentioning that the result are specific to the code and even the computer
 running the benchmark and thus not useful for comparisons with other projects.
 
 ### Kimchi memory
