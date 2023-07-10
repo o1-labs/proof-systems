@@ -1370,7 +1370,6 @@ where
             //~~ * the lookup selectors
 
             if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
-                println!("selector prover");
                 polynomials.push((
                     evaluations_form(runtime_lookup_table_selector),
                     None,

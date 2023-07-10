@@ -481,7 +481,6 @@ where
                                     .flatten(),
                             )
                             .chain(if self.evals.runtime_lookup_table_selector.is_some() {
-                                println!("verifier commitments");
                                 Some(Column::LookupRuntimeSelector)
                             } else {
                                 None
@@ -998,7 +997,6 @@ where
         .as_ref()
         .map(|li| {
             (if li.runtime_tables_selector.is_some() {
-                println!("verifier cip");
                 Some(Column::LookupRuntimeSelector)
             } else {
                 None
