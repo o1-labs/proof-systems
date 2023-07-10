@@ -32,7 +32,7 @@ o1-utils = { path = "../utils", version = "0.1.0" }
 mina-poseidon = { path = "../poseidon", version = "0.1.0" }
 
 ocaml = { version = "0.22.2", optional = true }
-ocaml-gen = { version = "0.1.0", optional = true }
+ocaml-gen = { version = "0.1.5", optional = true }
 
 [dev-dependencies]
 colored = "2.0.0"
