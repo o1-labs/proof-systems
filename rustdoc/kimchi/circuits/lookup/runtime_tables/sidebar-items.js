@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RuntimeTableCfg"],"fn":["constraints"],"struct":["RuntimeTable","RuntimeTableSpec"]};
+window.SIDEBAR_ITEMS = {"fn":["constraints"],"struct":["RuntimeTable","RuntimeTableCfg","RuntimeTableSpec"]};
