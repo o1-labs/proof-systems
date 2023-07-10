@@ -1011,6 +1011,44 @@ where
                 .rot_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
+
+            runtime_lookup_table_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.runtime_selector
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            xor_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .xor
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            lookup_gate_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .lookup
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            range_check_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .range_check
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            foreign_field_mul_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .ffmul
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);

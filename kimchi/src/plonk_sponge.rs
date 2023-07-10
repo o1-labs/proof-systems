@@ -80,6 +80,11 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             lookup_table,
             lookup_sorted,
             runtime_lookup_table,
+            runtime_lookup_table_selector,
+            xor_lookup_selector,
+            lookup_gate_lookup_selector,
+            range_check_lookup_selector,
+            foreign_field_mul_lookup_selector,
         } = e;
 
         let mut points = vec![
@@ -128,6 +133,22 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         }
         if let Some(runtime_lookup_table) = runtime_lookup_table.as_ref() {
             points.push(runtime_lookup_table)
+        }
+        if let Some(runtime_lookup_table_selector) = runtime_lookup_table_selector.as_ref() {
+            points.push(runtime_lookup_table_selector)
+        }
+        if let Some(xor_lookup_selector) = xor_lookup_selector.as_ref() {
+            points.push(xor_lookup_selector)
+        }
+        if let Some(lookup_gate_lookup_selector) = lookup_gate_lookup_selector.as_ref() {
+            points.push(lookup_gate_lookup_selector)
+        }
+        if let Some(range_check_lookup_selector) = range_check_lookup_selector.as_ref() {
+            points.push(range_check_lookup_selector)
+        }
+        if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector.as_ref()
+        {
+            points.push(foreign_field_mul_lookup_selector)
         }
 
         points.into_iter().for_each(|p| {

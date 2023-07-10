@@ -557,6 +557,11 @@ where
         lookup_table,
         lookup_sorted,
         runtime_lookup_table,
+        runtime_lookup_table_selector,
+        xor_lookup_selector,
+        lookup_gate_lookup_selector,
+        range_check_lookup_selector,
+        foreign_field_mul_lookup_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
@@ -620,6 +625,24 @@ where
     }
     if let Some(rot_selector) = rot_selector {
         check_eval_len(rot_selector)?
+    }
+
+    // Lookup selectors
+
+    if let Some(runtime_lookup_table_selector) = runtime_lookup_table_selector {
+        check_eval_len(runtime_lookup_table_selector)?
+    }
+    if let Some(xor_lookup_selector) = xor_lookup_selector {
+        check_eval_len(xor_lookup_selector)?
+    }
+    if let Some(lookup_gate_lookup_selector) = lookup_gate_lookup_selector {
+        check_eval_len(lookup_gate_lookup_selector)?
+    }
+    if let Some(range_check_lookup_selector) = range_check_lookup_selector {
+        check_eval_len(range_check_lookup_selector)?
+    }
+    if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector {
+        check_eval_len(foreign_field_mul_lookup_selector)?
     }
 
     Ok(())
