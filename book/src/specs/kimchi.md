@@ -2227,6 +2227,7 @@ The prover then follows the following steps to create the proof:
 	* add the lookup aggreg polynomial
 	* add the combined table polynomial
 	* if present, add the runtime table polynomial
+	* the lookup selectors
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 

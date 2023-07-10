@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         gate::GateType,
-        lookup::tables::combine_table,
+        lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
@@ -62,7 +62,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     .runtime_tables_selector
                     .as_ref()?,
             ),
-            LookupRuntimeTable => None,
+            LookupRuntimeTable => self.proof.commitments.lookup.as_ref()?.runtime.as_ref(),
             Index(t) => {
                 use GateType::*;
                 match t {
@@ -480,6 +480,32 @@ where
                                     .into_iter()
                                     .flatten(),
                             )
+                            .chain(if self.evals.runtime_lookup_table_selector.is_some() {
+                                println!("verifier commitments");
+                                Some(Column::LookupRuntimeSelector)
+                            } else {
+                                None
+                            })
+                            .chain(if self.evals.xor_lookup_selector.is_some() {
+                                Some(Column::LookupKindIndex(LookupPattern::Xor))
+                            } else {
+                                None
+                            })
+                            .chain(if self.evals.lookup_gate_lookup_selector.is_some() {
+                                Some(Column::LookupKindIndex(LookupPattern::Lookup))
+                            } else {
+                                None
+                            })
+                            .chain(if self.evals.range_check_lookup_selector.is_some() {
+                                Some(Column::LookupKindIndex(LookupPattern::RangeCheck))
+                            } else {
+                                None
+                            })
+                            .chain(if self.evals.foreign_field_mul_lookup_selector.is_some() {
+                                Some(Column::LookupKindIndex(LookupPattern::ForeignFieldMul))
+                            } else {
+                                None
+                            })
                     })
                     .into_iter()
                     .flatten(),
@@ -965,6 +991,55 @@ where
                 degree_bound: None,
             });
         }
+    }
+
+    for col in verifier_index
+        .lookup_index
+        .as_ref()
+        .map(|li| {
+            (if li.runtime_tables_selector.is_some() {
+                println!("verifier cip");
+                Some(Column::LookupRuntimeSelector)
+            } else {
+                None
+            })
+            .into_iter()
+            .chain(if li.lookup_selectors.xor.is_some() {
+                Some(Column::LookupKindIndex(LookupPattern::Xor))
+            } else {
+                None
+            })
+            .chain(if li.lookup_selectors.lookup.is_some() {
+                Some(Column::LookupKindIndex(LookupPattern::Lookup))
+            } else {
+                None
+            })
+            .chain(if li.lookup_selectors.range_check.is_some() {
+                Some(Column::LookupKindIndex(LookupPattern::RangeCheck))
+            } else {
+                None
+            })
+            .chain(if li.lookup_selectors.ffmul.is_some() {
+                Some(Column::LookupKindIndex(LookupPattern::ForeignFieldMul))
+            } else {
+                None
+            })
+        })
+        .into_iter()
+        .flatten()
+    {
+        let evals = proof
+            .evals
+            .get_column(col)
+            .ok_or(VerifyError::MissingEvaluation(col))?;
+        evaluations.push(Evaluation {
+            commitment: context
+                .get_column(col)
+                .ok_or(VerifyError::MissingCommitment(col))?
+                .clone(),
+            evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
+            degree_bound: None,
+        });
     }
 
     // prepare for the opening proof verification

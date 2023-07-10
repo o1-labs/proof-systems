@@ -1366,6 +1366,37 @@ where
                     runtime_table_comm.blinders.clone(),
                 ));
             }
+
+            //~~ * the lookup selectors
+
+            if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
+                println!("selector prover");
+                polynomials.push((
+                    evaluations_form(runtime_lookup_table_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(xor_lookup_selector) = lcs.lookup_selectors.xor.as_ref() {
+                polynomials.push((evaluations_form(xor_lookup_selector), None, non_hiding(1)))
+            }
+            if let Some(lookup_gate_selector) = lcs.lookup_selectors.lookup.as_ref() {
+                polynomials.push((evaluations_form(lookup_gate_selector), None, non_hiding(1)))
+            }
+            if let Some(range_check_lookup_selector) = lcs.lookup_selectors.range_check.as_ref() {
+                polynomials.push((
+                    evaluations_form(range_check_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
+                polynomials.push((
+                    evaluations_form(foreign_field_mul_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
         }
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
