@@ -349,5 +349,7 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
         .unwrap()
         .map(|e| e.to_polish());
 
+    assert_eq!(linearization.index_terms.len(), 0);
+
     (linearization, powers_of_alpha)
 }
