@@ -123,6 +123,69 @@
 <a href="#123" id="123">123</a>
 <a href="#124" id="124">124</a>
 <a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Runtime tables are tables (or arrays) that can be produced during proof creation.
 //! The setup has to prepare for their presence using [`RuntimeTableCfg`].
 //! At proving time, the prover can use [`RuntimeTable`] to specify the actual tables.
@@ -209,7 +272,8 @@
 
 <span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
-    <span class="kw">use </span><span class="kw">super</span>::RuntimeTable;
+    <span class="kw">use super</span>::{RuntimeTable, RuntimeTableCfg, RuntimeTableSpec};
+
     <span class="kw">use </span>ark_ff::PrimeField;
 
     <span class="comment">//
@@ -244,6 +308,68 @@
             <span class="self">Self </span>{
                 id: caml_rt.id,
                 data: caml_rt.data.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    <span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlRuntimeTableSpec {
+        <span class="kw">pub </span>id: i32,
+        <span class="kw">pub </span>len: usize,
+    }
+
+    <span class="kw">impl </span>From&lt;RuntimeTableSpec&gt; <span class="kw">for </span>CamlRuntimeTableSpec {
+        <span class="kw">fn </span>from(rt_spec: RuntimeTableSpec) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                id: rt_spec.id,
+                len: rt_spec.len,
+            }
+        }
+    }
+
+    <span class="kw">impl </span>From&lt;CamlRuntimeTableSpec&gt; <span class="kw">for </span>RuntimeTableSpec {
+        <span class="kw">fn </span>from(caml_rt_spec: CamlRuntimeTableSpec) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                id: caml_rt_spec.id,
+                len: caml_rt_spec.len,
+            }
+        }
+    }
+
+    <span class="comment">// CamlRuntimetableCfg
+    </span><span class="attr">#[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    </span><span class="kw">pub struct </span>CamlRuntimeTableCfg&lt;CamlF&gt; {
+        <span class="kw">pub </span>id: i32,
+        <span class="kw">pub </span>first_column: Vec&lt;CamlF&gt;,
+    }
+
+    <span class="comment">// CamlRuntimeTableCfg &lt;--&gt; RuntimeTableCfg
+    </span><span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;RuntimeTableCfg&lt;F&gt;&gt; <span class="kw">for </span>CamlRuntimeTableCfg&lt;CamlF&gt;
+    <span class="kw">where
+        </span>F: PrimeField,
+        CamlF: From&lt;F&gt;,
+    {
+        <span class="kw">fn </span>from(rt_cfg: RuntimeTableCfg&lt;F&gt;) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                id: rt_cfg.id,
+                first_column: rt_cfg.first_column.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    <span class="kw">impl</span>&lt;F, CamlF&gt; From&lt;CamlRuntimeTableCfg&lt;CamlF&gt;&gt; <span class="kw">for </span>RuntimeTableCfg&lt;F&gt;
+    <span class="kw">where
+        </span>F: PrimeField,
+        CamlF: Into&lt;F&gt;,
+    {
+        <span class="kw">fn </span>from(caml_rt_cfg: CamlRuntimeTableCfg&lt;CamlF&gt;) -&gt; <span class="self">Self </span>{
+            <span class="self">Self </span>{
+                id: caml_rt_cfg.id,
+                first_column: caml_rt_cfg
+                    .first_column
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
             }
         }
     }
