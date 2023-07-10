@@ -703,9 +703,22 @@ impl Variable {
                     .ok_or(ExprError::MissingIndexEvaluation(self.col)),
                 Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
-                LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                    Err(ExprError::MissingIndexEvaluation(self.col))
-                }
+                Column::LookupKindIndex(LookupPattern::Xor) => evals
+                    .xor_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::Lookup) => evals
+                    .lookup_gate_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::RangeCheck) => evals
+                    .range_check_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => evals
+                    .foreign_field_mul_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupRuntimeSelector => evals
+                    .runtime_lookup_table_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(_) => Err(ExprError::MissingIndexEvaluation(self.col)),
             }
         }?;
         match self.row {
