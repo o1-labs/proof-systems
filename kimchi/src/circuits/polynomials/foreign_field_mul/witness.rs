@@ -13,6 +13,7 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 use num_integer::Integer;
 
+use num_traits::One;
 use o1_utils::foreign_field::{
     BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
 };
@@ -52,13 +53,13 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("right_input1"),
             VariableCell::create("right_input2"),
             VariableCell::create("product1_lo"), // Copied for multi-range-check
-            VariableBitsCell::create("carry1", 0, Some(11)), // 12-bit lookup
-            VariableBitsCell::create("carry1", 12, Some(23)), // 12-bit lookup
-            VariableBitsCell::create("carry1", 24, Some(35)), // 12-bit lookup
-            VariableBitsCell::create("carry1", 36, Some(47)), // 12-bit lookup
-            VariableBitsCell::create("carry1", 84, Some(85)),
-            VariableBitsCell::create("carry1", 86, Some(87)),
-            VariableBitsCell::create("carry1", 88, Some(89)),
+            VariableBitsCell::create("carry1", 0, Some(12)), // 12-bit lookup
+            VariableBitsCell::create("carry1", 12, Some(24)), // 12-bit lookup
+            VariableBitsCell::create("carry1", 24, Some(36)), // 12-bit lookup
+            VariableBitsCell::create("carry1", 36, Some(48)), // 12-bit lookup
+            VariableBitsCell::create("carry1", 84, Some(86)),
+            VariableBitsCell::create("carry1", 86, Some(88)),
+            VariableBitsCell::create("carry1", 88, Some(90)),
             VariableBitsCell::create("carry1", 90, None),
         ],
         // Zero row
@@ -71,11 +72,11 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("quotient2"),
             VariableCell::create("quotient_bound"), // Copied for multi-range-check
             VariableCell::create("product1_hi_0"),  // Copied for multi-range-check
-            VariableCell::create("product1_hi_1"),  // Copied for multi-range-check
-            VariableBitsCell::create("carry1", 48, Some(59)), // 12-bit lookup
-            VariableBitsCell::create("carry1", 60, Some(71)), // 12-bit lookup
-            VariableBitsCell::create("carry1", 72, Some(83)), // 12-bit lookup
-            VariableCell::create("carry0"),
+            VariableCell::create("carry0"),         // Dummy 12-bit lookup
+            VariableBitsCell::create("carry1", 48, Some(60)), // 12-bit lookup
+            VariableBitsCell::create("carry1", 60, Some(72)), // 12-bit lookup
+            VariableBitsCell::create("carry1", 72, Some(84)), // 12-bit lookup
+            VariableCell::create("product1_hi_1"),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -83,11 +84,11 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     ]
 }
 
-/// Perform integer bound computation for high limb x'2 = x2 + f'2
+/// Perform integer bound computation for high limb x'2 = x2 + f'2 - 1
 pub fn compute_high_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
     let x_hi = &x.to_limbs()[2];
     let neg_f_hi = &neg_foreign_field_modulus.to_limbs()[2];
-    let x_hi_bound = x_hi + neg_f_hi;
+    let x_hi_bound = x_hi + neg_f_hi - BigUint::one();
     assert!(x_hi_bound < BigUint::two_to_limb());
     x_hi_bound
 }
@@ -179,9 +180,6 @@ pub fn create<F: PrimeField>(
     let remainder_hi_bound = compute_high_bound(&remainder, &neg_foreign_field_modulus);
     let quotient_hi_bound = compute_high_bound(&quotient, &neg_foreign_field_modulus);
 
-    // Extract the high limb of remainder and quotient to create a high bound check (Double generic)
-    let remainder_hi = remainder.to_field_limbs()[2];
-
     // Track witness data for external multi-range-check quotient limbs
     external_checks.add_multi_range_check(&quotient.to_field_limbs());
 
@@ -196,6 +194,8 @@ pub fn create<F: PrimeField>(
     external_checks.add_compact_multi_range_check(&remainder.to_compact_field_limbs());
     // This only takes 1.33 of a row, but this can be used to aggregate 3 limbs into 1 MRC
     external_checks.add_limb_check(&remainder_hi_bound.into());
+    // Extract the high limb of remainder to create a high bound check (Double generic)
+    let remainder_hi = remainder.to_field_limbs()[2];
     external_checks.add_high_bound_computation(&remainder_hi);
 
     // NOTE: high bound checks and multi range checks for left and right should be done somewhere else
@@ -327,24 +327,26 @@ impl<F: PrimeField> ExternalChecks<F> {
         witness: &mut [Vec<F>; COLUMNS],
         neg_foreign_field_modulus: &BigUint,
     ) {
-        let neg_f2 = neg_foreign_field_modulus.to_field_limbs::<F>()[2];
-        for pair in self.high_bounds.clone().chunks(2) {
-            let bound0 = pair[0] + neg_f2;
+        let neg_f2_1 = neg_foreign_field_modulus.to_field_limbs::<F>()[2] - F::one();
+        for chunk in self.high_bounds.clone().chunks(2) {
             // Extend the witness for the generic gate
             for col in witness.iter_mut().take(COLUMNS) {
                 col.extend(std::iter::repeat(F::zero()).take(1))
             }
-            // Fill values for the new generic row
-            // l1 0 o1 [l2 0 o2]
             let last_row = witness[0].len() - 1;
-            witness[0][last_row] = pair[0];
-            witness[2][last_row] = bound0;
-            // Fill in second generic if it is an even number of bounds
-            if pair.len() == 2 {
-                let bound1 = pair[1] + neg_f2;
-                witness[3][last_row] = pair[1];
-                witness[5][last_row] = bound1;
+            // Fill in with dummy if it is an odd number of bounds
+            let mut pair = chunk.to_vec();
+            if pair.len() == 1 {
+                pair.push(F::zero());
             }
+            // Fill values for the new generic row (second is dummy if odd)
+            // l1 0 o1 [l2 0 o2]
+            let first = pair[0] + neg_f2_1;
+            witness[0][last_row] = pair[0];
+            witness[2][last_row] = first;
+            let second = pair[1] + neg_f2_1;
+            witness[3][last_row] = pair[1];
+            witness[5][last_row] = second;
         }
         // Empty the high bounds
         self.high_bounds = vec![];

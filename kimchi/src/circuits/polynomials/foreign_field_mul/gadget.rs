@@ -80,8 +80,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         neg_foreign_field_modulus: &BigUint,
     ) {
         let r = gates.len();
-        let neg_f2 = neg_foreign_field_modulus.to_field_limbs()[2];
-        let g = GenericGateSpec::Plus(neg_f2);
+        let neg_f2_1: F = neg_foreign_field_modulus.to_field_limbs::<F>()[2] - F::one();
+        let g = GenericGateSpec::Plus(neg_f2_1);
         CircuitGate::extend_generic(gates, curr_row, Wire::for_row(r), g.clone(), Some(g));
     }
 }

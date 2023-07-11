@@ -1228,15 +1228,14 @@ In order to relate the two documents, the following mapping between the
 variable names used in the code and those of the RFC can be helpful.
 
 ```text
-left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
-left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder01 => r01
+left_input1 => a1  right_input1 => b1  quotient1 => q1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-   quotient_bound0 => q'0  quotient_bound12 => q'12
+   quotient_bound2 => q'2
 
-                   quotient_bound_carry => q'_carry01
 ````
 
 ##### Suffixes
@@ -1273,8 +1272,7 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
-* `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry` := quotient bound addition carry bit
+* `quotient_bound` := quotient high bound for checking `q2 ≤ f2`
 
 ##### Layout
 
@@ -1289,11 +1287,11 @@ The foreign field multiplication gate's rows are laid out like this
 |   4 | `right_input1`        (copy) | `quotient2`       (copy) |
 |   5 | `right_input2`        (copy) | `quotient_bound`  (copy) |
 |   6 | `product1_lo`         (copy) | `product1_hi_0`   (copy) |
-|   7 | `carry1_0_11`      (plookup) | `product1_hi_1`          |
+|   7 | `carry1_0_11`      (plookup) | `carry0`  (dummy lookup) |
 |   8 | `carry1_12_23`     (plookup) | `carry1_48_59` (plookup) |
 |   9 | `carry1_24_35`     (plookup) | `carry1_60_71` (plookup) |
 |  10 | `carry1_36_47`     (plookup) | `carry1_72_83` (plookup) |
-|  11 | `carry1_84_85`               | `carry0`                 |
+|  11 | `carry1_84_85`               | `product1_hi_1`          |
 |  12 | `carry1_86_87`               |                          |
 |  13 | `carry1_88_89`               |                          |
 |  14 | `carry1_90`                  |                          |

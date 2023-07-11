@@ -19,15 +19,14 @@
 //~ variable names used in the code and those of the RFC can be helpful.
 //~
 //~ ```text
-//~ left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
-//~ left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+//~ left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder01 => r01
+//~ left_input1 => a1  right_input1 => b1  quotient1 => q1
 //~ left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 //~
 //~    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
 //~    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-//~    quotient_bound0 => q'0  quotient_bound12 => q'12
+//~    quotient_bound2 => q'2
 //~
-//~                    quotient_bound_carry => q'_carry01
 //~ ````
 //~
 //~ ##### Suffixes
@@ -64,8 +63,7 @@
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
-//~ * `quotient_bound` := quotient bound for checking `q < f`
-//~ * `quotient_bound_carry` := quotient bound addition carry bit
+//~ * `quotient_bound` := quotient high bound for checking `q2 ≤ f2`
 //~
 //~ ##### Layout
 //~
@@ -80,11 +78,11 @@
 //~ |   4 | `right_input1`        (copy) | `quotient2`       (copy) |
 //~ |   5 | `right_input2`        (copy) | `quotient_bound`  (copy) |
 //~ |   6 | `product1_lo`         (copy) | `product1_hi_0`   (copy) |
-//~ |   7 | `carry1_0_11`      (plookup) | `product1_hi_1`          |
+//~ |   7 | `carry1_0_11`      (plookup) | `carry0`  (dummy lookup) |
 //~ |   8 | `carry1_12_23`     (plookup) | `carry1_48_59` (plookup) |
 //~ |   9 | `carry1_24_35`     (plookup) | `carry1_60_71` (plookup) |
 //~ |  10 | `carry1_36_47`     (plookup) | `carry1_72_83` (plookup) |
-//~ |  11 | `carry1_84_85`               | `carry0`                 |
+//~ |  11 | `carry1_84_85`               | `product1_hi_1`          |
 //~ |  12 | `carry1_86_87`               |                          |
 //~ |  13 | `carry1_88_89`               |                          |
 //~ |  14 | `carry1_90`                  |                          |
@@ -161,7 +159,7 @@ where
         ]);
 
         // Carry bits v0
-        let carry0 = env.witness_next(11);
+        let carry0 = env.witness_next(7);
 
         // Quotient q
         let quotient = [
@@ -183,7 +181,7 @@ where
         // Decomposition of the middle intermediate product
         let product1_lo = env.witness_curr(6); // Copied for multi-range-check
         let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
-        let product1_hi_1 = env.witness_next(7);
+        let product1_hi_1 = env.witness_next(11);
 
         // Foreign field modulus limbs
         let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
@@ -212,60 +210,62 @@ where
                 &foreign_field_modulus,
             );
 
-        let bound = quotient[2].clone() + neg_foreign_field_modulus[2].clone();
+        // bound = x2 + 2^88 - f2 - 1
+        let bound = quotient[2].clone() + neg_foreign_field_modulus[2].clone() - T::one();
 
         // Define the constraints
         //   For more the details on each constraint please see the
         //   Foreign Field Multiplication RFC where each of the constraints
         //   numbered below are described in full detail.
 
+        // External checks
+        // multi-range-check: q'2, p10, p110
+        // That is, check bound, product1_lo, product1_hi_0 each in [0, 2^L)
+        // Must be done externally with a multi-range-check gadget
+
         // C1: Constrain intermediate product fragment product1_hi_1 \in [0, 2^2)
         constraints.push(product1_hi_1.crumb());
 
-        // C2: multi-range-check: q'2, p10, p110
-        //     That is, check bound, product1_lo, product1_hi_0 each in [0, 2^L)
-        //     Must be done externally with a multi-range-check gadget
+        // C2: Constrain first carry witness value v0 \in [0, 2^2)
+        constraints.push(carry0.crumb());
 
         // C3: Constrain decomposition of middle intermediate product p1
         //         p1 = 2^L*p11 + p10
         //     where p11 = 2^L * p111 + p110
-        let product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
+        let product1_hi = T::two_to_limb() * product1_hi_1.clone() + product1_hi_0;
         let product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
         constraints.push(products(1) - product1);
 
-        // C4: Constrain first carry witness value v0 \in [0, 2^2)
-        constraints.push(carry0.crumb());
-
-        // C5: Constrain that 2^2L * v0 = p0 + 2^L * p10 - 2^L * r1 - r0.  That is, that
+        // C4: Constrain that 2^2L * v0 = p0 + 2^L * p10 - 2^L * r1 - r0. That is, that
         //         2^2L * carry0 = rhs
         constraints.push(
             T::two_to_2limb() * carry0.clone()
                 - (products(0) + T::two_to_limb() * product1_lo - remainder[0].clone()),
         );
 
-        // C6: Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
-        // C6a
-        constraints.push(carry1_crumb0.crumb());
-        // C6b
-        constraints.push(carry1_crumb1.crumb());
-        // C6c
-        constraints.push(carry1_crumb2.crumb());
-        // C6d
-        constraints.push(carry1_bit.boolean());
-
-        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
-        //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
-        constraints.push(
-            T::two_to_limb() * carry1.clone()
-                - (products(2) + product1_hi + carry0 - remainder[1].clone()),
-        );
-
-        // C8: Native modulus constraint a_n * b_n - q_n * f_n = r_n
+        // C5: Native modulus constraint a_n * b_n - q_n * f_n = r_n
         constraints.push(
             left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
         );
 
-        // C9: Constrain that q'2 is correct
+        // Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
+        // C6
+        constraints.push(carry1_crumb0.crumb());
+        // C7
+        constraints.push(carry1_crumb1.crumb());
+        // C8
+        constraints.push(carry1_crumb2.crumb());
+        // C9: boolean check
+        constraints.push(carry1_bit.boolean());
+
+        // C10: Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
+        //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
+        constraints.push(
+            T::two_to_limb() * carry1.clone()
+                - (products(2) + product1_hi + carry0.clone() - remainder[1].clone()),
+        );
+
+        // C11: Constrain that q'2 is correct
         constraints.push(quotient_bound - bound);
 
         constraints
@@ -276,7 +276,7 @@ where
 pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
     auto_clone_array!(carry);
     carry(0)
-        + T::two_pow(1 * 12) * carry(1)
+        + T::two_pow(12) * carry(1)
         + T::two_pow(2 * 12) * carry(2)
         + T::two_pow(3 * 12) * carry(3)
         + T::two_pow(4 * 12) * carry(4)

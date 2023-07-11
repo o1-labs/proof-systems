@@ -181,6 +181,7 @@ impl<F: PrimeField> CircuitGate<F> {
                 coeffs[0] = F::one();
                 coeffs[1] = F::zero();
                 coeffs[2] = -F::one();
+                coeffs[3] = F::zero();
                 coeffs[4] = cst;
             }
         };
@@ -213,6 +214,7 @@ impl<F: PrimeField> CircuitGate<F> {
                 coeffs[5] = F::one();
                 coeffs[6] = F::zero();
                 coeffs[7] = -F::one();
+                coeffs[8] = F::zero();
                 coeffs[9] = cst;
             }
             None => (),
