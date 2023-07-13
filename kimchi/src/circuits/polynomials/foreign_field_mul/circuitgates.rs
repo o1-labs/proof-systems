@@ -264,8 +264,7 @@ where
         //      Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         constraints.push(
-            T::two_to_limb() * carry1
-                - (products(2) + product1_hi + carry0 - remainder[1].clone()),
+            T::two_to_limb() * carry1 - (products(2) + product1_hi + carry0 - remainder[1].clone()),
         );
 
         // C11: Constrain that q'2 is correct
