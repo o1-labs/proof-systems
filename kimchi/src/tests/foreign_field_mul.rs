@@ -143,8 +143,7 @@ where
         // Constant single Generic gate for result bound
         CircuitGate::extend_high_bounds(&mut gates, &mut next_row, foreign_field_modulus);
         gates.connect_cell_pair((6, 0), (1, 1)); // remainder2
-        external_checks
-            .extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
+        external_checks.extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
 
         // Quotient multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
@@ -174,8 +173,7 @@ where
         CircuitGate::extend_high_bounds(&mut gates, &mut next_row, foreign_field_modulus);
         gates.connect_cell_pair((15, 0), (0, 2)); // left2
         gates.connect_cell_pair((15, 3), (0, 5)); // right2
-        external_checks
-            .extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
+        external_checks.extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
 
         // Left input multi-range-check
         external_checks.add_multi_range_check(&left_limbs);
