@@ -483,7 +483,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     xor,
                     lookup,
                     range_check,
-                    ffmul,
+                    foreign_field_mul,
                 },
         }) = lookup_index
         {
@@ -506,8 +506,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             if let Some(range_check) = range_check {
                 fq_sponge.absorb_g(&range_check.unshifted);
             }
-            if let Some(ffmul) = ffmul {
-                fq_sponge.absorb_g(&ffmul.unshifted);
+            if let Some(foreign_field_mul) = foreign_field_mul {
+                fq_sponge.absorb_g(&foreign_field_mul.unshifted);
             }
         }
         fq_sponge.digest_fq()

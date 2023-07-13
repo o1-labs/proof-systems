@@ -1228,15 +1228,14 @@ In order to relate the two documents, the following mapping between the
 variable names used in the code and those of the RFC can be helpful.
 
 ```text
-left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
-left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder01 => r01
+left_input1 => a1  right_input1 => b1  quotient1 => q1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-   quotient_bound0 => q'0  quotient_bound12 => q'12
+   quotient_bound2 => q'2
 
-                   quotient_bound_carry => q'_carry01
 ````
 
 ##### Suffixes
@@ -1252,13 +1251,13 @@ For our running example, `x1` would become `x1_lo` and `x1_hi`.  If we are split
 more than two things, then we pick meaningful names for each.
 
 So far we've explained our conventions for a splitting depth of up to 2.  For splitting
-deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
+deeper than two, we simpy cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
 would be split into `x1_lo_0` and `x1_lo_1`.
 
 ##### Parameters
 
-* `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
-* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
+* `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
 * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 
 ##### Witness
@@ -1273,30 +1272,29 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
-* `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry` := quotient bound addition carry bit
+* `quotient_bound` := quotient high bound for checking `q2 ≤ f2`
 
 ##### Layout
 
 The foreign field multiplication gate's rows are laid out like this
 
-| col | `ForeignFieldMul`            | `Zero`                    |
-| --- | ---------------------------- | ------------------------- |
-|   0 | `left_input0`         (copy) | `remainder0`       (copy) |
-|   1 | `left_input1`         (copy) | `remainder1`       (copy) |
-|   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-|   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
-|   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
-|   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
-|   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-|   7 | `carry1_hi`        (plookup) |                           |
-|   8 | `carry0`                     |                           |
-|   9 | `quotient0`                  |                           |
-|  10 | `quotient1`                  |                           |
-|  11 | `quotient2`                  |                           |
-|  12 | `quotient_bound_carry`       |                           |
-|  13 | `product1_hi_1`              |                           |
-|  14 |                              |                           |
+| col | `ForeignFieldMul`       | `Zero`                   |
+| --- | ----------------------- | ------------------------ |
+|   0 | `left_input0`    (copy) | `remainder01`     (copy) |
+|   1 | `left_input1`    (copy) | `remainder2`      (copy) |
+|   2 | `left_input2`    (copy) | `quotient0`       (copy) |
+|   3 | `right_input0`   (copy) | `quotient1`       (copy) |
+|   4 | `right_input1`   (copy) | `quotient2`       (copy) |
+|   5 | `right_input2`   (copy) | `quotient_bound`  (copy) |
+|   6 | `product1_lo`    (copy) | `product1_hi_0`   (copy) |
+|   7 | `carry1_0`    (plookup) | `product1_hi_1`  (dummy) |
+|   8 | `carry1_12    (plookup) | `carry1_48`    (plookup) |
+|   9 | `carry1_24`   (plookup) | `carry1_60`    (plookup) |
+|  10 | `carry1_36`   (plookup) | `carry1_72`    (plookup) |
+|  11 | `carry1_84`             | `carry0`                 |
+|  12 | `carry1_86`             |                          |
+|  13 | `carry1_88`             |                          |
+|  14 | `carry1_90`             |                          |
 
 
 

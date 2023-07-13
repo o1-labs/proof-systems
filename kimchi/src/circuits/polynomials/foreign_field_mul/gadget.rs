@@ -2,7 +2,7 @@
 
 use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
-use o1_utils::foreign_field::BigUintForeignFieldHelpers;
+use o1_utils::foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers};
 
 use crate::{
     alphas::Alphas,
@@ -14,6 +14,7 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
+        polynomials::generic::GenericGateSpec,
         wires::Wire,
     },
 };
@@ -33,15 +34,26 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         start_row: usize,
         foreign_field_modulus: &BigUint,
     ) -> (usize, Vec<Self>) {
+        if *foreign_field_modulus > BigUint::max_foreign_field_modulus::<F>() {
+            panic!(
+                "foreign_field_modulus exceeds maximum: {} > {}",
+                *foreign_field_modulus,
+                BigUint::max_foreign_field_modulus::<F>()
+            );
+        }
+
         let neg_foreign_field_modulus = foreign_field_modulus.negate().to_field_limbs::<F>();
         let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let circuit_gates = vec![
             CircuitGate {
                 typ: GateType::ForeignFieldMul,
                 wires: Wire::for_row(start_row),
-                coeffs: [foreign_field_modulus, neg_foreign_field_modulus]
-                    .concat()
-                    .to_vec(),
+                coeffs: vec![
+                    foreign_field_modulus[2],
+                    neg_foreign_field_modulus[0],
+                    neg_foreign_field_modulus[1],
+                    neg_foreign_field_modulus[2],
+                ],
             },
             CircuitGate {
                 typ: GateType::Zero,
@@ -63,6 +75,18 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Self::create_foreign_field_mul(*curr_row, foreign_field_modulus);
         *curr_row = next_row;
         gates.extend_from_slice(&circuit_gates);
+    }
+
+    pub fn extend_high_bounds(
+        gates: &mut Vec<Self>,
+        curr_row: &mut usize,
+        foreign_field_modulus: &BigUint,
+    ) {
+        let r = gates.len();
+        let hi_fmod = foreign_field_modulus.to_field_limbs::<F>()[2];
+        let hi_limb: F = F::two_to_limb() - hi_fmod - F::one();
+        let g = GenericGateSpec::Plus(hi_limb);
+        CircuitGate::extend_generic(gates, curr_row, Wire::for_row(r), g.clone(), Some(g));
     }
 }
 
