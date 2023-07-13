@@ -232,7 +232,7 @@ where
         // C3: Constrain decomposition of middle intermediate product p1
         //         p1 = 2^L*p11 + p10
         //     where p11 = 2^L * p111 + p110
-        let product1_hi = T::two_to_limb() * product1_hi_1.clone() + product1_hi_0;
+        let product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
         let product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
         constraints.push(products(1) - product1);
 
@@ -247,7 +247,7 @@ where
         constraints.push(
             left_input_n * right_input_n + quotient_n.clone() * neg_foreign_field_modulus_n
                 - remainder_n
-                - quotient_n.clone() * T::two_to_3limb(),
+                - quotient_n * T::two_to_3limb(),
         );
 
         // Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
@@ -264,8 +264,8 @@ where
         //      Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         constraints.push(
-            T::two_to_limb() * carry1.clone()
-                - (products(2) + product1_hi + carry0.clone() - remainder[1].clone()),
+            T::two_to_limb() * carry1
+                - (products(2) + product1_hi + carry0 - remainder[1].clone()),
         );
 
         // C11: Constrain that q'2 is correct

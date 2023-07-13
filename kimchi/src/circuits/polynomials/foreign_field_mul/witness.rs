@@ -179,8 +179,8 @@ pub fn create<F: PrimeField>(
 
     // Compute high bounds for multi-range-checks on quotient and remainder, making 3 limbs (with zero)
     // Assumes that right's and left's high bounds are range checked at a different stage.
-    let remainder_hi_bound = compute_high_bound(&remainder, &foreign_field_modulus);
-    let quotient_hi_bound = compute_high_bound(&quotient, &foreign_field_modulus);
+    let remainder_hi_bound = compute_high_bound(&remainder, foreign_field_modulus);
+    let quotient_hi_bound = compute_high_bound(&quotient, foreign_field_modulus);
 
     // Track witness data for external multi-range-check quotient limbs
     external_checks.add_multi_range_check(&quotient.to_field_limbs());

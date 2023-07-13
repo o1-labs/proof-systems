@@ -222,7 +222,6 @@ where
             TestFramework::<G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup(),
         )
     } else {
@@ -234,7 +233,6 @@ where
     } else {
         // If not full mode, just create constraint system (this is much faster)
         ConstraintSystem::create(gates.clone())
-            .lookup(vec![foreign_field_mul::gadget::lookup_table()])
             .build()
             .unwrap()
     };
