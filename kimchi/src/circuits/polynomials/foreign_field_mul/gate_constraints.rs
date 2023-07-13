@@ -42,13 +42,13 @@
 //~ more than two things, then we pick meaningful names for each.
 //~
 //~ So far we've explained our conventions for a splitting depth of up to 2.  For splitting
-//~ deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
+//~ deeper than two, we simpy cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
 //~ would be split into `x1_lo_0` and `x1_lo_1`.
 //~
 //~ ##### Parameters
 //~
-//~ * `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
-//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
+//~ * `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
+//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
 //~ * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 //~
 //~ ##### Witness
@@ -69,23 +69,23 @@
 //~
 //~ The foreign field multiplication gate's rows are laid out like this
 //~
-//~ | col | `ForeignFieldMul`            | `Zero`                  |
-//~ | --- | ---------------------------- | ----------------------- |
-//~ |   0 | `left_input0`         (copy) | `remainder01`     (copy) |
-//~ |   1 | `left_input1`         (copy) | `remainder2`      (copy) |
-//~ |   2 | `left_input2`         (copy) | `quotient0`       (copy) |
-//~ |   3 | `right_input0`        (copy) | `quotient1`       (copy) |
-//~ |   4 | `right_input1`        (copy) | `quotient2`       (copy) |
-//~ |   5 | `right_input2`        (copy) | `quotient_bound`  (copy) |
-//~ |   6 | `product1_lo`         (copy) | `product1_hi_0`   (copy) |
-//~ |   7 | `carry1_0_11`      (plookup) | `carry0`  (dummy lookup) |
-//~ |   8 | `carry1_12_23`     (plookup) | `carry1_48_59` (plookup) |
-//~ |   9 | `carry1_24_35`     (plookup) | `carry1_60_71` (plookup) |
-//~ |  10 | `carry1_36_47`     (plookup) | `carry1_72_83` (plookup) |
-//~ |  11 | `carry1_84_85`               | `product1_hi_1`          |
-//~ |  12 | `carry1_86_87`               |                          |
-//~ |  13 | `carry1_88_89`               |                          |
-//~ |  14 | `carry1_90`                  |                          |
+//~ | col | `ForeignFieldMul`       | `Zero`                   |
+//~ | --- | ----------------------- | ------------------------ |
+//~ |   0 | `left_input0`    (copy) | `remainder01`     (copy) |
+//~ |   1 | `left_input1`    (copy) | `remainder2`      (copy) |
+//~ |   2 | `left_input2`    (copy) | `quotient0`       (copy) |
+//~ |   3 | `right_input0`   (copy) | `quotient1`       (copy) |
+//~ |   4 | `right_input1`   (copy) | `quotient2`       (copy) |
+//~ |   5 | `right_input2`   (copy) | `quotient_bound`  (copy) |
+//~ |   6 | `product1_lo`    (copy) | `product1_hi_0`   (copy) |
+//~ |   7 | `carry1_0`    (plookup) | `product1_hi_1`  (dummy) |
+//~ |   8 | `carry1_12    (plookup) | `carry1_48`    (plookup) |
+//~ |   9 | `carry1_24`   (plookup) | `carry1_60`    (plookup) |
+//~ |  10 | `carry1_36`   (plookup) | `carry1_72`    (plookup) |
+//~ |  11 | `carry1_84`             | `carry0`                 |
+//~ |  12 | `carry1_86`             |                          |
+//~ |  13 | `carry1_88`             |                          |
+//~ |  14 | `carry1_90`             |                          |
 //~
 
 use crate::{
@@ -159,7 +159,7 @@ where
         ]);
 
         // Carry bits v0
-        let carry0 = env.witness_next(7);
+        let carry0 = env.witness_next(11);
 
         // Quotient q
         let quotient = [
@@ -181,13 +181,13 @@ where
         // Decomposition of the middle intermediate product
         let product1_lo = env.witness_curr(6); // Copied for multi-range-check
         let product1_hi_0 = env.witness_next(6); // Copied for multi-range-check
-        let product1_hi_1 = env.witness_next(11);
+        let product1_hi_1 = env.witness_next(7); // dummy
 
-        // Foreign field modulus limbs
-        let foreign_field_modulus = array::from_fn(|i| env.coeff(i));
+        // Foreign field modulus high limb
+        let hi_foreign_field_modulus = env.coeff(0);
 
         // Negated foreign field modulus limbs
-        let neg_foreign_field_modulus = array::from_fn(|i| env.coeff(3 + i));
+        let neg_foreign_field_modulus = array::from_fn(|i| env.coeff(1 + i));
 
         // Compute intermediate products
         auto_clone_array!(
@@ -201,17 +201,17 @@ where
         );
 
         // Compute native modulus values
-        let [left_input_n, right_input_n, quotient_n, remainder_n, foreign_field_modulus_n] =
+        let [left_input_n, right_input_n, quotient_n, remainder_n, neg_foreign_field_modulus_n] =
             compute_native_modulus_values(
                 &left_input,
                 &right_input,
                 &quotient,
                 &remainder,
-                &foreign_field_modulus,
+                &neg_foreign_field_modulus,
             );
 
         // bound = x2 + 2^88 - f2 - 1
-        let bound = quotient[2].clone() + neg_foreign_field_modulus[2].clone() - T::one();
+        let bound = quotient[2].clone() + T::two_to_limb() - hi_foreign_field_modulus - T::one();
 
         // Define the constraints
         //   For more the details on each constraint please see the
@@ -243,22 +243,25 @@ where
                 - (products(0) + T::two_to_limb() * product1_lo - remainder[0].clone()),
         );
 
-        // C5: Native modulus constraint a_n * b_n - q_n * f_n = r_n
+        // C5: Native modulus constraint a_n * b_n + q_n * f'_n - q_n * 2^264 = r_n
         constraints.push(
-            left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
+            left_input_n * right_input_n + quotient_n.clone() * neg_foreign_field_modulus_n
+                - remainder_n
+                - quotient_n.clone() * T::two_to_3limb(),
         );
 
         // Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
-        // C6
+        // C6: 2-bit c1_84
         constraints.push(carry1_crumb0.crumb());
-        // C7
+        // C7: 2-bit c1_86
         constraints.push(carry1_crumb1.crumb());
-        // C8
+        // C8: 2-bit c1_88
         constraints.push(carry1_crumb2.crumb());
-        // C9: boolean check
+        // C9: 1-bit c1_90
         constraints.push(carry1_bit.boolean());
 
-        // C10: Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
+        // C10: Top part:
+        //      Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
         constraints.push(
             T::two_to_limb() * carry1.clone()
@@ -328,13 +331,13 @@ pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
     right_input: &[T; 3],
     quotient: &[T; 3],
     remainder: &[T; 2],
-    foreign_field_modulus: &[T; 3],
+    neg_foreign_field_modulus: &[T; 3],
 ) -> [T; 5] {
     auto_clone_array!(left_input);
     auto_clone_array!(right_input);
     auto_clone_array!(quotient);
     auto_clone_array!(remainder);
-    auto_clone_array!(foreign_field_modulus);
+    auto_clone_array!(neg_foreign_field_modulus);
 
     [
         // an = 2^2L * a2 + 2^L * a1 + a0
@@ -345,9 +348,9 @@ pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
         T::two_to_2limb() * quotient(2) + T::two_to_limb() * quotient(1) + quotient(0),
         // rn = 2^2L * r2 + 2^L * r1 + r0 = 2^2L * r2 + r01
         T::two_to_2limb() * remainder(1) + remainder(0),
-        // fn = 2^2L * f2 + 2^L * f1 + f0
-        T::two_to_2limb() * foreign_field_modulus(2)
-            + T::two_to_limb() * foreign_field_modulus(1)
-            + foreign_field_modulus(0),
+        // f'n = 2^2L * f'2 + 2^L * f'1 + f'0
+        T::two_to_2limb() * neg_foreign_field_modulus(2)
+            + T::two_to_limb() * neg_foreign_field_modulus(1)
+            + neg_foreign_field_modulus(0),
     ]
 }

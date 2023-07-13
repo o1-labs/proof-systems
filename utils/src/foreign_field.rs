@@ -158,6 +158,9 @@ pub trait ForeignFieldHelpers<T> {
 
     /// 2^{2 * LIMB_BITS}
     fn two_to_2limb() -> T;
+
+    /// 2^{3 * LIMB_BITS}
+    fn two_to_3limb() -> T;
 }
 
 impl<F: Field> ForeignFieldHelpers<F> for F {
@@ -167,6 +170,10 @@ impl<F: Field> ForeignFieldHelpers<F> for F {
 
     fn two_to_2limb() -> Self {
         F::from(2u64).pow([2 * LIMB_BITS as u64])
+    }
+
+    fn two_to_3limb() -> Self {
+        F::from(2u64).pow([3 * LIMB_BITS as u64])
     }
 }
 

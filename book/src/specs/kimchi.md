@@ -1251,13 +1251,13 @@ For our running example, `x1` would become `x1_lo` and `x1_hi`.  If we are split
 more than two things, then we pick meaningful names for each.
 
 So far we've explained our conventions for a splitting depth of up to 2.  For splitting
-deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
+deeper than two, we simpy cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
 would be split into `x1_lo_0` and `x1_lo_1`.
 
 ##### Parameters
 
-* `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
-* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
+* `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
 * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 
 ##### Witness
@@ -1278,23 +1278,23 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 
 The foreign field multiplication gate's rows are laid out like this
 
-| col | `ForeignFieldMul`            | `Zero`                  |
-| --- | ---------------------------- | ----------------------- |
-|   0 | `left_input0`         (copy) | `remainder01`     (copy) |
-|   1 | `left_input1`         (copy) | `remainder2`      (copy) |
-|   2 | `left_input2`         (copy) | `quotient0`       (copy) |
-|   3 | `right_input0`        (copy) | `quotient1`       (copy) |
-|   4 | `right_input1`        (copy) | `quotient2`       (copy) |
-|   5 | `right_input2`        (copy) | `quotient_bound`  (copy) |
-|   6 | `product1_lo`         (copy) | `product1_hi_0`   (copy) |
-|   7 | `carry1_0_11`      (plookup) | `carry0`  (dummy lookup) |
-|   8 | `carry1_12_23`     (plookup) | `carry1_48_59` (plookup) |
-|   9 | `carry1_24_35`     (plookup) | `carry1_60_71` (plookup) |
-|  10 | `carry1_36_47`     (plookup) | `carry1_72_83` (plookup) |
-|  11 | `carry1_84_85`               | `product1_hi_1`          |
-|  12 | `carry1_86_87`               |                          |
-|  13 | `carry1_88_89`               |                          |
-|  14 | `carry1_90`                  |                          |
+| col | `ForeignFieldMul`       | `Zero`                   |
+| --- | ----------------------- | ------------------------ |
+|   0 | `left_input0`    (copy) | `remainder01`     (copy) |
+|   1 | `left_input1`    (copy) | `remainder2`      (copy) |
+|   2 | `left_input2`    (copy) | `quotient0`       (copy) |
+|   3 | `right_input0`   (copy) | `quotient1`       (copy) |
+|   4 | `right_input1`   (copy) | `quotient2`       (copy) |
+|   5 | `right_input2`   (copy) | `quotient_bound`  (copy) |
+|   6 | `product1_lo`    (copy) | `product1_hi_0`   (copy) |
+|   7 | `carry1_0`    (plookup) | `product1_hi_1`  (dummy) |
+|   8 | `carry1_12    (plookup) | `carry1_48`    (plookup) |
+|   9 | `carry1_24`   (plookup) | `carry1_60`    (plookup) |
+|  10 | `carry1_36`   (plookup) | `carry1_72`    (plookup) |
+|  11 | `carry1_84`             | `carry0`                 |
+|  12 | `carry1_86`             |                          |
+|  13 | `carry1_88`             |                          |
+|  14 | `carry1_90`             |                          |
 
 
 

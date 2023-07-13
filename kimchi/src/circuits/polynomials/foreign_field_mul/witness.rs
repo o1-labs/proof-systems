@@ -16,6 +16,7 @@ use num_integer::Integer;
 use num_traits::One;
 use o1_utils::foreign_field::{
     BigUintArrayFieldHelpers, BigUintForeignFieldHelpers, FieldArrayBigUintHelpers,
+    ForeignFieldHelpers,
 };
 use std::{array, ops::Div};
 
@@ -72,11 +73,11 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("quotient2"),
             VariableCell::create("quotient_bound"), // Copied for multi-range-check
             VariableCell::create("product1_hi_0"),  // Copied for multi-range-check
-            VariableCell::create("carry0"),         // Dummy 12-bit lookup
+            VariableCell::create("product1_hi_1"),  // Dummy 12-bit lookup
             VariableBitsCell::create("carry1", 48, Some(60)), // 12-bit lookup
             VariableBitsCell::create("carry1", 60, Some(72)), // 12-bit lookup
             VariableBitsCell::create("carry1", 72, Some(84)), // 12-bit lookup
-            VariableCell::create("product1_hi_1"),
+            VariableCell::create("carry0"),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
             ConstantCell::create(F::zero()),
@@ -84,11 +85,12 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
     ]
 }
 
-/// Perform integer bound computation for high limb x'2 = x2 + f'2 - 1
-pub fn compute_high_bound(x: &BigUint, neg_foreign_field_modulus: &BigUint) -> BigUint {
+/// Perform integer bound computation for high limb x'2 = x2 + 2^l - f2 - 1
+pub fn compute_high_bound(x: &BigUint, foreign_field_modulus: &BigUint) -> BigUint {
     let x_hi = &x.to_limbs()[2];
-    let neg_f_hi = &neg_foreign_field_modulus.to_limbs()[2];
-    let x_hi_bound = x_hi + neg_f_hi - BigUint::one();
+    let hi_fmod = foreign_field_modulus.to_limbs()[2].clone();
+    let hi_limb = BigUint::two_to_limb() - hi_fmod - BigUint::one();
+    let x_hi_bound = x_hi + hi_limb;
     assert!(x_hi_bound < BigUint::two_to_limb());
     x_hi_bound
 }
@@ -177,8 +179,8 @@ pub fn create<F: PrimeField>(
 
     // Compute high bounds for multi-range-checks on quotient and remainder, making 3 limbs (with zero)
     // Assumes that right's and left's high bounds are range checked at a different stage.
-    let remainder_hi_bound = compute_high_bound(&remainder, &neg_foreign_field_modulus);
-    let quotient_hi_bound = compute_high_bound(&quotient, &neg_foreign_field_modulus);
+    let remainder_hi_bound = compute_high_bound(&remainder, &foreign_field_modulus);
+    let quotient_hi_bound = compute_high_bound(&quotient, &foreign_field_modulus);
 
     // Track witness data for external multi-range-check quotient limbs
     external_checks.add_multi_range_check(&quotient.to_field_limbs());
@@ -325,9 +327,9 @@ impl<F: PrimeField> ExternalChecks<F> {
     pub fn extend_witness_high_bounds_computation(
         &mut self,
         witness: &mut [Vec<F>; COLUMNS],
-        neg_foreign_field_modulus: &BigUint,
+        foreign_field_modulus: &BigUint,
     ) {
-        let neg_f2_1 = neg_foreign_field_modulus.to_field_limbs::<F>()[2] - F::one();
+        let hi_limb = F::two_to_limb() - foreign_field_modulus.to_field_limbs::<F>()[2] - F::one();
         for chunk in self.high_bounds.clone().chunks(2) {
             // Extend the witness for the generic gate
             for col in witness.iter_mut().take(COLUMNS) {
@@ -341,10 +343,10 @@ impl<F: PrimeField> ExternalChecks<F> {
             }
             // Fill values for the new generic row (second is dummy if odd)
             // l1 0 o1 [l2 0 o2]
-            let first = pair[0] + neg_f2_1;
+            let first = pair[0] + hi_limb;
             witness[0][last_row] = pair[0];
             witness[2][last_row] = first;
-            let second = pair[1] + neg_f2_1;
+            let second = pair[1] + hi_limb;
             witness[3][last_row] = pair[1];
             witness[5][last_row] = second;
         }

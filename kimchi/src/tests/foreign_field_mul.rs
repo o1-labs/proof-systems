@@ -141,11 +141,10 @@ where
         // remainder0 -> (3, 0), remainder1 -> (4, 0), remainder2 -> (2,0)
 
         // Constant single Generic gate for result bound
-        let neg_foreign_field_modulus = foreign_field_modulus.negate();
-        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field_modulus);
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &foreign_field_modulus);
         gates.connect_cell_pair((6, 0), (1, 1)); // remainder2
         external_checks
-            .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
+            .extend_witness_high_bounds_computation(&mut witness, &foreign_field_modulus);
 
         // Quotient multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
@@ -172,11 +171,11 @@ where
         // Constant Double Generic gate for result and quotient bounds
         external_checks.add_high_bound_computation(&left_limbs[2]);
         external_checks.add_high_bound_computation(&right_limbs[2]);
-        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &neg_foreign_field_modulus);
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &foreign_field_modulus);
         gates.connect_cell_pair((15, 0), (0, 2)); // left2
         gates.connect_cell_pair((15, 3), (0, 5)); // right2
         external_checks
-            .extend_witness_high_bounds_computation(&mut witness, &neg_foreign_field_modulus);
+            .extend_witness_high_bounds_computation(&mut witness, &foreign_field_modulus);
 
         // Left input multi-range-check
         external_checks.add_multi_range_check(&left_limbs);
@@ -206,11 +205,9 @@ where
 
         // Multi-range check bounds for left and right inputs
         let left_hi_bound =
-            foreign_field_mul::witness::compute_high_bound(&left_input, &neg_foreign_field_modulus);
-        let right_hi_bound = foreign_field_mul::witness::compute_high_bound(
-            &right_input,
-            &neg_foreign_field_modulus,
-        );
+            foreign_field_mul::witness::compute_high_bound(&left_input, &foreign_field_modulus);
+        let right_hi_bound =
+            foreign_field_mul::witness::compute_high_bound(&right_input, &foreign_field_modulus);
         external_checks.add_limb_check(&left_hi_bound.into());
         external_checks.add_limb_check(&right_hi_bound.into());
         gates.connect_cell_pair((15, 2), (25, 0)); // left_bound
@@ -225,6 +222,7 @@ where
             TestFramework::<G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
+                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup(),
         )
     } else {
@@ -235,7 +233,10 @@ where
         runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
-        ConstraintSystem::create(gates.clone()).build().unwrap()
+        ConstraintSystem::create(gates.clone())
+            .lookup(vec![foreign_field_mul::gadget::lookup_table()])
+            .build()
+            .unwrap()
     };
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
@@ -453,7 +454,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((1, 11), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
+            vec![((1, 7), G::ScalarField::from(4u32))], // Invalidate product1_hi_1
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -472,7 +473,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((1, 7), G::ScalarField::from(4u32))], // Invalidate carry0
+            vec![((1, 11), G::ScalarField::from(4u32))], // Invalidate carry0
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -510,7 +511,7 @@ where
             &left_input,
             &right_input,
             foreign_field_modulus,
-            vec![((1, 7), G::ScalarField::from(3u32))], // Invalidate carry0
+            vec![((1, 11), G::ScalarField::from(3u32))], // Invalidate carry0
         );
         assert_eq!(
             (&left_input * &right_input) % foreign_field_modulus,
@@ -813,7 +814,7 @@ fn test_nonzero_carry0() {
             vec![],
         );
         assert_eq!(result, Ok(()));
-        assert_ne!(witness[7][1], PallasField::zero()); // carry0 is not zero
+        assert_ne!(witness[11][1], PallasField::zero()); // carry0 is not zero
         assert_eq!(
             &a * &b % secp256k1_modulus(),
             [witness[0][1], witness[1][1]].compose()
@@ -827,7 +828,7 @@ fn test_nonzero_carry0() {
             &a,
             &b,
             &secp256k1_modulus(),
-            vec![((1, 7), PallasField::zero())], // Invalidate carry0
+            vec![((1, 11), PallasField::zero())], // Invalidate carry0
         );
         // The constraint (C4) should fail
         assert_eq!(
@@ -1639,5 +1640,76 @@ fn test_witness_invalid_foreign_field_modulus() {
         &BigUint::zero(),
         &BigUint::zero(),
         &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
+    );
+}
+
+#[test]
+// Checks that the high bound check includes when q2 is exactly f2 and not just up to f2-1
+fn test_q2_exactly_f2() {
+    let left_input = secp256k1_max() - BigUint::from(4u32);
+    let right_input = secp256k1_max() - BigUint::from(1u32);
+
+    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        false,
+        true,
+        false,
+        &left_input,
+        &right_input,
+        &secp256k1_modulus(),
+        vec![],
+    );
+    assert_eq!(witness[4][1], secp256k1_max().to_field_limbs()[2]); // q2 is f2
+    assert_eq!(
+        (&left_input * &right_input) % secp256k1_modulus(),
+        [witness[0][1], witness[1][1]].compose()
+    );
+    assert_eq!(result, Ok(()),);
+}
+
+#[test]
+fn test_carry_plookups() {
+    let left_input = secp256k1_max() - BigUint::from(4u32);
+    let right_input = secp256k1_max() - BigUint::from(1u32);
+    // Correct execution of this test has the following values in plookup cells
+    // carry1_0 = 0xC26
+    // carry1_12 = 0xFFF
+    // carry1_24 = 0xEFF
+    // carry1_36 = 0xFFF
+    // product1_1_1 = 0x1
+    // carry1_48 = 0xFFF
+    // carry1_60 = 0xFFF
+    // carry1_72 = 0xFF
+    let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        false,
+        false,
+        false,
+        &left_input,
+        &right_input,
+        &secp256k1_modulus(),
+        vec![],
+    );
+    assert_eq!(
+        (&left_input * &right_input) % secp256k1_modulus(),
+        [witness[0][1], witness[1][1]].compose()
+    );
+    assert_eq!(result, Ok(()),);
+    // Adds 1 bit to carry1_36 (obtaining 0x1FFF) and removing 1 from carry1_48 (obtaining 0xFFE)
+    let (result, _witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
+        true,
+        false,
+        false,
+        &left_input,
+        &right_input,
+        &secp256k1_modulus(),
+        vec![
+            ((0, 10), PallasField::from(0x1FFFu32)),
+            ((1, 8), PallasField::from(0xFFEu32)),
+        ],
+    );
+    assert_eq!(
+        result,
+        Err(CircuitGateError::InvalidLookupConstraint(
+            GateType::ForeignFieldMul
+        ))
     );
 }
