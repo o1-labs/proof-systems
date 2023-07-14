@@ -45,7 +45,7 @@ pub struct LookupSelectors<T> {
     /// Range check pattern lookup selector
     pub range_check: Option<T>,
     /// Foreign field multiplication pattern lookup selector
-    pub foreign_field_mul: Option<T>,
+    pub ffmul: Option<T>,
 }
 
 #[serde_as]
@@ -58,7 +58,7 @@ struct LookupSelectorsSerdeAs<F: FftField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub range_check: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub foreign_field_mul: Option<E<F, D<F>>>,
+    pub ffmul: Option<E<F, D<F>>>,
 }
 
 impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
@@ -72,7 +72,7 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
             xor: val.xor.clone(),
             lookup: val.lookup.clone(),
             range_check: val.range_check.clone(),
-            foreign_field_mul: val.foreign_field_mul.clone(),
+            ffmul: val.ffmul.clone(),
         };
         repr.serialize(serializer)
     }
@@ -89,13 +89,13 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
             xor,
             lookup,
             range_check,
-            foreign_field_mul,
+            ffmul,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
             xor,
             lookup,
             range_check,
-            foreign_field_mul,
+            ffmul,
         })
     }
 }
@@ -108,7 +108,7 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
             LookupPattern::Xor => &self.xor,
             LookupPattern::Lookup => &self.lookup,
             LookupPattern::RangeCheck => &self.range_check,
-            LookupPattern::ForeignFieldMul => &self.foreign_field_mul,
+            LookupPattern::ForeignFieldMul => &self.ffmul,
         }
     }
 }
@@ -119,7 +119,7 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
             LookupPattern::Xor => &mut self.xor,
             LookupPattern::Lookup => &mut self.lookup,
             LookupPattern::RangeCheck => &mut self.range_check,
-            LookupPattern::ForeignFieldMul => &mut self.foreign_field_mul,
+            LookupPattern::ForeignFieldMul => &mut self.ffmul,
         }
     }
 }
@@ -130,7 +130,7 @@ impl<T> LookupSelectors<T> {
             xor,
             lookup,
             range_check,
-            foreign_field_mul,
+            ffmul,
         } = self;
         // This closure isn't really redundant -- it shields the parameter from a copy -- but
         // clippy isn't smart enough to figure that out..
@@ -140,7 +140,7 @@ impl<T> LookupSelectors<T> {
             xor: xor.map(f),
             lookup: lookup.map(f),
             range_check: range_check.map(f),
-            foreign_field_mul: foreign_field_mul.map(f),
+            ffmul: ffmul.map(f),
         }
     }
 
@@ -149,7 +149,7 @@ impl<T> LookupSelectors<T> {
             xor: self.xor.as_ref(),
             lookup: self.lookup.as_ref(),
             range_check: self.range_check.as_ref(),
-            foreign_field_mul: self.foreign_field_mul.as_ref(),
+            ffmul: self.ffmul.as_ref(),
         }
     }
 }

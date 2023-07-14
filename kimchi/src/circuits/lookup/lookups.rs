@@ -46,7 +46,7 @@ pub struct LookupPatterns {
     pub xor: bool,
     pub lookup: bool,
     pub range_check: bool,
-    pub ffmul: bool,
+    pub foreign_field_mul: bool,
 }
 
 impl IntoIterator for LookupPatterns {
@@ -59,7 +59,7 @@ impl IntoIterator for LookupPatterns {
             xor,
             lookup,
             range_check,
-            ffmul,
+            foreign_field_mul,
         } = self;
 
         let mut patterns = Vec::with_capacity(5);
@@ -73,7 +73,7 @@ impl IntoIterator for LookupPatterns {
         if range_check {
             patterns.push(LookupPattern::RangeCheck)
         }
-        if ffmul {
+        if foreign_field_mul {
             patterns.push(LookupPattern::ForeignFieldMul)
         }
         patterns.into_iter()
@@ -88,7 +88,7 @@ impl std::ops::Index<LookupPattern> for LookupPatterns {
             LookupPattern::Xor => &self.xor,
             LookupPattern::Lookup => &self.lookup,
             LookupPattern::RangeCheck => &self.range_check,
-            LookupPattern::ForeignFieldMul => &self.ffmul,
+            LookupPattern::ForeignFieldMul => &self.foreign_field_mul,
         }
     }
 }
@@ -99,7 +99,7 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
             LookupPattern::Xor => &mut self.xor,
             LookupPattern::Lookup => &mut self.lookup,
             LookupPattern::RangeCheck => &mut self.range_check,
-            LookupPattern::ForeignFieldMul => &mut self.ffmul,
+            LookupPattern::ForeignFieldMul => &mut self.foreign_field_mul,
         }
     }
 }
