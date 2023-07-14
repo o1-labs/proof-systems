@@ -207,3 +207,4 @@ fn test_custom_runtime_table() {
 }
 
 // TODO: add a test with a runtime table with ID 0 (it should panic)
+// See https://github.com/MinaProtocol/mina/issues/13603
