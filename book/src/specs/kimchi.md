@@ -1234,7 +1234,7 @@ left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-   quotient_bound2 => q'2
+   quotient_hi_bound => q'2
 
 ````
 
@@ -1272,29 +1272,29 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
-* `quotient_bound` := quotient high bound for checking `q2 ≤ f2`
+* `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 
 ##### Layout
 
 The foreign field multiplication gate's rows are laid out like this
 
-| col | `ForeignFieldMul`       | `Zero`                   |
-| --- | ----------------------- | ------------------------ |
-|   0 | `left_input0`    (copy) | `remainder01`     (copy) |
-|   1 | `left_input1`    (copy) | `remainder2`      (copy) |
-|   2 | `left_input2`    (copy) | `quotient0`       (copy) |
-|   3 | `right_input0`   (copy) | `quotient1`       (copy) |
-|   4 | `right_input1`   (copy) | `quotient2`       (copy) |
-|   5 | `right_input2`   (copy) | `quotient_bound`  (copy) |
-|   6 | `product1_lo`    (copy) | `product1_hi_0`   (copy) |
-|   7 | `carry1_0`    (plookup) | `product1_hi_1`  (dummy) |
-|   8 | `carry1_12    (plookup) | `carry1_48`    (plookup) |
-|   9 | `carry1_24`   (plookup) | `carry1_60`    (plookup) |
-|  10 | `carry1_36`   (plookup) | `carry1_72`    (plookup) |
-|  11 | `carry1_84`             | `carry0`                 |
-|  12 | `carry1_86`             |                          |
-|  13 | `carry1_88`             |                          |
-|  14 | `carry1_90`             |                          |
+| col | `ForeignFieldMul`       | `Zero`                     |
+| --- | ----------------------- | -------------------------- |
+|   0 | `left_input0`    (copy) | `remainder01`       (copy) |
+|   1 | `left_input1`    (copy) | `remainder2`        (copy) |
+|   2 | `left_input2`    (copy) | `quotient0`         (copy) |
+|   3 | `right_input0`   (copy) | `quotient1`         (copy) |
+|   4 | `right_input1`   (copy) | `quotient2`         (copy) |
+|   5 | `right_input2`   (copy) | `quotient_hi_bound` (copy) |
+|   6 | `product1_lo`    (copy) | `product1_hi_0`     (copy) |
+|   7 | `carry1_0`    (plookup) | `product1_hi_1`    (dummy) |
+|   8 | `carry1_12    (plookup) | `carry1_48`      (plookup) |
+|   9 | `carry1_24`   (plookup) | `carry1_60`      (plookup) |
+|  10 | `carry1_36`   (plookup) | `carry1_72`      (plookup) |
+|  11 | `carry1_84`             | `carry0`                   |
+|  12 | `carry1_86`             |                            |
+|  13 | `carry1_88`             |                            |
+|  14 | `carry1_90`             |                            |
 
 
 
