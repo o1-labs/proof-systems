@@ -1229,15 +1229,14 @@ the savings of one row and a few constraints of difference.</p>
 the RFC, which uses mathematical notations.</p>
 <p>In order to relate the two documents, the following mapping between the
 variable names used in the code and those of the RFC can be helpful.</p>
-<pre><code class="language-text">left_input0 =&gt; a0  right_input0 =&gt; b0  quotient0 =&gt; q0  remainder0 =&gt; r0
-left_input1 =&gt; a1  right_input1 =&gt; b1  quotient1 =&gt; q1  remainder1 =&gt; r1
+<pre><code class="language-text">left_input0 =&gt; a0  right_input0 =&gt; b0  quotient0 =&gt; q0  remainder01 =&gt; r01
+left_input1 =&gt; a1  right_input1 =&gt; b1  quotient1 =&gt; q1
 left_input2 =&gt; a2  right_input2 =&gt; b2  quotient2 =&gt; q2  remainder2 =&gt; r2
 
    product1_lo =&gt; p10      product1_hi_0 =&gt; p110     product1_hi_1 =&gt; p111
    carry0 =&gt; v0            carry1_lo =&gt; v10          carry1_hi =&gt; v11
-   quotient_bound0 =&gt; q'0  quotient_bound12 =&gt; q'12
+   quotient_hi_bound =&gt; q'2
 
-                   quotient_bound_carry =&gt; q'_carry01
 </code></pre>
 <h5 id="suffixes"><a class="header" href="#suffixes">Suffixes</a></h5>
 <p>The variable names in this code uses descriptive suffixes to convey information about the
@@ -1253,8 +1252,8 @@ deeper than two, we simply cycle back to our depth 1 suffixes again.  So for exa
 would be split into <code>x1_lo_0</code> and <code>x1_lo_1</code>.</p>
 <h5 id="parameters"><a class="header" href="#parameters">Parameters</a></h5>
 <ul>
-<li><code>foreign_field_modulus</code> := foreign field modulus $f$ (stored in gate coefficients 0-2)</li>
-<li><code>neg_foreign_field_modulus</code> := negated foreign field modulus $f’$ (stored in gate coefficients 3-5)</li>
+<li><code>hi_foreign_field_modulus</code> := high limb of foreign field modulus $f$ (stored in gate coefficient 0)</li>
+<li><code>neg_foreign_field_modulus</code> := negated foreign field modulus $f’$ (stored in gate coefficients 1-3)</li>
 <li><code>n</code> := the native field modulus is obtainable from <code>F</code>, the native field’s trait bound</li>
 </ul>
 <h5 id="witness"><a class="header" href="#witness">Witness</a></h5>
@@ -1269,27 +1268,26 @@ would be split into <code>x1_lo_0</code> and <code>x1_lo_1</code>.</p>
 <li><code>product1_lo</code> := lowest 88 bits of middle intermediate product</li>
 <li><code>product1_hi_0</code> := lowest 88 bits of middle intermediate product’s highest 88 + 2 bits</li>
 <li><code>product1_hi_1</code> := highest 2 bits of middle intermediate product</li>
-<li><code>quotient_bound</code> := quotient bound for checking <code>q &lt; f</code></li>
-<li><code>quotient_bound_carry</code> := quotient bound addition carry bit</li>
+<li><code>quotient_hi_bound</code> := quotient high bound for checking <code>q2 ≤ f2</code></li>
 </ul>
 <h5 id="layout-1"><a class="header" href="#layout-1">Layout</a></h5>
 <p>The foreign field multiplication gate’s rows are laid out like this</p>
 <div class="table-wrapper"><table><thead><tr><th>col</th><th><code>ForeignFieldMul</code></th><th><code>Zero</code></th></tr></thead><tbody>
-<tr><td>0</td><td><code>left_input0</code>         (copy)</td><td><code>remainder0</code>       (copy)</td></tr>
-<tr><td>1</td><td><code>left_input1</code>         (copy)</td><td><code>remainder1</code>       (copy)</td></tr>
-<tr><td>2</td><td><code>left_input2</code>         (copy)</td><td><code>remainder2</code>       (copy)</td></tr>
-<tr><td>3</td><td><code>right_input0</code>        (copy)</td><td><code>quotient_bound01</code> (copy)</td></tr>
-<tr><td>4</td><td><code>right_input1</code>        (copy)</td><td><code>quotient_bound2</code>  (copy)</td></tr>
-<tr><td>5</td><td><code>right_input2</code>        (copy)</td><td><code>product1_lo</code>      (copy)</td></tr>
-<tr><td>6</td><td><code>carry1_lo</code>           (copy)</td><td><code>product1_hi_0</code>    (copy)</td></tr>
-<tr><td>7</td><td><code>carry1_hi</code>        (plookup)</td><td></td></tr>
-<tr><td>8</td><td><code>carry0</code></td><td></td></tr>
-<tr><td>9</td><td><code>quotient0</code></td><td></td></tr>
-<tr><td>10</td><td><code>quotient1</code></td><td></td></tr>
-<tr><td>11</td><td><code>quotient2</code></td><td></td></tr>
-<tr><td>12</td><td><code>quotient_bound_carry</code></td><td></td></tr>
-<tr><td>13</td><td><code>product1_hi_1</code></td><td></td></tr>
-<tr><td>14</td><td></td><td></td></tr>
+<tr><td>0</td><td><code>left_input0</code>    (copy)</td><td><code>remainder01</code>       (copy)</td></tr>
+<tr><td>1</td><td><code>left_input1</code>    (copy)</td><td><code>remainder2</code>        (copy)</td></tr>
+<tr><td>2</td><td><code>left_input2</code>    (copy)</td><td><code>quotient0</code>         (copy)</td></tr>
+<tr><td>3</td><td><code>right_input0</code>   (copy)</td><td><code>quotient1</code>         (copy)</td></tr>
+<tr><td>4</td><td><code>right_input1</code>   (copy)</td><td><code>quotient2</code>         (copy)</td></tr>
+<tr><td>5</td><td><code>right_input2</code>   (copy)</td><td><code>quotient_hi_bound</code> (copy)</td></tr>
+<tr><td>6</td><td><code>product1_lo</code>    (copy)</td><td><code>product1_hi_0</code>     (copy)</td></tr>
+<tr><td>7</td><td><code>carry1_0</code>    (plookup)</td><td><code>product1_hi_1</code>    (dummy)</td></tr>
+<tr><td>8</td><td>`carry1_12    (plookup)</td><td><code>carry1_48</code>      (plookup)</td></tr>
+<tr><td>9</td><td><code>carry1_24</code>   (plookup)</td><td><code>carry1_60</code>      (plookup)</td></tr>
+<tr><td>10</td><td><code>carry1_36</code>   (plookup)</td><td><code>carry1_72</code>      (plookup)</td></tr>
+<tr><td>11</td><td><code>carry1_84</code></td><td><code>carry0</code></td></tr>
+<tr><td>12</td><td><code>carry1_86</code></td><td></td></tr>
+<tr><td>13</td><td><code>carry1_88</code></td><td></td></tr>
+<tr><td>14</td><td><code>carry1_90</code></td><td></td></tr>
 </tbody></table>
 </div>
 <h4 id="rotation"><a class="header" href="#rotation">Rotation</a></h4>

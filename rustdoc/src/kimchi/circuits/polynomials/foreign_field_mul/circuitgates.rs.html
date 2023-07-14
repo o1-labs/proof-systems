@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs`."><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (1065d876c 2023-07-09)" data-channel="nightly" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/polynomials/foreign_field_mul/circuitgates.rs`."><title>circuitgates.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../../static.files/rustdoc-9bb858ba049f1f21.css" id="mainThemeStyle"><meta name="rustdoc-vars" data-root-path="../../../../../" data-static-root-path="../../../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.73.0-nightly (7bd81ee19 2023-07-13)" data-channel="nightly" data-search-js="search-f6292fe389d70017.js" data-settings-js="settings-de11bff964e9d4e5.js" data-settings-css="settings-8c76f75bfb6bd192.css" data-theme-light-css="light-0f8c037637f9eb3e.css" data-theme-dark-css="dark-1097f8e92a01e3cf.css" data-theme-ayu-css="ayu-614652228113ac93.css" ><script src="../../../../../static.files/storage-59fd9b8ccb335783.js"></script><script defer src="../../../../../static.files/source-script-106908c7a7964ba4.js"></script><script defer src="../../../../../source-files.js"></script><script defer src="../../../../../static.files/main-0795b7d26be81095.js"></script><noscript><link rel="stylesheet" media="(prefers-color-scheme:light)" href="../../../../../static.files/light-0f8c037637f9eb3e.css"><link rel="stylesheet" media="(prefers-color-scheme:dark)" href="../../../../../static.files/dark-1097f8e92a01e3cf.css"><link rel="stylesheet" href="../../../../../static.files/noscript-13285aec31fa243e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><a class="sub-logo-container" href="../../../../../kimchi/index.html"><img class="rust-logo" src="../../../../../static.files/rust-logo-151179464ae7ed46.svg" alt="logo"></a><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -358,6 +358,12 @@
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Foreign field multiplication
 
 </span><span class="comment">//~ This gadget is used to constrain that
@@ -379,15 +385,14 @@
 //~ variable names used in the code and those of the RFC can be helpful.
 //~
 //~ ```text
-//~ left_input0 =&gt; a0  right_input0 =&gt; b0  quotient0 =&gt; q0  remainder0 =&gt; r0
-//~ left_input1 =&gt; a1  right_input1 =&gt; b1  quotient1 =&gt; q1  remainder1 =&gt; r1
+//~ left_input0 =&gt; a0  right_input0 =&gt; b0  quotient0 =&gt; q0  remainder01 =&gt; r01
+//~ left_input1 =&gt; a1  right_input1 =&gt; b1  quotient1 =&gt; q1
 //~ left_input2 =&gt; a2  right_input2 =&gt; b2  quotient2 =&gt; q2  remainder2 =&gt; r2
 //~
 //~    product1_lo =&gt; p10      product1_hi_0 =&gt; p110     product1_hi_1 =&gt; p111
 //~    carry0 =&gt; v0            carry1_lo =&gt; v10          carry1_hi =&gt; v11
-//~    quotient_bound0 =&gt; q&#39;0  quotient_bound12 =&gt; q&#39;12
+//~    quotient_hi_bound =&gt; q&#39;2
 //~
-//~                    quotient_bound_carry =&gt; q&#39;_carry01
 //~ ````
 //~
 //~ ##### Suffixes
@@ -408,8 +413,8 @@
 //~
 //~ ##### Parameters
 //~
-//~ * `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
-//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f&#39;$ (stored in gate coefficients 3-5)
+//~ * `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
+//~ * `neg_foreign_field_modulus` := negated foreign field modulus $f&#39;$ (stored in gate coefficients 1-3)
 //~ * `n` := the native field modulus is obtainable from `F`, the native field&#39;s trait bound
 //~
 //~ ##### Witness
@@ -424,30 +429,29 @@
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product&#39;s highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
-//~ * `quotient_bound` := quotient bound for checking `q &lt; f`
-//~ * `quotient_bound_carry` := quotient bound addition carry bit
+//~ * `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 //~
 //~ ##### Layout
 //~
 //~ The foreign field multiplication gate&#39;s rows are laid out like this
 //~
-//~ | col | `ForeignFieldMul`            | `Zero`                    |
-//~ | --- | ---------------------------- | ------------------------- |
-//~ |   0 | `left_input0`         (copy) | `remainder0`       (copy) |
-//~ |   1 | `left_input1`         (copy) | `remainder1`       (copy) |
-//~ |   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-//~ |   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
-//~ |   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
-//~ |   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
-//~ |   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-//~ |   7 | `carry1_hi`        (plookup) |                           |
-//~ |   8 | `carry0`                     |                           |
-//~ |   9 | `quotient0`                  |                           |
-//~ |  10 | `quotient1`                  |                           |
-//~ |  11 | `quotient2`                  |                           |
-//~ |  12 | `quotient_bound_carry`       |                           |
-//~ |  13 | `product1_hi_1`              |                           |
-//~ |  14 |                              |                           |
+//~ | col | `ForeignFieldMul`       | `Zero`                     |
+//~ | --- | ----------------------- | -------------------------- |
+//~ |   0 | `left_input0`    (copy) | `remainder01`       (copy) |
+//~ |   1 | `left_input1`    (copy) | `remainder2`        (copy) |
+//~ |   2 | `left_input2`    (copy) | `quotient0`         (copy) |
+//~ |   3 | `right_input0`   (copy) | `quotient1`         (copy) |
+//~ |   4 | `right_input1`   (copy) | `quotient2`         (copy) |
+//~ |   5 | `right_input2`   (copy) | `quotient_hi_bound` (copy) |
+//~ |   6 | `product1_lo`    (copy) | `product1_hi_0`     (copy) |
+//~ |   7 | `carry1_0`    (plookup) | `product1_hi_1`    (dummy) |
+//~ |   8 | `carry1_12    (plookup) | `carry1_48`      (plookup) |
+//~ |   9 | `carry1_24`   (plookup) | `carry1_60`      (plookup) |
+//~ |  10 | `carry1_36`   (plookup) | `carry1_72`      (plookup) |
+//~ |  11 | `carry1_84`             | `carry0`                   |
+//~ |  12 | `carry1_86`             |                            |
+//~ |  13 | `carry1_88`             |                            |
+//~ |  14 | `carry1_90`             |                            |
 //~
 
 </span><span class="kw">use crate</span>::{
@@ -485,7 +489,7 @@
             + left_input(<span class="number">1</span>) * right_input(<span class="number">0</span>)
             + quotient(<span class="number">0</span>) * neg_foreign_field_modulus(<span class="number">1</span>)
             + quotient(<span class="number">1</span>) * neg_foreign_field_modulus(<span class="number">0</span>),
-        <span class="comment">// p2 = a0 * b2 + a2 * b0 + a1 * b1 - q0 * f&#39;2 + q2 * f&#39;0 + q1 * f&#39;1
+        <span class="comment">// p2 = a0 * b2 + a2 * b0 + a1 * b1 + q0 * f&#39;2 + q2 * f&#39;0 + q1 * f&#39;1
         </span>left_input(<span class="number">0</span>) * right_input(<span class="number">2</span>)
             + left_input(<span class="number">2</span>) * right_input(<span class="number">0</span>)
             + left_input(<span class="number">1</span>) * right_input(<span class="number">1</span>)
@@ -495,46 +499,19 @@
     ]
 }
 
-<span class="doccomment">/// Compute intermediate sums
-///
-/// For more details see the &quot;Optimizations&quot; Section of
-/// the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
-///
-</span><span class="kw">pub fn </span>compute_intermediate_sums&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(
-    quotient: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
-    neg_foreign_field_modulus: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
-) -&gt; [T; <span class="number">2</span>] {
-    <span class="macro">auto_clone_array!</span>(quotient);
-    <span class="macro">auto_clone_array!</span>(neg_foreign_field_modulus);
-
-    <span class="comment">// q01 = q0 + 2^L * q1
-    </span><span class="kw">let </span>quotient01 = quotient(<span class="number">0</span>) + T::two_to_limb() * quotient(<span class="number">1</span>);
-
-    <span class="comment">// f&#39;01 = f&#39;0 + 2^L * f&#39;1
-    </span><span class="kw">let </span>neg_foreign_field_modulus01 =
-        neg_foreign_field_modulus(<span class="number">0</span>) + T::two_to_limb() * neg_foreign_field_modulus(<span class="number">1</span>);
-
-    [
-        <span class="comment">// q&#39;01 = q01 + f&#39;01
-        </span>quotient01 + neg_foreign_field_modulus01,
-        <span class="comment">// q&#39;2 = q2 + f&#39;2
-        </span>quotient(<span class="number">2</span>) + neg_foreign_field_modulus(<span class="number">2</span>),
-    ]
-}
-
 <span class="comment">// Compute native modulus values
 </span><span class="kw">pub fn </span>compute_native_modulus_values&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(
     left_input: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
     right_input: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
     quotient: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
-    remainder: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
-    foreign_field_modulus: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
+    remainder: <span class="kw-2">&amp;</span>[T; <span class="number">2</span>],
+    neg_foreign_field_modulus: <span class="kw-2">&amp;</span>[T; <span class="number">3</span>],
 ) -&gt; [T; <span class="number">5</span>] {
     <span class="macro">auto_clone_array!</span>(left_input);
     <span class="macro">auto_clone_array!</span>(right_input);
     <span class="macro">auto_clone_array!</span>(quotient);
     <span class="macro">auto_clone_array!</span>(remainder);
-    <span class="macro">auto_clone_array!</span>(foreign_field_modulus);
+    <span class="macro">auto_clone_array!</span>(neg_foreign_field_modulus);
 
     [
         <span class="comment">// an = 2^2L * a2 + 2^L * a1 + a0
@@ -543,13 +520,29 @@
         </span>T::two_to_2limb() * right_input(<span class="number">2</span>) + T::two_to_limb() * right_input(<span class="number">1</span>) + right_input(<span class="number">0</span>),
         <span class="comment">// qn = 2^2L * q2 + 2^L * q1 + b0
         </span>T::two_to_2limb() * quotient(<span class="number">2</span>) + T::two_to_limb() * quotient(<span class="number">1</span>) + quotient(<span class="number">0</span>),
-        <span class="comment">// rn = 2^2L * r2 + 2^L * r1 + r0
-        </span>T::two_to_2limb() * remainder(<span class="number">2</span>) + T::two_to_limb() * remainder(<span class="number">1</span>) + remainder(<span class="number">0</span>),
-        <span class="comment">// fn = 2^2L * f2 + 2^L * f1 + f0
-        </span>T::two_to_2limb() * foreign_field_modulus(<span class="number">2</span>)
-            + T::two_to_limb() * foreign_field_modulus(<span class="number">1</span>)
-            + foreign_field_modulus(<span class="number">0</span>),
+        <span class="comment">// rn = 2^2L * r2 + 2^L * r1 + r0 = 2^2L * r2 + r01
+        </span>T::two_to_2limb() * remainder(<span class="number">1</span>) + remainder(<span class="number">0</span>),
+        <span class="comment">// f&#39;n = 2^2L * f&#39;2 + 2^L * f&#39;1 + f&#39;0
+        </span>T::two_to_2limb() * neg_foreign_field_modulus(<span class="number">2</span>)
+            + T::two_to_limb() * neg_foreign_field_modulus(<span class="number">1</span>)
+            + neg_foreign_field_modulus(<span class="number">0</span>),
     ]
+}
+
+<span class="doccomment">/// Composes the 91-bit carry1 value from its parts
+</span><span class="kw">pub fn </span>compose_carry&lt;F: PrimeField, T: ExprOps&lt;F&gt;&gt;(carry: <span class="kw-2">&amp;</span>[T; <span class="number">11</span>]) -&gt; T {
+    <span class="macro">auto_clone_array!</span>(carry);
+    carry(<span class="number">0</span>)
+        + T::two_pow(<span class="number">12</span>) * carry(<span class="number">1</span>)
+        + T::two_pow(<span class="number">2 </span>* <span class="number">12</span>) * carry(<span class="number">2</span>)
+        + T::two_pow(<span class="number">3 </span>* <span class="number">12</span>) * carry(<span class="number">3</span>)
+        + T::two_pow(<span class="number">4 </span>* <span class="number">12</span>) * carry(<span class="number">4</span>)
+        + T::two_pow(<span class="number">5 </span>* <span class="number">12</span>) * carry(<span class="number">5</span>)
+        + T::two_pow(<span class="number">6 </span>* <span class="number">12</span>) * carry(<span class="number">6</span>)
+        + T::two_pow(<span class="number">7 </span>* <span class="number">12</span>) * carry(<span class="number">7</span>)
+        + T::two_pow(<span class="number">86</span>) * carry(<span class="number">8</span>)
+        + T::two_pow(<span class="number">88</span>) * carry(<span class="number">9</span>)
+        + T::two_pow(<span class="number">90</span>) * carry(<span class="number">10</span>)
 }
 
 <span class="comment">// ForeignFieldMul - foreign field multiplication gate
@@ -563,7 +556,7 @@
     </span>F: PrimeField,
 {
     <span class="kw">const </span>ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">9</span>;
+    <span class="kw">const </span>CONSTRAINTS: u32 = <span class="number">11</span>;
     <span class="comment">// DEGREE is 4
 
     </span><span class="kw">fn </span>constraint_checks&lt;T: ExprOps&lt;F&gt;&gt;(env: <span class="kw-2">&amp;</span>ArgumentEnv&lt;F, T&gt;, _cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; Vec&lt;T&gt; {
@@ -591,45 +584,56 @@
             env.witness_curr(<span class="number">5</span>),
         ];
 
-        <span class="comment">// Carry bits v10 (L bits) and original v11 that is 3 bits
-        </span><span class="kw">let </span>carry1_lo = env.witness_curr(<span class="number">6</span>); <span class="comment">// Copied for multi-range-check
-        </span><span class="kw">let </span>carry1_hi = env.witness_curr(<span class="number">7</span>); <span class="comment">// 12-bit plookup
+        <span class="comment">// Carry bits v1 decomposed into 7 sublimbs of 12 bits, 3 crumbs of 2 bits, and 1 bit
+        // Total is 91 bits (v11 3 bits + v10 88 bits)
+        </span><span class="kw">let </span>carry1_crumb0 = env.witness_curr(<span class="number">11</span>);
+        <span class="kw">let </span>carry1_crumb1 = env.witness_curr(<span class="number">12</span>);
+        <span class="kw">let </span>carry1_crumb2 = env.witness_curr(<span class="number">13</span>);
+        <span class="kw">let </span>carry1_bit = env.witness_curr(<span class="number">14</span>);
+        <span class="kw">let </span>carry1 = compose_carry(<span class="kw-2">&amp;</span>[
+            env.witness_curr(<span class="number">7</span>),   <span class="comment">// 12-bit lookup
+            </span>env.witness_curr(<span class="number">8</span>),   <span class="comment">// 12-bit lookup
+            </span>env.witness_curr(<span class="number">9</span>),   <span class="comment">// 12-bit lookup
+            </span>env.witness_curr(<span class="number">10</span>),  <span class="comment">// 12-bit lookup
+            </span>env.witness_next(<span class="number">8</span>),   <span class="comment">// 12-bit lookup
+            </span>env.witness_next(<span class="number">9</span>),   <span class="comment">// 12-bit lookup
+            </span>env.witness_next(<span class="number">10</span>),  <span class="comment">// 12-bit lookup
+            </span>carry1_crumb0.clone(), <span class="comment">// 2-bit crumb
+            </span>carry1_crumb1.clone(), <span class="comment">// 2-bit crumb
+            </span>carry1_crumb2.clone(), <span class="comment">// 2-bit crumb
+            </span>carry1_bit.clone(),    <span class="comment">// 1-bit
+        </span>]);
 
-        // Carry bits v0
-        </span><span class="kw">let </span>carry0 = env.witness_curr(<span class="number">8</span>);
+        <span class="comment">// Carry bits v0
+        </span><span class="kw">let </span>carry0 = env.witness_next(<span class="number">11</span>);
 
         <span class="comment">// Quotient q
         </span><span class="kw">let </span>quotient = [
-            env.witness_curr(<span class="number">9</span>),
-            env.witness_curr(<span class="number">10</span>),
-            env.witness_curr(<span class="number">11</span>),
-        ];
-
-        <span class="comment">// Carry bits for quotient_bound_carry and quotient_bound_carry2
-        </span><span class="kw">let </span>quotient_bound_carry = env.witness_curr(<span class="number">12</span>);
-
-        <span class="comment">// Remainder r (a.k.a. result)
-        </span><span class="kw">let </span>remainder = [
-            <span class="comment">// Copied for multi-range-check
-            </span>env.witness_next(<span class="number">0</span>),
-            env.witness_next(<span class="number">1</span>),
             env.witness_next(<span class="number">2</span>),
+            env.witness_next(<span class="number">3</span>),
+            env.witness_next(<span class="number">4</span>),
         ];
 
-        <span class="comment">// Quotient bound (copied for multi-range-check)
-        </span><span class="kw">let </span>quotient_bound01 = env.witness_next(<span class="number">3</span>);
-        <span class="kw">let </span>quotient_bound2 = env.witness_next(<span class="number">4</span>);
+        <span class="comment">// Quotient high bound: q2 + 2^88 - f2
+        // Copied for multi-range-check
+        </span><span class="kw">let </span>quotient_hi_bound = env.witness_next(<span class="number">5</span>);
+
+        <span class="comment">// Remainder r (a.k.a. result) in compact format
+        // remainder01 := remainder0 + remainder1 * 2^88
+        // Actual limbs of the result will be obtained from the multi-range-check
+        // Copiable for multi-range-check
+        </span><span class="kw">let </span>remainder = [env.witness_next(<span class="number">0</span>), env.witness_next(<span class="number">1</span>)];
 
         <span class="comment">// Decomposition of the middle intermediate product
-        </span><span class="kw">let </span>product1_lo = env.witness_next(<span class="number">5</span>); <span class="comment">// Copied for multi-range-check
+        </span><span class="kw">let </span>product1_lo = env.witness_curr(<span class="number">6</span>); <span class="comment">// Copied for multi-range-check
         </span><span class="kw">let </span>product1_hi_0 = env.witness_next(<span class="number">6</span>); <span class="comment">// Copied for multi-range-check
-        </span><span class="kw">let </span>product1_hi_1 = env.witness_curr(<span class="number">13</span>);
+        </span><span class="kw">let </span>product1_hi_1 = env.witness_next(<span class="number">7</span>); <span class="comment">// dummy
 
-        <span class="comment">// Foreign field modulus limbs
-        </span><span class="kw">let </span>foreign_field_modulus = array::from_fn(|i| env.coeff(i));
+        // Foreign field modulus high limb
+        </span><span class="kw">let </span>hi_foreign_field_modulus = env.coeff(<span class="number">0</span>);
 
         <span class="comment">// Negated foreign field modulus limbs
-        </span><span class="kw">let </span>neg_foreign_field_modulus = array::from_fn(|i| env.coeff(<span class="number">3 </span>+ i));
+        </span><span class="kw">let </span>neg_foreign_field_modulus = array::from_fn(|i| env.coeff(<span class="number">1 </span>+ i));
 
         <span class="comment">// Compute intermediate products
         </span><span class="macro">auto_clone_array!</span>(
@@ -642,78 +646,86 @@
             )
         );
 
-        <span class="comment">// Compute intermediate sums
-        </span><span class="kw">let </span>[sum01, sum2] = compute_intermediate_sums(<span class="kw-2">&amp;</span>quotient, <span class="kw-2">&amp;</span>neg_foreign_field_modulus);
-
         <span class="comment">// Compute native modulus values
-        </span><span class="kw">let </span>[left_input_n, right_input_n, quotient_n, remainder_n, foreign_field_modulus_n] =
+        </span><span class="kw">let </span>[left_input_n, right_input_n, quotient_n, remainder_n, neg_foreign_field_modulus_n] =
             compute_native_modulus_values(
                 <span class="kw-2">&amp;</span>left_input,
                 <span class="kw-2">&amp;</span>right_input,
                 <span class="kw-2">&amp;</span>quotient,
                 <span class="kw-2">&amp;</span>remainder,
-                <span class="kw-2">&amp;</span>foreign_field_modulus,
+                <span class="kw-2">&amp;</span>neg_foreign_field_modulus,
             );
+
+        <span class="comment">// bound = x2 + 2^88 - f2 - 1
+        </span><span class="kw">let </span>bound = quotient[<span class="number">2</span>].clone() + T::two_to_limb() - hi_foreign_field_modulus - T::one();
 
         <span class="comment">// Define the constraints
         //   For more the details on each constraint please see the
         //   Foreign Field Multiplication RFC where each of the constraints
         //   numbered below are described in full detail.
 
+        // External checks
+        // multi-range-check: q&#39;2, p10, p110
+        // That is, check bound, product1_lo, product1_hi_0 each in [0, 2^L)
+        // Must be done externally with a multi-range-check gadget
+
         // C1: Constrain intermediate product fragment product1_hi_1 \in [0, 2^2)
+        // RFC: Corresponds to C3
         </span>constraints.push(product1_hi_1.crumb());
 
-        <span class="comment">// C2: multi-range-check: v10, p10, p110
-        //     That is, check carry1_lo, product1_lo, product1_hi_0 each in [0, 2^L)
-        //     Must be done externally with a multi-range-check gadget
+        <span class="comment">// C2: Constrain first carry witness value v0 \in [0, 2^2)
+        // RFC: Corresponds to C5
+        </span>constraints.push(carry0.crumb());
 
-        // C3: Constrain decomposition of middle intermediate product p1
+        <span class="comment">// C3: Constrain decomposition of middle intermediate product p1
         //         p1 = 2^L*p11 + p10
         //     where p11 = 2^L * p111 + p110
+        // RFC: corresponds to C2
         </span><span class="kw">let </span>product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
         <span class="kw">let </span>product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
         constraints.push(products(<span class="number">1</span>) - product1);
 
-        <span class="comment">// C4: Constrain first carry witness value v0 \in [0, 2^2)
-        </span>constraints.push(carry0.crumb());
-
-        <span class="comment">// C5: Constrain that 2^2L * v0 = p0 + 2^L * p10 - 2^L * r1 - r0.  That is, that
+        <span class="comment">// C4: Constrain that 2^2L * v0 = p0 + 2^L * p10 - r01. That is, that
         //         2^2L * carry0 = rhs
+        // RFC: Corresponds to C4
         </span>constraints.push(
             T::two_to_2limb() * carry0.clone()
-                - (products(<span class="number">0</span>) + T::two_to_limb() * product1_lo
-                    - remainder[<span class="number">0</span>].clone()
-                    - T::two_to_limb() * remainder[<span class="number">1</span>].clone()),
+                - (products(<span class="number">0</span>) + T::two_to_limb() * product1_lo - remainder[<span class="number">0</span>].clone()),
         );
 
-        <span class="comment">// C6: Constrain v11 is 3-bits (done with plookup scaled by 2^9)
+        <span class="comment">// C5: Native modulus constraint a_n * b_n + q_n * f&#39;_n - q_n * 2^264 = r_n
+        // RFC: Corresponds to C1
+        </span>constraints.push(
+            left_input_n * right_input_n + quotient_n.clone() * neg_foreign_field_modulus_n
+                - remainder_n
+                - quotient_n * T::two_to_3limb(),
+        );
 
-        // C7: Constrain that 2^L * v1 = p2 + p11 + v0 - r2.  That is, that
+        <span class="comment">// Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
+        // C6: 2-bit c1_84
+        // RFC: Corresponds to C7
+        </span>constraints.push(carry1_crumb0.crumb());
+        <span class="comment">// C7: 2-bit c1_86
+        // RFC: Corresponds to C8
+        </span>constraints.push(carry1_crumb1.crumb());
+        <span class="comment">// C8: 2-bit c1_88
+        // RFC: Corresponds to C9
+        </span>constraints.push(carry1_crumb2.crumb());
+        <span class="comment">// C9: 1-bit c1_90
+        // RFC: Corresponds to C10
+        </span>constraints.push(carry1_bit.boolean());
+
+        <span class="comment">// C10: Top part:
+        //      Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
+        // RFC: Corresponds to C6
         </span>constraints.push(
-            T::two_to_limb() * (T::two_to_limb() * carry1_hi + carry1_lo)
-                - (products(<span class="number">2</span>) + product1_hi + carry0 - remainder[<span class="number">2</span>].clone()),
+            T::two_to_limb() * carry1 - (products(<span class="number">2</span>) + product1_hi + carry0 - remainder[<span class="number">1</span>].clone()),
         );
 
-        <span class="comment">// C8: Native modulus constraint a_n * b_n - q_n * f_n = r_n
-        </span>constraints.push(
-            left_input_n * right_input_n - quotient_n * foreign_field_modulus_n - remainder_n,
-        );
-
-        <span class="comment">// C9: multi-range-check q0&#39;, q1&#39; q2&#39;
-        //      Constrain q&#39;01 = q&#39;0 + 2^L * q&#39;1
-        //      Must be done externally with a multi-range-check gadget
-        //      configured to constrain q&#39;12
-
-        // C10: Constrain q&#39;_carry01 is boolean
-        </span>constraints.push(quotient_bound_carry.boolean());
-
-        <span class="comment">// C11: Constrain that 2^2L * q&#39;_carry01 = s01 - q&#39;01
-        </span>constraints
-            .push(T::two_to_2limb() * quotient_bound_carry.clone() - sum01 + quotient_bound01);
-
-        <span class="comment">// C12: Constrain that q&#39;_2 = s2 + q&#39;_carry01
-        </span>constraints.push(quotient_bound2 - sum2 - quotient_bound_carry);
+        <span class="comment">// C11: Constrain that q&#39;2 is correct
+        // RFC: Corresponds to C11
+        </span>constraints.push(quotient_hi_bound - bound);
 
         constraints
     }
