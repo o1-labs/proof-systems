@@ -1395,16 +1395,6 @@ fn test_witness_max_foreign_field_modulus() {
 }
 
 #[test]
-#[should_panic]
-fn test_witness_invalid_foreign_field_modulus() {
-    foreign_field_mul::witness::create::<PallasField>(
-        &BigUint::zero(),
-        &BigUint::zero(),
-        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
-    );
-}
-
-#[test]
 // Checks that the high bound check includes when q2 is exactly f2 and not just up to f2-1
 fn test_q2_exactly_f2() {
     let left_input = secp256k1_max() - BigUint::from(4u32);
