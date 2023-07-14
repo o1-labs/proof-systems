@@ -392,9 +392,8 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::Xor | LookupPattern::RangeCheck => 4,
+            LookupPattern::Xor | LookupPattern::RangeCheck | LookupPattern::ForeignFieldMul => 4,
             LookupPattern::Lookup => 3,
-            LookupPattern::ForeignFieldMul => 4,
         }
     }
 

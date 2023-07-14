@@ -20,7 +20,7 @@ use o1_utils::foreign_field::{
 };
 use std::{array, ops::Div};
 
-use super::gate_constraints;
+use super::circuitgates;
 
 // Witness layout
 //   * The values and cell contents are in little-endian order, which
@@ -71,9 +71,9 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("quotient0"),
             VariableCell::create("quotient1"),
             VariableCell::create("quotient2"),
-            VariableCell::create("quotient_bound"), // Copied for multi-range-check
-            VariableCell::create("product1_hi_0"),  // Copied for multi-range-check
-            VariableCell::create("product1_hi_1"),  // Dummy 12-bit lookup
+            VariableCell::create("quotient_hi_bound"), // Copied for multi-range-check
+            VariableCell::create("product1_hi_0"),     // Copied for multi-range-check
+            VariableCell::create("product1_hi_1"),     // Dummy 12-bit lookup
             VariableBitsCell::create("carry1", 48, Some(60)), // 12-bit lookup
             VariableBitsCell::create("carry1", 60, Some(72)), // 12-bit lookup
             VariableBitsCell::create("carry1", 72, Some(84)), // 12-bit lookup
@@ -148,14 +148,6 @@ pub fn create<F: PrimeField>(
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
 ) -> ([Vec<F>; COLUMNS], ExternalChecks<F>) {
-    if *foreign_field_modulus > BigUint::max_foreign_field_modulus::<F>() {
-        panic!(
-            "foreign_field_modulus exceeds maximum: {} > {}",
-            *foreign_field_modulus,
-            BigUint::max_foreign_field_modulus::<F>()
-        );
-    }
-
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
     let mut external_checks = ExternalChecks::<F>::default();
 
@@ -166,7 +158,7 @@ pub fn create<F: PrimeField>(
     let neg_foreign_field_modulus = foreign_field_modulus.negate();
 
     // Compute the intermediate products
-    let products: [F; 3] = gate_constraints::compute_intermediate_products(
+    let products: [F; 3] = circuitgates::compute_intermediate_products(
         &left_input.to_field_limbs(),
         &right_input.to_field_limbs(),
         &quotient.to_field_limbs(),
@@ -179,8 +171,8 @@ pub fn create<F: PrimeField>(
 
     // Compute high bounds for multi-range-checks on quotient and remainder, making 3 limbs (with zero)
     // Assumes that right's and left's high bounds are range checked at a different stage.
-    let remainder_hi_bound = compute_high_bound(&remainder, &foreign_field_modulus);
-    let quotient_hi_bound = compute_high_bound(&quotient, &foreign_field_modulus);
+    let remainder_hi_bound = compute_high_bound(&remainder, foreign_field_modulus);
+    let quotient_hi_bound = compute_high_bound(&quotient, foreign_field_modulus);
 
     // Track witness data for external multi-range-check quotient limbs
     external_checks.add_multi_range_check(&quotient.to_field_limbs());
@@ -228,7 +220,7 @@ pub fn create<F: PrimeField>(
             "quotient0" => quotient[0],
             "quotient1" => quotient[1],
             "quotient2" => quotient[2],
-            "quotient_bound" => quotient_hi_bound.into(),
+            "quotient_hi_bound" => quotient_hi_bound.into(),
             "product1_lo" => product1_lo,
             "product1_hi_0" => product1_hi_0,
             "product1_hi_1" => product1_hi_1,

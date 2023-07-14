@@ -1,7 +1,4 @@
-use std::ops::Div;
-
 use crate::{
-    auto_clone_array,
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
@@ -69,29 +66,6 @@ fn pallas_sqrt() -> BigUint {
     pallas_max().sqrt()
 }
 
-// Compute intermediate sums
-fn compute_intermediate_sums<F: PrimeField, T: crate::circuits::expr::constraints::ExprOps<F>>(
-    quotient: &[T; 3],
-    neg_foreign_field_modulus: &[T; 3],
-) -> [T; 2] {
-    auto_clone_array!(quotient);
-    auto_clone_array!(neg_foreign_field_modulus);
-
-    // q01 = q0 + 2^L * q1
-    let quotient01 = quotient(0) + T::two_to_limb() * quotient(1);
-
-    // f'01 = f'0 + 2^L * f'1
-    let neg_foreign_field_modulus01 =
-        neg_foreign_field_modulus(0) + T::two_to_limb() * neg_foreign_field_modulus(1);
-
-    [
-        // q'01 = q01 + f'01
-        quotient01 + neg_foreign_field_modulus01,
-        // q'2 = q2 + f'2
-        quotient(2) + neg_foreign_field_modulus(2),
-    ]
-}
-
 // Boilerplate for tests
 fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
     full: bool,
@@ -141,10 +115,9 @@ where
         // remainder0 -> (3, 0), remainder1 -> (4, 0), remainder2 -> (2,0)
 
         // Constant single Generic gate for result bound
-        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &foreign_field_modulus);
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, foreign_field_modulus);
         gates.connect_cell_pair((6, 0), (1, 1)); // remainder2
-        external_checks
-            .extend_witness_high_bounds_computation(&mut witness, &foreign_field_modulus);
+        external_checks.extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
 
         // Quotient multi-range-check
         CircuitGate::extend_multi_range_check(&mut gates, &mut next_row);
@@ -171,11 +144,10 @@ where
         // Constant Double Generic gate for result and quotient bounds
         external_checks.add_high_bound_computation(&left_limbs[2]);
         external_checks.add_high_bound_computation(&right_limbs[2]);
-        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, &foreign_field_modulus);
+        CircuitGate::extend_high_bounds(&mut gates, &mut next_row, foreign_field_modulus);
         gates.connect_cell_pair((15, 0), (0, 2)); // left2
         gates.connect_cell_pair((15, 3), (0, 5)); // right2
-        external_checks
-            .extend_witness_high_bounds_computation(&mut witness, &foreign_field_modulus);
+        external_checks.extend_witness_high_bounds_computation(&mut witness, foreign_field_modulus);
 
         // Left input multi-range-check
         external_checks.add_multi_range_check(&left_limbs);
@@ -205,9 +177,9 @@ where
 
         // Multi-range check bounds for left and right inputs
         let left_hi_bound =
-            foreign_field_mul::witness::compute_high_bound(&left_input, &foreign_field_modulus);
+            foreign_field_mul::witness::compute_high_bound(left_input, foreign_field_modulus);
         let right_hi_bound =
-            foreign_field_mul::witness::compute_high_bound(&right_input, &foreign_field_modulus);
+            foreign_field_mul::witness::compute_high_bound(right_input, foreign_field_modulus);
         external_checks.add_limb_check(&left_hi_bound.into());
         external_checks.add_limb_check(&right_hi_bound.into());
         gates.connect_cell_pair((15, 2), (25, 0)); // left_bound
@@ -222,7 +194,6 @@ where
             TestFramework::<G>::default()
                 .disable_gates_checks(disable_gates_checks)
                 .gates(gates.clone())
-                .lookup_tables(vec![foreign_field_mul::gadget::lookup_table()])
                 .setup(),
         )
     } else {
@@ -233,10 +204,7 @@ where
         runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
-        ConstraintSystem::create(gates.clone())
-            .lookup(vec![foreign_field_mul::gadget::lookup_table()])
-            .build()
-            .unwrap()
+        ConstraintSystem::create(gates.clone()).build().unwrap()
     };
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
@@ -313,124 +281,6 @@ where
     }
 
     (Ok(()), witness)
-}
-
-/// Generate a random foreign field element x whose addition with the negated foreign field modulus f' = 2^t - f results
-/// in an overflow in the lest significant limb x0. The limbs are in 2 limb compact representation:
-///
-///     x  = x0  + 2^2L * x1
-///     f' = f'0 + 2^2L * f'1
-///
-/// Note that it is not possible to have an overflow in the most significant limb. This is because if there were an overflow
-/// when adding f'1 to x1, then we'd have a contradiction. To see this, first note that to get an overflow in the highest limbs,
-/// we need
-///
-///     2^L < x1 + o0 + f'1 <= 2^L - 1 + o0 + f'1
-///
-/// where 2^L - 1 is the maximum possible size of x1 (before it overflows) and o0 is the overflow bit from the addition of the
-/// least significant limbs x0 and f'0.  This means
-///
-///     2^L - o0 - f'1 < x1 < 2^L
-///
-/// We cannot allow x to overflow the foreign field, so we also have
-///
-///     x1 < (f - x0)/2^2L
-///
-/// Thus,
-///
-///     2^L - o0  - f'1 < (f - x0)/2^2L = f/2^2L - x0/2^2L
-///
-/// Since x0/2^2L = o0 we have
-///
-///     2^L - o0 - f'1 < f/2^2L - o0
-///
-/// so
-///     2^L - f'1 < f/2^2L
-///
-/// Notice that f/2^2L = f1. Now we have
-///
-///     2^L - f'1 < f1
-///     <=>
-///     f'1 > 2^L - f1
-///
-/// However, this is a contradiction with the definition of our negated foreign field modulus limb f'1 = 2^L - f1.
-///
-/// This proof means that, since they are never used, we can safely remove the witness for the carry bit of
-/// addition of the most significant bound addition limbs and its corresponding boolean constraint.
-pub fn rand_foreign_field_element_with_bound_overflows(
-    rng: &mut StdRng,
-    foreign_field_modulus: &BigUint,
-) -> Result<BigUint, &'static str> {
-    if *foreign_field_modulus < BigUint::two_to_2limb() {
-        return Err("Foreign field modulus too small");
-    }
-
-    auto_clone_array!(
-        neg_foreign_field_modulus,
-        foreign_field_modulus.negate().to_compact_limbs()
-    );
-
-    if neg_foreign_field_modulus(0) == BigUint::zero() {
-        return Err("Overflow not possible");
-    }
-
-    // Compute x0 that will overflow: this means 2^2L - f'0 < x0 < 2^2L
-    let (start, stop) = (
-        BigUint::two_to_2limb() - neg_foreign_field_modulus(0),
-        BigUint::two_to_2limb(),
-    );
-
-    let x0 = rng.gen_biguint_range(&start, &stop);
-
-    // Compute overflow bit
-    let o0 = (x0.clone() + neg_foreign_field_modulus(0)).div(&BigUint::two_to_2limb());
-
-    // Compute x1: this means x2 < 2^L - o01 - f'1 AND  x2 < (f - x01)/2^2L
-    let (start, stop) = (
-        BigUint::zero(),
-        std::cmp::min(
-            BigUint::two_to_limb() - o0 - neg_foreign_field_modulus(1),
-            (foreign_field_modulus - x0.clone()) / BigUint::two_to_2limb(),
-        ),
-    );
-    let x1 = rng.gen_biguint_range(&start, &stop);
-    Ok([x0, x1].compose())
-}
-
-fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
-    rng: &mut StdRng,
-    foreign_field_modulus: &BigUint,
-) {
-    let neg_foreign_field_modulus = foreign_field_modulus.negate();
-
-    // Select a random x that would overflow on lowest limb
-    let x = rand_foreign_field_element_with_bound_overflows(rng, foreign_field_modulus)
-        .expect("Failed to get element with bound overflow");
-
-    // Check it obeys the modulus
-    assert!(x < *foreign_field_modulus);
-
-    // Compute bound directly as BigUint
-    let bound = foreign_field_mul::witness::compute_bound(&x, &neg_foreign_field_modulus);
-
-    // Compute bound separately on limbs
-    let sums: [F; 2] = compute_intermediate_sums(
-        &x.to_field_limbs::<F>(),
-        &neg_foreign_field_modulus.to_field_limbs(),
-    );
-
-    // Convert bound to field limbs in order to do checks
-    let bound = bound.to_compact_field_limbs::<F>();
-
-    // Check there is an overflow
-    assert!(sums[0] >= <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_2limb());
-    assert!(sums[1] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_limb());
-    assert!(bound[0] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_2limb());
-    assert!(bound[1] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_limb());
-
-    // Check that limbs don't match sums
-    assert_ne!(bound[0], sums[0]);
-    assert_ne!(bound[1], sums[1]);
 }
 
 // Test targeting each custom constraint (positive and negative tests for each)
@@ -1489,86 +1339,6 @@ fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
 }
 
 #[test]
-// Test with secp256k1 modulus
-fn test_rand_foreign_field_element_with_bound_overflows_1() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &secp256k1_modulus(),
-        );
-    }
-}
-
-#[test]
-// Modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_2() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(BigUint::from(2u32).pow(259) - BigUint::one()),
-        );
-    }
-}
-
-#[test]
-//  Made up modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_3() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(BigUint::from(2u32).pow(259) / BigUint::from(382734983107u64)),
-        );
-    }
-}
-
-#[test]
-//  Real modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_4() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(PallasField::modulus_biguint()),
-        );
-    }
-}
-
-#[test]
-//  Another real modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_5() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(VestaField::modulus_biguint()),
-        );
-    }
-}
-
-#[test]
-#[should_panic]
-// Foreign field modulus too small
-fn test_rand_foreign_field_element_with_bound_overflows_6() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-        rng,
-        &(BigUint::binary_modulus().sqrt()),
-    );
-}
-
-#[test]
-#[should_panic]
-// Cannot have overflow when f'0 is zero
-fn test_rand_foreign_field_element_with_bound_overflows_7() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    rand_foreign_field_element_with_bound_overflows(rng, &BigUint::from(2u32).pow(257))
-        .expect("Failed to get element with bound overflow");
-}
-
-#[test]
 fn test_native_modulus_constraint() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let left_input = rng.gen_biguint_range(
@@ -1616,30 +1386,11 @@ fn test_gates_max_foreign_field_modulus() {
 }
 
 #[test]
-#[should_panic]
-fn test_gates_invalid_foreign_field_modulus() {
-    CircuitGate::<PallasField>::create_foreign_field_mul(
-        0,
-        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
-    );
-}
-
-#[test]
 fn test_witness_max_foreign_field_modulus() {
     foreign_field_mul::witness::create::<PallasField>(
         &BigUint::zero(),
         &BigUint::zero(),
         &BigUint::max_foreign_field_modulus::<PallasField>(),
-    );
-}
-
-#[test]
-#[should_panic]
-fn test_witness_invalid_foreign_field_modulus() {
-    foreign_field_mul::witness::create::<PallasField>(
-        &BigUint::zero(),
-        &BigUint::zero(),
-        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
     );
 }
 

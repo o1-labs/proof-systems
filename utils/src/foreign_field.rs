@@ -3,7 +3,7 @@
 use crate::field_helpers::FieldHelpers;
 use ark_ff::{Field, PrimeField};
 use num_bigint::BigUint;
-use num_traits::Zero;
+use num_traits::{One, Zero};
 use std::array;
 use std::fmt::{Debug, Formatter};
 use std::ops::{Index, IndexMut};
@@ -228,12 +228,8 @@ impl BigUintForeignFieldHelpers for BigUint {
     }
 
     fn max_foreign_field_modulus<F: PrimeField>() -> Self {
-        // For simplicity and efficiency we use the approximation m = floor(sqrt(2^t * n))
-        //     * Distinct from this approximation is the maximum prime foreign field modulus
-        //       for both Pallas and Vesta given our CRT scheme:
-        //       926336713898529563388567880069503262826888842373627227613104999999999999999607
-        //     * BigUint::sqrt return truncated principle square root (rounds down to int) ~ floor
-        (BigUint::binary_modulus() * F::modulus_biguint()).sqrt()
+        // For simplicity and efficiency we use the approximation m = 2^259 - 1
+        BigUint::two().pow(259) - BigUint::one()
     }
 
     fn to_limbs(&self) -> [Self; 3] {

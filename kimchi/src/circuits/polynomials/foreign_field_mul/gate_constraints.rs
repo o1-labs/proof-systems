@@ -25,7 +25,7 @@
 //~
 //~    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
 //~    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-//~    quotient_bound2 => q'2
+//~    quotient_hi_bound => q'2
 //~
 //~ ````
 //~
@@ -42,7 +42,7 @@
 //~ more than two things, then we pick meaningful names for each.
 //~
 //~ So far we've explained our conventions for a splitting depth of up to 2.  For splitting
-//~ deeper than two, we simpy cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
+//~ deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
 //~ would be split into `x1_lo_0` and `x1_lo_1`.
 //~
 //~ ##### Parameters
@@ -63,41 +63,121 @@
 //~ * `product1_lo` := lowest 88 bits of middle intermediate product
 //~ * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 //~ * `product1_hi_1` := highest 2 bits of middle intermediate product
-//~ * `quotient_bound` := quotient high bound for checking `q2 ≤ f2`
+//~ * `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 //~
 //~ ##### Layout
 //~
 //~ The foreign field multiplication gate's rows are laid out like this
 //~
-//~ | col | `ForeignFieldMul`       | `Zero`                   |
-//~ | --- | ----------------------- | ------------------------ |
-//~ |   0 | `left_input0`    (copy) | `remainder01`     (copy) |
-//~ |   1 | `left_input1`    (copy) | `remainder2`      (copy) |
-//~ |   2 | `left_input2`    (copy) | `quotient0`       (copy) |
-//~ |   3 | `right_input0`   (copy) | `quotient1`       (copy) |
-//~ |   4 | `right_input1`   (copy) | `quotient2`       (copy) |
-//~ |   5 | `right_input2`   (copy) | `quotient_bound`  (copy) |
-//~ |   6 | `product1_lo`    (copy) | `product1_hi_0`   (copy) |
-//~ |   7 | `carry1_0`    (plookup) | `product1_hi_1`  (dummy) |
-//~ |   8 | `carry1_12    (plookup) | `carry1_48`    (plookup) |
-//~ |   9 | `carry1_24`   (plookup) | `carry1_60`    (plookup) |
-//~ |  10 | `carry1_36`   (plookup) | `carry1_72`    (plookup) |
-//~ |  11 | `carry1_84`             | `carry0`                 |
-//~ |  12 | `carry1_86`             |                          |
-//~ |  13 | `carry1_88`             |                          |
-//~ |  14 | `carry1_90`             |                          |
+//~ | col | `ForeignFieldMul`       | `Zero`                     |
+//~ | --- | ----------------------- | -------------------------- |
+//~ |   0 | `left_input0`    (copy) | `remainder01`       (copy) |
+//~ |   1 | `left_input1`    (copy) | `remainder2`        (copy) |
+//~ |   2 | `left_input2`    (copy) | `quotient0`         (copy) |
+//~ |   3 | `right_input0`   (copy) | `quotient1`         (copy) |
+//~ |   4 | `right_input1`   (copy) | `quotient2`         (copy) |
+//~ |   5 | `right_input2`   (copy) | `quotient_hi_bound` (copy) |
+//~ |   6 | `product1_lo`    (copy) | `product1_hi_0`     (copy) |
+//~ |   7 | `carry1_0`    (plookup) | `product1_hi_1`    (dummy) |
+//~ |   8 | `carry1_12    (plookup) | `carry1_48`      (plookup) |
+//~ |   9 | `carry1_24`   (plookup) | `carry1_60`      (plookup) |
+//~ |  10 | `carry1_36`   (plookup) | `carry1_72`      (plookup) |
+//~ |  11 | `carry1_84`             | `carry0`                   |
+//~ |  12 | `carry1_86`             |                            |
+//~ |  13 | `carry1_88`             |                            |
+//~ |  14 | `carry1_90`             |                            |
 //~
 
 use crate::{
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, Cache},
+        expr::constraints::ExprOps,
         gate::GateType,
     },
 };
 use ark_ff::PrimeField;
 use std::{array, marker::PhantomData};
+
+/// Compute non-zero intermediate products
+///
+/// For more details see the "Intermediate products" Section of
+/// the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+///
+pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
+    left_input: &[T; 3],
+    right_input: &[T; 3],
+    quotient: &[T; 3],
+    neg_foreign_field_modulus: &[T; 3],
+) -> [T; 3] {
+    auto_clone_array!(left_input);
+    auto_clone_array!(right_input);
+    auto_clone_array!(quotient);
+    auto_clone_array!(neg_foreign_field_modulus);
+
+    [
+        // p0 = a0 * b0 + q0 * f'0
+        left_input(0) * right_input(0) + quotient(0) * neg_foreign_field_modulus(0),
+        // p1 = a0 * b1 + a1 * b0 + q0 * f'1 + q1 * f'0
+        left_input(0) * right_input(1)
+            + left_input(1) * right_input(0)
+            + quotient(0) * neg_foreign_field_modulus(1)
+            + quotient(1) * neg_foreign_field_modulus(0),
+        // p2 = a0 * b2 + a2 * b0 + a1 * b1 + q0 * f'2 + q2 * f'0 + q1 * f'1
+        left_input(0) * right_input(2)
+            + left_input(2) * right_input(0)
+            + left_input(1) * right_input(1)
+            + quotient(0) * neg_foreign_field_modulus(2)
+            + quotient(2) * neg_foreign_field_modulus(0)
+            + quotient(1) * neg_foreign_field_modulus(1),
+    ]
+}
+
+// Compute native modulus values
+pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
+    left_input: &[T; 3],
+    right_input: &[T; 3],
+    quotient: &[T; 3],
+    remainder: &[T; 2],
+    neg_foreign_field_modulus: &[T; 3],
+) -> [T; 5] {
+    auto_clone_array!(left_input);
+    auto_clone_array!(right_input);
+    auto_clone_array!(quotient);
+    auto_clone_array!(remainder);
+    auto_clone_array!(neg_foreign_field_modulus);
+
+    [
+        // an = 2^2L * a2 + 2^L * a1 + a0
+        T::two_to_2limb() * left_input(2) + T::two_to_limb() * left_input(1) + left_input(0),
+        // bn = 2^2L * b2 + 2^L * b1 + b0
+        T::two_to_2limb() * right_input(2) + T::two_to_limb() * right_input(1) + right_input(0),
+        // qn = 2^2L * q2 + 2^L * q1 + b0
+        T::two_to_2limb() * quotient(2) + T::two_to_limb() * quotient(1) + quotient(0),
+        // rn = 2^2L * r2 + 2^L * r1 + r0 = 2^2L * r2 + r01
+        T::two_to_2limb() * remainder(1) + remainder(0),
+        // f'n = 2^2L * f'2 + 2^L * f'1 + f'0
+        T::two_to_2limb() * neg_foreign_field_modulus(2)
+            + T::two_to_limb() * neg_foreign_field_modulus(1)
+            + neg_foreign_field_modulus(0),
+    ]
+}
+
+/// Composes the 91-bit carry1 value from its parts
+pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
+    auto_clone_array!(carry);
+    carry(0)
+        + T::two_pow(12) * carry(1)
+        + T::two_pow(2 * 12) * carry(2)
+        + T::two_pow(3 * 12) * carry(3)
+        + T::two_pow(4 * 12) * carry(4)
+        + T::two_pow(5 * 12) * carry(5)
+        + T::two_pow(6 * 12) * carry(6)
+        + T::two_pow(7 * 12) * carry(7)
+        + T::two_pow(86) * carry(8)
+        + T::two_pow(88) * carry(9)
+        + T::two_pow(90) * carry(10)
+}
 
 // ForeignFieldMul - foreign field multiplication gate
 ///    * This gate operates on the Curr and Next rows
@@ -170,7 +250,7 @@ where
 
         // Quotient high bound: q2 + 2^88 - f2
         // Copied for multi-range-check
-        let quotient_bound = env.witness_next(5);
+        let quotient_hi_bound = env.witness_next(5);
 
         // Remainder r (a.k.a. result) in compact format
         // remainder01 := remainder0 + remainder1 * 2^88
@@ -224,133 +304,63 @@ where
         // Must be done externally with a multi-range-check gadget
 
         // C1: Constrain intermediate product fragment product1_hi_1 \in [0, 2^2)
+        // RFC: Corresponds to C3
         constraints.push(product1_hi_1.crumb());
 
         // C2: Constrain first carry witness value v0 \in [0, 2^2)
+        // RFC: Corresponds to C5
         constraints.push(carry0.crumb());
 
         // C3: Constrain decomposition of middle intermediate product p1
         //         p1 = 2^L*p11 + p10
         //     where p11 = 2^L * p111 + p110
-        let product1_hi = T::two_to_limb() * product1_hi_1.clone() + product1_hi_0;
+        // RFC: corresponds to C2
+        let product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
         let product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
         constraints.push(products(1) - product1);
 
-        // C4: Constrain that 2^2L * v0 = p0 + 2^L * p10 - 2^L * r1 - r0. That is, that
+        // C4: Constrain that 2^2L * v0 = p0 + 2^L * p10 - r01. That is, that
         //         2^2L * carry0 = rhs
+        // RFC: Corresponds to C4
         constraints.push(
             T::two_to_2limb() * carry0.clone()
                 - (products(0) + T::two_to_limb() * product1_lo - remainder[0].clone()),
         );
 
         // C5: Native modulus constraint a_n * b_n + q_n * f'_n - q_n * 2^264 = r_n
+        // RFC: Corresponds to C1
         constraints.push(
             left_input_n * right_input_n + quotient_n.clone() * neg_foreign_field_modulus_n
                 - remainder_n
-                - quotient_n.clone() * T::two_to_3limb(),
+                - quotient_n * T::two_to_3limb(),
         );
 
         // Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
         // C6: 2-bit c1_84
+        // RFC: Corresponds to C7
         constraints.push(carry1_crumb0.crumb());
         // C7: 2-bit c1_86
+        // RFC: Corresponds to C8
         constraints.push(carry1_crumb1.crumb());
         // C8: 2-bit c1_88
+        // RFC: Corresponds to C9
         constraints.push(carry1_crumb2.crumb());
         // C9: 1-bit c1_90
+        // RFC: Corresponds to C10
         constraints.push(carry1_bit.boolean());
 
         // C10: Top part:
         //      Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
+        // RFC: Corresponds to C6
         constraints.push(
-            T::two_to_limb() * carry1.clone()
-                - (products(2) + product1_hi + carry0.clone() - remainder[1].clone()),
+            T::two_to_limb() * carry1 - (products(2) + product1_hi + carry0 - remainder[1].clone()),
         );
 
         // C11: Constrain that q'2 is correct
-        constraints.push(quotient_bound - bound);
+        // RFC: Corresponds to C11
+        constraints.push(quotient_hi_bound - bound);
 
         constraints
     }
-}
-
-/// Composes the 91-bit carry1 value from its parts
-pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
-    auto_clone_array!(carry);
-    carry(0)
-        + T::two_pow(12) * carry(1)
-        + T::two_pow(2 * 12) * carry(2)
-        + T::two_pow(3 * 12) * carry(3)
-        + T::two_pow(4 * 12) * carry(4)
-        + T::two_pow(5 * 12) * carry(5)
-        + T::two_pow(6 * 12) * carry(6)
-        + T::two_pow(7 * 12) * carry(7)
-        + T::two_pow(86) * carry(8)
-        + T::two_pow(88) * carry(9)
-        + T::two_pow(90) * carry(10)
-}
-
-/// Compute non-zero intermediate products
-///
-/// For more details see the "Intermediate products" Section of
-/// the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
-///
-pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
-    left_input: &[T; 3],
-    right_input: &[T; 3],
-    quotient: &[T; 3],
-    neg_foreign_field_modulus: &[T; 3],
-) -> [T; 3] {
-    auto_clone_array!(left_input);
-    auto_clone_array!(right_input);
-    auto_clone_array!(quotient);
-    auto_clone_array!(neg_foreign_field_modulus);
-
-    [
-        // p0 = a0 * b0 + q0 * f'0
-        left_input(0) * right_input(0) + quotient(0) * neg_foreign_field_modulus(0),
-        // p1 = a0 * b1 + a1 * b0 + q0 * f'1 + q1 * f'0
-        left_input(0) * right_input(1)
-            + left_input(1) * right_input(0)
-            + quotient(0) * neg_foreign_field_modulus(1)
-            + quotient(1) * neg_foreign_field_modulus(0),
-        // p2 = a0 * b2 + a2 * b0 + a1 * b1 + q0 * f'2 + q2 * f'0 + q1 * f'1
-        left_input(0) * right_input(2)
-            + left_input(2) * right_input(0)
-            + left_input(1) * right_input(1)
-            + quotient(0) * neg_foreign_field_modulus(2)
-            + quotient(2) * neg_foreign_field_modulus(0)
-            + quotient(1) * neg_foreign_field_modulus(1),
-    ]
-}
-
-// Compute native modulus values
-pub fn compute_native_modulus_values<F: PrimeField, T: ExprOps<F>>(
-    left_input: &[T; 3],
-    right_input: &[T; 3],
-    quotient: &[T; 3],
-    remainder: &[T; 2],
-    neg_foreign_field_modulus: &[T; 3],
-) -> [T; 5] {
-    auto_clone_array!(left_input);
-    auto_clone_array!(right_input);
-    auto_clone_array!(quotient);
-    auto_clone_array!(remainder);
-    auto_clone_array!(neg_foreign_field_modulus);
-
-    [
-        // an = 2^2L * a2 + 2^L * a1 + a0
-        T::two_to_2limb() * left_input(2) + T::two_to_limb() * left_input(1) + left_input(0),
-        // bn = 2^2L * b2 + 2^L * b1 + b0
-        T::two_to_2limb() * right_input(2) + T::two_to_limb() * right_input(1) + right_input(0),
-        // qn = 2^2L * q2 + 2^L * q1 + b0
-        T::two_to_2limb() * quotient(2) + T::two_to_limb() * quotient(1) + quotient(0),
-        // rn = 2^2L * r2 + 2^L * r1 + r0 = 2^2L * r2 + r01
-        T::two_to_2limb() * remainder(1) + remainder(0),
-        // f'n = 2^2L * f'2 + 2^L * f'1 + f'0
-        T::two_to_2limb() * neg_foreign_field_modulus(2)
-            + T::two_to_limb() * neg_foreign_field_modulus(1)
-            + neg_foreign_field_modulus(0),
-    ]
 }

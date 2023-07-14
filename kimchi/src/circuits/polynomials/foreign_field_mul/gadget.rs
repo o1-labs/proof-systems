@@ -19,7 +19,7 @@ use crate::{
     },
 };
 
-use super::gate_constraints::ForeignFieldMul;
+use super::circuitgates::ForeignFieldMul;
 
 /// Number of gates in this gadget
 pub const GATE_COUNT: usize = 1;
@@ -34,14 +34,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         start_row: usize,
         foreign_field_modulus: &BigUint,
     ) -> (usize, Vec<Self>) {
-        if *foreign_field_modulus > BigUint::max_foreign_field_modulus::<F>() {
-            panic!(
-                "foreign_field_modulus exceeds maximum: {} > {}",
-                *foreign_field_modulus,
-                BigUint::max_foreign_field_modulus::<F>()
-            );
-        }
-
         let neg_foreign_field_modulus = foreign_field_modulus.negate().to_field_limbs::<F>();
         let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let circuit_gates = vec![
