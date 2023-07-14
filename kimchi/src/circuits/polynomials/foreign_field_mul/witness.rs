@@ -148,14 +148,6 @@ pub fn create<F: PrimeField>(
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
 ) -> ([Vec<F>; COLUMNS], ExternalChecks<F>) {
-    if *foreign_field_modulus > BigUint::max_foreign_field_modulus::<F>() {
-        panic!(
-            "foreign_field_modulus exceeds maximum: {} > {}",
-            *foreign_field_modulus,
-            BigUint::max_foreign_field_modulus::<F>()
-        );
-    }
-
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
     let mut external_checks = ExternalChecks::<F>::default();
 
