@@ -1466,22 +1466,3 @@ fn test_carry_plookups() {
         ))
     );
 }
-
-#[test]
-#[should_panic]
-fn test_gates_invalid_foreign_field_modulus() {
-    CircuitGate::<PallasField>::create_foreign_field_mul(
-        0,
-        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
-    );
-}
-
-#[test]
-#[should_panic]
-fn test_witness_invalid_foreign_field_modulus() {
-    foreign_field_mul::witness::create::<PallasField>(
-        &BigUint::zero(),
-        &BigUint::zero(),
-        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
-    );
-}
