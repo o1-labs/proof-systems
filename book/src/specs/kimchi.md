@@ -1251,7 +1251,7 @@ For our running example, `x1` would become `x1_lo` and `x1_hi`.  If we are split
 more than two things, then we pick meaningful names for each.
 
 So far we've explained our conventions for a splitting depth of up to 2.  For splitting
-deeper than two, we simpy cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
+deeper than two, we simply cycle back to our depth 1 suffixes again.  So for example, `x1_lo`
 would be split into `x1_lo_0` and `x1_lo_1`.
 
 ##### Parameters

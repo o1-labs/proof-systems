@@ -69,29 +69,6 @@ fn pallas_sqrt() -> BigUint {
     pallas_max().sqrt()
 }
 
-// Compute intermediate sums
-fn compute_intermediate_sums<F: PrimeField, T: crate::circuits::expr::constraints::ExprOps<F>>(
-    quotient: &[T; 3],
-    neg_foreign_field_modulus: &[T; 3],
-) -> [T; 2] {
-    auto_clone_array!(quotient);
-    auto_clone_array!(neg_foreign_field_modulus);
-
-    // q01 = q0 + 2^L * q1
-    let quotient01 = quotient(0) + T::two_to_limb() * quotient(1);
-
-    // f'01 = f'0 + 2^L * f'1
-    let neg_foreign_field_modulus01 =
-        neg_foreign_field_modulus(0) + T::two_to_limb() * neg_foreign_field_modulus(1);
-
-    [
-        // q'01 = q01 + f'01
-        quotient01 + neg_foreign_field_modulus01,
-        // q'2 = q2 + f'2
-        quotient(2) + neg_foreign_field_modulus(2),
-    ]
-}
-
 // Boilerplate for tests
 fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
     full: bool,
@@ -310,7 +287,7 @@ where
 }
 
 /// Generate a random foreign field element x whose addition with the negated foreign field modulus f' = 2^t - f results
-/// in an overflow in the lest significant limb x0. The limbs are in 2 limb compact representation:
+/// in an overflow in the least significant limb x0. The limbs are in 2 limb compact representation:
 ///
 ///     x  = x0  + 2^2L * x1
 ///     f' = f'0 + 2^2L * f'1
@@ -389,42 +366,6 @@ pub fn rand_foreign_field_element_with_bound_overflows(
     );
     let x1 = rng.gen_biguint_range(&start, &stop);
     Ok([x0, x1].compose())
-}
-
-fn test_rand_foreign_field_element_with_bound_overflows<F: PrimeField>(
-    rng: &mut StdRng,
-    foreign_field_modulus: &BigUint,
-) {
-    let neg_foreign_field_modulus = foreign_field_modulus.negate();
-
-    // Select a random x that would overflow on lowest limb
-    let x = rand_foreign_field_element_with_bound_overflows(rng, foreign_field_modulus)
-        .expect("Failed to get element with bound overflow");
-
-    // Check it obeys the modulus
-    assert!(x < *foreign_field_modulus);
-
-    // Compute bound directly as BigUint
-    let bound = foreign_field_mul::witness::compute_bound(&x, &neg_foreign_field_modulus);
-
-    // Compute bound separately on limbs
-    let sums: [F; 2] = compute_intermediate_sums(
-        &x.to_field_limbs::<F>(),
-        &neg_foreign_field_modulus.to_field_limbs(),
-    );
-
-    // Convert bound to field limbs in order to do checks
-    let bound = bound.to_compact_field_limbs::<F>();
-
-    // Check there is an overflow
-    assert!(sums[0] >= <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_2limb());
-    assert!(sums[1] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_limb());
-    assert!(bound[0] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_2limb());
-    assert!(bound[1] < <F as crate::circuits::expr::constraints::ExprOps<F>>::two_to_limb());
-
-    // Check that limbs don't match sums
-    assert_ne!(bound[0], sums[0]);
-    assert_ne!(bound[1], sums[1]);
 }
 
 // Test targeting each custom constraint (positive and negative tests for each)
@@ -1479,77 +1420,6 @@ fn test_custom_constraints_small_foreign_field_modulus_on_vesta() {
 fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
     test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
-    );
-}
-
-#[test]
-// Test with secp256k1 modulus
-fn test_rand_foreign_field_element_with_bound_overflows_1() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &secp256k1_modulus(),
-        );
-    }
-}
-
-#[test]
-// Modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_2() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(BigUint::from(2u32).pow(259) - BigUint::one()),
-        );
-    }
-}
-
-#[test]
-//  Made up modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_3() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(BigUint::from(2u32).pow(259) / BigUint::from(382734983107u64)),
-        );
-    }
-}
-
-#[test]
-//  Real modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_4() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(PallasField::modulus_biguint()),
-        );
-    }
-}
-
-#[test]
-//  Another real modulus where lowest limb is non-zero
-fn test_rand_foreign_field_element_with_bound_overflows_5() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    for _ in 0..1000 {
-        test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-            rng,
-            &(VestaField::modulus_biguint()),
-        );
-    }
-}
-
-#[test]
-#[should_panic]
-// Foreign field modulus too small
-fn test_rand_foreign_field_element_with_bound_overflows_6() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    test_rand_foreign_field_element_with_bound_overflows::<PallasField>(
-        rng,
-        &(BigUint::binary_modulus().sqrt()),
     );
 }
 
