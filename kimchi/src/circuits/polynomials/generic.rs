@@ -113,6 +113,7 @@ where
 
 /// The different type of computation that are possible with a generic gate.
 /// This type is useful to create a generic gate via the [`CircuitGate::create_generic_gadget`] function.
+#[derive(Clone)]
 pub enum GenericGateSpec<F> {
     /// Add two values.
     Add {
@@ -134,6 +135,8 @@ pub enum GenericGateSpec<F> {
     Const(F),
     /// A public gate
     Pub,
+    /// Sum a value to a constant
+    Plus(F),
 }
 
 impl<F: PrimeField> CircuitGate<F> {
@@ -174,6 +177,13 @@ impl<F: PrimeField> CircuitGate<F> {
             GenericGateSpec::Pub => {
                 coeffs[0] = F::one();
             }
+            GenericGateSpec::Plus(cst) => {
+                coeffs[0] = F::one();
+                coeffs[1] = F::zero();
+                coeffs[2] = -F::one();
+                coeffs[3] = F::zero();
+                coeffs[4] = cst;
+            }
         };
         match gate2 {
             Some(GenericGateSpec::Add {
@@ -200,9 +210,28 @@ impl<F: PrimeField> CircuitGate<F> {
                 coeffs[5] = F::one();
                 unimplemented!();
             }
+            Some(GenericGateSpec::Plus(cst)) => {
+                coeffs[5] = F::one();
+                coeffs[6] = F::zero();
+                coeffs[7] = -F::one();
+                coeffs[8] = F::zero();
+                coeffs[9] = cst;
+            }
             None => (),
         };
         Self::create_generic(wires, coeffs)
+    }
+
+    pub fn extend_generic(
+        gates: &mut Vec<Self>,
+        curr_row: &mut usize,
+        wires: GateWires,
+        gate1: GenericGateSpec<F>,
+        gate2: Option<GenericGateSpec<F>>,
+    ) {
+        let gate = Self::create_generic_gadget(wires, gate1, gate2);
+        *curr_row += 1;
+        gates.extend_from_slice(&[gate]);
     }
 }
 
