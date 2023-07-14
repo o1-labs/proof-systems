@@ -1,7 +1,4 @@
-use std::ops::Div;
-
 use crate::{
-    auto_clone_array,
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
