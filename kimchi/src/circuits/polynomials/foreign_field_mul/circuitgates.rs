@@ -304,26 +304,31 @@ where
         // Must be done externally with a multi-range-check gadget
 
         // C1: Constrain intermediate product fragment product1_hi_1 \in [0, 2^2)
+        // RFC: Corresponds to C3
         constraints.push(product1_hi_1.crumb());
 
         // C2: Constrain first carry witness value v0 \in [0, 2^2)
+        // RFC: Corresponds to C5
         constraints.push(carry0.crumb());
 
         // C3: Constrain decomposition of middle intermediate product p1
         //         p1 = 2^L*p11 + p10
         //     where p11 = 2^L * p111 + p110
+        // RFC: corresponds to C2
         let product1_hi = T::two_to_limb() * product1_hi_1 + product1_hi_0;
         let product1 = T::two_to_limb() * product1_hi.clone() + product1_lo.clone();
         constraints.push(products(1) - product1);
 
-        // C4: Constrain that 2^2L * v0 = p0 + 2^L * p10 - 2^L * r1 - r0. That is, that
+        // C4: Constrain that 2^2L * v0 = p0 + 2^L * p10 - r01. That is, that
         //         2^2L * carry0 = rhs
+        // RFC: Corresponds to C4
         constraints.push(
             T::two_to_2limb() * carry0.clone()
                 - (products(0) + T::two_to_limb() * product1_lo - remainder[0].clone()),
         );
 
         // C5: Native modulus constraint a_n * b_n + q_n * f'_n - q_n * 2^264 = r_n
+        // RFC: Corresponds to C1
         constraints.push(
             left_input_n * right_input_n + quotient_n.clone() * neg_foreign_field_modulus_n
                 - remainder_n
@@ -332,22 +337,28 @@ where
 
         // Constrain v1 is 91-bits (done with 7 plookups, 3 crumbs, and 1 bit)
         // C6: 2-bit c1_84
+        // RFC: Corresponds to C7
         constraints.push(carry1_crumb0.crumb());
         // C7: 2-bit c1_86
+        // RFC: Corresponds to C8
         constraints.push(carry1_crumb1.crumb());
         // C8: 2-bit c1_88
+        // RFC: Corresponds to C9
         constraints.push(carry1_crumb2.crumb());
         // C9: 1-bit c1_90
+        // RFC: Corresponds to C10
         constraints.push(carry1_bit.boolean());
 
         // C10: Top part:
         //      Constrain that 2^L * v1 = p2 + p11 + v0 - r2. That is,
         //         2^L * (2^L * carry1_hi + carry1_lo) = rhs
+        // RFC: Corresponds to C6
         constraints.push(
             T::two_to_limb() * carry1 - (products(2) + product1_hi + carry0 - remainder[1].clone()),
         );
 
         // C11: Constrain that q'2 is correct
+        // RFC: Corresponds to C11
         constraints.push(quotient_hi_bound - bound);
 
         constraints
