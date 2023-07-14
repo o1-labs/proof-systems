@@ -71,9 +71,9 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableCell::create("quotient0"),
             VariableCell::create("quotient1"),
             VariableCell::create("quotient2"),
-            VariableCell::create("quotient_bound"), // Copied for multi-range-check
-            VariableCell::create("product1_hi_0"),  // Copied for multi-range-check
-            VariableCell::create("product1_hi_1"),  // Dummy 12-bit lookup
+            VariableCell::create("quotient_hi_bound"), // Copied for multi-range-check
+            VariableCell::create("product1_hi_0"),     // Copied for multi-range-check
+            VariableCell::create("product1_hi_1"),     // Dummy 12-bit lookup
             VariableBitsCell::create("carry1", 48, Some(60)), // 12-bit lookup
             VariableBitsCell::create("carry1", 60, Some(72)), // 12-bit lookup
             VariableBitsCell::create("carry1", 72, Some(84)), // 12-bit lookup
@@ -228,7 +228,7 @@ pub fn create<F: PrimeField>(
             "quotient0" => quotient[0],
             "quotient1" => quotient[1],
             "quotient2" => quotient[2],
-            "quotient_bound" => quotient_hi_bound.into(),
+            "quotient_hi_bound" => quotient_hi_bound.into(),
             "product1_lo" => product1_lo,
             "product1_hi_0" => product1_hi_0,
             "product1_hi_1" => product1_hi_1,
