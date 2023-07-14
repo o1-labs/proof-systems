@@ -150,7 +150,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
             ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
-        let constraints = EndosclMul::constraints();
+        let constraints = EndosclMul::constraints(&mut Cache::default());
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
@@ -185,7 +185,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);
@@ -202,8 +202,6 @@ where
 
         let xr = env.witness_curr(7);
         let yr = env.witness_curr(8);
-
-        let mut cache = Cache::default();
 
         let s1 = env.witness_curr(9);
         let s3 = env.witness_curr(10);

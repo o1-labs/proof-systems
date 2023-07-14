@@ -13,3 +13,8 @@ You can reuse the implementation in [src/main.rs](src/main.rs) and call it as:
 ```console
 $ cargo run --bin kimchi-visu
 ```
+
+The SRS is supposed to be in the parent directory. Create a symlink if you encounter SRS loading issue:
+```
+ln -s $(pwd)/../../srs $(pwd)/../srs
+```

@@ -4,6 +4,7 @@ use ark_ff::PrimeField;
 use kimchi::{
     circuits::{
         argument::Argument,
+        expr,
         polynomials::{
             complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
             poseidon::Poseidon, varbasemul::VarbaseMul,
@@ -40,7 +41,10 @@ where
     F: PrimeField,
 {
     fn latex() -> Vec<Vec<String>> {
-        Self::constraints().iter().map(|c| c.latex_str()).collect()
+        Self::constraints(&mut expr::Cache::default())
+            .iter()
+            .map(|c| c.latex_str())
+            .collect()
     }
 }
 
