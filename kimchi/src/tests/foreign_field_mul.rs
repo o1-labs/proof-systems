@@ -286,88 +286,6 @@ where
     (Ok(()), witness)
 }
 
-/// Generate a random foreign field element x whose addition with the negated foreign field modulus f' = 2^t - f results
-/// in an overflow in the least significant limb x0. The limbs are in 2 limb compact representation:
-///
-///     x  = x0  + 2^2L * x1
-///     f' = f'0 + 2^2L * f'1
-///
-/// Note that it is not possible to have an overflow in the most significant limb. This is because if there were an overflow
-/// when adding f'1 to x1, then we'd have a contradiction. To see this, first note that to get an overflow in the highest limbs,
-/// we need
-///
-///     2^L < x1 + o0 + f'1 <= 2^L - 1 + o0 + f'1
-///
-/// where 2^L - 1 is the maximum possible size of x1 (before it overflows) and o0 is the overflow bit from the addition of the
-/// least significant limbs x0 and f'0.  This means
-///
-///     2^L - o0 - f'1 < x1 < 2^L
-///
-/// We cannot allow x to overflow the foreign field, so we also have
-///
-///     x1 < (f - x0)/2^2L
-///
-/// Thus,
-///
-///     2^L - o0  - f'1 < (f - x0)/2^2L = f/2^2L - x0/2^2L
-///
-/// Since x0/2^2L = o0 we have
-///
-///     2^L - o0 - f'1 < f/2^2L - o0
-///
-/// so
-///     2^L - f'1 < f/2^2L
-///
-/// Notice that f/2^2L = f1. Now we have
-///
-///     2^L - f'1 < f1
-///     <=>
-///     f'1 > 2^L - f1
-///
-/// However, this is a contradiction with the definition of our negated foreign field modulus limb f'1 = 2^L - f1.
-///
-/// This proof means that, since they are never used, we can safely remove the witness for the carry bit of
-/// addition of the most significant bound addition limbs and its corresponding boolean constraint.
-pub fn rand_foreign_field_element_with_bound_overflows(
-    rng: &mut StdRng,
-    foreign_field_modulus: &BigUint,
-) -> Result<BigUint, &'static str> {
-    if *foreign_field_modulus < BigUint::two_to_2limb() {
-        return Err("Foreign field modulus too small");
-    }
-
-    auto_clone_array!(
-        neg_foreign_field_modulus,
-        foreign_field_modulus.negate().to_compact_limbs()
-    );
-
-    if neg_foreign_field_modulus(0) == BigUint::zero() {
-        return Err("Overflow not possible");
-    }
-
-    // Compute x0 that will overflow: this means 2^2L - f'0 < x0 < 2^2L
-    let (start, stop) = (
-        BigUint::two_to_2limb() - neg_foreign_field_modulus(0),
-        BigUint::two_to_2limb(),
-    );
-
-    let x0 = rng.gen_biguint_range(&start, &stop);
-
-    // Compute overflow bit
-    let o0 = (x0.clone() + neg_foreign_field_modulus(0)).div(&BigUint::two_to_2limb());
-
-    // Compute x1: this means x2 < 2^L - o01 - f'1 AND  x2 < (f - x01)/2^2L
-    let (start, stop) = (
-        BigUint::zero(),
-        std::cmp::min(
-            BigUint::two_to_limb() - o0 - neg_foreign_field_modulus(1),
-            (foreign_field_modulus - x0.clone()) / BigUint::two_to_2limb(),
-        ),
-    );
-    let x1 = rng.gen_biguint_range(&start, &stop);
-    Ok([x0, x1].compose())
-}
-
 // Test targeting each custom constraint (positive and negative tests for each)
 fn test_custom_constraints<G: KimchiCurve, EFqSponge, EFrSponge>(foreign_field_modulus: &BigUint)
 where
@@ -1421,15 +1339,6 @@ fn test_custom_constraints_small_foreign_field_modulus_on_pallas() {
     test_custom_constraints::<Pallas, PallasBaseSponge, PallasScalarSponge>(
         &(BigUint::two().pow(252u32) - BigUint::one()),
     );
-}
-
-#[test]
-#[should_panic]
-// Cannot have overflow when f'0 is zero
-fn test_rand_foreign_field_element_with_bound_overflows_7() {
-    let rng = &mut StdRng::from_seed(RNG_SEED);
-    rand_foreign_field_element_with_bound_overflows(rng, &BigUint::from(2u32).pow(257))
-        .expect("Failed to get element with bound overflow");
 }
 
 #[test]
