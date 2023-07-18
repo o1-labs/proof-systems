@@ -92,7 +92,7 @@ use crate::{
     auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::constraints::ExprOps,
+        expr::{constraints::ExprOps, Cache},
         gate::GateType,
     },
 };
@@ -193,7 +193,7 @@ where
     const CONSTRAINTS: u32 = 11;
     // DEGREE is 4
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
         //
