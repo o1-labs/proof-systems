@@ -76,6 +76,14 @@ pub struct ProofEvaluations<Evals> {
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the elliptic curve addition selector polynomial
+    pub complete_add_selector: Evals,
+    /// evaluation of the elliptic curve variable base scalar multiplication selector polynomial
+    pub mul_selector: Evals,
+    /// evaluation of the endoscalar multiplication selector polynomial
+    pub emul_selector: Evals,
+    /// evaluation of the endoscalar multiplication scalar computation selector polynomial
+    pub endomul_scalar_selector: Evals,
 }
 
 /// Commitments linked to the lookup feature
@@ -205,6 +213,10 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup,
             generic_selector,
             poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            endomul_scalar_selector,
         } = self;
         ProofEvaluations {
             w: w.map(f),
@@ -214,6 +226,10 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup: lookup.map(|x| LookupEvaluations::map(x, f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
+            complete_add_selector: f(complete_add_selector),
+            mul_selector: f(mul_selector),
+            emul_selector: f(emul_selector),
+            endomul_scalar_selector: f(endomul_scalar_selector),
         }
     }
 
@@ -226,6 +242,10 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup,
             generic_selector,
             poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            endomul_scalar_selector,
         } = self;
         ProofEvaluations {
             w: [
@@ -267,6 +287,10 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup: lookup.as_ref().map(|l| l.map_ref(f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
+            complete_add_selector: f(complete_add_selector),
+            mul_selector: f(mul_selector),
+            emul_selector: f(emul_selector),
+            endomul_scalar_selector: f(endomul_scalar_selector),
         }
     }
 }
@@ -289,6 +313,10 @@ impl<F> ProofEvaluations<F> {
         ProofEvaluations {
             generic_selector: array::from_fn(|i| &evals[i].generic_selector),
             poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
+            complete_add_selector: array::from_fn(|i| &evals[i].complete_add_selector),
+            mul_selector: array::from_fn(|i| &evals[i].mul_selector),
+            emul_selector: array::from_fn(|i| &evals[i].emul_selector),
+            endomul_scalar_selector: array::from_fn(|i| &evals[i].endomul_scalar_selector),
             z: array::from_fn(|i| &evals[i].z),
             w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
             s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
@@ -380,6 +408,10 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             lookup: None,
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
+            complete_add_selector: pt(F::zero(), F::zero()),
+            mul_selector: pt(F::zero(), F::zero()),
+            emul_selector: pt(F::zero(), F::zero()),
+            endomul_scalar_selector: pt(F::zero(), F::zero()),
         }
     }
 }
@@ -406,6 +438,10 @@ impl<F> ProofEvaluations<F> {
             Column::LookupRuntimeTable => Some(self.lookup.as_ref()?.runtime.as_ref()?),
             Column::Index(GateType::Generic) => Some(&self.generic_selector),
             Column::Index(GateType::Poseidon) => Some(&self.poseidon_selector),
+            Column::Index(GateType::CompleteAdd) => Some(&self.complete_add_selector),
+            Column::Index(GateType::VarBaseMul) => Some(&self.mul_selector),
+            Column::Index(GateType::EndoMul) => Some(&self.emul_selector),
+            Column::Index(GateType::EndoMulScalar) => Some(&self.endomul_scalar_selector),
             Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),
@@ -570,6 +606,10 @@ pub mod caml {
 
         pub generic_selector: PointEvaluations<Vec<CamlF>>,
         pub poseidon_selector: PointEvaluations<Vec<CamlF>>,
+        pub complete_add_selector: PointEvaluations<Vec<CamlF>>,
+        pub mul_selector: PointEvaluations<Vec<CamlF>>,
+        pub emul_selector: PointEvaluations<Vec<CamlF>>,
+        pub endomul_scalar_selector: PointEvaluations<Vec<CamlF>>,
     }
 
     //
@@ -708,6 +748,18 @@ pub mod caml {
                 poseidon_selector: pe
                     .poseidon_selector
                     .map(&|x| x.into_iter().map(Into::into).collect()),
+                complete_add_selector: pe
+                    .complete_add_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                mul_selector: pe
+                    .mul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                emul_selector: pe
+                    .emul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                endomul_scalar_selector: pe
+                    .endomul_scalar_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
                 lookup: pe.lookup.map(Into::into),
             }
         }
@@ -802,6 +854,18 @@ pub mod caml {
                     .map(&|x| x.into_iter().map(Into::into).collect()),
                 poseidon_selector: cpe
                     .poseidon_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                complete_add_selector: cpe
+                    .complete_add_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                mul_selector: cpe
+                    .mul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                emul_selector: cpe
+                    .emul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                endomul_scalar_selector: cpe
+                    .endomul_scalar_selector
                     .map(&|x| x.into_iter().map(Into::into).collect()),
                 lookup: cpe.lookup.map(Into::into),
             }
