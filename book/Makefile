@@ -2,24 +2,25 @@
 # list versions of mdbook and mdbook plugins
 #
 
-MDBOOK_VERSION = 0.4.27
+MDBOOK_VERSION = 0.4.32
 MDBOOK_ADMONISH_VERSION = 1.8.0
 MDBOOK_KATEX_VERSION = 0.3.8
 MDBOOK_LINKCHECK_VERSION = 0.7.6
 MDBOOK_MERMAID_VERSION = 0.12.6
-MDBOOK_TOC_VERSION = 0.11.2
+MDBOOK_TOC_VERSION = 0.12.0
 
 #
 # use `make deps` to install the dependencies required to serve or build the book
 #
 
 deps:
-	cargo install "mdbook@$(MDBOOK_VERSION)"
+	cargo install "mdbook@${MDBOOK_VERSION}"
 	cargo install "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)"
 	cargo install "mdbook-katex@$(MDBOOK_KATEX_VERSION)"
 	# cargo install "mdbook-linkcheck@$(MDBOOK_LINKCHECK_VERSION)"
 	cargo install "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)"
-	cargo install "mdbook-toc@$(MDBOOK_TOC_VERSION)"
+	cargo install mdbook-toc --rev 2836ac5173e075fe66e0a5a07d1177ed44912046 --git https://github.com/badboy/mdbook-toc.git
+
 
 #
 # use `make check` to check if your installed dependencies match what we've listed above
