@@ -94,17 +94,17 @@ where
         // Layout for this test (just an example, circuit designer has complete flexibility where to put the checks)
         //    BASIC:
         //      0-1  ForeignFieldMul | Zero
-        // EXTERNAL:
         //      2-5  compact-multi-range-check (result range check)
+        // EXTERNAL:
         //        6  "single" Generic (result bound)
         //      7-10 multi-range-check (quotient range check)
-        //     11-14 multi-range-check (quotient_bound, product1_lo, product1_hi_0)
+        //     11-14 multi-range-check (quotient_hi_bound, product1_lo, product1_hi_0)
         //     later limb-check result bound
         // DESIGNER:
-        //        15 Generic (left and right bounds)
+        //        15 Generic (left and right high bounds)
         //     16-19 multi-range-check (left multiplicand)
         //     20-23 multi-range-check (right multiplicand)
-        //     24-27 multi-range-check (result bound, left bound, right bound)
+        //     24-27 multi-range-check (result hi bound, left hi bound, right hi bound)
 
         // Result compact-multi-range-check
         CircuitGate::extend_compact_multi_range_check(&mut gates, &mut next_row);
@@ -141,7 +141,7 @@ where
         // DESIGNER CHOICE: left and right (and result bound from before)
         let left_limbs = left_input.to_field_limbs();
         let right_limbs = right_input.to_field_limbs();
-        // Constant Double Generic gate for result and quotient bounds
+        // Constant Double Generic gate for left and right high bounds
         external_checks.add_high_bound_computation(&left_limbs[2]);
         external_checks.add_high_bound_computation(&right_limbs[2]);
         CircuitGate::extend_high_bounds(&mut gates, &mut next_row, foreign_field_modulus);
