@@ -413,116 +413,118 @@ where
             ft_eval0
         };
 
-        let combined_inner_product = {
-            let ft_eval0 = vec![ft_eval0];
-            let ft_eval1 = vec![self.ft_eval1];
+        let combined_inner_product =
+            {
+                let ft_eval0 = vec![ft_eval0];
+                let ft_eval1 = vec![self.ft_eval1];
 
-            #[allow(clippy::type_complexity)]
-            let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
-                polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((public_evals.to_vec(), None));
-            es.push((vec![ft_eval0, ft_eval1], None));
-            for col in [
-                Column::Z,
-                Column::Index(GateType::Generic),
-                Column::Index(GateType::Poseidon),
-                Column::Index(GateType::CompleteAdd),
-                Column::Index(GateType::VarBaseMul),
-                Column::Index(GateType::EndoMul),
-                Column::Index(GateType::EndoMulScalar),
-            ]
-            .into_iter()
-            .chain((0..COLUMNS).map(Column::Witness))
-            .chain((0..COLUMNS).map(Column::Coefficient))
-            .chain((0..PERMUTS - 1).map(Column::Permutation))
-            .chain(if self.evals.range_check0_selector.is_some() {
-                Some(Column::Index(GateType::RangeCheck0))
-            } else {
-                None
-            })
-            .chain(if self.evals.range_check1_selector.is_some() {
-                Some(Column::Index(GateType::RangeCheck1))
-            } else {
-                None
-            })
-            .chain(if self.evals.foreign_field_add_selector.is_some() {
-                Some(Column::Index(GateType::ForeignFieldAdd))
-            } else {
-                None
-            })
-            .chain(if self.evals.foreign_field_mul_selector.is_some() {
-                Some(Column::Index(GateType::ForeignFieldMul))
-            } else {
-                None
-            })
-            .chain(if self.evals.xor_selector.is_some() {
-                Some(Column::Index(GateType::Xor16))
-            } else {
-                None
-            })
-            .chain(if self.evals.rot_selector.is_some() {
-                Some(Column::Index(GateType::Rot64))
-            } else {
-                None
-            })
-            .chain(
-                index
-                    .lookup_index
-                    .as_ref()
-                    .map(|li| {
-                        (0..li.lookup_info.max_per_row + 1)
-                            .map(Column::LookupSorted)
-                            .chain([Column::LookupAggreg, Column::LookupTable].into_iter())
-                            .chain(
-                                li.runtime_tables_selector
-                                    .as_ref()
-                                    .map(|_| [Column::LookupRuntimeTable].into_iter())
-                                    .into_iter()
-                                    .flatten(),
-                            )
-                            .chain(if self.evals.runtime_lookup_table_selector.is_some() {
-                                Some(Column::LookupRuntimeSelector)
-                            } else {
-                                None
-                            })
-                            .chain(if self.evals.xor_lookup_selector.is_some() {
-                                Some(Column::LookupKindIndex(LookupPattern::Xor))
-                            } else {
-                                None
-                            })
-                            .chain(if self.evals.lookup_gate_lookup_selector.is_some() {
-                                Some(Column::LookupKindIndex(LookupPattern::Lookup))
-                            } else {
-                                None
-                            })
-                            .chain(if self.evals.range_check_lookup_selector.is_some() {
-                                Some(Column::LookupKindIndex(LookupPattern::RangeCheck))
-                            } else {
-                                None
-                            })
-                            .chain(if self.evals.foreign_field_mul_lookup_selector.is_some() {
-                                Some(Column::LookupKindIndex(LookupPattern::ForeignFieldMul))
-                            } else {
-                                None
-                            })
-                    })
-                    .into_iter()
-                    .flatten(),
-            ) {
-                es.push((
-                    {
-                        let evals = self
-                            .evals
-                            .get_column(col)
-                            .ok_or(VerifyError::MissingEvaluation(col))?;
-                        vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                    },
-                    None,
-                ))
-            }
+                #[allow(clippy::type_complexity)]
+                let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
+                    polys.iter().map(|(_, e)| (e.clone(), None)).collect();
+                es.push((public_evals.to_vec(), None));
+                es.push((vec![ft_eval0, ft_eval1], None));
+                for col in [
+                    Column::Z,
+                    Column::Index(GateType::Generic),
+                    Column::Index(GateType::Poseidon),
+                    Column::Index(GateType::CompleteAdd),
+                    Column::Index(GateType::VarBaseMul),
+                    Column::Index(GateType::EndoMul),
+                    Column::Index(GateType::EndoMulScalar),
+                ]
+                .into_iter()
+                .chain((0..COLUMNS).map(Column::Witness))
+                .chain((0..COLUMNS).map(Column::Coefficient))
+                .chain((0..PERMUTS - 1).map(Column::Permutation))
+                .chain(if self.evals.range_check0_selector.is_some() {
+                    Some(Column::Index(GateType::RangeCheck0))
+                } else {
+                    None
+                })
+                .chain(if self.evals.range_check1_selector.is_some() {
+                    Some(Column::Index(GateType::RangeCheck1))
+                } else {
+                    None
+                })
+                .chain(if self.evals.foreign_field_add_selector.is_some() {
+                    Some(Column::Index(GateType::ForeignFieldAdd))
+                } else {
+                    None
+                })
+                .chain(if self.evals.foreign_field_mul_selector.is_some() {
+                    Some(Column::Index(GateType::ForeignFieldMul))
+                } else {
+                    None
+                })
+                .chain(if self.evals.xor_selector.is_some() {
+                    Some(Column::Index(GateType::Xor16))
+                } else {
+                    None
+                })
+                .chain(if self.evals.rot_selector.is_some() {
+                    Some(Column::Index(GateType::Rot64))
+                } else {
+                    None
+                })
+                .chain(
+                    index
+                        .lookup_index
+                        .as_ref()
+                        .map(|li| {
+                            (0..li.lookup_info.max_per_row + 1)
+                                .map(Column::LookupSorted)
+                                .chain([Column::LookupAggreg, Column::LookupTable].into_iter())
+                                .chain(
+                                    li.runtime_tables_selector
+                                        .as_ref()
+                                        .map(|_| [Column::LookupRuntimeTable].into_iter())
+                                        .into_iter()
+                                        .flatten(),
+                                )
+                                .chain(
+                                    self.evals
+                                        .runtime_lookup_table_selector
+                                        .as_ref()
+                                        .map(|_| Column::LookupRuntimeSelector),
+                                )
+                                .chain(
+                                    self.evals
+                                        .xor_lookup_selector
+                                        .as_ref()
+                                        .map(|_| Column::LookupKindIndex(LookupPattern::Xor)),
+                                )
+                                .chain(
+                                    self.evals
+                                        .lookup_gate_lookup_selector
+                                        .as_ref()
+                                        .map(|_| Column::LookupKindIndex(LookupPattern::Lookup)),
+                                )
+                                .chain(
+                                    self.evals.range_check_lookup_selector.as_ref().map(|_| {
+                                        Column::LookupKindIndex(LookupPattern::RangeCheck)
+                                    }),
+                                )
+                                .chain(self.evals.foreign_field_mul_lookup_selector.as_ref().map(
+                                    |_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul),
+                                ))
+                        })
+                        .into_iter()
+                        .flatten(),
+                ) {
+                    es.push((
+                        {
+                            let evals = self
+                                .evals
+                                .get_column(col)
+                                .ok_or(VerifyError::MissingEvaluation(col))?;
+                            vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                        },
+                        None,
+                    ))
+                }
 
-            combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
-        };
+                combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
+            };
 
         let oracles = RandomOracles {
             joint_combiner,
@@ -996,32 +998,34 @@ where
         .lookup_index
         .as_ref()
         .map(|li| {
-            (if li.runtime_tables_selector.is_some() {
-                Some(Column::LookupRuntimeSelector)
-            } else {
-                None
-            })
+            (li.runtime_tables_selector
+                .as_ref()
+                .map(|_| Column::LookupRuntimeSelector))
             .into_iter()
-            .chain(if li.lookup_selectors.xor.is_some() {
-                Some(Column::LookupKindIndex(LookupPattern::Xor))
-            } else {
-                None
-            })
-            .chain(if li.lookup_selectors.lookup.is_some() {
-                Some(Column::LookupKindIndex(LookupPattern::Lookup))
-            } else {
-                None
-            })
-            .chain(if li.lookup_selectors.range_check.is_some() {
-                Some(Column::LookupKindIndex(LookupPattern::RangeCheck))
-            } else {
-                None
-            })
-            .chain(if li.lookup_selectors.ffmul.is_some() {
-                Some(Column::LookupKindIndex(LookupPattern::ForeignFieldMul))
-            } else {
-                None
-            })
+            .chain(
+                li.lookup_selectors
+                    .xor
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::Xor)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .lookup
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::Lookup)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .range_check
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::RangeCheck)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .ffmul
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul)),
+            )
         })
         .into_iter()
         .flatten()
