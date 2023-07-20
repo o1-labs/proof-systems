@@ -2617,6 +2617,9 @@ pub mod constraints {
         /// 2^{2 * LIMB_BITS}
         fn two_to_2limb() -> Self;
 
+        /// 2^{3 * LIMB_BITS}
+        fn two_to_3limb() -> Self;
+
         /// Double the value
         fn double(&self) -> Self;
 
@@ -2662,6 +2665,10 @@ pub mod constraints {
 
         fn two_to_2limb() -> Self {
             Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
+        }
+
+        fn two_to_3limb() -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_3limb())
         }
 
         fn double(&self) -> Self {
@@ -2716,6 +2723,10 @@ pub mod constraints {
 
         fn two_to_2limb() -> Self {
             <F as ForeignFieldHelpers<F>>::two_to_2limb()
+        }
+
+        fn two_to_3limb() -> Self {
+            <F as ForeignFieldHelpers<F>>::two_to_3limb()
         }
 
         fn double(&self) -> Self {
