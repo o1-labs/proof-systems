@@ -73,7 +73,7 @@ where
     witness
 }
 
-fn create_test_constraint_system<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn create_test_constraint_system<G: KimchiCurve>(
     rot: u32,
     side: RotMode,
 ) -> ConstraintSystem<G::ScalarField>
@@ -119,13 +119,11 @@ fn test_prove_and_verify() {
     prove_and_verify::<Pallas, PallasBaseSponge, PallasScalarSponge>();
 }
 
-fn test_rot<G: KimchiCurve, EFqSponge, EFrSponge>(word: u64, rot: u32, side: RotMode)
+fn test_rot<G: KimchiCurve>(word: u64, rot: u32, side: RotMode)
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
 {
-    let (witness, cs) = setup_rot::<G, EFqSponge, EFrSponge>(word, rot, side);
+    let (witness, cs) = setup_rot::<G>(word, rot, side);
     for row in 0..=2 {
         assert_eq!(
             cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
@@ -135,7 +133,7 @@ where
 }
 
 // Creates constraint system and witness for rotation
-fn setup_rot<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn setup_rot<G: KimchiCurve>(
     word: u64,
     rot: u32,
     side: RotMode,
@@ -145,10 +143,8 @@ fn setup_rot<G: KimchiCurve, EFqSponge, EFrSponge>(
 )
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
 {
-    let cs = create_test_constraint_system::<G, EFqSponge, EFrSponge>(rot, side);
+    let cs = create_test_constraint_system::<G>(rot, side);
 
     let witness = create_rot_witness::<G>(word, rot, side);
 
@@ -167,10 +163,10 @@ fn test_rot_random() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    test_rot::<Vesta, VestaBaseSponge, VestaScalarSponge>(word, rot, RotMode::Left);
-    test_rot::<Vesta, VestaBaseSponge, VestaScalarSponge>(word, rot, RotMode::Right);
-    test_rot::<Pallas, PallasBaseSponge, PallasScalarSponge>(word, rot, RotMode::Left);
-    test_rot::<Pallas, PallasBaseSponge, PallasScalarSponge>(word, rot, RotMode::Right);
+    test_rot::<Vesta>(word, rot, RotMode::Left);
+    test_rot::<Vesta>(word, rot, RotMode::Right);
+    test_rot::<Pallas>(word, rot, RotMode::Left);
+    test_rot::<Pallas>(word, rot, RotMode::Right);
 }
 
 #[should_panic]
@@ -197,8 +193,7 @@ fn test_bad_constraints() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let rot = rng.gen_range(1..=63);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    let (mut witness, cs) =
-        setup_rot::<Vesta, VestaBaseSponge, VestaScalarSponge>(word, rot, RotMode::Left);
+    let (mut witness, cs) = setup_rot::<Vesta>(word, rot, RotMode::Left);
 
     // Check constraints C1..C8
     for i in 0..8 {

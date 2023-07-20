@@ -2,7 +2,7 @@ use super::framework::{print_witness, TestFramework};
 use crate::circuits::{
     gate::{CircuitGate, GateType},
     lookup::{
-        runtime_tables::{RuntimeTable, RuntimeTableCfg, RuntimeTableSpec},
+        runtime_tables::{RuntimeTable, RuntimeTableCfg},
         tables::LookupTable,
     },
     polynomial::COLUMNS,
@@ -14,6 +14,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use rand::Rng;
 use std::array;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -125,20 +126,19 @@ fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
 }
 
-fn runtime_table(num: usize, indexed: bool) {
-    // runtime
+#[test]
+fn test_runtime_table() {
+    let num = 5;
+    let mut rng = rand::thread_rng();
+
+    let first_column = [8u32, 9, 8, 7, 1];
+    let len = first_column.len();
+
     let mut runtime_tables_setup = vec![];
     for table_id in 0..num {
-        let cfg = if indexed {
-            RuntimeTableCfg::Indexed(RuntimeTableSpec {
-                id: table_id as i32,
-                len: 5,
-            })
-        } else {
-            RuntimeTableCfg::Custom {
-                id: table_id as i32,
-                first_column: [8u32, 9, 8, 7, 1].into_iter().map(Into::into).collect(),
-            }
+        let cfg = RuntimeTableCfg {
+            id: table_id,
+            first_column: first_column.into_iter().map(Into::into).collect(),
         };
         runtime_tables_setup.push(cfg);
     }
@@ -170,14 +170,17 @@ fn runtime_table(num: usize, indexed: bool) {
         let (lookup_cols, _rest) = cols.split_at_mut(7);
 
         for row in 0..20 {
-            // the first register is the table id
-            lookup_cols[0][row] = 0u32.into();
+            // the first register is the table id. We pick one random table.
+            lookup_cols[0][row] = (rng.gen_range(0..num) as u32).into();
 
-            // create queries into our runtime lookup table
+            // create queries into our runtime lookup table.
+            // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
+            // the corresponding values
             let lookup_cols = &mut lookup_cols[1..];
             for chunk in lookup_cols.chunks_mut(2) {
-                chunk[0][row] = if indexed { 1u32.into() } else { 9u32.into() }; // index
-                chunk[1][row] = 2u32.into(); // value
+                let idx = rng.gen_range(0..len);
+                chunk[0][row] = first_column[idx].into();
+                chunk[1][row] = data[idx];
             }
         }
         cols
@@ -197,13 +200,186 @@ fn runtime_table(num: usize, indexed: bool) {
 }
 
 #[test]
-fn test_indexed_runtime_table() {
-    runtime_table(5, true);
+fn test_negative_test_runtime_table_value_not_in_table() {
+    // We create 1 runtime table cfg
+    let first_column = [8u32, 9, 8, 7, 1];
+
+    let cfg = RuntimeTableCfg {
+        id: 1,
+        first_column: first_column.into_iter().map(Into::into).collect(),
+    };
+
+    let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let runtime_table: RuntimeTable<Fp> = RuntimeTable { id: cfg.id(), data };
+
+    // circuit
+    let mut gates = vec![];
+    let nb_gates = 20;
+    for row in 0..nb_gates {
+        gates.push(CircuitGate::new(
+            GateType::Lookup,
+            Wire::for_row(row),
+            vec![],
+        ));
+    }
+
+    // witness. The whole witness is going to be wrong.
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
+
+        // only the first 7 registers are used in the lookup gate
+        let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+        for row in 0..nb_gates {
+            // the first register is the table id.
+            lookup_cols[0][row] = 1.into();
+            // create queries into our runtime lookup table.
+            let lookup_cols = &mut lookup_cols[1..];
+            for chunk in lookup_cols.chunks_mut(2) {
+                // None of these values are correct
+                chunk[0][row] = 42.into();
+                chunk[1][row] = 42.into();
+            }
+        }
+        cols
+    };
+
+    // run prover only as the error should be raised while creating the proof.
+    let err = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_setup(vec![cfg])
+        .setup()
+        .runtime_tables(vec![runtime_table])
+        .prove::<BaseSponge, ScalarSponge>()
+        .unwrap_err();
+
+    // The whole witness is wrong, but we check the first row is incorrect as it
+    // is the error returned by the prover call.
+    assert_eq!(err, "the lookup failed to find a match in the table: row=0");
 }
 
 #[test]
-fn test_custom_runtime_table() {
-    runtime_table(5, false);
+fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnesses_uses_correct_id(
+) {
+    // We create 1 runtime table cfg with ID 1
+    let first_column = [8u32, 9, 8, 7, 1];
+
+    let cfg = RuntimeTableCfg {
+        id: 1,
+        first_column: first_column.into_iter().map(Into::into).collect(),
+    };
+
+    // We give a different ID, not defined in the index.
+    let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let runtime_table: RuntimeTable<Fp> = RuntimeTable { id: 2, data };
+
+    // circuit
+    let mut gates = vec![];
+    let nb_gates = 20;
+    for row in 0..nb_gates {
+        gates.push(CircuitGate::new(
+            GateType::Lookup,
+            Wire::for_row(row),
+            vec![],
+        ));
+    }
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
+
+        // only the first 7 registers are used in the lookup gate
+        let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+        for row in 0..nb_gates {
+            // the first register is the table id. We set the index to the one
+            // given while building the cs.
+            lookup_cols[0][row] = 1.into();
+            // We will set [w1, w2], [w3, w4] and [w5, w6] to correct values
+            let lookup_cols = &mut lookup_cols[1..];
+            for chunk in lookup_cols.chunks_mut(2) {
+                chunk[0][row] = 8u32.into();
+                chunk[1][row] = 0u32.into();
+            }
+        }
+        cols
+    };
+
+    // We only run the prover. No need to verify.
+    let err = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_setup(vec![cfg])
+        .setup()
+        .runtime_tables(vec![runtime_table])
+        .prove::<BaseSponge, ScalarSponge>()
+        .unwrap_err();
+    assert_eq!(
+        err,
+        "the runtime tables provided did not match the index's configuration"
+    );
+}
+
+#[test]
+fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnesses_too() {
+    // We create 1 runtime table cfg with ID 1
+    let first_column = [8u32, 9, 8, 7, 1];
+
+    let cfg = RuntimeTableCfg {
+        id: 1,
+        first_column: first_column.into_iter().map(Into::into).collect(),
+    };
+
+    let data: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let runtime_table: RuntimeTable<Fp> = RuntimeTable { id: 2, data };
+
+    // circuit
+    let mut gates = vec![];
+    let nb_gates = 20;
+    for row in 0..nb_gates {
+        gates.push(CircuitGate::new(
+            GateType::Lookup,
+            Wire::for_row(row),
+            vec![],
+        ));
+    }
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
+
+        // only the first 7 registers are used in the lookup gate
+        let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+        for row in 0..nb_gates {
+            // the first register is the table id. We set to the runtime table
+            // ID given by the prover
+            lookup_cols[0][row] = runtime_table.id.into();
+            // We will set [w1, w2], [w3, w4] and [w5, w6] to correct values
+            let lookup_cols = &mut lookup_cols[1..];
+            for chunk in lookup_cols.chunks_mut(2) {
+                chunk[0][row] = 8u32.into();
+                chunk[1][row] = 0u32.into();
+            }
+        }
+        cols
+    };
+
+    // We only run the prover. No need to verify.
+    let err = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_setup(vec![cfg])
+        .setup()
+        .runtime_tables(vec![runtime_table])
+        .prove::<BaseSponge, ScalarSponge>()
+        .unwrap_err();
+    assert_eq!(
+        err,
+        "the runtime tables provided did not match the index's configuration"
+    );
 }
 
 // TODO: add a test with a runtime table with ID 0 (it should panic)
+// See https://github.com/MinaProtocol/mina/issues/13603
