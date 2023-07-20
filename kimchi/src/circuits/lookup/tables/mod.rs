@@ -148,3 +148,56 @@ where
 
     PolyComm::multi_scalar_mul(&commitments, &scalars)
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use ark_ff::PrimeField;
+    use ocaml;
+    use ocaml_gen;
+
+    use super::LookupTable;
+
+    //
+    // CamlLookupTable<CamlF>
+    //
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlLookupTable<CamlF> {
+        pub id: i32,
+        pub data: Vec<Vec<CamlF>>,
+    }
+
+    impl<F, CamlF> From<CamlLookupTable<CamlF>> for LookupTable<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_lt: CamlLookupTable<CamlF>) -> Self {
+            Self {
+                id: caml_lt.id,
+                data: caml_lt
+                    .data
+                    .into_iter()
+                    .map(|t| t.into_iter().map(Into::into).collect())
+                    .collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<LookupTable<F>> for CamlLookupTable<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(lt: LookupTable<F>) -> Self {
+            Self {
+                id: lt.id,
+                data: lt
+                    .data
+                    .into_iter()
+                    .map(|t| t.into_iter().map(Into::into).collect())
+                    .collect(),
+            }
+        }
+    }
+}

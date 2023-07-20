@@ -81,3 +81,108 @@ where
 
     vec![rt_check]
 }
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use super::{RuntimeTable, RuntimeTableCfg, RuntimeTableSpec};
+
+    use ark_ff::PrimeField;
+
+    //
+    // CamlRuntimeTable<CamlF>
+    //
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRuntimeTable<CamlF> {
+        pub id: i32,
+        pub data: Vec<CamlF>,
+    }
+
+    // CamlRuntimeTable<CamlF> <---> RuntimeTable<F>
+    impl<F, CamlF> From<RuntimeTable<F>> for CamlRuntimeTable<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(rt: RuntimeTable<F>) -> Self {
+            Self {
+                id: rt.id,
+                data: rt.data.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<CamlRuntimeTable<CamlF>> for RuntimeTable<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_rt: CamlRuntimeTable<CamlF>) -> Self {
+            Self {
+                id: caml_rt.id,
+                data: caml_rt.data.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRuntimeTableSpec {
+        pub id: i32,
+        pub len: usize,
+    }
+
+    impl From<RuntimeTableSpec> for CamlRuntimeTableSpec {
+        fn from(rt_spec: RuntimeTableSpec) -> Self {
+            Self {
+                id: rt_spec.id,
+                len: rt_spec.len,
+            }
+        }
+    }
+
+    impl From<CamlRuntimeTableSpec> for RuntimeTableSpec {
+        fn from(caml_rt_spec: CamlRuntimeTableSpec) -> Self {
+            Self {
+                id: caml_rt_spec.id,
+                len: caml_rt_spec.len,
+            }
+        }
+    }
+
+    // CamlRuntimetableCfg
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlRuntimeTableCfg<CamlF> {
+        pub id: i32,
+        pub first_column: Vec<CamlF>,
+    }
+
+    // CamlRuntimeTableCfg <--> RuntimeTableCfg
+    impl<F, CamlF> From<RuntimeTableCfg<F>> for CamlRuntimeTableCfg<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(rt_cfg: RuntimeTableCfg<F>) -> Self {
+            Self {
+                id: rt_cfg.id,
+                first_column: rt_cfg.first_column.into_iter().map(Into::into).collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<CamlRuntimeTableCfg<CamlF>> for RuntimeTableCfg<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_rt_cfg: CamlRuntimeTableCfg<CamlF>) -> Self {
+            Self {
+                id: caml_rt_cfg.id,
+                first_column: caml_rt_cfg
+                    .first_column
+                    .into_iter()
+                    .map(Into::into)
+                    .collect(),
+            }
+        }
+    }
+}
