@@ -975,6 +975,14 @@ where
             poseidon_selector: chunked_evals_for_selector(
                 &index.column_evaluations.poseidon_selector8,
             ),
+            complete_add_selector: chunked_evals_for_selector(
+                &index.column_evaluations.complete_add_selector4,
+            ),
+            mul_selector: chunked_evals_for_selector(&index.column_evaluations.mul_selector8),
+            emul_selector: chunked_evals_for_selector(&index.column_evaluations.emul_selector8),
+            endomul_scalar_selector: chunked_evals_for_selector(
+                &index.column_evaluations.endomul_scalar_selector8,
+            ),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1155,6 +1163,26 @@ where
             evaluations_form(&index.column_evaluations.poseidon_selector8),
             None,
             fixed_hiding(1),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.complete_add_selector4),
+            None,
+            non_hiding(1),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.mul_selector8),
+            None,
+            non_hiding(1),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.emul_selector8),
+            None,
+            non_hiding(1),
+        ));
+        polynomials.push((
+            evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
+            None,
+            non_hiding(1),
         ));
         polynomials.extend(
             witness_poly
