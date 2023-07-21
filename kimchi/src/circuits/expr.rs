@@ -675,6 +675,10 @@ impl Variable {
                 LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
                 Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
                 Index(GateType::Generic) => Ok(evals.generic_selector),
+                Index(GateType::CompleteAdd) => Ok(evals.complete_add_selector),
+                Index(GateType::VarBaseMul) => Ok(evals.mul_selector),
+                Index(GateType::EndoMul) => Ok(evals.emul_selector),
+                Index(GateType::EndoMulScalar) => Ok(evals.endomul_scalar_selector),
                 Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
                 LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
