@@ -579,11 +579,10 @@ where
     }
 
     // Lookup evaluations
-    for sorted in lookup_sorted {
-        if let Some(sorted) = sorted {
-            check_eval_len(sorted)?;
-        }
+    for sorted in lookup_sorted.iter().flatten() {
+        check_eval_len(sorted)?
     }
+
     if let Some(lookup_aggregation) = lookup_aggregation {
         check_eval_len(lookup_aggregation)?;
     }
