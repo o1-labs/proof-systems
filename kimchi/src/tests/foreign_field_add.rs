@@ -1,26 +1,22 @@
 use super::framework::TestFramework;
 use crate::circuits::gate::CircuitGateResult;
 use crate::circuits::polynomials::generic::GenericGateSpec;
-use crate::prover_index::ProverIndex;
-use crate::{
-    circuits::{
-        constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, Connect, GateType},
-        polynomial::COLUMNS,
-        polynomials::{
-            foreign_field_add::witness::{self, FFOps},
-            range_check::{self, witness::extend_multi},
-        },
-        wires::Wire,
+use crate::circuits::{
+    constraints::ConstraintSystem,
+    gate::{CircuitGate, CircuitGateError, Connect, GateType},
+    polynomial::COLUMNS,
+    polynomials::{
+        foreign_field_add::witness::{self, FFOps},
+        range_check::{self, witness::extend_multi},
     },
-    curve::KimchiCurve,
-    plonk_sponge::FrSponge,
+    wires::Wire,
 };
+use crate::curve::KimchiCurve;
+use crate::prover_index::ProverIndex;
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, SquareRootField, Zero};
 use ark_poly::EvaluationDomain;
-use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
-use mina_poseidon::FqSponge;
+use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
@@ -28,7 +24,7 @@ use mina_poseidon::{
 use num_bigint::{BigUint, RandBigInt};
 use num_traits::FromPrimitive;
 use o1_utils::{
-    foreign_field::{ForeignElement, HI, LO, MI, TWO_TO_LIMB},
+    foreign_field::{BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers, Two,
 };
 use poly_commitment::srs::{endos, SRS};
@@ -39,10 +35,6 @@ type PallasField = <Pallas as AffineCurve>::BaseField;
 type VestaField = <Vesta as AffineCurve>::BaseField;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
-type VestaBaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
-type VestaScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
-type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
-type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
 
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
@@ -1222,7 +1214,6 @@ fn test_random_chain() {
     let nops = 20;
     let foreign_mod = secp256k1_modulus();
     let inputs = (0..nops + 1)
-        .into_iter()
         .map(|_| random_input(rng, foreign_mod.clone(), true))
         .collect::<Vec<_>>();
     let big_inputs = inputs
@@ -1230,10 +1221,7 @@ fn test_random_chain() {
         .into_iter()
         .map(|v| BigUint::from_bytes_be(&v))
         .collect::<Vec<_>>();
-    let operations = (0..nops)
-        .into_iter()
-        .map(|_| random_operation(rng))
-        .collect::<Vec<_>>();
+    let operations = (0..nops).map(|_| random_operation(rng)).collect::<Vec<_>>();
     let (witness, _index) = test_ffadd(secp256k1_modulus(), big_inputs, &operations, true);
     let mut left = vec![inputs[0].clone()];
     let results: Vec<ForeignElement<PallasField, 3>> = operations
@@ -1257,7 +1245,6 @@ fn prove_and_verify(operation_count: usize) {
 
     // Create random operations
     let operations = (0..operation_count)
-        .into_iter()
         .map(|_| random_operation(rng))
         .collect::<Vec<_>>();
 
@@ -1270,7 +1257,6 @@ fn prove_and_verify(operation_count: usize) {
 
     // Create random inputs
     let inputs = (0..operation_count + 1)
-        .into_iter()
         .map(|_| BigUint::from_bytes_be(&random_input(rng, foreign_field_modulus.clone(), true)))
         .collect::<Vec<BigUint>>();
 
@@ -1327,7 +1313,6 @@ fn test_ffadd_no_rc() {
 
     // Create random operations
     let operations = (0..operation_count)
-        .into_iter()
         .map(|_| random_operation(rng))
         .collect::<Vec<_>>();
 
@@ -1340,7 +1325,6 @@ fn test_ffadd_no_rc() {
 
     // Create inputs
     let inputs = (0..operation_count + 1)
-        .into_iter()
         .map(|_| BigUint::from_bytes_be(&random_input(rng, foreign_mod.clone(), false)))
         .collect::<Vec<BigUint>>();
 
@@ -1362,43 +1346,38 @@ fn test_ffadd_no_rc() {
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Pallas (native field modulus)
 fn test_vesta_on_pallas() {
-    let test =
-        run_test::<Pallas, PallasBaseSponge, PallasScalarSponge>(&VestaField::modulus_biguint());
+    let test = run_test::<Pallas>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Vesta (native field modulus)
 fn test_pallas_on_vesta() {
-    let test =
-        run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(&PallasField::modulus_biguint());
+    let test = run_test::<Vesta>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Vesta (foreign field modulus) on Vesta (native field modulus)
 fn test_vesta_on_vesta() {
-    let test =
-        run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(&VestaField::modulus_biguint());
+    let test = run_test::<Vesta>(&VestaField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 #[test]
 // Tests targeting each custom constraint with Pallas (foreign field modulus) on Pallas (native field modulus)
 fn test_pallas_on_pallas() {
-    let test =
-        run_test::<Pallas, PallasBaseSponge, PallasScalarSponge>(&PallasField::modulus_biguint());
+    let test = run_test::<Pallas>(&PallasField::modulus_biguint());
     assert_eq!(test.0, Ok(()));
 }
 
 // Boilerplate for tests
-fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
+fn run_test<G: KimchiCurve>(
     foreign_field_modulus: &BigUint,
 ) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
 where
     G::BaseField: PrimeField,
-    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    G: KimchiCurve,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
@@ -1536,4 +1515,42 @@ fn test_ffadd_finalization() {
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
+}
+
+#[test]
+fn test_gate_max_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_single_ffadd(
+        0,
+        FFOps::Add,
+        &BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_gate_invalid_foreign_field_modulus() {
+    CircuitGate::<PallasField>::create_single_ffadd(
+        0,
+        FFOps::Add,
+        &(BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one()),
+    );
+}
+
+#[test]
+fn test_witness_max_foreign_field_modulus() {
+    short_witness::<PallasField>(
+        &vec![BigUint::zero(), BigUint::zero()],
+        &[FFOps::Add],
+        BigUint::max_foreign_field_modulus::<PallasField>(),
+    );
+}
+
+#[test]
+#[should_panic]
+fn test_witness_invalid_foreign_field_modulus() {
+    short_witness::<PallasField>(
+        &vec![BigUint::zero(), BigUint::zero()],
+        &[FFOps::Add],
+        BigUint::max_foreign_field_modulus::<PallasField>() + BigUint::one(),
+    );
 }

@@ -437,36 +437,42 @@ where
             .chain((0..COLUMNS).map(Column::Witness))
             .chain((0..COLUMNS).map(Column::Coefficient))
             .chain((0..PERMUTS - 1).map(Column::Permutation))
-            .chain(if index.range_check0_comm.is_some() {
-                Some(Column::Index(GateType::RangeCheck0))
-            } else {
-                None
-            })
-            .chain(if index.range_check1_comm.is_some() {
-                Some(Column::Index(GateType::RangeCheck1))
-            } else {
-                None
-            })
-            .chain(if index.foreign_field_add_comm.is_some() {
-                Some(Column::Index(GateType::ForeignFieldAdd))
-            } else {
-                None
-            })
-            .chain(if index.foreign_field_mul_comm.is_some() {
-                Some(Column::Index(GateType::ForeignFieldMul))
-            } else {
-                None
-            })
-            .chain(if index.xor_comm.is_some() {
-                Some(Column::Index(GateType::Xor16))
-            } else {
-                None
-            })
-            .chain(if index.rot_comm.is_some() {
-                Some(Column::Index(GateType::Rot64))
-            } else {
-                None
-            })
+            .chain(
+                index
+                    .range_check0_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::RangeCheck0)),
+            )
+            .chain(
+                index
+                    .range_check1_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::RangeCheck1)),
+            )
+            .chain(
+                index
+                    .foreign_field_add_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::ForeignFieldAdd)),
+            )
+            .chain(
+                index
+                    .foreign_field_mul_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::ForeignFieldMul)),
+            )
+            .chain(
+                index
+                    .xor_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::Xor16)),
+            )
+            .chain(
+                index
+                    .rot_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::Rot64)),
+            )
             .chain(
                 index
                     .lookup_index
@@ -822,36 +828,42 @@ where
     //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
     //~~ * optional gate commitments
-    .chain(if verifier_index.range_check0_comm.is_some() {
-        Some(Column::Index(GateType::RangeCheck0))
-    } else {
-        None
-    })
-    .chain(if verifier_index.range_check1_comm.is_some() {
-        Some(Column::Index(GateType::RangeCheck1))
-    } else {
-        None
-    })
-    .chain(if verifier_index.foreign_field_add_comm.is_some() {
-        Some(Column::Index(GateType::ForeignFieldAdd))
-    } else {
-        None
-    })
-    .chain(if verifier_index.foreign_field_mul_comm.is_some() {
-        Some(Column::Index(GateType::ForeignFieldMul))
-    } else {
-        None
-    })
-    .chain(if verifier_index.xor_comm.is_some() {
-        Some(Column::Index(GateType::Xor16))
-    } else {
-        None
-    })
-    .chain(if verifier_index.rot_comm.is_some() {
-        Some(Column::Index(GateType::Rot64))
-    } else {
-        None
-    })
+    .chain(
+        verifier_index
+            .range_check0_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck0)),
+    )
+    .chain(
+        verifier_index
+            .range_check1_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck1)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_add_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldAdd)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_mul_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldMul)),
+    )
+    .chain(
+        verifier_index
+            .xor_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Xor16)),
+    )
+    .chain(
+        verifier_index
+            .rot_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Rot64)),
+    )
     //~~ * lookup commitments
     //~
     .chain(
