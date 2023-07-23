@@ -1975,6 +1975,20 @@ pub struct ProofEvaluations<Evals> {
     pub emul_selector: Evals,
     /// evaluation of the endoscalar multiplication scalar computation selector polynomial
     pub endomul_scalar_selector: Evals,
+
+    // Optional gates
+    /// evaluation of the RangeCheck0 selector polynomial
+    pub range_check0_selector: Option<Evals>,
+    /// evaluation of the RangeCheck1 selector polynomial
+    pub range_check1_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldAdd selector polynomial
+    pub foreign_field_add_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul selector polynomial
+    pub foreign_field_mul_selector: Option<Evals>,
+    /// evaluation of the Xor selector polynomial
+    pub xor_selector: Option<Evals>,
+    /// evaluation of the Rot selector polynomial
+    pub rot_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -2200,6 +2214,7 @@ The prover then follows the following steps to create the proof:
 	* the poseidon selector
 	* the 15 registers/witness columns
 	* the 6 sigmas
+	* the optional gates
 	* optionally, the runtime table
 1. if using lookup:
 	* add the lookup sorted polynomials
@@ -2296,6 +2311,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	* witness commitments
 	* coefficient commitments
 	* sigma commitments
+	* optional gate commitments
 	* lookup commitments
 
 #### Batch verification of proofs

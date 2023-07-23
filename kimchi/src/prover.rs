@@ -983,6 +983,37 @@ where
             endomul_scalar_selector: chunked_evals_for_selector(
                 &index.column_evaluations.endomul_scalar_selector8,
             ),
+
+            range_check0_selector: index
+                .column_evaluations
+                .range_check0_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            range_check1_selector: index
+                .column_evaluations
+                .range_check1_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            foreign_field_add_selector: index
+                .column_evaluations
+                .foreign_field_add_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            foreign_field_mul_selector: index
+                .column_evaluations
+                .foreign_field_mul_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            xor_selector: index
+                .column_evaluations
+                .xor_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            rot_selector: index
+                .column_evaluations
+                .rot_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1150,7 +1181,6 @@ where
         //~~ * the poseidon selector
         //~~ * the 15 registers/witness columns
         //~~ * the 6 sigmas
-        //~~ * optionally, the runtime table
         polynomials.push((coefficients_form(&public_poly), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
         polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
@@ -1206,6 +1236,55 @@ where
                 .collect::<Vec<_>>(),
         );
 
+        //~~ * the optional gates
+        if let Some(range_check0_selector8) =
+            index.column_evaluations.range_check0_selector8.as_ref()
+        {
+            polynomials.push((
+                evaluations_form(range_check0_selector8),
+                None,
+                non_hiding(1),
+            ));
+        }
+        if let Some(range_check1_selector8) =
+            index.column_evaluations.range_check1_selector8.as_ref()
+        {
+            polynomials.push((
+                evaluations_form(range_check1_selector8),
+                None,
+                non_hiding(1),
+            ));
+        }
+        if let Some(foreign_field_add_selector8) = index
+            .column_evaluations
+            .foreign_field_add_selector8
+            .as_ref()
+        {
+            polynomials.push((
+                evaluations_form(foreign_field_add_selector8),
+                None,
+                non_hiding(1),
+            ));
+        }
+        if let Some(foreign_field_mul_selector8) = index
+            .column_evaluations
+            .foreign_field_mul_selector8
+            .as_ref()
+        {
+            polynomials.push((
+                evaluations_form(foreign_field_mul_selector8),
+                None,
+                non_hiding(1),
+            ));
+        }
+        if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
+            polynomials.push((evaluations_form(xor_selector8), None, non_hiding(1)));
+        }
+        if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
+            polynomials.push((evaluations_form(rot_selector8), None, non_hiding(1)));
+        }
+
+        //~~ * optionally, the runtime table
         //~ 1. if using lookup:
         if let Some(lcs) = &index.cs.lookup_constraint_system {
             //~~ * add the lookup sorted polynomials

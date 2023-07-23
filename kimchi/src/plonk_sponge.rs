@@ -71,6 +71,12 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             mul_selector,
             emul_selector,
             endomul_scalar_selector,
+            range_check0_selector,
+            range_check1_selector,
+            foreign_field_add_selector,
+            foreign_field_mul_selector,
+            xor_selector,
+            rot_selector,
         } = e;
 
         let mut points = vec![
@@ -85,6 +91,27 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         w.iter().for_each(|w_i| points.push(w_i));
         coefficients.iter().for_each(|c_i| points.push(c_i));
         s.iter().for_each(|s_i| points.push(s_i));
+
+        // Optional gates
+
+        if let Some(range_check0_selector) = range_check0_selector.as_ref() {
+            points.push(range_check0_selector)
+        }
+        if let Some(range_check1_selector) = range_check1_selector.as_ref() {
+            points.push(range_check1_selector)
+        }
+        if let Some(foreign_field_add_selector) = foreign_field_add_selector.as_ref() {
+            points.push(foreign_field_add_selector)
+        }
+        if let Some(foreign_field_mul_selector) = foreign_field_mul_selector.as_ref() {
+            points.push(foreign_field_mul_selector)
+        }
+        if let Some(xor_selector) = xor_selector.as_ref() {
+            points.push(xor_selector)
+        }
+        if let Some(rot_selector) = rot_selector.as_ref() {
+            points.push(rot_selector)
+        }
 
         if let Some(l) = lookup.as_ref() {
             let LookupEvaluations {
