@@ -679,6 +679,24 @@ impl Variable {
                 Index(GateType::VarBaseMul) => Ok(evals.mul_selector),
                 Index(GateType::EndoMul) => Ok(evals.emul_selector),
                 Index(GateType::EndoMulScalar) => Ok(evals.endomul_scalar_selector),
+                Index(GateType::RangeCheck0) => evals
+                    .range_check0_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::RangeCheck1) => evals
+                    .range_check1_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::ForeignFieldAdd) => evals
+                    .foreign_field_add_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::ForeignFieldMul) => evals
+                    .foreign_field_mul_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::Xor16) => evals
+                    .xor_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::Rot64) => evals
+                    .rot_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
                 Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
                 LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {

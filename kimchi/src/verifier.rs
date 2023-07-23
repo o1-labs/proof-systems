@@ -439,6 +439,42 @@ where
             .chain((0..PERMUTS - 1).map(Column::Permutation))
             .chain(
                 index
+                    .range_check0_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::RangeCheck0)),
+            )
+            .chain(
+                index
+                    .range_check1_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::RangeCheck1)),
+            )
+            .chain(
+                index
+                    .foreign_field_add_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::ForeignFieldAdd)),
+            )
+            .chain(
+                index
+                    .foreign_field_mul_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::ForeignFieldMul)),
+            )
+            .chain(
+                index
+                    .xor_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::Xor16)),
+            )
+            .chain(
+                index
+                    .rot_comm
+                    .as_ref()
+                    .map(|_| Column::Index(GateType::Rot64)),
+            )
+            .chain(
+                index
                     .lookup_index
                     .as_ref()
                     .map(|li| {
@@ -520,6 +556,12 @@ where
         mul_selector,
         emul_selector,
         endomul_scalar_selector,
+        range_check0_selector,
+        range_check1_selector,
+        foreign_field_add_selector,
+        foreign_field_mul_selector,
+        xor_selector,
+        rot_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
@@ -562,6 +604,27 @@ where
     check_eval_len(mul_selector)?;
     check_eval_len(emul_selector)?;
     check_eval_len(endomul_scalar_selector)?;
+
+    // Optional gates
+
+    if let Some(range_check0_selector) = range_check0_selector {
+        check_eval_len(range_check0_selector)?
+    }
+    if let Some(range_check1_selector) = range_check1_selector {
+        check_eval_len(range_check1_selector)?
+    }
+    if let Some(foreign_field_add_selector) = foreign_field_add_selector {
+        check_eval_len(foreign_field_add_selector)?
+    }
+    if let Some(foreign_field_mul_selector) = foreign_field_mul_selector {
+        check_eval_len(foreign_field_mul_selector)?
+    }
+    if let Some(xor_selector) = xor_selector {
+        check_eval_len(xor_selector)?
+    }
+    if let Some(rot_selector) = rot_selector {
+        check_eval_len(rot_selector)?
+    }
 
     Ok(())
 }
@@ -764,6 +827,43 @@ where
     .chain((0..COLUMNS).map(Column::Coefficient))
     //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
+    //~~ * optional gate commitments
+    .chain(
+        verifier_index
+            .range_check0_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck0)),
+    )
+    .chain(
+        verifier_index
+            .range_check1_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck1)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_add_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldAdd)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_mul_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldMul)),
+    )
+    .chain(
+        verifier_index
+            .xor_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Xor16)),
+    )
+    .chain(
+        verifier_index
+            .rot_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Rot64)),
+    )
     //~~ * lookup commitments
     //~
     .chain(

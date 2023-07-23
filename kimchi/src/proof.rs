@@ -84,6 +84,20 @@ pub struct ProofEvaluations<Evals> {
     pub emul_selector: Evals,
     /// evaluation of the endoscalar multiplication scalar computation selector polynomial
     pub endomul_scalar_selector: Evals,
+
+    // Optional gates
+    /// evaluation of the RangeCheck0 selector polynomial
+    pub range_check0_selector: Option<Evals>,
+    /// evaluation of the RangeCheck1 selector polynomial
+    pub range_check1_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldAdd selector polynomial
+    pub foreign_field_add_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul selector polynomial
+    pub foreign_field_mul_selector: Option<Evals>,
+    /// evaluation of the Xor selector polynomial
+    pub xor_selector: Option<Evals>,
+    /// evaluation of the Rot selector polynomial
+    pub rot_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -217,6 +231,12 @@ impl<Eval> ProofEvaluations<Eval> {
             mul_selector,
             emul_selector,
             endomul_scalar_selector,
+            range_check0_selector,
+            range_check1_selector,
+            foreign_field_add_selector,
+            foreign_field_mul_selector,
+            xor_selector,
+            rot_selector,
         } = self;
         ProofEvaluations {
             w: w.map(f),
@@ -230,6 +250,12 @@ impl<Eval> ProofEvaluations<Eval> {
             mul_selector: f(mul_selector),
             emul_selector: f(emul_selector),
             endomul_scalar_selector: f(endomul_scalar_selector),
+            range_check0_selector: range_check0_selector.map(f),
+            range_check1_selector: range_check1_selector.map(f),
+            foreign_field_add_selector: foreign_field_add_selector.map(f),
+            foreign_field_mul_selector: foreign_field_mul_selector.map(f),
+            xor_selector: xor_selector.map(f),
+            rot_selector: rot_selector.map(f),
         }
     }
 
@@ -246,6 +272,12 @@ impl<Eval> ProofEvaluations<Eval> {
             mul_selector,
             emul_selector,
             endomul_scalar_selector,
+            range_check0_selector,
+            range_check1_selector,
+            foreign_field_add_selector,
+            foreign_field_mul_selector,
+            xor_selector,
+            rot_selector,
         } = self;
         ProofEvaluations {
             w: [
@@ -291,55 +323,12 @@ impl<Eval> ProofEvaluations<Eval> {
             mul_selector: f(mul_selector),
             emul_selector: f(emul_selector),
             endomul_scalar_selector: f(endomul_scalar_selector),
-        }
-    }
-}
-
-impl<F> ProofEvaluations<F> {
-    /// Transpose the `ProofEvaluations`.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `ProofEvaluation` is None.
-    pub fn transpose<const N: usize>(
-        evals: [&ProofEvaluations<F>; N],
-    ) -> ProofEvaluations<[&F; N]> {
-        let has_lookup = evals.iter().all(|e| e.lookup.is_some());
-        let has_runtime = has_lookup
-            && evals
-                .iter()
-                .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
-
-        ProofEvaluations {
-            generic_selector: array::from_fn(|i| &evals[i].generic_selector),
-            poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
-            complete_add_selector: array::from_fn(|i| &evals[i].complete_add_selector),
-            mul_selector: array::from_fn(|i| &evals[i].mul_selector),
-            emul_selector: array::from_fn(|i| &evals[i].emul_selector),
-            endomul_scalar_selector: array::from_fn(|i| &evals[i].endomul_scalar_selector),
-            z: array::from_fn(|i| &evals[i].z),
-            w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
-            s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
-            coefficients: array::from_fn(|j| array::from_fn(|i| &evals[i].coefficients[j])),
-            lookup: if has_lookup {
-                let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
-                Some(LookupEvaluations {
-                    aggreg: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
-                    table: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().table),
-                    sorted: (0..sorted_length)
-                        .map(|j| array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
-                        .collect(),
-                    runtime: if has_runtime {
-                        Some(array::from_fn(|i| {
-                            evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
-                        }))
-                    } else {
-                        None
-                    },
-                })
-            } else {
-                None
-            },
+            range_check0_selector: range_check0_selector.as_ref().map(f),
+            range_check1_selector: range_check1_selector.as_ref().map(f),
+            foreign_field_add_selector: foreign_field_add_selector.as_ref().map(f),
+            foreign_field_mul_selector: foreign_field_mul_selector.as_ref().map(f),
+            xor_selector: xor_selector.as_ref().map(f),
+            rot_selector: rot_selector.as_ref().map(f),
         }
     }
 }
@@ -412,6 +401,12 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             mul_selector: pt(F::zero(), F::zero()),
             emul_selector: pt(F::zero(), F::zero()),
             endomul_scalar_selector: pt(F::zero(), F::zero()),
+            range_check0_selector: None,
+            range_check1_selector: None,
+            foreign_field_add_selector: None,
+            foreign_field_mul_selector: None,
+            xor_selector: None,
+            rot_selector: None,
         }
     }
 }
@@ -442,6 +437,12 @@ impl<F> ProofEvaluations<F> {
             Column::Index(GateType::VarBaseMul) => Some(&self.mul_selector),
             Column::Index(GateType::EndoMul) => Some(&self.emul_selector),
             Column::Index(GateType::EndoMulScalar) => Some(&self.endomul_scalar_selector),
+            Column::Index(GateType::RangeCheck0) => self.range_check0_selector.as_ref(),
+            Column::Index(GateType::RangeCheck1) => self.range_check1_selector.as_ref(),
+            Column::Index(GateType::ForeignFieldAdd) => self.foreign_field_add_selector.as_ref(),
+            Column::Index(GateType::ForeignFieldMul) => self.foreign_field_mul_selector.as_ref(),
+            Column::Index(GateType::Xor16) => self.xor_selector.as_ref(),
+            Column::Index(GateType::Rot64) => self.rot_selector.as_ref(),
             Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),
@@ -610,6 +611,13 @@ pub mod caml {
         pub mul_selector: PointEvaluations<Vec<CamlF>>,
         pub emul_selector: PointEvaluations<Vec<CamlF>>,
         pub endomul_scalar_selector: PointEvaluations<Vec<CamlF>>,
+
+        pub range_check0_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub range_check1_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub foreign_field_add_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub foreign_field_mul_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub xor_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub rot_selector: Option<PointEvaluations<Vec<CamlF>>>,
     }
 
     //
@@ -760,6 +768,24 @@ pub mod caml {
                 endomul_scalar_selector: pe
                     .endomul_scalar_selector
                     .map(&|x| x.into_iter().map(Into::into).collect()),
+                range_check0_selector: pe
+                    .range_check0_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                range_check1_selector: pe
+                    .range_check1_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_add_selector: pe
+                    .foreign_field_add_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_selector: pe
+                    .foreign_field_mul_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                xor_selector: pe
+                    .xor_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                rot_selector: pe
+                    .rot_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
                 lookup: pe.lookup.map(Into::into),
             }
         }
@@ -867,6 +893,24 @@ pub mod caml {
                 endomul_scalar_selector: cpe
                     .endomul_scalar_selector
                     .map(&|x| x.into_iter().map(Into::into).collect()),
+                range_check0_selector: cpe
+                    .range_check0_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                range_check1_selector: cpe
+                    .range_check1_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_add_selector: cpe
+                    .foreign_field_add_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_selector: cpe
+                    .foreign_field_mul_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                xor_selector: cpe
+                    .xor_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                rot_selector: cpe
+                    .rot_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
                 lookup: cpe.lookup.map(Into::into),
             }
         }
