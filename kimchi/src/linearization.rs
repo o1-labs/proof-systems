@@ -310,6 +310,14 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     h.insert(Index(GateType::EndoMul));
     h.insert(Index(GateType::EndoMulScalar));
 
+    // optional columns
+    h.insert(Index(GateType::RangeCheck0));
+    h.insert(Index(GateType::RangeCheck1));
+    h.insert(Index(GateType::ForeignFieldAdd));
+    h.insert(Index(GateType::ForeignFieldMul));
+    h.insert(Index(GateType::Xor16));
+    h.insert(Index(GateType::Rot64));
+
     h
 }
 
