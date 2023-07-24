@@ -27,8 +27,8 @@ use crate::{
     lagrange_basis_evaluations::LagrangeBasisEvaluations,
     plonk_sponge::FrSponge,
     proof::{
-        LookupCommitments, LookupEvaluations, PointEvaluations, ProofEvaluations,
-        ProverCommitments, ProverProof, RecursionChallenge,
+        LookupCommitments, PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof,
+        RecursionChallenge,
     },
     prover_index::ProverIndex,
 };
@@ -104,8 +104,15 @@ where
     aggreg_comm: Option<BlindedCommitment<G>>,
     aggreg8: Option<Evaluations<F, D<F>>>,
 
-    /// The evaluations of the aggregation polynomial for the proof
-    eval: Option<LookupEvaluations<PointEvaluations<Vec<F>>>>,
+    // lookup-related evaluations
+    /// evaluation of lookup aggregation polynomial
+    pub lookup_aggregation_eval: Option<PointEvaluations<Vec<F>>>,
+    /// evaluation of lookup table polynomial
+    pub lookup_table_eval: Option<PointEvaluations<Vec<F>>>,
+    /// evaluation of lookup sorted polynomials
+    pub lookup_sorted_eval: [Option<PointEvaluations<Vec<F>>>; 5],
+    /// evaluation of runtime lookup table polynomial
+    pub runtime_lookup_table_eval: Option<PointEvaluations<Vec<F>>>,
 
     /// Runtime table
     runtime_table: Option<DensePolynomial<F>>,
@@ -860,35 +867,40 @@ where
                 .as_ref()
                 .unwrap()
                 .iter()
-                .map(|c| c.to_chunked_polynomial(index.max_poly_size));
+                .map(|c| c.to_chunked_polynomial(index.max_poly_size))
+                .collect::<Vec<_>>();
 
             //~~ * the table polynonial
             let joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
             let joint_table = joint_table.to_chunked_polynomial(index.max_poly_size);
 
-            lookup_context.eval = Some(LookupEvaluations {
-                aggreg: PointEvaluations {
-                    zeta: aggreg.evaluate_chunks(zeta),
-                    zeta_omega: aggreg.evaluate_chunks(zeta_omega),
-                },
-                sorted: sorted
-                    .map(|sorted| PointEvaluations {
+            lookup_context.lookup_aggregation_eval = Some(PointEvaluations {
+                zeta: aggreg.evaluate_chunks(zeta),
+                zeta_omega: aggreg.evaluate_chunks(zeta_omega),
+            });
+            lookup_context.lookup_table_eval = Some(PointEvaluations {
+                zeta: joint_table.evaluate_chunks(zeta),
+                zeta_omega: joint_table.evaluate_chunks(zeta_omega),
+            });
+            lookup_context.lookup_sorted_eval = array::from_fn(|i| {
+                if i < sorted.len() {
+                    let sorted = &sorted[i];
+                    Some(PointEvaluations {
                         zeta: sorted.evaluate_chunks(zeta),
                         zeta_omega: sorted.evaluate_chunks(zeta_omega),
                     })
-                    .collect(),
-                table: PointEvaluations {
-                    zeta: joint_table.evaluate_chunks(zeta),
-                    zeta_omega: joint_table.evaluate_chunks(zeta_omega),
-                },
-                runtime: lookup_context.runtime_table.as_ref().map(|runtime_table| {
+                } else {
+                    None
+                }
+            });
+            lookup_context.runtime_lookup_table_eval =
+                lookup_context.runtime_table.as_ref().map(|runtime_table| {
                     let runtime_table = runtime_table.to_chunked_polynomial(index.max_poly_size);
                     PointEvaluations {
                         zeta: runtime_table.evaluate_chunks(zeta),
                         zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
                     }
-                }),
-            })
+                });
         }
 
         //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
@@ -950,7 +962,10 @@ where
                 }
             },
 
-            lookup: lookup_context.eval.take(),
+            lookup_aggregation: lookup_context.lookup_aggregation_eval.take(),
+            lookup_table: lookup_context.lookup_table_eval.take(),
+            lookup_sorted: array::from_fn(|i| lookup_context.lookup_sorted_eval[i].take()),
+            runtime_lookup_table: lookup_context.runtime_lookup_table_eval.take(),
             generic_selector: chunked_evals_for_selector(
                 &index.column_evaluations.generic_selector4,
             ),
@@ -1577,6 +1592,7 @@ pub mod caml {
 
     impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
     where
+        CamlF: Clone,
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
