@@ -3,6 +3,7 @@
 use crate::circuits::{
     expr::Column,
     gate::GateType,
+    lookup::lookups::LookupPattern,
     wires::{COLUMNS, PERMUTS},
 };
 use ark_ec::AffineCurve;
@@ -90,6 +91,18 @@ pub struct ProofEvaluations<Evals> {
     pub lookup_sorted: [Option<Evals>; 5],
     /// evaluation of runtime lookup table polynomial
     pub runtime_lookup_table: Option<Evals>,
+
+    // lookup selectors
+    /// evaluation of the runtime lookup table selector polynomial
+    pub runtime_lookup_table_selector: Option<Evals>,
+    /// evaluation of the Xor range check pattern selector polynomial
+    pub xor_lookup_selector: Option<Evals>,
+    /// evaluation of the Lookup range check pattern selector polynomial
+    pub lookup_gate_lookup_selector: Option<Evals>,
+    /// evaluation of the RangeCheck range check pattern selector polynomial
+    pub range_check_lookup_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul range check pattern selector polynomial
+    pub foreign_field_mul_lookup_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -200,6 +213,11 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_table,
             lookup_sorted,
             runtime_lookup_table,
+            runtime_lookup_table_selector,
+            xor_lookup_selector,
+            lookup_gate_lookup_selector,
+            range_check_lookup_selector,
+            foreign_field_mul_lookup_selector,
         } = self;
         ProofEvaluations {
             w: w.map(f),
@@ -222,6 +240,11 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_table: lookup_table.map(f),
             lookup_sorted: lookup_sorted.map(|x| x.map(f)),
             runtime_lookup_table: runtime_lookup_table.map(f),
+            runtime_lookup_table_selector: runtime_lookup_table_selector.map(f),
+            xor_lookup_selector: xor_lookup_selector.map(f),
+            lookup_gate_lookup_selector: lookup_gate_lookup_selector.map(f),
+            range_check_lookup_selector: range_check_lookup_selector.map(f),
+            foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.map(f),
         }
     }
 
@@ -247,6 +270,11 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_table,
             lookup_sorted,
             runtime_lookup_table,
+            runtime_lookup_table_selector,
+            xor_lookup_selector,
+            lookup_gate_lookup_selector,
+            range_check_lookup_selector,
+            foreign_field_mul_lookup_selector,
         } = self;
         ProofEvaluations {
             w: [
@@ -301,6 +329,11 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_table: lookup_table.as_ref().map(f),
             lookup_sorted: array::from_fn(|i| lookup_sorted[i].as_ref().map(f)),
             runtime_lookup_table: runtime_lookup_table.as_ref().map(f),
+            runtime_lookup_table_selector: runtime_lookup_table_selector.as_ref().map(f),
+            xor_lookup_selector: xor_lookup_selector.as_ref().map(f),
+            lookup_gate_lookup_selector: lookup_gate_lookup_selector.as_ref().map(f),
+            range_check_lookup_selector: range_check_lookup_selector.as_ref().map(f),
+            foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.as_ref().map(f),
         }
     }
 }
@@ -382,6 +415,11 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             lookup_table: None,
             lookup_sorted: array::from_fn(|_| None),
             runtime_lookup_table: None,
+            runtime_lookup_table_selector: None,
+            xor_lookup_selector: None,
+            lookup_gate_lookup_selector: None,
+            range_check_lookup_selector: None,
+            foreign_field_mul_lookup_selector: None,
         }
     }
 }
@@ -403,8 +441,17 @@ impl<F> ProofEvaluations<F> {
             Column::LookupSorted(i) => self.lookup_sorted[i].as_ref(),
             Column::LookupAggreg => self.lookup_aggregation.as_ref(),
             Column::LookupTable => self.lookup_table.as_ref(),
-            Column::LookupKindIndex(_) => None,
-            Column::LookupRuntimeSelector => None,
+            Column::LookupKindIndex(LookupPattern::Xor) => self.xor_lookup_selector.as_ref(),
+            Column::LookupKindIndex(LookupPattern::Lookup) => {
+                self.lookup_gate_lookup_selector.as_ref()
+            }
+            Column::LookupKindIndex(LookupPattern::RangeCheck) => {
+                self.range_check_lookup_selector.as_ref()
+            }
+            Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
+                self.foreign_field_mul_lookup_selector.as_ref()
+            }
+            Column::LookupRuntimeSelector => self.runtime_lookup_table_selector.as_ref(),
             Column::LookupRuntimeTable => self.runtime_lookup_table.as_ref(),
             Column::Index(GateType::Generic) => Some(&self.generic_selector),
             Column::Index(GateType::Poseidon) => Some(&self.poseidon_selector),
@@ -543,6 +590,12 @@ pub mod caml {
         pub lookup_table: Option<PointEvaluations<Vec<CamlF>>>,
         pub lookup_sorted: Vec<Option<PointEvaluations<Vec<CamlF>>>>,
         pub runtime_lookup_table: Option<PointEvaluations<Vec<CamlF>>>,
+
+        pub runtime_lookup_table_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub xor_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub lookup_gate_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub range_check_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub foreign_field_mul_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
     }
 
     //
@@ -729,6 +782,21 @@ pub mod caml {
                 runtime_lookup_table: pe
                     .runtime_lookup_table
                     .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                runtime_lookup_table_selector: pe
+                    .runtime_lookup_table_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                xor_lookup_selector: pe
+                    .xor_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_gate_lookup_selector: pe
+                    .lookup_gate_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                range_check_lookup_selector: pe
+                    .range_check_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_lookup_selector: pe
+                    .foreign_field_mul_lookup_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
             }
         }
     }
@@ -870,6 +938,21 @@ pub mod caml {
                 },
                 runtime_lookup_table: cpe
                     .runtime_lookup_table
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                runtime_lookup_table_selector: cpe
+                    .runtime_lookup_table_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                xor_lookup_selector: cpe
+                    .xor_lookup_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                lookup_gate_lookup_selector: cpe
+                    .lookup_gate_lookup_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                range_check_lookup_selector: cpe
+                    .range_check_lookup_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                foreign_field_mul_lookup_selector: cpe
+                    .foreign_field_mul_lookup_selector
                     .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
             }
         }
