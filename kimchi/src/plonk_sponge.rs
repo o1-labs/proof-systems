@@ -5,7 +5,7 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
-use crate::proof::{LookupEvaluations, PointEvaluations, ProofEvaluations};
+use crate::proof::{PointEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -64,7 +64,6 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             z,
             s,
             coefficients,
-            lookup,
             generic_selector,
             poseidon_selector,
             complete_add_selector,
@@ -77,6 +76,10 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             foreign_field_mul_selector,
             xor_selector,
             rot_selector,
+            lookup_aggregation,
+            lookup_table,
+            lookup_sorted,
+            runtime_lookup_table,
         } = e;
 
         let mut points = vec![
@@ -112,18 +115,19 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         if let Some(rot_selector) = rot_selector.as_ref() {
             points.push(rot_selector)
         }
-
-        if let Some(l) = lookup.as_ref() {
-            let LookupEvaluations {
-                sorted,
-                aggreg,
-                table,
-                runtime,
-            } = l;
-            points.push(aggreg);
-            points.push(table);
-            sorted.iter().for_each(|s| points.push(s));
-            runtime.iter().for_each(|x| points.push(x));
+        if let Some(lookup_aggregation) = lookup_aggregation.as_ref() {
+            points.push(lookup_aggregation)
+        }
+        if let Some(lookup_table) = lookup_table.as_ref() {
+            points.push(lookup_table)
+        }
+        for lookup_sorted in lookup_sorted {
+            if let Some(lookup_sorted) = lookup_sorted.as_ref() {
+                points.push(lookup_sorted)
+            }
+        }
+        if let Some(runtime_lookup_table) = runtime_lookup_table.as_ref() {
+            points.push(runtime_lookup_table)
         }
 
         points.into_iter().for_each(|p| {
