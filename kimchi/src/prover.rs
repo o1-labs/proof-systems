@@ -1029,6 +1029,44 @@ where
                 .rot_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
+
+            runtime_lookup_table_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.runtime_selector
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            xor_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(|lcs| {
+                lcs.lookup_selectors
+                    .xor
+                    .as_ref()
+                    .map(chunked_evals_for_selector)
+            }),
+            lookup_gate_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .lookup
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            range_check_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .range_check
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            foreign_field_mul_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .ffmul
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1348,6 +1386,36 @@ where
                     None,
                     runtime_table_comm.blinders.clone(),
                 ));
+            }
+
+            //~~ * the lookup selectors
+
+            if let Some(runtime_lookup_table_selector) = lcs.runtime_selector.as_ref() {
+                polynomials.push((
+                    evaluations_form(runtime_lookup_table_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(xor_lookup_selector) = lcs.lookup_selectors.xor.as_ref() {
+                polynomials.push((evaluations_form(xor_lookup_selector), None, non_hiding(1)))
+            }
+            if let Some(lookup_gate_selector) = lcs.lookup_selectors.lookup.as_ref() {
+                polynomials.push((evaluations_form(lookup_gate_selector), None, non_hiding(1)))
+            }
+            if let Some(range_check_lookup_selector) = lcs.lookup_selectors.range_check.as_ref() {
+                polynomials.push((
+                    evaluations_form(range_check_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
+                polynomials.push((
+                    evaluations_form(foreign_field_mul_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
             }
         }
 

@@ -6,7 +6,7 @@ use crate::circuits::expr;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
     constraints::LookupConfiguration,
-    lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+    lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
@@ -318,6 +318,13 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     h.insert(Index(GateType::Xor16));
     h.insert(Index(GateType::Rot64));
 
+    // lookup selectors
+    h.insert(LookupRuntimeSelector);
+    h.insert(LookupKindIndex(LookupPattern::Xor));
+    h.insert(LookupKindIndex(LookupPattern::Lookup));
+    h.insert(LookupKindIndex(LookupPattern::RangeCheck));
+    h.insert(LookupKindIndex(LookupPattern::ForeignFieldMul));
+
     h
 }
 
@@ -341,6 +348,8 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
         .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish());
+
+    assert_eq!(linearization.index_terms.len(), 0);
 
     (linearization, powers_of_alpha)
 }
