@@ -611,11 +611,10 @@ where
     }
 
     // Lookup evaluations
-    for sorted in lookup_sorted {
-        if let Some(sorted) = sorted {
-            check_eval_len(sorted)?;
-        }
+    for sorted in lookup_sorted.iter().flatten() {
+        check_eval_len(sorted)?
     }
+
     if let Some(lookup_aggregation) = lookup_aggregation {
         check_eval_len(lookup_aggregation)?;
     }
@@ -874,36 +873,42 @@ where
     //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
     //~~ * optional gate commitments
-    .chain(if verifier_index.range_check0_comm.is_some() {
-        Some(Column::Index(GateType::RangeCheck0))
-    } else {
-        None
-    })
-    .chain(if verifier_index.range_check1_comm.is_some() {
-        Some(Column::Index(GateType::RangeCheck1))
-    } else {
-        None
-    })
-    .chain(if verifier_index.foreign_field_add_comm.is_some() {
-        Some(Column::Index(GateType::ForeignFieldAdd))
-    } else {
-        None
-    })
-    .chain(if verifier_index.foreign_field_mul_comm.is_some() {
-        Some(Column::Index(GateType::ForeignFieldMul))
-    } else {
-        None
-    })
-    .chain(if verifier_index.xor_comm.is_some() {
-        Some(Column::Index(GateType::Xor16))
-    } else {
-        None
-    })
-    .chain(if verifier_index.rot_comm.is_some() {
-        Some(Column::Index(GateType::Rot64))
-    } else {
-        None
-    })
+    .chain(
+        verifier_index
+            .range_check0_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck0)),
+    )
+    .chain(
+        verifier_index
+            .range_check1_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck1)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_add_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldAdd)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_mul_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldMul)),
+    )
+    .chain(
+        verifier_index
+            .xor_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Xor16)),
+    )
+    .chain(
+        verifier_index
+            .rot_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Rot64)),
+    )
     //~~ * lookup commitments
     //~
     .chain(
