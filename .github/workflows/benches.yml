@@ -16,34 +16,18 @@ jobs:
     name: Run benchmarks
     if: github.event.label.name == 'benchmark'
     steps:
-      - name: Checkout PR
-        uses: actions/checkout@v2
-
-      # as action-rs does not seem to be maintained anymore, building from
-      # scratch the environment using rustup
-      - name: Setup Rust toolchain $RUST_TOOLCHAIN_VERSION
-        run:
-          |
-            curl --proto '=https' --tlsv1.2 -sSf -o rustup-init \
-            https://static.rust-lang.org/rustup/dist/x86_64-unknown-linux-gnu/rustup-init
-            chmod +x ./rustup-init
-            ./rustup-init -y --default-toolchain "$RUST_TOOLCHAIN_VERSION" --profile default
-            rm ./rustup-init
-            echo "$HOME/.cargo/bin" >> $GITHUB_PATH
-            # overwriting default rust-toolchain
-            echo $RUST_TOOLCHAIN_VERSION > rust-toolchain
-
       - name: Install dependencies
         run: |
           set -x
           cargo install cargo-criterion   # criterion
 
-      - name: Setup OCaml ${{ env.OCAML_VERSION }}
-        uses: ocaml/setup-ocaml@v2
+      - name: Setup OCaml (because of ocaml-gen)
+        run: sudo apt update && sudo apt install ocaml
+
+      - name: Checkout master branch for baseline
+        uses: actions/checkout@v2
         with:
-          ocaml-compiler: ${{ env.OCAML_VERSION }}
-          # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
-          # disable-cache: true
+          ref: master
 
 #      - name: Run iai bench
 #        run: |
@@ -51,10 +35,17 @@ jobs:
 #          cargo bench -p kimchi --bench proof_iai > iai_bench
 #          cat iai_bench
 
+      - name: Run criterion baseline bench
+        run: |
+          set -x
+          cargo criterion -p kimchi --bench proof_criterion --color never
+
+      - name: Checkout master branch for baseline
+        uses: actions/checkout@v2
+
       - name: Run criterion bench
         run: |
           set -x
-          eval $(opam env)
           cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
           cat criterion_bench
 
