@@ -40,8 +40,10 @@ jobs:
           set -x
           cargo criterion -p kimchi --bench proof_criterion --color never
 
-      - name: Checkout master branch for baseline
-        uses: actions/checkout@v2
+      - name: Checkout PR branch for performing actual run
+        uses: actions/checkout@v2     
+        with:
+          clean: false     
 
       - name: Run criterion bench
         run: |
