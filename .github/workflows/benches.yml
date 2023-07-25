@@ -38,7 +38,7 @@ jobs:
       - name: Run criterion baseline bench
         run: |
           set -x
-          cargo criterion -p kimchi --bench proof_criterion --color never
+          cargo criterion -p kimchi --bench time --color never
 
       - name: Checkout PR branch for performing actual run
         uses: actions/checkout@v2     
@@ -48,7 +48,7 @@ jobs:
       - name: Run criterion bench
         run: |
           set -x
-          cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
+          cargo criterion -p kimchi --bench time --color never > criterion_bench 2>&1
           cat criterion_bench
 
       - name: Write result in PR and evaluate outcome
