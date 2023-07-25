@@ -51,7 +51,7 @@ jobs:
           cargo criterion -p kimchi --bench proof_criterion --color never > criterion_bench 2>&1
           cat criterion_bench
 
-      - name: Write result in PR
+      - name: Write result in PR and evaluate outcome
         uses: actions/github-script@v5
         with:
           script: |
@@ -80,3 +80,9 @@ jobs:
               repo: context.repo.repo,
               body: message
             })
+
+            if (criterion_bench.includes("Performance has regressed")) {
+              exit 1
+            }
+            
+            
