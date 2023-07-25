@@ -27,7 +27,7 @@ jobs:
       - name: Checkout master branch for baseline
         uses: actions/checkout@v2
         with:
-          ref: master
+          ref: fabrizio-m/benchmarking-core
 
 #      - name: Run iai bench
 #        run: |
