@@ -82,7 +82,7 @@ jobs:
             })
 
             if (criterion_bench.includes("Performance has regressed")) {
-              exit 1
+              core.setFailed("Performance has regressed");
             }
             
             
