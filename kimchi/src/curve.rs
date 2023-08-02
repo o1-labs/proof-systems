@@ -51,8 +51,14 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
         &VESTA_ENDOS
     }
     fn precomputed_srs() -> Option<&'static [u8]> {
-        let srs = include_bytes!("../../srs/vesta.srs");
-        Some(srs)
+        #[cfg(feature = "precomputed_srs")]
+        let srs = {
+            let srs = include_bytes!("../../srs/vesta.srs");
+            Some(srs)
+        };
+        #[cfg(not(feature = "precomputed_srs"))]
+        let srs = None;
+        srs
     }
 }
 
@@ -73,8 +79,14 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
         &PALLAS_ENDOS
     }
     fn precomputed_srs() -> Option<&'static [u8]> {
-        let srs = include_bytes!("../../srs/pallas.srs");
-        Some(srs)
+        #[cfg(feature = "precomputed_srs")]
+        let srs = {
+            let srs = include_bytes!("../../srs/pallas.srs");
+            Some(srs)
+        };
+        #[cfg(not(feature = "precomputed_srs"))]
+        let srs = None;
+        srs
     }
 }
 
