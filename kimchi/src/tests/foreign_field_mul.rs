@@ -13,7 +13,7 @@ use crate::{
     tests::framework::TestFramework,
 };
 use ark_ec::AffineCurve;
-use ark_ff::{Field, PrimeField, Zero};
+use ark_ff::{BigInteger256, Field, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use num_bigint::BigUint;
 use num_traits::One;
@@ -86,6 +86,7 @@ where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    G::ScalarField: PrimeField<BigInt = BigInteger256>,
 {
     // Create foreign field multiplication gates
     let (mut next_row, mut gates) =
@@ -374,6 +375,7 @@ where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    G::ScalarField: PrimeField<BigInt = BigInteger256>,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 

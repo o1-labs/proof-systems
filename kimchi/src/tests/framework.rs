@@ -16,7 +16,7 @@ use crate::{
     verifier::verify,
     verifier_index::VerifierIndex,
 };
-use ark_ff::PrimeField;
+use ark_ff::{BigInteger256, PrimeField};
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
@@ -157,6 +157,7 @@ where
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
         EFrSponge: FrSponge<G::ScalarField>,
+        G::ScalarField: PrimeField<BigInt = BigInteger256>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -180,6 +181,7 @@ where
             &self.0.runtime_tables,
             &prover,
             self.0.recursion,
+            None,
             None,
         )
         .map_err(|e| e.to_string())?;

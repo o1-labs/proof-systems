@@ -11,7 +11,7 @@ use crate::{
 };
 
 use ark_ec::AffineCurve;
-use ark_ff::{One, PrimeField, Zero};
+use ark_ff::{BigInteger256, One, PrimeField, Zero};
 use mina_curves::pasta::{Fp, Fq, Pallas, PallasParameters, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -129,6 +129,7 @@ where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
+    G::ScalarField: PrimeField<BigInt = BigInteger256>,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 

@@ -31,7 +31,7 @@ mod tests {
 
     #[test]
     fn test_rmp_serde() {
-        let ctx = BenchmarkCtx::new(4);
+        let ctx = BenchmarkCtx::new(4, None);
 
         let (proof, public_input) = ctx.create_proof();
 
@@ -68,7 +68,7 @@ mod tests {
         // add the proof to the batch
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
         let proof =
-            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index)
+            ProverProof::create::<BaseSponge, ScalarSponge>(&group_map, witness, &[], &index, None)
                 .unwrap();
 
         // deserialize the verifier index

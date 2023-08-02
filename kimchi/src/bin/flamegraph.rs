@@ -16,14 +16,14 @@ fn main() {
     let mode = env::args().nth(1);
     match mode.as_deref() {
         Some("prove") => {
-            let ctx = BenchmarkCtx::new(14);
+            let ctx = BenchmarkCtx::new(14, None);
             loop {
                 let proof_and_public = ctx.create_proof();
                 black_box(proof_and_public);
             }
         }
         Some("verify") => {
-            let ctx = BenchmarkCtx::new(4);
+            let ctx = BenchmarkCtx::new(4, None);
             let proof_and_public = ctx.create_proof();
             loop {
                 ctx.batch_verification(black_box(&vec![proof_and_public.clone()]));

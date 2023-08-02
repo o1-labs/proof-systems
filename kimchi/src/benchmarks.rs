@@ -1,21 +1,26 @@
+use std::rc::Rc;
+
 use crate::{
     bench::{self, BenchmarkCtx},
     proof::ProverProof,
 };
 use benchmarking::{Benchmark, BlackBox};
 use mina_curves::pasta::{Fp, Vesta};
+use turbo::poly_ops::GpuContext;
 
 pub struct Proving;
 
 impl Benchmark for Proving {
-    type Data = ();
+    type Data = Rc<GpuContext>;
 
     type RefinedData = BenchmarkCtx;
 
-    fn prepare_data() -> Self::Data {}
+    fn prepare_data() -> Self::Data {
+        Rc::new(GpuContext::new())
+    }
 
-    fn refine_data(parameter: usize, _data: &Self::Data) -> Self::RefinedData {
-        BenchmarkCtx::new(parameter as u32)
+    fn refine_data(parameter: usize, data: &Self::Data) -> Self::RefinedData {
+        BenchmarkCtx::new(parameter as u32, Some(data.clone()))
     }
 
     fn default_parameters() -> Option<Vec<usize>> {
@@ -36,7 +41,7 @@ impl Benchmark for Verifying {
     fn prepare_data() -> Self::Data {}
 
     fn refine_data(parameter: usize, _data: &Self::Data) -> Self::RefinedData {
-        let ctx = BenchmarkCtx::new(parameter as u32);
+        let ctx = BenchmarkCtx::new(parameter as u32, None);
         let proof = ctx.create_proof();
         (ctx, vec![proof])
     }
@@ -75,6 +80,7 @@ impl Benchmark for Compiling {
             parameter as u32,
             gates,
             group_map,
+            None,
         ));
     }
 }

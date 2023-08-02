@@ -12,7 +12,7 @@ use crate::{
     },
     proof::{PointEvaluations, ProofEvaluations},
 };
-use ark_ff::{FftField, Field, One, PrimeField, Zero};
+use ark_ff::{BigInteger256, FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
@@ -27,6 +27,7 @@ use std::{
 };
 use std::{fmt, iter::FromIterator};
 use thiserror::Error;
+use turbo::poly_ops::GpuContext;
 use CurrOrNext::{Curr, Next};
 
 use self::constraints::ExprOps;
@@ -111,6 +112,7 @@ pub struct Environment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
     pub lookup: Option<LookupEnvironment<'a, F>>,
+    pub gpu: &'a GpuContext,
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
@@ -1218,14 +1220,17 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn pow<'b>(self, d: u64, res_domain: (Domain, D<F>)) -> EvalResult<'b, F> {
+    fn pow<'b>(self, d: u64, res_domain: (Domain, D<F>), gpu: &GpuContext) -> EvalResult<'b, F>
+    where
+        F: PrimeField<BigInt = BigInteger256>,
+    {
         let mut acc = EvalResult::Constant(F::one());
         for i in (0..u64::BITS).rev() {
             acc = acc.square(res_domain);
 
             if (d >> i) & 1 == 1 {
                 // TODO: Avoid the unnecessary cloning
-                acc = acc.mul(self.clone(), res_domain)
+                acc = acc.mul(self.clone(), res_domain, gpu)
             }
         }
         acc
@@ -1255,7 +1260,15 @@ impl<'a, F: FftField> EvalResult<'a, F> {
         }
     }
 
-    fn mul<'c>(self, other: EvalResult<'_, F>, res_domain: (Domain, D<F>)) -> EvalResult<'c, F> {
+    fn mul<'c>(
+        self,
+        other: EvalResult<'_, F>,
+        res_domain: (Domain, D<F>),
+        gpu: &GpuContext,
+    ) -> EvalResult<'c, F>
+    where
+        F: PrimeField<BigInt = BigInteger256>,
+    {
         use EvalResult::*;
         match (self, other) {
             (Constant(x), Constant(y)) => Constant(x * y),
@@ -1297,7 +1310,36 @@ impl<'a, F: FftField> EvalResult<'a, F> {
                 },
             ) => {
                 assert_eq!(d1, d2);
-                es1 *= &es2;
+                // let gpu: &GpuContext = todo!();
+
+                let c = {
+                    let (a, b) = unsafe {
+                        // let a: &[[u32; 8]] = std::mem::transmute(&es1);
+                        // let b: &[[u32; 8]] = std::mem::transmute(&es2);
+                        let a = es1.evals.iter().map(|x| {
+                            let x: [u32; 8] = std::mem::transmute(x.into_repr().0);
+                            x
+                        });
+                        let a = a.collect::<Vec<_>>();
+                        let b = es2.evals.iter().map(|x| {
+                            let x: [u32; 8] = std::mem::transmute(x.into_repr().0);
+                            x
+                        });
+                        let b = b.collect::<Vec<_>>();
+                        (a, b)
+                    };
+                    let c = gpu.mul_blocking(&a, &b).0;
+                    unsafe {
+                        let c: Vec<F> = std::mem::transmute(c);
+                        c
+                    }
+                };
+                // es1 *= &es2;
+                // for i in 0..es1.evals.len() {
+                // assert_eq!(es1.evals[i], c[i]);
+                // }
+                es1.evals = c;
+
                 Evals {
                     domain: d1,
                     evals: es1,
@@ -1558,7 +1600,10 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>>
+    where
+        F: PrimeField<BigInt = BigInteger256>,
+    {
         self.evaluate_constants(env).evaluations(env)
     }
 }
@@ -1612,7 +1657,11 @@ impl<F: FftField> Expr<F> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>>
+    where
+        F: PrimeField<BigInt = BigInteger256>,
+    {
+        // let gpu: GpuContext = todo!();
         let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
@@ -1627,7 +1676,8 @@ impl<F: FftField> Expr<F> {
 
         let mut cache = HashMap::new();
 
-        let evals = match self.evaluations_helper(&mut cache, d, env) {
+        let gpu = &env.gpu;
+        let evals = match self.evaluations_helper(&mut cache, d, env, gpu) {
             Either::Left(x) => x,
             Either::Right(id) => cache.get(&id).unwrap().clone(),
         };
@@ -1658,19 +1708,21 @@ impl<F: FftField> Expr<F> {
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
         env: &Environment<'a, F>,
+        gpu: &GpuContext,
     ) -> Either<EvalResult<'a, F>, CacheId>
     where
         'a: 'b,
+        F: PrimeField<BigInt = BigInteger256>,
     {
         let dom = (d, get_domain(d, env));
 
         let res: EvalResult<'a, F> = match self {
-            Expr::Square(x) => match x.evaluations_helper(cache, d, env) {
+            Expr::Square(x) => match x.evaluations_helper(cache, d, env, gpu) {
                 Either::Left(x) => x.square(dom),
                 Either::Right(id) => id.get_from(cache).unwrap().square(dom),
             },
             Expr::Double(x) => {
-                let x = x.evaluations_helper(cache, d, env);
+                let x = x.evaluations_helper(cache, d, env, gpu);
                 let res = match x {
                     Either::Left(x) => {
                         let x = match x {
@@ -1712,7 +1764,7 @@ impl<F: FftField> Expr<F> {
             Expr::Cache(id, e) => match cache.get(id) {
                 Some(_) => return Either::Right(*id),
                 None => {
-                    match e.evaluations_helper(cache, d, env) {
+                    match e.evaluations_helper(cache, d, env, gpu) {
                         Either::Left(es) => {
                             cache.insert(*id, es);
                         }
@@ -1722,11 +1774,13 @@ impl<F: FftField> Expr<F> {
                 }
             },
             Expr::Pow(x, p) => {
-                let x = x.evaluations_helper(cache, d, env);
+                let x = x.evaluations_helper(cache, d, env, gpu);
                 match x {
-                    Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
+                    Either::Left(x) => x.pow(*p, (d, get_domain(d, env)), gpu),
                     Either::Right(id) => {
-                        id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env)))
+                        id.get_from(cache)
+                            .unwrap()
+                            .pow(*p, (d, get_domain(d, env)), gpu)
                     }
                 }
             }
@@ -1756,12 +1810,12 @@ impl<F: FftField> Expr<F> {
             Expr::BinOp(op, e1, e2) => {
                 let dom = (d, get_domain(d, env));
                 let f = |x: EvalResult<F>, y: EvalResult<F>| match op {
-                    Op2::Mul => x.mul(y, dom),
+                    Op2::Mul => x.mul(y, dom, gpu),
                     Op2::Add => x.add(y, dom),
                     Op2::Sub => x.sub(y, dom),
                 };
-                let e1 = e1.evaluations_helper(cache, d, env);
-                let e2 = e2.evaluations_helper(cache, d, env);
+                let e1 = e1.evaluations_helper(cache, d, env, gpu);
+                let e2 = e2.evaluations_helper(cache, d, env, gpu);
                 use Either::*;
                 match (e1, e2) {
                     (Left(e1), Left(e2)) => f(e1, e2),
@@ -1777,9 +1831,9 @@ impl<F: FftField> Expr<F> {
                 when the feature flag is off. */
                 let mut cache = cache.clone();
                 if feature.is_enabled() {
-                    return e1.evaluations_helper(&mut cache, d, env);
+                    return e1.evaluations_helper(&mut cache, d, env, gpu);
                 } else {
-                    return e2.evaluations_helper(&mut cache, d, env);
+                    return e2.evaluations_helper(&mut cache, d, env, gpu);
                 }
             }
         };
@@ -2889,6 +2943,9 @@ pub mod test {
         let permutation = DensePolynomial::zero();
         let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
 
+        let gpu = GpuContext::new();
+        let gpu = &gpu;
+
         let env = Environment {
             constants: Constants {
                 alpha: one,
@@ -2906,6 +2963,7 @@ pub mod test {
             domain: index.cs.domain,
             index: HashMap::new(),
             lookup: None,
+            gpu,
         };
 
         // this should panic as we don't have a domain large enough

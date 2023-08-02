@@ -18,7 +18,8 @@ use mina_poseidon::{
 };
 use o1_utils::math;
 use poly_commitment::commitment::CommitmentCurve;
-use std::array;
+use std::{array, rc::Rc};
+use turbo::poly_ops::GpuContext;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
@@ -29,6 +30,7 @@ pub struct BenchmarkCtx {
     group_map: BWParameters<VestaParameters>,
     index: ProverIndex<Vesta>,
     verifier_index: VerifierIndex<Vesta>,
+    gpu: Rc<GpuContext>,
 }
 
 #[derive(Clone)]
@@ -61,6 +63,7 @@ impl BenchmarkCtx {
         srs_size_log2: u32,
         gates: GatesToCompile,
         group_map: Group,
+        gpu: Option<Rc<GpuContext>>,
     ) -> BenchmarkCtx {
         let gates = gates.0;
         let num_gates = gates.len();
@@ -74,25 +77,27 @@ impl BenchmarkCtx {
         let verifier_index = index.verifier_index();
         let group_map = group_map.0;
 
+        let gpu = gpu.unwrap_or_else(|| Rc::new(GpuContext::new()));
         BenchmarkCtx {
             num_gates,
             group_map,
             index,
             verifier_index,
+            gpu,
         }
     }
     pub fn group() -> Group {
         Group(<Vesta as CommitmentCurve>::Map::setup())
     }
     /// This will create a context that allows for benchmarks of `num_gates` gates (multiplication gates).
-    pub fn new(srs_size_log2: u32) -> Self {
+    pub fn new(srs_size_log2: u32, gpu: Option<Rc<GpuContext>>) -> Self {
         // there's some overhead that we need to remove (e.g. zk rows)
         let gates = Self::create_gates(srs_size_log2);
 
         // group map
         let group_map = Self::group();
 
-        Self::compile_gates(srs_size_log2, gates, group_map)
+        Self::compile_gates(srs_size_log2, gates, group_map, gpu)
     }
 
     /// Produces a proof
@@ -109,6 +114,7 @@ impl BenchmarkCtx {
                 witness,
                 &[],
                 &self.index,
+                Some(self.gpu.clone()),
             )
             .unwrap(),
             public_input,
@@ -140,7 +146,7 @@ mod tests {
         // context created in 21.2235 ms
         let start = Instant::now();
         let srs_size = 4;
-        let ctx = BenchmarkCtx::new(srs_size);
+        let ctx = BenchmarkCtx::new(srs_size, None);
         println!("testing bench code for SRS of size {srs_size}");
         println!("context created in {}s", start.elapsed().as_secs());
 

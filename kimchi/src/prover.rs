@@ -33,7 +33,7 @@ use crate::{
     prover_index::ProverIndex,
 };
 use ark_ec::ProjectiveCurve;
-use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
+use ark_ff::{BigInteger256, FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
@@ -48,8 +48,9 @@ use poly_commitment::{
     evaluation_proof::DensePolynomialOrEvaluations,
 };
 use rayon::prelude::*;
-use std::array;
 use std::collections::HashMap;
+use std::{array, rc::Rc};
+use turbo::poly_ops::GpuContext;
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
@@ -131,7 +132,11 @@ where
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
         index: &ProverIndex<G>,
-    ) -> Result<Self> {
+        gpu: Option<Rc<GpuContext>>,
+    ) -> Result<Self>
+    where
+        G::ScalarField: PrimeField<BigInt = BigInteger256>,
+    {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
             witness,
@@ -139,6 +144,7 @@ where
             index,
             Vec::new(),
             None,
+            gpu,
         )
     }
 
@@ -161,7 +167,11 @@ where
         index: &ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
-    ) -> Result<Self> {
+        gpu: Option<Rc<GpuContext>>,
+    ) -> Result<Self>
+    where
+        G::ScalarField: PrimeField<BigInt = BigInteger256>,
+    {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
 
         // make sure that the SRS is not smaller than the domain size
@@ -610,6 +620,11 @@ where
             None
         };
 
+        let gpu = match gpu {
+            Some(gpu) => gpu,
+            None => Rc::new(GpuContext::new()),
+        };
+        let gpu = &*gpu;
         internal_tracing::checkpoint!(internal_traces; eval_witness_polynomials_over_domains);
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
         internal_tracing::checkpoint!(internal_traces; compute_index_evals);
@@ -667,6 +682,7 @@ where
             }
 
             let mds = &G::sponge_params().mds;
+
             Environment {
                 constants: Constants {
                     alpha,
@@ -684,6 +700,7 @@ where
                 domain: index.cs.domain,
                 index: index_evals,
                 lookup: lookup_env,
+                gpu,
             }
         };
 
