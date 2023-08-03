@@ -54,7 +54,7 @@ impl KimchiCurve for GroupAffine<VestaParameters> {
         #[cfg(feature = "precomputed_srs")]
         let srs = {
             let srs = include_bytes!("../../srs/vesta.srs");
-            Some(srs)
+            Some(srs.as_slice())
         };
         #[cfg(not(feature = "precomputed_srs"))]
         let srs = None;
@@ -82,7 +82,7 @@ impl KimchiCurve for GroupAffine<PallasParameters> {
         #[cfg(feature = "precomputed_srs")]
         let srs = {
             let srs = include_bytes!("../../srs/pallas.srs");
-            Some(srs)
+            Some(srs.as_slice())
         };
         #[cfg(not(feature = "precomputed_srs"))]
         let srs = None;
