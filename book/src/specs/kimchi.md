@@ -1228,15 +1228,14 @@ In order to relate the two documents, the following mapping between the
 variable names used in the code and those of the RFC can be helpful.
 
 ```text
-left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
-left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder01 => r01
+left_input1 => a1  right_input1 => b1  quotient1 => q1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-   quotient_bound0 => q'0  quotient_bound12 => q'12
+   quotient_hi_bound => q'2
 
-                   quotient_bound_carry => q'_carry01
 ````
 
 ##### Suffixes
@@ -1257,8 +1256,8 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 
 ##### Parameters
 
-* `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
-* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
+* `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
 * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 
 ##### Witness
@@ -1273,30 +1272,29 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
-* `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry` := quotient bound addition carry bit
+* `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 
 ##### Layout
 
 The foreign field multiplication gate's rows are laid out like this
 
-| col | `ForeignFieldMul`            | `Zero`                    |
-| --- | ---------------------------- | ------------------------- |
-|   0 | `left_input0`         (copy) | `remainder0`       (copy) |
-|   1 | `left_input1`         (copy) | `remainder1`       (copy) |
-|   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-|   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
-|   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
-|   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
-|   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-|   7 | `carry1_hi`        (plookup) |                           |
-|   8 | `carry0`                     |                           |
-|   9 | `quotient0`                  |                           |
-|  10 | `quotient1`                  |                           |
-|  11 | `quotient2`                  |                           |
-|  12 | `quotient_bound_carry`       |                           |
-|  13 | `product1_hi_1`              |                           |
-|  14 |                              |                           |
+| col | `ForeignFieldMul`       | `Zero`                     |
+| --- | ----------------------- | -------------------------- |
+|   0 | `left_input0`    (copy) | `remainder01`       (copy) |
+|   1 | `left_input1`    (copy) | `remainder2`        (copy) |
+|   2 | `left_input2`    (copy) | `quotient0`         (copy) |
+|   3 | `right_input0`   (copy) | `quotient1`         (copy) |
+|   4 | `right_input1`   (copy) | `quotient2`         (copy) |
+|   5 | `right_input2`   (copy) | `quotient_hi_bound` (copy) |
+|   6 | `product1_lo`    (copy) | `product1_hi_0`     (copy) |
+|   7 | `carry1_0`    (plookup) | `product1_hi_1`    (dummy) |
+|   8 | `carry1_12    (plookup) | `carry1_48`      (plookup) |
+|   9 | `carry1_24`   (plookup) | `carry1_60`      (plookup) |
+|  10 | `carry1_36`   (plookup) | `carry1_72`      (plookup) |
+|  11 | `carry1_84`             | `carry0`                   |
+|  12 | `carry1_86`             |                            |
+|  13 | `carry1_88`             |                            |
+|  14 | `carry1_90`             |                            |
 
 
 
@@ -1931,22 +1929,6 @@ pub struct PointEvaluations<Evals> {
     pub zeta_omega: Evals,
 }
 
-/// Evaluations of lookup polynomials
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LookupEvaluations<Evals> {
-    /// sorted lookup table polynomial
-    pub sorted: Vec<Evals>,
-    /// lookup aggregation polynomial
-    pub aggreg: Evals,
-    // TODO: May be possible to optimize this away?
-    /// lookup table polynomial
-    pub table: Evals,
-
-    /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Evals>,
-}
-
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
@@ -1963,12 +1945,54 @@ pub struct ProofEvaluations<Evals> {
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
     pub coefficients: [Evals; COLUMNS],
-    /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the elliptic curve addition selector polynomial
+    pub complete_add_selector: Evals,
+    /// evaluation of the elliptic curve variable base scalar multiplication selector polynomial
+    pub mul_selector: Evals,
+    /// evaluation of the endoscalar multiplication selector polynomial
+    pub emul_selector: Evals,
+    /// evaluation of the endoscalar multiplication scalar computation selector polynomial
+    pub endomul_scalar_selector: Evals,
+
+    // Optional gates
+    /// evaluation of the RangeCheck0 selector polynomial
+    pub range_check0_selector: Option<Evals>,
+    /// evaluation of the RangeCheck1 selector polynomial
+    pub range_check1_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldAdd selector polynomial
+    pub foreign_field_add_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul selector polynomial
+    pub foreign_field_mul_selector: Option<Evals>,
+    /// evaluation of the Xor selector polynomial
+    pub xor_selector: Option<Evals>,
+    /// evaluation of the Rot selector polynomial
+    pub rot_selector: Option<Evals>,
+
+    // lookup-related evaluations
+    /// evaluation of lookup aggregation polynomial
+    pub lookup_aggregation: Option<Evals>,
+    /// evaluation of lookup table polynomial
+    pub lookup_table: Option<Evals>,
+    /// evaluation of lookup sorted polynomials
+    pub lookup_sorted: [Option<Evals>; 5],
+    /// evaluation of runtime lookup table polynomial
+    pub runtime_lookup_table: Option<Evals>,
+
+    // lookup selectors
+    /// evaluation of the runtime lookup table selector polynomial
+    pub runtime_lookup_table_selector: Option<Evals>,
+    /// evaluation of the Xor range check pattern selector polynomial
+    pub xor_lookup_selector: Option<Evals>,
+    /// evaluation of the Lookup range check pattern selector polynomial
+    pub lookup_gate_lookup_selector: Option<Evals>,
+    /// evaluation of the RangeCheck range check pattern selector polynomial
+    pub range_check_lookup_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul range check pattern selector polynomial
+    pub foreign_field_mul_lookup_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -2194,12 +2218,14 @@ The prover then follows the following steps to create the proof:
 	* the poseidon selector
 	* the 15 registers/witness columns
 	* the 6 sigmas
+	* the optional gates
 	* optionally, the runtime table
 1. if using lookup:
 	* add the lookup sorted polynomials
 	* add the lookup aggreg polynomial
 	* add the combined table polynomial
 	* if present, add the runtime table polynomial
+	* the lookup selectors
 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
 
 
@@ -2290,6 +2316,7 @@ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
 	* witness commitments
 	* coefficient commitments
 	* sigma commitments
+	* optional gate commitments
 	* lookup commitments
 
 #### Batch verification of proofs
