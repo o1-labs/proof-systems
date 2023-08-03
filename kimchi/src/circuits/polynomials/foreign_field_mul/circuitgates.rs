@@ -8,7 +8,7 @@
 //~
 //~ ##### Documentation
 //~
-//~ For more details please see the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+//~ For more details please see the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 //~
 //~ ##### Notations
 //~
@@ -102,7 +102,7 @@ use std::{array, marker::PhantomData};
 /// Compute non-zero intermediate products
 ///
 /// For more details see the "Intermediate products" Section of
-/// the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+/// the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 ///
 pub fn compute_intermediate_products<F: PrimeField, T: ExprOps<F>>(
     left_input: &[T; 3],

@@ -1217,7 +1217,7 @@ left_input * right_input = quotient * foreign_field_modulus + remainder
 
 ##### Documentation
 
-For more details please see the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+For more details please see the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 
 ##### Notations
 
