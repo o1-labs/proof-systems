@@ -1,6 +1,6 @@
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr},
+        expr::{prologue::*, Column, ConstantExpr, DomainPolynomial},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -604,12 +604,14 @@ pub fn constraints<F: FftField>(
     let mut res = vec![
         // the accumulator except for the last 4 rows
         // (contains the zk-rows and the last value of the accumulator)
-        E::VanishesOnLast4Rows * aggreg_equation,
+        E::from(DomainPolynomial::VanishesOnLast4Rows) * aggreg_equation,
         // the initial value of the accumulator
-        E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
-        // Check that the final value of the accumulator is 1
-        E::UnnormalizedLagrangeBasis(final_lookup_row)
+        E::from(DomainPolynomial::UnnormalizedLagrangeBasis(0))
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        // Check that the final value of the accumulator is 1
+        E::from(DomainPolynomial::UnnormalizedLagrangeBasis(
+            final_lookup_row,
+        )) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
     ];
 
     // checks that the snake is turning correctly
@@ -622,7 +624,7 @@ pub fn constraints<F: FftField>(
                 // Check compatibility of the first elements
                 0
             };
-            let mut expr = E::UnnormalizedLagrangeBasis(first_or_last)
+            let mut expr = E::from(DomainPolynomial::UnnormalizedLagrangeBasis(first_or_last))
                 * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)));
             if generate_feature_flags {
                 expr = E::IfFeature(
