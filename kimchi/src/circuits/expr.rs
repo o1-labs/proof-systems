@@ -7,7 +7,7 @@ use crate::{
             index::LookupSelectors,
             lookups::{LookupPattern, LookupPatterns},
         },
-        polynomials::permutation::eval_vanishes_on_last_4_rows,
+        polynomials::permutation::{eval_vanishes_on_last_4_rows, eval_zk_polynomial},
         wires::COLUMNS,
     },
     proof::{PointEvaluations, ProofEvaluations},
@@ -459,10 +459,13 @@ impl FeatureFlag {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DomainPolynomial {
+    /// The polynomial f(x) = x
+    X,
     VanishesOnLast4Rows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(i32),
+    ZeroKnowledge,
 }
 
 impl<C> From<DomainPolynomial> for Expr<C> {
@@ -765,8 +768,12 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
+                Polynomial(DomainPolynomial::X) => stack.push(pt),
                 Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
                     stack.push(eval_vanishes_on_last_4_rows(d, pt))
+                }
+                Polynomial(DomainPolynomial::ZeroKnowledge) => {
+                    stack.push(eval_zk_polynomial(d, pt))
                 }
                 Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
@@ -845,7 +852,9 @@ impl<C> Expr<C> {
         match self {
             Double(x) => x.degree(d1_size),
             Constant(_) => 0,
+            Polynomial(DomainPolynomial::X) => 1,
             Polynomial(DomainPolynomial::VanishesOnLast4Rows) => 4,
+            Polynomial(DomainPolynomial::ZeroKnowledge) => 3,
             Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(_)) => d1_size,
             Cell(_) => d1_size,
             Square(x) => 2 * x.degree(d1_size),
@@ -1583,9 +1592,11 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x - y)
             }
+            Polynomial(DomainPolynomial::X) => Ok(pt),
             Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
                 Ok(eval_vanishes_on_last_4_rows(d, pt))
             }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => Ok(eval_zk_polynomial(d, pt)),
             Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
                 Ok(unnormalized_lagrange_basis(&d, *i, &pt))
             }
@@ -1646,9 +1657,11 @@ impl<F: FftField> Expr<F> {
                 let y = (*y).evaluate(d, pt, evals)?;
                 Ok(x - y)
             }
+            Polynomial(DomainPolynomial::X) => Ok(pt),
             Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
                 Ok(eval_vanishes_on_last_4_rows(d, pt))
             }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => Ok(eval_zk_polynomial(d, pt)),
             Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
                 Ok(unnormalized_lagrange_basis(&d, *i, &pt))
             }
@@ -1783,11 +1796,13 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
+            Expr::Polynomial(DomainPolynomial::X) => todo!(),
             Expr::Polynomial(DomainPolynomial::VanishesOnLast4Rows) => EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: 0,
                 evals: env.vanishes_on_last_4_rows,
             },
+            Expr::Polynomial(DomainPolynomial::ZeroKnowledge) => todo!(),
             Expr::Constant(x) => EvalResult::Constant(*x),
             Expr::Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => EvalResult::Evals {
                 domain: d,
@@ -2479,12 +2494,14 @@ where
             Double(x) => format!("double({})", x.ocaml(cache)),
             Constant(x) => x.ocaml(),
             Cell(v) => format!("cell({})", v.ocaml()),
+            Polynomial(DomainPolynomial::X) => "zeta".to_string(),
             Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
                 format!("unnormalized_lagrange_basis({})", *i)
             }
             Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
                 "vanishes_on_last_4_rows".to_string()
             }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => "zk_poly".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
@@ -2532,12 +2549,14 @@ where
             Double(x) => format!("2 ({})", x.latex(cache)),
             Constant(x) => x.latex(),
             Cell(v) => v.latex(),
+            Polynomial(DomainPolynomial::X) => "zeta".to_string(),
             Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
                 format!("unnormalized\\_lagrange\\_basis({})", *i)
             }
             Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
                 "vanishes\\_on\\_last\\_4\\_rows".to_string()
             }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => "zk\\_poly".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
@@ -2559,12 +2578,14 @@ where
             Double(x) => format!("double({})", x.text(cache)),
             Constant(x) => x.text(),
             Cell(v) => v.text(),
+            Polynomial(DomainPolynomial::X) => "zeta".to_string(),
             Polynomial(DomainPolynomial::UnnormalizedLagrangeBasis(i)) => {
                 format!("unnormalized_lagrange_basis({})", *i)
             }
             Polynomial(DomainPolynomial::VanishesOnLast4Rows) => {
                 "vanishes_on_last_4_rows".to_string()
             }
+            Polynomial(DomainPolynomial::ZeroKnowledge) => "zk_poly".to_string(),
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
