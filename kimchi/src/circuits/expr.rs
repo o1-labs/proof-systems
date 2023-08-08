@@ -63,6 +63,8 @@ pub struct Constants<F: 'static> {
     /// The challenge joint_combiner which is used to combine
     /// joint lookup tables.
     pub joint_combiner: Option<F>,
+    /// The constants used in the permutation argument
+    pub sigma: Vec<F>,
     /// The endomorphism coefficient
     pub endo_coefficient: F,
     /// The MDS matrix
@@ -269,6 +271,8 @@ pub enum ConstantExpr<F> {
     Beta,
     Gamma,
     JointCombiner,
+    // TODO: Factor this out to its own enum
+    Sigma(usize),
     // TODO: EndoCoefficient and Mds differ from the other 4 base constants in
     // that they are known at compile time. This should be extracted out into two
     // separate constant expression types.
@@ -290,6 +294,7 @@ impl<F: Copy> ConstantExpr<F> {
             ConstantExpr::Beta => res.push(PolishToken::Beta),
             ConstantExpr::Gamma => res.push(PolishToken::Gamma),
             ConstantExpr::JointCombiner => res.push(PolishToken::JointCombiner),
+            ConstantExpr::Sigma(i) => res.push(PolishToken::Sigma(*i)),
             ConstantExpr::EndoCoefficient => res.push(PolishToken::EndoCoefficient),
             ConstantExpr::Mds { row, col } => res.push(PolishToken::Mds {
                 row: *row,
@@ -340,6 +345,7 @@ impl<F: Field> ConstantExpr<F> {
             Beta => c.beta,
             Gamma => c.gamma,
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
+            Sigma(i) => c.sigma[*i],
             EndoCoefficient => c.endo_coefficient,
             Mds { row, col } => c.mds[*row][*col],
             Literal(x) => *x,
@@ -645,6 +651,7 @@ pub enum PolishToken<F> {
     Beta,
     Gamma,
     JointCombiner,
+    Sigma(usize),
     EndoCoefficient,
     Mds {
         row: usize,
@@ -766,6 +773,7 @@ impl<F: FftField> PolishToken<F> {
                 JointCombiner => {
                     stack.push(c.joint_combiner.expect("no joint lookup was expected"))
                 }
+                Sigma(i) => stack.push(c.sigma[*i]),
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
                 Polynomial(DomainPolynomial::X) => stack.push(pt),
@@ -2407,6 +2415,7 @@ where
             Beta => "beta".to_string(),
             Gamma => "gamma".to_string(),
             JointCombiner => "joint_combiner".to_string(),
+            Sigma(i) => format!("sigma({i})"),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
@@ -2427,6 +2436,7 @@ where
             Beta => "\\beta".to_string(),
             Gamma => "\\gamma".to_string(),
             JointCombiner => "joint\\_combiner".to_string(),
+            Sigma(i) => format!("sigma_{{{i}}}"),
             EndoCoefficient => "endo\\_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
@@ -2447,6 +2457,7 @@ where
             Beta => "beta".to_string(),
             Gamma => "gamma".to_string(),
             JointCombiner => "joint_combiner".to_string(),
+            Sigma(i) => format!("sigma({i})"),
             EndoCoefficient => "endo_coefficient".to_string(),
             Mds { row, col } => format!("mds({row}, {col})"),
             Literal(x) => format!("0x{}", x.to_hex()),
@@ -2990,6 +3001,7 @@ pub mod test {
                 beta: one,
                 gamma: one,
                 joint_combiner: None,
+                sigma: index.cs.shift.iter().cloned().collect(),
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
             },
