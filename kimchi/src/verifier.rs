@@ -347,51 +347,6 @@ where
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
-            let zkp = index.zkpm().evaluate(&zeta);
-            let zeta1m1 = zeta1 - G::ScalarField::one();
-
-            let mut alpha_powers =
-                all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-            let alpha0 = alpha_powers
-                .next()
-                .expect("missing power of alpha for permutation");
-            let alpha1 = alpha_powers
-                .next()
-                .expect("missing power of alpha for permutation");
-            let alpha2 = alpha_powers
-                .next()
-                .expect("missing power of alpha for permutation");
-
-            let init = (evals.w[PERMUTS - 1].zeta + gamma) * evals.z.zeta_omega * alpha0 * zkp;
-            let mut ft_eval0 = evals
-                .w
-                .iter()
-                .zip(evals.s.iter())
-                .map(|(w, s)| (beta * s.zeta) + w.zeta + gamma)
-                .fold(init, |x, y| x * y);
-
-            ft_eval0 -= if public_evals[0].is_empty() {
-                G::ScalarField::zero()
-            } else {
-                public_evals[0][0]
-            };
-
-            ft_eval0 -= evals
-                .w
-                .iter()
-                .zip(index.shift.iter())
-                .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
-                .fold(alpha0 * zkp * evals.z.zeta, |x, y| x * y);
-
-            let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
-                + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
-                * (G::ScalarField::one() - evals.z.zeta);
-
-            let denominator = (zeta - index.w()) * (zeta - G::ScalarField::one());
-            let denominator = denominator.inverse().expect("negligible probability");
-
-            ft_eval0 += numerator * denominator;
-
             let constants = Constants {
                 alpha,
                 beta,
@@ -400,6 +355,28 @@ where
                 joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
+            };
+
+            let mut ft_eval0 = {
+                let alphas =
+                    all_alphas.get_exponents(ArgumentType::Permutation, permutation::CONSTRAINTS);
+                let expr = crate::circuits::expr::Expr::combine_constraints(
+                    alphas,
+                    permutation::constraints(),
+                );
+                let linearization = expr
+                    .linearize(crate::linearization::linearization_columns::<G::ScalarField>(None))
+                    .unwrap();
+                -linearization
+                    .constant_term
+                    .evaluate_(index.domain, zeta, &evals, &constants)
+                    .unwrap()
+            };
+
+            ft_eval0 -= if public_evals[0].is_empty() {
+                G::ScalarField::zero()
+            } else {
+                public_evals[0][0]
             };
 
             ft_eval0 -= PolishToken::evaluate(
