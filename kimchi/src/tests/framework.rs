@@ -100,7 +100,7 @@ where
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
-        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+        let runtime_tables_setup = mem::take(&mut self.runtime_tables_setup);
 
         let index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
