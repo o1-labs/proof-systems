@@ -5,7 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         expr::{self, l0_1, Constants, Environment},
         gate::GateType,
-        polynomials::{foreign_field_mul, generic, permutation},
+        polynomials::{generic, permutation},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -267,54 +267,6 @@ where
             let mut index_evals = HashMap::new();
             use GateType::*;
             index_evals.insert(Generic, &index.column_evaluations.generic_selector4);
-            index_evals.insert(Poseidon, &index.column_evaluations.poseidon_selector8);
-            index_evals.insert(
-                CompleteAdd,
-                &index.column_evaluations.complete_add_selector4,
-            );
-            index_evals.insert(VarBaseMul, &index.column_evaluations.mul_selector8);
-            index_evals.insert(EndoMul, &index.column_evaluations.emul_selector8);
-            index_evals.insert(
-                EndoMulScalar,
-                &index.column_evaluations.endomul_scalar_selector8,
-            );
-
-            if let Some(selector) = &index.column_evaluations.range_check0_selector8.as_ref() {
-                index_evals.insert(GateType::RangeCheck0, selector);
-            }
-
-            if let Some(selector) = &index.column_evaluations.range_check1_selector8.as_ref() {
-                index_evals.insert(GateType::RangeCheck1, selector);
-            }
-
-            if let Some(selector) = index
-                .column_evaluations
-                .foreign_field_add_selector8
-                .as_ref()
-            {
-                index_evals.insert(GateType::ForeignFieldAdd, selector);
-            }
-
-            if let Some(selector) = index
-                .column_evaluations
-                .foreign_field_mul_selector8
-                .as_ref()
-            {
-                index_evals.extend(
-                    foreign_field_mul::gadget::circuit_gates()
-                        .iter()
-                        .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, selector)),
-                );
-            }
-
-            if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
-                index_evals.insert(GateType::Xor16, selector);
-            }
-
-            if let Some(selector) = index.column_evaluations.rot_selector8.as_ref() {
-                index_evals.insert(GateType::Rot64, selector);
-            }
 
             let mds = &G::sponge_params().mds;
             Environment {
