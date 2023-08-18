@@ -289,17 +289,12 @@ where
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
-            if i == 0 {
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[0].clone(),
-                    index.cs.domain.d1,
-                )
-                .interpolate()
-            } else {
-                DensePolynomial::from_coefficients_vec(vec![])
-            }
-        });
+        let witness_poly: DensePolynomial<G::ScalarField> =
+            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                witness[0].clone(),
+                index.cs.domain.d1,
+            )
+            .interpolate();
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -388,7 +383,7 @@ where
             }),
             w: array::from_fn(|i| {
                 if i == 0 {
-                    let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
+                    let chunked = witness_poly.to_chunked_polynomial(index.max_poly_size);
                     PointEvaluations {
                         zeta: chunked.evaluate_chunks(zeta),
                         zeta_omega: chunked.evaluate_chunks(zeta_omega),
@@ -587,7 +582,7 @@ where
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((
-            coefficients_form(&witness_poly[0]),
+            coefficients_form(&witness_poly),
             None,
             w_comm[0].blinders.clone(),
         ));
