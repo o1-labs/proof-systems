@@ -79,7 +79,7 @@ where
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         groupmap: &G::Map,
-        witness: [Vec<G::ScalarField>; COLUMNS],
+        witness: Vec<G::ScalarField>,
         index: &ProverIndex<G>,
     ) -> Result<Self> {
         Self::create_recursive_public_input_only::<EFqSponge, EFrSponge>(
@@ -105,7 +105,7 @@ where
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         group_map: &G::Map,
-        mut witness: [Vec<G::ScalarField>; COLUMNS],
+        witness: Vec<G::ScalarField>,
         index: &ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
@@ -121,10 +121,28 @@ where
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
-        let length_witness = witness[0].len();
+        let length_witness = witness.len();
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
+
+        let mut witness: [Vec<G::ScalarField>; COLUMNS] = [
+            witness,
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+            vec![],
+        ];
 
         for w in &mut witness {
             if w.len() != length_witness {
@@ -938,7 +956,7 @@ fn test_public_input_only_prover() {
     let prover_index = index;
 
     let prover = prover_index;
-    let witness = std::array::from_fn(|_| vec![]);
+    let witness = vec![];
 
     let public_inputs = vec![Fq::zero()];
 
