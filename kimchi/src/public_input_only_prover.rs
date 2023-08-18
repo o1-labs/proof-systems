@@ -235,15 +235,15 @@ where
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
         let mut w_comm = vec![];
-        for col in 0..COLUMNS {
+        {
             // witness coeff -> witness eval
             let witness_eval =
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[col].clone(),
+                    witness[0].clone(),
                     index.cs.domain.d1,
                 );
 
-            let com = match blinders.as_ref().and_then(|b| b[col].as_ref()) {
+            let com = match blinders.as_ref().and_then(|b| b[0].as_ref()) {
                 // no blinders: blind the witness
                 None => index
                     .srs
@@ -263,6 +263,18 @@ where
 
             w_comm.push(com);
         }
+        for _ in 1..COLUMNS {
+            w_comm.push(BlindedCommitment {
+                commitment: PolyComm {
+                    unshifted: vec![index.srs.h],
+                    shifted: None,
+                },
+                blinders: PolyComm {
+                    unshifted: vec![G::ScalarField::one()],
+                    shifted: None,
+                },
+            });
+        }
 
         let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
             .try_into()
@@ -278,11 +290,15 @@ where
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
         let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[i].clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate()
+            if i == 0 {
+                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+                    witness[0].clone(),
+                    index.cs.domain.d1,
+                )
+                .interpolate()
+            } else {
+                DensePolynomial::from_coefficients_vec(vec![])
+            }
         });
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
