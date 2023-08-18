@@ -525,8 +525,7 @@ where
             shifted: None,
         };
 
-        let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
-        let evaluations_form = |e| DensePolynomialOrEvaluations::Evaluations(e, index.cs.domain.d1);
+        let coefficients_form = DensePolynomialOrEvaluations::<_, D<_>>::DensePolynomial;
 
         let mut polynomials = polys
             .iter()
@@ -571,13 +570,9 @@ where
         polynomials.extend(
             (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, fixed_hiding(1))),
         );
+        polynomials.push((coefficients_form(&one_polynomial), None, non_hiding(1)));
         polynomials.extend(
-            index
-                .column_evaluations
-                .coefficients8
-                .iter()
-                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(1)))
-                .collect::<Vec<_>>(),
+            (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, non_hiding(1))),
         );
         polynomials.extend(
             shifted_polys
