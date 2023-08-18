@@ -504,37 +504,12 @@ where
                 &index.column_evaluations.endomul_scalar_selector8,
             ),
 
-            range_check0_selector: index
-                .column_evaluations
-                .range_check0_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            range_check1_selector: index
-                .column_evaluations
-                .range_check1_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            foreign_field_add_selector: index
-                .column_evaluations
-                .foreign_field_add_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            foreign_field_mul_selector: index
-                .column_evaluations
-                .foreign_field_mul_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            xor_selector: index
-                .column_evaluations
-                .xor_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-            rot_selector: index
-                .column_evaluations
-                .rot_selector8
-                .as_ref()
-                .map(chunked_evals_for_selector),
-
+            range_check0_selector: None,
+            range_check1_selector: None,
+            foreign_field_add_selector: None,
+            foreign_field_mul_selector: None,
+            xor_selector: None,
+            rot_selector: None,
             runtime_lookup_table_selector: None,
             xor_lookup_selector: None,
             lookup_gate_lookup_selector: None,
@@ -758,54 +733,6 @@ where
                 .map(|w| (evaluations_form(w), None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
-
-        //~~ * the optional gates
-        if let Some(range_check0_selector8) =
-            index.column_evaluations.range_check0_selector8.as_ref()
-        {
-            polynomials.push((
-                evaluations_form(range_check0_selector8),
-                None,
-                non_hiding(1),
-            ));
-        }
-        if let Some(range_check1_selector8) =
-            index.column_evaluations.range_check1_selector8.as_ref()
-        {
-            polynomials.push((
-                evaluations_form(range_check1_selector8),
-                None,
-                non_hiding(1),
-            ));
-        }
-        if let Some(foreign_field_add_selector8) = index
-            .column_evaluations
-            .foreign_field_add_selector8
-            .as_ref()
-        {
-            polynomials.push((
-                evaluations_form(foreign_field_add_selector8),
-                None,
-                non_hiding(1),
-            ));
-        }
-        if let Some(foreign_field_mul_selector8) = index
-            .column_evaluations
-            .foreign_field_mul_selector8
-            .as_ref()
-        {
-            polynomials.push((
-                evaluations_form(foreign_field_mul_selector8),
-                None,
-                non_hiding(1),
-            ));
-        }
-        if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
-            polynomials.push((evaluations_form(xor_selector8), None, non_hiding(1)));
-        }
-        if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
-            polynomials.push((evaluations_form(rot_selector8), None, non_hiding(1)));
-        }
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         let proof = index.srs.open(
