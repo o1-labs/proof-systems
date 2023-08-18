@@ -337,51 +337,17 @@ where
 
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
-        let quotient_poly = {
-            // permutation
-            let (f, bnd) = {
-                let alphas =
-                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
-
-                check_constraint!(index, perm);
-
-                (perm.interpolate(), bnd)
-            };
-
-            // divide contributions with vanishing polynomial
-            let (mut quotient, res) = f
-                .divide_by_vanishing_poly(index.cs.domain.d1)
-                .ok_or(ProverError::Prover("division by vanishing polynomial"))?;
-            if !res.is_zero() {
-                return Err(ProverError::Prover(
-                    "rest of division by vanishing polynomial",
-                ));
-            }
-
-            quotient += &bnd; // already divided by Z_H
-            quotient
-        };
-
         //~ 1. commit (hiding) to the quotient polynomial $t$
         //~    TODO: specify the dummies
-        let t_comm = {
-            let mut t_comm = index.srs.commit(&quotient_poly, None, rng);
-
-            let expected_t_size = PERMUTS;
-            let dummies = expected_t_size - t_comm.commitment.unshifted.len();
-            // Add `dummies` many hiding commitments to the 0 polynomial, since if the
-            // number of commitments in `t_comm` is less than the max size, it means that
-            // the higher degree coefficients of `t` are 0.
-            for _ in 0..dummies {
-                let w = <G::ScalarField as UniformRand>::rand(rng);
-                t_comm
-                    .commitment
-                    .unshifted
-                    .push(index.srs.h.mul(w).into_affine());
-                t_comm.blinders.unshifted.push(w);
-            }
-            t_comm
+        let t_comm = BlindedCommitment {
+            commitment: PolyComm {
+                unshifted: vec![index.srs.h; 7],
+                shifted: None,
+            },
+            blinders: PolyComm {
+                unshifted: vec![G::ScalarField::one(); 7],
+                shifted: None,
+            },
         };
 
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
@@ -495,11 +461,7 @@ where
                     .linearize(zeta_to_srs_len)
             };
 
-            let t_chunked = quotient_poly
-                .to_chunked_polynomial(index.max_poly_size)
-                .linearize(zeta_to_srs_len);
-
-            &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())
+            f_chunked
         };
 
         //~ 1. construct the blinding part of the ft polynomial commitment
