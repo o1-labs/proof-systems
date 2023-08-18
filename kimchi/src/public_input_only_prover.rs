@@ -761,13 +761,21 @@ where
 
 #[test]
 fn test_public_input_only_prover() {
-    use crate::{circuits::constraints::ConstraintSystem, verifier::verify};
+    use crate::{
+        circuits::{
+            constraints::{ConstraintSystem, FeatureFlags},
+            domains::EvaluationDomains,
+            lookup::lookups::{LookupFeatures, LookupPatterns},
+        },
+        verifier::verify,
+    };
     use groupmap::GroupMap;
     use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
+    use once_cell::sync::OnceCell;
     use poly_commitment::{
         commitment::CommitmentCurve,
         srs::{endos, SRS},
@@ -799,11 +807,39 @@ fn test_public_input_only_prover() {
     let num_public_inputs = 1;
 
     let index = {
-        let cs = ConstraintSystem::<Fq>::create(gates)
-            .public(num_public_inputs)
-            .prev_challenges(num_prev_challenges)
-            .build()
-            .unwrap();
+        let domain = EvaluationDomains::<Fq>::create(gates.len() + num_public_inputs).unwrap();
+        let shifts = permutation::Shifts::new(&domain.d1);
+        let sid = shifts.map[0].clone();
+        let cs = ConstraintSystem {
+            domain,
+            public: num_public_inputs,
+            prev_challenges: num_prev_challenges,
+            sid,
+            gates,
+            shift: shifts.shifts,
+            endo: Fq::zero(),
+            lookup_constraint_system: None,
+            feature_flags: FeatureFlags {
+                range_check0: false,
+                range_check1: false,
+                lookup_features: LookupFeatures {
+                    patterns: LookupPatterns {
+                        xor: false,
+                        lookup: false,
+                        range_check: false,
+                        foreign_field_mul: false,
+                    },
+                    joint_lookup_used: false,
+                    uses_runtime_tables: false,
+                },
+                foreign_field_add: false,
+                foreign_field_mul: false,
+                xor: false,
+                rot: false,
+            },
+            precomputations: OnceCell::new(),
+            disable_gates_checks: false,
+        };
         let mut srs = SRS::<Pallas>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
@@ -812,7 +848,7 @@ fn test_public_input_only_prover() {
         ProverIndex::<Pallas>::create(cs, endo_q, srs)
     };
     println!(
-        "- time to create prover index: {:?}s",
+        "- time to create prover index: {:?}ms",
         start.elapsed().as_millis()
     );
 
@@ -837,7 +873,7 @@ fn test_public_input_only_prover() {
         None,
     )
     .unwrap();
-    println!("- time to create proof: {:?}s", start.elapsed().as_millis());
+    println!("- time to create proof: {:?}ms", start.elapsed().as_millis());
 
     // verify the proof (propagate any errors)
     let start = Instant::now();
