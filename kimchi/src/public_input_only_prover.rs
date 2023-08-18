@@ -586,12 +586,13 @@ where
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
+        polynomials.push((
+            coefficients_form(&witness_poly[0]),
+            None,
+            w_comm[0].blinders.clone(),
+        ));
         polynomials.extend(
-            witness_poly
-                .iter()
-                .zip(w_comm.iter())
-                .map(|(w, c)| (coefficients_form(w), None, c.blinders.clone()))
-                .collect::<Vec<_>>(),
+            (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, fixed_hiding(1))),
         );
         polynomials.extend(
             index
