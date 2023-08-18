@@ -365,38 +365,17 @@ where
             }
         };
 
-        let mut cache = expr::Cache::default();
-
         let quotient_poly = {
-            // generic
-            let t4 = {
-                let generic_constraint =
-                    generic::Generic::combined_constraints(&all_alphas, &mut cache);
-                let generic4 = generic_constraint.evaluations(&env);
-
-                if cfg!(debug_assertions) {
-                    let p4 = public_poly.evaluate_over_domain_by_ref(index.cs.domain.d4);
-                    let gen_minus_pub = &generic4 + &p4;
-
-                    check_constraint!(index, gen_minus_pub);
-                }
-
-                generic4
-            };
             // permutation
-            let (t8, bnd) = {
+            let (f, bnd) = {
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
                 let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
 
                 check_constraint!(index, perm);
 
-                (perm, bnd)
+                (perm.interpolate(), bnd)
             };
-
-            // public polynomial
-            let mut f = t4.interpolate() + t8.interpolate();
-            f += &public_poly;
 
             // divide contributions with vanishing polynomial
             let (mut quotient, res) = f
