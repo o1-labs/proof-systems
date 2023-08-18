@@ -93,7 +93,7 @@ where
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         group_map: &G::Map,
-        witness: Vec<G::ScalarField>,
+        mut witness: Vec<G::ScalarField>,
         index: &ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
@@ -113,33 +113,25 @@ where
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
+        witness.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
-        let mut witness: [Vec<G::ScalarField>; COLUMNS] = [
+        let witness: [Vec<G::ScalarField>; COLUMNS] = [
             witness,
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
-            vec![],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
+            vec![G::ScalarField::zero(); d1_size],
         ];
-
-        for w in &mut witness {
-            if w.len() != length_witness {
-                return Err(ProverError::WitnessCsInconsistent);
-            }
-
-            // padding
-            w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
-        }
 
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
@@ -792,8 +784,8 @@ fn test_public_input_only_prover() {
 
     let mut gate = || {
         let res = crate::circuits::gate::CircuitGate {
-            coeffs: vec![],
-            typ: crate::circuits::gate::GateType::Zero,
+            coeffs: vec![Fq::one()],
+            typ: crate::circuits::gate::GateType::Generic,
             wires: std::array::from_fn(|i| crate::circuits::wires::Wire { row: idx, col: i }),
         };
         idx += 1;
@@ -804,7 +796,7 @@ fn test_public_input_only_prover() {
 
     let num_prev_challenges = 0;
 
-    let num_public_inputs = 1;
+    let num_public_inputs = 2;
 
     let index = {
         let domain = EvaluationDomains::<Fq>::create(gates.len() + num_public_inputs).unwrap();
@@ -856,9 +848,8 @@ fn test_public_input_only_prover() {
     let prover_index = index;
 
     let prover = prover_index;
-    let witness = vec![];
 
-    let public_inputs = vec![Fq::zero()];
+    let public_inputs = vec![Fq::from(5u64), Fq::from(10u64)];
 
     // add the proof to the batch
     let start = Instant::now();
@@ -867,13 +858,16 @@ fn test_public_input_only_prover() {
 
     let proof = ProverProof::create_recursive_public_input_only::<BaseSponge, ScalarSponge>(
         &group_map,
-        witness,
+        public_inputs.clone(),
         &prover,
         vec![],
         None,
     )
     .unwrap();
-    println!("- time to create proof: {:?}ms", start.elapsed().as_millis());
+    println!(
+        "- time to create proof: {:?}ms",
+        start.elapsed().as_millis()
+    );
 
     // verify the proof (propagate any errors)
     let start = Instant::now();
