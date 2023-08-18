@@ -391,17 +391,16 @@ where
         let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
         let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
 
-        let chunked_evals_for_selector =
-            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate_boolean(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate_boolean(p)],
-            };
-
         let chunked_evals_for_evaluations =
             |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
                 zeta: vec![zeta_evals.evaluate(p)],
                 zeta_omega: vec![zeta_omega_evals.evaluate(p)],
             };
+
+        let constant_evals = |x| PointEvaluations {
+            zeta: vec![x],
+            zeta_omega: vec![x],
+        };
 
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             s: array::from_fn(|i| {
@@ -410,7 +409,11 @@ where
                 )
             }),
             coefficients: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
+                if i == 0 {
+                    constant_evals(G::ScalarField::one())
+                } else {
+                    constant_evals(G::ScalarField::zero())
+                }
             }),
             w: array::from_fn(|i| {
                 let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
@@ -420,32 +423,18 @@ where
                 }
             }),
 
-            z: {
-                let chunked = z_poly.to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            },
+            z: constant_evals(G::ScalarField::one()),
 
             lookup_aggregation: None,
             lookup_table: None,
             lookup_sorted: array::from_fn(|_| None),
             runtime_lookup_table: None,
-            generic_selector: chunked_evals_for_selector(
-                &index.column_evaluations.generic_selector4,
-            ),
-            poseidon_selector: chunked_evals_for_selector(
-                &index.column_evaluations.poseidon_selector8,
-            ),
-            complete_add_selector: chunked_evals_for_selector(
-                &index.column_evaluations.complete_add_selector4,
-            ),
-            mul_selector: chunked_evals_for_selector(&index.column_evaluations.mul_selector8),
-            emul_selector: chunked_evals_for_selector(&index.column_evaluations.emul_selector8),
-            endomul_scalar_selector: chunked_evals_for_selector(
-                &index.column_evaluations.endomul_scalar_selector8,
-            ),
+            generic_selector: constant_evals(G::ScalarField::one()),
+            poseidon_selector: constant_evals(G::ScalarField::zero()),
+            complete_add_selector: constant_evals(G::ScalarField::zero()),
+            mul_selector: constant_evals(G::ScalarField::zero()),
+            emul_selector: constant_evals(G::ScalarField::zero()),
+            endomul_scalar_selector: constant_evals(G::ScalarField::zero()),
 
             range_check0_selector: None,
             range_check1_selector: None,
