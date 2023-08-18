@@ -833,12 +833,19 @@ fn test_public_input_only_prover() {
         start.elapsed().as_millis()
     );
 
+    let start = Instant::now();
+
     let verifier_index = verifier_index::<Pallas>(
         index.srs.clone(),
         domain,
         num_public_inputs,
         num_prev_challenges,
     );
+    println!(
+        "- time to create verifier index: {:?}ms",
+        start.elapsed().as_millis()
+    );
+
     let prover_index = index;
 
     let prover = prover_index;
