@@ -371,10 +371,14 @@ where
                 }
             }),
             w: array::from_fn(|i| {
-                let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                if i == 0 {
+                    let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
+                    PointEvaluations {
+                        zeta: chunked.evaluate_chunks(zeta),
+                        zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                    }
+                } else {
+                    constant_evals(G::ScalarField::zero())
                 }
             }),
 
