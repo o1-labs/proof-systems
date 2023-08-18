@@ -244,8 +244,7 @@ where
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        //~ 1. Compute the permutation aggregation polynomial $z$.
-        let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
+        let z_poly = DensePolynomial::from_coefficients_vec(vec![G::ScalarField::one()]);
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = index.srs.commit(&z_poly, None, rng);
