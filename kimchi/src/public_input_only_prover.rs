@@ -3,8 +3,11 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
+        constraints::FeatureFlags,
+        domains::EvaluationDomains,
         expr::{self, l0_1, Constants, Environment},
         gate::GateType,
+        lookup::lookups::{LookupFeatures, LookupPatterns},
         polynomials::{generic, permutation},
         wires::{COLUMNS, PERMUTS},
     },
@@ -16,6 +19,7 @@ use crate::{
         PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
     },
     prover_index::ProverIndex,
+    verifier_index::VerifierIndex,
 };
 use ark_ec::ProjectiveCurve;
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
@@ -25,12 +29,15 @@ use ark_poly::{
 };
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial as _;
+use once_cell::sync::OnceCell;
 use poly_commitment::{
     commitment::{absorb_commitment, b_poly_coefficients, BlindedCommitment, PolyComm},
     evaluation_proof::DensePolynomialOrEvaluations,
+    srs::{endos, SRS},
 };
 use std::array;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
@@ -51,6 +58,76 @@ macro_rules! check_constraint {
             }
         }
     }};
+}
+
+pub fn verifier_index<G: KimchiCurve>(
+    srs: Arc<SRS<G>>,
+    domain: EvaluationDomains<G::ScalarField>,
+    num_public_inputs: usize,
+    num_prev_challenges: usize,
+) -> VerifierIndex<G> {
+    let shifts = permutation::Shifts::new(&domain.d1);
+    let (endo_q, _endo_r) = endos::<G::OtherCurve>();
+    let feature_flags = FeatureFlags {
+        range_check0: false,
+        range_check1: false,
+        lookup_features: LookupFeatures {
+            patterns: LookupPatterns {
+                xor: false,
+                lookup: false,
+                range_check: false,
+                foreign_field_mul: false,
+            },
+            joint_lookup_used: false,
+            uses_runtime_tables: false,
+        },
+        foreign_field_add: false,
+        foreign_field_mul: false,
+        xor: false,
+        rot: false,
+    };
+    let (linearization, powers_of_alpha) =
+        crate::linearization::expr_linearization(Some(&feature_flags), true);
+
+    let make_comm = |comm| PolyComm {
+        unshifted: vec![comm],
+        shifted: None,
+    };
+    VerifierIndex {
+        domain: domain.d1,
+        max_poly_size: srs.g.len(),
+        srs: srs.clone().into(),
+        public: num_public_inputs,
+        prev_challenges: num_prev_challenges,
+
+        sigma_comm: array::from_fn(|i| PolyComm {
+            unshifted: vec![srs.g[1].mul(shifts.shifts[i]).into_affine()],
+            shifted: None,
+        }),
+        coefficients_comm: array::from_fn(|i| make_comm(if i == 0 { srs.g[0] } else { G::zero() })),
+        generic_comm: make_comm(srs.g[0] + srs.h),
+        psm_comm: make_comm(srs.h),
+        complete_add_comm: make_comm(srs.h),
+        mul_comm: make_comm(srs.h),
+        emul_comm: make_comm(srs.h),
+        endomul_scalar_comm: make_comm(srs.h),
+
+        range_check0_comm: None,
+        range_check1_comm: None,
+        foreign_field_add_comm: None,
+        foreign_field_mul_comm: None,
+        xor_comm: None,
+        rot_comm: None,
+
+        shift: shifts.shifts.clone(),
+        zkpm: OnceCell::new(),
+        w: OnceCell::new(),
+        endo: endo_q,
+        lookup_index: None,
+
+        linearization,
+        powers_of_alpha,
+    }
 }
 
 impl<G: KimchiCurve> ProverProof<G>
@@ -766,7 +843,12 @@ fn test_public_input_only_prover() {
         start.elapsed().as_millis()
     );
 
-    let verifier_index = index.verifier_index();
+    let verifier_index = verifier_index::<Pallas>(
+        index.srs.clone(),
+        domain,
+        num_public_inputs,
+        num_prev_challenges,
+    );
     let prover_index = index;
 
     let prover = prover_index;
