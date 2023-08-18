@@ -2,13 +2,11 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentType},
+        argument::ArgumentType,
         constraints::FeatureFlags,
         domains::EvaluationDomains,
-        expr::{self, l0_1, Constants, Environment},
-        gate::GateType,
         lookup::lookups::{LookupFeatures, LookupPatterns},
-        polynomials::{generic, permutation},
+        polynomials::permutation,
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -35,7 +33,6 @@ use poly_commitment::{
     srs::{endos, SRS},
 };
 use std::array;
-use std::collections::HashMap;
 use std::sync::Arc;
 
 /// The result of a proof creation or verification.
@@ -339,31 +336,6 @@ where
         //~    TODO: specify the split of the permutation polynomial into perm and bnd?
 
         let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
-        let env = {
-            let mut index_evals = HashMap::new();
-            use GateType::*;
-            index_evals.insert(Generic, &index.column_evaluations.generic_selector4);
-
-            let mds = &G::sponge_params().mds;
-            Environment {
-                constants: Constants {
-                    alpha,
-                    beta,
-                    gamma,
-                    joint_combiner: None,
-                    endo_coefficient: index.cs.endo,
-                    mds,
-                },
-                witness: &lagrange.d8.this.w,
-                coefficient: &index.column_evaluations.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
-                z: &lagrange.d8.this.z,
-                l0_1: l0_1(index.cs.domain.d1),
-                domain: index.cs.domain,
-                index: index_evals,
-                lookup: None,
-            }
-        };
 
         let quotient_poly = {
             // permutation
@@ -512,24 +484,11 @@ where
         //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
         let ft: DensePolynomial<G::ScalarField> = {
             let f_chunked = {
-                // TODO: compute the linearization polynomial in evaluation form so
-                // that we can drop the coefficient forms of the index polynomials from
-                // the constraint system struct
-
-                // permutation (not part of linearization yet)
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let f = index.perm_lnrz(&evals, zeta, beta, gamma, alphas);
-
-                // the circuit polynomial
-                let f = {
-                    let (_lin_constant, mut lin) =
-                        index.linearization.to_polynomial(&env, zeta, &evals);
-                    lin += &f;
-                    lin.interpolate()
-                };
-
-                drop(env);
+                let f = index
+                    .perm_lnrz(&evals, zeta, beta, gamma, alphas)
+                    .interpolate();
 
                 // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
                 f.to_chunked_polynomial(index.max_poly_size)
