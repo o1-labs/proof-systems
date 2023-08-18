@@ -403,10 +403,9 @@ where
         };
 
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
-            s: array::from_fn(|i| {
-                chunked_evals_for_evaluations(
-                    &index.column_evaluations.permutation_coefficients8[i],
-                )
+            s: array::from_fn(|i| PointEvaluations {
+                zeta: vec![zeta * index.cs.shift[i]],
+                zeta_omega: vec![zeta_omega * index.cs.shift[i]],
             }),
             coefficients: array::from_fn(|i| {
                 if i == 0 {
@@ -611,39 +610,23 @@ where
         //~~ * the poseidon selector
         //~~ * the 15 registers/witness columns
         //~~ * the 6 sigmas
+        let one_polynomial = DensePolynomial::from_coefficients_vec(vec![G::ScalarField::one()]);
+        let zero_polynomial = DensePolynomial::from_coefficients_vec(vec![]);
+        let shifted_polys: Vec<_> = (index.cs.shift)
+            .iter()
+            .map(|shift| {
+                DensePolynomial::from_coefficients_vec(vec![G::ScalarField::zero(), *shift])
+            })
+            .collect();
         polynomials.push((coefficients_form(&public_poly), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
         polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.generic_selector4),
-            None,
-            fixed_hiding(1),
-        ));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.poseidon_selector8),
-            None,
-            fixed_hiding(1),
-        ));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.complete_add_selector4),
-            None,
-            fixed_hiding(1),
-        ));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.mul_selector8),
-            None,
-            fixed_hiding(1),
-        ));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.emul_selector8),
-            None,
-            fixed_hiding(1),
-        ));
-        polynomials.push((
-            evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
-            None,
-            fixed_hiding(1),
-        ));
+        polynomials.push((coefficients_form(&one_polynomial), None, fixed_hiding(1)));
+        polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
+        polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
+        polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
+        polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
+        polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.extend(
             witness_poly
                 .iter()
@@ -660,9 +643,10 @@ where
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
-            index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
+            shifted_polys
                 .iter()
-                .map(|w| (evaluations_form(w), None, non_hiding(1)))
+                .take(PERMUTS - 1)
+                .map(|w| (coefficients_form(w), None, non_hiding(1)))
                 .collect::<Vec<_>>(),
         );
 
