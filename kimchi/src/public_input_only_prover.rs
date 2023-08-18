@@ -13,7 +13,6 @@ use crate::{
     },
     curve::KimchiCurve,
     error::ProverError,
-    lagrange_basis_evaluations::LagrangeBasisEvaluations,
     plonk_sponge::FrSponge,
     proof::{
         PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
@@ -464,15 +463,6 @@ where
         //~    $$(f_0(x), f_1(x), f_2(x), \ldots)$$
         //~
         //~    TODO: do we want to specify more on that? It seems unecessary except for the t polynomial (or if for some reason someone sets that to a low value)
-
-        let zeta_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta);
-        let zeta_omega_evals = LagrangeBasisEvaluations::new(index.cs.domain.d1, zeta_omega);
-
-        let chunked_evals_for_evaluations =
-            |p: &Evaluations<G::ScalarField, D<G::ScalarField>>| PointEvaluations {
-                zeta: vec![zeta_evals.evaluate(p)],
-                zeta_omega: vec![zeta_omega_evals.evaluate(p)],
-            };
 
         let constant_evals = |x| PointEvaluations {
             zeta: vec![x],
