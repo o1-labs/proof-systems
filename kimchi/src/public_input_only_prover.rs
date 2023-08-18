@@ -12,7 +12,6 @@ use crate::{
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
-            permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
@@ -122,29 +121,11 @@ where
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
-        // Verify the circuit satisfiability by the computed witness (baring plookup constraints)
-        // Catch mistakes before proof generation.
-        if cfg!(debug_assertions) && !index.cs.disable_gates_checks {
-            let public = witness[0][0..index.cs.public].to_vec();
-            index.verify(&witness, &public).expect("incorrect witness");
-        }
-
-        //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
-        //~    We currently expect the witness not to be of the same length as the domain,
-        //~    but instead be of the length of the (smaller) circuit.
-        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
-        //~    the size of the domain, abort.
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        if length_padding < ZK_ROWS as usize {
-            return Err(ProverError::NoRoomForZkInWitness);
-        }
-
-        //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-        //~    Then, randomize the last `ZK_ROWS` of each columns.
         for w in &mut witness {
             if w.len() != length_witness {
                 return Err(ProverError::WitnessCsInconsistent);
@@ -152,11 +133,6 @@ where
 
             // padding
             w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
-
-            // zk-rows
-            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
-                *row = <G::ScalarField as UniformRand>::rand(rng);
-            }
         }
 
         //~ 1. Setup the Fq-Sponge.
