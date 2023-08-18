@@ -19,7 +19,7 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_ec::ProjectiveCurve;
-use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
     Radix2EvaluationDomain as D, UVPolynomial,
@@ -37,24 +37,6 @@ use std::sync::Arc;
 
 /// The result of a proof creation or verification.
 type Result<T> = std::result::Result<T, ProverError>;
-
-/// Helper to quickly test if a witness satisfies a constraint
-macro_rules! check_constraint {
-    ($index:expr, $evaluation:expr) => {{
-        check_constraint!($index, stringify!($evaluation), $evaluation);
-    }};
-    ($index:expr, $label:expr, $evaluation:expr) => {{
-        if cfg!(debug_assertions) {
-            let (_, res) = $evaluation
-                .interpolate_by_ref()
-                .divide_by_vanishing_poly($index.cs.domain.d1)
-                .unwrap();
-            if !res.is_zero() {
-                panic!("couldn't divide by vanishing polynomial: {}", $label);
-            }
-        }
-    }};
-}
 
 pub fn verifier_index<G: KimchiCurve>(
     srs: Arc<SRS<G>>,
@@ -326,16 +308,6 @@ where
         //~ 1. TODO: instantiate alpha?
         let mut all_alphas = index.powers_of_alpha.clone();
         all_alphas.instantiate(alpha);
-
-        //~ 1. Compute the quotient polynomial (the $t$ in $f = Z_H \cdot t$).
-        //~    The quotient polynomial is computed by adding all these polynomials together:
-        //~~ * the combined constraints for all the gates
-        //~~ * the combined constraints for the permutation
-        //~~ * the negated public polynomial
-        //~    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
-        //~    TODO: specify the split of the permutation polynomial into perm and bnd?
-
-        let lagrange = index.cs.evaluate(&witness_poly, &z_poly);
 
         //~ 1. commit (hiding) to the quotient polynomial $t$
         //~    TODO: specify the dummies
