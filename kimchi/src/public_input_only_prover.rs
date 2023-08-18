@@ -761,15 +761,18 @@ where
 
 #[test]
 fn test_public_input_only_prover() {
-    use crate::{prover_index::testing::new_index_for_test_with_lookups, verifier::verify};
+    use crate::{circuits::constraints::ConstraintSystem, verifier::verify};
     use groupmap::GroupMap;
-    use mina_curves::pasta::{Fq, Pallas, PallasParameters};
+    use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
-    use poly_commitment::commitment::CommitmentCurve;
-    use std::time::Instant;
+    use poly_commitment::{
+        commitment::CommitmentCurve,
+        srs::{endos, SRS},
+    };
+    use std::{sync::Arc, time::Instant};
 
     type SpongeParams = PlonkSpongeConstantsKimchi;
     type BaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
@@ -795,14 +798,19 @@ fn test_public_input_only_prover() {
 
     let num_public_inputs = 1;
 
-    let index = new_index_for_test_with_lookups::<Pallas>(
-        gates,
-        num_public_inputs,
-        num_prev_challenges,
-        vec![],
-        None,
-        false,
-    );
+    let index = {
+        let cs = ConstraintSystem::<Fq>::create(gates)
+            .public(num_public_inputs)
+            .prev_challenges(num_prev_challenges)
+            .build()
+            .unwrap();
+        let mut srs = SRS::<Pallas>::create(cs.domain.d1.size());
+        srs.add_lagrange_basis(cs.domain.d1);
+        let srs = Arc::new(srs);
+
+        let (endo_q, _endo_r) = endos::<Vesta>();
+        ProverIndex::<Pallas>::create(cs, endo_q, srs)
+    };
     println!(
         "- time to create prover index: {:?}s",
         start.elapsed().as_millis()
