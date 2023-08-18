@@ -5,19 +5,7 @@ use crate::{
         argument::{Argument, ArgumentType},
         expr::{self, l0_1, Constants, Environment},
         gate::GateType,
-        polynomials::{
-            complete_add::CompleteAdd,
-            endomul_scalar::EndomulScalar,
-            endosclmul::EndosclMul,
-            foreign_field_add::circuitgates::ForeignFieldAdd,
-            foreign_field_mul::{self, circuitgates::ForeignFieldMul},
-            generic, permutation,
-            poseidon::Poseidon,
-            range_check::circuitgates::{RangeCheck0, RangeCheck1},
-            rot::Rot64,
-            varbasemul::VarbaseMul,
-            xor::Xor16,
-        },
+        polynomials::{foreign_field_mul, generic, permutation},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -362,7 +350,7 @@ where
 
         let quotient_poly = {
             // generic
-            let mut t4 = {
+            let t4 = {
                 let generic_constraint =
                     generic::Generic::combined_constraints(&all_alphas, &mut cache);
                 let generic4 = generic_constraint.evaluations(&env);
@@ -377,7 +365,7 @@ where
                 generic4
             };
             // permutation
-            let (mut t8, bnd) = {
+            let (t8, bnd) = {
                 let alphas =
                     all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
                 let (perm, bnd) = index.perm_quot(&lagrange, beta, gamma, &z_poly, alphas)?;
@@ -385,64 +373,6 @@ where
                 check_constraint!(index, perm);
 
                 (perm, bnd)
-            };
-
-            {
-                use crate::circuits::argument::DynArgument;
-
-                let range_check0_enabled =
-                    index.column_evaluations.range_check0_selector8.is_some();
-                let range_check1_enabled =
-                    index.column_evaluations.range_check1_selector8.is_some();
-                let foreign_field_addition_enabled = index
-                    .column_evaluations
-                    .foreign_field_add_selector8
-                    .is_some();
-                let foreign_field_multiplication_enabled = index
-                    .column_evaluations
-                    .foreign_field_mul_selector8
-                    .is_some();
-                let xor_enabled = index.column_evaluations.xor_selector8.is_some();
-                let rot_enabled = index.column_evaluations.rot_selector8.is_some();
-
-                for gate in [
-                    (
-                        (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
-                        true,
-                    ),
-                    (&VarbaseMul::default(), true),
-                    (&EndosclMul::default(), true),
-                    (&EndomulScalar::default(), true),
-                    (&Poseidon::default(), true),
-                    // Range check gates
-                    (&RangeCheck0::default(), range_check0_enabled),
-                    (&RangeCheck1::default(), range_check1_enabled),
-                    // Foreign field addition gate
-                    (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
-                    // Foreign field multiplication gate
-                    (
-                        &ForeignFieldMul::default(),
-                        foreign_field_multiplication_enabled,
-                    ),
-                    // Xor gate
-                    (&Xor16::default(), xor_enabled),
-                    // Rot gate
-                    (&Rot64::default(), rot_enabled),
-                ]
-                .into_iter()
-                .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
-                {
-                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
-                    let eval = constraint.evaluations(&env);
-                    if eval.domain().size == t4.domain().size {
-                        t4 += &eval;
-                    } else if eval.domain().size == t8.domain().size {
-                        t8 += &eval;
-                    } else {
-                        panic!("Bad evaluation")
-                    }
-                    check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
-                }
             };
 
             // public polynomial
