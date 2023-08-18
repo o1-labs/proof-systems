@@ -170,24 +170,6 @@ where
             .ok_or(ProverError::NoRoomForZkInWitness)?;
         witness.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
-        let witness: [Vec<G::ScalarField>; COLUMNS] = [
-            witness,
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-            vec![G::ScalarField::zero(); d1_size],
-        ];
-
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
@@ -203,7 +185,7 @@ where
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
         //~    and $0$ for the rest.
-        let public = witness[0][0..index.cs.public].to_vec();
+        let public = witness[0..index.cs.public].to_vec();
         let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
             public,
             index.cs.domain.d1,
@@ -239,7 +221,7 @@ where
             // witness coeff -> witness eval
             let witness_eval =
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness[0].clone(),
+                    witness.clone(),
                     index.cs.domain.d1,
                 );
 
@@ -291,7 +273,7 @@ where
         //~    0 entries and entries that have less-than-full-size field elemnts.)
         let witness_poly: DensePolynomial<G::ScalarField> =
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness[0].clone(),
+                witness.clone(),
                 index.cs.domain.d1,
             )
             .interpolate();
