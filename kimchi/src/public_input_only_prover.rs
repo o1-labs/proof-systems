@@ -780,26 +780,23 @@ fn test_public_input_only_prover() {
 
     let start = Instant::now();
 
-    let mut idx = 0;
+    let num_prev_challenges = 0;
 
-    let mut gate = || {
-        let res = crate::circuits::gate::CircuitGate {
+    let num_public_inputs = 4;
+
+    let domain = EvaluationDomains::<Fq>::create(num_public_inputs).unwrap();
+
+    let mut gates = Vec::with_capacity(domain.d1.size());
+
+    for idx in 0..domain.d1.size() {
+        gates.push(crate::circuits::gate::CircuitGate {
             coeffs: vec![Fq::one()],
             typ: crate::circuits::gate::GateType::Generic,
             wires: std::array::from_fn(|i| crate::circuits::wires::Wire { row: idx, col: i }),
-        };
-        idx += 1;
-        res
-    };
-
-    let gates = vec![gate(), gate()];
-
-    let num_prev_challenges = 0;
-
-    let num_public_inputs = 2;
+        });
+    }
 
     let index = {
-        let domain = EvaluationDomains::<Fq>::create(gates.len() + num_public_inputs).unwrap();
         let shifts = permutation::Shifts::new(&domain.d1);
         let sid = shifts.map[0].clone();
         let cs = ConstraintSystem {
@@ -849,7 +846,12 @@ fn test_public_input_only_prover() {
 
     let prover = prover_index;
 
-    let public_inputs = vec![Fq::from(5u64), Fq::from(10u64)];
+    let public_inputs = vec![
+        Fq::from(5u64),
+        Fq::from(10u64),
+        Fq::from(15u64),
+        Fq::from(20u64),
+    ];
 
     // add the proof to the batch
     let start = Instant::now();
