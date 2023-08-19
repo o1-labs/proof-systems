@@ -284,10 +284,17 @@ where
         //~ 1. Sample $\gamma$ with the Fq-Sponge.
         let gamma = fq_sponge.challenge();
 
-        let z_poly = DensePolynomial::from_coefficients_vec(vec![G::ScalarField::one()]);
-
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
-        let z_comm = index.srs.commit(&z_poly, None, rng);
+        let z_comm = BlindedCommitment {
+            commitment: PolyComm {
+                unshifted: vec![index.srs.g[0]],
+                shifted: None,
+            },
+            blinders: PolyComm {
+                unshifted: vec![G::ScalarField::zero()],
+                shifted: None,
+            },
+        };
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
@@ -550,7 +557,7 @@ where
         // ft polynomial
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
         // permutation aggregation polynomial
-        polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
+        polynomials.push((coefficients_form(&one_polynomial), None, z_comm.blinders));
         // generic selector
         polynomials.push((coefficients_form(&one_polynomial), None, fixed_hiding(1)));
         // other selectors
