@@ -366,19 +366,19 @@ where
         //~ 1. Compute the ft polynomial.
         //~    This is to implement [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html).
         let ft: DensePolynomial<G::ScalarField> = {
-            let f_chunked = {
-                let alphas =
-                    all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
-                let f = index
-                    .perm_lnrz(&evals, zeta, beta, gamma, alphas)
-                    .interpolate();
-
-                // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
-                f.to_chunked_polynomial(index.max_poly_size)
-                    .linearize(zeta_to_srs_len)
-            };
-
-            f_chunked
+            let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
+            let scalar =
+                crate::circuits::constraints::ConstraintSystem::<G::ScalarField>::perm_scalars(
+                    &evals,
+                    beta,
+                    gamma,
+                    alphas,
+                    permutation::eval_zk_polynomial(index.cs.domain.d1, zeta),
+                );
+            DensePolynomial::from_coefficients_vec(vec![
+                G::ScalarField::zero(),
+                scalar * index.cs.shift[PERMUTS - 1],
+            ])
         };
 
         //~ 1. construct the blinding part of the ft polynomial commitment
