@@ -166,7 +166,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub lookup_constraint_system: Option<LookupConstraintSystem<F>>,
     /// precomputes
     #[serde(skip)]
-    pub(crate) precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
+    precomputations: OnceCell<Arc<DomainConstantEvaluations<F>>>,
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
