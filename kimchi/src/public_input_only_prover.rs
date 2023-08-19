@@ -232,19 +232,13 @@ where
         let gamma = fq_sponge.challenge();
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
-        let z_comm = BlindedCommitment {
-            commitment: PolyComm {
-                unshifted: vec![index.srs.g[0]],
-                shifted: None,
-            },
-            blinders: PolyComm {
-                unshifted: vec![G::ScalarField::zero()],
-                shifted: None,
-            },
+        let z_comm = PolyComm {
+            unshifted: vec![index.srs.g[0]],
+            shifted: None,
         };
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
-        absorb_commitment(&mut fq_sponge, &z_comm.commitment);
+        absorb_commitment(&mut fq_sponge, &z_comm);
 
         //~ 1. Sample $\alpha'$ with the Fq-Sponge.
         let alpha_chal = ScalarChallenge(fq_sponge.challenge());
@@ -504,7 +498,7 @@ where
         // ft polynomial
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
         // permutation aggregation polynomial
-        polynomials.push((coefficients_form(&one_polynomial), None, z_comm.blinders));
+        polynomials.push((coefficients_form(&one_polynomial), None, non_hiding(1)));
         // generic selector
         polynomials.push((coefficients_form(&one_polynomial), None, fixed_hiding(1)));
         // other selectors
@@ -546,7 +540,7 @@ where
         Ok(Self {
             commitments: ProverCommitments {
                 w_comm,
-                z_comm: z_comm.commitment,
+                z_comm,
                 t_comm: t_comm.commitment,
                 lookup: None,
             },
