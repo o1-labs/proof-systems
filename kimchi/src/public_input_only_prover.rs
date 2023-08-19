@@ -130,7 +130,6 @@ where
             witness,
             index,
             Vec::new(),
-            None,
         )
     }
 
@@ -151,7 +150,6 @@ where
         mut witness: Vec<G::ScalarField>,
         index: &ProverIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
-        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
@@ -185,24 +183,24 @@ where
         //~ 1. Compute the negated public input polynomial as
         //~    the polynomial that evaluates to $-p_i$ for the first `public_input_size` values of the domain,
         //~    and $0$ for the rest.
-        let public = witness[0..index.cs.public].to_vec();
-        let public_poly = -Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-            public,
+        let witness_evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
+            witness,
             index.cs.domain.d1,
-        )
-        .interpolate();
+        );
+        let witness_com = index
+            .srs
+            .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_evals);
+        let witness_poly = witness_evals.interpolate();
+        let public_poly = -witness_poly.clone();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, None);
-        let public_comm = {
-            index
-                .srs
-                .mask_custom(
-                    public_comm.clone(),
-                    &public_comm.map(|_| G::ScalarField::one()),
-                )
-                .unwrap()
-                .commitment
+        let public_comm = witness_com.map(|x| index.srs.h + x.neg());
+        let witness_comm = BlindedCommitment {
+            commitment: witness_com.map(|x| x + index.srs.h),
+            blinders: PolyComm {
+                unshifted: vec![G::ScalarField::one()],
+                shifted: None,
+            },
         };
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
@@ -216,35 +214,7 @@ where
         //~
         //~    Note: since the witness is in evaluation form,
         //~    we can use the `commit_evaluation` optimization.
-        let mut w_comm = vec![];
-        {
-            // witness coeff -> witness eval
-            let witness_eval =
-                Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                    witness.clone(),
-                    index.cs.domain.d1,
-                );
-
-            let com = match blinders.as_ref().and_then(|b| b[0].as_ref()) {
-                // no blinders: blind the witness
-                None => index
-                    .srs
-                    .commit_evaluations(index.cs.domain.d1, &witness_eval, rng),
-                // blinders: blind the witness with them
-                Some(blinder) => {
-                    // TODO: make this a function rather no? mask_with_custom()
-                    let witness_com = index
-                        .srs
-                        .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_eval);
-                    index
-                        .srs
-                        .mask_custom(witness_com, blinder)
-                        .map_err(ProverError::WrongBlinders)?
-                }
-            };
-
-            w_comm.push(com);
-        }
+        let mut w_comm = vec![witness_comm];
         for _ in 1..COLUMNS {
             w_comm.push(BlindedCommitment {
                 commitment: PolyComm {
@@ -266,17 +236,6 @@ where
         w_comm
             .iter()
             .for_each(|c| absorb_commitment(&mut fq_sponge, &c.commitment));
-
-        //~ 1. Compute the witness polynomials by interpolating each `COLUMNS` of the witness.
-        //~    As mentioned above, we commit using the evaluations form rather than the coefficients
-        //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
-        //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: DensePolynomial<G::ScalarField> =
-            Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
-                witness.clone(),
-                index.cs.domain.d1,
-            )
-            .interpolate();
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -739,7 +698,6 @@ fn test_public_input_only_prover() {
         public_inputs.clone(),
         &prover,
         vec![],
-        None,
     )
     .unwrap();
     println!(
