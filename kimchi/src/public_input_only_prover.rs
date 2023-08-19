@@ -121,7 +121,7 @@ pub fn verifier_index<G: KimchiCurve>(
         xor_comm: None,
         rot_comm: None,
 
-        shift: shifts.shifts.clone(),
+        shift: shifts.shifts,
         zkpm: OnceCell::new(),
         w: OnceCell::new(),
         endo: endo_q,
@@ -248,7 +248,7 @@ where
 
         w_comm
             .iter()
-            .for_each(|c| absorb_commitment(&mut fq_sponge, &c));
+            .for_each(|c| absorb_commitment(&mut fq_sponge, c));
 
         let beta = fq_sponge.challenge();
         let gamma = fq_sponge.challenge();
