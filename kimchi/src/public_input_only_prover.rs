@@ -81,8 +81,8 @@ pub fn verifier_index<G: KimchiCurve>(
             unshifted: vec![srs.g[1].mul(shifts.shifts[i]).into_affine()],
             shifted: None,
         }),
-        coefficients_comm: array::from_fn(|i| make_comm(if i == 0 { srs.g[0] } else { G::zero() })),
-        generic_comm: make_comm(srs.g[0] + srs.h),
+        coefficients_comm: array::from_fn(|i| make_comm(if i == 0 { srs.g[0] } else { srs.h })),
+        generic_comm: make_comm(srs.g[0]),
         psm_comm: make_comm(srs.h),
         complete_add_comm: make_comm(srs.h),
         mul_comm: make_comm(srs.h),
@@ -497,7 +497,7 @@ where
         // permutation aggregation polynomial
         polynomials.push((coefficients_form(&one_polynomial), None, non_hiding(1)));
         // generic selector
-        polynomials.push((coefficients_form(&one_polynomial), None, fixed_hiding(1)));
+        polynomials.push((coefficients_form(&one_polynomial), None, non_hiding(1)));
         // other selectors
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
@@ -512,7 +512,7 @@ where
         // coefficients
         polynomials.push((coefficients_form(&one_polynomial), None, non_hiding(1)));
         polynomials.extend(
-            (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, non_hiding(1))),
+            (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, fixed_hiding(1))),
         );
         // permutation coefficients
         polynomials.extend(
