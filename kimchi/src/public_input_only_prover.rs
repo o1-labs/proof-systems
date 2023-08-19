@@ -195,13 +195,7 @@ where
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
         let public_comm = witness_com.map(|x| index.srs.h + x.neg());
-        let witness_comm = BlindedCommitment {
-            commitment: witness_com.map(|x| x + index.srs.h),
-            blinders: PolyComm {
-                unshifted: vec![G::ScalarField::one()],
-                shifted: None,
-            },
-        };
+        let witness_comm = witness_com.map(|x| x + index.srs.h);
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
@@ -216,26 +210,20 @@ where
         //~    we can use the `commit_evaluation` optimization.
         let mut w_comm = vec![witness_comm];
         for _ in 1..COLUMNS {
-            w_comm.push(BlindedCommitment {
-                commitment: PolyComm {
-                    unshifted: vec![index.srs.h],
-                    shifted: None,
-                },
-                blinders: PolyComm {
-                    unshifted: vec![G::ScalarField::one()],
-                    shifted: None,
-                },
+            w_comm.push(PolyComm {
+                unshifted: vec![index.srs.h],
+                shifted: None,
             });
         }
 
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+        let w_comm: [PolyComm<G>; COLUMNS] = w_comm
             .try_into()
             .expect("previous loop is of the correct length");
 
         //~ 1. Absorb the witness commitments with the Fq-Sponge.
         w_comm
             .iter()
-            .for_each(|c| absorb_commitment(&mut fq_sponge, &c.commitment));
+            .for_each(|c| absorb_commitment(&mut fq_sponge, &c));
 
         //~ 1. Sample $\beta$ with the Fq-Sponge.
         let beta = fq_sponge.challenge();
@@ -526,11 +514,7 @@ where
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         // witness columns
-        polynomials.push((
-            coefficients_form(&witness_poly),
-            None,
-            w_comm[0].blinders.clone(),
-        ));
+        polynomials.push((coefficients_form(&witness_poly), None, fixed_hiding(1)));
         polynomials.extend(
             (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, fixed_hiding(1))),
         );
@@ -561,7 +545,7 @@ where
 
         Ok(Self {
             commitments: ProverCommitments {
-                w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
+                w_comm,
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup: None,
