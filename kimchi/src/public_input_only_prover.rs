@@ -537,14 +537,6 @@ where
             shifted: None,
         };
 
-        //~ 1. Then, include:
-        //~~ * the negated public polynomial
-        //~~ * the ft polynomial
-        //~~ * the permutation aggregation polynomial z polynomial
-        //~~ * the generic selector
-        //~~ * the poseidon selector
-        //~~ * the 15 registers/witness columns
-        //~~ * the 6 sigmas
         let one_polynomial = DensePolynomial::from_coefficients_vec(vec![G::ScalarField::one()]);
         let zero_polynomial = DensePolynomial::from_coefficients_vec(vec![]);
         let shifted_polys: Vec<_> = (index.cs.shift)
@@ -553,15 +545,21 @@ where
                 DensePolynomial::from_coefficients_vec(vec![G::ScalarField::zero(), *shift])
             })
             .collect();
+        // public polynomial
         polynomials.push((coefficients_form(&public_poly), None, fixed_hiding(1)));
+        // ft polynomial
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
+        // permutation aggregation polynomial
         polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
+        // generic selector
         polynomials.push((coefficients_form(&one_polynomial), None, fixed_hiding(1)));
+        // other selectors
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
         polynomials.push((coefficients_form(&zero_polynomial), None, fixed_hiding(1)));
+        // witness columns
         polynomials.push((
             coefficients_form(&witness_poly),
             None,
@@ -570,10 +568,12 @@ where
         polynomials.extend(
             (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, fixed_hiding(1))),
         );
+        // coefficients
         polynomials.push((coefficients_form(&one_polynomial), None, non_hiding(1)));
         polynomials.extend(
             (1..COLUMNS).map(|_| (coefficients_form(&zero_polynomial), None, non_hiding(1))),
         );
+        // permutation coefficients
         polynomials.extend(
             shifted_polys
                 .iter()
