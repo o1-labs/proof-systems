@@ -15,7 +15,6 @@ use crate::{
     proof::{
         PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof, RecursionChallenge,
     },
-    prover_index::ProverIndex,
     verifier_index::VerifierIndex,
 };
 use ark_ec::ProjectiveCurve;
@@ -123,7 +122,7 @@ where
     >(
         groupmap: &G::Map,
         witness: Vec<G::ScalarField>,
-        index: &ProverIndex<G>,
+        index: &VerifierIndex<G>,
     ) -> Result<Self> {
         Self::create_recursive_public_input_only::<EFqSponge, EFrSponge>(
             groupmap,
@@ -148,16 +147,15 @@ where
     >(
         group_map: &G::Map,
         mut witness: Vec<G::ScalarField>,
-        index: &ProverIndex<G>,
+        index: &VerifierIndex<G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
     ) -> Result<Self> {
         // make sure that the SRS is not smaller than the domain size
-        let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_degree() < d1_size {
-            return Err(ProverError::SRSTooSmall);
-        }
+        let d1_size = index.domain.size();
 
         let (_, endo_r) = G::endos();
+
+        let srs = index.srs.get().unwrap();
 
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
@@ -172,7 +170,7 @@ where
         let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
-        let verifier_index_digest = index.verifier_index_digest::<EFqSponge>();
+        let verifier_index_digest = index.digest::<EFqSponge>();
         fq_sponge.absorb_fq(&[verifier_index_digest]);
 
         //~ 1. Absorb the commitments of the previous challenges with the Fq-sponge.
@@ -185,17 +183,15 @@ where
         //~    and $0$ for the rest.
         let witness_evals = Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
             witness,
-            index.cs.domain.d1,
+            index.domain,
         );
-        let witness_com = index
-            .srs
-            .commit_evaluations_non_hiding(index.cs.domain.d1, &witness_evals);
+        let witness_com = srs.commit_evaluations_non_hiding(index.domain, &witness_evals);
         let witness_poly = witness_evals.interpolate();
         let public_poly = -witness_poly.clone();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = witness_com.map(|x| index.srs.h + x.neg());
-        let witness_comm = witness_com.map(|x| x + index.srs.h);
+        let public_comm = witness_com.map(|x| srs.h + x.neg());
+        let witness_comm = witness_com.map(|x| x + srs.h);
 
         //~ 1. Absorb the commitment to the public polynomial with the Fq-Sponge.
         //~
@@ -211,7 +207,7 @@ where
         let mut w_comm = vec![witness_comm];
         for _ in 1..COLUMNS {
             w_comm.push(PolyComm {
-                unshifted: vec![index.srs.h],
+                unshifted: vec![srs.h],
                 shifted: None,
             });
         }
@@ -233,7 +229,7 @@ where
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
         let z_comm = PolyComm {
-            unshifted: vec![index.srs.g[0]],
+            unshifted: vec![srs.g[0]],
             shifted: None,
         };
 
@@ -254,7 +250,7 @@ where
         //~    TODO: specify the dummies
         let t_comm = BlindedCommitment {
             commitment: PolyComm {
-                unshifted: vec![index.srs.h; 7],
+                unshifted: vec![srs.h; 7],
                 shifted: None,
             },
             blinders: PolyComm {
@@ -272,7 +268,7 @@ where
         //~ 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
         let zeta = zeta_chal.to_field(endo_r);
 
-        let omega = index.cs.domain.d1.group_gen;
+        let omega = index.domain.group_gen;
         let zeta_omega = zeta * omega;
 
         //~ 1. Chunk evaluate the following polynomials at both $\zeta$ and $\zeta \omega$:
@@ -301,8 +297,8 @@ where
 
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             s: array::from_fn(|i| PointEvaluations {
-                zeta: vec![zeta * index.cs.shift[i]],
-                zeta_omega: vec![zeta_omega * index.cs.shift[i]],
+                zeta: vec![zeta * index.shift[i]],
+                zeta_omega: vec![zeta_omega * index.shift[i]],
             }),
             coefficients: array::from_fn(|i| {
                 if i == 0 {
@@ -373,11 +369,11 @@ where
                     beta,
                     gamma,
                     alphas,
-                    permutation::eval_zk_polynomial(index.cs.domain.d1, zeta),
+                    permutation::eval_zk_polynomial(index.domain, zeta),
                 );
             DensePolynomial::from_coefficients_vec(vec![
                 G::ScalarField::zero(),
-                scalar * index.cs.shift[PERMUTS - 1],
+                scalar * index.shift[PERMUTS - 1],
             ])
         };
 
@@ -487,7 +483,8 @@ where
 
         let one_polynomial = DensePolynomial::from_coefficients_vec(vec![G::ScalarField::one()]);
         let zero_polynomial = DensePolynomial::from_coefficients_vec(vec![]);
-        let shifted_polys: Vec<_> = (index.cs.shift)
+        let shifted_polys: Vec<_> = index
+            .shift
             .iter()
             .map(|shift| {
                 DensePolynomial::from_coefficients_vec(vec![G::ScalarField::zero(), *shift])
@@ -527,7 +524,7 @@ where
         );
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
-        let proof = index.srs.open(
+        let proof = srs.open(
             group_map,
             &polynomials,
             &[zeta, zeta_omega],
@@ -554,25 +551,14 @@ where
 
 #[test]
 fn test_public_input_only_prover() {
-    use crate::{
-        circuits::{
-            constraints::{ConstraintSystem, FeatureFlags},
-            domains::EvaluationDomains,
-            lookup::lookups::{LookupFeatures, LookupPatterns},
-        },
-        verifier::verify,
-    };
+    use crate::{circuits::domains::EvaluationDomains, verifier::verify};
     use groupmap::GroupMap;
-    use mina_curves::pasta::{Fq, Pallas, PallasParameters, Vesta};
+    use mina_curves::pasta::{Fq, Pallas, PallasParameters};
     use mina_poseidon::{
         constants::PlonkSpongeConstantsKimchi,
         sponge::{DefaultFqSponge, DefaultFrSponge},
     };
-    use once_cell::sync::OnceCell;
-    use poly_commitment::{
-        commitment::CommitmentCurve,
-        srs::{endos, SRS},
-    };
+    use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
     use std::{sync::Arc, time::Instant};
 
     type SpongeParams = PlonkSpongeConstantsKimchi;
@@ -581,83 +567,28 @@ fn test_public_input_only_prover() {
 
     let start = Instant::now();
 
+    let circuit_size = (2 << 16) - 1;
+
+    let domain = EvaluationDomains::<Fq>::create(circuit_size).unwrap();
+
+    let mut srs = SRS::<Pallas>::create(domain.d1.size());
+    srs.add_lagrange_basis(domain.d1);
+    let srs = Arc::new(srs);
+
+    println!("- time to create srs: {:?}ms", start.elapsed().as_millis());
+
+    let start = Instant::now();
+
     let num_prev_challenges = 0;
 
     let num_public_inputs = 4;
 
-    let domain = EvaluationDomains::<Fq>::create(num_public_inputs).unwrap();
-
-    let mut gates = Vec::with_capacity(domain.d1.size());
-
-    for idx in 0..domain.d1.size() {
-        gates.push(crate::circuits::gate::CircuitGate {
-            coeffs: vec![Fq::one()],
-            typ: crate::circuits::gate::GateType::Generic,
-            wires: std::array::from_fn(|i| crate::circuits::wires::Wire { row: idx, col: i }),
-        });
-    }
-
-    let index = {
-        let shifts = permutation::Shifts::new(&domain.d1);
-        let sid = shifts.map[0].clone();
-        let cs = ConstraintSystem {
-            domain,
-            public: num_public_inputs,
-            prev_challenges: num_prev_challenges,
-            sid,
-            gates,
-            shift: shifts.shifts,
-            endo: Fq::zero(),
-            lookup_constraint_system: None,
-            feature_flags: FeatureFlags {
-                range_check0: false,
-                range_check1: false,
-                lookup_features: LookupFeatures {
-                    patterns: LookupPatterns {
-                        xor: false,
-                        lookup: false,
-                        range_check: false,
-                        foreign_field_mul: false,
-                    },
-                    joint_lookup_used: false,
-                    uses_runtime_tables: false,
-                },
-                foreign_field_add: false,
-                foreign_field_mul: false,
-                xor: false,
-                rot: false,
-            },
-            precomputations: OnceCell::new(),
-            disable_gates_checks: false,
-        };
-        let mut srs = SRS::<Pallas>::create(cs.domain.d1.size());
-        srs.add_lagrange_basis(cs.domain.d1);
-        let srs = Arc::new(srs);
-
-        let (endo_q, _endo_r) = endos::<Vesta>();
-        ProverIndex::<Pallas>::create(cs, endo_q, srs)
-    };
-    println!(
-        "- time to create prover index: {:?}ms",
-        start.elapsed().as_millis()
-    );
-
-    let start = Instant::now();
-
-    let verifier_index = verifier_index::<Pallas>(
-        index.srs.clone(),
-        domain,
-        num_public_inputs,
-        num_prev_challenges,
-    );
+    let verifier_index =
+        verifier_index::<Pallas>(srs, domain, num_public_inputs, num_prev_challenges);
     println!(
         "- time to create verifier index: {:?}ms",
         start.elapsed().as_millis()
     );
-
-    let prover_index = index;
-
-    let prover = prover_index;
 
     let public_inputs = vec![
         Fq::from(5u64),
@@ -674,7 +605,7 @@ fn test_public_input_only_prover() {
     let proof = ProverProof::create_recursive_public_input_only::<BaseSponge, ScalarSponge>(
         &group_map,
         public_inputs.clone(),
-        &prover,
+        &verifier_index,
         vec![],
     )
     .unwrap();
