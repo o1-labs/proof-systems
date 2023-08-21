@@ -159,7 +159,7 @@ impl LookupFeatures {
 }
 
 /// Describes the desired lookup configuration.
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupInfo {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
