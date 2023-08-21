@@ -176,7 +176,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
-                    lookup_info: cs.configuration.lookup_info.clone(),
+                    lookup_info: cs.configuration.lookup_info,
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
