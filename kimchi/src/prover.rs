@@ -666,6 +666,11 @@ where
                 index_evals.insert(GateType::Rot64, selector);
             }
 
+            // Insert index evaluations for configured gates
+            for (gate_type, selector, _domain) in &index.column_evaluations.gate_selectors {
+                index_evals.insert(*gate_type, selector);
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {

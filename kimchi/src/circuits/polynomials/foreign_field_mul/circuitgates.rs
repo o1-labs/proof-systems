@@ -182,7 +182,7 @@ pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
 // ForeignFieldMul - foreign field multiplication gate
 ///    * This gate operates on the Curr and Next rows
 ///    * It uses copy, plookup, crumb and custom constraints
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct ForeignFieldMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ForeignFieldMul<F>

@@ -132,7 +132,7 @@ use std::{array, marker::PhantomData};
 
 /// Implementation of the foreign field addition gate
 /// - Operates on Curr and Next rows.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct ForeignFieldAdd<F>(PhantomData<F>);
 
 impl<F> Argument<F> for ForeignFieldAdd<F>

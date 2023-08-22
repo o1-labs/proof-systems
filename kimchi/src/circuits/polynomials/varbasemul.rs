@@ -397,7 +397,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
 }
 
 /// Implementation of the `VarbaseMul` gate
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct VarbaseMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for VarbaseMul<F>

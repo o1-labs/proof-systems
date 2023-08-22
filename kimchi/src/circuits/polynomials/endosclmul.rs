@@ -175,7 +175,7 @@ impl<F: PrimeField> CircuitGate<F> {
 }
 
 /// Implementation of the `EndosclMul` gate.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct EndosclMul<F>(PhantomData<F>);
 
 impl<F> Argument<F> for EndosclMul<F>

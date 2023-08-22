@@ -1,5 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use super::{gate::Gate, lookup::runtime_tables::RuntimeTableCfg};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -16,8 +16,8 @@ use crate::{
 };
 use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
-    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
-    Radix2EvaluationDomain as D,
+    domain, univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
+    Radix2EvaluationDomain as Domain, Radix2EvaluationDomain as D,
 };
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
@@ -130,6 +130,10 @@ pub struct ColumnEvaluations<F: PrimeField> {
     /// Rot gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub rot_selector8: Option<E<F, D<F>>>,
+
+    #[serde(skip)]
+    /// Gate selectors and corresponding domains
+    pub gate_selectors: Vec<(GateType, E<F, D<F>>, Domain<F>)>,
 }
 
 #[serde_as]
@@ -147,6 +151,9 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// circuit gates
     #[serde(bound = "CircuitGate<F>: Serialize + DeserializeOwned")]
     pub gates: Vec<CircuitGate<F>>,
+
+    #[serde(skip)]
+    pub configured_gates: Vec<(Gate<F>, Domain<F>)>,
 
     /// flags for optional features
     pub feature_flags: FeatureFlags,
@@ -571,6 +578,25 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 .evaluate_over_domain_by_ref(self.domain.d8)
         });
 
+        // Compute gate selectors for configured gates
+        let gate_selectors: Vec<(GateType, E<F, D<F>>, Domain<F>)> = self
+            .configured_gates
+            .iter()
+            .map(|(gate, domain)| {
+                (
+                    gate.gate_type(),
+                    selector_polynomial(
+                        gate.gate_type(),
+                        &self.gates,
+                        &self.domain,
+                        &domain,
+                        self.disable_gates_checks,
+                    ),
+                    *domain,
+                )
+            })
+            .collect();
+
         ColumnEvaluations {
             permutation_coefficients8,
             coefficients8,
@@ -586,6 +612,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_mul_selector8,
             xor_selector8,
             rot_selector8,
+            gate_selectors,
         }
     }
 }
@@ -746,6 +773,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             prev_challenges: self.prev_challenges,
             sid,
             gates,
+            configured_gates: vec![], // TODO: populate this
             shift: shifts.shifts,
             endo,
             //fr_sponge_params: self.sponge_params,

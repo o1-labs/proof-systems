@@ -199,7 +199,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
 //~ gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
 //~
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct Rot64<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Rot64<F>

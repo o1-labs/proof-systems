@@ -124,6 +124,9 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
+    #[serde(skip)]
+    pub gates_comm: Vec<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -283,6 +286,15 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
+            gates_comm: self
+                .column_evaluations
+                .gate_selectors
+                .iter()
+                .map(|(_gate_type, selector, domain)| {
+                    self.srs.commit_evaluations_non_hiding(*domain, selector)
+                })
+                .collect(),
+
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -415,6 +427,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             foreign_field_mul_comm,
             xor_comm,
             rot_comm,
+
+            gates_comm: _,
 
             // Lookup index; optional
             lookup_index,
