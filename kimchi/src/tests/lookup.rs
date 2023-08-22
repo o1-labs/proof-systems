@@ -381,5 +381,3 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     );
 }
 
-// TODO: add a test with a runtime table with ID 0 (it should panic)
-// See https://github.com/MinaProtocol/mina/issues/13603
