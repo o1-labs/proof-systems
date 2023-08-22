@@ -381,3 +381,87 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     );
 }
 
+#[test]
+fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
+    let mut rng = rand::thread_rng();
+
+    let first_column = [0, 1, 2, 3, 4];
+    let len = first_column.len();
+
+    let cfg = RuntimeTableCfg {
+        id: 1,
+        first_column: first_column.into_iter().map(Into::into).collect(),
+    };
+
+    /* We want to simulate this
+        table ID  | idx | v | v2
+           1      |  0  | 0 | 42
+           1      |  1  | 2 | 32
+           1      |  2  | 4 | 22
+           1      |  3  | 5 | 12
+           1      |  4  | 4 |  2
+    */
+
+    let data_v: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let data_v2: Vec<Fp> = [42, 32, 22, 12, 2].into_iter().map(Into::into).collect();
+    let runtime_tables: Vec<RuntimeTable<Fp>> = vec![
+        RuntimeTable {
+            id: 1,
+            data: data_v.clone(),
+        },
+        RuntimeTable {
+            id: 1,
+            data: data_v2,
+        },
+    ];
+
+    // circuit
+    let mut gates = vec![];
+    for row in 0..20 {
+        gates.push(CircuitGate::new(
+            GateType::Lookup,
+            Wire::for_row(row),
+            vec![],
+        ));
+    }
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
+
+        // only the first 7 registers are used in the lookup gate
+        let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+        for row in 0..20 {
+            // the first register is the table id.
+            lookup_cols[0][row] = 1.into();
+
+            // create queries into our runtime lookup table.
+            // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
+            // the corresponding values
+            let lookup_cols = &mut lookup_cols[1..];
+            for chunk in lookup_cols.chunks_mut(2) {
+                let idx = rng.gen_range(0..len);
+                chunk[0][row] = first_column[idx].into();
+                chunk[1][row] = data_v[idx];
+            }
+        }
+        cols
+    };
+
+    print_witness(&witness, 0, 20);
+
+    // run test
+    let err = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_setup(vec![cfg])
+        .setup()
+        .runtime_tables(runtime_tables)
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .unwrap_err();
+    assert_eq!(
+        err,
+        "the runtime tables provided did not match the index's configuration"
+    );
+}
