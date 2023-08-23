@@ -5,6 +5,7 @@ use crate::{
     alphas::Alphas,
     circuits::{
         expr::{Linearization, PolishToken},
+        gate::GateType,
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{zk_polynomial, zk_w3},
         wires::{COLUMNS, PERMUTS},
@@ -23,7 +24,7 @@ use poly_commitment::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::array;
+use std::{array, collections::HashMap};
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
@@ -125,7 +126,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub rot_comm: Option<PolyComm<G>>,
 
     #[serde(skip)]
-    pub gates_comm: Vec<PolyComm<G>>,
+    pub gate_comms: HashMap<GateType, PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -286,14 +287,14 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            gates_comm: self
-                .column_evaluations
-                .gate_selectors
-                .iter()
-                .map(|(_gate_type, selector, domain)| {
-                    self.srs.commit_evaluations_non_hiding(*domain, selector)
-                })
-                .collect(),
+            gate_comms: HashMap::from_iter(self.column_evaluations.gate_selectors.iter().map(
+                |(gate_type, selector, domain)| {
+                    (
+                        *gate_type,
+                        self.srs.commit_evaluations_non_hiding(*domain, selector),
+                    )
+                },
+            )),
 
             shift: self.cs.shift,
             zkpm: {
@@ -428,7 +429,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             xor_comm,
             rot_comm,
 
-            gates_comm: _,
+            gate_comms: _,
 
             // Lookup index; optional
             lookup_index,
@@ -481,6 +482,11 @@ impl<G: KimchiCurve> VerifierIndex<G> {
 
         if let Some(rot_comm) = rot_comm {
             fq_sponge.absorb_g(&rot_comm.unshifted);
+        }
+
+        // Absorb commitments for configured gates
+        for comm in self.gate_comms.values() {
+            fq_sponge.absorb_g(&comm.unshifted);
         }
 
         // Lookup index; optional
