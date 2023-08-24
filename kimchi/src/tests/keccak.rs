@@ -3,7 +3,7 @@ use std::array;
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::CircuitGate,
-    polynomials::keccak::{self, ROT_TAB, STATE},
+    polynomials::keccak::{self, ROT_TAB_64, STATE},
     wires::Wire,
 };
 use ark_ec::AffineCurve;
@@ -51,7 +51,7 @@ fn test_keccak_table() {
         );
     }
     let mut rot = 0;
-    for (x, row) in ROT_TAB.iter().enumerate() {
+    for (x, row) in ROT_TAB_64.iter().enumerate() {
         for (y, &bits) in row.iter().enumerate() {
             if bits == 0 {
                 continue;
@@ -178,9 +178,10 @@ fn test_sha() {
     assert_eq!(hash384, desired384);
     assert_eq!(hash512, desired512);
 }
+
 #[test]
 // Check the steps of the hash
-fn test_keccak64() {
+fn test_keccak32() {
     let message = [
         0xf8u8, 0x67, 0x80, 0x86, 0x2d, 0x79, 0x88, 0x3d, 0x20, 0x00, 0x82, 0x52, 0x08, 0x94, 0x5d,
         0xf9, 0xb8, 0x79, 0x91, 0x26, 0x2f, 0x6b, 0xa4, 0x71, 0xf0, 0x97, 0x58, 0xcd, 0xe1, 0xc0,

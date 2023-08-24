@@ -37,9 +37,11 @@ impl<T: Clone> KeccakState<T> {
 /// Length of the square matrix side of Keccak states
 pub const MATRIX_DIM: usize = 5;
 /// value `l` in Keccak, ranges from 0 to 6 (7 possible values)
-pub const LENGTH: usize = 6;
+pub const LENGTH: usize = 5;
 /// width of the lane of the state, meaning the length of each word in bits (64)
 pub const WORD: usize = 2u32.pow(LENGTH as u32) as usize;
+/// bytes per word
+pub const BYTES_PER_WORD: usize = WORD / 8;
 /// length of the state in bits, meaning the 5x5 matrix of words in bits (1600)
 pub const STATE: usize = MATRIX_DIM.pow(2) * WORD;
 /// number of rounds of the Keccak permutation function depending on the value `l` (24)
@@ -57,7 +59,7 @@ pub const ETH_CAPACITY: usize = 512;
 /// | 2     | 62 |  6 | 43 | 15 | 61 |
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
-pub const ROT_TAB: [[u32; MATRIX_DIM]; MATRIX_DIM] = [
+pub const ROT_TAB_64: [[u32; MATRIX_DIM]; MATRIX_DIM] = [
     [0, 36, 3, 41, 18],
     [1, 44, 10, 45, 2],
     [62, 6, 43, 15, 61],
@@ -65,8 +67,24 @@ pub const ROT_TAB: [[u32; MATRIX_DIM]; MATRIX_DIM] = [
     [27, 20, 39, 8, 14],
 ];
 
+/// Creates the 5x5 table of rotation offset for Keccak modulo 32
+/// | x \ y |  0 |  1 |  2 |  3 |  4 |
+/// | ----- | -- | -- | -- | -- | -- |
+/// | 0     |  0 | 36 |  3 | 41 | 18 |
+/// | 1     |  1 | 44 | 10 | 45 |  2 |
+/// | 2     | 62 |  6 | 43 | 15 | 61 |
+/// | 3     | 28 | 55 | 25 | 21 | 56 |
+/// | 4     | 27 | 20 | 39 |  8 | 14 |
+pub const ROT_TAB_32: [[u32; MATRIX_DIM]; MATRIX_DIM] = [
+    [0, 4, 3, 9, 18],
+    [1, 12, 10, 13, 2],
+    [30, 6, 11, 15, 29],
+    [28, 23, 25, 21, 24],
+    [27, 20, 7, 8, 14],
+];
+
 /// Round constants for the 24 rounds of Keccak for the iota algorithm
-pub const RC: [u64; ROUNDS] = [
+pub const RC64: [u64; 24] = [
     0x0000000000000001,
     0x0000000000008082,
     0x800000000000808A,
@@ -93,6 +111,14 @@ pub const RC: [u64; ROUNDS] = [
     0x8000000080008008,
 ];
 
+/// Round constants for the 22 rounds of Keccak for the iota algorithm
+/// It corresponds to the first 22 constants of RC64 but modulo 2^32
+pub const RC32: [u32; 22] = [
+    0x00000001, 0x00008082, 0x0000808A, 0x80008000, 0x0000808B, 0x80000001, 0x80008081, 0x00008009,
+    0x0000008A, 0x00000088, 0x80008009, 0x8000000A, 0x8000808B, 0x0000008B, 0x00008089, 0x00008003,
+    0x00008002, 0x00000080, 0x0000800A, 0x8000000A, 0x80008081, 0x00008080,
+];
+
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates Keccak gadget.
     /// Right now it only creates an initial generic gate with all zeros starting on `new_row` and then
@@ -114,7 +140,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         zero_row: usize,
     ) -> (usize, Vec<Self>) {
         let mut rot_row = new_row;
-        for row in ROT_TAB {
+        for row in ROT_TAB_32 {
             for rot in row {
                 // if rotation by 0 bits, no need to create a gate for it
                 if rot == 0 {
@@ -137,7 +163,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 pub fn create_witness_keccak_rot<F: PrimeField>(state: [[u64; 5]; 5]) -> [Vec<F>; COLUMNS] {
     // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
     let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
-    for (x, row) in ROT_TAB.iter().enumerate() {
+    for (x, row) in ROT_TAB_32.iter().enumerate() {
         for (y, &rot) in row.iter().enumerate() {
             if rot == 0 {
                 continue;
@@ -153,7 +179,7 @@ pub fn create_witness_keccak_rot<F: PrimeField>(state: [[u64; 5]; 5]) -> [Vec<F>
 // ///////////////////////////////////// //
 
 // Performs the modulo operation, not remainder as in %
-pub(crate) fn modulo(number: i32, modulo: i32) -> u64 {
+pub(crate) fn modulo(number: i32, modulo: i32) -> u32 {
     (((number % modulo) + modulo) % modulo).try_into().unwrap()
 }
 
@@ -260,7 +286,7 @@ pub(crate) fn sponge(
     );
 
     // absorb
-    let root_state = [[0u64; MATRIX_DIM]; MATRIX_DIM];
+    let root_state = [[0u32; MATRIX_DIM]; MATRIX_DIM];
     let mut state = root_state;
     // split into blocks of rate bits
     // for each block of rate bits in the padded message -> this is rate/8 bytes
@@ -299,10 +325,10 @@ pub(crate) fn sponge(
 
 // Performs the xor of two states of Keccak
 pub(crate) fn xor_state(
-    input1: [[u64; MATRIX_DIM]; MATRIX_DIM],
-    input2: [[u64; MATRIX_DIM]; MATRIX_DIM],
-) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
-    let mut output = [[0u64; MATRIX_DIM]; MATRIX_DIM];
+    input1: [[u32; MATRIX_DIM]; MATRIX_DIM],
+    input2: [[u32; MATRIX_DIM]; MATRIX_DIM],
+) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
+    let mut output = [[0u32; MATRIX_DIM]; MATRIX_DIM];
     for x in 0..MATRIX_DIM {
         for y in 0..MATRIX_DIM {
             output[x][y] = input1[x][y] ^ input2[x][y];
@@ -312,7 +338,7 @@ pub(crate) fn xor_state(
 }
 
 /// Keccak permutation function for 1600 bits of state
-pub fn permutation(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+pub fn permutation(state: [[u32; MATRIX_DIM]; MATRIX_DIM]) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
     let mut state = state;
     // length could be anything between 0 and 6
     // In our use case, words have 64 bits, and thus length = 6
@@ -329,9 +355,9 @@ pub fn permutation(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM]
 // Thus:
 // iota o chi o pi o rho o theta
 pub(crate) fn round(
-    state: [[u64; MATRIX_DIM]; MATRIX_DIM],
+    state: [[u32; MATRIX_DIM]; MATRIX_DIM],
     round_number: usize,
-) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
     let state_a = state;
     let state_e = theta(state_a);
     let state_b = pi_rho(state_e);
@@ -346,11 +372,11 @@ pub(crate) fn round(
 // E[x,y] = A[x,y] xor D[x]
 // In the Keccak reference, it corresponds to the `theta` algorithm.
 // We use the first index of the state array as the x coordinate and the second index as the y coordinate.
-pub(crate) fn theta(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+pub(crate) fn theta(state: [[u32; MATRIX_DIM]; MATRIX_DIM]) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
     let state_a = state;
-    let mut state_c = [0u64; MATRIX_DIM];
-    let mut state_d = [0u64; MATRIX_DIM];
-    let mut state_e = [[0u64; MATRIX_DIM]; MATRIX_DIM];
+    let mut state_c = [0u32; MATRIX_DIM];
+    let mut state_d = [0u32; MATRIX_DIM];
+    let mut state_e = [[0u32; MATRIX_DIM]; MATRIX_DIM];
     // for all x in {0..4}: C[x] = A[x,0] xor A[x,1] xor A[x,2] xor A[x,3] xor A[x,4]
     for x in 0..MATRIX_DIM {
         state_c[x] = state_a[x][0] ^ state_a[x][1] ^ state_a[x][2] ^ state_a[x][3] ^ state_a[x][4];
@@ -391,15 +417,15 @@ pub(crate) fn theta(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM
 //   end for
 // end for
 // We use the first index of the state array as the x coordinate and the second index as the y coordinate.
-pub(crate) fn pi_rho(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+pub(crate) fn pi_rho(state: [[u32; MATRIX_DIM]; MATRIX_DIM]) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
     let state_e = state;
-    let mut state_b = [[0u64; MATRIX_DIM]; MATRIX_DIM];
+    let mut state_b = [[0u32; MATRIX_DIM]; MATRIX_DIM];
     // for all x in {0..4} and y in {0..4}: B[y, 2x+3y] = ROT(E[x,y], r[x,y])
     for x in 0..MATRIX_DIM {
         for y in 0..MATRIX_DIM {
             let new_x = y;
             let new_y = modulo((2 * x + 3 * y) as i32, MATRIX_DIM as i32) as usize;
-            state_b[new_x][new_y] = state_e[x][y].rotate_left(ROT_TAB[x][y]);
+            state_b[new_x][new_y] = state_e[x][y].rotate_left(ROT_TAB_32[x][y]);
         }
     }
     state_b
@@ -413,9 +439,9 @@ pub(crate) fn pi_rho(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DI
 //     A[x,y] = a[x,y] xor ((not a[x+1,y]) and a[x+2,y])
 //   end for
 // end for
-pub(crate) fn chi(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+pub(crate) fn chi(state: [[u32; MATRIX_DIM]; MATRIX_DIM]) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
     let state_b = state;
-    let mut state_f = [[0u64; MATRIX_DIM]; MATRIX_DIM];
+    let mut state_f = [[0u32; MATRIX_DIM]; MATRIX_DIM];
     // for all x in {0..4} and y in {0..4}: F[x,y] = B[x,y] xor ((not B[x+1,y]) and B[x+2,y])
     for x in 0..MATRIX_DIM {
         for y in 0..MATRIX_DIM {
@@ -430,15 +456,15 @@ pub(crate) fn chi(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> [[u64; MATRIX_DIM];
 // Fifth step of the permutation function of Keccak for 64-bit words.
 // It takes the word located at the position (0,0) of the state and XORs it with the round constant.
 pub(crate) fn iota(
-    state: [[u64; MATRIX_DIM]; MATRIX_DIM],
+    state: [[u32; MATRIX_DIM]; MATRIX_DIM],
     round_number: usize,
-) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
+) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
     let mut state_g = state;
-    state_g[0][0] ^= RC[round_number];
+    state_g[0][0] ^= RC32[round_number];
     state_g
 }
 
-pub(crate) fn _print_state(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) {
+pub(crate) fn _print_state(state: [[u32; MATRIX_DIM]; MATRIX_DIM]) {
     for y in 0..MATRIX_DIM {
         for x in 0..MATRIX_DIM {
             print!("{:016x} ", state[x][y]);
@@ -466,27 +492,27 @@ pub(crate) fn _print_hash(hash: &[u8]) {
 // Assumes that the first 5 words correspond to the y=0 column.
 // The first byte of the vector corresponds to the least significant byte of the first word of the state (x=0, y=0).
 //
-pub(crate) fn from_bytes_to_state(block: &[u8]) -> [[u64; MATRIX_DIM]; MATRIX_DIM] {
-    assert_eq!(block.len() * 8, 1600, "The block must have 1600 bits");
-    let mut state = [[0u64; MATRIX_DIM]; MATRIX_DIM];
+pub(crate) fn from_bytes_to_state(block: &[u8]) -> [[u32; MATRIX_DIM]; MATRIX_DIM] {
+    assert_eq!(block.len() * 8, 800, "The block must have 800 bits");
+    let mut state = [[0u32; MATRIX_DIM]; MATRIX_DIM];
     for y in 0..MATRIX_DIM {
         for x in 0..MATRIX_DIM {
-            // each word has 8 bytes -> 64 bits
-            for z in 0..(WORD / 8) {
-                let index = 8 * (MATRIX_DIM * y + x) + z;
-                state[x][y] |= (block[index] as u64) << 8 * z;
+            // each word has 4 bytes -> 32 bits
+            for z in 0..BYTES_PER_WORD {
+                let index = BYTES_PER_WORD * (MATRIX_DIM * y + x) + z;
+                state[x][y] |= (block[index] as u32) << 8 * z;
             }
         }
     }
     state
 }
 
-// Transforms a state of 64-bit words into a vector of bytes
-pub(crate) fn from_state_to_bytes(state: [[u64; MATRIX_DIM]; MATRIX_DIM]) -> Vec<u8> {
+// Transforms a state of 32-bit words into a vector of bytes
+pub(crate) fn from_state_to_bytes(state: [[u32; MATRIX_DIM]; MATRIX_DIM]) -> Vec<u8> {
     let mut block = vec![];
     for y in 0..MATRIX_DIM {
         for x in 0..MATRIX_DIM {
-            for z in 0..(WORD / 8) {
+            for z in 0..BYTES_PER_WORD {
                 block.push(((state[x][y] >> 8 * z) & 0xFF) as u8);
             }
         }
