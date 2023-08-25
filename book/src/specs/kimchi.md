@@ -1217,7 +1217,7 @@ left_input * right_input = quotient * foreign_field_modulus + remainder
 
 ##### Documentation
 
-For more details please see the [Foreign Field Multiplication RFC](../rfcs/foreign_field_mul.md)
+For more details please see the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md)
 
 ##### Notations
 
@@ -1228,15 +1228,14 @@ In order to relate the two documents, the following mapping between the
 variable names used in the code and those of the RFC can be helpful.
 
 ```text
-left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder0 => r0
-left_input1 => a1  right_input1 => b1  quotient1 => q1  remainder1 => r1
+left_input0 => a0  right_input0 => b0  quotient0 => q0  remainder01 => r01
+left_input1 => a1  right_input1 => b1  quotient1 => q1
 left_input2 => a2  right_input2 => b2  quotient2 => q2  remainder2 => r2
 
    product1_lo => p10      product1_hi_0 => p110     product1_hi_1 => p111
    carry0 => v0            carry1_lo => v10          carry1_hi => v11
-   quotient_bound0 => q'0  quotient_bound12 => q'12
+   quotient_hi_bound => q'2
 
-                   quotient_bound_carry => q'_carry01
 ````
 
 ##### Suffixes
@@ -1257,8 +1256,8 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 
 ##### Parameters
 
-* `foreign_field_modulus` := foreign field modulus $f$ (stored in gate coefficients 0-2)
-* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 3-5)
+* `hi_foreign_field_modulus` := high limb of foreign field modulus $f$ (stored in gate coefficient 0)
+* `neg_foreign_field_modulus` := negated foreign field modulus $f'$ (stored in gate coefficients 1-3)
 * `n` := the native field modulus is obtainable from `F`, the native field's trait bound
 
 ##### Witness
@@ -1273,30 +1272,29 @@ would be split into `x1_lo_0` and `x1_lo_1`.
 * `product1_lo` := lowest 88 bits of middle intermediate product
 * `product1_hi_0` := lowest 88 bits of middle intermediate product's highest 88 + 2 bits
 * `product1_hi_1` := highest 2 bits of middle intermediate product
-* `quotient_bound` := quotient bound for checking `q < f`
-* `quotient_bound_carry` := quotient bound addition carry bit
+* `quotient_hi_bound` := quotient high bound for checking `q2 ≤ f2`
 
 ##### Layout
 
 The foreign field multiplication gate's rows are laid out like this
 
-| col | `ForeignFieldMul`            | `Zero`                    |
-| --- | ---------------------------- | ------------------------- |
-|   0 | `left_input0`         (copy) | `remainder0`       (copy) |
-|   1 | `left_input1`         (copy) | `remainder1`       (copy) |
-|   2 | `left_input2`         (copy) | `remainder2`       (copy) |
-|   3 | `right_input0`        (copy) | `quotient_bound01` (copy) |
-|   4 | `right_input1`        (copy) | `quotient_bound2`  (copy) |
-|   5 | `right_input2`        (copy) | `product1_lo`      (copy) |
-|   6 | `carry1_lo`           (copy) | `product1_hi_0`    (copy) |
-|   7 | `carry1_hi`        (plookup) |                           |
-|   8 | `carry0`                     |                           |
-|   9 | `quotient0`                  |                           |
-|  10 | `quotient1`                  |                           |
-|  11 | `quotient2`                  |                           |
-|  12 | `quotient_bound_carry`       |                           |
-|  13 | `product1_hi_1`              |                           |
-|  14 |                              |                           |
+| col | `ForeignFieldMul`       | `Zero`                     |
+| --- | ----------------------- | -------------------------- |
+|   0 | `left_input0`    (copy) | `remainder01`       (copy) |
+|   1 | `left_input1`    (copy) | `remainder2`        (copy) |
+|   2 | `left_input2`    (copy) | `quotient0`         (copy) |
+|   3 | `right_input0`   (copy) | `quotient1`         (copy) |
+|   4 | `right_input1`   (copy) | `quotient2`         (copy) |
+|   5 | `right_input2`   (copy) | `quotient_hi_bound` (copy) |
+|   6 | `product1_lo`    (copy) | `product1_hi_0`     (copy) |
+|   7 | `carry1_0`    (plookup) | `product1_hi_1`    (dummy) |
+|   8 | `carry1_12    (plookup) | `carry1_48`      (plookup) |
+|   9 | `carry1_24`   (plookup) | `carry1_60`      (plookup) |
+|  10 | `carry1_36`   (plookup) | `carry1_72`      (plookup) |
+|  11 | `carry1_84`             | `carry0`                   |
+|  12 | `carry1_86`             |                            |
+|  13 | `carry1_88`             |                            |
+|  14 | `carry1_90`             |                            |
 
 
 
@@ -1346,25 +1344,25 @@ which is doable with the constraints in a `RangeCheck0` gate. Since our current 
 is almost empty, we can use it to perform the range check within the same gate. Then, using the following layout
 and assuming that the gate has a coefficient storing the value $2^{rot}$, which is publicly known
 
-| Gate   | `Rot64`             | `RangeCheck0`    |
-| ------ | ------------------- | ---------------- |
-| Column | `Curr`              | `Next`           |
-| ------ | ------------------- | ---------------- |
-|      0 | copy `word`         |`shifted`         |
-|      1 | copy `rotated`      | 0                |
-|      2 |      `excess`       | 0                |
-|      3 |      `bound_limb0`  | `shifted_limb0`  |
-|      4 |      `bound_limb1`  | `shifted_limb1`  |
-|      5 |      `bound_limb2`  | `shifted_limb2`  |
-|      6 |      `bound_limb3`  | `shifted_limb3`  |
-|      7 |      `bound_crumb0` | `shifted_crumb0` |
-|      8 |      `bound_crumb1` | `shifted_crumb1` |
-|      9 |      `bound_crumb2` | `shifted_crumb2` |
-|     10 |      `bound_crumb3` | `shifted_crumb3` |
-|     11 |      `bound_crumb4` | `shifted_crumb4` |
-|     12 |      `bound_crumb5` | `shifted_crumb5` |
-|     13 |      `bound_crumb6` | `shifted_crumb6` |
-|     14 |      `bound_crumb7` | `shifted_crumb7` |
+| Gate   | `Rot64`             | `RangeCheck0` gadgets (designer's duty)                   |
+| ------ | ------------------- | --------------------------------------------------------- |
+| Column | `Curr`              | `Next`           | `Next` + 1      | `Next`+ 2, if needed |
+| ------ | ------------------- | ---------------- | --------------- | -------------------- |
+|      0 | copy `word`         |`shifted`         |   copy `excess` |    copy      `word`  |
+|      1 | copy `rotated`      | 0                |              0  |                  0   |
+|      2 |      `excess`       | 0                |              0  |                  0   |
+|      3 |      `bound_limb0`  | `shifted_limb0`  |  `excess_limb0` |        `word_limb0`  |
+|      4 |      `bound_limb1`  | `shifted_limb1`  |  `excess_limb1` |        `word_limb1`  |
+|      5 |      `bound_limb2`  | `shifted_limb2`  |  `excess_limb2` |        `word_limb2`  |
+|      6 |      `bound_limb3`  | `shifted_limb3`  |  `excess_limb3` |        `word_limb3`  |
+|      7 |      `bound_crumb0` | `shifted_crumb0` | `excess_crumb0` |       `word_crumb0`  |
+|      8 |      `bound_crumb1` | `shifted_crumb1` | `excess_crumb1` |       `word_crumb1`  |
+|      9 |      `bound_crumb2` | `shifted_crumb2` | `excess_crumb2` |       `word_crumb2`  |
+|     10 |      `bound_crumb3` | `shifted_crumb3` | `excess_crumb3` |       `word_crumb3`  |
+|     11 |      `bound_crumb4` | `shifted_crumb4` | `excess_crumb4` |       `word_crumb4`  |
+|     12 |      `bound_crumb5` | `shifted_crumb5` | `excess_crumb5` |       `word_crumb5`  |
+|     13 |      `bound_crumb6` | `shifted_crumb6` | `excess_crumb6` |       `word_crumb6`  |
+|     14 |      `bound_crumb7` | `shifted_crumb7` | `excess_crumb7` |       `word_crumb7`  |
 
 In Keccak, rotations are performed over a 5x5 matrix state of w-bit words each cell. The values used
 to perform the rotation are fixed, public, and known in advance, according to the following table,

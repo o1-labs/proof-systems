@@ -152,6 +152,38 @@ where
         self.0.prover_index.as_ref().unwrap()
     }
 
+    /// Create a proof. This helper can be used when we want to test the prover
+    /// raises an exception
+    pub(crate) fn prove<EFqSponge, EFrSponge>(self) -> Result<(), String>
+    where
+        EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField>,
+    {
+        let prover = self.0.prover_index.unwrap();
+        let witness = self.0.witness.unwrap();
+
+        if !self.0.disable_gates_checks {
+            // Note: this is already done by ProverProof::create_recursive::()
+            //       not sure why we do it here
+            prover
+                .verify(&witness, &self.0.public_inputs)
+                .map_err(|e| format!("{e:?}"))?;
+        }
+
+        let group_map = <G as CommitmentCurve>::Map::setup();
+
+        ProverProof::create_recursive::<EFqSponge, EFrSponge>(
+            &group_map,
+            witness,
+            &self.0.runtime_tables,
+            &prover,
+            self.0.recursion,
+            None,
+        )
+        .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     /// Create and verify a proof
     pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
