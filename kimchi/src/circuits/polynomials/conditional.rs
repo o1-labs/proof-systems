@@ -55,7 +55,7 @@ use crate::{
 /// Conditional gate
 ///    * This gate operates on the Curr row only
 ///    * Can constrain up to two conditional expressions
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct Conditional<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Conditional<F>

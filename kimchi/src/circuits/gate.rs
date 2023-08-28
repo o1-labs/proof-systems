@@ -25,7 +25,7 @@ use thiserror::Error;
 use super::{
     argument::{ArgumentType, ArgumentWitness},
     expr::{self, constraints::ExprOps, Cache},
-    polynomials::{generic, rot, xor},
+    polynomials::{conditional, generic, rot, xor},
 };
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -145,6 +145,9 @@ impl GateType {
             )),
             GateType::Xor16 => Some(Gate::Xor16(xor::Xor16::<F>::default())),
             GateType::Rot64 => Some(Gate::Rot64(rot::Rot64::<F>::default())),
+            GateType::Conditional => {
+                Some(Gate::Conditional(conditional::Conditional::<F>::default()))
+            }
             // TODO: What about Zero and Lookup?
             _ => None,
         }
@@ -171,6 +174,7 @@ pub enum Gate<F> {
     ForeignFieldMul(foreign_field_mul::circuitgates::ForeignFieldMul<F>),
     Xor16(xor::Xor16<F>),
     Rot64(rot::Rot64<F>),
+    Conditional(conditional::Conditional<F>),
 }
 
 impl<F: PrimeField> Gate<F> {
@@ -192,6 +196,7 @@ impl<F: PrimeField> Gate<F> {
             Gate::ForeignFieldMul(_) => GateType::ForeignFieldMul,
             Gate::Xor16(_) => GateType::Xor16,
             Gate::Rot64(_) => GateType::Rot64,
+            Gate::Conditional(_) => GateType::Conditional,
         }
     }
 
@@ -217,6 +222,7 @@ impl<F: PrimeField> Gate<F> {
             }
             Gate::Xor16(_) => xor::Xor16::<F>::ARGUMENT_TYPE,
             Gate::Rot64(_) => rot::Rot64::<F>::ARGUMENT_TYPE,
+            Gate::Conditional(_) => conditional::Conditional::<F>::ARGUMENT_TYPE,
         }
     }
 
@@ -242,6 +248,7 @@ impl<F: PrimeField> Gate<F> {
             }
             Gate::Xor16(_) => xor::Xor16::<F>::CONSTRAINTS,
             Gate::Rot64(_) => rot::Rot64::<F>::CONSTRAINTS,
+            Gate::Conditional(_) => conditional::Conditional::<F>::CONSTRAINTS,
         }
     }
 
@@ -270,17 +277,14 @@ impl<F: PrimeField> Gate<F> {
                 range_check::circuitgates::RangeCheck1::<F>::constraint_checks(env, cache)
             }
             Gate::ForeignFieldAdd(_) => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::constraint_checks(
-                    env, cache,
-                )
+                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::constraint_checks(env, cache)
             }
             Gate::ForeignFieldMul(_) => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::constraint_checks(
-                    env, cache,
-                )
+                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::constraint_checks(env, cache)
             }
             Gate::Xor16(_) => xor::Xor16::<F>::constraint_checks(env, cache),
             Gate::Rot64(_) => rot::Rot64::<F>::constraint_checks(env, cache),
+            Gate::Conditional(_) => conditional::Conditional::<F>::constraint_checks(env, cache),
         }
     }
 
@@ -306,6 +310,7 @@ impl<F: PrimeField> Gate<F> {
             }
             Gate::Xor16(_) => xor::Xor16::<F>::constraints(cache),
             Gate::Rot64(_) => rot::Rot64::<F>::constraints(cache),
+            Gate::Conditional(_) => conditional::Conditional::<F>::constraints(cache),
         }
     }
 
@@ -347,6 +352,9 @@ impl<F: PrimeField> Gate<F> {
             }
             Gate::Xor16(_) => xor::Xor16::<F>::combined_constraints(alphas, cache),
             Gate::Rot64(_) => rot::Rot64::<F>::combined_constraints(alphas, cache),
+            Gate::Conditional(_) => {
+                conditional::Conditional::<F>::combined_constraints(alphas, cache)
+            }
         }
     }
 }
