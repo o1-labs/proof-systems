@@ -241,6 +241,7 @@ impl<F: PrimeField> Gate<F> {
             Gate::ForeignFieldMul(_) => Domain::D8,
             Gate::Xor16(_) => Domain::D8,
             Gate::Rot64(_) => Domain::D8,
+            Gate::Conditional(_) => Domain::D8,
         }
     }
 
