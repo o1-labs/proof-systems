@@ -1,21 +1,29 @@
 use ark_ff::FftField;
-use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as Domain};
+use ark_poly::{EvaluationDomain, Radix2EvaluationDomain};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
 use crate::error::SetupError;
 
+#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
+pub enum Domain {
+    D1 = 1,
+    D2 = 2,
+    D4 = 4,
+    D8 = 8,
+}
+
 #[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct EvaluationDomains<F: FftField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub d1: Domain<F>, // size n
+    pub d1: Radix2EvaluationDomain<F>, // size n
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub d2: Domain<F>, // size 2n
+    pub d2: Radix2EvaluationDomain<F>, // size 2n
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub d4: Domain<F>, // size 4n
+    pub d4: Radix2EvaluationDomain<F>, // size 4n
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
-    pub d8: Domain<F>, // size 8n
+    pub d8: Radix2EvaluationDomain<F>, // size 8n
 }
 
 impl<F: FftField> EvaluationDomains<F> {
@@ -23,24 +31,24 @@ impl<F: FftField> EvaluationDomains<F> {
     /// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator
     /// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.
     pub fn create(n: usize) -> Result<Self, SetupError> {
-        let n = Domain::<F>::compute_size_of_domain(n).ok_or(SetupError::DomainCreation(
-            "could not compute size of domain",
-        ))?;
+        let n = Radix2EvaluationDomain::<F>::compute_size_of_domain(n).ok_or(
+            SetupError::DomainCreation("could not compute size of domain"),
+        )?;
 
-        let d1 = Domain::<F>::new(n).ok_or(SetupError::DomainCreation(
+        let d1 = Radix2EvaluationDomain::<F>::new(n).ok_or(SetupError::DomainCreation(
             "construction of domain d1 did not work as intended",
         ))?;
 
         // we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
         // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
-        let d2 = Domain::<F>::new(2 * n).ok_or(SetupError::DomainCreation(
+        let d2 = Radix2EvaluationDomain::<F>::new(2 * n).ok_or(SetupError::DomainCreation(
             "construction of domain d2 did not work as intended",
         ))?;
-        let d4 = Domain::<F>::new(4 * n).ok_or(SetupError::DomainCreation(
+        let d4 = Radix2EvaluationDomain::<F>::new(4 * n).ok_or(SetupError::DomainCreation(
             "construction of domain d4 did not work as intended",
         ))?;
-        let d8 = Domain::<F>::new(8 * n).ok_or(SetupError::DomainCreation(
+        let d8 = Radix2EvaluationDomain::<F>::new(8 * n).ok_or(SetupError::DomainCreation(
             "construction of domain d8 did not work as intended",
         ))?;
 
@@ -50,6 +58,15 @@ impl<F: FftField> EvaluationDomains<F> {
         assert_eq!(d8.group_gen.square(), d4.group_gen);
 
         Ok(EvaluationDomains { d1, d2, d4, d8 })
+    }
+
+    pub fn get(&self, domain: Domain) -> &Radix2EvaluationDomain<F> {
+        match domain {
+            Domain::D1 => &self.d1,
+            Domain::D2 => &self.d2,
+            Domain::D4 => &self.d4,
+            Domain::D8 => &self.d8,
+        }
     }
 }
 

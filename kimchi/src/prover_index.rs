@@ -135,7 +135,7 @@ pub mod testing {
     use super::*;
     use crate::{
         circuits::{
-            gate::CircuitGate,
+            gate::{CircuitGate, GateType},
             lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
         },
         precomputed_srs,
@@ -154,6 +154,7 @@ pub mod testing {
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
+        configured_gates: Option<Vec<GateType>>,
         disable_gates_checks: bool,
     ) -> ProverIndex<G>
     where
@@ -166,9 +167,14 @@ pub mod testing {
             .runtime(runtime_tables)
             .public(public)
             .prev_challenges(prev_challenges)
-            .disable_gates_checks(disable_gates_checks)
-            .build()
-            .unwrap();
+            .disable_gates_checks(disable_gates_checks);
+
+        let cs = match configured_gates {
+            Some(configured_gates) => cs.configured_gates(&configured_gates[..]),
+            None => cs,
+        };
+
+        let cs = cs.build().unwrap();
 
         let mut srs = if cs.domain.d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
             // TODO: we should trim it if it's smaller
@@ -188,11 +194,20 @@ pub mod testing {
     pub fn new_index_for_test<G: KimchiCurve>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
+        configured_gates: Option<Vec<GateType>>,
     ) -> ProverIndex<G>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
+        new_index_for_test_with_lookups::<G>(
+            gates,
+            public,
+            0,
+            vec![],
+            None,
+            configured_gates,
+            false,
+        )
     }
 }

@@ -78,6 +78,9 @@ pub enum VerifyError {
 /// Errors that can arise when preparing the setup
 #[derive(Error, Debug, Clone)]
 pub enum SetupError {
+    #[error("Use of unconfigured gate {0}")]
+    InvalidGate(String),
+
     #[error("the domain could not be constructed: {0}")]
     ConstraintSystem(String),
 

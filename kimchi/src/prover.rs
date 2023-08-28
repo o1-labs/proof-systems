@@ -782,7 +782,7 @@ where
             };
 
             // Check constraints for configured gates
-            for (gate, _domain) in &index.cs.configured_gates {
+            for gate in &index.cs.configured_gates {
                 let constraint = gate.combined_constraints(&all_alphas, &mut cache);
                 let eval = constraint.evaluations(&env);
                 if eval.domain().size == t4.domain().size {

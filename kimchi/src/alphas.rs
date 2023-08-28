@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
-        let index = new_index_for_test::<Vesta>(gates, 0);
+        let index = new_index_for_test::<Vesta>(gates, 0, None);
         let (_linearization, powers_of_alpha) = expr_linearization::<Fp>(&index.cs, true);
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
