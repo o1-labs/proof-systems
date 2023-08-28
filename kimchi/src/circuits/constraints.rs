@@ -45,8 +45,6 @@ pub struct FeatureFlags {
     pub xor: bool,
     /// ROT gate
     pub rot: bool,
-    /// Conditional gate
-    pub conditional: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
 }
@@ -740,7 +738,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_mul: false,
             xor: false,
             rot: false,
-            conditional: false,
         };
 
         for gate in &gates {
@@ -751,7 +748,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
                 GateType::Rot64 => feature_flags.rot = true,
-                GateType::Conditional => feature_flags.conditional = true,
                 _ => (),
             }
         }

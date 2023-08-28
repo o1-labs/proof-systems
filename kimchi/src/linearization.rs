@@ -11,7 +11,6 @@ use crate::circuits::lookup::{
 };
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
-    conditional,
     endomul_scalar::EndomulScalar,
     endosclmul::EndosclMul,
     foreign_field_add::circuitgates::ForeignFieldAdd,
@@ -164,22 +163,6 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         }
     }
 
-    {
-        let mut conditional_expr =
-            || conditional::Conditional::combined_constraints(&powers_of_alpha, &mut cache);
-        if let Some(feature_flags) = feature_flags {
-            if feature_flags.conditional {
-                expr += conditional_expr();
-            }
-        } else {
-            expr += Expr::IfFeature(
-                FeatureFlag::Conditional,
-                Box::new(conditional_expr()),
-                Box::new(Expr::zero()),
-            );
-        }
-    }
-
     if generic {
         expr += generic::Generic::combined_constraints(&powers_of_alpha, &mut cache);
     }
@@ -284,7 +267,6 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
                 foreign_field_mul: true,
                 xor: true,
                 rot: true,
-                conditional: true,
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,
