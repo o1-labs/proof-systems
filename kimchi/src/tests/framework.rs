@@ -2,7 +2,7 @@
 
 use crate::{
     circuits::{
-        gate::CircuitGate,
+        gate::{CircuitGate, GateType},
         lookup::{
             runtime_tables::{RuntimeTable, RuntimeTableCfg},
             tables::LookupTable,
@@ -27,6 +27,7 @@ use std::{fmt::Write, mem, time::Instant};
 
 #[derive(Default, Clone)]
 pub(crate) struct TestFramework<G: KimchiCurve> {
+    configured_gates: Vec<GateType>,
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
     public_inputs: Vec<G::ScalarField>,
@@ -49,6 +50,12 @@ where
     G::BaseField: PrimeField,
     G::ScalarField: PrimeField,
 {
+    #[must_use]
+    pub fn configured_gates(mut self, configured_gates: &[GateType]) -> Self {
+        self.configured_gates = configured_gates.to_vec();
+        self
+    }
+
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
         self.gates = Some(gates);
@@ -102,12 +109,19 @@ where
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
+        let configured_gates = if self.configured_gates.is_empty() {
+            None
+        } else {
+            Some(self.configured_gates.clone())
+        };
+
         let index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
+            configured_gates,
             self.disable_gates_checks,
         );
         println!(

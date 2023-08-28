@@ -168,7 +168,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     // Get the expressions of configured gates
-    for (gate, _domain) in &cs.configured_gates {
+    for gate in &cs.configured_gates {
         expr += gate.combined_constraints(&powers_of_alpha, &mut cache);
     }
 

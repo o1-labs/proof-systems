@@ -24,6 +24,7 @@ use thiserror::Error;
 
 use super::{
     argument::{ArgumentType, ArgumentWitness},
+    domains::Domain,
     expr::{self, constraints::ExprOps, Cache},
     polynomials::{generic, rot, xor},
 };
@@ -116,6 +117,26 @@ pub enum GateType {
 }
 
 impl GateType {
+    // TODO: Remove this function once all gates are updated to configurable gates
+    pub fn always_configured(&self) -> bool {
+        matches!(
+            self,
+            GateType::Zero
+                | GateType::Lookup
+                | GateType::Generic
+                | GateType::Poseidon
+                | GateType::CompleteAdd
+                | GateType::VarBaseMul
+                | GateType::EndoMul
+                | GateType::EndoMulScalar
+                | GateType::RangeCheck0
+                | GateType::RangeCheck1
+                | GateType::ForeignFieldAdd
+                | GateType::ForeignFieldMul
+                | GateType::Xor16
+                | GateType::Rot64
+        )
+    }
     // Get gate definition associated with gate type
     pub fn to_gate<F: PrimeField>(&self) -> Option<Gate<F>> {
         match self {
@@ -190,6 +211,29 @@ impl<F: PrimeField> Gate<F> {
             Gate::ForeignFieldMul(_) => GateType::ForeignFieldMul,
             Gate::Xor16(_) => GateType::Xor16,
             Gate::Rot64(_) => GateType::Rot64,
+        }
+    }
+
+    pub fn domain(&self) -> Domain {
+        // TODO: In fucture this could be computed from degree of gate constraint
+        // TODO: Check these over to see if any can be reduced
+        match *self {
+            Gate::Generic(_) => Domain::D4,
+            Gate::Poseidon(_) => Domain::D8,
+            Gate::CompleteAdd(_) => Domain::D4,
+            Gate::VarBaseMul(_) => Domain::D8,
+            Gate::EndoMul(_) => Domain::D8,
+            Gate::EndoMulScalar(_) => Domain::D8,
+            Gate::CairoClaim(_) => Domain::D8, // TODO: set Cairo gate domains correctly
+            Gate::CairoInstruction(_) => Domain::D8,
+            Gate::CairoFlags(_) => Domain::D8,
+            Gate::CairoTransition(_) => Domain::D8,
+            Gate::RangeCheck0(_) => Domain::D8,
+            Gate::RangeCheck1(_) => Domain::D8,
+            Gate::ForeignFieldAdd(_) => Domain::D8,
+            Gate::ForeignFieldMul(_) => Domain::D8,
+            Gate::Xor16(_) => Domain::D8,
+            Gate::Rot64(_) => Domain::D8,
         }
     }
 

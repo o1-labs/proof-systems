@@ -1,10 +1,10 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::{gate::Gate, lookup::runtime_tables::RuntimeTableCfg};
+use super::lookup::runtime_tables::RuntimeTableCfg;
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
-        gate::{CircuitGate, GateType},
+        gate::{CircuitGate, Gate, GateType},
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
@@ -155,7 +155,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub gates: Vec<CircuitGate<F>>,
 
     #[serde(skip)]
-    pub configured_gates: Vec<(Gate<F>, Domain<F>)>,
+    pub configured_gates: Vec<Gate<F>>,
 
     /// flags for optional features
     pub feature_flags: FeatureFlags,
@@ -193,6 +193,7 @@ pub enum GateError {
 }
 
 pub struct Builder<F: PrimeField> {
+    configured_gates: Vec<GateType>,
     gates: Vec<CircuitGate<F>>,
     public: usize,
     prev_challenges: usize,
@@ -257,6 +258,25 @@ impl<F: PrimeField> ConstraintSystem<F> {
             runtime_tables: None,
             precomputations: None,
             disable_gates_checks: false,
+            configured_gates: vec![
+                // TODO: Set up default gates
+                // GateType::Generic.to_gate().unwrap(),
+                // GateType::Poseidon.to_gate().unwrap(),
+                // GateType::CompleteAdd.to_gate().unwrap(),
+                // GateType::VarBaseMul.to_gate().unwrap(),
+                // GateType::EndoMul.to_gate().unwrap(),
+                // GateType::EndoMulScalar.to_gate().unwrap(),
+                // GateType::Lookup.to_gate().unwrap(),
+                // GateType::CairoClaim.to_gate().unwrap(),
+                // GateType::CairoInstruction.to_gate().unwrap(),
+                // GateType::CairoFlags.to_gate().unwrap(),
+                // GateType::RangeCheck0.to_gate().unwrap(),
+                // GateType::RangeCheck1.to_gate().unwrap(),
+                // GateType::ForeignFieldAdd.to_gate().unwrap(),
+                // GateType::ForeignFieldMul.to_gate().unwrap(),
+                // GateType::Xor16.to_gate().unwrap(),
+                // GateType::Rot64.to_gate().unwrap(),
+            ],
         }
     }
 
@@ -584,7 +604,8 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         let gate_selectors: Vec<GateSelectorData<F>> = self
             .configured_gates
             .iter()
-            .map(|(gate, domain)| {
+            .map(|gate| {
+                let domain = self.domain.get(gate.domain());
                 (
                     gate.gate_type(),
                     selector_polynomial(
@@ -620,6 +641,12 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 }
 
 impl<F: PrimeField + SquareRootField> Builder<F> {
+    /// Specify which gates are supported by this constraint system
+    pub fn configured_gates(mut self, configured_gates: &[GateType]) -> Self {
+        self.configured_gates = configured_gates.to_vec();
+        self
+    }
+
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
     pub fn public(mut self, public: usize) -> Self {
@@ -681,6 +708,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~ 1. If the circuit is less than 2 gates, abort.
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
+
+        // Check that the circuit is only using configured gates
+        for gate in gates.iter() {
+            if !gate.typ.always_configured()
+                && !self
+                    .configured_gates
+                    .iter()
+                    .any(|configured_gate| gate.typ == *configured_gate)
+            {
+                return Err(SetupError::InvalidGate(format!("{:>?}", gate.typ)));
+            }
+        }
 
         let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
 
@@ -775,7 +814,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             prev_challenges: self.prev_challenges,
             sid,
             gates,
-            configured_gates: vec![], // TODO: populate this
+            configured_gates: self
+                .configured_gates
+                .into_iter()
+                .map(|gate_type| gate_type.to_gate().unwrap())
+                .collect(),
             shift: shifts.shifts,
             endo,
             //fr_sponge_params: self.sponge_params,

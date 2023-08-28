@@ -820,14 +820,6 @@ where
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-enum Domain {
-    D1 = 1,
-    D2 = 2,
-    D4 = 4,
-    D8 = 8,
-}
-
 #[derive(Clone)]
 enum EvalResult<'a, F: FftField> {
     Constant(F),
@@ -2821,6 +2813,8 @@ macro_rules! auto_clone_array {
 
 pub use auto_clone;
 pub use auto_clone_array;
+
+use super::domains::Domain;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
