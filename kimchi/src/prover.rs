@@ -8,7 +8,6 @@ use crate::{
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
             complete_add::CompleteAdd,
-            conditional::Conditional,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
             foreign_field_add::circuitgates::ForeignFieldAdd,
@@ -667,8 +666,9 @@ where
                 index_evals.insert(GateType::Rot64, selector);
             }
 
-            if let Some(selector) = index.column_evaluations.conditional_selector8.as_ref() {
-                index_evals.insert(GateType::Conditional, selector);
+            // Insert index evaluations for configured gates
+            for (gate_type, selector, _domain) in &index.column_evaluations.gate_selectors {
+                index_evals.insert(*gate_type, selector);
             }
 
             let mds = &G::sponge_params().mds;
@@ -740,7 +740,6 @@ where
                     .is_some();
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
-                let conditional_enabled = index.column_evaluations.conditional_selector8.is_some();
 
                 for gate in [
                     (
@@ -765,8 +764,6 @@ where
                     (&Xor16::default(), xor_enabled),
                     // Rot gate
                     (&Rot64::default(), rot_enabled),
-                    // Conditional gate
-                    (&Conditional::default(), conditional_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
@@ -783,6 +780,20 @@ where
                     check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
                 }
             };
+
+            // Check constraints for configured gates
+            for (gate, _domain) in &index.cs.configured_gates {
+                let constraint = gate.combined_constraints(&all_alphas, &mut cache);
+                let eval = constraint.evaluations(&env);
+                if eval.domain().size == t4.domain().size {
+                    t4 += &eval;
+                } else if eval.domain().size == t8.domain().size {
+                    t8 += &eval;
+                } else {
+                    panic!("Bad evaluation")
+                }
+                check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
+            }
 
             // lookup
             {

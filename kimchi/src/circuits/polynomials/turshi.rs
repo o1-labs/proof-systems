@@ -753,6 +753,7 @@ pub fn circuit_gate_combined_constraints<F: PrimeField>(
     }
 }
 
+#[derive(Default, Debug, Clone)]
 pub struct Claim<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Claim<F>
@@ -790,6 +791,7 @@ where
     }
 }
 
+#[derive(Default, Debug, Clone)]
 pub struct Instruction<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Instruction<F>
@@ -936,6 +938,7 @@ where
     }
 }
 
+#[derive(Default, Debug, Clone)]
 pub struct Flags<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Flags<F>
@@ -1003,6 +1006,7 @@ where
     }
 }
 
+#[derive(Default, Debug, Clone)]
 pub struct Transition<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Transition<F>

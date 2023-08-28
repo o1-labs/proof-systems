@@ -327,7 +327,7 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ///
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct Poseidon<F>(PhantomData<F>);
 
 impl<F> Poseidon<F> where F: Field {}

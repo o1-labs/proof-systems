@@ -136,7 +136,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ use the 8-bit XOR table.
 //~ ```
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct Xor16<F>(PhantomData<F>);
 
 impl<F> Argument<F> for Xor16<F>

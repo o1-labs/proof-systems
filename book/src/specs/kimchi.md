@@ -1810,9 +1810,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
-    /// Conditional commitments
-    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub conditional_comm: Option<PolyComm<G>>,
+    #[serde(skip)]
+    pub gate_comms: HashMap<GateType, PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]

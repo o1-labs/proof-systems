@@ -164,7 +164,7 @@ use ark_ff::PrimeField;
 //~
 //~ where the notation `vpi` and `vci` defined in the "Layout" section above.
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct RangeCheck0<F>(PhantomData<F>);
 
 impl<F> Argument<F> for RangeCheck0<F>
@@ -265,7 +265,7 @@ where
 //~
 //~ where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub struct RangeCheck1<F>(PhantomData<F>);
 
 impl<F> Argument<F> for RangeCheck1<F>

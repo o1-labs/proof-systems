@@ -83,7 +83,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
-                    Conditional => Some(self.verifier_index.conditional_comm.as_ref()?),
+                    _ => Some(&self.verifier_index.gate_comms[&t]),
                 }
             }
         }

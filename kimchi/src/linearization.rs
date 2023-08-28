@@ -2,6 +2,7 @@
 
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
@@ -31,15 +32,24 @@ use crate::circuits::{
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
-/// Get the expresion of constraints.
+/// Get the expression of all constraints.
+///
+/// If the `use_feature_flags` argument is `false`, this will generate an expression using the
+/// `Expr::IfFeature` variant for each of the flags.
 ///
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
-    feature_flags: Option<&FeatureFlags>,
+    cs: &ConstraintSystem<F>,
+    use_feature_flags: bool,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
+    let feature_flags = if use_feature_flags {
+        Some(cs.feature_flags)
+    } else {
+        None
+    };
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
@@ -174,6 +184,11 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         expr += generic::Generic::combined_constraints(&powers_of_alpha, &mut cache);
     }
 
+    // Get the expressions of configured gates
+    for (gate, _domain) in &cs.configured_gates {
+        expr += gate.combined_constraints(&powers_of_alpha, &mut cache);
+    }
+
     // permutation
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
@@ -239,8 +254,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(None, generic);
-            let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
+            let (feature_flagged_expr, _) = constraints_expr(cs, false, generic);
+            let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(&feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
     }
@@ -328,19 +343,14 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 
 /// Linearize the `expr`.
 ///
-/// If the `feature_flags` argument is `None`, this will generate an expression using the
-/// `Expr::IfFeature` variant for each of the flags.
-///
-/// # Panics
-///
 /// Will panic if the `linearization` process fails.
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
-    feature_flags: Option<&FeatureFlags>,
+    cs: &ConstraintSystem<F>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
-    let evaluated_cols = linearization_columns::<F>(feature_flags);
+    let evaluated_cols = linearization_columns::<F>(Some(&cs.feature_flags));
 
-    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr(cs, true, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)
