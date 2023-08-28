@@ -268,14 +268,10 @@ impl<F: PrimeField> Gate<F> {
                 range_check::circuitgates::RangeCheck1::<F>::constraint_checks(env, cache)
             }
             Gate::ForeignFieldAdd(_) => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::constraint_checks(
-                    env, cache,
-                )
+                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::constraint_checks(env, cache)
             }
             Gate::ForeignFieldMul(_) => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::constraint_checks(
-                    env, cache,
-                )
+                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::constraint_checks(env, cache)
             }
             Gate::Xor16(_) => xor::Xor16::<F>::constraint_checks(env, cache),
             Gate::Rot64(_) => rot::Rot64::<F>::constraint_checks(env, cache),
