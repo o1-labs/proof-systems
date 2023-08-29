@@ -121,7 +121,6 @@ where
             self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
-            configured_gates,
             self.disable_gates_checks,
         );
         println!(

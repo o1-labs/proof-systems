@@ -23,8 +23,8 @@ use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::array;
 use std::sync::Arc;
+use std::{array, collections::HashSet};
 
 //
 // ConstraintSystem
@@ -191,7 +191,6 @@ pub enum GateError {
 }
 
 pub struct Builder<F: PrimeField> {
-    configured_gates: Vec<GateType>,
     gates: Vec<CircuitGate<F>>,
     public: usize,
     prev_challenges: usize,
@@ -256,25 +255,6 @@ impl<F: PrimeField> ConstraintSystem<F> {
             runtime_tables: None,
             precomputations: None,
             disable_gates_checks: false,
-            configured_gates: vec![
-                // TODO: Set up default gates
-                // GateType::Generic.to_gate().unwrap(),
-                // GateType::Poseidon.to_gate().unwrap(),
-                // GateType::CompleteAdd.to_gate().unwrap(),
-                // GateType::VarBaseMul.to_gate().unwrap(),
-                // GateType::EndoMul.to_gate().unwrap(),
-                // GateType::EndoMulScalar.to_gate().unwrap(),
-                // GateType::Lookup.to_gate().unwrap(),
-                // GateType::CairoClaim.to_gate().unwrap(),
-                // GateType::CairoInstruction.to_gate().unwrap(),
-                // GateType::CairoFlags.to_gate().unwrap(),
-                // GateType::RangeCheck0.to_gate().unwrap(),
-                // GateType::RangeCheck1.to_gate().unwrap(),
-                // GateType::ForeignFieldAdd.to_gate().unwrap(),
-                // GateType::ForeignFieldMul.to_gate().unwrap(),
-                // GateType::Xor16.to_gate().unwrap(),
-                // GateType::Rot64.to_gate().unwrap(),
-            ],
         }
     }
 
@@ -637,12 +617,6 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 }
 
 impl<F: PrimeField + SquareRootField> Builder<F> {
-    /// Specify which gates are supported by this constraint system
-    pub fn configured_gates(mut self, configured_gates: &[GateType]) -> Self {
-        self.configured_gates = configured_gates.to_vec();
-        self
-    }
-
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
     pub fn public(mut self, public: usize) -> Self {
@@ -705,17 +679,13 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        // Check that the circuit is only using configured gates
-        for gate in gates.iter() {
-            if !gate.typ.always_configured()
-                && !self
-                    .configured_gates
-                    .iter()
-                    .any(|configured_gate| gate.typ == *configured_gate)
-            {
-                return Err(SetupError::InvalidGate(format!("{:>?}", gate.typ)));
+        // Compute the gates configured by this circuit
+        let configured_gates = gates.iter().fold(HashSet::new(), |mut set, gate| {
+            if !gate.typ.is_always_configured() {
+                set.insert(gate.typ);
             }
-        }
+            set
+        });
 
         let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
 
@@ -810,8 +780,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             prev_challenges: self.prev_challenges,
             sid,
             gates,
-            configured_gates: self
-                .configured_gates
+            configured_gates: configured_gates
                 .into_iter()
                 .map(|gate_type| gate_type.to_gate().unwrap())
                 .collect(),
