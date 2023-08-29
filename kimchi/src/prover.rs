@@ -667,7 +667,7 @@ where
             }
 
             // Insert index evaluations for configured gates
-            for (gate_type, selector, _domain) in &index.column_evaluations.gate_selectors {
+            for (gate_type, selector) in &index.column_evaluations.gate_selectors {
                 index_evals.insert(*gate_type, selector);
             }
 

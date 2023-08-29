@@ -17,7 +17,7 @@ use crate::{
 use ark_ff::{PrimeField, SquareRootField, Zero};
 use ark_poly::{
     univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
-    Radix2EvaluationDomain as Domain, Radix2EvaluationDomain as D,
+    Radix2EvaluationDomain as D,
 };
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
@@ -69,8 +69,6 @@ pub struct EvaluatedColumnCoefficients<F: PrimeField> {
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub poseidon_selector: DP<F>,
 }
-
-type GateSelectorData<F> = (GateType, E<F, D<F>>, Domain<F>);
 
 /// The polynomials representing columns, in evaluation form.
 /// The evaluations are expanded to the domain size required for their constraints.
@@ -135,7 +133,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
 
     #[serde(skip)]
     /// Gate selectors and corresponding domains
-    pub gate_selectors: Vec<GateSelectorData<F>>,
+    pub gate_selectors: Vec<(GateType, E<F, D<F>>)>,
 }
 
 #[serde_as]
@@ -601,21 +599,19 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         });
 
         // Compute gate selectors for configured gates
-        let gate_selectors: Vec<GateSelectorData<F>> = self
+        let gate_selectors: Vec<(GateType, E<F, D<F>>)> = self
             .configured_gates
             .iter()
             .map(|gate| {
-                let domain = self.domain.get(gate.domain());
                 (
                     gate.gate_type(),
                     selector_polynomial(
                         gate.gate_type(),
                         &self.gates,
                         &self.domain,
-                        domain,
+                        self.domain.get(gate.domain()),
                         self.disable_gates_checks,
                     ),
-                    *domain,
                 )
             })
             .collect();

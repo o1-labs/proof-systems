@@ -288,10 +288,10 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             gate_comms: HashMap::from_iter(self.column_evaluations.gate_selectors.iter().map(
-                |(gate_type, selector, domain)| {
+                |(gate_type, selector)| {
                     (
                         *gate_type,
-                        self.srs.commit_evaluations_non_hiding(*domain, selector),
+                        self.srs.commit_evaluations_non_hiding(domain, selector),
                     )
                 },
             )),
