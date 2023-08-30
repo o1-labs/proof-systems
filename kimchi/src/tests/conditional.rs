@@ -61,7 +61,6 @@ where
         // Create prover index with test framework
         Some(
             TestFramework::<G>::default()
-                .configured_gates(&[GateType::Conditional])
                 .gates(gates.clone())
                 .setup(),
         )
@@ -74,7 +73,6 @@ where
     } else {
         // If not full mode, just create constraint system (this is much faster)
         ConstraintSystem::create(gates.clone())
-            .configured_gates(&[GateType::Conditional])
             .build()
             .unwrap()
     };
