@@ -323,7 +323,6 @@ pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>, LookupTableID>;
 pub type JointLookupValue<F> = JointLookup<F, F>;
 
 impl<F: Zero + One + Clone + Neg<Output = F> + From<u64>> JointLookupValue<F> {
-    // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
     pub fn evaluate(&self, joint_combiner: &F, table_id_combiner: &F) -> F {
         combine_table_entry(
