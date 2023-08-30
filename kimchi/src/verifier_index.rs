@@ -24,7 +24,7 @@ use poly_commitment::{
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, collections::HashMap};
+use std::{array, collections::BTreeMap};
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, BufWriter, Seek, SeekFrom::Start},
@@ -126,7 +126,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub rot_comm: Option<PolyComm<G>>,
 
     #[serde(skip)]
-    pub gate_comms: HashMap<GateType, PolyComm<G>>,
+    pub gate_comms: BTreeMap<GateType, PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
@@ -287,7 +287,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            gate_comms: HashMap::from_iter(self.column_evaluations.gate_selectors.iter().map(
+            gate_comms: BTreeMap::from_iter(self.column_evaluations.gate_selectors.iter().map(
                 |(gate_type, selector)| {
                     (
                         *gate_type,

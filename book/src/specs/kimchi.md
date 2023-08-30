@@ -1811,7 +1811,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub rot_comm: Option<PolyComm<G>>,
 
     #[serde(skip)]
-    pub gate_comms: HashMap<GateType, PolyComm<G>>,
+    pub gate_comms: BTreeMap<GateType, PolyComm<G>>,
 
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]

@@ -23,8 +23,7 @@ use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::sync::Arc;
-use std::{array, collections::HashSet};
+use std::{array, collections::BTreeSet, sync::Arc};
 
 //
 // ConstraintSystem
@@ -680,7 +679,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         assert!(gates.len() > 1);
 
         // Compute the gates configured by this circuit
-        let configured_gates = gates.iter().fold(HashSet::new(), |mut set, gate| {
+        let configured_gates = gates.iter().fold(BTreeSet::new(), |mut set, gate| {
             if !gate.typ.is_always_configured() {
                 set.insert(gate.typ);
             }
