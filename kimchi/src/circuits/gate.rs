@@ -120,7 +120,7 @@ pub enum GateType {
 
 impl GateType {
     // TODO: Remove this function once all gates are updated to configurable gates
-    pub fn always_configured(&self) -> bool {
+    pub fn is_always_configured(&self) -> bool {
         matches!(
             self,
             GateType::Zero
