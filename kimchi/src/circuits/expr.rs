@@ -16,23 +16,26 @@ use ark_ff::{FftField, Field, One, PrimeField, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Radix2EvaluationDomain as D,
 };
+use constraints::ExprOps;
 use itertools::Itertools;
 use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
-use std::ops::{Add, AddAssign, Mul, Neg, Sub};
 use std::{
     collections::{HashMap, HashSet},
+    hash::Hash,
     ops::MulAssign,
 };
 use std::{fmt, iter::FromIterator};
+use std::{
+    fmt::Debug,
+    ops::{Add, AddAssign, Mul, Neg, Sub},
+};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
-use self::constraints::ExprOps;
-
 #[derive(Debug, Error)]
-pub enum ExprError {
+pub enum ExprError<C: ColTrait> {
     #[error("Empty stack")]
     EmptyStack,
 
@@ -40,13 +43,13 @@ pub enum ExprError {
     LookupShouldNotBeUsed,
 
     #[error("Linearization failed (needed {0:?} evaluated at the {1:?} row")]
-    MissingEvaluation(Column, CurrOrNext),
+    MissingEvaluation(C, CurrOrNext),
 
     #[error("Cannot get index evaluation {0:?} (should have been linearized away)")]
-    MissingIndexEvaluation(Column),
+    MissingIndexEvaluation(C),
 
     #[error("Linearization failed (too many unevaluated columns: {0:?}")]
-    FailedLinearization(Vec<Variable>),
+    FailedLinearization(Vec<Variable<C>>),
 
     #[error("runtime table not available")]
     MissingRuntime,
@@ -111,6 +114,14 @@ pub struct Environment<'a, F: FftField> {
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
     pub lookup: Option<LookupEnvironment<'a, F>>,
+}
+pub trait GetCol<'a, F: FftField, C: ColTrait> {
+    fn get_col(&self, col: &C) -> Option<&'a Evaluations<F, D<F>>>;
+}
+impl<'a, F: FftField> GetCol<'a, F, Column> for Environment<'a, F> {
+    fn get_col(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
+        self.get_column(col)
+    }
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
@@ -229,14 +240,14 @@ impl Column {
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
-pub struct Variable {
+pub struct Variable<C: ColTrait = Column> {
     /// The column of this variable
-    pub col: Column,
+    pub col: C,
     /// The row (Curr of Next) of this variable
     pub row: CurrOrNext,
 }
 
-impl Variable {
+impl<C: ColTrait> Variable<C> {
     fn ocaml(&self) -> String {
         format!("var({:?}, {:?})", self.col, self.row)
     }
@@ -284,7 +295,7 @@ pub enum ConstantExpr<F> {
 }
 
 impl<F: Copy> ConstantExpr<F> {
-    fn to_polish_(&self, res: &mut Vec<PolishToken<F>>) {
+    fn to_polish_<C: ColTrait>(&self, res: &mut Vec<PolishToken<F, C>>) {
         match self {
             ConstantExpr::Alpha => res.push(PolishToken::Alpha),
             ConstantExpr::Beta => res.push(PolishToken::Beta),
@@ -419,7 +430,7 @@ pub enum Op2 {
 }
 
 impl Op2 {
-    fn to_polish<A>(&self) -> PolishToken<A> {
+    fn to_polish<A, C: ColTrait>(&self) -> PolishToken<A, C> {
         use Op2::*;
         match self {
             Add => PolishToken::Add,
@@ -456,6 +467,76 @@ impl FeatureFlag {
         todo!("Handle features")
     }
 }
+pub trait ColTrait:
+    Debug + Clone + Copy + Debug + PartialEq + Eq + Hash + PartialOrd + Ord
+{
+    fn dom(&self) -> Domain;
+    fn latex(&self) -> String;
+    fn text(&self) -> String;
+    fn evaluate<F: Field>(
+        self,
+        evals: &ProofEvaluations<PointEvaluations<F>>,
+    ) -> Option<PointEvaluations<F>>;
+    fn make_witness(i: usize) -> Self;
+    fn make_coefficient(i: usize) -> Self;
+}
+impl ColTrait for Column {
+    fn dom(&self) -> Domain {
+        self.domain()
+    }
+    fn latex(&self) -> String {
+        Column::latex(&self)
+    }
+
+    fn text(&self) -> String {
+        Column::text(&self)
+    }
+
+    fn evaluate<F: Field>(
+        self,
+        evals: &ProofEvaluations<PointEvaluations<F>>,
+    ) -> Option<PointEvaluations<F>> {
+        use Column::*;
+        match self {
+            Witness(i) => Some(evals.w[i]),
+            Z => Some(evals.z),
+            LookupSorted(i) => evals.lookup_sorted[i],
+            LookupAggreg => evals.lookup_aggregation,
+            LookupTable => evals.lookup_table,
+            LookupRuntimeTable => evals.runtime_lookup_table,
+            Index(GateType::Poseidon) => Some(evals.poseidon_selector),
+            Index(GateType::Generic) => Some(evals.generic_selector),
+            Index(GateType::CompleteAdd) => Some(evals.complete_add_selector),
+            Index(GateType::VarBaseMul) => Some(evals.mul_selector),
+            Index(GateType::EndoMul) => Some(evals.emul_selector),
+            Index(GateType::EndoMulScalar) => Some(evals.endomul_scalar_selector),
+            Index(GateType::RangeCheck0) => evals.range_check0_selector,
+            Index(GateType::RangeCheck1) => evals.range_check1_selector,
+            Index(GateType::ForeignFieldAdd) => evals.foreign_field_add_selector,
+            Index(GateType::ForeignFieldMul) => evals.foreign_field_mul_selector,
+            Index(GateType::Xor16) => evals.xor_selector,
+            Index(GateType::Rot64) => evals.rot_selector,
+            Permutation(i) => Some(evals.s[i]),
+            Coefficient(i) => Some(evals.coefficients[i]),
+            Column::LookupKindIndex(LookupPattern::Xor) => evals.xor_lookup_selector,
+            Column::LookupKindIndex(LookupPattern::Lookup) => evals.lookup_gate_lookup_selector,
+            Column::LookupKindIndex(LookupPattern::RangeCheck) => evals.range_check_lookup_selector,
+            Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
+                evals.foreign_field_mul_lookup_selector
+            }
+            Column::LookupRuntimeSelector => evals.runtime_lookup_table_selector,
+            Index(_) => None,
+        }
+    }
+
+    fn make_witness(i: usize) -> Self {
+        Self::Witness(i)
+    }
+
+    fn make_coefficient(i: usize) -> Self {
+        Self::Coefficient(i)
+    }
+}
 
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
@@ -468,20 +549,20 @@ impl FeatureFlag {
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
 #[derive(Clone, Debug, PartialEq)]
-pub enum Expr<C> {
+pub enum Expr<C, Col: ColTrait = Column> {
     Constant(C),
-    Cell(Variable),
-    Double(Box<Expr<C>>),
-    Square(Box<Expr<C>>),
-    BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
+    Cell(Variable<Col>),
+    Double(Box<Expr<C, Col>>),
+    Square(Box<Expr<C, Col>>),
+    BinOp(Op2, Box<Expr<C, Col>>, Box<Expr<C, Col>>),
     VanishesOnLast4Rows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(i32),
-    Pow(Box<Expr<C>>, u64),
-    Cache(CacheId, Box<Expr<C>>),
+    Pow(Box<Expr<C, Col>>, u64),
+    Cache(CacheId, Box<Expr<C, Col>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
-    IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
+    IfFeature(FeatureFlag, Box<Expr<C, Col>>, Box<Expr<C, Col>>),
 }
 
 impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
@@ -628,7 +709,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum PolishToken<F> {
+pub enum PolishToken<F, C: ColTrait = Column> {
     Alpha,
     Beta,
     Gamma,
@@ -639,7 +720,7 @@ pub enum PolishToken<F> {
         col: usize,
     },
     Literal(F),
-    Cell(Variable),
+    Cell(Variable<C>),
     Dup,
     Pow(u64),
     Add,
@@ -655,70 +736,16 @@ pub enum PolishToken<F> {
     SkipIfNot(FeatureFlag, usize),
 }
 
-impl Variable {
+impl<C: ColTrait> Variable<C> {
     fn evaluate<F: Field>(
         &self,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<C>> {
         let point_evaluations = {
-            use Column::*;
-            match self.col {
-                Witness(i) => Ok(evals.w[i]),
-                Z => Ok(evals.z),
-                LookupSorted(i) => {
-                    evals.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(self.col))
-                }
-                LookupAggreg => evals
-                    .lookup_aggregation
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                LookupTable => evals
-                    .lookup_table
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                LookupRuntimeTable => evals
-                    .runtime_lookup_table
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-                Index(GateType::Generic) => Ok(evals.generic_selector),
-                Index(GateType::CompleteAdd) => Ok(evals.complete_add_selector),
-                Index(GateType::VarBaseMul) => Ok(evals.mul_selector),
-                Index(GateType::EndoMul) => Ok(evals.emul_selector),
-                Index(GateType::EndoMulScalar) => Ok(evals.endomul_scalar_selector),
-                Index(GateType::RangeCheck0) => evals
-                    .range_check0_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::RangeCheck1) => evals
-                    .range_check1_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::ForeignFieldAdd) => evals
-                    .foreign_field_add_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::ForeignFieldMul) => evals
-                    .foreign_field_mul_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::Xor16) => evals
-                    .xor_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(GateType::Rot64) => evals
-                    .rot_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Permutation(i) => Ok(evals.s[i]),
-                Coefficient(i) => Ok(evals.coefficients[i]),
-                Column::LookupKindIndex(LookupPattern::Xor) => evals
-                    .xor_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupKindIndex(LookupPattern::Lookup) => evals
-                    .lookup_gate_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupKindIndex(LookupPattern::RangeCheck) => evals
-                    .range_check_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => evals
-                    .foreign_field_mul_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Column::LookupRuntimeSelector => evals
-                    .runtime_lookup_table_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
-                Index(_) => Err(ExprError::MissingIndexEvaluation(self.col)),
+            let col = self.col.evaluate(&evals);
+            match col {
+                Some(x) => Ok(x),
+                None => Err(ExprError::MissingIndexEvaluation(self.col)),
             }
         }?;
         match self.row {
@@ -728,15 +755,15 @@ impl Variable {
     }
 }
 
-impl<F: FftField> PolishToken<F> {
+impl<F: FftField, C: ColTrait> PolishToken<F, C> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate(
-        toks: &[PolishToken<F>],
+        toks: &[PolishToken<F, C>],
         d: D<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<C>> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
 
@@ -811,9 +838,9 @@ impl<F: FftField> PolishToken<F> {
     }
 }
 
-impl<C> Expr<C> {
+impl<C, Col: ColTrait> Expr<C, Col> {
     /// Convenience function for constructing cell variables.
-    pub fn cell(col: Column, row: CurrOrNext) -> Expr<C> {
+    pub fn cell(col: Col, row: CurrOrNext) -> Expr<C, Col> {
         Expr::Cell(Variable { col, row })
     }
 
@@ -850,9 +877,10 @@ impl<C> Expr<C> {
     }
 }
 
-impl<F> fmt::Display for Expr<ConstantExpr<F>>
+impl<F, C> fmt::Display for Expr<ConstantExpr<F>, C>
 where
     F: PrimeField,
+    C: ColTrait,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.text_str())
@@ -860,7 +888,7 @@ where
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-enum Domain {
+pub enum Domain {
     D1 = 1,
     D2 = 2,
     D4 = 4,
@@ -1424,16 +1452,16 @@ impl<F: Field> Expr<ConstantExpr<F>> {
     }
 }
 
-impl<F: FftField> Expr<ConstantExpr<F>> {
+impl<F: FftField, C: ColTrait> Expr<ConstantExpr<F>, C> {
     /// Compile an expression to an RPN expression.
-    pub fn to_polish(&self) -> Vec<PolishToken<F>> {
+    pub fn to_polish(&self) -> Vec<PolishToken<F, C>> {
         let mut res = vec![];
         let mut cache = HashMap::new();
         self.to_polish_(&mut cache, &mut res);
         res
     }
 
-    fn to_polish_(&self, cache: &mut HashMap<CacheId, usize>, res: &mut Vec<PolishToken<F>>) {
+    fn to_polish_(&self, cache: &mut HashMap<CacheId, usize>, res: &mut Vec<PolishToken<F, C>>) {
         match self {
             Expr::Double(x) => {
                 x.to_polish_(cache, res);
@@ -1514,7 +1542,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         Expr::Constant(ConstantExpr::Beta)
     }
 
-    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F> {
+    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F, C> {
         use Expr::*;
         // TODO: Use cache
         match self {
@@ -1544,7 +1572,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
         env: &Environment<F>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<C>> {
         self.evaluate_(d, pt, evals, &env.constants)
     }
 
@@ -1555,7 +1583,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
         c: &Constants<F>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<C>> {
         use Expr::*;
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
@@ -1592,12 +1620,15 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Evaluate the constant expressions in this expression down into field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F> {
+    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F, C> {
         self.evaluate_constants_(&env.constants)
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>>
+    where
+        Environment<'a, F>: GetCol<'a, F, C>,
+    {
         self.evaluate_constants(env).evaluations(env)
     }
 }
@@ -1607,14 +1638,14 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField> Expr<F> {
+impl<F: FftField, C: ColTrait> Expr<F, C> {
     /// Evaluate an expression into a field element.
     pub fn evaluate(
         &self,
         d: D<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-    ) -> Result<F, ExprError> {
+    ) -> Result<F, ExprError<C>> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
@@ -1651,7 +1682,10 @@ impl<F: FftField> Expr<F> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>>
+    where
+        Environment<'a, F>: GetCol<'a, F, C>,
+    {
         let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
@@ -1700,6 +1734,7 @@ impl<F: FftField> Expr<F> {
     ) -> Either<EvalResult<'a, F>, CacheId>
     where
         'a: 'b,
+        Environment<'a, F>: GetCol<'a, F, C>,
     {
         let dom = (d, get_domain(d, env));
 
@@ -1781,13 +1816,13 @@ impl<F: FftField> Expr<F> {
             },
             Expr::Cell(Variable { col, row }) => {
                 let evals: &'a Evaluations<F, D<F>> = {
-                    match env.get_column(col) {
+                    match env.get_col(col) {
                         None => return Either::Left(EvalResult::Constant(F::zero())),
                         Some(e) => e,
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: col.domain(),
+                    domain: col.dom(),
                     shift: row.shift(),
                     evals,
                 }
@@ -1861,7 +1896,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     }
 }
 
-impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
+impl<F: FftField, C: ColTrait> Linearization<Vec<PolishToken<F, C>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial(
@@ -1923,7 +1958,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     }
 }
 
-impl<F: One> Expr<F> {
+impl<F: One, C: ColTrait> Expr<F, C> {
     /// Exponentiate an expression
     #[must_use]
     pub fn pow(self, p: u64) -> Self {
@@ -1935,32 +1970,37 @@ impl<F: One> Expr<F> {
     }
 }
 
-type Monomials<F> = HashMap<Vec<Variable>, Expr<F>>;
+type Monomials<F, C> = HashMap<Vec<Variable<C>>, Expr<F, C>>;
 
-fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
-    e1: &Monomials<F>,
-    e2: &Monomials<F>,
-) -> Monomials<F> {
-    let mut res: HashMap<_, Expr<F>> = HashMap::new();
+fn mul_monomials<F, C>(e1: &Monomials<F, C>, e2: &Monomials<F, C>) -> Monomials<F, C>
+where
+    F: Neg<Output = F> + Clone + One + Zero + PartialEq,
+    C: ColTrait,
+{
+    let mut res: HashMap<_, Expr<F, C>> = HashMap::new();
     for (m1, c1) in e1.iter() {
         for (m2, c2) in e2.iter() {
             let mut m = m1.clone();
             m.extend(m2);
             m.sort();
             let c1c2 = c1.clone() * c2.clone();
-            let v = res.entry(m).or_insert_with(Expr::<F>::zero);
+            let v = res.entry(m).or_insert_with(Expr::<F, C>::zero);
             *v = v.clone() + c1c2;
         }
     }
     res
 }
 
-impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
+impl<F, C> Expr<F, C>
+where
+    F: Neg<Output = F> + Clone + One + Zero + PartialEq,
+    C: ColTrait,
+{
     // TODO: This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It's ok for now as we only call that function once on
     // a small input when producing the verification key.
-    fn is_constant(&self, evaluated: &HashSet<Column>) -> bool {
+    fn is_constant(&self, evaluated: &HashSet<C>) -> bool {
         use Expr::*;
         match self {
             Pow(x, _) => x.is_constant(evaluated),
@@ -1976,13 +2016,13 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         }
     }
 
-    fn monomials(&self, ev: &HashSet<Column>) -> HashMap<Vec<Variable>, Expr<F>> {
-        let sing = |v: Vec<Variable>, c: Expr<F>| {
+    fn monomials(&self, ev: &HashSet<C>) -> HashMap<Vec<Variable<C>>, Expr<F, C>> {
+        let sing = |v: Vec<Variable<C>>, c: Expr<F, C>| {
             let mut h = HashMap::new();
             h.insert(v, c);
             h
         };
-        let constant = |e: Expr<F>| sing(vec![], e);
+        let constant = |e: Expr<F, C>| sing(vec![], e);
         use Expr::*;
 
         if self.is_constant(ev) {
@@ -1992,7 +2032,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
         match self {
             Pow(x, d) => {
                 // Run the multiplication logic with square and multiply
-                let mut acc = sing(vec![], Expr::<F>::one());
+                let mut acc = sing(vec![], Expr::<F, C>::one());
                 let mut acc_is_one = true;
                 let x = x.monomials(ev);
 
@@ -2069,7 +2109,11 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             }
         }
     }
-
+}
+impl<F> Expr<F, Column>
+where
+    F: Neg<Output = F> + Clone + One + Zero + PartialEq,
+{
     /// There is an optimization in PLONK called "linearization" in which a certain
     /// polynomial is expressed as a linear combination of other polynomials in order
     /// to reduce the number of evaluations needed in the IOP (by relying on the homomorphic
@@ -2099,7 +2143,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
     pub fn linearize(
         &self,
         evaluated: HashSet<Column>,
-    ) -> Result<Linearization<Expr<F>>, ExprError> {
+    ) -> Result<Linearization<Expr<F, Column>>, ExprError<Column>> {
         let mut res: HashMap<Column, Expr<F>> = HashMap::new();
         let mut constant_term: Expr<F> = Self::zero();
         let monomials = self.monomials(&evaluated);
@@ -2233,7 +2277,7 @@ impl<F: Field> Mul<ConstantExpr<F>> for ConstantExpr<F> {
     }
 }
 
-impl<F: Zero> Zero for Expr<F> {
+impl<F: Zero, C: ColTrait> Zero for Expr<F, C> {
     fn zero() -> Self {
         Expr::Constant(F::zero())
     }
@@ -2246,7 +2290,7 @@ impl<F: Zero> Zero for Expr<F> {
     }
 }
 
-impl<F: Zero + One + PartialEq> One for Expr<F> {
+impl<F: Zero + One + PartialEq, C: ColTrait> One for Expr<F, C> {
     fn one() -> Self {
         Expr::Constant(F::one())
     }
@@ -2259,10 +2303,10 @@ impl<F: Zero + One + PartialEq> One for Expr<F> {
     }
 }
 
-impl<F: One + Neg<Output = F>> Neg for Expr<F> {
-    type Output = Expr<F>;
+impl<F: One + Neg<Output = F>, C: ColTrait> Neg for Expr<F, C> {
+    type Output = Expr<F, C>;
 
-    fn neg(self) -> Expr<F> {
+    fn neg(self) -> Expr<F, C> {
         match self {
             Expr::Constant(x) => Expr::Constant(x.neg()),
             e => Expr::BinOp(
@@ -2274,8 +2318,8 @@ impl<F: One + Neg<Output = F>> Neg for Expr<F> {
     }
 }
 
-impl<F: Zero> Add<Expr<F>> for Expr<F> {
-    type Output = Expr<F>;
+impl<F: Zero, C: ColTrait> Add<Expr<F, C>> for Expr<F, C> {
+    type Output = Expr<F, C>;
     fn add(self, other: Self) -> Self {
         if self.is_zero() {
             return other;
@@ -2287,7 +2331,7 @@ impl<F: Zero> Add<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
+impl<F: Zero + Clone, C: ColTrait> AddAssign<Expr<F, C>> for Expr<F, C> {
     fn add_assign(&mut self, other: Self) {
         if self.is_zero() {
             *self = other;
@@ -2297,8 +2341,8 @@ impl<F: Zero + Clone> AddAssign<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
-    type Output = Expr<F>;
+impl<F: Zero + One + PartialEq, C: ColTrait> Mul<Expr<F, C>> for Expr<F, C> {
+    type Output = Expr<F, C>;
     fn mul(self, other: Self) -> Self {
         if self.is_zero() || other.is_zero() {
             return Self::zero();
@@ -2314,7 +2358,7 @@ impl<F: Zero + One + PartialEq> Mul<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F> MulAssign<Expr<F>> for Expr<F>
+impl<F, C: ColTrait> MulAssign<Expr<F, C>> for Expr<F, C>
 where
     F: Zero + One + PartialEq + Clone,
 {
@@ -2329,8 +2373,8 @@ where
     }
 }
 
-impl<F: Zero> Sub<Expr<F>> for Expr<F> {
-    type Output = Expr<F>;
+impl<F: Zero, C: ColTrait> Sub<Expr<F, C>> for Expr<F, C> {
+    type Output = Expr<F, C>;
     fn sub(self, other: Self) -> Self {
         if other.is_zero() {
             return self;
@@ -2339,13 +2383,13 @@ impl<F: Zero> Sub<Expr<F>> for Expr<F> {
     }
 }
 
-impl<F: Field> From<u64> for Expr<F> {
+impl<F: Field, C: ColTrait> From<u64> for Expr<F, C> {
     fn from(x: u64) -> Self {
         Expr::Constant(F::from(x))
     }
 }
 
-impl<F: Field> From<u64> for Expr<ConstantExpr<F>> {
+impl<F: Field, C: ColTrait> From<u64> for Expr<ConstantExpr<F>, C> {
     fn from(x: u64) -> Self {
         Expr::Constant(ConstantExpr::Literal(F::from(x)))
     }
@@ -2357,8 +2401,8 @@ impl<F: Field> From<u64> for ConstantExpr<F> {
     }
 }
 
-impl<F: Field> Mul<F> for Expr<ConstantExpr<F>> {
-    type Output = Expr<ConstantExpr<F>>;
+impl<F: Field, C: ColTrait> Mul<F> for Expr<ConstantExpr<F>, C> {
+    type Output = Expr<ConstantExpr<F>, C>;
 
     fn mul(self, y: F) -> Self::Output {
         Expr::Constant(ConstantExpr::Literal(y)) * self
@@ -2434,7 +2478,7 @@ where
     }
 }
 
-impl<F> Expr<ConstantExpr<F>>
+impl<F, C: ColTrait> Expr<ConstantExpr<F>, C>
 where
     F: PrimeField,
 {
@@ -2461,7 +2505,7 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn ocaml(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, C>>) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.ocaml(cache)),
@@ -2510,7 +2554,7 @@ where
         res
     }
 
-    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn latex(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, C>>) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("2 ({})", x.latex(cache)),
@@ -2533,7 +2577,7 @@ where
 
     /// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>>>) -> String {
+    fn text(&self, cache: &mut HashMap<CacheId, Expr<ConstantExpr<F>, C>>) -> String {
         use Expr::*;
         match self {
             Double(x) => format!("double({})", x.text(cache)),
@@ -2651,24 +2695,24 @@ pub mod constraints {
         fn cache(&self, cache: &mut Cache) -> Self;
     }
 
-    impl<F> ExprOps<F> for Expr<ConstantExpr<F>>
+    impl<F, C: ColTrait> ExprOps<F> for Expr<ConstantExpr<F>, C>
     where
         F: PrimeField,
     {
         fn two_pow(pow: u64) -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as Two<F>>::two_pow(pow))
+            Self::literal(<F as Two<F>>::two_pow(pow))
         }
 
         fn two_to_limb() -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
+            Self::literal(<F as ForeignFieldHelpers<F>>::two_to_limb())
         }
 
         fn two_to_2limb() -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
+            Self::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
         }
 
         fn two_to_3limb() -> Self {
-            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_3limb())
+            Self::literal(<F as ForeignFieldHelpers<F>>::two_to_3limb())
         }
 
         fn double(&self) -> Self {
@@ -2804,35 +2848,35 @@ pub mod constraints {
 //
 
 /// An alias for the intended usage of the expression type in constructing constraints.
-pub type E<F> = Expr<ConstantExpr<F>>;
+pub type E<F, C = Column> = Expr<ConstantExpr<F>, C>;
 
 /// Convenience function to create a constant as [Expr].
-pub fn constant<F>(x: F) -> E<F> {
+pub fn constant<F, C: ColTrait>(x: F) -> E<F, C> {
     Expr::Constant(ConstantExpr::Literal(x))
 }
 
 /// Helper function to quickly create an expression for a witness.
-pub fn witness<F>(i: usize, row: CurrOrNext) -> E<F> {
-    E::<F>::cell(Column::Witness(i), row)
+pub fn witness<F, C: ColTrait>(i: usize, row: CurrOrNext) -> E<F, C> {
+    E::cell(C::make_witness(i), row)
 }
 
 /// Same as [witness] but for the current row.
-pub fn witness_curr<F>(i: usize) -> E<F> {
+pub fn witness_curr<F, C: ColTrait>(i: usize) -> E<F, C> {
     witness(i, CurrOrNext::Curr)
 }
 
 /// Same as [witness] but for the next row.
-pub fn witness_next<F>(i: usize) -> E<F> {
+pub fn witness_next<F, C: ColTrait>(i: usize) -> E<F, C> {
     witness(i, CurrOrNext::Next)
 }
 
 /// Handy function to quickly create an expression for a gate.
-pub fn index<F>(g: GateType) -> E<F> {
-    E::<F>::cell(Column::Index(g), CurrOrNext::Curr)
+pub fn index<F>(g: GateType) -> E<F, Column> {
+    E::cell(Column::Index(g), CurrOrNext::Curr)
 }
 
-pub fn coeff<F>(i: usize) -> E<F> {
-    E::<F>::cell(Column::Coefficient(i), CurrOrNext::Curr)
+pub fn coeff<F, C: ColTrait>(i: usize) -> E<F, C> {
+    E::cell(C::make_coefficient(i), CurrOrNext::Curr)
 }
 
 /// Auto clone macro - Helps make constraints more readable
