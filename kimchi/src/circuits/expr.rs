@@ -23,13 +23,10 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
+    fmt::{self, Debug},
     hash::Hash,
-    ops::MulAssign,
-};
-use std::{fmt, iter::FromIterator};
-use std::{
-    fmt::Debug,
-    ops::{Add, AddAssign, Mul, Neg, Sub},
+    iter::FromIterator,
+    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub},
 };
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
@@ -485,11 +482,11 @@ impl ColTrait for Column {
         self.domain()
     }
     fn latex(&self) -> String {
-        Column::latex(&self)
+        Column::latex(self)
     }
 
     fn text(&self) -> String {
-        Column::text(&self)
+        Column::text(self)
     }
 
     fn evaluate<F: Field>(
@@ -742,7 +739,7 @@ impl<C: ColTrait> Variable<C> {
         evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> Result<F, ExprError<C>> {
         let point_evaluations = {
-            let col = self.col.evaluate(&evals);
+            let col = self.col.evaluate(evals);
             match col {
                 Some(x) => Ok(x),
                 None => Err(ExprError::MissingIndexEvaluation(self.col)),
