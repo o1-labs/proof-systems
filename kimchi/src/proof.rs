@@ -3,6 +3,7 @@
 use crate::circuits::{
     expr::Column,
     gate::GateType,
+    lookup::lookups::LookupPattern,
     wires::{COLUMNS, PERMUTS},
 };
 use ark_ec::AffineCurve;
@@ -38,22 +39,6 @@ pub struct PointEvaluations<Evals> {
     pub zeta_omega: Evals,
 }
 
-/// Evaluations of lookup polynomials
-#[serde_as]
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct LookupEvaluations<Evals> {
-    /// sorted lookup table polynomial
-    pub sorted: Vec<Evals>,
-    /// lookup aggregation polynomial
-    pub aggreg: Evals,
-    // TODO: May be possible to optimize this away?
-    /// lookup table polynomial
-    pub table: Evals,
-
-    /// Optionally, a runtime table polynomial.
-    pub runtime: Option<Evals>,
-}
-
 // TODO: this should really be vectors here, perhaps create another type for chunked evaluations?
 /// Polynomial evaluations contained in a `ProverProof`.
 /// - **Chunked evaluations** `Field` is instantiated with vectors with a length that equals the length of the chunk
@@ -72,12 +57,54 @@ pub struct ProofEvaluations<Evals> {
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
     pub coefficients: [Evals; COLUMNS],
-    /// lookup-related evaluations
-    pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
     pub poseidon_selector: Evals,
+    /// evaluation of the elliptic curve addition selector polynomial
+    pub complete_add_selector: Evals,
+    /// evaluation of the elliptic curve variable base scalar multiplication selector polynomial
+    pub mul_selector: Evals,
+    /// evaluation of the endoscalar multiplication selector polynomial
+    pub emul_selector: Evals,
+    /// evaluation of the endoscalar multiplication scalar computation selector polynomial
+    pub endomul_scalar_selector: Evals,
+
+    // Optional gates
+    /// evaluation of the RangeCheck0 selector polynomial
+    pub range_check0_selector: Option<Evals>,
+    /// evaluation of the RangeCheck1 selector polynomial
+    pub range_check1_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldAdd selector polynomial
+    pub foreign_field_add_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul selector polynomial
+    pub foreign_field_mul_selector: Option<Evals>,
+    /// evaluation of the Xor selector polynomial
+    pub xor_selector: Option<Evals>,
+    /// evaluation of the Rot selector polynomial
+    pub rot_selector: Option<Evals>,
+
+    // lookup-related evaluations
+    /// evaluation of lookup aggregation polynomial
+    pub lookup_aggregation: Option<Evals>,
+    /// evaluation of lookup table polynomial
+    pub lookup_table: Option<Evals>,
+    /// evaluation of lookup sorted polynomials
+    pub lookup_sorted: [Option<Evals>; 5],
+    /// evaluation of runtime lookup table polynomial
+    pub runtime_lookup_table: Option<Evals>,
+
+    // lookup selectors
+    /// evaluation of the runtime lookup table selector polynomial
+    pub runtime_lookup_table_selector: Option<Evals>,
+    /// evaluation of the Xor range check pattern selector polynomial
+    pub xor_lookup_selector: Option<Evals>,
+    /// evaluation of the Lookup range check pattern selector polynomial
+    pub lookup_gate_lookup_selector: Option<Evals>,
+    /// evaluation of the RangeCheck range check pattern selector polynomial
+    pub range_check_lookup_selector: Option<Evals>,
+    /// evaluation of the ForeignFieldMul range check pattern selector polynomial
+    pub foreign_field_mul_lookup_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -165,38 +192,6 @@ impl<Evals> PointEvaluations<Evals> {
     }
 }
 
-impl<Eval> LookupEvaluations<Eval> {
-    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> LookupEvaluations<Eval2> {
-        let LookupEvaluations {
-            sorted,
-            aggreg,
-            table,
-            runtime,
-        } = self;
-        LookupEvaluations {
-            sorted: sorted.into_iter().map(f).collect(),
-            aggreg: f(aggreg),
-            table: f(table),
-            runtime: runtime.map(f),
-        }
-    }
-
-    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> LookupEvaluations<Eval2> {
-        let LookupEvaluations {
-            sorted,
-            aggreg,
-            table,
-            runtime,
-        } = self;
-        LookupEvaluations {
-            sorted: sorted.iter().map(f).collect(),
-            aggreg: f(aggreg),
-            table: f(table),
-            runtime: runtime.as_ref().map(f),
-        }
-    }
-}
-
 impl<Eval> ProofEvaluations<Eval> {
     pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<Eval2> {
         let ProofEvaluations {
@@ -205,9 +200,27 @@ impl<Eval> ProofEvaluations<Eval> {
             z,
             s,
             coefficients,
-            lookup,
             generic_selector,
             poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            endomul_scalar_selector,
+            range_check0_selector,
+            range_check1_selector,
+            foreign_field_add_selector,
+            foreign_field_mul_selector,
+            xor_selector,
+            rot_selector,
+            lookup_aggregation,
+            lookup_table,
+            lookup_sorted,
+            runtime_lookup_table,
+            runtime_lookup_table_selector,
+            xor_lookup_selector,
+            lookup_gate_lookup_selector,
+            range_check_lookup_selector,
+            foreign_field_mul_lookup_selector,
         } = self;
         ProofEvaluations {
             public: public.map(f),
@@ -215,9 +228,27 @@ impl<Eval> ProofEvaluations<Eval> {
             z: f(z),
             s: s.map(f),
             coefficients: coefficients.map(f),
-            lookup: lookup.map(|x| LookupEvaluations::map(x, f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
+            complete_add_selector: f(complete_add_selector),
+            mul_selector: f(mul_selector),
+            emul_selector: f(emul_selector),
+            endomul_scalar_selector: f(endomul_scalar_selector),
+            range_check0_selector: range_check0_selector.map(f),
+            range_check1_selector: range_check1_selector.map(f),
+            foreign_field_add_selector: foreign_field_add_selector.map(f),
+            foreign_field_mul_selector: foreign_field_mul_selector.map(f),
+            xor_selector: xor_selector.map(f),
+            rot_selector: rot_selector.map(f),
+            lookup_aggregation: lookup_aggregation.map(f),
+            lookup_table: lookup_table.map(f),
+            lookup_sorted: lookup_sorted.map(|x| x.map(f)),
+            runtime_lookup_table: runtime_lookup_table.map(f),
+            runtime_lookup_table_selector: runtime_lookup_table_selector.map(f),
+            xor_lookup_selector: xor_lookup_selector.map(f),
+            lookup_gate_lookup_selector: lookup_gate_lookup_selector.map(f),
+            range_check_lookup_selector: range_check_lookup_selector.map(f),
+            foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.map(f),
         }
     }
 
@@ -228,9 +259,27 @@ impl<Eval> ProofEvaluations<Eval> {
             z,
             s: [s0, s1, s2, s3, s4, s5],
             coefficients: [c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14],
-            lookup,
             generic_selector,
             poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            endomul_scalar_selector,
+            range_check0_selector,
+            range_check1_selector,
+            foreign_field_add_selector,
+            foreign_field_mul_selector,
+            xor_selector,
+            rot_selector,
+            lookup_aggregation,
+            lookup_table,
+            lookup_sorted,
+            runtime_lookup_table,
+            runtime_lookup_table_selector,
+            xor_lookup_selector,
+            lookup_gate_lookup_selector,
+            range_check_lookup_selector,
+            foreign_field_mul_lookup_selector,
         } = self;
         ProofEvaluations {
             public: public.as_ref().map(f),
@@ -270,61 +319,27 @@ impl<Eval> ProofEvaluations<Eval> {
                 f(c13),
                 f(c14),
             ],
-            lookup: lookup.as_ref().map(|l| l.map_ref(f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
-        }
-    }
-}
-
-impl<F> ProofEvaluations<F> {
-    /// Transpose the `ProofEvaluations`.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `ProofEvaluation` is None.
-    pub fn transpose<const N: usize>(
-        evals: [&ProofEvaluations<F>; N],
-    ) -> ProofEvaluations<[&F; N]> {
-        let has_lookup = evals.iter().all(|e| e.lookup.is_some());
-        let has_runtime = has_lookup
-            && evals
-                .iter()
-                .all(|e| e.lookup.as_ref().unwrap().runtime.is_some());
-
-        ProofEvaluations {
-            generic_selector: array::from_fn(|i| &evals[i].generic_selector),
-            poseidon_selector: array::from_fn(|i| &evals[i].poseidon_selector),
-            public: {
-                if evals.iter().all(|e| e.public.is_some()) {
-                    Some(array::from_fn(|i| evals[i].public.as_ref().unwrap()))
-                } else {
-                    None
-                }
-            },
-            z: array::from_fn(|i| &evals[i].z),
-            w: array::from_fn(|j| array::from_fn(|i| &evals[i].w[j])),
-            s: array::from_fn(|j| array::from_fn(|i| &evals[i].s[j])),
-            coefficients: array::from_fn(|j| array::from_fn(|i| &evals[i].coefficients[j])),
-            lookup: if has_lookup {
-                let sorted_length = evals[0].lookup.as_ref().unwrap().sorted.len();
-                Some(LookupEvaluations {
-                    aggreg: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().aggreg),
-                    table: array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().table),
-                    sorted: (0..sorted_length)
-                        .map(|j| array::from_fn(|i| &evals[i].lookup.as_ref().unwrap().sorted[j]))
-                        .collect(),
-                    runtime: if has_runtime {
-                        Some(array::from_fn(|i| {
-                            evals[i].lookup.as_ref().unwrap().runtime.as_ref().unwrap()
-                        }))
-                    } else {
-                        None
-                    },
-                })
-            } else {
-                None
-            },
+            complete_add_selector: f(complete_add_selector),
+            mul_selector: f(mul_selector),
+            emul_selector: f(emul_selector),
+            endomul_scalar_selector: f(endomul_scalar_selector),
+            range_check0_selector: range_check0_selector.as_ref().map(f),
+            range_check1_selector: range_check1_selector.as_ref().map(f),
+            foreign_field_add_selector: foreign_field_add_selector.as_ref().map(f),
+            foreign_field_mul_selector: foreign_field_mul_selector.as_ref().map(f),
+            xor_selector: xor_selector.as_ref().map(f),
+            rot_selector: rot_selector.as_ref().map(f),
+            lookup_aggregation: lookup_aggregation.as_ref().map(f),
+            lookup_table: lookup_table.as_ref().map(f),
+            lookup_sorted: array::from_fn(|i| lookup_sorted[i].as_ref().map(f)),
+            runtime_lookup_table: runtime_lookup_table.as_ref().map(f),
+            runtime_lookup_table_selector: runtime_lookup_table_selector.as_ref().map(f),
+            xor_lookup_selector: xor_lookup_selector.as_ref().map(f),
+            lookup_gate_lookup_selector: lookup_gate_lookup_selector.as_ref().map(f),
+            range_check_lookup_selector: range_check_lookup_selector.as_ref().map(f),
+            foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.as_ref().map(f),
         }
     }
 }
@@ -391,9 +406,27 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
             coefficients: array::from_fn(|_| pt(F::zero(), F::zero())),
-            lookup: None,
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
+            complete_add_selector: pt(F::zero(), F::zero()),
+            mul_selector: pt(F::zero(), F::zero()),
+            emul_selector: pt(F::zero(), F::zero()),
+            endomul_scalar_selector: pt(F::zero(), F::zero()),
+            range_check0_selector: None,
+            range_check1_selector: None,
+            foreign_field_add_selector: None,
+            foreign_field_mul_selector: None,
+            xor_selector: None,
+            rot_selector: None,
+            lookup_aggregation: None,
+            lookup_table: None,
+            lookup_sorted: array::from_fn(|_| None),
+            runtime_lookup_table: None,
+            runtime_lookup_table_selector: None,
+            xor_lookup_selector: None,
+            lookup_gate_lookup_selector: None,
+            range_check_lookup_selector: None,
+            foreign_field_mul_lookup_selector: None,
         }
     }
 }
@@ -412,14 +445,33 @@ impl<F> ProofEvaluations<F> {
         match col {
             Column::Witness(i) => Some(&self.w[i]),
             Column::Z => Some(&self.z),
-            Column::LookupSorted(i) => Some(&self.lookup.as_ref()?.sorted[i]),
-            Column::LookupAggreg => Some(&self.lookup.as_ref()?.aggreg),
-            Column::LookupTable => Some(&self.lookup.as_ref()?.table),
-            Column::LookupKindIndex(_) => None,
-            Column::LookupRuntimeSelector => None,
-            Column::LookupRuntimeTable => Some(self.lookup.as_ref()?.runtime.as_ref()?),
+            Column::LookupSorted(i) => self.lookup_sorted[i].as_ref(),
+            Column::LookupAggreg => self.lookup_aggregation.as_ref(),
+            Column::LookupTable => self.lookup_table.as_ref(),
+            Column::LookupKindIndex(LookupPattern::Xor) => self.xor_lookup_selector.as_ref(),
+            Column::LookupKindIndex(LookupPattern::Lookup) => {
+                self.lookup_gate_lookup_selector.as_ref()
+            }
+            Column::LookupKindIndex(LookupPattern::RangeCheck) => {
+                self.range_check_lookup_selector.as_ref()
+            }
+            Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
+                self.foreign_field_mul_lookup_selector.as_ref()
+            }
+            Column::LookupRuntimeSelector => self.runtime_lookup_table_selector.as_ref(),
+            Column::LookupRuntimeTable => self.runtime_lookup_table.as_ref(),
             Column::Index(GateType::Generic) => Some(&self.generic_selector),
             Column::Index(GateType::Poseidon) => Some(&self.poseidon_selector),
+            Column::Index(GateType::CompleteAdd) => Some(&self.complete_add_selector),
+            Column::Index(GateType::VarBaseMul) => Some(&self.mul_selector),
+            Column::Index(GateType::EndoMul) => Some(&self.emul_selector),
+            Column::Index(GateType::EndoMulScalar) => Some(&self.endomul_scalar_selector),
+            Column::Index(GateType::RangeCheck0) => self.range_check0_selector.as_ref(),
+            Column::Index(GateType::RangeCheck1) => self.range_check1_selector.as_ref(),
+            Column::Index(GateType::ForeignFieldAdd) => self.foreign_field_add_selector.as_ref(),
+            Column::Index(GateType::ForeignFieldMul) => self.foreign_field_mul_selector.as_ref(),
+            Column::Index(GateType::Xor16) => self.xor_selector.as_ref(),
+            Column::Index(GateType::Rot64) => self.rot_selector.as_ref(),
             Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),
@@ -478,59 +530,6 @@ pub mod caml {
     }
 
     //
-    // CamlLookupEvaluations<CamlF>
-    //
-
-    #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlLookupEvaluations<CamlF> {
-        pub sorted: Vec<PointEvaluations<Vec<CamlF>>>,
-        pub aggreg: PointEvaluations<Vec<CamlF>>,
-        pub table: PointEvaluations<Vec<CamlF>>,
-        pub runtime: Option<PointEvaluations<Vec<CamlF>>>,
-    }
-
-    impl<F, CamlF> From<LookupEvaluations<PointEvaluations<Vec<F>>>> for CamlLookupEvaluations<CamlF>
-    where
-        F: Clone,
-        CamlF: From<F>,
-    {
-        fn from(le: LookupEvaluations<PointEvaluations<Vec<F>>>) -> Self {
-            Self {
-                sorted: le
-                    .sorted
-                    .into_iter()
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect()))
-                    .collect(),
-                aggreg: le.aggreg.map(&|x| x.into_iter().map(Into::into).collect()),
-                table: le.table.map(&|x| x.into_iter().map(Into::into).collect()),
-                runtime: le
-                    .runtime
-                    .map(|r| r.map(&|r| r.into_iter().map(Into::into).collect())),
-            }
-        }
-    }
-
-    impl<F, CamlF> From<CamlLookupEvaluations<CamlF>> for LookupEvaluations<PointEvaluations<Vec<F>>>
-    where
-        F: From<CamlF> + Clone,
-    {
-        fn from(pe: CamlLookupEvaluations<CamlF>) -> Self {
-            Self {
-                sorted: pe
-                    .sorted
-                    .into_iter()
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect()))
-                    .collect(),
-                aggreg: pe.aggreg.map(&|x| x.into_iter().map(Into::into).collect()),
-                table: pe.table.map(&|x| x.into_iter().map(Into::into).collect()),
-                runtime: pe
-                    .runtime
-                    .map(|r| r.map(&|r| r.into_iter().map(Into::into).collect())),
-            }
-        }
-    }
-
-    //
     // CamlProofEvaluations<CamlF>
     //
 
@@ -580,10 +579,30 @@ pub mod caml {
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
         ),
-        pub lookup: Option<CamlLookupEvaluations<CamlF>>,
 
         pub generic_selector: PointEvaluations<Vec<CamlF>>,
         pub poseidon_selector: PointEvaluations<Vec<CamlF>>,
+        pub complete_add_selector: PointEvaluations<Vec<CamlF>>,
+        pub mul_selector: PointEvaluations<Vec<CamlF>>,
+        pub emul_selector: PointEvaluations<Vec<CamlF>>,
+        pub endomul_scalar_selector: PointEvaluations<Vec<CamlF>>,
+
+        pub range_check0_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub range_check1_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub foreign_field_add_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub foreign_field_mul_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub xor_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub rot_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub lookup_aggregation: Option<PointEvaluations<Vec<CamlF>>>,
+        pub lookup_table: Option<PointEvaluations<Vec<CamlF>>>,
+        pub lookup_sorted: Vec<Option<PointEvaluations<Vec<CamlF>>>>,
+        pub runtime_lookup_table: Option<PointEvaluations<Vec<CamlF>>>,
+
+        pub runtime_lookup_table_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub xor_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub lookup_gate_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub range_check_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
+        pub foreign_field_mul_lookup_selector: Option<PointEvaluations<Vec<CamlF>>>,
     }
 
     //
@@ -729,7 +748,69 @@ pub mod caml {
                     poseidon_selector: pe
                         .poseidon_selector
                         .map(&|x| x.into_iter().map(Into::into).collect()),
-                    lookup: pe.lookup.map(Into::into),
+                    complete_add_selector: pe
+                        .complete_add_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    mul_selector: pe
+                        .mul_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    emul_selector: pe
+                        .emul_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    endomul_scalar_selector: pe
+                        .endomul_scalar_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    range_check0_selector: pe
+                        .range_check0_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    range_check1_selector: pe
+                        .range_check1_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    foreign_field_add_selector: pe
+                        .foreign_field_add_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    foreign_field_mul_selector: pe
+                        .foreign_field_mul_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    xor_selector: pe
+                        .xor_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    rot_selector: pe
+                        .rot_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_aggregation: pe
+                        .lookup_aggregation
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_table: pe
+                        .lookup_table
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_sorted: pe
+                        .lookup_sorted
+                        .iter()
+                        .map(|x| {
+                            x.as_ref().map(|x| {
+                                x.map_ref(&|x| x.clone().into_iter().map(Into::into).collect())
+                            })
+                        })
+                        .collect::<Vec<_>>(),
+                    runtime_lookup_table: pe
+                        .runtime_lookup_table
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    runtime_lookup_table_selector: pe
+                        .runtime_lookup_table_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    xor_lookup_selector: pe
+                        .xor_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_gate_lookup_selector: pe
+                        .lookup_gate_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    range_check_lookup_selector: pe
+                        .range_check_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    foreign_field_mul_lookup_selector: pe
+                        .foreign_field_mul_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
                 },
             )
         }
@@ -742,6 +823,7 @@ pub mod caml {
         )> for ProofEvaluations<PointEvaluations<Vec<F>>>
     where
         F: Clone,
+        CamlF: Clone,
         F: From<CamlF>,
     {
         fn from(
@@ -835,7 +917,68 @@ pub mod caml {
                 poseidon_selector: cpe
                     .poseidon_selector
                     .map(&|x| x.into_iter().map(Into::into).collect()),
-                lookup: cpe.lookup.map(Into::into),
+                complete_add_selector: cpe
+                    .complete_add_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                mul_selector: cpe
+                    .mul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                emul_selector: cpe
+                    .emul_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                endomul_scalar_selector: cpe
+                    .endomul_scalar_selector
+                    .map(&|x| x.into_iter().map(Into::into).collect()),
+                range_check0_selector: cpe
+                    .range_check0_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                range_check1_selector: cpe
+                    .range_check1_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_add_selector: cpe
+                    .foreign_field_add_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                foreign_field_mul_selector: cpe
+                    .foreign_field_mul_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                xor_selector: cpe
+                    .xor_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                rot_selector: cpe
+                    .rot_selector
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_aggregation: cpe
+                    .lookup_aggregation
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_table: cpe
+                    .lookup_table
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                lookup_sorted: {
+                    assert_eq!(cpe.lookup_sorted.len(), 5); // Invalid proof
+                    array::from_fn(|i| {
+                        cpe.lookup_sorted[i]
+                            .as_ref()
+                            .map(|x| x.clone().map(&|x| x.into_iter().map(Into::into).collect()))
+                    })
+                },
+                runtime_lookup_table: cpe
+                    .runtime_lookup_table
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                runtime_lookup_table_selector: cpe
+                    .runtime_lookup_table_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                xor_lookup_selector: cpe
+                    .xor_lookup_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                lookup_gate_lookup_selector: cpe
+                    .lookup_gate_lookup_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                range_check_lookup_selector: cpe
+                    .range_check_lookup_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                foreign_field_mul_lookup_selector: cpe
+                    .foreign_field_mul_lookup_selector
+                    .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
             }
         }
     }
