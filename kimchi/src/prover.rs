@@ -1239,22 +1239,22 @@ where
         polynomials.push((
             evaluations_form(&index.column_evaluations.complete_add_selector4),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.mul_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.emul_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.extend(
             witness_poly
@@ -1285,7 +1285,7 @@ where
             polynomials.push((
                 evaluations_form(range_check0_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(range_check1_selector8) =
@@ -1294,7 +1294,7 @@ where
             polynomials.push((
                 evaluations_form(range_check1_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(foreign_field_add_selector8) = index
@@ -1305,7 +1305,7 @@ where
             polynomials.push((
                 evaluations_form(foreign_field_add_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(foreign_field_mul_selector8) = index
@@ -1316,14 +1316,22 @@ where
             polynomials.push((
                 evaluations_form(foreign_field_mul_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
-            polynomials.push((evaluations_form(xor_selector8), None, non_hiding(1)));
+            polynomials.push((
+                evaluations_form(xor_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
         }
         if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
-            polynomials.push((evaluations_form(rot_selector8), None, non_hiding(1)));
+            polynomials.push((
+                evaluations_form(rot_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
         }
 
         //~~ * optionally, the runtime table
