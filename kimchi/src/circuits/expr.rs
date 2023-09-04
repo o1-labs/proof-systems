@@ -112,17 +112,37 @@ pub struct Environment<'a, F: FftField> {
     /// Lookup specific polynomials
     pub lookup: Option<LookupEnvironment<'a, F>>,
 }
-pub trait GetCol<'a, F: FftField, C: ColTrait> {
-    fn get_col(&self, col: &C) -> Option<&'a Evaluations<F, D<F>>>;
+pub trait EnvTrait<'a, F: FftField, C: ColTrait> {
+    fn domain(&self) -> EvaluationDomains<F>;
+    fn constants(&self) -> &Constants<F>;
+    fn vanishes_on_last_4_rows(&self) -> &'a Evaluations<F, D<F>>;
+    fn l0_1(&self) -> F;
+    fn get_column(&self, col: &C) -> Option<&'a Evaluations<F, D<F>>>;
 }
-impl<'a, F: FftField> GetCol<'a, F, Column> for Environment<'a, F> {
-    fn get_col(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
-        self.get_column(col)
+impl<'a, F: FftField> EnvTrait<'a, F, Column> for Environment<'a, F> {
+    fn domain(&self) -> EvaluationDomains<F> {
+        self.domain
+    }
+
+    fn constants(&self) -> &Constants<F> {
+        &self.constants
+    }
+
+    fn vanishes_on_last_4_rows(&self) -> &'a Evaluations<F, D<F>> {
+        self.vanishes_on_last_4_rows
+    }
+
+    fn l0_1(&self) -> F {
+        self.l0_1
+    }
+
+    fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
+        Self::get_column2(&self, col)
     }
 }
 
 impl<'a, F: FftField> Environment<'a, F> {
-    fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
+    fn get_column2(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
         use Column::*;
         let lookup = self.lookup.as_ref();
         match col {
@@ -958,11 +978,11 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-fn unnormalized_lagrange_evals<F: FftField>(
+fn unnormalized_lagrange_evals<'a, F: FftField, C: ColTrait, E: EnvTrait<'a, F, C>>(
     l0_1: F,
     i: i32,
     res_domain: Domain,
-    env: &Environment<F>,
+    env: &E,
 ) -> Evaluations<F, D<F>> {
     let k = match res_domain {
         Domain::D1 => 1,
@@ -972,7 +992,7 @@ fn unnormalized_lagrange_evals<F: FftField>(
     };
     let res_domain = get_domain(res_domain, env);
 
-    let d1 = env.domain.d1;
+    let d1 = env.domain().d1;
     let n = d1.size;
     // Renormalize negative values to wrap around at domain size
     let i = if i < 0 {
@@ -1422,12 +1442,13 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 }
 
-fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
+fn get_domain<'a, F: FftField, C: ColTrait, E: EnvTrait<'a, F, C>>(d: Domain, env: &E) -> D<F> {
+    let dom = env.domain();
     match d {
-        Domain::D1 => env.domain.d1,
-        Domain::D2 => env.domain.d2,
-        Domain::D4 => env.domain.d4,
-        Domain::D8 => env.domain.d8,
+        Domain::D1 => dom.d1,
+        Domain::D2 => dom.d2,
+        Domain::D4 => dom.d4,
+        Domain::D8 => dom.d8,
     }
 }
 
@@ -1563,14 +1584,14 @@ impl<F: FftField, C: ColTrait> Expr<ConstantExpr<F>, C> {
     }
 
     /// Evaluate an expression as a field element against an environment.
-    pub fn evaluate(
+    pub fn evaluate<'a, E: EnvTrait<'a, F, C>>(
         &self,
         d: D<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-        env: &Environment<F>,
+        env: &E,
     ) -> Result<F, ExprError<C>> {
-        self.evaluate_(d, pt, evals, &env.constants)
+        self.evaluate_(d, pt, evals, env.constants())
     }
 
     /// Evaluate an expression as a field element against the constants.
@@ -1617,14 +1638,14 @@ impl<F: FftField, C: ColTrait> Expr<ConstantExpr<F>, C> {
     }
 
     /// Evaluate the constant expressions in this expression down into field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F, C> {
-        self.evaluate_constants_(&env.constants)
+    pub fn evaluate_constants<'a, E: EnvTrait<'a, F, C>>(&self, env: &E) -> Expr<F, C> {
+        self.evaluate_constants_(env.constants())
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>>
+    pub fn evaluations<'a, E>(&self, env: &E) -> Evaluations<F, D<F>>
     where
-        Environment<'a, F>: GetCol<'a, F, C>,
+        E: EnvTrait<'a, F, C>,
     {
         self.evaluate_constants(env).evaluations(env)
     }
@@ -1679,11 +1700,11 @@ impl<F: FftField, C: ColTrait> Expr<F, C> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations<'a>(&self, env: &Environment<'a, F>) -> Evaluations<F, D<F>>
+    pub fn evaluations<'a, E>(&self, env: &E) -> Evaluations<F, D<F>>
     where
-        Environment<'a, F>: GetCol<'a, F, C>,
+        E: EnvTrait<'a, F, C>,
     {
-        let d1_size = env.domain.d1.size;
+        let d1_size = env.domain().d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
             Domain::D1
@@ -1723,15 +1744,15 @@ impl<F: FftField, C: ColTrait> Expr<F, C> {
         }
     }
 
-    fn evaluations_helper<'a, 'b>(
+    fn evaluations_helper<'a, 'b, E>(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
-        env: &Environment<'a, F>,
+        env: &E,
     ) -> Either<EvalResult<'a, F>, CacheId>
     where
         'a: 'b,
-        Environment<'a, F>: GetCol<'a, F, C>,
+        E: EnvTrait<'a, F, C>,
     {
         let dom = (d, get_domain(d, env));
 
@@ -1804,16 +1825,16 @@ impl<F: FftField, C: ColTrait> Expr<F, C> {
             Expr::VanishesOnLast4Rows => EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: 0,
-                evals: env.vanishes_on_last_4_rows,
+                evals: env.vanishes_on_last_4_rows(),
             },
             Expr::Constant(x) => EvalResult::Constant(*x),
             Expr::UnnormalizedLagrangeBasis(i) => EvalResult::Evals {
                 domain: d,
-                evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env),
+                evals: unnormalized_lagrange_evals(env.l0_1(), *i, d, env),
             },
             Expr::Cell(Variable { col, row }) => {
                 let evals: &'a Evaluations<F, D<F>> = {
-                    match env.get_col(col) {
+                    match env.get_column(col) {
                         None => return Either::Left(EvalResult::Constant(F::zero())),
                         Some(e) => e,
                     }
@@ -1888,7 +1909,10 @@ impl<A> Linearization<A> {
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F>> {
+    pub fn evaluate_constants<'a, E: EnvTrait<'a, F, Column>>(
+        &self,
+        env: &E,
+    ) -> Linearization<Expr<F>> {
         self.map(|e| e.evaluate_constants(env))
     }
 }
