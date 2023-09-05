@@ -101,14 +101,6 @@ pub struct VerifierIndex<G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub endomul_scalar_comm: PolyComm<G>,
 
-    /// RangeCheck0 polynomial commitments
-    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub range_check0_comm: Option<PolyComm<G>>,
-
-    /// RangeCheck1 polynomial commitments
-    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub range_check1_comm: Option<PolyComm<G>>,
-
     /// Foreign field addition gates polynomial commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub foreign_field_add_comm: Option<PolyComm<G>>,
@@ -252,18 +244,6 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 domain,
                 &self.column_evaluations.endomul_scalar_selector8,
             ),
-
-            range_check0_comm: self
-                .column_evaluations
-                .range_check0_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
-
-            range_check1_comm: self
-                .column_evaluations
-                .range_check1_selector8
-                .as_ref()
-                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             foreign_field_add_comm: self
                 .column_evaluations
@@ -422,8 +402,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             endomul_scalar_comm,
 
             // Optional gates
-            range_check0_comm,
-            range_check1_comm,
             foreign_field_add_comm,
             foreign_field_mul_comm,
             xor_comm,
@@ -459,14 +437,6 @@ impl<G: KimchiCurve> VerifierIndex<G> {
         fq_sponge.absorb_g(&endomul_scalar_comm.unshifted);
 
         // Optional gates
-
-        if let Some(range_check0_comm) = range_check0_comm {
-            fq_sponge.absorb_g(&range_check0_comm.unshifted);
-        }
-
-        if let Some(range_check1_comm) = range_check1_comm {
-            fq_sponge.absorb_g(&range_check1_comm.unshifted);
-        }
 
         if let Some(foreign_field_mul_comm) = foreign_field_mul_comm {
             fq_sponge.absorb_g(&foreign_field_mul_comm.unshifted);

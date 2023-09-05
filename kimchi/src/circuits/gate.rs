@@ -131,8 +131,6 @@ impl GateType {
                 | GateType::VarBaseMul
                 | GateType::EndoMul
                 | GateType::EndoMulScalar
-                | GateType::RangeCheck0
-                | GateType::RangeCheck1
                 | GateType::ForeignFieldAdd
                 | GateType::ForeignFieldMul
                 | GateType::Xor16

@@ -17,7 +17,6 @@ use crate::circuits::polynomials::{
     foreign_field_mul::circuitgates::ForeignFieldMul,
     generic, permutation,
     poseidon::Poseidon,
-    range_check::circuitgates::{RangeCheck0, RangeCheck1},
     rot,
     varbasemul::VarbaseMul,
     xor,
@@ -66,40 +65,6 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     expr += CompleteAdd::combined_constraints(&powers_of_alpha, &mut cache);
     expr += EndosclMul::combined_constraints(&powers_of_alpha, &mut cache);
     expr += EndomulScalar::combined_constraints(&powers_of_alpha, &mut cache);
-
-    {
-        let mut range_check0_expr =
-            || RangeCheck0::combined_constraints(&powers_of_alpha, &mut cache);
-
-        if let Some(feature_flags) = feature_flags {
-            if feature_flags.range_check0 {
-                expr += range_check0_expr();
-            }
-        } else {
-            expr += Expr::IfFeature(
-                FeatureFlag::RangeCheck0,
-                Box::new(range_check0_expr()),
-                Box::new(Expr::zero()),
-            );
-        }
-    }
-
-    {
-        let mut range_check1_expr =
-            || RangeCheck1::combined_constraints(&powers_of_alpha, &mut cache);
-
-        if let Some(feature_flags) = feature_flags {
-            if feature_flags.range_check1 {
-                expr += range_check1_expr();
-            }
-        } else {
-            expr += Expr::IfFeature(
-                FeatureFlag::RangeCheck1,
-                Box::new(range_check1_expr()),
-                Box::new(Expr::zero()),
-            );
-        }
-    }
 
     {
         let mut foreign_field_add_expr =
@@ -261,8 +226,6 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
         // Generating using `IfFeature`, turn on all feature flags.
         {
             FeatureFlags {
-                range_check0: true,
-                range_check1: true,
                 foreign_field_add: true,
                 foreign_field_mul: true,
                 xor: true,

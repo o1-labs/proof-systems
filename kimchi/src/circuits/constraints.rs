@@ -32,10 +32,6 @@ use std::{array, collections::BTreeSet, sync::Arc};
 /// Flags for optional features in the constraint system
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureFlags {
-    /// RangeCheck0 gate
-    pub range_check0: bool,
-    /// RangeCheck1 gate
-    pub range_check1: bool,
     /// Foreign field addition gate
     pub foreign_field_add: bool,
     /// Foreign field multiplication gate
@@ -105,14 +101,6 @@ pub struct ColumnEvaluations<F: PrimeField> {
     /// EC point addition selector over domain d8
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub endomul_scalar_selector8: E<F, D<F>>,
-
-    /// RangeCheck0 gate selector over domain d8
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub range_check0_selector8: Option<E<F, D<F>>>,
-
-    /// RangeCheck1 gate selector over domain d8
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub range_check1_selector8: Option<E<F, D<F>>>,
 
     /// Foreign field addition gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -483,36 +471,6 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             .generic_selector
             .evaluate_over_domain_by_ref(self.domain.d4);
 
-        // RangeCheck0 constraint selector polynomials
-        let range_check0_selector8 = {
-            if !self.feature_flags.range_check0 {
-                None
-            } else {
-                Some(selector_polynomial(
-                    GateType::RangeCheck0,
-                    &self.gates,
-                    &self.domain,
-                    &self.domain.d8,
-                    self.disable_gates_checks,
-                ))
-            }
-        };
-
-        // RangeCheck1 constraint selector polynomials
-        let range_check1_selector8 = {
-            if !self.feature_flags.range_check1 {
-                None
-            } else {
-                Some(selector_polynomial(
-                    GateType::RangeCheck1,
-                    &self.gates,
-                    &self.domain,
-                    &self.domain.d8,
-                    self.disable_gates_checks,
-                ))
-            }
-        };
-
         // Foreign field addition constraint selector polynomial
         let foreign_field_add_selector8 = {
             if !self.feature_flags.foreign_field_add {
@@ -604,8 +562,6 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             mul_selector8,
             emul_selector8,
             endomul_scalar_selector8,
-            range_check0_selector8,
-            range_check1_selector8,
             foreign_field_add_selector8,
             foreign_field_mul_selector8,
             xor_selector8,
@@ -735,8 +691,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         gates.append(&mut padding);
 
         let mut feature_flags = FeatureFlags {
-            range_check0: false,
-            range_check1: false,
             lookup_features,
             foreign_field_add: false,
             foreign_field_mul: false,
@@ -746,8 +700,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         for gate in &gates {
             match gate.typ {
-                GateType::RangeCheck0 => feature_flags.range_check0 = true,
-                GateType::RangeCheck1 => feature_flags.range_check1 = true,
                 GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,

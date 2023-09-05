@@ -436,8 +436,6 @@ impl Op2 {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
 )]
 pub enum FeatureFlag {
-    RangeCheck0,
-    RangeCheck1,
     ForeignFieldAdd,
     ForeignFieldMul,
     Xor,
@@ -585,8 +583,6 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                 let is_enabled = {
                     use FeatureFlag::*;
                     match feature {
-                        RangeCheck0 => features.range_check0,
-                        RangeCheck1 => features.range_check1,
                         ForeignFieldAdd => features.foreign_field_add,
                         ForeignFieldMul => features.foreign_field_mul,
                         Xor => features.xor,
