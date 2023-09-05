@@ -139,7 +139,7 @@ impl<'a, F: FftField> EnvTrait<'a, F> for Environment<'a, F> {
     }
 
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
-        Self::get_column2(&self, col)
+        Self::get_column2(self, col)
     }
 }
 
