@@ -413,7 +413,6 @@ impl<F: Field> ConstantExpr<F> {
             Alpha => c.alpha(),
             Beta => c.beta(),
             Gamma => c.gamma(),
-            // JointCombiner => c.joint_combiner().expect("joint lookup was not expected"),
             JointCombiner => c.joint_combiner(),
             EndoCoefficient => c.endo(),
             Mds { row, col } => c.mds(*row, *col),
