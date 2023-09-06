@@ -138,7 +138,7 @@ impl<F: PrimeField> CircuitGate<F> {
 
         let pt = F::from(123456u64);
 
-        let constants = expr::Constants {
+        let constants = expr::KimchiConstants {
             alpha: F::zero(),
             beta: F::zero(),
             gamma: F::zero(),

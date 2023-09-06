@@ -4,7 +4,7 @@ use crate::{
     circuits::{
         argument::ArgumentType,
         constraints::ConstraintSystem,
-        expr::{Column, Constants, PolishToken},
+        expr::{Column, KimchiConstants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -392,7 +392,7 @@ where
 
             ft_eval0 += numerator * denominator;
 
-            let constants = Constants {
+            let constants = KimchiConstants {
                 alpha,
                 beta,
                 gamma,
@@ -793,7 +793,7 @@ where
         // other gates are implemented using the expression framework
         {
             // TODO: Reuse constants from oracles function
-            let constants = Constants {
+            let constants = KimchiConstants {
                 alpha: oracles.alpha,
                 beta: oracles.beta,
                 gamma: oracles.gamma,

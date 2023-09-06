@@ -53,7 +53,7 @@ pub enum ExprError<C: ColTrait> {
 }
 
 /// The collection of constants required to evaluate an `Expr`.
-pub struct Constants<F: 'static> {
+pub struct KimchiConstants<F: 'static> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
     /// The challenge beta from the PLONK IOP.
@@ -106,7 +106,7 @@ pub struct Environment<'a, F: FftField> {
     /// computing the evaluations of the unnormalized Lagrange basis polynomials.
     pub l0_1: F,
     /// Constant values required
-    pub constants: Constants<F>,
+    pub constants: KimchiConstants<F>,
     /// The domains used in the PLONK argument.
     pub domain: EvaluationDomains<F>,
     /// Lookup specific polynomials
@@ -114,19 +114,21 @@ pub struct Environment<'a, F: FftField> {
 }
 pub trait EnvTrait<'a, F: FftField> {
     type Col: ColTrait;
+    type Constants: Constants<F>;
     fn domain(&self) -> EvaluationDomains<F>;
-    fn constants(&self) -> &Constants<F>;
+    fn constants(&self) -> &Self::Constants;
     fn vanishes_on_last_4_rows(&self) -> &'a Evaluations<F, D<F>>;
     fn l0_1(&self) -> F;
     fn get_column(&self, col: &Self::Col) -> Option<&'a Evaluations<F, D<F>>>;
 }
 impl<'a, F: FftField> EnvTrait<'a, F> for Environment<'a, F> {
     type Col = Column;
+    type Constants = KimchiConstants<F>;
     fn domain(&self) -> EvaluationDomains<F> {
         self.domain
     }
 
-    fn constants(&self) -> &Constants<F> {
+    fn constants(&self) -> &KimchiConstants<F> {
         &self.constants
     }
 
@@ -349,6 +351,48 @@ impl<F: Copy> ConstantExpr<F> {
     }
 }
 
+/// The collection of constants required to evaluate an `Expr`.
+pub trait Constants<F: Copy> {
+    /// The challenge alpha from the PLONK IOP.
+    fn alpha(&self) -> F;
+    /// The challenge beta from the PLONK IOP.
+    fn beta(&self) -> F;
+    /// The challenge gamma from the PLONK IOP.
+    fn gamma(&self) -> F;
+    /// The challenge joint_combiner which is used to combine
+    /// joint lookup tables.
+    fn joint_combiner(&self) -> F;
+    /// The MDS matrix
+    fn mds(&self, row: usize, col: usize) -> F;
+    /// The endomorphism coefficient
+    fn endo(&self) -> F;
+}
+impl<F: Copy> Constants<F> for KimchiConstants<F> {
+    fn alpha(&self) -> F {
+        self.alpha
+    }
+
+    fn beta(&self) -> F {
+        self.beta
+    }
+
+    fn gamma(&self) -> F {
+        self.gamma
+    }
+
+    fn joint_combiner(&self) -> F {
+        self.joint_combiner.expect("joint lookup was not expected")
+    }
+
+    fn mds(&self, row: usize, col: usize) -> F {
+        self.mds[row][col]
+    }
+
+    fn endo(&self) -> F {
+        self.endo_coefficient
+    }
+}
+
 impl<F: Field> ConstantExpr<F> {
     /// Exponentiate a constant expression.
     pub fn pow(self, p: u64) -> Self {
@@ -363,15 +407,16 @@ impl<F: Field> ConstantExpr<F> {
     }
 
     /// Evaluate the given constant expression to a field element.
-    pub fn value(&self, c: &Constants<F>) -> F {
+    pub fn value<C: Constants<F>>(&self, c: &C) -> F {
         use ConstantExpr::*;
         match self {
-            Alpha => c.alpha,
-            Beta => c.beta,
-            Gamma => c.gamma,
-            JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
-            EndoCoefficient => c.endo_coefficient,
-            Mds { row, col } => c.mds[*row][*col],
+            Alpha => c.alpha(),
+            Beta => c.beta(),
+            Gamma => c.gamma(),
+            // JointCombiner => c.joint_combiner().expect("joint lookup was not expected"),
+            JointCombiner => c.joint_combiner(),
+            EndoCoefficient => c.endo(),
+            Mds { row, col } => c.mds(*row, *col),
             Literal(x) => *x,
             Pow(x, p) => x.value(c).pow([*p]),
             Mul(x, y) => x.value(c) * y.value(c),
@@ -776,12 +821,12 @@ impl<C: ColTrait> Variable<C> {
 
 impl<F: FftField, C: ColTrait> PolishToken<F, C> {
     /// Evaluate an RPN expression to a field element.
-    pub fn evaluate(
+    pub fn evaluate<CS: Constants<F>>(
         toks: &[PolishToken<F, C>],
         d: D<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-        c: &Constants<F>,
+        c: &CS,
     ) -> Result<F, ExprError<C>> {
         let mut stack = vec![];
         let mut cache: Vec<F> = vec![];
@@ -795,14 +840,12 @@ impl<F: FftField, C: ColTrait> PolishToken<F, C> {
             }
             use PolishToken::*;
             match t {
-                Alpha => stack.push(c.alpha),
-                Beta => stack.push(c.beta),
-                Gamma => stack.push(c.gamma),
-                JointCombiner => {
-                    stack.push(c.joint_combiner.expect("no joint lookup was expected"))
-                }
-                EndoCoefficient => stack.push(c.endo_coefficient),
-                Mds { row, col } => stack.push(c.mds[*row][*col]),
+                Alpha => stack.push(c.alpha()),
+                Beta => stack.push(c.beta()),
+                Gamma => stack.push(c.gamma()),
+                JointCombiner => stack.push(c.joint_combiner()),
+                EndoCoefficient => stack.push(c.endo()),
+                Mds { row, col } => stack.push(c.mds(*row, *col)),
                 VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
                 UnnormalizedLagrangeBasis(i) => {
                     stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
@@ -1562,7 +1605,7 @@ impl<F: FftField, C: ColTrait> Expr<ConstantExpr<F>, C> {
         Expr::Constant(ConstantExpr::Beta)
     }
 
-    fn evaluate_constants_(&self, c: &Constants<F>) -> Expr<F, C> {
+    fn evaluate_constants_<CS: Constants<F>>(&self, c: &CS) -> Expr<F, C> {
         use Expr::*;
         // TODO: Use cache
         match self {
@@ -1597,12 +1640,12 @@ impl<F: FftField, C: ColTrait> Expr<ConstantExpr<F>, C> {
     }
 
     /// Evaluate an expression as a field element against the constants.
-    pub fn evaluate_(
+    pub fn evaluate_<CS: Constants<F>>(
         &self,
         d: D<F>,
         pt: F,
         evals: &ProofEvaluations<PointEvaluations<F>>,
-        c: &Constants<F>,
+        c: &CS,
     ) -> Result<F, ExprError<C>> {
         use Expr::*;
         match self {
@@ -3004,7 +3047,7 @@ pub mod test {
         let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
 
         let env = Environment {
-            constants: Constants {
+            constants: KimchiConstants {
                 alpha: one,
                 beta: one,
                 gamma: one,

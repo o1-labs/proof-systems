@@ -219,7 +219,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let evals = ProofEvaluations::dummy_with_witness_evaluations(curr, next);
 
         // Setup circuit constants
-        let constants = expr::Constants {
+        let constants = expr::KimchiConstants {
             alpha: F::rand(rng),
             beta: F::rand(rng),
             gamma: F::rand(rng),

@@ -3,7 +3,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
-        expr::{self, l0_1, Constants, Environment, LookupEnvironment},
+        expr::{self, l0_1, Environment, KimchiConstants, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
@@ -675,7 +675,7 @@ where
 
             let mds = &G::sponge_params().mds;
             Environment {
-                constants: Constants {
+                constants: KimchiConstants {
                     alpha,
                     beta,
                     gamma,

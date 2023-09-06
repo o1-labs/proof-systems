@@ -244,7 +244,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let argument_witness = self.argument_witness(row, witness)?;
         // Set up the constants.  Note that alpha, beta, gamma and joint_combiner
         // are one because this function is not running the prover.
-        let constants = expr::Constants {
+        let constants = expr::KimchiConstants {
             alpha: F::one(),
             beta: F::one(),
             gamma: F::one(),
