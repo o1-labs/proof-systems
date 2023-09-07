@@ -1,5 +1,5 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use super::{gate::GateRegistry, lookup::runtime_tables::RuntimeTableCfg};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -153,6 +153,9 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     #[serde(skip)]
     pub configured_gates: Vec<Gate<F>>,
+
+    #[serde(skip)]
+    pub test_gates: GateRegistry<F>,
 
     /// flags for optional features
     pub feature_flags: FeatureFlags,
@@ -783,6 +786,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 .into_iter()
                 .map(|gate_type| gate_type.to_gate().unwrap())
                 .collect(),
+            test_gates: GateRegistry::default(),
             shift: shifts.shifts,
             endo,
             //fr_sponge_params: self.sponge_params,

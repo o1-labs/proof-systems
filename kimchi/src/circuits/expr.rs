@@ -791,7 +791,7 @@ impl<C> Expr<C> {
         Expr::Constant(c)
     }
 
-    fn degree(&self, d1_size: u64) -> u64 {
+    pub fn degree(&self, d1_size: u64) -> u64 {
         use Expr::*;
         match self {
             Double(x) => x.degree(d1_size),

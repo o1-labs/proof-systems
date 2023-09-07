@@ -11,6 +11,7 @@ use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
+    domains::{Domain, EvaluationDomains},
     expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
@@ -131,6 +132,12 @@ impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
     }
 }
 
+pub trait Foo<F: PrimeField>: std::fmt::Debug {
+    fn bar(&self) {
+        println!("bar");
+    }
+}
+
 /// The interface for a minimal argument implementation.
 pub trait Argument<F: PrimeField> {
     /// The type of constraints that this will produce.
@@ -182,5 +189,78 @@ impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
     }
     fn argument_type(&self) -> ArgumentType {
         <Self as Argument<F>>::ARGUMENT_TYPE
+    }
+}
+
+pub trait Gate<F: PrimeField>: std::fmt::Debug {
+    fn gate_name(&self) -> &str;
+
+    fn constraint_checks<T: ExprOps<F>>(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T>
+    where
+        Self: Sized;
+
+    fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64
+    where
+        Self: Sized,
+    {
+        let mut powers_of_alpha = crate::alphas::Alphas::<F>::default();
+        powers_of_alpha.register(
+            crate::circuits::argument::ArgumentType::Gate(GateType::Zero),
+            self.constraint_count(),
+        );
+        self.combined_constraints(&powers_of_alpha, &mut super::expr::Cache::default())
+            .degree(eval_domains.d1.size)
+    }
+
+    fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain
+    where
+        Self: Sized,
+    {
+        let degree = self.degree(eval_domains);
+        return if degree <= eval_domains.d1.size {
+            Domain::D1
+        } else if degree <= eval_domains.d2.size {
+            Domain::D2
+        } else if degree <= eval_domains.d4.size {
+            Domain::D4
+        } else if degree <= eval_domains.d8.size {
+            Domain::D8
+        } else {
+            panic!("Unsupported gate domain size");
+        };
+    }
+
+    fn constraint_count(&self) -> u32
+    where
+        Self: Sized,
+    {
+        self.constraints(&mut super::expr::Cache::default()).len() as u32
+    }
+
+    /// Returns the set of constraints required to prove this argument.
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>
+    where
+        Self: Sized,
+    {
+        // Generate constraints
+        self.constraint_checks(&ArgumentEnv::default(), cache)
+    }
+
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>
+    where
+        Self: Sized,
+    {
+        let constraints = self.constraints(cache);
+        let alphas =
+            alphas.get_exponents(ArgumentType::Gate(GateType::Zero), constraints.len() as u32);
+        let combined_constraints = E::combine_constraints(alphas, constraints);
+
+        // TODO: Refactor gate_type into u32
+        /* index(gate_type) * */
+        combined_constraints
     }
 }

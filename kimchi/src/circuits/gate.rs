@@ -19,7 +19,11 @@ use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::io::{Result as IoResult, Write};
+use std::{
+    collections::BTreeMap,
+    io::{Result as IoResult, Write},
+    ops::Index,
+};
 use thiserror::Error;
 
 use super::{
@@ -114,6 +118,43 @@ pub enum GateType {
     // Gates for Keccak
     Xor16,
     Rot64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct GateRegistry<F: PrimeField> {
+    ids: BTreeMap<String, usize>,
+    gates: Vec<&'static dyn crate::circuits::argument::Gate<F>>,
+    gate_count: usize,
+}
+
+impl<F: PrimeField> GateRegistry<F> {
+    pub fn register(&self, name: String, gate: impl crate::circuits::argument::Gate<F>) {
+        match self.ids.get_key_value(&name) {
+            Some(_) => (),
+            None => {
+                let id = self.gate_count;
+
+                self.ids.insert(name, id);
+                self.gates[id] = &gate;
+
+                self.gate_count += 1;
+            }
+        }
+    }
+
+    pub fn id(&self, name: String) -> Option<usize> {
+        match self.ids.get_key_value(&name) {
+            None => None,
+            Some((_, id)) => Some(*id),
+        }
+    }
+}
+
+impl<F: PrimeField> Index<usize> for GateRegistry<F> {
+    type Output = &'static dyn crate::circuits::argument::Gate<F>;
+    fn index<'a>(&'a self, i: usize) -> &Self::Output {
+        &self.gates[i]
+    }
 }
 
 impl GateType {
