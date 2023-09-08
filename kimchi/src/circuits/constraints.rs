@@ -655,8 +655,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
 
-        let num_lookups = {
-            let mut num_lookups: usize = lookup_tables
+        let lookup_domain_size = {
+            // First we sum over the lookup table size
+            let mut lookup_domain_size: usize = lookup_tables
                 .iter()
                 .map(
                     |LookupTable { data, id: _ }| {
@@ -668,23 +669,27 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                     },
                 )
                 .sum();
-            for runtime_table in runtime_tables.iter() {
-                num_lookups += runtime_table.len();
+            // After that on the runtime tables
+            if let Some(runtime_tables) = runtime_tables.as_ref() {
+                for runtime_table in runtime_tables.iter() {
+                    lookup_domain_size += runtime_table.len();
+                }
             }
+            // And we add the built-in tables, depending on the features.
             let LookupFeatures { patterns, .. } = &lookup_features;
             for pattern in patterns.into_iter() {
                 if let Some(gate_table) = pattern.table() {
-                    num_lookups += gate_table.table_size();
+                    lookup_domain_size += gate_table.table_size();
                 }
             }
-            num_lookups
+            lookup_domain_size
         };
 
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
         let domain_size_lower_bound =
-            std::cmp::max(gates.len(), num_lookups + 1) + ZK_ROWS as usize;
+            std::cmp::max(gates.len(), lookup_domain_size + 1) + ZK_ROWS as usize;
         let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
 
         assert!(domain.d1.size > ZK_ROWS);
@@ -787,6 +792,34 @@ pub mod tests {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
             Self::for_testing(gates)
+        }
+    }
+
+    #[test]
+    pub fn test_domains_computation_with_runtime_tables() {
+        let dummy_gate = CircuitGate {
+            typ: GateType::Generic,
+            wires: [Wire::new(0, 0); PERMUTS],
+            coeffs: vec![Fp::zero()],
+        };
+        // inputs + expected output
+        let data = [((10, 10), 128), ((0, 0), 8), ((5, 100), 512)];
+        for ((number_of_rt_cfgs, size), expected_domain_size) in data.into_iter() {
+            let builder = ConstraintSystem::create(vec![dummy_gate.clone(), dummy_gate.clone()]);
+            let table_ids: Vec<i32> = (0..number_of_rt_cfgs).collect();
+            let rt_cfgs: Vec<RuntimeTableCfg<Fp>> = table_ids
+                .into_iter()
+                .map(|table_id| {
+                    let indexes: Vec<u32> = (0..size).collect();
+                    let first_column: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
+                    RuntimeTableCfg {
+                        id: table_id,
+                        first_column,
+                    }
+                })
+                .collect();
+            let res = builder.runtime(Some(rt_cfgs)).build().unwrap();
+            assert_eq!(res.domain.d1.size, expected_domain_size)
         }
     }
 }
