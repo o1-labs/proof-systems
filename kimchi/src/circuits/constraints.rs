@@ -668,8 +668,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                     },
                 )
                 .sum();
-            for runtime_table in runtime_tables.iter() {
-                num_lookups += runtime_table.len();
+            if runtime_tables.is_some() {
+                let runtime_tables = runtime_tables.as_ref().unwrap();
+                for runtime_table in runtime_tables.iter() {
+                    num_lookups += runtime_table.len();
+                }
             }
             let LookupFeatures { patterns, .. } = &lookup_features;
             for pattern in patterns.into_iter() {
