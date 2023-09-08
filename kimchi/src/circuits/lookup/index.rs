@@ -247,6 +247,10 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         // compute the runtime selector
                         let runtime_selector = {
                             let mut evals = Vec::with_capacity(d1_size);
+                            assert!(
+                                d1_size >= runtime_table_offset + runtime_len,
+                                "The domain is not large enough. It should not happen. There must be a wrong computation"
+                            );
 
                             // it's 1 everywhere, except at the entries where
                             // the runtime table applies
