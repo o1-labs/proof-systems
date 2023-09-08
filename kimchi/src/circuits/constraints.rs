@@ -795,4 +795,32 @@ pub mod tests {
             Self::for_testing(gates)
         }
     }
+
+    #[test]
+    pub fn test_domains_computation_with_runtime_tables() {
+        let dummy_gate = CircuitGate {
+            typ: GateType::Generic,
+            wires: [Wire::new(0, 0); PERMUTS],
+            coeffs: vec![Fp::zero()],
+        };
+        // inputs + expected output
+        let data = [((10, 10), 128), ((0, 0), 8), ((5, 100), 512)];
+        for ((number_of_rt_cfgs, size), expected_domain_size) in data.into_iter() {
+            let builder = ConstraintSystem::create(vec![dummy_gate.clone(), dummy_gate.clone()]);
+            let table_ids: Vec<i32> = (0..number_of_rt_cfgs).collect();
+            let rt_cfgs: Vec<RuntimeTableCfg<Fp>> = table_ids
+                .into_iter()
+                .map(|table_id| {
+                    let indexes: Vec<u32> = (0..size).collect();
+                    let first_column: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
+                    RuntimeTableCfg {
+                        id: table_id,
+                        first_column,
+                    }
+                })
+                .collect();
+            let res = builder.runtime(Some(rt_cfgs)).build().unwrap();
+            assert_eq!(res.domain.d1.size, expected_domain_size)
+        }
+    }
 }
