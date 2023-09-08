@@ -670,8 +670,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 )
                 .sum();
             // After that on the runtime tables
-            if runtime_tables.is_some() {
-                let runtime_tables = runtime_tables.as_ref().unwrap();
+            if let Some(runtime_tables) = runtime_tables.as_ref() {
                 for runtime_table in runtime_tables.iter() {
                     lookup_domain_size += runtime_table.len();
                 }
