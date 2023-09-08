@@ -622,8 +622,45 @@ pub enum Expr<C, Col: ColTrait = Column> {
     IfFeature(FeatureFlag, Box<Expr<C, Col>>, Box<Expr<C, Col>>),
 }
 
-impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
-    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
+impl<C, Col> Expr<C, Col>
+where
+    C: Zero + One + Neg<Output = C> + PartialEq + Clone,
+    Col: ColTrait,
+{
+    ///maps expressiosn over some columns to expressions over other columns
+    pub fn map_column<Col2, M>(self, map: &M) -> Expr<C, Col2>
+    where
+        Col2: ColTrait,
+        M: Fn(Col) -> Col2,
+    {
+        match self {
+            Expr::Constant(c) => Expr::Constant(c),
+            Expr::Cell(v) => {
+                let Variable { col, row } = v;
+                Expr::Cell(Variable { col: map(col), row })
+            }
+            Expr::Double(exp) => Expr::Double(Box::new((*exp).map_column(map))),
+            Expr::Square(exp) => Expr::Square(Box::new((*exp).map_column(map))),
+            Expr::BinOp(op, exp1, exp2) => {
+                let exp1 = exp1.map_column(map);
+                let exp2 = exp2.map_column(map);
+                Expr::BinOp(op, Box::new(exp1), Box::new(exp2))
+            }
+            Expr::VanishesOnLast4Rows => Expr::VanishesOnLast4Rows,
+            Expr::UnnormalizedLagrangeBasis(i) => Expr::UnnormalizedLagrangeBasis(i),
+            Expr::Pow(exp, pow) => {
+                let exp = Box::new(exp.map_column(map));
+                Expr::Pow(exp, pow)
+            }
+            Expr::Cache(id, exp) => Expr::Cache(id, Box::new(exp.map_column(map))),
+            Expr::IfFeature(flag, exp1, exp2) => {
+                let exp1 = exp1.map_column(map);
+                let exp2 = exp2.map_column(map);
+                Expr::IfFeature(flag, Box::new(exp1), Box::new(exp2))
+            }
+        }
+    }
+    fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C, Col>, bool) {
         use Expr::*;
         match self {
             Constant(_) | Cell(_) | VanishesOnLast4Rows | UnnormalizedLagrangeBasis(_) => {
@@ -756,7 +793,7 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
             }
         }
     }
-    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C> {
+    pub fn apply_feature_flags(&self, features: &FeatureFlags) -> Expr<C, Col> {
         let (res, _) = self.apply_feature_flags_inner(features);
         res
     }
@@ -908,7 +945,7 @@ impl<C, Col: ColTrait> Expr<C, Col> {
     }
 
     /// Convenience function for constructing constant expressions.
-    pub fn constant(c: C) -> Expr<C> {
+    pub fn constant(c: C) -> Expr<C, Col> {
         Expr::Constant(c)
     }
 
@@ -1490,7 +1527,7 @@ fn get_domain<'a, F: FftField, E: EnvTrait<'a, F>>(d: Domain, env: &E) -> D<F> {
     }
 }
 
-impl<F: Field> Expr<ConstantExpr<F>> {
+impl<F: Field, Col: ColTrait> Expr<ConstantExpr<F>, Col> {
     /// Convenience function for constructing expressions from literal
     /// field elements.
     pub fn literal(x: F) -> Self {
@@ -1500,7 +1537,7 @@ impl<F: Field> Expr<ConstantExpr<F>> {
     /// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
     pub fn combine_constraints(alphas: impl Iterator<Item = u32>, cs: Vec<Self>) -> Self {
-        let zero = Expr::<ConstantExpr<F>>::zero();
+        let zero = Expr::<ConstantExpr<F>, Col>::zero();
         cs.into_iter()
             .zip_eq(alphas)
             .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i as u64)) * c)
