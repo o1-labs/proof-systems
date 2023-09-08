@@ -655,8 +655,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
 
-        let num_lookups = {
-            let mut num_lookups: usize = lookup_tables
+        let lookup_domain_size = {
+            // First we sum over the lookup table size
+            let mut lookup_domain_size: usize = lookup_tables
                 .iter()
                 .map(
                     |LookupTable { data, id: _ }| {
@@ -668,26 +669,28 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                     },
                 )
                 .sum();
+            // After that on the runtime tables
             if runtime_tables.is_some() {
                 let runtime_tables = runtime_tables.as_ref().unwrap();
                 for runtime_table in runtime_tables.iter() {
-                    num_lookups += runtime_table.len();
+                    lookup_domain_size += runtime_table.len();
                 }
             }
+            // And we add the built-in tables, depending on the features.
             let LookupFeatures { patterns, .. } = &lookup_features;
             for pattern in patterns.into_iter() {
                 if let Some(gate_table) = pattern.table() {
-                    num_lookups += gate_table.table_size();
+                    lookup_domain_size += gate_table.table_size();
                 }
             }
-            num_lookups
+            lookup_domain_size
         };
 
         //~ 2. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + ZK_ROWS` elements.
         let domain_size_lower_bound =
-            std::cmp::max(gates.len(), num_lookups + 1) + ZK_ROWS as usize;
+            std::cmp::max(gates.len(), lookup_domain_size + 1) + ZK_ROWS as usize;
         let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
 
         assert!(domain.d1.size > ZK_ROWS);
