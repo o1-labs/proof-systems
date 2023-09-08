@@ -141,12 +141,6 @@ impl<'a, F: FftField> EnvTrait<'a, F> for Environment<'a, F> {
     }
 
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
-        Self::get_column2(self, col)
-    }
-}
-
-impl<'a, F: FftField> Environment<'a, F> {
-    fn get_column2(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
         use Column::*;
         let lookup = self.lookup.as_ref();
         match col {
