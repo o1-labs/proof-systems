@@ -187,7 +187,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
                         .map(|e| mask_fixed(self.srs.commit_evaluations_non_hiding(domain, e)))
                         .collect(),
                     table_ids: cs.table_ids8.as_ref().map(|table_ids8| {
-                        self.srs.commit_evaluations_non_hiding(domain, table_ids8)
+                        mask_fixed(self.srs.commit_evaluations_non_hiding(domain, table_ids8))
                     }),
                     runtime_tables_selector: cs
                         .runtime_selector

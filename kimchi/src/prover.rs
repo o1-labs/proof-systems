@@ -1371,7 +1371,8 @@ where
                     .configuration
                     .lookup_info
                     .max_joint_size;
-                for _i in 0..table_width {
+                // Adding one for the table IDs
+                for _i in 0..table_width + 1 {
                     t += acc;
                     // joint_combiner^i
                     acc *= joint_combiner;
