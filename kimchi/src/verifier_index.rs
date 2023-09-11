@@ -489,8 +489,16 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                 },
         }) = lookup_index
         {
-            for entry in lookup_table {
+            // To show using lib_mec in Tezos
+            // let to_be le_x = Bytes.init (Bytes.length le_x) (fun i ->  Bytes.get le_x (Bytes.length le_x - 1 - i));;
+            // let show_from_be x = Mec.Curve.Pallas.Affine.Base.(to_string @@ of_bytes_exn x);;
+            // show_from_be @@ to_be @@ read "314FC4D83AE66A509F9D41BE6165F2606A209A9B5805EE85CE20249C5EBCBE26";;
+            println!("Printing in Rust");
+            for (i, entry) in lookup_table.into_iter().enumerate() {
                 fq_sponge.absorb_g(&entry.unshifted);
+                let t = &entry.unshifted[0];
+                let (x, y) = t.to_coordinates().unwrap();
+                println!("Commitment {i}: x = {:?}, y = {:?}", x.to_string(), y.to_string());
             }
             if let Some(table_ids) = table_ids {
                 fq_sponge.absorb_g(&table_ids.unshifted);

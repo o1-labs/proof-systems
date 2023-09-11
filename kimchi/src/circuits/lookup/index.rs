@@ -427,6 +427,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                 let configuration = LookupConfiguration::new(lookup_info);
 
+                println!("Number of tables: {}\n", lookup_table_polys.len());
                 Ok(Some(Self {
                     lookup_selectors,
                     lookup_table8,
