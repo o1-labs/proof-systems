@@ -181,6 +181,12 @@ fn test_sha() {
 #[test]
 // Check the steps of the hash
 fn test_keccak64() {
+    let message = [0xab, 0x12, 0x34];
+    let hash = keccak::keccak_eth(&message);
+    let desired = hex::decode("b8f624dab922cd162cbce35c7c15eb5c5887eaf49cfbc88bc13a4338c16f54e2")
+        .expect("Decoding failed");
+    assert_eq!(hash, desired);
+
     let message = [
         0xf8u8, 0x67, 0x80, 0x86, 0x2d, 0x79, 0x88, 0x3d, 0x20, 0x00, 0x82, 0x52, 0x08, 0x94, 0x5d,
         0xf9, 0xb8, 0x79, 0x91, 0x26, 0x2f, 0x6b, 0xa4, 0x71, 0xf0, 0x97, 0x58, 0xcd, 0xe1, 0xc0,
@@ -203,5 +209,18 @@ fn test_keccak64() {
     let hash = keccak::keccak_eth(&message);
     let desired = "9cec14aadb06b59b2646333f47efe0ee7f21fed48d93806023b8eb205aa3b161";
     let desired = hex::decode(desired).expect("Decoding failed");
+    assert_eq!(hash, desired);
+
+    let mina = hex::decode("4d696e6100000000000000000000000000000000000000000000000000000000")
+        .expect("Decoding failed");
+    let hash = keccak::keccak_eth(&mina);
+    let desired = hex::decode("6cec242e16caf9fa14c9a620ed3d546e2573672d88784f2a7de16400a6f49169")
+        .expect("Decoding failed");
+    assert_eq!(hash, desired);
+
+    let mina = hex::decode("4d696e61").expect("Decoding failed");
+    let hash = keccak::keccak_eth(&mina);
+    let desired = hex::decode("614d1d888d26584af8240459b774cd1e3aa68c0a23f89bb24ac72907e5b69536")
+        .expect("Decoding failed");
     assert_eq!(hash, desired);
 }
