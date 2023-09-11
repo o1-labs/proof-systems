@@ -1358,18 +1358,39 @@ where
             ));
 
             //~~ * add the combined table polynomial
-            let table_blinding = if lcs.runtime_selector.is_some() {
-                let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
+            let table_blinding = {
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
 
-                let blinding = runtime_comm.blinders.unshifted[0];
-
-                PolyComm {
-                    unshifted: vec![*joint_combiner * blinding],
-                    shifted: None,
+                let mut t = G::ScalarField::zero();
+                let mut acc = G::ScalarField::one();
+                let table_width = index
+                    .cs
+                    .lookup_constraint_system
+                    .as_ref()
+                    .unwrap()
+                    .configuration
+                    .lookup_info
+                    .max_joint_size;
+                for _i in 0..table_width {
+                    t += acc;
+                    // joint_combiner^i
+                    acc *= joint_combiner;
                 }
-            } else {
-                non_hiding(1)
+                if lcs.runtime_selector.is_some() {
+                    let runtime_blinder = {
+                        let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
+                        runtime_comm.blinders.unshifted[0]
+                    };
+                    PolyComm {
+                        unshifted: vec![t + *joint_combiner * runtime_blinder],
+                        shifted: None,
+                    }
+                } else {
+                    PolyComm {
+                        unshifted: vec![t],
+                        shifted: None,
+                    }
+                }
             };
 
             let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
