@@ -366,6 +366,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
+                        // See GH issue: https://github.com/MinaProtocol/mina/issues/14097
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
                         }
