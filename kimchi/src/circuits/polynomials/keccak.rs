@@ -33,12 +33,39 @@ macro_rules! state_from_layout {
 /// | 2     | 62 |  6 | 43 | 15 | 61 |
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
-pub const ROT_TAB: [[u32; 5]; 5] = [
+pub const OFF: [[u64; DIM]; DIM] = [
     [0, 36, 3, 41, 18],
     [1, 44, 10, 45, 2],
     [62, 6, 43, 15, 61],
     [28, 55, 25, 21, 56],
     [27, 20, 39, 8, 14],
+];
+
+pub const RC: [u64; 24] = [
+    0x0000000000000001,
+    0x0000000000008082,
+    0x800000000000808a,
+    0x8000000080008000,
+    0x000000000000808b,
+    0x0000000080000001,
+    0x8000000080008081,
+    0x8000000000008009,
+    0x000000000000008a,
+    0x0000000000000088,
+    0x0000000080008009,
+    0x000000008000000a,
+    0x000000008000808b,
+    0x800000000000008b,
+    0x8000000000008089,
+    0x8000000000008003,
+    0x8000000000008002,
+    0x8000000000000080,
+    0x000000000000800a,
+    0x800000008000000a,
+    0x8000000080008081,
+    0x8000000000008080,
+    0x0000000080000001,
+    0x8000000080008008,
 ];
 
 //~
@@ -75,6 +102,9 @@ where
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
+
+        // DEFINE ROUND CONSTANT
+        let rc = [env.coeff(0), env.coeff(1), env.coeff(2), env.coeff(3)];
 
         // LOAD WITNESS LAYOUT
         // THETA
@@ -186,10 +216,11 @@ where
                                 + T::two_pow(3) * reset_e(3, x, y, q)),
                     );
                     constraints.push(
-                        word_e * T::two_pow(1) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
+                        word_e * T::two_pow(OFF[x][y])
+                            - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
                     );
                     constraints.push(rot_e - (quo_e.clone() + rem_e));
-                    constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(1)));
+                    constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(OFF[x][y])));
                     constraints
                         .push(state_b(0, y, (2 * x + 3 * y) % DIM, q) - expand_rot_e(0, x, y, q));
                 }
@@ -209,4 +240,16 @@ fn compose_quarters<F: PrimeField, T: ExprOps<F>>(
         + T::two_pow(16) * quarters(0, x, y, 1)
         + T::two_pow(32) * quarters(0, x, y, 2)
         + T::two_pow(48) * quarters(0, x, y, 3)
+}
+
+fn expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
+    format!("{:064b}", word)
+        .chars()
+        .collect::<Vec<char>>()
+        .chunks(16)
+        .map(|c| c.iter().collect::<String>())
+        .collect::<Vec<String>>()
+        .iter()
+        .map(|c| T::literal(F::from(u64::from_str_radix(c, 16).unwrap())))
+        .collect::<Vec<T>>()
 }
