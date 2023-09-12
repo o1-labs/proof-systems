@@ -225,6 +225,11 @@ where
             }
         }
 
+        // STEP iota: 4 constraints
+        for q in 0..QUARTERS {
+            constraints.push(g00(0, 0, 0, q) - (state_f(0, 0, 0, q) + rc[q].clone()));
+        }
+
         constraints
     }
 }
