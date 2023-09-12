@@ -47,6 +47,13 @@ where
         false
     }
 
+    /// Returns the number of columns, i.e. the width of the table.
+    /// It is less error prone to introduce this method than using the public
+    /// field data.
+    pub fn width(&self) -> usize {
+        self.data.len()
+    }
+
     /// Returns the length of the table.
     pub fn len(&self) -> usize {
         self.data[0].len()

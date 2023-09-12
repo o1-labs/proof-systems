@@ -296,7 +296,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 //~    that a lookup table can have.
                 let max_table_width = lookup_tables
                     .iter()
-                    .map(|table| table.data.len())
+                    .map(|table| table.width())
                     .max()
                     .unwrap_or(0);
 
@@ -373,7 +373,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     }
 
                     //~~ * Fill in any unused columns with 0 (to match the dummy value)
-                    for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
+                    for lookup_table in lookup_table.iter_mut().skip(table.width()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
                 }
