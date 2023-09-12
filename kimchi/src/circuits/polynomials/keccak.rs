@@ -7,23 +7,23 @@ use crate::circuits::{
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
 
+pub const DIM: usize = 5;
+pub const QUARTERS: usize = 4;
+
 #[macro_export]
 macro_rules! state_from_layout {
     ($var:ident, $expr:expr) => {
         let $var = $expr;
         let $var = |i: usize, x: usize, y: usize, q: usize| {
-            $var[q + PARTS * (x + DIM * (y + DIM * i))].clone()
+            $var[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
         };
     };
     ($var:ident) => {
         let $var = |i: usize, x: usize, y: usize, q: usize| {
-            $var[q + PARTS * (x + DIM * (y + DIM * i))].clone()
+            $var[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
         };
     };
 }
-
-pub const DIM: usize = 5;
-pub const PARTS: usize = 4;
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64
 /// | x \ y |  0 |  1 |  2 |  3 |  4 |
@@ -130,8 +130,59 @@ where
         state_from_layout!(state_f);
         state_from_layout!(g00);
 
-        // STEP theta
+        // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
+        for x in 0..DIM {
+            let word_c = compose_quarters(dense_c, x, 0);
+            let quo_c = compose_quarters(quotient_c, x, 0);
+            let rem_c = compose_quarters(remainder_c, x, 0);
+            let bnd_c = compose_quarters(bound_c, x, 0);
+            let rot_c = compose_quarters(dense_rot_c, x, 0);
+
+            constraints
+                .push(word_c * T::two_pow(1) - (quo_c.clone() * T::two_pow(64) + rem_c.clone()));
+            constraints.push(rot_c - (quo_c.clone() + rem_c));
+            constraints.push(bnd_c - (quo_c + T::two_pow(64) - T::two_pow(1)));
+
+            for q in 0..QUARTERS {
+                constraints.push(
+                    state_c(0, x, 0, q)
+                        - (state_a(0, x, 0, q)
+                            + state_a(0, x, 1, q)
+                            + state_a(0, x, 2, q)
+                            + state_a(0, x, 3, q)
+                            + state_a(0, x, 4, q)),
+                );
+                constraints.push(
+                    state_c(0, x, 0, q)
+                        - (reset_c(0, x, 0, q)
+                            + T::two_pow(1) * reset_c(1, x, 0, q)
+                            + T::two_pow(2) * reset_c(2, x, 0, q)
+                            + T::two_pow(3) * reset_c(3, x, 0, q)),
+                );
+                constraints.push(
+                    state_d(0, x, 0, q)
+                        - (reset_c(0, (x - 1 + DIM) % DIM, 0, q)
+                            + expand_rot_c(0, (x + 1) % DIM, 0, q)),
+                );
+
+                for y in 0..DIM {
+                    constraints
+                        .push(state_e(0, x, y, q) - (state_a(0, x, y, q) + state_d(0, x, 0, q)));
+                }
+            }
+        }
 
         constraints
     }
+}
+
+fn compose_quarters<F: PrimeField, T: ExprOps<F>>(
+    quarters: impl Fn(usize, usize, usize, usize) -> T,
+    x: usize,
+    y: usize,
+) -> T {
+    quarters(0, x, y, 0)
+        + T::two_pow(16) * quarters(0, x, y, 1)
+        + T::two_pow(32) * quarters(0, x, y, 2)
+        + T::two_pow(48) * quarters(0, x, y, 3)
 }
