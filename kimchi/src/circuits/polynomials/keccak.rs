@@ -1,8 +1,11 @@
 //! Keccak gadget
-use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
-    gate::GateType,
+use crate::{
+    auto_clone_array,
+    circuits::{
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{constraints::ExprOps, Cache},
+        gate::GateType,
+    },
 };
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
@@ -69,25 +72,29 @@ pub const RC: [u64; 24] = [
 ];
 
 //~
-//~ | Columns  | [0...440) | [440...1540) | [1540...2440) | 2440 |
+//~ | Columns  | [0...200) | [0...440) | [440...1540) | [1540...2440) | 2440 |
 //~ | -------- | --------- | ------------ | ------------- | ---- |
-//~ | `Keccak` | theta     | pirho        | chi           | iota |
+//~ | `Keccak` | xor       | theta     | pirho        | chi           | iota |
 //~
-//~ | Columns  | [0...100) | [100...120) | [120...200) | [200...220) | [220...240) | [240...260)  | [260...280) | [280...300)  | 300...320)   | [320...340) | [340...440) |
-//~ | -------- | --------- | ----------- | ----------- | ----------- | ----------- | ------------ | ----------- | ------------ | ------------ | ----------- | ----------- |
-//~ | theta    | state_a   | state_c     | reset_c     | dense_c     | quotient_c  | remainder_c  | bound_c     | dense_rot_c  | expand_rot_c | state_d     | state_e     |
+//~ | Columns  | [0...100) | [100...200) |
+//~ | -------- | --------- | ----------- |
+//~ | xor      | old_state | new_state   |
 //~
-//~ | Columns  | [440...840) | [840...940) | [940...1040) | [1040...1140) | [1140...1240) | [1240...1340) | [1440...1540) |
-//~ | -------- | ----------- | ----------- | ------------ | ------------- | ------------- | ------------- | ------------- |
-//~ | pirho    | reset_e     | dense_e     | quotient_e   | remainder_e   | bound_e       | dense_rot_e   | expand_rot_e  |
+//~ | Columns  | [200...300) | [300...320) | [320...400) | [400...420) | [420...440) | [440...460)  | [460...480) | [480...500)  | 500...520)   | [520...540) | [540...640) |
+//~ | -------- | ----------- | ----------- | ----------- | ----------- | ----------- | ------------ | ----------- | ------------ | ------------ | ----------- | ----------- |
+//~ | theta    | state_a     | state_c     | reset_c     | dense_c     | quotient_c  | remainder_c  | bound_c     | dense_rot_c  | expand_rot_c | state_d     | state_e     |
 //~
-//~ | Columns  | [1540...1940) | [1940...2340) | [2340...2440) |
+//~ | Columns  | [640...1040) | [1040...1140) | [1140...1240) | [1240...1340) | [1340...1440) | [1440...1540) | [1640...1740) |
+//~ | -------- | ------------ | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
+//~ | pirho    | reset_e      | dense_e       | quotient_e    | remainder_e   | bound_e       | dense_rot_e   | expand_rot_e  |
+//~
+//~ | Columns  | [1740...2140) | [2140...2540) | [2540...2640) |
 //~ | -------- | ------------- | ------------- | ------------- |
 //~ | chi      | reset_b       | reset_sum     | state_f       |
 //~
-//~ | Columns  | 2440 |
-//~ | -------- | ---- |
-//~ | iota     | g00  |
+//~ | Columns  | [2640...2644) |
+//~ | -------- | ------------- |
+//~ | iota     | g00           |
 //~
 #[derive(Default)]
 pub struct Keccak<F>(PhantomData<F>);
@@ -97,7 +104,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Keccak);
-    const CONSTRAINTS: u32 = 854;
+    const CONSTRAINTS: u32 = 954;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -107,37 +114,42 @@ where
         let rc = [env.coeff(0), env.coeff(1), env.coeff(2), env.coeff(3)];
 
         // LOAD WITNESS LAYOUT
+        // XOR
+        let old_state = env.witness_curr_chunk(0, 100);
+        let new_state = env.witness_curr_chunk(100, 200);
         // THETA
-        let state_a = env.witness_curr_chunk(0, 100);
-        let state_c = env.witness_curr_chunk(100, 120);
-        let reset_c = env.witness_curr_chunk(120, 200);
-        let dense_c = env.witness_curr_chunk(200, 220);
-        let quotient_c = env.witness_curr_chunk(220, 240);
-        let remainder_c = env.witness_curr_chunk(240, 260);
-        let bound_c = env.witness_curr_chunk(260, 280);
-        let dense_rot_c = env.witness_curr_chunk(280, 300);
-        let expand_rot_c = env.witness_curr_chunk(300, 320);
-        let state_d = env.witness_curr_chunk(320, 340);
-        let state_e = env.witness_curr_chunk(340, 440);
+        let state_a = env.witness_curr_chunk(200, 300);
+        let state_c = env.witness_curr_chunk(300, 320);
+        let reset_c = env.witness_curr_chunk(320, 400);
+        let dense_c = env.witness_curr_chunk(400, 420);
+        let quotient_c = env.witness_curr_chunk(420, 440);
+        let remainder_c = env.witness_curr_chunk(440, 460);
+        let bound_c = env.witness_curr_chunk(460, 480);
+        let dense_rot_c = env.witness_curr_chunk(480, 500);
+        let expand_rot_c = env.witness_curr_chunk(500, 520);
+        let state_d = env.witness_curr_chunk(520, 540);
+        let state_e = env.witness_curr_chunk(540, 640);
         // PI-RHO
-        let reset_e = env.witness_curr_chunk(440, 840);
-        let dense_e = env.witness_curr_chunk(840, 940);
-        let quotient_e = env.witness_curr_chunk(940, 1040);
-        let remainder_e = env.witness_curr_chunk(1040, 1140);
-        let bound_e = env.witness_curr_chunk(1140, 1240);
-        let dense_rot_e = env.witness_curr_chunk(1240, 1340);
-        let expand_rot_e = env.witness_curr_chunk(1340, 1440);
-        let state_b = env.witness_curr_chunk(1440, 1540);
+        let reset_e = env.witness_curr_chunk(640, 1040);
+        let dense_e = env.witness_curr_chunk(1040, 1140);
+        let quotient_e = env.witness_curr_chunk(1140, 1240);
+        let remainder_e = env.witness_curr_chunk(1240, 1340);
+        let bound_e = env.witness_curr_chunk(1340, 1440);
+        let dense_rot_e = env.witness_curr_chunk(1440, 1540);
+        let expand_rot_e = env.witness_curr_chunk(1540, 1640);
+        let state_b = env.witness_curr_chunk(1640, 1740);
         // CHI
-        let reset_b = env.witness_curr_chunk(1540, 1940);
-        let reset_sum = env.witness_curr_chunk(1940, 2340);
-        let state_f = env.witness_curr_chunk(2340, 2440);
+        let reset_b = env.witness_curr_chunk(1740, 2140);
+        let reset_sum = env.witness_curr_chunk(2140, 2540);
+        let state_f = env.witness_curr_chunk(2540, 2640);
         // IOTA
-        let g00 = env.witness_curr_chunk(2440, 2444);
+        let g00 = env.witness_curr_chunk(2640, 2644);
         // NEXT
-        let state_a_next = env.witness_next_chunk(0, 100);
+        let next_state = env.witness_next_chunk(0, 100);
 
         // LOAD STATES FROM LAYOUT
+        state_from_layout!(old_state);
+        state_from_layout!(new_state);
         state_from_layout!(state_a);
         state_from_layout!(state_c);
         state_from_layout!(reset_c);
@@ -161,7 +173,18 @@ where
         state_from_layout!(reset_sum);
         state_from_layout!(state_f);
         state_from_layout!(g00);
-        state_from_layout!(state_a_next);
+        state_from_layout!(next_state);
+
+        // STEP xor: 100 constraints
+        for q in 0..QUARTERS {
+            for x in 0..DIM {
+                for y in 0..DIM {
+                    constraints.push(
+                        state_a(0, x, y, q) - (old_state(0, x, y, q) + new_state(0, x, y, q)),
+                    );
+                }
+            }
+        }
 
         // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
         for x in 0..DIM {
@@ -247,13 +270,13 @@ where
             for x in 0..DIM {
                 for y in 0..DIM {
                     if x == 0 && y == 0 {
-                        constraints.push(state_a_next(0, 0, 0, q) - g00(0, 0, 0, q));
+                        constraints.push(next_state(0, 0, 0, q) - g00(0, 0, 0, q));
                     } else {
-                        constraints.push(state_a_next(0, x, y, q) - state_f(0, x, y, q));
+                        constraints.push(next_state(0, x, y, q) - state_f(0, x, y, q));
                     }
                 }
             }
-        }
+        } // END wiring
 
         constraints
     }
