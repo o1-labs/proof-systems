@@ -97,7 +97,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Keccak);
-    const CONSTRAINTS: u32 = 20 + 55 + 100 + 125 + 200 + 4;
+    const CONSTRAINTS: u32 = 20 + 55 + 100 + 125 + 300 + 4;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -162,20 +162,20 @@ where
 
         // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
         for x in 0..DIM {
-            // THETA
+            // THETA definitions
             let word_c = compose_quarters(dense_c, x, 0);
             let quo_c = compose_quarters(quotient_c, x, 0);
             let rem_c = compose_quarters(remainder_c, x, 0);
             let bnd_c = compose_quarters(bound_c, x, 0);
             let rot_c = compose_quarters(dense_rot_c, x, 0);
-            // THETA
+            // THETA constraints
             constraints
                 .push(word_c * T::two_pow(1) - (quo_c.clone() * T::two_pow(64) + rem_c.clone()));
             constraints.push(rot_c - (quo_c.clone() + rem_c));
             constraints.push(bnd_c - (quo_c + T::two_pow(64) - T::two_pow(1)));
 
             for q in 0..QUARTERS {
-                // THETA
+                // THETA constraints
                 constraints.push(
                     state_c(0, x, 0, q)
                         - (state_a(0, x, 0, q)
@@ -184,13 +184,7 @@ where
                             + state_a(0, x, 3, q)
                             + state_a(0, x, 4, q)),
                 );
-                constraints.push(
-                    state_c(0, x, 0, q)
-                        - (reset_c(0, x, 0, q)
-                            + T::two_pow(1) * reset_c(1, x, 0, q)
-                            + T::two_pow(2) * reset_c(2, x, 0, q)
-                            + T::two_pow(3) * reset_c(3, x, 0, q)),
-                );
+                constraints.push(state_c(0, x, 0, q) - compose_shifts(reset_c, x, 0, q));
                 constraints.push(
                     state_d(0, x, 0, q)
                         - (reset_c(0, (x - 1 + DIM) % DIM, 0, q)
@@ -198,23 +192,17 @@ where
                 );
 
                 for y in 0..DIM {
-                    // THETA
+                    // THETA constraints
                     constraints
                         .push(state_e(0, x, y, q) - (state_a(0, x, y, q) + state_d(0, x, 0, q)));
-                    // PI-RHO
+                    // PI-RHO definitions
                     let word_e = compose_quarters(dense_e, x, y);
                     let quo_e = compose_quarters(quotient_e, x, y);
                     let rem_e = compose_quarters(remainder_e, x, y);
                     let bnd_e = compose_quarters(bound_e, x, y);
                     let rot_e = compose_quarters(dense_rot_e, x, y);
-                    // PI-RHO
-                    constraints.push(
-                        state_e(0, x, y, q)
-                            - (reset_e(0, x, y, q)
-                                + T::two_pow(1) * reset_e(1, x, y, q)
-                                + T::two_pow(2) * reset_e(2, x, y, q)
-                                + T::two_pow(3) * reset_e(3, x, y, q)),
-                    );
+                    // PI-RHO constraints
+                    constraints.push(state_e(0, x, y, q) - compose_shifts(reset_e, x, y, q));
                     constraints.push(
                         word_e * T::two_pow(OFF[x][y])
                             - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
@@ -223,6 +211,16 @@ where
                     constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(OFF[x][y])));
                     constraints
                         .push(state_b(0, y, (2 * x + 3 * y) % DIM, q) - expand_rot_e(0, x, y, q));
+
+                    // CHI definitions
+                    let not =
+                        T::literal(F::from(0x1111111111111111u64)) - reset_b(0, (x + 1) % 5, y, q);
+                    let sum = not + reset_b(1, (x + 2) % 5, y, q);
+                    let and = reset_sum(1, x, y, q);
+                    // CHI constraints
+                    constraints.push(state_b(0, x, y, q) - compose_shifts(reset_b, x, y, q));
+                    constraints.push(sum - compose_shifts(reset_sum, x, y, q));
+                    constraints.push(state_f(0, x, y, q) - (reset_b(0, x, y, q) + and));
                 }
             }
         }
@@ -240,6 +238,18 @@ fn compose_quarters<F: PrimeField, T: ExprOps<F>>(
         + T::two_pow(16) * quarters(0, x, y, 1)
         + T::two_pow(32) * quarters(0, x, y, 2)
         + T::two_pow(48) * quarters(0, x, y, 3)
+}
+
+fn compose_shifts<F: PrimeField, T: ExprOps<F>>(
+    resets: impl Fn(usize, usize, usize, usize) -> T,
+    x: usize,
+    y: usize,
+    q: usize,
+) -> T {
+    resets(0, x, y, q)
+        + T::two_pow(1) * resets(1, x, y, q)
+        + T::two_pow(2) * resets(2, x, y, q)
+        + T::two_pow(3) * resets(3, x, y, q)
 }
 
 fn expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
