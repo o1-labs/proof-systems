@@ -132,18 +132,20 @@ where
 
         // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
         for x in 0..DIM {
+            // THETA
             let word_c = compose_quarters(dense_c, x, 0);
             let quo_c = compose_quarters(quotient_c, x, 0);
             let rem_c = compose_quarters(remainder_c, x, 0);
             let bnd_c = compose_quarters(bound_c, x, 0);
             let rot_c = compose_quarters(dense_rot_c, x, 0);
-
+            // THETA
             constraints
                 .push(word_c * T::two_pow(1) - (quo_c.clone() * T::two_pow(64) + rem_c.clone()));
             constraints.push(rot_c - (quo_c.clone() + rem_c));
             constraints.push(bnd_c - (quo_c + T::two_pow(64) - T::two_pow(1)));
 
             for q in 0..QUARTERS {
+                // THETA
                 constraints.push(
                     state_c(0, x, 0, q)
                         - (state_a(0, x, 0, q)
@@ -166,8 +168,30 @@ where
                 );
 
                 for y in 0..DIM {
+                    // THETA
                     constraints
                         .push(state_e(0, x, y, q) - (state_a(0, x, y, q) + state_d(0, x, 0, q)));
+                    // PI-RHO
+                    let word_e = compose_quarters(dense_e, x, y);
+                    let quo_e = compose_quarters(quotient_e, x, y);
+                    let rem_e = compose_quarters(remainder_e, x, y);
+                    let bnd_e = compose_quarters(bound_e, x, y);
+                    let rot_e = compose_quarters(dense_rot_e, x, y);
+                    // PI-RHO
+                    constraints.push(
+                        state_e(0, x, y, q)
+                            - (reset_e(0, x, y, q)
+                                + T::two_pow(1) * reset_e(1, x, y, q)
+                                + T::two_pow(2) * reset_e(2, x, y, q)
+                                + T::two_pow(3) * reset_e(3, x, y, q)),
+                    );
+                    constraints.push(
+                        word_e * T::two_pow(1) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
+                    );
+                    constraints.push(rot_e - (quo_e.clone() + rem_e));
+                    constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(1)));
+                    constraints
+                        .push(state_b(0, y, (2 * x + 3 * y) % DIM, q) - expand_rot_e(0, x, y, q));
                 }
             }
         }
