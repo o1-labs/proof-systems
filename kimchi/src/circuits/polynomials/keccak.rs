@@ -1,14 +1,29 @@
 //! Keccak gadget
-use std::array;
-
-use ark_ff::{PrimeField, SquareRootField};
-
 use crate::circuits::{
-    gate::{CircuitGate, Connect},
-    polynomial::COLUMNS,
-    polynomials::generic::GenericGateSpec,
-    wires::Wire,
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::{constraints::ExprOps, Cache},
+    gate::GateType,
 };
+use ark_ff::PrimeField;
+use std::marker::PhantomData;
+
+#[macro_export]
+macro_rules! state_from_layout {
+    ($var:ident, $expr:expr) => {
+        let $var = $expr;
+        let $var = |i: usize, x: usize, y: usize, q: usize| {
+            $var[q + PARTS * (x + DIM * (y + DIM * i))].clone()
+        };
+    };
+    ($var:ident) => {
+        let $var = |i: usize, x: usize, y: usize, q: usize| {
+            $var[q + PARTS * (x + DIM * (y + DIM * i))].clone()
+        };
+    };
+}
+
+pub const DIM: usize = 5;
+pub const PARTS: usize = 4;
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64
 /// | x \ y |  0 |  1 |  2 |  3 |  4 |
@@ -59,51 +74,63 @@ where
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
-        // Check that the last 8 columns are 2-bit crumbs
-        // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
-        let mut constraints = (7..COLUMNS)
-            .map(|i| crumb(&env.witness_curr(i)))
-            .collect::<Vec<T>>();
+        let mut constraints = vec![];
 
-        // NOTE:
-        // If we ever want to make this gate more generic, the power of two for the length
-        // could be a coefficient of the gate instead of a fixed value in the constraints.
-        let two_to_64 = T::two_pow(64);
+        // LOAD WITNESS LAYOUT
+        // THETA
+        let state_a = env.witness_curr_chunk(0, 100);
+        let state_c = env.witness_curr_chunk(100, 120);
+        let reset_c = env.witness_curr_chunk(120, 200);
+        let dense_c = env.witness_curr_chunk(200, 220);
+        let quotient_c = env.witness_curr_chunk(220, 240);
+        let remainder_c = env.witness_curr_chunk(240, 260);
+        let bound_c = env.witness_curr_chunk(260, 280);
+        let dense_rot_c = env.witness_curr_chunk(280, 300);
+        let expand_rot_c = env.witness_curr_chunk(300, 320);
+        let state_d = env.witness_curr_chunk(320, 340);
+        let state_e = env.witness_curr_chunk(340, 440);
+        // PI-RHO
+        let reset_e = env.witness_curr_chunk(440, 840);
+        let dense_e = env.witness_curr_chunk(840, 940);
+        let quotient_e = env.witness_curr_chunk(940, 1040);
+        let remainder_e = env.witness_curr_chunk(1040, 1140);
+        let bound_e = env.witness_curr_chunk(1140, 1240);
+        let dense_rot_e = env.witness_curr_chunk(1240, 1340);
+        let expand_rot_e = env.witness_curr_chunk(1340, 1440);
+        let state_b = env.witness_curr_chunk(1440, 1540);
+        // CHI
+        let reset_b = env.witness_curr_chunk(1540, 1940);
+        let reset_sum = env.witness_curr_chunk(1940, 2340);
+        let state_f = env.witness_curr_chunk(2340, 2440);
+        // IOTA
+        let g00 = env.witness_curr_chunk(2440, 2444);
 
-        let word = env.witness_curr(0);
-        let rotated = env.witness_curr(1);
-        let excess = env.witness_curr(2);
-        let shifted = env.witness_next(0);
-        let two_to_rot = env.coeff(0);
+        // LOAD STATES FROM LAYOUT
+        state_from_layout!(state_a);
+        state_from_layout!(state_c);
+        state_from_layout!(reset_c);
+        state_from_layout!(dense_c);
+        state_from_layout!(quotient_c);
+        state_from_layout!(remainder_c);
+        state_from_layout!(bound_c);
+        state_from_layout!(dense_rot_c);
+        state_from_layout!(expand_rot_c);
+        state_from_layout!(state_d);
+        state_from_layout!(state_e);
+        state_from_layout!(reset_e);
+        state_from_layout!(dense_e);
+        state_from_layout!(quotient_e);
+        state_from_layout!(remainder_e);
+        state_from_layout!(bound_e);
+        state_from_layout!(dense_rot_e);
+        state_from_layout!(expand_rot_e);
+        state_from_layout!(state_b);
+        state_from_layout!(reset_b);
+        state_from_layout!(reset_sum);
+        state_from_layout!(state_f);
+        state_from_layout!(g00);
 
-        // Obtains the following checks:
-        // C9: word * 2^{rot} = (excess * 2^64 + shifted)
-        // C10: rotated = shifted + excess
-        constraints.push(
-            word * two_to_rot.clone() - (excess.clone() * two_to_64.clone() + shifted.clone()),
-        );
-        constraints.push(rotated - (shifted + excess.clone()));
-
-        // Compute the bound from the crumbs and limbs
-        let mut power_of_2 = T::one();
-        let mut bound = T::zero();
-
-        // Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
-            bound += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= T::two_pow(2); // 2 bits
-        }
-
-        // Sum 12-bit limbs
-        for i in (3..=6).rev() {
-            bound += power_of_2.clone() * env.witness_curr(i);
-            power_of_2 *= T::two_pow(12); // 12 bits
-        }
-
-        // Check that excess < 2^rot by checking that bound < 2^64
-        // Check RFC of Keccak for more details on the proof of this
-        // C11:bound = excess - 2^rot + 2^64
-        constraints.push(bound - (excess - two_to_rot + two_to_64));
+        // STEP theta
 
         constraints
     }
