@@ -60,6 +60,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.last_squeezed = vec![];
 
         let ProofEvaluations {
+            public: _, // Must be absorbed first manually for now, to handle Mina annoyances
             w,
             z,
             s,

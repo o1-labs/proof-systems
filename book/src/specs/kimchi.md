@@ -1936,6 +1936,8 @@ pub struct PointEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
+    /// public input polynomials
+    pub public: Option<Evals>,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -2157,7 +2159,6 @@ The prover then follows the following steps to create the proof:
    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
    TODO: specify the split of the permutation polynomial into perm and bnd?
 1. commit (hiding) to the quotient polynomial $t$
-   TODO: specify the dummies
 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
@@ -2194,7 +2195,6 @@ The prover then follows the following steps to create the proof:
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Absorb the previous recursion challenges.
 1. Compute evaluations for the previous recursion challenges.
-1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	* the public polynomial
@@ -2258,7 +2258,7 @@ We run the following algorithm:
 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
 1. Sample $\alpha'$ with the Fq-Sponge.
 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+1. Enforce that the length of the $t$ commitment is of size 7.
 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).

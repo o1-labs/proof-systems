@@ -139,6 +139,8 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     // create an SRS optimized for polynomials of degree 2^7 - 1
     let srs = SRS::<Vesta>::create(1 << 7);
 
+    let num_chunks = 1;
+
     // TODO: move to bench
     let mut time_commit = Duration::new(0, 0);
     let mut time_open = Duration::new(0, 0);
@@ -173,13 +175,13 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
             let BlindedCommitment {
                 commitment: chunked_commitment,
                 blinders: chunked_blinding,
-            } = srs.commit(&poly, bound, &mut rng);
+            } = srs.commit(&poly, num_chunks, bound, &mut rng);
             time_commit += timer.elapsed();
 
             let mut chunked_evals = vec![];
             for point in eval_points.clone() {
                 chunked_evals.push(
-                    poly.to_chunked_polynomial(srs.g.len())
+                    poly.to_chunked_polynomial(1, srs.g.len())
                         .evaluate_chunks(point),
                 );
             }
