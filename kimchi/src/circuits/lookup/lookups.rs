@@ -550,3 +550,58 @@ fn lookup_pattern_constants_correct() {
         assert_eq!((pat, pat.max_joint_size()), (pat, max_joint_size as u32));
     }
 }
+
+#[cfg(feature = "wasm_types")]
+pub mod wasm {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupPatterns {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            xor: bool,
+            lookup: bool,
+            range_check: bool,
+            foreign_field_mul: bool,
+        ) -> LookupPatterns {
+            LookupPatterns {
+                xor,
+                lookup,
+                range_check,
+                foreign_field_mul,
+            }
+        }
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupFeatures {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            patterns: LookupPatterns,
+            joint_lookup_used: bool,
+            uses_runtime_tables: bool,
+        ) -> LookupFeatures {
+            LookupFeatures {
+                patterns,
+                joint_lookup_used,
+                uses_runtime_tables,
+            }
+        }
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupInfo {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            max_per_row: usize,
+            max_joint_size: u32,
+            features: LookupFeatures,
+        ) -> LookupInfo {
+            LookupInfo {
+                max_per_row,
+                max_joint_size,
+                features,
+            }
+        }
+    }
+}
