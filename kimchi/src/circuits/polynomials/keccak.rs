@@ -2,13 +2,20 @@
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{constraints::ExprOps, Cache},
-    gate::GateType,
+    gate::{CircuitGate, GateType},
+    lookup::{
+        self,
+        tables::{GateLookupTable, LookupTable},
+    },
+    wires::Wire,
 };
-use ark_ff::PrimeField;
+use ark_ff::{PrimeField, SquareRootField};
 use std::marker::PhantomData;
 
 pub const DIM: usize = 5;
 pub const QUARTERS: usize = 4;
+pub const ROUNDS: usize = 24;
+pub const RATE: usize = 136;
 
 #[macro_export]
 macro_rules! state_from_layout {
@@ -67,6 +74,104 @@ pub const RC: [u64; 24] = [
     0x0000000080000001,
     0x8000000080008008,
 ];
+
+fn expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
+    format!("{:064b}", word)
+        .chars()
+        .collect::<Vec<char>>()
+        .chunks(16)
+        .map(|c| c.iter().collect::<String>())
+        .collect::<Vec<String>>()
+        .iter()
+        .map(|c| T::literal(F::from(u64::from_str_radix(c, 16).unwrap())))
+        .collect::<Vec<T>>()
+}
+
+impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+    /// Extends a Keccak circuit to hash up to one block of message (up to 135 bytes)
+    pub fn extend_keccak(new_row: usize) -> usize {
+        // pad
+    }
+
+    /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, for a padded message of a given bytelength
+    fn create_keccak_sponge(new_row: usize, bytelength: usize) -> Vec<Self> {
+        let mut gates = Self::create_keccak_absorb(new_row, bytelength);
+    }
+
+    fn create_keccak_squeeze(new_row: usize) -> Vec<Self> {}
+
+    fn create_keccak_absorb(new_row: usize, bytelength: usize) -> Vec<Self> {
+        for i in 0..(bytelength / RATE) {
+            let mut gates = Self::create_keccak_setup(new_row);
+            let mut gates = Self::create_keccak_permutation(new_row);
+        }
+    }
+
+    fn create_keccak_setup(new_row: usize) -> Vec<Self> {
+        let mut gates = vec![];
+
+        gates
+    }
+
+    fn create_keccak_permutation(new_row: usize) -> Vec<Self> {
+        let mut gates = vec![];
+        for round in 0..ROUNDS {
+            gates.push(Self::create_keccak_round(new_row + gates.len(), round));
+        }
+        gates
+    }
+
+    fn create_keccak_round(new_row: usize, round: usize) -> Self {
+        CircuitGate {
+            typ: GateType::Keccak,
+            wires: Wire::for_row(new_row),
+            coeffs: expand(RC[round]),
+        }
+    }
+
+    /// Extend one rotation
+    /// Right now it only creates a Generic gate followed by the Rot64 gates
+    /// It allows to configure left or right rotation.
+    /// Input:
+    /// - gates : the full circuit
+    /// - rot : the rotation offset
+    /// - side : the rotation side
+    /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
+    /// Warning:
+    /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// - same with rotated word
+    pub fn extend_rot(gates: &mut Vec<Self>, rot: u32) -> usize {
+        let (_new_row, mut keccak_gates) = Self::create_keccak(gates.len(), rot, side);
+        gates.append(&mut rot_gates);
+        gates.len()
+    }
+
+    /// Create one rotation
+    /// Right now it only creates a Generic gate followed by the Rot64 gates
+    /// It allows to configure left or right rotation.
+    /// Input:
+    /// - rot : the rotation offset
+    /// - side : the rotation side
+    /// Warning:
+    /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
+    /// - same with rotated word
+    /// - need to check that the 2 most significant limbs of shifted are zero
+    pub fn create_rot(new_row: usize, rot: u32, side: RotMode) -> (usize, Vec<Self>) {
+        // Initial Generic gate to constrain the output to be zero
+        let rot_gates = if side == RotMode::Left {
+            Self::create_rot64(new_row, rot)
+        } else {
+            Self::create_rot64(new_row, 64 - rot)
+        };
+
+        (new_row + rot_gates.len(), rot_gates)
+    }
+}
+
+/// Get the keccak lookup table
+pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
+    lookup::tables::get_table::<F>(GateLookupTable::Sparse)
+}
 
 //~
 //~ | Columns  | [0...200) | [0...440) | [440...1540) | [1540...2440) | 2440 |
