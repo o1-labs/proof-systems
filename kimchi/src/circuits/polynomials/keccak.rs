@@ -1,11 +1,8 @@
 //! Keccak gadget
-use crate::{
-    auto_clone_array,
-    circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, Cache},
-        gate::GateType,
-    },
+use crate::circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType},
+    expr::{constraints::ExprOps, Cache},
+    gate::GateType,
 };
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
@@ -305,7 +302,7 @@ fn compose_shifts<F: PrimeField, T: ExprOps<F>>(
         + T::two_pow(3) * resets(3, x, y, q)
 }
 
-fn expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
+fn _expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
     format!("{:064b}", word)
         .chars()
         .collect::<Vec<char>>()
