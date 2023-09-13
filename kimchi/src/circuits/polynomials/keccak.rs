@@ -219,8 +219,8 @@ where
         } // END theta
 
         // STEP pirho: 5 * 5 * (3 + 4 * 2) = 275 constraints
-        for x in 0..DIM {
-            for y in 0..DIM {
+        for (x, row) in OFF.iter().enumerate() {
+            for (y, off) in row.iter().enumerate() {
                 let word_e = compose_quarters(dense_e, x, y);
                 let quo_e = compose_quarters(quotient_e, x, y);
                 let rem_e = compose_quarters(remainder_e, x, y);
@@ -228,11 +228,10 @@ where
                 let rot_e = compose_quarters(dense_rot_e, x, y);
 
                 constraints.push(
-                    word_e * T::two_pow(OFF[x][y])
-                        - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
+                    word_e * T::two_pow(*off) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
                 );
                 constraints.push(rot_e - (quo_e.clone() + rem_e));
-                constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(OFF[x][y])));
+                constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(*off)));
 
                 for q in 0..QUARTERS {
                     constraints.push(state_e(0, x, y, q) - compose_shifts(reset_e, x, y, q));
@@ -258,8 +257,8 @@ where
         } // END chi
 
         // STEP iota: 4 constraints
-        for q in 0..QUARTERS {
-            constraints.push(g00(0, 0, 0, q) - (state_f(0, 0, 0, q) + rc[q].clone()));
+        for (q, c) in rc.iter().enumerate() {
+            constraints.push(g00(0, 0, 0, q) - (state_f(0, 0, 0, q) + c.clone()));
         } // END iota
 
         // WIRE TO NEXT ROUND: 4 * 5 * 5 * 1 = 100 constraints
