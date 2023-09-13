@@ -6,7 +6,7 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         gate::GateType,
-        lookup::tables::combine_table,
+        lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
@@ -15,9 +15,7 @@ use crate::{
     error::VerifyError,
     oracles::OraclesResult,
     plonk_sponge::FrSponge,
-    proof::{
-        LookupEvaluations, PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge,
-    },
+    proof::{PointEvaluations, ProofEvaluations, ProverProof, RecursionChallenge},
     verifier_index::VerifierIndex,
 };
 use ark_ec::AffineCurve;
@@ -65,7 +63,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     .runtime_tables_selector
                     .as_ref()?,
             ),
-            LookupRuntimeTable => None,
+            LookupRuntimeTable => self.proof.commitments.lookup.as_ref()?.runtime.as_ref(),
             Index(t) => {
                 use GateType::*;
                 match t {
@@ -446,57 +444,124 @@ where
             ft_eval0
         };
 
-        let combined_inner_product = {
-            let ft_eval0 = vec![ft_eval0];
-            let ft_eval1 = vec![self.ft_eval1];
+        let combined_inner_product =
+            {
+                let ft_eval0 = vec![ft_eval0];
+                let ft_eval1 = vec![self.ft_eval1];
 
-            #[allow(clippy::type_complexity)]
-            let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
-                polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-            es.push((public_evals.to_vec(), None));
-            es.push((vec![ft_eval0, ft_eval1], None));
-            for col in [
-                Column::Z,
-                Column::Index(GateType::Generic),
-                Column::Index(GateType::Poseidon),
-            ]
-            .into_iter()
-            .chain((0..COLUMNS).map(Column::Witness))
-            .chain((0..COLUMNS).map(Column::Coefficient))
-            .chain((0..PERMUTS - 1).map(Column::Permutation))
-            .chain(
-                index
-                    .lookup_index
-                    .as_ref()
-                    .map(|li| {
-                        (0..li.lookup_info.max_per_row + 1)
-                            .map(Column::LookupSorted)
-                            .chain([Column::LookupAggreg, Column::LookupTable].into_iter())
-                            .chain(
-                                li.runtime_tables_selector
-                                    .as_ref()
-                                    .map(|_| [Column::LookupRuntimeTable].into_iter())
-                                    .into_iter()
-                                    .flatten(),
-                            )
-                    })
-                    .into_iter()
-                    .flatten(),
-            ) {
-                es.push((
-                    {
-                        let evals = self
-                            .evals
-                            .get_column(col)
-                            .ok_or(VerifyError::MissingEvaluation(col))?;
-                        vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                    },
-                    None,
-                ))
-            }
+                #[allow(clippy::type_complexity)]
+                let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
+                    polys.iter().map(|(_, e)| (e.clone(), None)).collect();
+                es.push((public_evals.to_vec(), None));
+                es.push((vec![ft_eval0, ft_eval1], None));
+                for col in [
+                    Column::Z,
+                    Column::Index(GateType::Generic),
+                    Column::Index(GateType::Poseidon),
+                    Column::Index(GateType::CompleteAdd),
+                    Column::Index(GateType::VarBaseMul),
+                    Column::Index(GateType::EndoMul),
+                    Column::Index(GateType::EndoMulScalar),
+                ]
+                .into_iter()
+                .chain((0..COLUMNS).map(Column::Witness))
+                .chain((0..COLUMNS).map(Column::Coefficient))
+                .chain((0..PERMUTS - 1).map(Column::Permutation))
+                .chain(
+                    index
+                        .range_check0_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::RangeCheck0)),
+                )
+                .chain(
+                    index
+                        .range_check1_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::RangeCheck1)),
+                )
+                .chain(
+                    index
+                        .foreign_field_add_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::ForeignFieldAdd)),
+                )
+                .chain(
+                    index
+                        .foreign_field_mul_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::ForeignFieldMul)),
+                )
+                .chain(
+                    index
+                        .xor_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::Xor16)),
+                )
+                .chain(
+                    index
+                        .rot_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::Rot64)),
+                )
+                .chain(
+                    index
+                        .lookup_index
+                        .as_ref()
+                        .map(|li| {
+                            (0..li.lookup_info.max_per_row + 1)
+                                .map(Column::LookupSorted)
+                                .chain([Column::LookupAggreg, Column::LookupTable].into_iter())
+                                .chain(
+                                    li.runtime_tables_selector
+                                        .as_ref()
+                                        .map(|_| [Column::LookupRuntimeTable].into_iter())
+                                        .into_iter()
+                                        .flatten(),
+                                )
+                                .chain(
+                                    self.evals
+                                        .runtime_lookup_table_selector
+                                        .as_ref()
+                                        .map(|_| Column::LookupRuntimeSelector),
+                                )
+                                .chain(
+                                    self.evals
+                                        .xor_lookup_selector
+                                        .as_ref()
+                                        .map(|_| Column::LookupKindIndex(LookupPattern::Xor)),
+                                )
+                                .chain(
+                                    self.evals
+                                        .lookup_gate_lookup_selector
+                                        .as_ref()
+                                        .map(|_| Column::LookupKindIndex(LookupPattern::Lookup)),
+                                )
+                                .chain(
+                                    self.evals.range_check_lookup_selector.as_ref().map(|_| {
+                                        Column::LookupKindIndex(LookupPattern::RangeCheck)
+                                    }),
+                                )
+                                .chain(self.evals.foreign_field_mul_lookup_selector.as_ref().map(
+                                    |_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul),
+                                ))
+                        })
+                        .into_iter()
+                        .flatten(),
+                ) {
+                    es.push((
+                        {
+                            let evals = self
+                                .evals
+                                .get_column(col)
+                                .ok_or(VerifyError::MissingEvaluation(col))?;
+                            vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                        },
+                        None,
+                    ))
+                }
 
-            combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
-        };
+                combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
+            };
 
         let oracles = RandomOracles {
             joint_combiner,
@@ -539,9 +604,27 @@ where
         z,
         s,
         coefficients,
-        lookup,
         generic_selector,
         poseidon_selector,
+        complete_add_selector,
+        mul_selector,
+        emul_selector,
+        endomul_scalar_selector,
+        range_check0_selector,
+        range_check1_selector,
+        foreign_field_add_selector,
+        foreign_field_mul_selector,
+        xor_selector,
+        rot_selector,
+        lookup_aggregation,
+        lookup_table,
+        lookup_sorted,
+        runtime_lookup_table,
+        runtime_lookup_table_selector,
+        xor_lookup_selector,
+        lookup_gate_lookup_selector,
+        range_check_lookup_selector,
+        foreign_field_mul_lookup_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>, str: &'static str| -> Result<()> {
@@ -576,24 +659,73 @@ where
     for coeff in coefficients {
         check_eval_len(coeff, "coefficients")?;
     }
-    if let Some(LookupEvaluations {
-        sorted,
-        aggreg,
-        table,
-        runtime,
-    }) = lookup
-    {
-        for sorted_i in sorted {
-            check_eval_len(sorted_i, "lookup sorted")?;
-        }
-        check_eval_len(aggreg, "lookup aggregation")?;
-        check_eval_len(table, "lookup table")?;
-        if let Some(runtime) = &runtime {
-            check_eval_len(runtime, "runtime lookup table")?;
-        }
+
+    // Lookup evaluations
+    for sorted in lookup_sorted.iter().flatten() {
+        check_eval_len(sorted, "lookup sorted")?
     }
+
+    if let Some(lookup_aggregation) = lookup_aggregation {
+        check_eval_len(lookup_aggregation, "lookup aggregation")?;
+    }
+    if let Some(lookup_table) = lookup_table {
+        check_eval_len(lookup_table, "lookup table")?;
+    }
+    if let Some(runtime_lookup_table) = runtime_lookup_table {
+        check_eval_len(runtime_lookup_table, "runtime lookup table")?;
+    }
+
     check_eval_len(generic_selector, "generic selector")?;
     check_eval_len(poseidon_selector, "poseidon selector")?;
+    check_eval_len(complete_add_selector, "complete add selector")?;
+    check_eval_len(mul_selector, "mul selector")?;
+    check_eval_len(emul_selector, "endomul selector")?;
+    check_eval_len(endomul_scalar_selector, "endomul scalar selector")?;
+
+    // Optional gates
+
+    if let Some(range_check0_selector) = range_check0_selector {
+        check_eval_len(range_check0_selector, "range check 0 selector")?
+    }
+    if let Some(range_check1_selector) = range_check1_selector {
+        check_eval_len(range_check1_selector, "range check 1 selector")?
+    }
+    if let Some(foreign_field_add_selector) = foreign_field_add_selector {
+        check_eval_len(foreign_field_add_selector, "foreign field add selector")?
+    }
+    if let Some(foreign_field_mul_selector) = foreign_field_mul_selector {
+        check_eval_len(foreign_field_mul_selector, "foreign field mul selector")?
+    }
+    if let Some(xor_selector) = xor_selector {
+        check_eval_len(xor_selector, "xor selector")?
+    }
+    if let Some(rot_selector) = rot_selector {
+        check_eval_len(rot_selector, "rot selector")?
+    }
+
+    // Lookup selectors
+
+    if let Some(runtime_lookup_table_selector) = runtime_lookup_table_selector {
+        check_eval_len(
+            runtime_lookup_table_selector,
+            "runtime lookup table selector",
+        )?
+    }
+    if let Some(xor_lookup_selector) = xor_lookup_selector {
+        check_eval_len(xor_lookup_selector, "xor lookup selector")?
+    }
+    if let Some(lookup_gate_lookup_selector) = lookup_gate_lookup_selector {
+        check_eval_len(lookup_gate_lookup_selector, "lookup gate lookup selector")?
+    }
+    if let Some(range_check_lookup_selector) = range_check_lookup_selector {
+        check_eval_len(range_check_lookup_selector, "range check lookup selector")?
+    }
+    if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector {
+        check_eval_len(
+            foreign_field_mul_lookup_selector,
+            "foreign field mul lookup selector",
+        )?
+    }
 
     Ok(())
 }
@@ -798,6 +930,10 @@ where
         //~~ * index commitments that use the coefficients
         Column::Index(GateType::Generic),
         Column::Index(GateType::Poseidon),
+        Column::Index(GateType::CompleteAdd),
+        Column::Index(GateType::VarBaseMul),
+        Column::Index(GateType::EndoMul),
+        Column::Index(GateType::EndoMulScalar),
     ]
     .into_iter()
     //~~ * witness commitments
@@ -806,6 +942,43 @@ where
     .chain((0..COLUMNS).map(Column::Coefficient))
     //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
+    //~~ * optional gate commitments
+    .chain(
+        verifier_index
+            .range_check0_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck0)),
+    )
+    .chain(
+        verifier_index
+            .range_check1_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::RangeCheck1)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_add_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldAdd)),
+    )
+    .chain(
+        verifier_index
+            .foreign_field_mul_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::ForeignFieldMul)),
+    )
+    .chain(
+        verifier_index
+            .xor_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Xor16)),
+    )
+    .chain(
+        verifier_index
+            .rot_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::Rot64)),
+    )
     //~~ * lookup commitments
     //~
     .chain(
@@ -842,11 +1015,13 @@ where
             .lookup
             .as_ref()
             .ok_or(VerifyError::LookupCommitmentMissing)?;
-        let lookup_eval = proof
+
+        let lookup_table = proof
             .evals
-            .lookup
+            .lookup_table
             .as_ref()
             .ok_or(VerifyError::LookupEvalsMissing)?;
+        let runtime_lookup_table = proof.evals.runtime_lookup_table.as_ref();
 
         // compute table commitment
         let table_comm = {
@@ -871,10 +1046,7 @@ where
         // add evaluation of the table polynomial
         evaluations.push(Evaluation {
             commitment: table_comm,
-            evaluations: vec![
-                lookup_eval.table.zeta.clone(),
-                lookup_eval.table.zeta_omega.clone(),
-            ],
+            evaluations: vec![lookup_table.zeta.clone(), lookup_table.zeta_omega.clone()],
             degree_bound: None,
         });
 
@@ -884,8 +1056,7 @@ where
                 .runtime
                 .as_ref()
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
-            let runtime_eval = lookup_eval
-                .runtime
+            let runtime_eval = runtime_lookup_table
                 .as_ref()
                 .map(|x| x.map_ref(&|x| x.clone()))
                 .ok_or(VerifyError::IncorrectRuntimeProof)?;
@@ -896,6 +1067,56 @@ where
                 degree_bound: None,
             });
         }
+    }
+
+    for col in verifier_index
+        .lookup_index
+        .as_ref()
+        .map(|li| {
+            (li.runtime_tables_selector
+                .as_ref()
+                .map(|_| Column::LookupRuntimeSelector))
+            .into_iter()
+            .chain(
+                li.lookup_selectors
+                    .xor
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::Xor)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .lookup
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::Lookup)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .range_check
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::RangeCheck)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .ffmul
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul)),
+            )
+        })
+        .into_iter()
+        .flatten()
+    {
+        let evals = proof
+            .evals
+            .get_column(col)
+            .ok_or(VerifyError::MissingEvaluation(col))?;
+        evaluations.push(Evaluation {
+            commitment: context
+                .get_column(col)
+                .ok_or(VerifyError::MissingCommitment(col))?
+                .clone(),
+            evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
+            degree_bound: None,
+        });
     }
 
     // prepare for the opening proof verification

@@ -137,7 +137,7 @@ pub fn sorted<F: PrimeField>(
             let joint_lookup_evaluation =
                 joint_lookup.evaluate(&joint_combiner, &table_id_combiner, &eval);
             match counts.get_mut(&joint_lookup_evaluation) {
-                None => return Err(ProverError::ValueNotInTable),
+                None => return Err(ProverError::ValueNotInTable(i)),
                 Some(count) => *count += 1,
             }
         }

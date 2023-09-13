@@ -24,8 +24,8 @@ pub enum ProverError {
     #[error("the permutation was not constructed correctly: {0}")]
     Permutation(&'static str),
 
-    #[error("the lookup failed to find a match in the table")]
-    ValueNotInTable,
+    #[error("the lookup failed to find a match in the table: row={0}")]
+    ValueNotInTable(usize),
 
     #[error("the runtime tables provided did not match the index's configuration")]
     RuntimeTablesInconsistent,
