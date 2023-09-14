@@ -53,6 +53,8 @@ wasm-bindgen = { version = "0.2.81", optional = true }
 
 internal-tracing = { path = "../internal-tracing", version = "0.1.0" }
 
+benchmarking = { path = "../tools/benchmarking" , version = "0.1.0"}
+
 [dev-dependencies]
 proptest = "1.0.0"
 proptest-derive = "0.3.0"
@@ -62,7 +64,7 @@ num-bigint = { version = "0.4.3", features = ["rand"] }
 secp256k1 = "0.24.2"
 
 # benchmarks
-criterion = "0.3"
+criterion = "0.5"
 iai = "0.1"
 
 [[bench]]
@@ -77,9 +79,18 @@ harness = false
 name = "amortization"
 harness = false
 
+[[bench]]
+name = "time"
+harness = false
+
+[[bench]]
+name = "memory"
+harness = false
+
 [features]
 default = []
 internal_tracing = [ "internal-tracing/enabled" ]
 ocaml_types = [ "ocaml", "ocaml-gen", "poly-commitment/ocaml_types", "mina-poseidon/ocaml_types", "internal-tracing/ocaml_types" ]
 wasm_types = [ "wasm-bindgen" ]
 check_feature_flags = []
+precomputed_srs = []

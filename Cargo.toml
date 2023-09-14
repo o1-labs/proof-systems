@@ -12,8 +12,12 @@ members = [
     "signer",
     "tools/kimchi-asm",
     "tools/kimchi-visu",
+    "tools/benchmarking",
     "utils",
     "internal-tracing",
+]
+exclude = [
+    "srs",
 ]
 
 [profile.release]

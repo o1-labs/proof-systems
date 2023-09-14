@@ -41,6 +41,22 @@ At the time of this writing:
 |      2^15       | 4947  |
 |      2^16       | 5018  |
 
+## Benchmarks
+Right now there are only runtime benchmarks in kimchi, can be run this way
+> cargo criterion --bench time
+
+It requires cargo-criterion
+> cargo install cargo-criterion
+
+it is possible to filter the benchmarks to be run with a regular expression, for example
+to only run Proving benchmarks:
+> cargo criterion --bench time -- Proving
+
+The main thing to have in mind is the trait `tools/benchmarking::Benchmark`, to create a
+benchmark it suffices to create an empty `struct` and implement the trait for it, then it
+can be added in `kimchi/benches/time` for example, more measurements will be available in
+the future and won't require changes to the benchmark.
+
 ## Organization
 
 The project is organized in the following way:

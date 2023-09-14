@@ -12,6 +12,7 @@ pub use turshi;
 
 pub mod alphas;
 pub mod bench;
+pub mod benchmarks;
 pub mod circuits;
 pub mod curve;
 pub mod error;
