@@ -12,16 +12,10 @@ pub const QUARTERS: usize = 4;
 
 #[macro_export]
 macro_rules! state_from_layout {
-    ($var:ident, $expr:expr) => {
-        let $var = $expr;
-        let $var = |i: usize, x: usize, y: usize, q: usize| {
-            $var[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
-        };
-    };
-    ($var:ident) => {
-        let $var = |i: usize, x: usize, y: usize, q: usize| {
-            $var[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
-        };
+    ($expr:expr) => {
+        |i: usize, x: usize, y: usize, q: usize| {
+            $expr[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
+        }
     };
 }
 
@@ -96,13 +90,13 @@ pub const RC: [u64; 24] = [
 //~ | iota     | g00     | state_f   |
 //~
 #[derive(Default)]
-pub struct Keccak<F>(PhantomData<F>);
+pub struct KeccakRound<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Keccak<F>
+impl<F> Argument<F> for KeccakRound<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Keccak);
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRound);
     const CONSTRAINTS: u32 = 754;
 
     // Constraints for one round of the Keccak permutation function
@@ -112,62 +106,39 @@ where
         // DEFINE ROUND CONSTANT
         let rc = [env.coeff(0), env.coeff(1), env.coeff(2), env.coeff(3)];
 
-        // LOAD WITNESS LAYOUT
+        // LOAD STATES FROM WITNESS LAYOUT
         // THETA
-        let state_a = env.witness_curr_chunk(0, 100);
-        let state_c = env.witness_curr_chunk(100, 120);
-        let reset_c = env.witness_curr_chunk(120, 200);
-        let dense_c = env.witness_curr_chunk(200, 220);
-        let quotient_c = env.witness_curr_chunk(220, 240);
-        let remainder_c = env.witness_curr_chunk(240, 260);
-        let bound_c = env.witness_curr_chunk(260, 280);
-        let dense_rot_c = env.witness_curr_chunk(280, 300);
-        let expand_rot_c = env.witness_curr_chunk(300, 320);
-        let state_d = env.witness_curr_chunk(320, 340);
-        let state_e = env.witness_curr_chunk(340, 440);
+        let state_a = state_from_layout!(env.witness_curr_chunk(0, 100));
+        let state_c = state_from_layout!(env.witness_curr_chunk(100, 120));
+        let reset_c = state_from_layout!(env.witness_curr_chunk(120, 200));
+        let dense_c = state_from_layout!(env.witness_curr_chunk(200, 220));
+        let quotient_c = state_from_layout!(env.witness_curr_chunk(220, 240));
+        let remainder_c = state_from_layout!(env.witness_curr_chunk(240, 260));
+        let bound_c = state_from_layout!(env.witness_curr_chunk(260, 280));
+        let dense_rot_c = state_from_layout!(env.witness_curr_chunk(280, 300));
+        let expand_rot_c = state_from_layout!(env.witness_curr_chunk(300, 320));
+        let state_d = state_from_layout!(env.witness_curr_chunk(320, 340));
+        let state_e = state_from_layout!(env.witness_curr_chunk(340, 440));
         // PI-RHO
-        let reset_e = env.witness_curr_chunk(440, 840);
-        let dense_e = env.witness_curr_chunk(840, 940);
-        let quotient_e = env.witness_curr_chunk(940, 1040);
-        let remainder_e = env.witness_curr_chunk(1040, 1140);
-        let bound_e = env.witness_curr_chunk(1140, 1240);
-        let dense_rot_e = env.witness_curr_chunk(1240, 1340);
-        let expand_rot_e = env.witness_curr_chunk(1340, 1440);
-        let state_b = env.witness_curr_chunk(1440, 1540);
+        let reset_e = state_from_layout!(env.witness_curr_chunk(440, 840));
+        let dense_e = state_from_layout!(env.witness_curr_chunk(840, 940));
+        let quotient_e = state_from_layout!(env.witness_curr_chunk(940, 1040));
+        let remainder_e = state_from_layout!(env.witness_curr_chunk(1040, 1140));
+        let bound_e = state_from_layout!(env.witness_curr_chunk(1140, 1240));
+        let dense_rot_e = state_from_layout!(env.witness_curr_chunk(1240, 1340));
+        let expand_rot_e = state_from_layout!(env.witness_curr_chunk(1340, 1440));
+        let state_b = state_from_layout!(env.witness_curr_chunk(1440, 1540));
         // CHI
-        let reset_b = env.witness_curr_chunk(1540, 1940);
-        let reset_sum = env.witness_curr_chunk(1940, 2340);
+        let reset_b = state_from_layout!(env.witness_curr_chunk(1540, 1940));
+        let reset_sum = state_from_layout!(env.witness_curr_chunk(1940, 2340));
         let mut state_f = env.witness_curr_chunk(2340, 2344);
         let mut tail = env.witness_next_chunk(4, 100);
         state_f.append(&mut tail);
+        let state_f = state_from_layout!(state_f);
         // IOTA
         let mut state_g = env.witness_next_chunk(0, 4);
         state_g.append(&mut tail);
-
-        // LOAD STATES FROM LAYOUT
-        state_from_layout!(state_a);
-        state_from_layout!(state_c);
-        state_from_layout!(reset_c);
-        state_from_layout!(dense_c);
-        state_from_layout!(quotient_c);
-        state_from_layout!(remainder_c);
-        state_from_layout!(bound_c);
-        state_from_layout!(dense_rot_c);
-        state_from_layout!(expand_rot_c);
-        state_from_layout!(state_d);
-        state_from_layout!(state_e);
-        state_from_layout!(reset_e);
-        state_from_layout!(dense_e);
-        state_from_layout!(quotient_e);
-        state_from_layout!(remainder_e);
-        state_from_layout!(bound_e);
-        state_from_layout!(dense_rot_e);
-        state_from_layout!(expand_rot_e);
-        state_from_layout!(state_b);
-        state_from_layout!(reset_b);
-        state_from_layout!(reset_sum);
-        state_from_layout!(state_f);
-        state_from_layout!(state_g);
+        let state_g = state_from_layout!(state_g);
 
         // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
         for x in 0..DIM {

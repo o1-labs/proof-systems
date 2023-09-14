@@ -112,7 +112,7 @@ pub enum GateType {
     // Gates for Keccak
     Xor16,
     Rot64,
-    Keccak,
+    KeccakRound,
 }
 
 /// Gate error
@@ -325,7 +325,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
-            GateType::Keccak => keccak::Keccak::constraint_checks(&env, &mut cache),
+            GateType::KeccakRound => keccak::KeccakRound::constraint_checks(&env, &mut cache),
         };
 
         // Check for failed constraints
