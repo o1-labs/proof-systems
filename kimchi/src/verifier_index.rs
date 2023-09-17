@@ -182,7 +182,7 @@ where
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
-                    lookup_info: cs.configuration.lookup_info.clone(),
+                    lookup_info: cs.configuration.lookup_info,
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
@@ -235,21 +235,23 @@ where
                 &self.column_evaluations.poseidon_selector8,
             )),
 
-            complete_add_comm: self.srs.commit_evaluations_non_hiding(
+            complete_add_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.complete_add_selector4,
+            )),
+            mul_comm: mask_fixed(
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
             ),
-            mul_comm: self
-                .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
-            emul_comm: self
-                .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
+            emul_comm: mask_fixed(
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
+            ),
 
-            endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
+            endomul_scalar_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.endomul_scalar_selector8,
-            ),
+            )),
 
             range_check0_comm: self
                 .column_evaluations

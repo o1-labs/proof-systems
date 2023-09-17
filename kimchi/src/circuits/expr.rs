@@ -662,24 +662,63 @@ impl Variable {
     ) -> Result<F, ExprError> {
         let point_evaluations = {
             use Column::*;
-            let l = evals
-                .lookup
-                .as_ref()
-                .ok_or(ExprError::LookupShouldNotBeUsed);
             match self.col {
                 Witness(i) => Ok(evals.w[i]),
                 Z => Ok(evals.z),
-                LookupSorted(i) => l.map(|l| l.sorted[i]),
-                LookupAggreg => l.map(|l| l.aggreg),
-                LookupTable => l.map(|l| l.table),
-                LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
+                LookupSorted(i) => {
+                    evals.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(self.col))
+                }
+                LookupAggreg => evals
+                    .lookup_aggregation
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                LookupTable => evals
+                    .lookup_table
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                LookupRuntimeTable => evals
+                    .runtime_lookup_table
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
                 Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
                 Index(GateType::Generic) => Ok(evals.generic_selector),
+                Index(GateType::CompleteAdd) => Ok(evals.complete_add_selector),
+                Index(GateType::VarBaseMul) => Ok(evals.mul_selector),
+                Index(GateType::EndoMul) => Ok(evals.emul_selector),
+                Index(GateType::EndoMulScalar) => Ok(evals.endomul_scalar_selector),
+                Index(GateType::RangeCheck0) => evals
+                    .range_check0_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::RangeCheck1) => evals
+                    .range_check1_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::ForeignFieldAdd) => evals
+                    .foreign_field_add_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::ForeignFieldMul) => evals
+                    .foreign_field_mul_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::Xor16) => evals
+                    .xor_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::Rot64) => evals
+                    .rot_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
                 Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
-                LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                    Err(ExprError::MissingIndexEvaluation(self.col))
-                }
+                Column::LookupKindIndex(LookupPattern::Xor) => evals
+                    .xor_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::Lookup) => evals
+                    .lookup_gate_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::RangeCheck) => evals
+                    .range_check_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => evals
+                    .foreign_field_mul_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupRuntimeSelector => evals
+                    .runtime_lookup_table_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(_) => Err(ExprError::MissingIndexEvaluation(self.col)),
             }
         }?;
         match self.row {
@@ -2578,6 +2617,9 @@ pub mod constraints {
         /// 2^{2 * LIMB_BITS}
         fn two_to_2limb() -> Self;
 
+        /// 2^{3 * LIMB_BITS}
+        fn two_to_3limb() -> Self;
+
         /// Double the value
         fn double(&self) -> Self;
 
@@ -2623,6 +2665,10 @@ pub mod constraints {
 
         fn two_to_2limb() -> Self {
             Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_2limb())
+        }
+
+        fn two_to_3limb() -> Self {
+            Expr::<ConstantExpr<F>>::literal(<F as ForeignFieldHelpers<F>>::two_to_3limb())
         }
 
         fn double(&self) -> Self {
@@ -2677,6 +2723,10 @@ pub mod constraints {
 
         fn two_to_2limb() -> Self {
             <F as ForeignFieldHelpers<F>>::two_to_2limb()
+        }
+
+        fn two_to_3limb() -> Self {
+            <F as ForeignFieldHelpers<F>>::two_to_3limb()
         }
 
         fn double(&self) -> Self {
