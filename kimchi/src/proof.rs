@@ -44,7 +44,7 @@ pub struct PointEvaluations<Evals> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
     /// public input polynomials
-    pub public: Evals,
+    pub public: Option<Evals>,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -224,7 +224,7 @@ impl<Eval> ProofEvaluations<Eval> {
             foreign_field_mul_lookup_selector,
         } = self;
         ProofEvaluations {
-            public: f(public),
+            public: public.map(f),
             w: w.map(f),
             z: f(z),
             s: s.map(f),
@@ -283,7 +283,7 @@ impl<Eval> ProofEvaluations<Eval> {
             foreign_field_mul_lookup_selector,
         } = self;
         ProofEvaluations {
-            public: f(public),
+            public: public.as_ref().map(f),
             w: [
                 f(w0),
                 f(w1),
@@ -402,7 +402,7 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             zeta_omega: next,
         };
         ProofEvaluations {
-            public: pt(F::zero(), F::zero()),
+            public: Some(pt(F::zero(), F::zero())),
             w: array::from_fn(|i| pt(curr[i], next[i])),
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
@@ -611,7 +611,10 @@ pub mod caml {
     //
 
     impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>>
-        for (PointEvaluations<Vec<CamlF>>, CamlProofEvaluations<CamlF>)
+        for (
+            Option<PointEvaluations<Vec<CamlF>>>,
+            CamlProofEvaluations<CamlF>,
+        )
     where
         F: Clone,
         CamlF: From<F>,
@@ -733,7 +736,8 @@ pub mod caml {
             );
 
             (
-                pe.public.map(&|x| x.into_iter().map(Into::into).collect()),
+                pe.public
+                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
                 CamlProofEvaluations {
                     w,
                     coefficients,
@@ -813,15 +817,21 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> From<(PointEvaluations<Vec<CamlF>>, CamlProofEvaluations<CamlF>)>
-        for ProofEvaluations<PointEvaluations<Vec<F>>>
+    impl<F, CamlF>
+        From<(
+            Option<PointEvaluations<Vec<CamlF>>>,
+            CamlProofEvaluations<CamlF>,
+        )> for ProofEvaluations<PointEvaluations<Vec<F>>>
     where
         F: Clone,
         CamlF: Clone,
         F: From<CamlF>,
     {
         fn from(
-            (public, cpe): (PointEvaluations<Vec<CamlF>>, CamlProofEvaluations<CamlF>),
+            (public, cpe): (
+                Option<PointEvaluations<Vec<CamlF>>>,
+                CamlProofEvaluations<CamlF>,
+            ),
         ) -> Self {
             let w = [
                 cpe.w.0.map(&|x| x.into_iter().map(Into::into).collect()),
@@ -897,7 +907,7 @@ pub mod caml {
             ];
 
             Self {
-                public: public.map(&|x| x.into_iter().map(Into::into).collect()),
+                public: public.map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
                 w,
                 coefficients,
                 z: cpe.z.map(&|x| x.into_iter().map(Into::into).collect()),

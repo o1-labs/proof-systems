@@ -958,10 +958,10 @@ where
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             public: {
                 let chunked = public_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
-                PointEvaluations {
+                Some(PointEvaluations {
                     zeta: chunked.evaluate_chunks(zeta),
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
+                })
             },
             s: array::from_fn(|i| {
                 chunked_evals_for_evaluations(
@@ -1187,6 +1187,8 @@ where
         //~~ * poseidon selector
         //~~ * the 15 register/witness
         //~~ * 6 sigmas evaluations (the last one is not evaluated)
+        fr_sponge.absorb_multiple(&chunked_evals.public.as_ref().unwrap().zeta);
+        fr_sponge.absorb_multiple(&chunked_evals.public.as_ref().unwrap().zeta_omega);
         fr_sponge.absorb_evaluations(&chunked_evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
@@ -1230,7 +1232,6 @@ where
         //~~ * the poseidon selector
         //~~ * the 15 registers/witness columns
         //~~ * the 6 sigmas
-        //~~ * optionally, the runtime table
         polynomials.push((
             coefficients_form(&public_poly),
             None,
@@ -1251,22 +1252,22 @@ where
         polynomials.push((
             evaluations_form(&index.column_evaluations.complete_add_selector4),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.mul_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.emul_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.endomul_scalar_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.extend(
             witness_poly
@@ -1297,7 +1298,7 @@ where
             polynomials.push((
                 evaluations_form(range_check0_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(range_check1_selector8) =
@@ -1306,7 +1307,7 @@ where
             polynomials.push((
                 evaluations_form(range_check1_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(foreign_field_add_selector8) = index
@@ -1317,7 +1318,7 @@ where
             polynomials.push((
                 evaluations_form(foreign_field_add_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(foreign_field_mul_selector8) = index
@@ -1328,14 +1329,22 @@ where
             polynomials.push((
                 evaluations_form(foreign_field_mul_selector8),
                 None,
-                non_hiding(1),
+                non_hiding(num_chunks),
             ));
         }
         if let Some(xor_selector8) = index.column_evaluations.xor_selector8.as_ref() {
-            polynomials.push((evaluations_form(xor_selector8), None, non_hiding(1)));
+            polynomials.push((
+                evaluations_form(xor_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
         }
         if let Some(rot_selector8) = index.column_evaluations.rot_selector8.as_ref() {
-            polynomials.push((evaluations_form(rot_selector8), None, non_hiding(1)));
+            polynomials.push((
+                evaluations_form(rot_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
         }
 
         //~~ * optionally, the runtime table
@@ -1499,8 +1508,9 @@ pub mod caml {
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;
 
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofWithPublic<CamlG, CamlF> {
-        pub public_evals: PointEvaluations<Vec<CamlF>>,
+        pub public_evals: Option<PointEvaluations<Vec<CamlF>>>,
         pub proof: CamlProverProof<CamlG, CamlF>,
     }
 
