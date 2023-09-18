@@ -41,14 +41,14 @@ pub trait SRS<G: CommitmentCurve> {
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
 
-    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
+    /// Same as [SRS::mask] except that you can pass the blinders manually.
     fn mask_custom(
         &self,
         com: PolyComm<G>,
         blinders: &PolyComm<G::ScalarField>,
     ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
-    /// Same as [SRS::mask] except that you can pass the blinders manually.
+    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
     fn mask(
         &self,
         comm: PolyComm<G>,
