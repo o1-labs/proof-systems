@@ -698,7 +698,8 @@ where
     }
 
     //~ 1. Check the length of evaluations inside the proof.
-    check_proof_evals_len(proof, 1)?;
+    let chunk_size = verifier_index.domain.size() / verifier_index.max_poly_size;
+    check_proof_evals_len(proof, chunk_size)?;
 
     //~ 1. Commit to the negated public input polynomial.
     let public_comm = {
