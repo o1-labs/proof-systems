@@ -113,6 +113,7 @@ pub enum GateType {
     Xor16,
     Rot64,
     KeccakRound,
+    KeccakSponge,
 }
 
 /// Gate error
