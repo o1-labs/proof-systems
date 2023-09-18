@@ -1,5 +1,5 @@
-use crate::srs::SRS;
 use crate::{commitment::*, srs::endos};
+use crate::{srs::SRS, SRS as _};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -392,7 +392,7 @@ impl<G: CommitmentCurve> SRS<G> {
                     { self.commit_non_hiding(&poly, blinders.unshifted.len(), None) };
                 let masked_commitment = match self.mask_custom(chunked_commitment, blinders) {
                     Ok(comm) => comm,
-                    Err(err) => panic!("Error at index {}: {}", i, err),
+                    Err(err) => panic!("Error at index {i}: {err}"),
                 };
                 let chunked_evals = elm
                     .iter()
@@ -403,7 +403,7 @@ impl<G: CommitmentCurve> SRS<G> {
 
                     evaluations: chunked_evals,
 
-                    degree_bound: degree_bound.clone(),
+                    degree_bound: *degree_bound,
                 }
             })
             .collect()
