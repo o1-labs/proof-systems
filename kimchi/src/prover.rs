@@ -935,7 +935,6 @@ where
         let zeta_evals =
             LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta);
         internal_tracing::checkpoint!(internal_traces; lagrange_basis_eval_zeta_omega_poly);
-
         let zeta_omega_evals =
             LagrangeBasisEvaluations::new(index.max_poly_size, index.cs.domain.d1, zeta_omega);
 
