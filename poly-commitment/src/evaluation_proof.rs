@@ -359,6 +359,55 @@ impl<G: CommitmentCurve> SRS<G> {
             sg: g0,
         }
     }
+
+    /// This function is a debugging helper.
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    #[allow(clippy::many_single_char_names)]
+    pub fn prover_polynomials_to_verifier_evaluations<D: EvaluationDomain<G::ScalarField>>(
+        &self,
+        plnms: &[(
+            DensePolynomialOrEvaluations<G::ScalarField, D>,
+            Option<usize>,
+            PolyComm<G::ScalarField>,
+        )], // vector of polynomial with optional degree bound and commitment randomness
+        elm: &[G::ScalarField], // vector of evaluation points
+    ) -> Vec<Evaluation<G>>
+    where
+        G::BaseField: PrimeField,
+    {
+        plnms
+            .iter()
+            .enumerate()
+            .map(|(i, (poly_or_evals, degree_bound, blinders))| {
+                let poly = match poly_or_evals {
+                    DensePolynomialOrEvaluations::DensePolynomial(poly) => (*poly).clone(),
+                    DensePolynomialOrEvaluations::Evaluations(evals, _) => {
+                        (*evals).clone().interpolate()
+                    }
+                };
+                let chunked_polynomial =
+                    poly.to_chunked_polynomial(blinders.unshifted.len(), self.g.len());
+                let chunked_commitment =
+                    { self.commit_non_hiding(&poly, blinders.unshifted.len(), None) };
+                let masked_commitment = match self.mask_custom(chunked_commitment, blinders) {
+                    Ok(comm) => comm,
+                    Err(err) => panic!("Error at index {}: {}", i, err),
+                };
+                let chunked_evals = elm
+                    .iter()
+                    .map(|elm| chunked_polynomial.evaluate_chunks(*elm))
+                    .collect();
+                Evaluation {
+                    commitment: masked_commitment.commitment,
+
+                    evaluations: chunked_evals,
+
+                    degree_bound: degree_bound.clone(),
+                }
+            })
+            .collect()
+    }
 }
 
 #[serde_as]
