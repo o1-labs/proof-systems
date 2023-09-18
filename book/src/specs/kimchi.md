@@ -345,6 +345,9 @@ pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 
 /// The table ID associated with the sparse lookup table.
 pub const SPARSE_TABLE_ID: i32 = 2;
+
+/// The table ID associated with the sparse lookup table.
+pub const BYTES_TABLE_ID: i32 = 3;
 ```
 
 

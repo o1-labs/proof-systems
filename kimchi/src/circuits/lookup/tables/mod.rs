@@ -2,6 +2,7 @@ use ark_ff::{FftField, One, Zero};
 use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
 
+pub mod bytes;
 pub mod range_check;
 pub mod sparse;
 pub mod xor;
@@ -15,6 +16,9 @@ pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 
 /// The table ID associated with the sparse lookup table.
 pub const SPARSE_TABLE_ID: i32 = 2;
+
+/// The table ID associated with the sparse lookup table.
+pub const BYTES_TABLE_ID: i32 = 3;
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
@@ -23,6 +27,7 @@ pub enum GateLookupTable {
     Xor,
     RangeCheck,
     Sparse,
+    Bytes,
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
@@ -69,6 +74,7 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
         GateLookupTable::Xor => xor::xor_table(),
         GateLookupTable::RangeCheck => range_check::range_check_table(),
         GateLookupTable::Sparse => sparse::sparse_table(),
+        GateLookupTable::Bytes => bytes::bytes_table(),
     }
 }
 
@@ -79,6 +85,7 @@ impl GateLookupTable {
             GateLookupTable::Xor => xor::TABLE_SIZE,
             GateLookupTable::RangeCheck => range_check::TABLE_SIZE,
             GateLookupTable::Sparse => sparse::TABLE_SIZE,
+            GateLookupTable::Bytes => bytes::TABLE_SIZE,
         }
     }
 }

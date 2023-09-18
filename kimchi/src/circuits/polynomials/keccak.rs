@@ -1,13 +1,16 @@
 //! Keccak gadget
-use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
-    gate::{CircuitGate, GateType},
-    lookup::{
-        self,
-        tables::{GateLookupTable, LookupTable},
+use crate::{
+    auto_clone, auto_clone_array,
+    circuits::{
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{constraints::ExprOps, Cache},
+        gate::{CircuitGate, GateType},
+        lookup::{
+            self,
+            tables::{GateLookupTable, LookupTable},
+        },
+        wires::Wire,
     },
-    wires::Wire,
 };
 use ark_ff::{PrimeField, SquareRootField};
 use std::marker::PhantomData;
@@ -19,16 +22,10 @@ pub const RATE: usize = 136;
 
 #[macro_export]
 macro_rules! state_from_layout {
-    ($var:ident, $expr:expr) => {
-        let $var = $expr;
-        let $var = |i: usize, x: usize, y: usize, q: usize| {
-            $var[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
-        };
-    };
-    ($var:ident) => {
-        let $var = |i: usize, x: usize, y: usize, q: usize| {
-            $var[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
-        };
+    ($expr:expr) => {
+        |i: usize, x: usize, y: usize, q: usize| {
+            $expr[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
+        }
     };
 }
 
@@ -88,125 +85,96 @@ fn expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
 }
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
-    /// Extends a Keccak circuit to hash up to one block of message (up to 135 bytes)
-    pub fn extend_keccak(new_row: usize) -> usize {
+    /// Extends a Keccak circuit to hash one message (already padded to a multiple of 136 bits with 10*1 rule)
+    pub fn extend_keccak(circuit: &mut Vec<Self>, bytelength: usize) -> usize {
         // pad
+        let mut gates = Self::create_keccak(circuit.len(), bytelength);
+        circuit.append(&mut gates);
+        circuit.len()
     }
 
     /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, for a padded message of a given bytelength
-    fn create_keccak_sponge(new_row: usize, bytelength: usize) -> Vec<Self> {
-        let mut gates = Self::create_keccak_absorb(new_row, bytelength);
-    }
-
-    fn create_keccak_squeeze(new_row: usize) -> Vec<Self> {}
-
-    fn create_keccak_absorb(new_row: usize, bytelength: usize) -> Vec<Self> {
-        for i in 0..(bytelength / RATE) {
-            let mut gates = Self::create_keccak_setup(new_row);
-            let mut gates = Self::create_keccak_permutation(new_row);
-        }
-    }
-
-    fn create_keccak_setup(new_row: usize) -> Vec<Self> {
+    fn create_keccak(new_row: usize, bytelength: usize) -> Vec<Self> {
         let mut gates = vec![];
-
+        for _block in 0..(bytelength / RATE) {
+            gates.push(Self::create_keccak_absorb(new_row + gates.len()));
+            for round in 0..ROUNDS {
+                gates.push(Self::create_keccak_round(new_row + gates.len(), round));
+            }
+        }
+        gates.push(Self::create_keccak_squeeze(new_row + gates.len()));
         gates
     }
 
-    fn create_keccak_permutation(new_row: usize) -> Vec<Self> {
-        let mut gates = vec![];
-        for round in 0..ROUNDS {
-            gates.push(Self::create_keccak_round(new_row + gates.len(), round));
+    fn create_keccak_squeeze(new_row: usize) -> Self {
+        CircuitGate {
+            typ: GateType::KeccakSponge,
+            wires: Wire::for_row(new_row),
+            coeffs: vec![F::zero(), F::one()],
         }
-        gates
+    }
+
+    fn create_keccak_absorb(new_row: usize) -> Self {
+        CircuitGate {
+            typ: GateType::KeccakSponge,
+            wires: Wire::for_row(new_row),
+            coeffs: vec![F::one(), F::zero()],
+        }
     }
 
     fn create_keccak_round(new_row: usize, round: usize) -> Self {
         CircuitGate {
-            typ: GateType::Keccak,
+            typ: GateType::KeccakRound,
             wires: Wire::for_row(new_row),
             coeffs: expand(RC[round]),
         }
     }
-
-    /// Extend one rotation
-    /// Right now it only creates a Generic gate followed by the Rot64 gates
-    /// It allows to configure left or right rotation.
-    /// Input:
-    /// - gates : the full circuit
-    /// - rot : the rotation offset
-    /// - side : the rotation side
-    /// - zero_row : the row of the Generic gate to constrain the 64-bit check of shifted word
-    /// Warning:
-    /// - witness word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
-    /// - same with rotated word
-    pub fn extend_rot(gates: &mut Vec<Self>, rot: u32) -> usize {
-        let (_new_row, mut keccak_gates) = Self::create_keccak(gates.len(), rot, side);
-        gates.append(&mut rot_gates);
-        gates.len()
-    }
-
-    /// Create one rotation
-    /// Right now it only creates a Generic gate followed by the Rot64 gates
-    /// It allows to configure left or right rotation.
-    /// Input:
-    /// - rot : the rotation offset
-    /// - side : the rotation side
-    /// Warning:
-    /// - Word should come from the copy of another cell so it is intrinsic that it is 64-bits length,
-    /// - same with rotated word
-    /// - need to check that the 2 most significant limbs of shifted are zero
-    pub fn create_rot(new_row: usize, rot: u32, side: RotMode) -> (usize, Vec<Self>) {
-        // Initial Generic gate to constrain the output to be zero
-        let rot_gates = if side == RotMode::Left {
-            Self::create_rot64(new_row, rot)
-        } else {
-            Self::create_rot64(new_row, 64 - rot)
-        };
-
-        (new_row + rot_gates.len(), rot_gates)
-    }
 }
 
-/// Get the keccak lookup table
-pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
-    lookup::tables::get_table::<F>(GateLookupTable::Sparse)
+/// Get the Keccak lookup tables
+pub fn lookup_table<F: PrimeField>() -> Vec<LookupTable<F>> {
+    vec![
+        lookup::tables::get_table::<F>(GateLookupTable::Sparse),
+        lookup::tables::get_table::<F>(GateLookupTable::Bytes),
+    ]
 }
 
 //~
-//~ | Columns  | [0...200) | [0...440) | [440...1540) | [1540...2440) | 2440 |
-//~ | -------- | --------- | ------------ | ------------- | ---- |
-//~ | `Keccak` | xor       | theta     | pirho        | chi           | iota |
+//~ | `KeccakRound` | [0...440) | [440...1540) | [1540...2344) |
+//~ | ------------- | --------- | ------------ | ------------- |
+//~ | Curr          | theta     | pirho        | chi           |
 //~
-//~ | Columns  | [0...100) | [100...200) |
-//~ | -------- | --------- | ----------- |
-//~ | xor      | old_state | new_state   |
+//~ | `KeccakRound` | [0...100) |
+//~ | ------------- | --------- |
+//~ | Next          | iota      |
 //~
-//~ | Columns  | [200...300) | [300...320) | [320...400) | [400...420) | [420...440) | [440...460)  | [460...480) | [480...500)  | 500...520)   | [520...540) | [540...640) |
-//~ | -------- | ----------- | ----------- | ----------- | ----------- | ----------- | ------------ | ----------- | ------------ | ------------ | ----------- | ----------- |
-//~ | theta    | state_a     | state_c     | reset_c     | dense_c     | quotient_c  | remainder_c  | bound_c     | dense_rot_c  | expand_rot_c | state_d     | state_e     |
+//~ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //~
-//~ | Columns  | [640...1040) | [1040...1140) | [1140...1240) | [1240...1340) | [1340...1440) | [1440...1540) | [1640...1740) |
-//~ | -------- | ------------ | ------------- | ------------- | ------------- | ------------- | ------------- | ------------- |
-//~ | pirho    | reset_e      | dense_e       | quotient_e    | remainder_e   | bound_e       | dense_rot_e   | expand_rot_e  |
+//~ | Columns  | [0...100) | [100...120) | [120...200) | [200...220) | [220...240) | [240...260)  | [260...280) | [280...300)  | [300...320)  | [320...340) | [340...440) |
+//~ | -------- | --------- | ----------- | ----------- | ----------- | ----------- | ------------ | ----------- | ------------ | ------------ | ----------- | ----------- |
+//~ | theta    | state_a   | state_c     | reset_c     | dense_c     | quotient_c  | remainder_c  | bound_c     | dense_rot_c  | expand_rot_c | state_d     | state_e     |
 //~
-//~ | Columns  | [1740...2140) | [2140...2540) | [2540...2640) |
-//~ | -------- | ------------- | ------------- | ------------- |
-//~ | chi      | reset_b       | reset_sum     | state_f       |
+//~ | Columns  | [440...840) | [840...940) | [940...1040) | [1040...1140) | [1140...1240) | [1240...1340) | [1340...1440) | [1440...1540) |
+//~ | -------- | ----------- | ----------- | ------------ | ------------- | ------------- | ------------- | ------------- | ------------- |
+//~ | pirho    | reset_e     | dense_e     | quotient_e   | remainder_e   | bound_e       | dense_rot_e   | expand_rot_e  | state_b       |
 //~
-//~ | Columns  | [2640...2644) |
-//~ | -------- | ------------- |
-//~ | iota     | g00           |
+//~ | Columns  | [1540...1940) | [1940...2340) | [2340...2344 |
+//~ | -------- | ------------- | ------------- | ------------ |
+//~ | chi      | reset_b       | reset_sum     | f00          |
+//~
+//~ | Columns  | [0...4) | [4...100) |
+//~ | -------- | ------- | --------- |
+//~ | iota     | g00     | state_f   |
 //~
 #[derive(Default)]
-pub struct Keccak<F>(PhantomData<F>);
+pub struct KeccakRound<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Keccak<F>
+impl<F> Argument<F> for KeccakRound<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Keccak);
-    const CONSTRAINTS: u32 = 954;
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRound);
+    const CONSTRAINTS: u32 = 754;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -215,78 +183,40 @@ where
         // DEFINE ROUND CONSTANT
         let rc = [env.coeff(0), env.coeff(1), env.coeff(2), env.coeff(3)];
 
-        // LOAD WITNESS LAYOUT
-        // XOR
-        let old_state = env.witness_curr_chunk(0, 100);
-        let new_state = env.witness_curr_chunk(100, 200);
+        // LOAD STATES FROM WITNESS LAYOUT
         // THETA
-        let state_a = env.witness_curr_chunk(200, 300);
-        let state_c = env.witness_curr_chunk(300, 320);
-        let reset_c = env.witness_curr_chunk(320, 400);
-        let dense_c = env.witness_curr_chunk(400, 420);
-        let quotient_c = env.witness_curr_chunk(420, 440);
-        let remainder_c = env.witness_curr_chunk(440, 460);
-        let bound_c = env.witness_curr_chunk(460, 480);
-        let dense_rot_c = env.witness_curr_chunk(480, 500);
-        let expand_rot_c = env.witness_curr_chunk(500, 520);
-        let state_d = env.witness_curr_chunk(520, 540);
-        let state_e = env.witness_curr_chunk(540, 640);
+        let state_a = state_from_layout!(env.witness_curr_chunk(0, 100));
+        let state_c = state_from_layout!(env.witness_curr_chunk(100, 120));
+        let reset_c = state_from_layout!(env.witness_curr_chunk(120, 200));
+        let dense_c = state_from_layout!(env.witness_curr_chunk(200, 220));
+        let quotient_c = state_from_layout!(env.witness_curr_chunk(220, 240));
+        let remainder_c = state_from_layout!(env.witness_curr_chunk(240, 260));
+        let bound_c = state_from_layout!(env.witness_curr_chunk(260, 280));
+        let dense_rot_c = state_from_layout!(env.witness_curr_chunk(280, 300));
+        let expand_rot_c = state_from_layout!(env.witness_curr_chunk(300, 320));
+        let state_d = state_from_layout!(env.witness_curr_chunk(320, 340));
+        let state_e = state_from_layout!(env.witness_curr_chunk(340, 440));
         // PI-RHO
-        let reset_e = env.witness_curr_chunk(640, 1040);
-        let dense_e = env.witness_curr_chunk(1040, 1140);
-        let quotient_e = env.witness_curr_chunk(1140, 1240);
-        let remainder_e = env.witness_curr_chunk(1240, 1340);
-        let bound_e = env.witness_curr_chunk(1340, 1440);
-        let dense_rot_e = env.witness_curr_chunk(1440, 1540);
-        let expand_rot_e = env.witness_curr_chunk(1540, 1640);
-        let state_b = env.witness_curr_chunk(1640, 1740);
+        let reset_e = state_from_layout!(env.witness_curr_chunk(440, 840));
+        let dense_e = state_from_layout!(env.witness_curr_chunk(840, 940));
+        let quotient_e = state_from_layout!(env.witness_curr_chunk(940, 1040));
+        let remainder_e = state_from_layout!(env.witness_curr_chunk(1040, 1140));
+        let bound_e = state_from_layout!(env.witness_curr_chunk(1140, 1240));
+        let dense_rot_e = state_from_layout!(env.witness_curr_chunk(1240, 1340));
+        let expand_rot_e = state_from_layout!(env.witness_curr_chunk(1340, 1440));
+        let state_b = state_from_layout!(env.witness_curr_chunk(1440, 1540));
         // CHI
-        let reset_b = env.witness_curr_chunk(1740, 2140);
-        let reset_sum = env.witness_curr_chunk(2140, 2540);
-        let state_f = env.witness_curr_chunk(2540, 2640);
+        let reset_b = state_from_layout!(env.witness_curr_chunk(1540, 1940));
+        let reset_sum = state_from_layout!(env.witness_curr_chunk(1940, 2340));
+        let mut state_f = env.witness_curr_chunk(2340, 2344);
+        let mut tail = env.witness_next_chunk(4, 100);
+        state_f.append(&mut tail);
+        let state_f = state_from_layout!(state_f);
         // IOTA
-        let g00 = env.witness_curr_chunk(2640, 2644);
-        // NEXT
-        let next_state = env.witness_next_chunk(0, 100);
-
-        // LOAD STATES FROM LAYOUT
-        state_from_layout!(old_state);
-        state_from_layout!(new_state);
-        state_from_layout!(state_a);
-        state_from_layout!(state_c);
-        state_from_layout!(reset_c);
-        state_from_layout!(dense_c);
-        state_from_layout!(quotient_c);
-        state_from_layout!(remainder_c);
-        state_from_layout!(bound_c);
-        state_from_layout!(dense_rot_c);
-        state_from_layout!(expand_rot_c);
-        state_from_layout!(state_d);
-        state_from_layout!(state_e);
-        state_from_layout!(reset_e);
-        state_from_layout!(dense_e);
-        state_from_layout!(quotient_e);
-        state_from_layout!(remainder_e);
-        state_from_layout!(bound_e);
-        state_from_layout!(dense_rot_e);
-        state_from_layout!(expand_rot_e);
-        state_from_layout!(state_b);
-        state_from_layout!(reset_b);
-        state_from_layout!(reset_sum);
-        state_from_layout!(state_f);
-        state_from_layout!(g00);
-        state_from_layout!(next_state);
-
-        // STEP xor: 100 constraints
-        for q in 0..QUARTERS {
-            for x in 0..DIM {
-                for y in 0..DIM {
-                    constraints.push(
-                        state_a(0, x, y, q) - (old_state(0, x, y, q) + new_state(0, x, y, q)),
-                    );
-                }
-            }
-        }
+        let mut state_g = env.witness_next_chunk(0, 4);
+        let mut tail = env.witness_next_chunk(4, 100);
+        state_g.append(&mut tail);
+        let state_g = state_from_layout!(state_g);
 
         // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
         for x in 0..DIM {
@@ -363,21 +293,75 @@ where
 
         // STEP iota: 4 constraints
         for (q, c) in rc.iter().enumerate() {
-            constraints.push(g00(0, 0, 0, q) - (state_f(0, 0, 0, q) + c.clone()));
+            constraints.push(state_g(0, 0, 0, q) - (state_f(0, 0, 0, q) + c.clone()));
         } // END iota
 
-        // WIRE TO NEXT ROUND: 4 * 5 * 5 * 1 = 100 constraints
-        for q in 0..QUARTERS {
-            for x in 0..DIM {
-                for y in 0..DIM {
-                    if x == 0 && y == 0 {
-                        constraints.push(next_state(0, 0, 0, q) - g00(0, 0, 0, q));
-                    } else {
-                        constraints.push(next_state(0, x, y, q) - state_f(0, x, y, q));
-                    }
-                }
-            }
-        } // END wiring
+        constraints
+    }
+}
+
+//~
+//~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...216) | [216...248] | [248...312) |
+//~ | -------------- | --------- | ----------- | ----------- | ----------- | ----------- | ----------- |
+//~ | Curr           | old_state | new_block   | zeros       | dense       | bytes       | reset       |
+//~ | Next           | xor_state |
+//~
+#[derive(Default)]
+pub struct KeccakSponge<F>(PhantomData<F>);
+
+impl<F> Argument<F> for KeccakSponge<F>
+where
+    F: PrimeField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
+    const CONSTRAINTS: u32 = 148;
+
+    // Constraints for one round of the Keccak permutation function
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+        let mut constraints = vec![];
+
+        // LOAD WITNESS
+        let old_state = env.witness_curr_chunk(0, 100);
+        let mut new_block = env.witness_curr_chunk(100, 168);
+        let mut zeros = env.witness_curr_chunk(168, 200);
+        new_block.append(&mut zeros);
+        let xor_state = env.witness_next_chunk(0, 100);
+        let dense = env.witness_curr_chunk(200, 216);
+        let bytes = env.witness_curr_chunk(216, 248);
+        let reset = env.witness_curr_chunk(248, 312);
+        auto_clone_array!(old_state);
+        auto_clone_array!(new_block);
+        auto_clone_array!(xor_state);
+        auto_clone_array!(dense);
+        auto_clone_array!(bytes);
+        auto_clone_array!(reset);
+
+        // LOAD COEFFICIENTS
+        let absorb = env.coeff(0);
+        let squeeze = env.coeff(1);
+        auto_clone!(absorb);
+        auto_clone!(squeeze);
+
+        // STEP absorb: 5 * 5 * 4 = 100 constraints
+        for z in zeros {
+            constraints.push(absorb() * z);
+        }
+        for i in 0..QUARTERS * DIM * DIM {
+            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
+        }
+        // STEP squeeze: 32 constraints
+        for i in 0..16 {
+            constraints
+                .push(squeeze() * (dense(i) - (bytes(2 * i) + T::two_pow(8) * bytes(2 * i + 1))));
+            constraints.push(
+                squeeze()
+                    * (old_state(i)
+                        - (reset(4 * i)
+                            + T::two_pow(1) * reset(4 * i + 1)
+                            + T::two_pow(2) * reset(4 * i + 2)
+                            + T::two_pow(3) * reset(4 * i + 3))),
+            );
+        }
 
         constraints
     }
