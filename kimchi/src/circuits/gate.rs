@@ -231,7 +231,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Rot64 => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
-            Keccak => self
+            KeccakRound => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            KeccakSponge => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
@@ -327,6 +330,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
             GateType::KeccakRound => keccak::KeccakRound::constraint_checks(&env, &mut cache),
+            GateType::KeccakSponge => keccak::KeccakSponge::constraint_checks(&env, &mut cache),
         };
 
         // Check for failed constraints
