@@ -1257,12 +1257,12 @@ where
         polynomials.push((
             evaluations_form(&index.column_evaluations.generic_selector4),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.poseidon_selector8),
             None,
-            fixed_hiding(1),
+            fixed_hiding(num_chunks),
         ));
         polynomials.push((
             evaluations_form(&index.column_evaluations.complete_add_selector4),
@@ -1296,13 +1296,13 @@ where
                 .column_evaluations
                 .coefficients8
                 .iter()
-                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(1)))
+                .map(|coefficientm| (evaluations_form(coefficientm), None, non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
         polynomials.extend(
             index.column_evaluations.permutation_coefficients8[0..PERMUTS - 1]
                 .iter()
-                .map(|w| (evaluations_form(w), None, non_hiding(1)))
+                .map(|w| (evaluations_form(w), None, non_hiding(num_chunks)))
                 .collect::<Vec<_>>(),
         );
 
@@ -1379,14 +1379,19 @@ where
                 let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
 
-                let blinding = runtime_comm.blinders.unshifted[0];
+                let unshifted = runtime_comm
+                    .blinders
+                    .unshifted
+                    .iter()
+                    .map(|blinding| *joint_combiner * blinding)
+                    .collect();
 
                 PolyComm {
-                    unshifted: vec![*joint_combiner * blinding],
+                    unshifted,
                     shifted: None,
                 }
             } else {
-                non_hiding(1)
+                non_hiding(num_chunks)
             };
 
             let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
