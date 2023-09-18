@@ -597,6 +597,7 @@ where
         lookup_gate_lookup_selector,
         range_check_lookup_selector,
         foreign_field_mul_lookup_selector,
+        keccak_round_lookup_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
@@ -677,6 +678,9 @@ where
     }
     if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector {
         check_eval_len(foreign_field_mul_lookup_selector)?
+    }
+    if let Some(keccak_round_lookup_selector) = keccak_round_lookup_selector {
+        check_eval_len(keccak_round_lookup_selector)?
     }
 
     Ok(())

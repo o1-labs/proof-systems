@@ -1067,6 +1067,14 @@ where
                         .map(chunked_evals_for_selector)
                 },
             ),
+            keccak_round_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .keccak_round
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);
@@ -1413,6 +1421,13 @@ where
             if let Some(foreign_field_mul_lookup_selector) = lcs.lookup_selectors.ffmul.as_ref() {
                 polynomials.push((
                     evaluations_form(foreign_field_mul_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(keccak_round_lookup_selector) = lcs.lookup_selectors.keccak_round.as_ref() {
+                polynomials.push((
+                    evaluations_form(keccak_round_lookup_selector),
                     None,
                     non_hiding(1),
                 ))

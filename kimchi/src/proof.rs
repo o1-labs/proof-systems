@@ -103,6 +103,8 @@ pub struct ProofEvaluations<Evals> {
     pub range_check_lookup_selector: Option<Evals>,
     /// evaluation of the ForeignFieldMul range check pattern selector polynomial
     pub foreign_field_mul_lookup_selector: Option<Evals>,
+    /// evaluation of the Keccak round range check pattern selector polynomial
+    pub keccak_round_lookup_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -218,6 +220,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
+            keccak_round_lookup_selector,
         } = self;
         ProofEvaluations {
             w: w.map(f),
@@ -245,6 +248,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_gate_lookup_selector: lookup_gate_lookup_selector.map(f),
             range_check_lookup_selector: range_check_lookup_selector.map(f),
             foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.map(f),
+            keccak_round_lookup_selector: keccak_round_lookup_selector.map(f),
         }
     }
 
@@ -275,6 +279,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
+            keccak_round_lookup_selector,
         } = self;
         ProofEvaluations {
             w: [
@@ -334,6 +339,7 @@ impl<Eval> ProofEvaluations<Eval> {
             lookup_gate_lookup_selector: lookup_gate_lookup_selector.as_ref().map(f),
             range_check_lookup_selector: range_check_lookup_selector.as_ref().map(f),
             foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.as_ref().map(f),
+            keccak_round_lookup_selector: keccak_round_lookup_selector.as_ref().map(f),
         }
     }
 }
@@ -420,6 +426,7 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
             lookup_gate_lookup_selector: None,
             range_check_lookup_selector: None,
             foreign_field_mul_lookup_selector: None,
+            keccak_round_lookup_selector: None,
         }
     }
 }
@@ -450,6 +457,9 @@ impl<F> ProofEvaluations<F> {
             }
             Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
                 self.foreign_field_mul_lookup_selector.as_ref()
+            }
+            Column::LookupKindIndex(LookupPattern::KeccakRound) => {
+                self.keccak_round_lookup_selector.as_ref()
             }
             Column::LookupRuntimeSelector => self.runtime_lookup_table_selector.as_ref(),
             Column::LookupRuntimeTable => self.runtime_lookup_table.as_ref(),

@@ -85,6 +85,7 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
+            keccak_round_lookup_selector,
         } = e;
 
         let mut points = vec![
@@ -149,6 +150,9 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector.as_ref()
         {
             points.push(foreign_field_mul_lookup_selector)
+        }
+        if let Some(keccak_round_lookup_selector) = keccak_round_lookup_selector.as_ref() {
+            points.push(keccak_round_lookup_selector)
         }
 
         points.into_iter().for_each(|p| {

@@ -486,6 +486,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     lookup,
                     range_check,
                     ffmul,
+                    keccak_round,
                 },
         }) = lookup_index
         {
@@ -510,6 +511,9 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             }
             if let Some(ffmul) = ffmul {
                 fq_sponge.absorb_g(&ffmul.unshifted);
+            }
+            if let Some(keccak_round) = keccak_round {
+                fq_sponge.absorb_g(&keccak_round.unshifted);
             }
         }
         fq_sponge.digest_fq()

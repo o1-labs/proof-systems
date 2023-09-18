@@ -1996,6 +1996,8 @@ pub struct ProofEvaluations<Evals> {
     pub range_check_lookup_selector: Option<Evals>,
     /// evaluation of the ForeignFieldMul range check pattern selector polynomial
     pub foreign_field_mul_lookup_selector: Option<Evals>,
+    /// evaluation of the Keccak round range check pattern selector polynomial
+    pub keccak_round_lookup_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature

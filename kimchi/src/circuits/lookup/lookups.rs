@@ -4,7 +4,7 @@ use crate::circuits::{
     lookup::index::LookupSelectors,
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-        XOR_TABLE_ID,
+        SPARSE_TABLE_ID, XOR_TABLE_ID,
     },
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -47,6 +47,7 @@ pub struct LookupPatterns {
     pub lookup: bool,
     pub range_check: bool,
     pub foreign_field_mul: bool,
+    pub keccak_round: bool,
 }
 
 impl IntoIterator for LookupPatterns {
@@ -60,6 +61,7 @@ impl IntoIterator for LookupPatterns {
             lookup,
             range_check,
             foreign_field_mul,
+            keccak_round,
         } = self;
 
         let mut patterns = Vec::with_capacity(5);
@@ -76,6 +78,9 @@ impl IntoIterator for LookupPatterns {
         if foreign_field_mul {
             patterns.push(LookupPattern::ForeignFieldMul)
         }
+        if keccak_round {
+            patterns.push(LookupPattern::KeccakRound)
+        }
         patterns.into_iter()
     }
 }
@@ -89,6 +94,7 @@ impl std::ops::Index<LookupPattern> for LookupPatterns {
             LookupPattern::Lookup => &self.lookup,
             LookupPattern::RangeCheck => &self.range_check,
             LookupPattern::ForeignFieldMul => &self.foreign_field_mul,
+            LookupPattern::KeccakRound => &self.keccak_round,
         }
     }
 }
@@ -100,6 +106,7 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
             LookupPattern::Lookup => &mut self.lookup,
             LookupPattern::RangeCheck => &mut self.range_check,
             LookupPattern::ForeignFieldMul => &mut self.foreign_field_mul,
+            LookupPattern::KeccakRound => &mut self.keccak_round,
         }
     }
 }
@@ -386,12 +393,14 @@ pub enum LookupPattern {
     Lookup,
     RangeCheck,
     ForeignFieldMul,
+    KeccakRound,
 }
 
 impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
+            LookupPattern::KeccakRound => 1780,
             LookupPattern::Xor | LookupPattern::RangeCheck | LookupPattern::ForeignFieldMul => 4,
             LookupPattern::Lookup => 3,
         }
@@ -401,7 +410,7 @@ impl LookupPattern {
     pub fn max_joint_size(&self) -> u32 {
         match self {
             LookupPattern::Xor => 3,
-            LookupPattern::Lookup => 2,
+            LookupPattern::Lookup | LookupPattern::KeccakRound => 2,
             LookupPattern::ForeignFieldMul | LookupPattern::RangeCheck => 1,
         }
     }
@@ -490,6 +499,136 @@ impl LookupPattern {
                     })
                     .collect()
             }
+            LookupPattern::KeccakRound => {
+                let mut lookups = Vec::with_capacity(1780);
+                let l = |loc: LocalPosition| SingleLookup {
+                    value: vec![(F::one(), loc)],
+                };
+                // Theta
+                for i in 0..20 {
+                    // 2-column lookups
+                    let reset0_c = curr_row(120 + i);
+                    let dense_c = curr_row(200 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(dense_c), l(reset0_c)],
+                    });
+                    let dense_rot_c = curr_row(280 + i);
+                    let expand_rot_c = curr_row(300 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(dense_rot_c), l(expand_rot_c)],
+                    });
+
+                    // Second column lookups
+                    let reset1_c = curr_row(140 + i);
+                    let reset2_c = curr_row(160 + i);
+                    let reset3_c = curr_row(180 + i);
+                    /*
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset1_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset2_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset3_c)],
+                    });
+                    */
+
+                    // First column lookups
+                    let quotient_c = curr_row(220 + i);
+                    let remainder_c = curr_row(240 + i);
+                    let bound_c = curr_row(260 + i);
+                    /*
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(quotient_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(remainder_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(bound_c)],
+                    });
+                    */
+                }
+                // PiRho
+                for i in 0..100 {
+                    // 2-column lookups
+                    let reset0_e = curr_row(440 + i);
+                    let dense_e = curr_row(840 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(dense_e), l(reset0_e)],
+                    });
+                    let dense_rot_e = curr_row(1240 + i);
+                    let expand_rot_e = curr_row(1340 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(dense_rot_e), l(expand_rot_e)],
+                    });
+
+                    // Second column lookups
+                    let reset1_e = curr_row(540 + i);
+                    let reset2_e = curr_row(640 + i);
+                    let reset3_e = curr_row(740 + i);
+                    /*
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset1_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset2_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset3_e)],
+                    });
+                    */
+
+                    // First column lookups
+                    let quotient_e = curr_row(940 + i);
+                    let remainder_e = curr_row(1040 + i);
+                    let bound_e = curr_row(1140 + i);
+                    /*
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(quotient_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(remainder_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(bound_e)],
+                    });
+                    */
+                }
+                // Chi
+                for i in 0..400 {
+                    // Second column lookups
+                    let reset_b: LocalPosition = curr_row(1540 + i);
+                    let reset_sum = curr_row(1940 + i);
+                    /*
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset_b)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(reset_sum)],
+                    });*/
+                }
+                lookups
+            }
         }
     }
 
@@ -500,6 +639,7 @@ impl LookupPattern {
             LookupPattern::Lookup => None,
             LookupPattern::RangeCheck => Some(GateLookupTable::RangeCheck),
             LookupPattern::ForeignFieldMul => Some(GateLookupTable::RangeCheck),
+            LookupPattern::KeccakRound => Some(GateLookupTable::Sparse),
         }
     }
 
