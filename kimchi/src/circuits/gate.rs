@@ -330,7 +330,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
             GateType::KeccakRound => keccak::KeccakRound::constraint_checks(&env, &mut cache),
-            GateType::KeccakSponge => keccak::KeccakRound::constraint_checks(&env, &mut cache),
+            GateType::KeccakSponge => keccak::KeccakSponge::constraint_checks(&env, &mut cache),
         };
 
         // Check for failed constraints
