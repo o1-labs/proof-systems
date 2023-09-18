@@ -571,7 +571,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
 ) -> Vec<G::ScalarField> {
     let mut xi_i = G::ScalarField::one();
     let mut acc = {
-        let num_evals = if evaluations.len() > 0 {
+        let num_evals = if !evaluations.is_empty() {
             evaluations[0].evaluations.len()
         } else {
             0

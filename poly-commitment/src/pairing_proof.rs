@@ -37,8 +37,8 @@ impl<Pair: PairingEngine> Default for PairingProof<Pair> {
 impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
     fn clone(&self) -> Self {
         Self {
-            quotient: self.quotient.clone(),
-            blinding: self.blinding.clone(),
+            quotient: self.quotient,
+            blinding: self.blinding,
         }
     }
 }
@@ -277,7 +277,7 @@ impl<
             let divisor_polynomial = divisor_polynomial(elm);
             let numerator_polynomial = &p - &eval_polynomial;
             let (quotient, remainder) = DenseOrSparsePolynomial::divide_with_q_and_r(
-                &numerator_polynomial.clone().into(),
+                &numerator_polynomial.into(),
                 &divisor_polynomial.into(),
             )?;
             if !remainder.is_zero() {
