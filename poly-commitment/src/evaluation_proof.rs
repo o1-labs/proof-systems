@@ -132,8 +132,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     assert!(omegas.shifted.is_none());
                 }
                 for j in 0..omegas.unshifted.len() {
-                    let segment =
-                        &p_i.coeffs[offset..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
+                    let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
+                        ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     // always mixing in the unshifted segments
                     plnm.add_unshifted(scale, segment);
 
