@@ -88,6 +88,7 @@ pub trait SRS<G: CommitmentCurve> {
 pub trait OpenProof<G: CommitmentCurve>: Sized {
     type SRS: SRS<G>;
 
+    #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
