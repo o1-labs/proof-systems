@@ -727,19 +727,26 @@ where
             .get_lagrange_basis(verifier_index.domain.size())
             .expect("pre-computed committed lagrange bases not found");
         let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
-        let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
-        let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
-        verifier_index
-            .srs()
-            .mask_custom(
-                public_comm,
-                &PolyComm {
-                    unshifted: vec![G::ScalarField::one(); 1],
-                    shifted: None,
-                },
+        if public_input.len() == 0 {
+            PolyComm::new(
+                vec![verifier_index.srs().blinding_commitment(); chunk_size],
+                None,
             )
-            .unwrap()
-            .commitment
+        } else {
+            let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
+            let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
+            verifier_index
+                .srs()
+                .mask_custom(
+                    public_comm,
+                    &PolyComm {
+                        unshifted: vec![G::ScalarField::one(); 1],
+                        shifted: None,
+                    },
+                )
+                .unwrap()
+                .commitment
+        }
     };
 
     //~ 1. Run the [Fiat-Shamir argument](#fiat-shamir-argument).

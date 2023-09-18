@@ -1246,7 +1246,12 @@ where
         //~~ * the poseidon selector
         //~~ * the 15 registers/witness columns
         //~~ * the 6 sigmas
-        polynomials.push((coefficients_form(&public_poly), None, fixed_hiding(1)));
+        //~~ * optionally, the runtime table
+        polynomials.push((
+            coefficients_form(&public_poly),
+            None,
+            fixed_hiding(num_chunks),
+        ));
         polynomials.push((coefficients_form(&ft), None, blinding_ft));
         polynomials.push((coefficients_form(&z_poly), None, z_comm.blinders));
         polynomials.push((

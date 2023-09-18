@@ -5,7 +5,7 @@ use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::math;
+use o1_utils::{math, ExtendedDensePolynomial};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -118,9 +118,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     .for_each(|(i, x)| {
                         *x += scale * evals[i * stride];
                     });
-                assert_eq!(omegas.unshifted.len(), 1);
-                omega += &(omegas.unshifted[0] * scale);
-                scale *= &polyscale;
+                for j in 0..omegas.unshifted.len() {
+                    omega += &(omegas.unshifted[j] * scale);
+                    scale *= &polyscale;
+                }
+                // We assume here that we have no shifted segment.
+                // TODO: Remove shifted
             }
 
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
@@ -158,8 +161,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     let mut plnm = plnm.to_dense_polynomial();
     if !plnm_evals_part.is_empty() {
         let n = plnm_evals_part.len();
-        plnm +=
-            &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap()).interpolate();
+        let max_poly_size = srs_length;
+        let num_chunks = n / max_poly_size;
+        plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
+            .interpolate()
+            .to_chunked_polynomial(num_chunks, max_poly_size)
+            .linearize(polyscale);
     }
 
     (plnm, omega)

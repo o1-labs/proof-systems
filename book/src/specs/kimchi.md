@@ -2225,6 +2225,7 @@ The prover then follows the following steps to create the proof:
 	* the poseidon selector
 	* the 15 registers/witness columns
 	* the 6 sigmas
+	* optionally, the runtime table
 	* the optional gates
 	* optionally, the runtime table
 1. if using lookup:
