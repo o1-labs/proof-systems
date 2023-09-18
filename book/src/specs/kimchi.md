@@ -2165,7 +2165,6 @@ The prover then follows the following steps to create the proof:
    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
    TODO: specify the split of the permutation polynomial into perm and bnd?
 1. commit (hiding) to the quotient polynomial $t$
-   TODO: specify the dummies
 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)

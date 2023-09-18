@@ -36,6 +36,7 @@ pub trait SRS<G: CommitmentCurve> {
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
@@ -66,6 +67,7 @@ pub trait SRS<G: CommitmentCurve> {
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
     ) -> PolyComm<G>;
 

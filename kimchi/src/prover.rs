@@ -33,7 +33,6 @@ use crate::{
     prover_index::ProverIndex,
     verifier_index::VerifierIndex,
 };
-use ark_ec::ProjectiveCurve;
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
     univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
@@ -254,7 +253,7 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, None);
+        let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks, None);
         let public_comm = {
             index
                 .srs
@@ -384,7 +383,10 @@ where
 
                 // commit the runtime polynomial
                 // (and save it to the proof)
-                let runtime_table_comm = index.srs.commit(&runtime_table_contribution, None, rng);
+                let runtime_table_comm =
+                    index
+                        .srs
+                        .commit(&runtime_table_contribution, num_chunks, None, rng);
 
                 // absorb the commitment
                 absorb_commitment(&mut fq_sponge, &runtime_table_comm.commitment);
@@ -589,7 +591,7 @@ where
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
-        let z_comm = index.srs.commit(&z_poly, None, rng);
+        let z_comm = index.srs.commit(&z_poly, num_chunks, None, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
@@ -844,28 +846,7 @@ where
         };
 
         //~ 1. commit (hiding) to the quotient polynomial $t$
-        //~    TODO: specify the dummies
-        let t_comm = {
-            let mut t_comm = index.srs.commit(&quotient_poly, None, rng);
-
-            let expected_t_size = 7;
-            let dummies = expected_t_size * (index.cs.domain.d1.size() / index.max_poly_size)
-                - t_comm.commitment.unshifted.len();
-
-            // Add `dummies` many hiding commitments to the 0 polynomial, since if the
-            // number of commitments in `t_comm` is less than the max size, it means that
-            // the higher degree coefficients of `t` are 0.
-            for _ in 0..dummies {
-                let w = <G::ScalarField as UniformRand>::rand(rng);
-
-                t_comm
-                    .commitment
-                    .unshifted
-                    .push(index.srs.blinding_commitment().mul(w).into_affine());
-                t_comm.blinders.unshifted.push(w);
-            }
-            t_comm
-        };
+        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, None, rng) };
 
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);

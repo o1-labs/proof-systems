@@ -163,10 +163,11 @@ impl<
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        self.full_srs.commit(plnm, max, rng)
+        self.full_srs.commit(plnm, num_chunks, max, rng)
     }
 
     fn mask_custom(
@@ -188,9 +189,10 @@ impl<
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        self.full_srs.commit_non_hiding(plnm, max)
+        self.full_srs.commit_non_hiding(plnm, num_chunks, max)
     }
 
     fn commit_evaluations_non_hiding(
@@ -286,7 +288,7 @@ impl<
 
         let quotient = srs
             .full_srs
-            .commit_non_hiding(&quotient_poly, None)
+            .commit_non_hiding(&quotient_poly, srs.full_srs.g.len(), None)
             .unshifted[0];
 
         Some(PairingProof {
@@ -319,11 +321,11 @@ impl<
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
         let divisor_commitment = srs
             .verifier_srs
-            .commit_non_hiding(&divisor_polynomial(elm), None)
+            .commit_non_hiding(&divisor_polynomial(elm), srs.full_srs.g.len(), None)
             .unshifted[0];
         let eval_commitment = srs
             .full_srs
-            .commit_non_hiding(&eval_polynomial(elm, &evals), None)
+            .commit_non_hiding(&eval_polynomial(elm, &evals), srs.full_srs.g.len(), None)
             .unshifted[0]
             .into_projective();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
