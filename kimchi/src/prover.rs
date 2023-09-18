@@ -966,6 +966,13 @@ where
 
         internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
+            public: {
+                let chunked = public_poly.to_chunked_polynomial(index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            },
             s: array::from_fn(|i| {
                 chunked_evals_for_evaluations(
                     &index.column_evaluations.permutation_coefficients8[i],
@@ -1179,16 +1186,6 @@ where
             })
             .collect::<Vec<_>>();
 
-        //~ 1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
-        let public_evals = if public_poly.is_zero() {
-            [vec![G::ScalarField::zero()], vec![G::ScalarField::zero()]]
-        } else {
-            [
-                vec![public_poly.evaluate(&zeta)],
-                vec![public_poly.evaluate(&zeta_omega)],
-            ]
-        };
-
         //~ 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
         fr_sponge.absorb(&ft_eval1);
 
@@ -1199,8 +1196,6 @@ where
         //~~ * poseidon selector
         //~~ * the 15 register/witness
         //~~ * 6 sigmas evaluations (the last one is not evaluated)
-        fr_sponge.absorb_multiple(&public_evals[0]);
-        fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&chunked_evals);
 
         //~ 1. Sample $v'$ with the Fr-Sponge
