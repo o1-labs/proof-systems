@@ -1,5 +1,5 @@
 use crate::{commitment::*, srs::endos};
-use crate::{srs::SRS, SRS as _};
+use crate::{srs::SRS, PolynomialsToCombine, SRS as _};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
@@ -73,12 +73,8 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
 
 /// Combine the polynomials using `polyscale`, creating a single unified polynomial to open.
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
-    plnms: &[(
-        DensePolynomialOrEvaluations<G::ScalarField, D>,
-        Option<usize>,
-        PolyComm<G::ScalarField>,
-    )], // vector of polynomial with optional degree bound and commitment randomness
-    polyscale: G::ScalarField, // scaling factor for polynoms
+    plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
+    polyscale: G::ScalarField,         // scaling factor for polynoms
     srs_length: usize,
 ) -> (DensePolynomial<G::ScalarField>, G::ScalarField) {
     let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();

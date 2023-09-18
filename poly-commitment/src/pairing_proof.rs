@@ -1,7 +1,7 @@
 use crate::commitment::*;
 use crate::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
 use crate::srs::SRS;
-use crate::{CommitmentError, SRS as SRSTrait};
+use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
@@ -261,13 +261,9 @@ impl<
 {
     pub fn create<D: EvaluationDomain<G::ScalarField>>(
         srs: &PairingSRS<Pair>,
-        plnms: &[(
-            DensePolynomialOrEvaluations<G::ScalarField, D>,
-            Option<usize>,
-            PolyComm<G::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[G::ScalarField],    // vector of evaluation points
-        polyscale: G::ScalarField, // scaling factor for polynoms
+        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
+        elm: &[G::ScalarField],            // vector of evaluation points
+        polyscale: G::ScalarField,         // scaling factor for polynoms
     ) -> Option<Self> {
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, srs.full_srs.g.len());
         let evals: Vec<_> = elm.iter().map(|pt| p.evaluate(pt)).collect();

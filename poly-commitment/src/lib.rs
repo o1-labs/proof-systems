@@ -85,6 +85,13 @@ pub trait SRS<G: CommitmentCurve> {
     ) -> BlindedCommitment<G>;
 }
 
+#[allow(type_alias_bounds)]
+type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
+    DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
+    Option<usize>,
+    PolyComm<G::ScalarField>,
+)];
+
 pub trait OpenProof<G: CommitmentCurve>: Sized {
     type SRS: SRS<G>;
 
@@ -92,15 +99,11 @@ pub trait OpenProof<G: CommitmentCurve>: Sized {
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
-        plnms: &[(
-            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
-            Option<usize>,
-            PolyComm<<G as AffineCurve>::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
+        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
         elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
         polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
         evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
-        sponge: EFqSponge,                       // sponge
+        sponge: EFqSponge,                 // sponge
         rng: &mut RNG,
     ) -> Self
     where

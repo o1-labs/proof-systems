@@ -527,7 +527,7 @@ where
 }
 
 pub fn combine_commitments<G: CommitmentCurve>(
-    evaluations: &Vec<Evaluation<G>>,
+    evaluations: &[Evaluation<G>],
     scalars: &mut Vec<G::ScalarField>,
     points: &mut Vec<G>,
     polyscale: G::ScalarField,
