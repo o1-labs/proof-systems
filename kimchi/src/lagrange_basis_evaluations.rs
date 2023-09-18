@@ -5,39 +5,49 @@ use rayon::prelude::*;
 /// The evaluations of all normalized lagrange basis polynomials at a given
 /// point. Can be used to evaluate an `Evaluations` form polynomial at that point.
 pub struct LagrangeBasisEvaluations<F> {
-    pub evals: Vec<F>,
+    evals: Vec<Vec<F>>,
 }
 
 impl<F: FftField> LagrangeBasisEvaluations<F> {
     /// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point.
-    pub fn evaluate<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> F {
-        assert_eq!(p.evals.len() % self.evals.len(), 0);
-        let stride = p.evals.len() / self.evals.len();
+    pub fn evaluate<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
+        assert_eq!(p.evals.len() % self.evals[0].len(), 0);
+        let stride = p.evals.len() / self.evals[0].len();
         let p_evals = &p.evals;
         (&self.evals)
             .into_par_iter()
-            .enumerate()
-            .map(|(i, e)| p_evals[stride * i] * e)
-            .sum()
+            .map(|evals| {
+                evals
+                    .into_par_iter()
+                    .enumerate()
+                    .map(|(i, e)| p_evals[stride * i] * e)
+                    .sum()
+            })
+            .collect()
     }
 
     /// Given the evaluations form of a polynomial, directly evaluate that polynomial at a point,
     /// assuming that the given evaluations are either 0 or 1 at every point of the domain.
-    pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> F {
-        assert_eq!(p.evals.len() % self.evals.len(), 0);
-        let stride = p.evals.len() / self.evals.len();
-        let mut result = F::zero();
-        for (i, e) in self.evals.iter().enumerate() {
-            if !p.evals[stride * i].is_zero() {
-                result += e;
-            }
-        }
-        result
+    pub fn evaluate_boolean<D: EvaluationDomain<F>>(&self, p: &Evaluations<F, D>) -> Vec<F> {
+        assert_eq!(p.evals.len() % self.evals[0].len(), 0);
+        let stride = p.evals.len() / self.evals[0].len();
+        self.evals
+            .iter()
+            .map(|evals| {
+                let mut result = F::zero();
+                for (i, e) in evals.iter().enumerate() {
+                    if !p.evals[stride * i].is_zero() {
+                        result += e;
+                    }
+                }
+                result
+            })
+            .collect()
     }
 
     /// Compute all evaluations of the normalized lagrange basis polynomials of the
     /// given domain at the given point. Runs in time O(domain size).
-    pub fn new(domain: D<F>, x: F) -> LagrangeBasisEvaluations<F> {
+    fn new_with_segment_size_1(domain: D<F>, x: F) -> LagrangeBasisEvaluations<F> {
         let n = domain.size();
         // We want to compute for all i
         // s_i = 1 / t_i
@@ -98,7 +108,38 @@ impl<F: FftField> LagrangeBasisEvaluations<F> {
 
         // Denominators now contains the desired result.
         LagrangeBasisEvaluations {
-            evals: denominators,
+            evals: vec![denominators],
+        }
+    }
+
+    /// Compute all evaluations of the normalized lagrange basis polynomials of the
+    /// given domain at the given point. Runs in time O(domain size).
+    fn new_with_chunked_segments(
+        max_poly_size: usize,
+        domain: D<F>,
+        x: F,
+    ) -> LagrangeBasisEvaluations<F> {
+        let n = domain.size();
+        let num_chunks = n / max_poly_size;
+        let mut evals = Vec::with_capacity(num_chunks);
+        let mut x_pow = F::one();
+        for i in 0..num_chunks {
+            let mut chunked_evals = vec![F::zero(); n];
+            for j in 0..max_poly_size {
+                chunked_evals[i * max_poly_size + j] = x_pow;
+                x_pow *= x;
+            }
+            domain.ifft_in_place(&mut chunked_evals);
+            evals.push(chunked_evals);
+        }
+        LagrangeBasisEvaluations { evals }
+    }
+
+    pub fn new(max_poly_size: usize, domain: D<F>, x: F) -> LagrangeBasisEvaluations<F> {
+        if domain.size() == max_poly_size {
+            Self::new_with_segment_size_1(domain, x)
+        } else {
+            Self::new_with_chunked_segments(max_poly_size, domain, x)
         }
     }
 }
@@ -118,19 +159,44 @@ mod tests {
         let domain = Radix2EvaluationDomain::new(n).unwrap();
         let rng = &mut StdRng::from_seed([0u8; 32]);
         let x = Fp::rand(rng);
-        let evaluator = LagrangeBasisEvaluations::new(domain, x);
+        let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
         let expected = (0..n).map(|i| {
             let mut lagrange_i = vec![Fp::zero(); n];
             lagrange_i[i] = Fp::one();
-            Evaluations::from_vec_and_domain(lagrange_i, domain)
+            vec![Evaluations::from_vec_and_domain(lagrange_i, domain)
                 .interpolate()
-                .evaluate(&x)
+                .evaluate(&x)]
         });
 
-        for (i, expected) in expected.enumerate() {
-            if evaluator.evals[i] != expected {
-                panic!("{}, {}: {} != {}", line!(), i, evaluator.evals[i], expected);
+        for (i, (expected, got)) in expected.zip(evaluator.evals).enumerate() {
+            for (j, (expected, got)) in expected.iter().zip(got.iter()).enumerate() {
+                if got != expected {
+                    panic!("{}, {}, {}: {} != {}", line!(), i, j, got, expected);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_new_with_chunked_segments() {
+        let n = 1 << 4;
+        let domain = Radix2EvaluationDomain::new(n).unwrap();
+        let rng = &mut StdRng::from_seed([0u8; 32]);
+        let x = Fp::rand(rng);
+        let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
+        let evaluator_chunked =
+            LagrangeBasisEvaluations::new_with_chunked_segments(domain.size(), domain, x);
+        for (i, (evals, evals_chunked)) in evaluator
+            .evals
+            .iter()
+            .zip(evaluator_chunked.evals.iter())
+            .enumerate()
+        {
+            for (j, (evals, evals_chunked)) in evals.iter().zip(evals_chunked.iter()).enumerate() {
+                if evals != evals_chunked {
+                    panic!("{}, {}, {}: {} != {}", line!(), i, j, evals, evals_chunked);
+                }
             }
         }
     }
@@ -151,10 +217,10 @@ mod tests {
 
         let x = Fp::rand(rng);
 
-        let evaluator = LagrangeBasisEvaluations::new(domain, x);
+        let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
         let y = evaluator.evaluate(&evals);
-        let expected = evals.interpolate().evaluate(&x);
+        let expected = vec![evals.interpolate().evaluate(&x)];
         assert_eq!(y, expected)
     }
 
@@ -179,10 +245,10 @@ mod tests {
 
         let x = Fp::rand(rng);
 
-        let evaluator = LagrangeBasisEvaluations::new(domain, x);
+        let evaluator = LagrangeBasisEvaluations::new(domain.size(), domain, x);
 
         let y = evaluator.evaluate_boolean(&evals);
-        let expected = evals.interpolate().evaluate(&x);
+        let expected = vec![evals.interpolate().evaluate(&x)];
         assert_eq!(y, expected)
     }
 }
