@@ -537,7 +537,6 @@ pub mod caml {
     #[allow(clippy::type_complexity)]
     #[derive(Clone, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlProofEvaluations<CamlF> {
-        pub public: PointEvaluations<Vec<CamlF>>,
         pub w: (
             PointEvaluations<Vec<CamlF>>,
             PointEvaluations<Vec<CamlF>>,
@@ -611,7 +610,8 @@ pub mod caml {
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
 
-    impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>> for CamlProofEvaluations<CamlF>
+    impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>>
+        for (PointEvaluations<Vec<CamlF>>, CamlProofEvaluations<CamlF>)
     where
         F: Clone,
         CamlF: From<F>,
@@ -732,92 +732,97 @@ pub mod caml {
                     .map(&|x| x.into_iter().map(Into::into).collect()),
             );
 
-            Self {
-                public: pe.public.map(&|x| x.into_iter().map(Into::into).collect()),
-                w,
-                coefficients,
-                z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
-                s,
-                generic_selector: pe
-                    .generic_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                poseidon_selector: pe
-                    .poseidon_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                complete_add_selector: pe
-                    .complete_add_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                mul_selector: pe
-                    .mul_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                emul_selector: pe
-                    .emul_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                endomul_scalar_selector: pe
-                    .endomul_scalar_selector
-                    .map(&|x| x.into_iter().map(Into::into).collect()),
-                range_check0_selector: pe
-                    .range_check0_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                range_check1_selector: pe
-                    .range_check1_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                foreign_field_add_selector: pe
-                    .foreign_field_add_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                foreign_field_mul_selector: pe
-                    .foreign_field_mul_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                xor_selector: pe
-                    .xor_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                rot_selector: pe
-                    .rot_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                lookup_aggregation: pe
-                    .lookup_aggregation
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                lookup_table: pe
-                    .lookup_table
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                lookup_sorted: pe
-                    .lookup_sorted
-                    .iter()
-                    .map(|x| {
-                        x.as_ref().map(|x| {
-                            x.map_ref(&|x| x.clone().into_iter().map(Into::into).collect())
+            (
+                pe.public.map(&|x| x.into_iter().map(Into::into).collect()),
+                CamlProofEvaluations {
+                    w,
+                    coefficients,
+                    z: pe.z.map(&|x| x.into_iter().map(Into::into).collect()),
+                    s,
+                    generic_selector: pe
+                        .generic_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    poseidon_selector: pe
+                        .poseidon_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    complete_add_selector: pe
+                        .complete_add_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    mul_selector: pe
+                        .mul_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    emul_selector: pe
+                        .emul_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    endomul_scalar_selector: pe
+                        .endomul_scalar_selector
+                        .map(&|x| x.into_iter().map(Into::into).collect()),
+                    range_check0_selector: pe
+                        .range_check0_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    range_check1_selector: pe
+                        .range_check1_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    foreign_field_add_selector: pe
+                        .foreign_field_add_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    foreign_field_mul_selector: pe
+                        .foreign_field_mul_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    xor_selector: pe
+                        .xor_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    rot_selector: pe
+                        .rot_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_aggregation: pe
+                        .lookup_aggregation
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_table: pe
+                        .lookup_table
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_sorted: pe
+                        .lookup_sorted
+                        .iter()
+                        .map(|x| {
+                            x.as_ref().map(|x| {
+                                x.map_ref(&|x| x.clone().into_iter().map(Into::into).collect())
+                            })
                         })
-                    })
-                    .collect::<Vec<_>>(),
-                runtime_lookup_table: pe
-                    .runtime_lookup_table
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                runtime_lookup_table_selector: pe
-                    .runtime_lookup_table_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                xor_lookup_selector: pe
-                    .xor_lookup_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                lookup_gate_lookup_selector: pe
-                    .lookup_gate_lookup_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                range_check_lookup_selector: pe
-                    .range_check_lookup_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-                foreign_field_mul_lookup_selector: pe
-                    .foreign_field_mul_lookup_selector
-                    .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
-            }
+                        .collect::<Vec<_>>(),
+                    runtime_lookup_table: pe
+                        .runtime_lookup_table
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    runtime_lookup_table_selector: pe
+                        .runtime_lookup_table_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    xor_lookup_selector: pe
+                        .xor_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    lookup_gate_lookup_selector: pe
+                        .lookup_gate_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    range_check_lookup_selector: pe
+                        .range_check_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                    foreign_field_mul_lookup_selector: pe
+                        .foreign_field_mul_lookup_selector
+                        .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                },
+            )
         }
     }
 
-    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<PointEvaluations<Vec<F>>>
+    impl<F, CamlF> From<(PointEvaluations<Vec<CamlF>>, CamlProofEvaluations<CamlF>)>
+        for ProofEvaluations<PointEvaluations<Vec<F>>>
     where
         F: Clone,
         CamlF: Clone,
         F: From<CamlF>,
     {
-        fn from(cpe: CamlProofEvaluations<CamlF>) -> Self {
+        fn from(
+            (public, cpe): (PointEvaluations<Vec<CamlF>>, CamlProofEvaluations<CamlF>),
+        ) -> Self {
             let w = [
                 cpe.w.0.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.1.map(&|x| x.into_iter().map(Into::into).collect()),
@@ -892,7 +897,7 @@ pub mod caml {
             ];
 
             Self {
-                public: cpe.public.map(&|x| x.into_iter().map(Into::into).collect()),
+                public: public.map(&|x| x.into_iter().map(Into::into).collect()),
                 w,
                 coefficients,
                 z: cpe.z.map(&|x| x.into_iter().map(Into::into).collect()),

@@ -384,7 +384,7 @@ mod tests {
 
         let comms: Vec<_> = polynomials
             .iter()
-            .map(|p| srs.full_srs.commit(p, None, rng))
+            .map(|p| srs.full_srs.commit(p, srs.full_srs.g.len(), None, rng))
             .collect();
 
         let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _, _)> =
