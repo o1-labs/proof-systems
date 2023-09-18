@@ -187,6 +187,8 @@ where
 
         let (_, endo_r) = G::endos();
 
+        let num_chunks = d1_size / index.max_poly_size;
+
         // TODO: rng should be passed as arg
         let rng = &mut rand::rngs::OsRng;
 
@@ -846,13 +848,16 @@ where
         let t_comm = {
             let mut t_comm = index.srs.commit(&quotient_poly, None, rng);
 
-            let expected_t_size = PERMUTS;
-            let dummies = expected_t_size - t_comm.commitment.unshifted.len();
+            let expected_t_size = 7;
+            let dummies = expected_t_size * (index.cs.domain.d1.size() / index.max_poly_size)
+                - t_comm.commitment.unshifted.len();
+
             // Add `dummies` many hiding commitments to the 0 polynomial, since if the
             // number of commitments in `t_comm` is less than the max size, it means that
             // the higher degree coefficients of `t` are 0.
             for _ in 0..dummies {
                 let w = <G::ScalarField as UniformRand>::rand(rng);
+
                 t_comm
                     .commitment
                     .unshifted
@@ -881,7 +886,7 @@ where
                 .aggreg_coeffs
                 .as_ref()
                 .unwrap()
-                .to_chunked_polynomial(index.max_poly_size);
+                .to_chunked_polynomial(num_chunks, index.max_poly_size);
 
             //~~ * the sorted polynomials
             let sorted = lookup_context
@@ -889,12 +894,12 @@ where
                 .as_ref()
                 .unwrap()
                 .iter()
-                .map(|c| c.to_chunked_polynomial(index.max_poly_size))
+                .map(|c| c.to_chunked_polynomial(num_chunks, index.max_poly_size))
                 .collect::<Vec<_>>();
 
             //~~ * the table polynonial
             let joint_table = lookup_context.joint_lookup_table.as_ref().unwrap();
-            let joint_table = joint_table.to_chunked_polynomial(index.max_poly_size);
+            let joint_table = joint_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
 
             lookup_context.lookup_aggregation_eval = Some(PointEvaluations {
                 zeta: aggreg.evaluate_chunks(zeta),
@@ -917,7 +922,8 @@ where
             });
             lookup_context.runtime_lookup_table_eval =
                 lookup_context.runtime_table.as_ref().map(|runtime_table| {
-                    let runtime_table = runtime_table.to_chunked_polynomial(index.max_poly_size);
+                    let runtime_table =
+                        runtime_table.to_chunked_polynomial(num_chunks, index.max_poly_size);
                     PointEvaluations {
                         zeta: runtime_table.evaluate_chunks(zeta),
                         zeta_omega: runtime_table.evaluate_chunks(zeta_omega),
@@ -967,7 +973,7 @@ where
         internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
         let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
             public: {
-                let chunked = public_poly.to_chunked_polynomial(index.max_poly_size);
+                let chunked = public_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
                 PointEvaluations {
                     zeta: chunked.evaluate_chunks(zeta),
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
@@ -982,7 +988,8 @@ where
                 chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
             }),
             w: array::from_fn(|i| {
-                let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
+                let chunked =
+                    witness_poly[i].to_chunked_polynomial(num_chunks, index.max_poly_size);
                 PointEvaluations {
                     zeta: chunked.evaluate_chunks(zeta),
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
@@ -990,7 +997,7 @@ where
             }),
 
             z: {
-                let chunked = z_poly.to_chunked_polynomial(index.max_poly_size);
+                let chunked = z_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
                 PointEvaluations {
                     zeta: chunked.evaluate_chunks(zeta),
                     zeta_omega: chunked.evaluate_chunks(zeta_omega),
@@ -1125,12 +1132,12 @@ where
                 drop(env);
 
                 // see https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-prover-side
-                f.to_chunked_polynomial(index.max_poly_size)
+                f.to_chunked_polynomial(num_chunks, index.max_poly_size)
                     .linearize(zeta_to_srs_len)
             };
 
             let t_chunked = quotient_poly
-                .to_chunked_polynomial(index.max_poly_size)
+                .to_chunked_polynomial(7 * num_chunks, index.max_poly_size)
                 .linearize(zeta_to_srs_len);
 
             &f_chunked - &t_chunked.scale(zeta_to_domain_size - G::ScalarField::one())

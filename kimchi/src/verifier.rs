@@ -120,6 +120,8 @@ where
         let n = index.domain.size;
         let (_, endo_r) = G::endos();
 
+        let chunk_size = index.domain.size() / index.max_poly_size;
+
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
@@ -213,9 +215,13 @@ where
         //~ 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
         let alpha = alpha_chal.to_field(endo_r);
 
-        //~ 1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
-        if self.commitments.t_comm.unshifted.len() != PERMUTS {
-            return Err(VerifyError::IncorrectCommitmentLength("t"));
+        //~ 1. Enforce that the length of the $t$ commitment is of size 7.
+        if self.commitments.t_comm.unshifted.len() != chunk_size * 7 {
+            return Err(VerifyError::IncorrectCommitmentLength(
+                "t",
+                chunk_size * 7,
+                self.commitments.t_comm.unshifted.len(),
+            ));
         }
 
         //~ 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
@@ -573,94 +579,102 @@ where
         foreign_field_mul_lookup_selector,
     } = &proof.evals;
 
-    let check_eval_len = |eval: &PointEvaluations<Vec<_>>| -> Result<()> {
+    let check_eval_len = |eval: &PointEvaluations<Vec<_>>, str: &'static str| -> Result<()> {
         if eval.zeta.len() != expected_size {
             Err(VerifyError::IncorrectEvaluationsLength(
                 expected_size,
                 eval.zeta.len(),
+                str,
             ))
         } else if eval.zeta_omega.len() != expected_size {
             Err(VerifyError::IncorrectEvaluationsLength(
                 expected_size,
                 eval.zeta_omega.len(),
+                str,
             ))
         } else {
             Ok(())
         }
     };
 
-    check_eval_len(public)?;
+    check_eval_len(public, "public input")?;
 
     for w_i in w {
-        check_eval_len(w_i)?;
+        check_eval_len(w_i, "witness")?;
     }
-    check_eval_len(z)?;
+    check_eval_len(z, "permutation accumulator")?;
     for s_i in s {
-        check_eval_len(s_i)?;
+        check_eval_len(s_i, "permutation shifts")?;
     }
     for coeff in coefficients {
-        check_eval_len(coeff)?;
+        check_eval_len(coeff, "coefficients")?;
     }
 
     // Lookup evaluations
     for sorted in lookup_sorted.iter().flatten() {
-        check_eval_len(sorted)?
+        check_eval_len(sorted, "lookup sorted")?
     }
 
     if let Some(lookup_aggregation) = lookup_aggregation {
-        check_eval_len(lookup_aggregation)?;
+        check_eval_len(lookup_aggregation, "lookup aggregation")?;
     }
     if let Some(lookup_table) = lookup_table {
-        check_eval_len(lookup_table)?;
+        check_eval_len(lookup_table, "lookup table")?;
     }
     if let Some(runtime_lookup_table) = runtime_lookup_table {
-        check_eval_len(runtime_lookup_table)?;
+        check_eval_len(runtime_lookup_table, "runtime lookup table")?;
     }
 
-    check_eval_len(generic_selector)?;
-    check_eval_len(poseidon_selector)?;
-    check_eval_len(complete_add_selector)?;
-    check_eval_len(mul_selector)?;
-    check_eval_len(emul_selector)?;
-    check_eval_len(endomul_scalar_selector)?;
+    check_eval_len(generic_selector, "generic selector")?;
+    check_eval_len(poseidon_selector, "poseidon selector")?;
+    check_eval_len(complete_add_selector, "complete add selector")?;
+    check_eval_len(mul_selector, "mul selector")?;
+    check_eval_len(emul_selector, "endomul selector")?;
+    check_eval_len(endomul_scalar_selector, "endomul scalar selector")?;
 
     // Optional gates
 
     if let Some(range_check0_selector) = range_check0_selector {
-        check_eval_len(range_check0_selector)?
+        check_eval_len(range_check0_selector, "range check 0 selector")?
     }
     if let Some(range_check1_selector) = range_check1_selector {
-        check_eval_len(range_check1_selector)?
+        check_eval_len(range_check1_selector, "range check 1 selector")?
     }
     if let Some(foreign_field_add_selector) = foreign_field_add_selector {
-        check_eval_len(foreign_field_add_selector)?
+        check_eval_len(foreign_field_add_selector, "foreign field add selector")?
     }
     if let Some(foreign_field_mul_selector) = foreign_field_mul_selector {
-        check_eval_len(foreign_field_mul_selector)?
+        check_eval_len(foreign_field_mul_selector, "foreign field mul selector")?
     }
     if let Some(xor_selector) = xor_selector {
-        check_eval_len(xor_selector)?
+        check_eval_len(xor_selector, "xor selector")?
     }
     if let Some(rot_selector) = rot_selector {
-        check_eval_len(rot_selector)?
+        check_eval_len(rot_selector, "rot selector")?
     }
 
     // Lookup selectors
 
     if let Some(runtime_lookup_table_selector) = runtime_lookup_table_selector {
-        check_eval_len(runtime_lookup_table_selector)?
+        check_eval_len(
+            runtime_lookup_table_selector,
+            "runtime lookup table selector",
+        )?
     }
     if let Some(xor_lookup_selector) = xor_lookup_selector {
-        check_eval_len(xor_lookup_selector)?
+        check_eval_len(xor_lookup_selector, "xor lookup selector")?
     }
     if let Some(lookup_gate_lookup_selector) = lookup_gate_lookup_selector {
-        check_eval_len(lookup_gate_lookup_selector)?
+        check_eval_len(lookup_gate_lookup_selector, "lookup gate lookup selector")?
     }
     if let Some(range_check_lookup_selector) = range_check_lookup_selector {
-        check_eval_len(range_check_lookup_selector)?
+        check_eval_len(range_check_lookup_selector, "range check lookup selector")?
     }
     if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector {
-        check_eval_len(foreign_field_mul_lookup_selector)?
+        check_eval_len(
+            foreign_field_mul_lookup_selector,
+            "foreign field mul lookup selector",
+        )?
     }
 
     Ok(())
