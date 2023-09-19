@@ -389,15 +389,3 @@ fn compose_shifts<F: PrimeField, T: ExprOps<F>>(
         + T::two_pow(2) * resets(2, x, y, q)
         + T::two_pow(3) * resets(3, x, y, q)
 }
-
-fn _expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
-    format!("{:064b}", word)
-        .chars()
-        .collect::<Vec<char>>()
-        .chunks(16)
-        .map(|c| c.iter().collect::<String>())
-        .collect::<Vec<String>>()
-        .iter()
-        .map(|c| T::literal(F::from(u64::from_str_radix(c, 16).unwrap())))
-        .collect::<Vec<T>>()
-}
