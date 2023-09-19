@@ -9,6 +9,7 @@ mod variable_cell;
 mod variables;
 
 pub use self::{
+    array_cell::ArrayCell,
     constant_cell::ConstantCell,
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
@@ -18,43 +19,41 @@ pub use self::{
     variables::{variable_map, variables, Variables},
 };
 
-use super::polynomial::COLUMNS;
-
 /// Witness cell interface
-pub trait WitnessCell<F: Field> {
-    fn value(&self, witness: &mut [Vec<F>; COLUMNS], variables: &Variables<F>) -> F;
+pub trait WitnessCell<const N: usize, F: Field> {
+    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<F>) -> F;
 }
 
 /// Initialize a witness cell based on layout and computed variables
-pub fn init_cell<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+pub fn init_cell<const N: usize, F: PrimeField>(
+    witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
     col: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
+    layout: &[[Box<dyn WitnessCell<N, F>>; N]],
     variables: &Variables<F>,
 ) {
     witness[col][row + offset] = layout[row][col].value(witness, variables);
 }
 
 /// Initialize a witness row based on layout and computed variables
-pub fn init_row<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+pub fn init_row<const N: usize, F: PrimeField>(
+    witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
+    layout: &[[Box<dyn WitnessCell<N, F>>; N]],
     variables: &Variables<F>,
 ) {
-    for col in 0..COLUMNS {
+    for col in 0..N {
         init_cell(witness, offset, row, col, layout, variables);
     }
 }
 
 /// Initialize a witness based on layout and computed variables
-pub fn init<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+pub fn init<const N: usize, F: PrimeField>(
+    witness: &mut [Vec<F>; N],
     offset: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
+    layout: &[[Box<dyn WitnessCell<N, F>>; N]],
     variables: &Variables<F>,
 ) {
     for row in 0..layout.len() {
@@ -68,6 +67,7 @@ mod tests {
 
     use super::*;
 
+    use crate::circuits::polynomial::COLUMNS;
     use ark_ec::AffineCurve;
     use ark_ff::{Field, One, Zero};
     use mina_curves::pasta::Pallas;
@@ -75,7 +75,7 @@ mod tests {
 
     #[test]
     fn zero_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<PallasField>>; COLUMNS]> = vec![[
+        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField>>; COLUMNS]> = vec![[
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
@@ -118,7 +118,7 @@ mod tests {
 
     #[test]
     fn mixed_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<PallasField>>; COLUMNS]> = vec![
+        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField>>; COLUMNS]> = vec![
             [
                 ConstantCell::create(PallasField::from(12u32)),
                 ConstantCell::create(PallasField::from(0xa5a3u32)),

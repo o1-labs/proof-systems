@@ -1,5 +1,4 @@
 use super::{variables::Variables, WitnessCell};
-use crate::circuits::polynomial::COLUMNS;
 use ark_ff::Field;
 
 /// A chunk of witness cells assigned from a variable that is an array
@@ -16,8 +15,8 @@ impl<'a> ArrayCell<'a> {
     }
 }
 
-impl<'a, F: Field> WitnessCell<F> for ArrayCell<'a> {
-    fn value(&self, _witness: &mut [Vec<F>; COLUMNS], variables: &Variables<F>) -> F {
+impl<'a, const N: usize, F: Field> WitnessCell<N, F> for ArrayCell<'a> {
+    fn value(&self, _witness: &mut [Vec<F>; N], variables: &Variables<F>) -> F {
         variables[self.name]
     }
 }
