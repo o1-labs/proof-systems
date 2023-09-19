@@ -1,20 +1,15 @@
 //! Keccak gadget
+use super::{DIM, QUARTERS};
 use crate::{
     auto_clone, auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{constraints::ExprOps, Cache},
-        gate::{CircuitGate, GateType},
-        wires::Wire,
+        gate::GateType,
     },
 };
-use ark_ff::{PrimeField, SquareRootField};
+use ark_ff::PrimeField;
 use std::marker::PhantomData;
-
-pub const DIM: usize = 5;
-pub const QUARTERS: usize = 4;
-pub const ROUNDS: usize = 24;
-pub const RATE: usize = 136;
 
 #[macro_export]
 macro_rules! state_from_vec {
@@ -33,100 +28,13 @@ macro_rules! state_from_vec {
 /// | 2     | 62 |  6 | 43 | 15 | 61 |
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
-/// Note that the order of the indexing is [y][x] to match the encoding of the witness algorithm
-pub(crate) const OFF: [[u64; DIM]; DIM] = [
-    [0, 1, 62, 28, 27],
-    [36, 44, 6, 55, 20],
-    [3, 10, 43, 25, 39],
-    [41, 45, 15, 21, 8],
-    [18, 2, 61, 56, 14],
+const OFF: [[u64; DIM]; DIM] = [
+    [0, 36, 3, 41, 18],
+    [1, 44, 10, 45, 2],
+    [62, 6, 43, 15, 61],
+    [28, 55, 25, 21, 56],
+    [27, 20, 39, 8, 14],
 ];
-
-pub const RC: [u64; 24] = [
-    0x0000000000000001,
-    0x0000000000008082,
-    0x800000000000808a,
-    0x8000000080008000,
-    0x000000000000808b,
-    0x0000000080000001,
-    0x8000000080008081,
-    0x8000000000008009,
-    0x000000000000008a,
-    0x0000000000000088,
-    0x0000000080008009,
-    0x000000008000000a,
-    0x000000008000808b,
-    0x800000000000008b,
-    0x8000000000008089,
-    0x8000000000008003,
-    0x8000000000008002,
-    0x8000000000000080,
-    0x000000000000800a,
-    0x800000008000000a,
-    0x8000000080008081,
-    0x8000000000008080,
-    0x0000000080000001,
-    0x8000000080008008,
-];
-
-fn expand<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
-    format!("{:064b}", word)
-        .chars()
-        .collect::<Vec<char>>()
-        .chunks(16)
-        .map(|c| c.iter().collect::<String>())
-        .collect::<Vec<String>>()
-        .iter()
-        .map(|c| T::literal(F::from(u64::from_str_radix(c, 16).unwrap())))
-        .collect::<Vec<T>>()
-}
-
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
-    /// Extends a Keccak circuit to hash one message (already padded to a multiple of 136 bits with 10*1 rule)
-    pub fn extend_keccak(circuit: &mut Vec<Self>, bytelength: usize) -> usize {
-        // pad
-        let mut gates = Self::create_keccak(circuit.len(), bytelength);
-        circuit.append(&mut gates);
-        circuit.len()
-    }
-
-    /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, for a padded message of a given bytelength
-    fn create_keccak(new_row: usize, bytelength: usize) -> Vec<Self> {
-        let mut gates = vec![];
-        for _block in 0..(bytelength / RATE) {
-            gates.push(Self::create_keccak_absorb(new_row + gates.len()));
-            for round in 0..ROUNDS {
-                gates.push(Self::create_keccak_round(new_row + gates.len(), round));
-            }
-        }
-        gates.push(Self::create_keccak_squeeze(new_row + gates.len()));
-        gates
-    }
-
-    fn create_keccak_squeeze(new_row: usize) -> Self {
-        CircuitGate {
-            typ: GateType::KeccakSponge,
-            wires: Wire::for_row(new_row),
-            coeffs: vec![F::zero(), F::one()],
-        }
-    }
-
-    fn create_keccak_absorb(new_row: usize) -> Self {
-        CircuitGate {
-            typ: GateType::KeccakSponge,
-            wires: Wire::for_row(new_row),
-            coeffs: vec![F::one(), F::zero()],
-        }
-    }
-
-    fn create_keccak_round(new_row: usize, round: usize) -> Self {
-        CircuitGate {
-            typ: GateType::KeccakRound,
-            wires: Wire::for_row(new_row),
-            coeffs: expand(RC[round]),
-        }
-    }
-}
 
 //~
 //~ | `KeccakRound` | [0...440) | [440...1540) | [1540...2344) |
