@@ -23,6 +23,7 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
+use poly_commitment::evaluation_proof::OpeningProof;
 use rand::{rngs::StdRng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -402,7 +403,7 @@ fn test_bad_not_gnrc() {
     let index =
         new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None, false);
     assert_eq!(
-        index.cs.gates[1].verify::<Vesta>(1, &witness, &index, &[]),
+        index.cs.gates[1].verify::<Vesta, OpeningProof<Vesta>>(1, &witness, &index, &[]),
         Err(("generic: incorrect gate").to_string())
     );
 }

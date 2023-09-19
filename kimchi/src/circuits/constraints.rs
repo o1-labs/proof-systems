@@ -21,6 +21,7 @@ use ark_poly::{
 };
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
+use poly_commitment::OpenProof;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -263,7 +264,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+impl<
+        F: PrimeField + SquareRootField,
+        G: KimchiCurve<ScalarField = F>,
+        OpeningProof: OpenProof<G>,
+    > ProverIndex<G, OpeningProof>
+{
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
     ///     witness: wire assignment witness
@@ -307,7 +313,7 @@ impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverInd
             }
 
             // check the gate's satisfiability
-            gate.verify::<G>(row, &witness, self, public)
+            gate.verify(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 

@@ -31,6 +31,7 @@ use crate::{
         RecursionChallenge,
     },
     prover_index::ProverIndex,
+    verifier_index::VerifierIndex,
 };
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
@@ -45,6 +46,7 @@ use poly_commitment::{
         absorb_commitment, b_poly_coefficients, BlindedCommitment, CommitmentCurve, PolyComm,
     },
     evaluation_proof::DensePolynomialOrEvaluations,
+    OpenProof, SRS as _,
 };
 use rayon::prelude::*;
 use std::array;
@@ -120,7 +122,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
 where
     G::BaseField: PrimeField,
 {
@@ -136,8 +138,11 @@ where
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
-    ) -> Result<Self> {
+        index: &ProverIndex<G, OpeningProof>,
+    ) -> Result<Self>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
             witness,
@@ -164,15 +169,18 @@ where
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; COLUMNS],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, OpeningProof>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
-    ) -> Result<Self> {
+    ) -> Result<Self>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
 
         // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_degree() < d1_size {
+        if index.srs.max_poly_size() < d1_size {
             return Err(ProverError::SRSTooSmall);
         }
 
@@ -227,7 +235,7 @@ where
 
         //~ 1. Setup the Fq-Sponge.
         internal_tracing::checkpoint!(internal_traces; set_up_fq_sponge);
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
         let verifier_index_digest = index.verifier_index_digest::<EFqSponge>();
@@ -1428,7 +1436,8 @@ where
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.
         internal_tracing::checkpoint!(internal_traces; create_aggregated_evaluation_proof);
-        let proof = index.srs.open(
+        let proof = OpenProof::open(
+            &*index.srs,
             group_map,
             &polynomials,
             &[zeta, zeta_omega],
@@ -1491,7 +1500,10 @@ pub mod caml {
     use super::*;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
-    use poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
+    use poly_commitment::{
+        commitment::caml::{CamlOpeningProof, CamlPolyComm},
+        evaluation_proof::OpeningProof,
+    };
 
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;
@@ -1702,14 +1714,14 @@ pub mod caml {
     // ProverProof<G> <-> CamlProofWithPublic<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)>
+    impl<G, CamlG, CamlF> From<(ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)>
         for CamlProofWithPublic<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
+        fn from(pp: (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)) -> Self {
             let (public_evals, evals) = pp.0.evals.into();
             CamlProofWithPublic {
                 public_evals,
@@ -1726,7 +1738,7 @@ pub mod caml {
     }
 
     impl<G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
-        for (ProverProof<G>, Vec<G::ScalarField>)
+        for (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)
     where
         CamlF: Clone,
         G: AffineCurve + From<CamlG>,
@@ -1734,7 +1746,7 @@ pub mod caml {
     {
         fn from(
             caml_pp: CamlProofWithPublic<CamlG, CamlF>,
-        ) -> (ProverProof<G>, Vec<G::ScalarField>) {
+        ) -> (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>) {
             let CamlProofWithPublic {
                 public_evals,
                 proof: caml_pp,
