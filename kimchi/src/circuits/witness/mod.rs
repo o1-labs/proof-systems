@@ -1,4 +1,5 @@
 use ark_ff::{Field, PrimeField};
+mod array_cell;
 mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
