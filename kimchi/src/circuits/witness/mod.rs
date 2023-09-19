@@ -1,5 +1,4 @@
 use ark_ff::{Field, PrimeField};
-mod array_cell;
 mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
@@ -9,7 +8,6 @@ mod variable_cell;
 mod variables;
 
 pub use self::{
-    array_cell::ArrayCell,
     constant_cell::ConstantCell,
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
@@ -30,7 +28,7 @@ pub fn init_cell<const N: usize, F: PrimeField>(
     offset: usize,
     row: usize,
     col: usize,
-    layout: &[[Box<dyn WitnessCell<N, F>>; N]],
+    layout: &[[Box<dyn WitnessCell<F>>; N]],
     variables: &Variables<F>,
 ) {
     witness[col][row + offset] = layout[row][col].value(witness, variables);
