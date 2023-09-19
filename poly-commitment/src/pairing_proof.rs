@@ -284,7 +284,7 @@ impl<
 
         let quotient = srs
             .full_srs
-            .commit_non_hiding(&quotient_poly, srs.full_srs.g.len(), None)
+            .commit_non_hiding(&quotient_poly, 1, None)
             .unshifted[0];
 
         Some(PairingProof {
@@ -317,11 +317,11 @@ impl<
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
         let divisor_commitment = srs
             .verifier_srs
-            .commit_non_hiding(&divisor_polynomial(elm), srs.full_srs.g.len(), None)
+            .commit_non_hiding(&divisor_polynomial(elm), 1, None)
             .unshifted[0];
         let eval_commitment = srs
             .full_srs
-            .commit_non_hiding(&eval_polynomial(elm, &evals), srs.full_srs.g.len(), None)
+            .commit_non_hiding(&eval_polynomial(elm, &evals), 1, None)
             .unshifted[0]
             .into_projective();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
@@ -380,7 +380,7 @@ mod tests {
 
         let comms: Vec<_> = polynomials
             .iter()
-            .map(|p| srs.full_srs.commit(p, srs.full_srs.g.len(), None, rng))
+            .map(|p| srs.full_srs.commit(p, 1, None, rng))
             .collect();
 
         let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _, _)> =
