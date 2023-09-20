@@ -10,8 +10,11 @@ pub struct IndexCell<'a> {
 
 impl<'a> IndexCell<'a> {
     /// Create witness cell assigned from a variable name a length
-    pub fn create(name: &'a str, length: usize) -> Box<IndexCell<'a>> {
-        Box::new(IndexCell { name, length })
+    pub fn create(name: &'a str, from: usize, to: usize) -> Box<IndexCell<'a>> {
+        Box::new(IndexCell {
+            name,
+            length: from - to,
+        })
     }
 }
 
