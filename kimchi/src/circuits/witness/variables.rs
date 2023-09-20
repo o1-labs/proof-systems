@@ -1,4 +1,3 @@
-use ark_ff::Field;
 /// Layout variable handling
 ///
 ///   First, you use "anchor" names for the variables when specifying

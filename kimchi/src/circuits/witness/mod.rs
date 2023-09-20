@@ -39,6 +39,7 @@ pub trait WitnessCell<const N: usize, F: Field, T> {
 /// - index: the index within the variable (for IndexCell, 0 otherwise)
 /// - layout: the partial layout to initialize from
 /// - variables: the hashmap of variables to get the values from
+#[allow(clippy::too_many_arguments)]
 pub fn init_cell<const N: usize, F: PrimeField, T>(
     witness: &mut [Vec<F>; N],
     offset: usize,
