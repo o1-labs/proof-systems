@@ -1,8 +1,11 @@
 //! Keccak gadget
-use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
-    gate::GateType,
+use crate::{
+    auto_clone, auto_clone_array,
+    circuits::{
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{constraints::ExprOps, Cache},
+        gate::GateType,
+    },
 };
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
@@ -137,6 +140,7 @@ where
         let state_f = state_from_layout!(state_f);
         // IOTA
         let mut state_g = env.witness_next_chunk(0, 4);
+        let mut tail = env.witness_next_chunk(4, 100);
         state_g.append(&mut tail);
         let state_g = state_from_layout!(state_g);
 
@@ -217,6 +221,73 @@ where
         for (q, c) in rc.iter().enumerate() {
             constraints.push(state_g(0, 0, 0, q) - (state_f(0, 0, 0, q) + c.clone()));
         } // END iota
+
+        constraints
+    }
+}
+
+//~
+//~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...216) | [216...248] | [248...312) |
+//~ | -------------- | --------- | ----------- | ----------- | ----------- | ----------- | ----------- |
+//~ | Curr           | old_state | new_block   | zeros       | dense       | bytes       | reset       |
+//~ | Next           | xor_state |
+//~
+#[derive(Default)]
+pub struct KeccakSponge<F>(PhantomData<F>);
+
+impl<F> Argument<F> for KeccakSponge<F>
+where
+    F: PrimeField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
+    const CONSTRAINTS: u32 = 148;
+
+    // Constraints for one round of the Keccak permutation function
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+        let mut constraints = vec![];
+
+        // LOAD WITNESS
+        let old_state = env.witness_curr_chunk(0, 100);
+        let mut new_block = env.witness_curr_chunk(100, 168);
+        let mut zeros = env.witness_curr_chunk(168, 200);
+        new_block.append(&mut zeros);
+        let xor_state = env.witness_next_chunk(0, 100);
+        let dense = env.witness_curr_chunk(200, 216);
+        let bytes = env.witness_curr_chunk(216, 248);
+        let reset = env.witness_curr_chunk(248, 312);
+        auto_clone_array!(old_state);
+        auto_clone_array!(new_block);
+        auto_clone_array!(xor_state);
+        auto_clone_array!(dense);
+        auto_clone_array!(bytes);
+        auto_clone_array!(reset);
+
+        // LOAD COEFFICIENTS
+        let absorb = env.coeff(0);
+        let squeeze = env.coeff(1);
+        auto_clone!(absorb);
+        auto_clone!(squeeze);
+
+        // STEP absorb: 5 * 5 * 4 = 100 constraints
+        for z in zeros {
+            constraints.push(absorb() * z);
+        }
+        for i in 0..QUARTERS * DIM * DIM {
+            constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
+        }
+        // STEP squeeze: 32 constraints
+        for i in 0..16 {
+            constraints
+                .push(squeeze() * (dense(i) - (bytes(2 * i) + T::two_pow(8) * bytes(2 * i + 1))));
+            constraints.push(
+                squeeze()
+                    * (old_state(i)
+                        - (reset(4 * i)
+                            + T::two_pow(1) * reset(4 * i + 1)
+                            + T::two_pow(2) * reset(4 * i + 2)
+                            + T::two_pow(3) * reset(4 * i + 3))),
+            );
+        }
 
         constraints
     }
