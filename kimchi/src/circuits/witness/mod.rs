@@ -1,5 +1,4 @@
 use ark_ff::{Field, PrimeField};
-use std::any::{type_name, type_name_of_val};
 
 mod constant_cell;
 mod copy_bits_cell;
@@ -24,46 +23,46 @@ pub use self::{
 /// Witness cell interface
 pub trait WitnessCell<const N: usize, F: Field, T> {
     fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<T>, index: usize) -> F;
+
+    fn length(&self) -> usize {
+        1
+    }
 }
 
 /// Initialize a witness cell based on layout and computed variables
-pub fn init_cell<const N: usize, F: PrimeField>(
+pub fn init_cell<const N: usize, F: PrimeField, T>(
     witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
     col: usize,
     index: usize,
-    layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
-    variables: &Variables<F>,
+    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    variables: &Variables<T>,
 ) {
     witness[col + index][row + offset] = layout[row][col].value(witness, variables, index);
 }
 
 /// Initialize a witness row based on layout and computed variables
-pub fn init_row<const N: usize, F: PrimeField>(
+pub fn init_row<const N: usize, F: PrimeField, T>(
     witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
-    layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
-    variables: &Variables<F>,
+    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    variables: &Variables<T>,
 ) {
     for col in 0..layout[0].len() {
-        if type_name_of_val(&layout[row][col]) == type_name::<IndexCell>() {
-            for index in 0..layout[row][col].length {
-                init_cell(witness, offset, row, col, index, layout, variables);
-            }
-        } else {
-            init_cell(witness, offset, row, col, 0, layout, variables);
+        for index in 0..layout[row][col].length() {
+            init_cell(witness, offset, row, col, index, layout, variables);
         }
     }
 }
 
 /// Initialize a witness based on layout and computed variables
-pub fn init<const N: usize, F: PrimeField>(
+pub fn init<const N: usize, F: PrimeField, T>(
     witness: &mut [Vec<F>; N],
     offset: usize,
-    layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
-    variables: &Variables<F>,
+    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    variables: &Variables<T>,
 ) {
     for row in 0..layout.len() {
         init_row(witness, offset, row, layout, variables);
@@ -84,24 +83,23 @@ mod tests {
 
     #[test]
     fn zero_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>; COLUMNS]> =
-            vec![[
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-                ConstantCell::create(PallasField::zero()),
-            ]];
+        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![vec![
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+            ConstantCell::create(PallasField::zero()),
+        ]];
 
         let mut witness: [Vec<PallasField>; COLUMNS] =
             array::from_fn(|_| vec![PallasField::one(); 1]);
@@ -113,7 +111,7 @@ mod tests {
         }
 
         // Set a single cell to zero
-        init_cell(&mut witness, 0, 0, 4, &layout, &variables!());
+        init_cell(&mut witness, 0, 0, 4, 0, &layout, &variables!());
         assert_eq!(witness[4][0], PallasField::zero());
 
         // Set all the cells to zero
@@ -128,8 +126,8 @@ mod tests {
 
     #[test]
     fn mixed_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>; COLUMNS]> = vec![
-            [
+        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![
+            vec![
                 ConstantCell::create(PallasField::from(12u32)),
                 ConstantCell::create(PallasField::from(0xa5a3u32)),
                 ConstantCell::create(PallasField::from(0x800u32)),
@@ -146,7 +144,7 @@ mod tests {
                 ConstantCell::create(PallasField::zero()),
                 ConstantCell::create(PallasField::zero()),
             ],
-            [
+            vec![
                 CopyCell::create(0, 0),
                 CopyBitsCell::create(0, 1, 4, 8),
                 CopyShiftCell::create(0, 2, 8),

@@ -20,4 +20,7 @@ impl<'a, const N: usize, F: Field> WitnessCell<N, F, Vec<F>> for IndexCell<'a> {
         assert!(index < self.length, "index out of bounds of `IndexCell`");
         variables[self.name][index]
     }
+    fn length(&self) -> usize {
+        self.length
+    }
 }
