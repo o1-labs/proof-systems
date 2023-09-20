@@ -30,16 +30,26 @@ pub trait WitnessCell<const N: usize, F: Field, T> {
 }
 
 /// Initialize a witness cell based on layout and computed variables
+/// Inputs:
+/// - witness: the witness to initialize with values
+/// - offset: the row offset of the witness before initialization
+/// - row: the row index inside the partial layout
+/// - col: the column index inside the witness
+/// - cell: the cell index inside the partial layout (for any but IndexCell, it must be the same as col)
+/// - index: the index within the variable (for IndexCell, 0 otherwise)
+/// - layout: the partial layout to initialize from
+/// - variables: the hashmap of variables to get the values from
 pub fn init_cell<const N: usize, F: PrimeField, T>(
     witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
     col: usize,
+    cell: usize,
     index: usize,
     layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
     variables: &Variables<T>,
 ) {
-    witness[col + index][row + offset] = layout[row][col].value(witness, variables, index);
+    witness[col][row + offset] = layout[row][cell].value(witness, variables, index);
 }
 
 /// Initialize a witness row based on layout and computed variables
@@ -50,9 +60,12 @@ pub fn init_row<const N: usize, F: PrimeField, T>(
     layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
     variables: &Variables<T>,
 ) {
-    for col in 0..layout[0].len() {
-        for index in 0..layout[row][col].length() {
-            init_cell(witness, offset, row, col, index, layout, variables);
+    let mut col = 0;
+    for cell in 0..layout[row].len() {
+        // The loop will only run more than once if the cell is an IndexCell
+        for index in 0..layout[row][cell].length() {
+            init_cell(witness, offset, row, col, cell, index, layout, variables);
+            col += 1;
         }
     }
 }
@@ -111,7 +124,7 @@ mod tests {
         }
 
         // Set a single cell to zero
-        init_cell(&mut witness, 0, 0, 4, 0, &layout, &variables!());
+        init_cell(&mut witness, 0, 0, 4, 4, 0, &layout, &variables!());
         assert_eq!(witness[4][0], PallasField::zero());
 
         // Set all the cells to zero
