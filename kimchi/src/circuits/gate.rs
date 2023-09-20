@@ -19,11 +19,7 @@ use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{
-    collections::BTreeMap,
-    io::{Result as IoResult, Write},
-    ops::Index,
-};
+use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
 use super::{
@@ -118,43 +114,7 @@ pub enum GateType {
     // Gates for Keccak
     Xor16,
     Rot64,
-}
-
-#[derive(Clone, Debug, Default)]
-pub struct GateRegistry<F: PrimeField> {
-    ids: BTreeMap<String, usize>,
-    gates: Vec<&'static dyn crate::circuits::argument::Gate<F>>,
-    gate_count: usize,
-}
-
-impl<F: PrimeField> GateRegistry<F> {
-    pub fn register(&self, name: String, gate: impl crate::circuits::argument::Gate<F>) {
-        match self.ids.get_key_value(&name) {
-            Some(_) => (),
-            None => {
-                let id = self.gate_count;
-
-                self.ids.insert(name, id);
-                self.gates[id] = &gate;
-
-                self.gate_count += 1;
-            }
-        }
-    }
-
-    pub fn id(&self, name: String) -> Option<usize> {
-        match self.ids.get_key_value(&name) {
-            None => None,
-            Some((_, id)) => Some(*id),
-        }
-    }
-}
-
-impl<F: PrimeField> Index<usize> for GateRegistry<F> {
-    type Output = &'static dyn crate::circuits::argument::Gate<F>;
-    fn index<'a>(&'a self, i: usize) -> &Self::Output {
-        &self.gates[i]
-    }
+    Conditional,
 }
 
 impl GateType {
@@ -280,51 +240,43 @@ impl<F: PrimeField> Gate<F> {
 
     pub fn argument_type(&self) -> ArgumentType {
         match *self {
-            Gate::Generic(_) => generic::Generic::<F>::ARGUMENT_TYPE,
-            Gate::Poseidon(_) => poseidon::Poseidon::<F>::ARGUMENT_TYPE,
-            Gate::CompleteAdd(_) => complete_add::CompleteAdd::<F>::ARGUMENT_TYPE,
-            Gate::VarBaseMul(_) => varbasemul::VarbaseMul::<F>::ARGUMENT_TYPE,
-            Gate::EndoMul(_) => endosclmul::EndosclMul::<F>::ARGUMENT_TYPE,
-            Gate::EndoMulScalar(_) => endomul_scalar::EndomulScalar::<F>::ARGUMENT_TYPE,
-            Gate::CairoClaim(_) => turshi::Claim::<F>::ARGUMENT_TYPE,
-            Gate::CairoFlags(_) => turshi::Flags::<F>::ARGUMENT_TYPE,
-            Gate::CairoTransition(_) => turshi::Transition::<F>::ARGUMENT_TYPE,
-            Gate::CairoInstruction(_) => turshi::Instruction::<F>::ARGUMENT_TYPE,
-            Gate::RangeCheck0(_) => range_check::circuitgates::RangeCheck0::<F>::ARGUMENT_TYPE,
-            Gate::RangeCheck1(_) => range_check::circuitgates::RangeCheck1::<F>::ARGUMENT_TYPE,
-            Gate::ForeignFieldAdd(_) => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::ARGUMENT_TYPE
-            }
-            Gate::ForeignFieldMul(_) => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::ARGUMENT_TYPE
-            }
-            Gate::Xor16(_) => xor::Xor16::<F>::ARGUMENT_TYPE,
-            Gate::Rot64(_) => rot::Rot64::<F>::ARGUMENT_TYPE,
+            Gate::Generic(_) => ArgumentType::Gate(GateType::Generic),
+            Gate::Poseidon(_) => ArgumentType::Gate(GateType::Poseidon),
+            Gate::CompleteAdd(_) => ArgumentType::Gate(GateType::CompleteAdd),
+            Gate::VarBaseMul(_) => ArgumentType::Gate(GateType::VarBaseMul),
+            Gate::EndoMul(_) => ArgumentType::Gate(GateType::EndoMul),
+            Gate::EndoMulScalar(_) => ArgumentType::Gate(GateType::EndoMulScalar),
+            Gate::CairoClaim(_) => ArgumentType::Gate(GateType::CairoClaim),
+            Gate::CairoFlags(_) => ArgumentType::Gate(GateType::CairoFlags),
+            Gate::CairoTransition(_) => ArgumentType::Gate(GateType::CairoTransition),
+            Gate::CairoInstruction(_) => ArgumentType::Gate(GateType::CairoInstruction),
+            Gate::RangeCheck0(_) => ArgumentType::Gate(GateType::RangeCheck0),
+            Gate::RangeCheck1(_) => ArgumentType::Gate(GateType::RangeCheck1),
+            Gate::ForeignFieldAdd(_) => ArgumentType::Gate(GateType::ForeignFieldAdd),
+            Gate::ForeignFieldMul(_) => ArgumentType::Gate(GateType::ForeignFieldMul),
+            Gate::Xor16(_) => ArgumentType::Gate(GateType::Xor16),
+            Gate::Rot64(_) => ArgumentType::Gate(GateType::Rot64),
         }
     }
 
     pub fn constraint_count(&self) -> u32 {
         match *self {
-            Gate::Generic(_) => generic::Generic::<F>::CONSTRAINTS,
-            Gate::Poseidon(_) => poseidon::Poseidon::<F>::CONSTRAINTS,
-            Gate::CompleteAdd(_) => complete_add::CompleteAdd::<F>::CONSTRAINTS,
-            Gate::VarBaseMul(_) => varbasemul::VarbaseMul::<F>::CONSTRAINTS,
-            Gate::EndoMul(_) => endosclmul::EndosclMul::<F>::CONSTRAINTS,
-            Gate::EndoMulScalar(_) => endomul_scalar::EndomulScalar::<F>::CONSTRAINTS,
-            Gate::CairoClaim(_) => turshi::Claim::<F>::CONSTRAINTS,
-            Gate::CairoFlags(_) => turshi::Flags::<F>::CONSTRAINTS,
-            Gate::CairoTransition(_) => turshi::Transition::<F>::CONSTRAINTS,
-            Gate::CairoInstruction(_) => turshi::Instruction::<F>::CONSTRAINTS,
-            Gate::RangeCheck0(_) => range_check::circuitgates::RangeCheck0::<F>::CONSTRAINTS,
-            Gate::RangeCheck1(_) => range_check::circuitgates::RangeCheck1::<F>::CONSTRAINTS,
-            Gate::ForeignFieldAdd(_) => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::CONSTRAINTS
-            }
-            Gate::ForeignFieldMul(_) => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::CONSTRAINTS
-            }
-            Gate::Xor16(_) => xor::Xor16::<F>::CONSTRAINTS,
-            Gate::Rot64(_) => rot::Rot64::<F>::CONSTRAINTS,
+            Gate::Generic(_) => 0,
+            Gate::Poseidon(_) => 0,
+            Gate::CompleteAdd(_) => 0,
+            Gate::VarBaseMul(_) => 0,
+            Gate::EndoMul(_) => 0,
+            Gate::EndoMulScalar(_) => 0,
+            Gate::CairoClaim(_) => 0,
+            Gate::CairoFlags(_) => 0,
+            Gate::CairoTransition(_) => 0,
+            Gate::CairoInstruction(_) => 0,
+            Gate::RangeCheck0(_) => 0,
+            Gate::RangeCheck1(_) => 0,
+            Gate::ForeignFieldAdd(_) => 0,
+            Gate::ForeignFieldMul(_) => 0,
+            Gate::Xor16(_) => 0,
+            Gate::Rot64(_) => 0,
         }
     }
 
@@ -334,98 +286,64 @@ impl<F: PrimeField> Gate<F> {
         cache: &mut Cache,
     ) -> Vec<T> {
         match *self {
-            Gate::Generic(_) => generic::Generic::<F>::constraint_checks(env, cache),
-            Gate::Poseidon(_) => poseidon::Poseidon::<F>::constraint_checks(env, cache),
-            Gate::CompleteAdd(_) => complete_add::CompleteAdd::<F>::constraint_checks(env, cache),
-            Gate::VarBaseMul(_) => varbasemul::VarbaseMul::<F>::constraint_checks(env, cache),
-            Gate::EndoMul(_) => endosclmul::EndosclMul::<F>::constraint_checks(env, cache),
-            Gate::EndoMulScalar(_) => {
-                endomul_scalar::EndomulScalar::<F>::constraint_checks(env, cache)
-            }
-            Gate::CairoClaim(_) => turshi::Claim::<F>::constraint_checks(env, cache),
-            Gate::CairoFlags(_) => turshi::Flags::<F>::constraint_checks(env, cache),
-            Gate::CairoTransition(_) => turshi::Transition::<F>::constraint_checks(env, cache),
-            Gate::CairoInstruction(_) => turshi::Instruction::<F>::constraint_checks(env, cache),
-            Gate::RangeCheck0(_) => {
-                range_check::circuitgates::RangeCheck0::<F>::constraint_checks(env, cache)
-            }
-            Gate::RangeCheck1(_) => {
-                range_check::circuitgates::RangeCheck1::<F>::constraint_checks(env, cache)
-            }
-            Gate::ForeignFieldAdd(_) => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::constraint_checks(env, cache)
-            }
-            Gate::ForeignFieldMul(_) => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::constraint_checks(env, cache)
-            }
-            Gate::Xor16(_) => xor::Xor16::<F>::constraint_checks(env, cache),
-            Gate::Rot64(_) => rot::Rot64::<F>::constraint_checks(env, cache),
+            Gate::Generic(_) => vec![],
+            Gate::Poseidon(_) => vec![],
+            Gate::CompleteAdd(_) => vec![],
+            Gate::VarBaseMul(_) => vec![],
+            Gate::EndoMul(_) => vec![],
+            Gate::EndoMulScalar(_) => vec![],
+            Gate::CairoClaim(_) => vec![],
+            Gate::CairoFlags(_) => vec![],
+            Gate::CairoTransition(_) => vec![],
+            Gate::CairoInstruction(_) => vec![],
+            Gate::RangeCheck0(_) => vec![],
+            Gate::RangeCheck1(_) => vec![],
+            Gate::ForeignFieldAdd(_) => vec![],
+            Gate::ForeignFieldMul(_) => vec![],
+            Gate::Xor16(_) => vec![],
+            Gate::Rot64(_) => vec![],
         }
     }
 
     pub fn constraints(&self, cache: &mut Cache) -> Vec<expr::E<F>> {
         match *self {
-            Gate::Generic(_) => generic::Generic::<F>::constraints(cache),
-            Gate::Poseidon(_) => poseidon::Poseidon::<F>::constraints(cache),
-            Gate::CompleteAdd(_) => complete_add::CompleteAdd::<F>::constraints(cache),
-            Gate::VarBaseMul(_) => varbasemul::VarbaseMul::<F>::constraints(cache),
-            Gate::EndoMul(_) => endosclmul::EndosclMul::<F>::constraints(cache),
-            Gate::EndoMulScalar(_) => endomul_scalar::EndomulScalar::<F>::constraints(cache),
-            Gate::CairoClaim(_) => turshi::Claim::<F>::constraints(cache),
-            Gate::CairoFlags(_) => turshi::Flags::<F>::constraints(cache),
-            Gate::CairoTransition(_) => turshi::Transition::<F>::constraints(cache),
-            Gate::CairoInstruction(_) => turshi::Instruction::<F>::constraints(cache),
-            Gate::RangeCheck0(_) => range_check::circuitgates::RangeCheck0::<F>::constraints(cache),
-            Gate::RangeCheck1(_) => range_check::circuitgates::RangeCheck1::<F>::constraints(cache),
-            Gate::ForeignFieldAdd(_) => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::constraints(cache)
-            }
-            Gate::ForeignFieldMul(_) => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::constraints(cache)
-            }
-            Gate::Xor16(_) => xor::Xor16::<F>::constraints(cache),
-            Gate::Rot64(_) => rot::Rot64::<F>::constraints(cache),
+            Gate::Generic(_) => vec![],
+            Gate::Poseidon(_) => vec![],
+            Gate::CompleteAdd(_) => vec![],
+            Gate::VarBaseMul(_) => vec![],
+            Gate::EndoMul(_) => vec![],
+            Gate::EndoMulScalar(_) => vec![],
+            Gate::CairoClaim(_) => vec![],
+            Gate::CairoFlags(_) => vec![],
+            Gate::CairoTransition(_) => vec![],
+            Gate::CairoInstruction(_) => vec![],
+            Gate::RangeCheck0(_) => vec![],
+            Gate::RangeCheck1(_) => vec![],
+            Gate::ForeignFieldAdd(_) => vec![],
+            Gate::ForeignFieldMul(_) => vec![],
+            Gate::Xor16(_) => vec![],
+            Gate::Rot64(_) => vec![],
         }
     }
 
     pub fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> expr::E<F> {
         match *self {
-            Gate::Generic(_) => generic::Generic::<F>::combined_constraints(alphas, cache),
-            Gate::Poseidon(_) => poseidon::Poseidon::<F>::combined_constraints(alphas, cache),
-            Gate::CompleteAdd(_) => {
-                complete_add::CompleteAdd::<F>::combined_constraints(alphas, cache)
-            }
-            Gate::VarBaseMul(_) => varbasemul::VarbaseMul::<F>::combined_constraints(alphas, cache),
-            Gate::EndoMul(_) => endosclmul::EndosclMul::<F>::combined_constraints(alphas, cache),
-            Gate::EndoMulScalar(_) => {
-                endomul_scalar::EndomulScalar::<F>::combined_constraints(alphas, cache)
-            }
-            Gate::CairoClaim(_) => turshi::Claim::<F>::combined_constraints(alphas, cache),
-            Gate::CairoFlags(_) => turshi::Flags::<F>::combined_constraints(alphas, cache),
-            Gate::CairoTransition(_) => {
-                turshi::Transition::<F>::combined_constraints(alphas, cache)
-            }
-            Gate::CairoInstruction(_) => {
-                turshi::Instruction::<F>::combined_constraints(alphas, cache)
-            }
-            Gate::RangeCheck0(_) => {
-                range_check::circuitgates::RangeCheck0::<F>::combined_constraints(alphas, cache)
-            }
-            Gate::RangeCheck1(_) => {
-                range_check::circuitgates::RangeCheck1::<F>::combined_constraints(alphas, cache)
-            }
-            Gate::ForeignFieldAdd(_) => {
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::combined_constraints(
-                    alphas, cache,
-                )
-            }
-            Gate::ForeignFieldMul(_) => {
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::combined_constraints(
-                    alphas, cache,
-                )
-            }
-            Gate::Xor16(_) => xor::Xor16::<F>::combined_constraints(alphas, cache),
-            Gate::Rot64(_) => rot::Rot64::<F>::combined_constraints(alphas, cache),
+            Gate::Generic(_) => expr::E::literal(F::zero()),
+            Gate::Poseidon(_) => expr::E::literal(F::zero()),
+            Gate::CompleteAdd(_) => expr::E::literal(F::zero()),
+            Gate::VarBaseMul(_) => expr::E::literal(F::zero()),
+            Gate::EndoMul(_) => expr::E::literal(F::zero()),
+            Gate::EndoMulScalar(_) => expr::E::literal(F::zero()),
+            Gate::CairoClaim(_) => expr::E::literal(F::zero()),
+            Gate::CairoFlags(_) => expr::E::literal(F::zero()),
+            Gate::CairoTransition(_) => expr::E::literal(F::zero()),
+            Gate::CairoInstruction(_) => expr::E::literal(F::zero()),
+            Gate::RangeCheck0(_) => expr::E::literal(F::zero()),
+            Gate::RangeCheck1(_) => expr::E::literal(F::zero()),
+            Gate::ForeignFieldAdd(_) => expr::E::literal(F::zero()),
+            Gate::ForeignFieldMul(_) => expr::E::literal(F::zero()),
+            Gate::Xor16(_) => expr::E::literal(F::zero()),
+            Gate::Rot64(_) => expr::E::literal(F::zero()),
         }
     }
 }

@@ -1,14 +1,14 @@
 //! Foreign field addition gate.
 
 use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
+    argument::{ArgumentEnv, Gate},
     expr::{
         constraints::{compact_limb, ExprOps},
         Cache,
     },
-    gate::GateType,
 };
 use ark_ff::PrimeField;
+use macros::GateImpl;
 use o1_utils::LIMB_COUNT;
 use std::{array, marker::PhantomData};
 
@@ -131,18 +131,23 @@ use std::{array, marker::PhantomData};
 //~
 
 /// Implementation of the foreign field addition gate
-/// - Operates on Curr and Next rows.
-#[derive(Default, Debug, Clone)]
+///   * Operates on Curr and Next rows.
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct ForeignFieldAdd<F>(PhantomData<F>);
 
-impl<F> Argument<F> for ForeignFieldAdd<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for ForeignFieldAdd<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 4;
+    fn name(&self) -> &str {
+        "ForeignFieldAdd"
+    }
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved

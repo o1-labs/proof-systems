@@ -116,16 +116,17 @@
 
 use std::marker::PhantomData;
 
-use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
+use crate::{circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
     expr::{
         constraints::{crumb, ExprOps},
         Cache,
     },
     gate::GateType,
     polynomial::COLUMNS,
-};
+}, define_gate};
 use ark_ff::PrimeField;
+use macros::GateImpl;
 
 //~
 //~ **`RangeCheck0` - Range check constraints**
@@ -163,22 +164,26 @@ use ark_ff::PrimeField;
 //~ |     14 | crumb   `vc7` |
 //~
 //~ where the notation `vpi` and `vci` defined in the "Layout" section above.
-
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct RangeCheck0<F>(PhantomData<F>);
 
-impl<F> Argument<F> for RangeCheck0<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for RangeCheck0<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck0);
-    const CONSTRAINTS: u32 = 10;
+    fn name(&self) -> &str {
+        "RangeCheck0"
+    }
 
     // Constraints for RangeCheck0
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -264,22 +269,26 @@ where
 //~ |     14 | crumb    `v2c8` | crumb `v2c19` |
 //~
 //~ where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
-
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct RangeCheck1<F>(PhantomData<F>);
 
-impl<F> Argument<F> for RangeCheck1<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for RangeCheck1<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::RangeCheck1);
-    const CONSTRAINTS: u32 = 21;
+    fn name(&self) -> &str {
+        "RangeCheck1"
+    }
 
     // Constraints for RangeCheck1
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Column 2 is a 2-bit crumb
         let mut constraints = vec![crumb(&env.witness_curr(2))];

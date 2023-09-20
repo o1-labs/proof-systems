@@ -91,12 +91,12 @@
 use crate::{
     auto_clone_array,
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
+        argument::{ArgumentEnv, Gate},
         expr::{constraints::ExprOps, Cache},
-        gate::GateType,
-    },
+    }, define_gate,
 };
 use ark_ff::PrimeField;
+use macros::GateImpl;
 use std::{array, marker::PhantomData};
 
 /// Compute non-zero intermediate products
@@ -182,18 +182,22 @@ pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
 // ForeignFieldMul - foreign field multiplication gate
 ///    * This gate operates on the Curr and Next rows
 ///    * It uses copy, plookup, crumb and custom constraints
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct ForeignFieldMul<F>(PhantomData<F>);
 
-impl<F> Argument<F> for ForeignFieldMul<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for ForeignFieldMul<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldMul);
-    const CONSTRAINTS: u32 = 11;
-    // DEGREE is 4
+    fn name(&self) -> &str {
+        "ForeignFieldMul"
+    }
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let mut constraints = vec![];
 
         //

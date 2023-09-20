@@ -3,8 +3,8 @@
 use ark_ff::PrimeField;
 use kimchi::{
     circuits::{
-        argument::Argument,
-        expr,
+        argument::{Argument, Gate, GateHelpers},
+        expr::{self, constraints::ExprOps},
         polynomials::{
             complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
             poseidon::Poseidon, varbasemul::VarbaseMul,
@@ -35,38 +35,17 @@ struct Context {
     data: String,
 }
 
-/// Allows us to quickly implement a LaTeX encoder for each gate
-trait LaTeX<F>: Argument<F>
-where
-    F: PrimeField,
-{
-    fn latex() -> Vec<Vec<String>> {
-        Self::constraints(&mut expr::Cache::default())
-            .iter()
-            .map(|c| c.latex_str())
-            .collect()
-    }
-}
-
-/// Implement [LaTeX] for all gates
-impl<T, F> LaTeX<F> for T
-where
-    T: Argument<F>,
-    F: PrimeField + Display,
-{
-}
-
 ///
 pub fn latex_constraints<G>() -> HashMap<&'static str, Vec<Vec<String>>>
 where
     G: CommitmentCurve,
 {
     let mut map = HashMap::new();
-    map.insert("Poseidon", Poseidon::<G::ScalarField>::latex());
-    map.insert("CompleteAdd", CompleteAdd::<G::ScalarField>::latex());
-    map.insert("VarBaseMul", VarbaseMul::<G::ScalarField>::latex());
-    map.insert("EndoMul", EndosclMul::<G::ScalarField>::latex());
-    map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::latex());
+    map.insert("Poseidon", Poseidon::<G::ScalarField>::create().latex());
+    map.insert("CompleteAdd", CompleteAdd::<G::ScalarField>::create().latex());
+    map.insert("VarBaseMul", VarbaseMul::<G::ScalarField>::create().latex());
+    map.insert("EndoMul", EndosclMul::<G::ScalarField>::create().latex());
+    map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::create().latex());
     map
 }
 

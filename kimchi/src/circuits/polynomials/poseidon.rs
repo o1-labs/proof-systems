@@ -27,7 +27,7 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, CurrOrNext, GateType},
         polynomial::COLUMNS,
@@ -36,6 +36,7 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{Field, PrimeField, SquareRootField};
+use macros::GateImpl;
 use mina_poseidon::{
     constants::{PlonkSpongeConstantsKimchi, SpongeConstants},
     poseidon::{sbox, ArithmeticSponge, ArithmeticSpongeParams, Sponge},
@@ -327,19 +328,24 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 ///
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct Poseidon<F>(PhantomData<F>);
 
 impl<F> Poseidon<F> where F: Field {}
 
-impl<F> Argument<F> for Poseidon<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for Poseidon<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
-    const CONSTRAINTS: u32 = 15;
+    fn name(&self) -> &str {
+        "Poseidon"
+    }
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let mut res = vec![];
 
         let mut idx = 0;

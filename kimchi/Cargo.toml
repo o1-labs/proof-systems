@@ -42,6 +42,7 @@ disjoint-set = "0.0.2"
 turshi = { path = "../turshi", version = "0.1.0" }
 poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
 groupmap = { path = "../groupmap", version = "0.1.0" }
+macros = { path = "../macros", version = "0.1.0" }
 mina-curves = { path = "../curves", version = "0.1.0" }
 o1-utils = { path = "../utils", version = "0.1.0" }
 mina-poseidon = { path = "../poseidon", version = "0.1.0" }

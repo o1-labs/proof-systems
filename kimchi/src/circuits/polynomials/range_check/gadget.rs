@@ -5,7 +5,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField};
 use crate::{
     alphas::Alphas,
     circuits::{
-        argument::Argument,
+        argument::{Gate, GateHelpers},
         expr::{Cache, E},
         gate::{CircuitGate, Connect, GateType},
         lookup::{
@@ -123,10 +123,11 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
+// JES: TODO: Remove this function
 pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
-        GateType::RangeCheck0 => RangeCheck0::<F>::CONSTRAINTS,
-        GateType::RangeCheck1 => RangeCheck1::<F>::CONSTRAINTS,
+        GateType::RangeCheck0 => RangeCheck0::<F>::create().constraint_count(),
+        GateType::RangeCheck1 => RangeCheck1::<F>::create().constraint_count(),
         _ => panic!("invalid gate type"),
     }
 }
@@ -136,22 +137,24 @@ pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
+// JES: TODO: Remove this function
 pub fn circuit_gate_constraints<F: PrimeField>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,
 ) -> E<F> {
     match typ {
-        GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas, cache),
-        GateType::RangeCheck1 => RangeCheck1::combined_constraints(alphas, cache),
+        GateType::RangeCheck0 => RangeCheck0::create().combined_constraints(alphas, cache),
+        GateType::RangeCheck1 => RangeCheck1::create().combined_constraints(alphas, cache),
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all range check circuit gate types
+// JES: TODO: Remove this function
 pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
-    RangeCheck0::combined_constraints(alphas, cache)
-        + RangeCheck1::combined_constraints(alphas, cache)
+    RangeCheck0::create().combined_constraints(alphas, cache)
+        + RangeCheck1::create().combined_constraints(alphas, cache)
 }
 
 /// Get the range check lookup table

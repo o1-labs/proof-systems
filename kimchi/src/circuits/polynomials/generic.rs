@@ -34,7 +34,7 @@
 //~
 
 use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
+    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
     expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
@@ -43,6 +43,7 @@ use crate::circuits::{
 use crate::{curve::KimchiCurve, prover_index::ProverIndex};
 use ark_ff::{FftField, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
+use macros::GateImpl;
 use std::array;
 use std::marker::PhantomData;
 
@@ -64,17 +65,22 @@ pub const DOUBLE_GENERIC_COEFFS: usize = GENERIC_COEFFS * 2;
 pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
 
 /// Implementation of the `Generic` gate
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct Generic<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Generic<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for Generic<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
-    const CONSTRAINTS: u32 = 2;
+    fn name(&self) -> &str {
+        "Generic"
+    }
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);
         let right_coeff1 = env.coeff(1);

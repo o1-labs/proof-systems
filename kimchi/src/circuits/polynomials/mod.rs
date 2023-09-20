@@ -14,3 +14,4 @@ pub mod rot;
 pub mod turshi;
 pub mod varbasemul;
 pub mod xor;
+pub mod zero;

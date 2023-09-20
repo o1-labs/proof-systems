@@ -14,22 +14,24 @@
 //~ The rest of the values are inaccessible from the permutation argument, but
 //~ `same_x` is a boolean that is true iff `x1 == x2`.
 //~
-use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
+use crate::{circuits::{
+    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
     expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,
-};
+}, define_gate};
 use ark_ff::{Field, PrimeField};
+use macros::GateImpl;
 use std::marker::PhantomData;
 
-/// This enforces that
-///
-/// r = (z == 0) ? 1 : 0
-///
-/// Additionally, if r == 0, then `z_inv` = 1 / z.
-///
-/// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
+
+// This enforces that
+//
+// r = (z == 0) ? 1 : 0
+//
+// Additionally, if r == 0, then `z_inv` = 1 / z.
+//
+// If r == 1 however (i.e., if z == 0), then z_inv is unconstrained.
 fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
     vec![z_inv * z.clone() - (T::one() - r.clone()), r * z]
 }
@@ -88,17 +90,22 @@ fn zero_check<F: Field, T: ExprOps<F>>(z: T, z_inv: T, r: T) -> Vec<T> {
 /// for doubling.
 ///
 /// See [here](https://en.wikipedia.org/wiki/Elliptic_curve#The_group_law) for the formulas used.
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct CompleteAdd<F>(PhantomData<F>);
 
-impl<F> Argument<F> for CompleteAdd<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for CompleteAdd<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::CompleteAdd);
-    const CONSTRAINTS: u32 = 7;
+    fn name(&self) -> &str {
+        "CompleteAdd"
+    }
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = env.witness_curr(0);
         let y1 = env.witness_curr(1);

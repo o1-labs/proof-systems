@@ -7,7 +7,7 @@ use o1_utils::foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers};
 use crate::{
     alphas::Alphas,
     circuits::{
-        argument::Argument,
+        argument::GateHelpers,
         expr::{Cache, E},
         gate::{CircuitGate, GateType},
         lookup::{
@@ -96,28 +96,31 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
+// JES: TODO: REMOVE THIS
 pub fn circuit_gate_constraints<F: PrimeField>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,
 ) -> E<F> {
     match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas, cache),
+        GateType::ForeignFieldMul => ForeignFieldMul::create().combined_constraints(alphas, cache),
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Number of constraints for a given foreign field mul circuit gate type
+// JES: TODO: REMOVE THIS
 pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::<F>::CONSTRAINTS,
+        GateType::ForeignFieldMul => ForeignFieldMul::<F>::create().constraint_count(),
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all foreign field multiplication circuit gates
+// JES: TODO: REMOVE THIS
 pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
-    ForeignFieldMul::combined_constraints(alphas, cache)
+    ForeignFieldMul::create().combined_constraints(alphas, cache)
 }
 
 /// Get the foreign field multiplication lookup table

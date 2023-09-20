@@ -3,7 +3,7 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
         constraints::ConstraintSystem,
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
@@ -12,6 +12,7 @@ use crate::{
     curve::KimchiCurve,
 };
 use ark_ff::{BitIteratorLE, Field, PrimeField};
+use macros::GateImpl;
 use std::array;
 use std::marker::PhantomData;
 
@@ -157,17 +158,22 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~   * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`
 //~
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct EndomulScalar<F>(PhantomData<F>);
 
-impl<F> Argument<F> for EndomulScalar<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for EndomulScalar<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
-    const CONSTRAINTS: u32 = 11;
+    fn name(&self) -> &str {
+        "EndomulScalar"
+    }
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);

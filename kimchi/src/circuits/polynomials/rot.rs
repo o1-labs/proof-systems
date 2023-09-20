@@ -3,7 +3,7 @@
 use super::range_check::witness::range_check_0_row;
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
         expr::{
             constraints::{crumb, ExprOps},
             Cache,
@@ -20,6 +20,7 @@ use crate::{
     variable_map,
 };
 use ark_ff::{PrimeField, SquareRootField};
+use macros::GateImpl;
 use std::{array, marker::PhantomData};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -199,21 +200,26 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ Since there is one value of the coordinates (x, y) where the rotation is 0 bits, we can skip that step in the
 //~ gadget. This will save us one gate, and thus the whole 25-1=24 rotations will be performed in just 48 rows.
 //~
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct Rot64<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Rot64<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for Rot64<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Rot64);
-    const CONSTRAINTS: u32 = 11;
+    fn name(&self) -> &str {
+        "Rot"
+    }
 
     // Constraints for rotation of three 64-bit words by any three number of bits modulo 64
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row
     //   * Shifts the words by `rot` bits and then adds the excess to obtain the rotated word.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
         let mut constraints = (7..COLUMNS)

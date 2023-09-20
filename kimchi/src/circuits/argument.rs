@@ -5,14 +5,13 @@
 //! which apply only in some points (rows) of the domain.
 
 use std::marker::PhantomData;
-
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
     domains::{Domain, EvaluationDomains},
-    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants, self},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -192,20 +191,71 @@ impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
     }
 }
 
-pub trait Gate<F: PrimeField>: std::fmt::Debug {
-    fn gate_name(&self) -> &str;
+pub trait Gate<F: PrimeField, T: ExprOps<F>>: std::fmt::Debug {
+    fn name(&self) -> &str;
 
-    fn constraint_checks<T: ExprOps<F>>(
+    fn constraint_checks(
         &self,
         env: &ArgumentEnv<F, T>,
         cache: &mut Cache,
-    ) -> Vec<T>
-    where
-        Self: Sized;
+    ) -> Vec<T>;
+}
+
+#[macro_export]
+macro_rules! define_gate {
+    ($name:ident<$typ:ident : $bound:ident > , $comment:literal) => {
+        #[doc = "The `"]
+        #[doc = stringify!($name)]
+        #[doc = "`"]
+        #[doc = " gate"]
+        #[doc = $comment]
+        #[derive(Default, Debug, Clone)]
+        pub struct $name<$typ>(PhantomData<$typ>);
+        impl<$typ: $bound> $name<F> {
+            pub fn create<S: ExprOps<$typ>>() -> Box<dyn Gate<$typ, S>> {
+                Box::new(Self::default())
+            }
+        }
+    };
+}
+
+pub trait GateHelpers<F: PrimeField> {
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>;
+    fn constraint_count(&self) -> u32;
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>;
+    fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64;
+    fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain;
+    fn latex(&self) -> Vec<Vec<String>>;
+}
+
+impl<F> GateHelpers<F> for dyn Gate<F, expr::Expr<ConstantExpr<F>>>
+where
+    F: PrimeField,
+{
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>
+    {
+        // Generate constraints
+        self.constraint_checks(&ArgumentEnv::default(), cache)
+    }
+
+    fn constraint_count(&self) -> u32
+    {
+        self.constraints(&mut super::expr::Cache::default()).len() as u32
+    }
+
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>
+    {
+        let constraints = self.constraints(cache);
+        let alphas =
+            alphas.get_exponents(ArgumentType::Gate(GateType::Zero), constraints.len() as u32);
+        let combined_constraints = E::combine_constraints(alphas, constraints);
+
+        // TODO: Refactor gate_type into u32
+        /* index(gate_type) * */
+        combined_constraints
+    }
 
     fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64
-    where
-        Self: Sized,
     {
         let mut powers_of_alpha = crate::alphas::Alphas::<F>::default();
         powers_of_alpha.register(
@@ -217,8 +267,6 @@ pub trait Gate<F: PrimeField>: std::fmt::Debug {
     }
 
     fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain
-    where
-        Self: Sized,
     {
         let degree = self.degree(eval_domains);
         return if degree <= eval_domains.d1.size {
@@ -234,33 +282,10 @@ pub trait Gate<F: PrimeField>: std::fmt::Debug {
         };
     }
 
-    fn constraint_count(&self) -> u32
-    where
-        Self: Sized,
-    {
-        self.constraints(&mut super::expr::Cache::default()).len() as u32
-    }
-
-    /// Returns the set of constraints required to prove this argument.
-    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>
-    where
-        Self: Sized,
-    {
-        // Generate constraints
-        self.constraint_checks(&ArgumentEnv::default(), cache)
-    }
-
-    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>
-    where
-        Self: Sized,
-    {
-        let constraints = self.constraints(cache);
-        let alphas =
-            alphas.get_exponents(ArgumentType::Gate(GateType::Zero), constraints.len() as u32);
-        let combined_constraints = E::combine_constraints(alphas, constraints);
-
-        // TODO: Refactor gate_type into u32
-        /* index(gate_type) * */
-        combined_constraints
+    fn latex(&self) -> Vec<Vec<String>> {
+        self.constraints(&mut expr::Cache::default())
+            .iter()
+            .map(|c| c.latex_str())
+            .collect()
     }
 }

@@ -1,4 +1,5 @@
 mod and;
+mod conditional;
 mod ec;
 mod endomul;
 mod endomul_scalar;

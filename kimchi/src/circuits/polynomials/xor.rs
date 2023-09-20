@@ -3,7 +3,7 @@
 //! and the code for witness generation for the XOR gadget.
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
+        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, Connect, GateType},
         lookup::{
@@ -17,6 +17,7 @@ use crate::{
     variable_map,
 };
 use ark_ff::{PrimeField, SquareRootField};
+use macros::GateImpl;
 use num_bigint::BigUint;
 use o1_utils::{BigUintFieldHelpers, BigUintHelpers, BitwiseOps, FieldHelpers};
 use std::{array, marker::PhantomData};
@@ -136,21 +137,26 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ use the 8-bit XOR table.
 //~ ```
 
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct Xor16<F>(PhantomData<F>);
 
-impl<F> Argument<F> for Xor16<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for Xor16<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Xor16);
-    const CONSTRAINTS: u32 = 3;
+    fn name(&self) -> &str {
+        "Xor16"
+    }
 
     // Constraints for Xor16
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let two = T::from(2u64);
         // in1 = in1_0 + in1_1 * 2^4 + in1_2 * 2^8 + in1_3 * 2^12 + next_in1 * 2^16
         // in2 = in2_0 + in2_1 * 2^4 + in2_2 * 2^8 + in2_3 * 2^12 + next_in2 * 2^16

@@ -11,12 +11,13 @@
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
 use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
+    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
     expr::{constraints::ExprOps, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::{FftField, PrimeField};
+use macros::GateImpl;
 use std::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
 
@@ -397,17 +398,22 @@ pub fn witness<F: FftField + std::fmt::Display>(
 }
 
 /// Implementation of the `VarbaseMul` gate
-#[derive(Default, Debug, Clone)]
+#[derive(Default, Debug, Clone, GateImpl)]
 pub struct VarbaseMul<F>(PhantomData<F>);
 
-impl<F> Argument<F> for VarbaseMul<F>
+impl<F, T: ExprOps<F>> Gate<F, T> for VarbaseMul<F>
 where
     F: PrimeField,
 {
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
-    const CONSTRAINTS: u32 = 21;
+    fn name(&self) -> &str {
+        "VarbaseMul"
+    }
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks(
+        &self,
+        env: &ArgumentEnv<F, T>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let Layout {
             base,
             accs,
