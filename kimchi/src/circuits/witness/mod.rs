@@ -1,4 +1,5 @@
 use ark_ff::{Field, PrimeField};
+mod array_cell;
 mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
@@ -8,6 +9,7 @@ mod variable_cell;
 mod variables;
 
 pub use self::{
+    array_cell::ArrayCell,
     constant_cell::ConstantCell,
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
@@ -18,8 +20,8 @@ pub use self::{
 };
 
 /// Witness cell interface
-pub trait WitnessCell<const N: usize, F: Field> {
-    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<F>) -> F;
+pub trait WitnessCell<const N: usize, F: Field, T> {
+    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<T>) -> F;
 }
 
 /// Initialize a witness cell based on layout and computed variables
@@ -28,7 +30,7 @@ pub fn init_cell<const N: usize, F: PrimeField>(
     offset: usize,
     row: usize,
     col: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; N]],
+    layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
     variables: &Variables<F>,
 ) {
     witness[col][row + offset] = layout[row][col].value(witness, variables);
@@ -39,7 +41,7 @@ pub fn init_row<const N: usize, F: PrimeField>(
     witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
-    layout: &[[Box<dyn WitnessCell<N, F>>; N]],
+    layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
     variables: &Variables<F>,
 ) {
     for col in 0..N {
@@ -51,7 +53,7 @@ pub fn init_row<const N: usize, F: PrimeField>(
 pub fn init<const N: usize, F: PrimeField>(
     witness: &mut [Vec<F>; N],
     offset: usize,
-    layout: &[[Box<dyn WitnessCell<N, F>>; N]],
+    layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
     variables: &Variables<F>,
 ) {
     for row in 0..layout.len() {
@@ -73,23 +75,24 @@ mod tests {
 
     #[test]
     fn zero_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField>>; COLUMNS]> = vec![[
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-            ConstantCell::create(PallasField::zero()),
-        ]];
+        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>; COLUMNS]> =
+            vec![[
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+                ConstantCell::create(PallasField::zero()),
+            ]];
 
         let mut witness: [Vec<PallasField>; COLUMNS] =
             array::from_fn(|_| vec![PallasField::one(); 1]);
@@ -116,7 +119,7 @@ mod tests {
 
     #[test]
     fn mixed_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField>>; COLUMNS]> = vec![
+        let layout: Vec<[Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>; COLUMNS]> = vec![
             [
                 ConstantCell::create(PallasField::from(12u32)),
                 ConstantCell::create(PallasField::from(0xa5a3u32)),

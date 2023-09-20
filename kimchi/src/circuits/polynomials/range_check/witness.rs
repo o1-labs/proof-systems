@@ -29,7 +29,7 @@ use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 ///     For example, we can convert the `RangeCheck0` circuit gate into
 ///     a 64-bit lookup by adding two copy constraints to constrain
 ///     columns 1 and 2 to zero.
-fn layout<F: PrimeField>() -> Vec<[Box<dyn WitnessCell<COLUMNS, F>>; COLUMNS]> {
+fn layout<F: PrimeField>() -> Vec<[Box<dyn WitnessCell<COLUMNS, F, F>>; COLUMNS]> {
     vec![
         /* row 1, RangeCheck0 row */
         range_check_0_row("v0", 0),
@@ -86,7 +86,7 @@ fn layout<F: PrimeField>() -> Vec<[Box<dyn WitnessCell<COLUMNS, F>>; COLUMNS]> {
 pub fn range_check_0_row<F: PrimeField>(
     limb_name: &'static str,
     row: usize,
-) -> [Box<dyn WitnessCell<COLUMNS, F>>; COLUMNS] {
+) -> [Box<dyn WitnessCell<COLUMNS, F, F>>; COLUMNS] {
     [
         VariableCell::create(limb_name),
         /* 12-bit copies */
