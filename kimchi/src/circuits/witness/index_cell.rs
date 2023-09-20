@@ -1,21 +1,21 @@
 use super::{variables::Variables, WitnessCell};
 use ark_ff::Field;
 
-/// Witness cell assigned from a variable
+/// Witness cell assigned from an indexable variable
 /// See [Variables] for more details
-pub struct ArrayCell<'a> {
+pub struct IndexCell<'a> {
     name: &'a str,
     index: usize,
 }
 
-impl<'a> ArrayCell<'a> {
+impl<'a> IndexCell<'a> {
     /// Create witness cell assigned from a variable name
-    pub fn create(name: &'a str, index: usize) -> Box<ArrayCell<'a>> {
-        Box::new(ArrayCell { name, index })
+    pub fn create(name: &'a str, index: usize) -> Box<IndexCell<'a>> {
+        Box::new(IndexCell { name, index })
     }
 }
 
-impl<'a, const N: usize, F: Field> WitnessCell<N, F, Vec<F>> for ArrayCell<'a> {
+impl<'a, const N: usize, F: Field> WitnessCell<N, F, Vec<F>> for IndexCell<'a> {
     fn value(&self, _witness: &mut [Vec<F>; N], variables: &Variables<Vec<F>>) -> F {
         variables[self.name][self.index]
     }

@@ -1,19 +1,19 @@
 use ark_ff::{Field, PrimeField};
-mod array_cell;
 mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
 mod copy_shift_cell;
+mod index_cell;
 mod variable_bits_cell;
 mod variable_cell;
 mod variables;
 
 pub use self::{
-    array_cell::ArrayCell,
     constant_cell::ConstantCell,
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
     copy_shift_cell::CopyShiftCell,
+    index_cell::IndexCell,
     variable_bits_cell::VariableBitsCell,
     variable_cell::VariableCell,
     variables::{variable_map, variables, Variables},
