@@ -5,18 +5,19 @@ use ark_ff::Field;
 /// See [Variables] for more details
 pub struct IndexCell<'a> {
     name: &'a str,
-    index: usize,
+    length: usize,
 }
 
 impl<'a> IndexCell<'a> {
-    /// Create witness cell assigned from a variable name
-    pub fn create(name: &'a str, index: usize) -> Box<IndexCell<'a>> {
-        Box::new(IndexCell { name, index })
+    /// Create witness cell assigned from a variable name a length
+    pub fn create(name: &'a str, length: usize) -> Box<IndexCell<'a>> {
+        Box::new(IndexCell { name, length })
     }
 }
 
 impl<'a, const N: usize, F: Field> WitnessCell<N, F, Vec<F>> for IndexCell<'a> {
-    fn value(&self, _witness: &mut [Vec<F>; N], variables: &Variables<Vec<F>>) -> F {
-        variables[self.name][self.index]
+    fn value(&self, _witness: &mut [Vec<F>; N], variables: &Variables<Vec<F>>, index: usize) -> F {
+        assert!(index < self.length, "index out of bounds of `IndexCell`");
+        variables[self.name][index]
     }
 }

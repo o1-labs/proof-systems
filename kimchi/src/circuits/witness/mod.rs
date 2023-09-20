@@ -1,4 +1,6 @@
 use ark_ff::{Field, PrimeField};
+use std::any::{type_name, type_name_of_val};
+
 mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
@@ -21,7 +23,7 @@ pub use self::{
 
 /// Witness cell interface
 pub trait WitnessCell<const N: usize, F: Field, T> {
-    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<T>) -> F;
+    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<T>, index: usize) -> F;
 }
 
 /// Initialize a witness cell based on layout and computed variables
@@ -30,10 +32,11 @@ pub fn init_cell<const N: usize, F: PrimeField>(
     offset: usize,
     row: usize,
     col: usize,
+    index: usize,
     layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
     variables: &Variables<F>,
 ) {
-    witness[col][row + offset] = layout[row][col].value(witness, variables);
+    witness[col + index][row + offset] = layout[row][col].value(witness, variables, index);
 }
 
 /// Initialize a witness row based on layout and computed variables
@@ -44,8 +47,14 @@ pub fn init_row<const N: usize, F: PrimeField>(
     layout: &[[Box<dyn WitnessCell<N, F, F>>; N]],
     variables: &Variables<F>,
 ) {
-    for col in 0..N {
-        init_cell(witness, offset, row, col, layout, variables);
+    for col in 0..layout[0].len() {
+        if type_name_of_val(&layout[row][col]) == type_name::<IndexCell>() {
+            for index in 0..layout[row][col].length {
+                init_cell(witness, offset, row, col, index, layout, variables);
+            }
+        } else {
+            init_cell(witness, offset, row, col, 0, layout, variables);
+        }
     }
 }
 

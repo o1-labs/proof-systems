@@ -14,7 +14,7 @@ impl<F: Field> ConstantCell<F> {
 }
 
 impl<const N: usize, F: Field> WitnessCell<N, F, F> for ConstantCell<F> {
-    fn value(&self, _witness: &mut [Vec<F>; N], _variables: &Variables<F>) -> F {
+    fn value(&self, _witness: &mut [Vec<F>; N], _variables: &Variables<F>, _index: usize) -> F {
         self.value
     }
 }

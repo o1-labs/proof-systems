@@ -16,7 +16,7 @@ impl CopyShiftCell {
 }
 
 impl<const N: usize, F: Field> WitnessCell<N, F, F> for CopyShiftCell {
-    fn value(&self, witness: &mut [Vec<F>; N], _variables: &Variables<F>) -> F {
+    fn value(&self, witness: &mut [Vec<F>; N], _variables: &Variables<F>, _index: usize) -> F {
         F::from(2u32).pow([self.shift]) * witness[self.col][self.row]
     }
 }
