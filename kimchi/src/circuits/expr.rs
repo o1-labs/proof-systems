@@ -284,7 +284,7 @@ impl<C: ColTrait> Variable<C> {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 /// An arithmetic expression over
 ///
 /// - the operations *, +, -, ^
@@ -479,7 +479,7 @@ impl Cache {
 }
 
 /// A binary operation
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Op2 {
     Add,
     Mul,
@@ -498,7 +498,7 @@ impl Op2 {
 }
 
 /// The feature flags that can be used to enable or disable parts of constraints.
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize, PartialOrd, Ord, Hash)]
 #[cfg_attr(
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
@@ -605,7 +605,7 @@ impl ColTrait for Column {
 /// This represents a PLONK "custom constraint", which enforces that
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Expr<C, Col: ColTrait = Column> {
     Constant(C),
     Cell(Variable<Col>),
@@ -3147,5 +3147,251 @@ pub mod test {
             E::from(5u64) * (Expr::square(E::from(5u64)) + E::from(7u64))
         );
         assert_eq!(test_4::<Fp, Fp>(Fp::from(5u64)), Fp::from(160u64));
+    }
+}
+
+mod quadricization {
+    use super::{ColTrait, Expr, Op2, Variable};
+    use crate::circuits::gate::CurrOrNext;
+    use ark_ff::{One, Zero};
+    use std::{
+        collections::{BTreeMap, HashMap},
+        fmt::Debug,
+        hash::Hash,
+        ops::Neg,
+    };
+
+    ///extension of columns with necessary extra columns
+
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+    pub enum ColumnExtended<S: ColTrait + Eq + Hash> {
+        Inner(S),
+        ///extra column used to reduce degree of expressions
+        Extended(usize),
+    }
+    //creates a new equivalent expression with degree < 2
+    // fn quadricize<C:ColTrait>(exp)->
+    impl<S: ColTrait> ColTrait for ColumnExtended<S> {
+        fn dom(&self) -> super::Domain {
+            match self {
+                ColumnExtended::Inner(s) => s.dom(),
+                ColumnExtended::Extended(_) => super::Domain::D1,
+            }
+        }
+
+        fn latex(&self) -> String {
+            match self {
+                ColumnExtended::Inner(s) => s.latex(),
+                ColumnExtended::Extended(i) => format!("e_{{{i}}}"),
+            }
+        }
+
+        fn text(&self) -> String {
+            match self {
+                ColumnExtended::Inner(s) => s.text(),
+                ColumnExtended::Extended(i) => format!("e[{i}]"),
+            }
+        }
+
+        fn evaluate<F: ark_ff::Field>(
+            self,
+            evals: &crate::proof::ProofEvaluations<crate::proof::PointEvaluations<F>>,
+        ) -> Option<crate::proof::PointEvaluations<F>> {
+            match self {
+                ColumnExtended::Inner(s) => s.evaluate(evals),
+                ///TODO: a change in evals will be required so that it can also provide access to the extended columns
+                ColumnExtended::Extended(e) => todo!(),
+            }
+        }
+
+        fn make_witness(i: usize) -> Self {
+            Self::Inner(S::make_witness(i))
+        }
+
+        fn make_coefficient(i: usize) -> Self {
+            Self::Inner(S::make_coefficient(i))
+        }
+    }
+    ///records expressions that have been extracted into an extra column
+    struct ExprRecorder<C, Col>
+    where
+        C: Hash + Eq,
+        Col: ColTrait + Hash + Eq,
+    {
+        recorded_exprs: HashMap<Expr<C, ColumnExtended<Col>>, usize>,
+        next: usize,
+    }
+
+    impl<C: Hash + Eq, Col: ColTrait + Hash + Eq> ExprRecorder<C, Col> {
+        fn new() -> Self {
+            Self {
+                recorded_exprs: Default::default(),
+                next: 0,
+            }
+        }
+        fn get_id(&mut self, e: Expr<C, ColumnExtended<Col>>) -> usize {
+            *self.recorded_exprs.entry(e).or_insert_with(|| {
+                let id = self.next;
+                self.next += 1;
+                id
+            })
+        }
+        fn into_constraints(self) -> Vec<Expr<C, ColumnExtended<Col>>> {
+            let ExprRecorder { recorded_exprs, .. } = self;
+            let mut new_constraints = BTreeMap::new();
+            for (exp, id) in recorded_exprs.into_iter() {
+                let left = Box::new(extended(id));
+                let constraint =
+                    Expr::<C, ColumnExtended<Col>>::BinOp(Op2::Sub, left, Box::new(exp));
+                new_constraints.insert(id, constraint);
+            }
+            new_constraints.into_values().collect()
+        }
+    }
+
+    fn extended<C, Col: ColTrait>(id: usize) -> Expr<C, ColumnExtended<Col>> {
+        Expr::Cell(Variable {
+            col: ColumnExtended::Extended(id),
+            row: CurrOrNext::Curr,
+        })
+    }
+
+    impl<C, Col> Expr<C, Col>
+    where
+        C: Zero + One + Neg<Output = C> + PartialEq + Clone + Hash + Eq + Debug,
+        Col: ColTrait + Hash + Eq,
+    {
+        /// returns self transformed into a degree 2 or less constraint and a set of additional constraints,
+        /// each for one of the new columns
+        pub fn reduce_degree_to_2(
+            self,
+        ) -> (
+            Expr<C, ColumnExtended<Col>>,
+            Vec<Expr<C, ColumnExtended<Col>>>,
+        ) {
+            let mut rec = ExprRecorder::new();
+            let exp = self.reduce_degree_to_2_rec(&mut rec);
+            let new_constraints = rec.into_constraints();
+            (exp, new_constraints)
+        }
+        fn pow_to_mul(self, p: u64) -> Self {
+            let e = Box::new(self);
+            let mul = |a, b| Expr::BinOp(Op2::Mul, a, b);
+            let e_2 = Box::new(Expr::Square(e.clone()));
+            let new_exp = match p {
+                2 => *e_2,
+                3 => mul(e, e_2),
+                4..=8 => {
+                    let e_4 = Box::new(Expr::Square(e_2.clone()));
+                    match p {
+                        4 => *e_4,
+                        5 => mul(e, e_4),
+                        6 => mul(e_2, e_4),
+                        7 => mul(e, Box::new(mul(e_2, e_4))),
+                        8 => e_4.square(),
+                        _ => unreachable!(),
+                    }
+                }
+                _ => panic!("unsupported"),
+            };
+            new_exp
+        }
+        fn reduce_degree_to_2_rec(
+            self,
+            rec: &mut ExprRecorder<C, Col>,
+        ) -> Expr<C, ColumnExtended<Col>> {
+            let trivial_map = |c| ColumnExtended::Inner(c);
+            let degree = self.degree(4) / 4;
+            if degree <= 2 {
+                return self.map_column(&trivial_map);
+            }
+
+            type E<C, Col> = Expr<C, ColumnExtended<Col>>;
+            let e = match self {
+                e @ Expr::VanishesOnLast4Rows
+                | e @ Expr::UnnormalizedLagrangeBasis(_)
+                | e @ Expr::Constant(_)
+                | e @ Expr::Cell(_) => e.map_column(&trivial_map),
+
+                Expr::Double(e) => E::<C, Col>::Double(Box::new(e.reduce_degree_to_2_rec(rec))),
+                Expr::Square(e) => E::<C, Col>::Square(Box::new(e.reduce_degree_to_1(rec))),
+                Expr::BinOp(op, e1, e2) => match op {
+                    op @ Op2::Add | op @ Op2::Sub => {
+                        let e1 = Box::new(e1.reduce_degree_to_2_rec(rec));
+                        let e2 = Box::new(e2.reduce_degree_to_2_rec(rec));
+                        E::<C, Col>::BinOp(op, e1, e2)
+                    }
+                    Op2::Mul => {
+                        let e1 = Box::new(e1.reduce_degree_to_1(rec));
+                        let e2 = Box::new(e2.reduce_degree_to_1(rec));
+                        E::<C, Col>::BinOp(Op2::Mul, e1, e2)
+                    }
+                },
+                //only supporting 1..=8 for simplicity, but arbitrary exponent could be
+                //implemented, ideally an efficient fixed exponent algorithm
+                Expr::Pow(_, 0) => {
+                    panic!("no");
+                }
+                Expr::Pow(e, 1) => E::<C, Col>::Pow(Box::new(e.reduce_degree_to_2_rec(rec)), 1),
+                Expr::Pow(e, p) => {
+                    let new_exp = e.pow_to_mul(p);
+                    new_exp.reduce_degree_to_2_rec(rec)
+                }
+                Expr::Cache(id, e) => {
+                    let e = e.reduce_degree_to_2_rec(rec);
+                    E::<C, Col>::Cache(id, Box::new(e))
+                }
+                Expr::IfFeature(flag, e1, e2) => {
+                    let e1 = Box::new(e1.reduce_degree_to_2_rec(rec));
+                    let e2 = Box::new(e2.reduce_degree_to_2_rec(rec));
+                    E::<C, Col>::IfFeature(flag, e1, e2)
+                }
+            };
+            e
+        }
+
+        fn reduce_degree_to_1(
+            self,
+            rec: &mut ExprRecorder<C, Col>,
+        ) -> Expr<C, ColumnExtended<Col>> {
+            let trivial_map = |c| ColumnExtended::Inner(c);
+            let degree = self.degree(4) / 4;
+            if degree <= 1 {
+                return self.map_column(&trivial_map);
+            }
+            let extended = |id| {
+                Expr::Cell(Variable {
+                    col: ColumnExtended::Extended(id),
+                    row: CurrOrNext::Curr,
+                })
+            };
+            let exp2 = self.reduce_degree_to_2_rec(rec);
+            let id = rec.get_id(exp2);
+            extended(id)
+        }
+    }
+    #[test]
+    fn poseidon_exp() {
+        use super::Cache;
+        use crate::{
+            alphas::Alphas,
+            circuits::{argument::Argument, polynomials::poseidon::Poseidon},
+        };
+        use mina_curves::pasta::Fp;
+
+        let mut alphas = Alphas::<Fp>::default();
+        alphas.register(Poseidon::<Fp>::ARGUMENT_TYPE, Poseidon::<Fp>::CONSTRAINTS);
+
+        let mut cache = Cache::default();
+        let exp = Poseidon::combined_constraints(&alphas, &mut cache);
+        // let exp = Poseidon::<Fp>::constraints(&mut cache);
+        // let exp = exp[0].clone();
+        println!("original exp (d={}): {:#?}", exp.degree(4) / 4, &exp);
+        let (exp2, extra_constraints) = exp.reduce_degree_to_2();
+        println!("degree 2 equivalent: {:#?}", exp2);
+        println!("extra constraints:");
+        for (i, c) in extra_constraints.into_iter().enumerate() {
+            println!("c_{}: {:?}", i, c);
+        }
     }
 }
