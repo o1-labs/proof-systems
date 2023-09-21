@@ -227,7 +227,7 @@ where
 }
 
 //~
-//~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...216) | [216...248] | [248...312) |
+//~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...300) | [300...500] | [500...900) |
 //~ | -------------- | --------- | ----------- | ----------- | ----------- | ----------- | ----------- |
 //~ | Curr           | old_state | new_block   | zeros       | dense       | bytes       | reset       |
 //~ | Next           | xor_state |
@@ -240,7 +240,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
-    const CONSTRAINTS: u32 = 148;
+    const CONSTRAINTS: u32 = 448;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -252,9 +252,9 @@ where
         let mut zeros = env.witness_curr_chunk(168, 200);
         new_block.append(&mut zeros);
         let xor_state = env.witness_next_chunk(0, 100);
-        let dense = env.witness_curr_chunk(200, 216);
-        let bytes = env.witness_curr_chunk(216, 248);
-        let reset = env.witness_curr_chunk(248, 312);
+        let dense = env.witness_curr_chunk(200, 300);
+        let bytes = env.witness_curr_chunk(300, 500);
+        let reset = env.witness_curr_chunk(500, 900);
         auto_clone_array!(old_state);
         auto_clone_array!(new_block);
         auto_clone_array!(xor_state);
@@ -263,30 +263,33 @@ where
         auto_clone_array!(reset);
 
         // LOAD COEFFICIENTS
-        let absorb = env.coeff(0);
-        let squeeze = env.coeff(1);
+        let root = env.coeff(0);
+        let absorb = env.coeff(1);
+        let squeeze = env.coeff(2);
+        auto_clone!(root);
         auto_clone!(absorb);
         auto_clone!(squeeze);
 
-        // STEP absorb: 5 * 5 * 4 = 100 constraints
+        // STEP absorb: 32 + 100 * 4 = 432
         for z in zeros {
+            // Absorb phase pads with zeros the new state
             constraints.push(absorb() * z);
         }
         for i in 0..QUARTERS * DIM * DIM {
+            // In first absorb, root state is all zeros
+            constraints.push(root() * old_state(i));
+            // Absorbs the new block by performing XOR with the old state
             constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
+            // Check resets correspond to the decomposition of the new state
+            constraints.push(absorb() * (new_block(i) - compose_shifts_from_vec(reset, i)));
+            // Both phases: check correctness of each dense term (16 bits) by composing two bytes
+            constraints.push(dense(i) - (bytes(2 * i) + T::two_pow(8) * bytes(2 * i + 1)));
         }
-        // STEP squeeze: 32 constraints
+
+        // STEP squeeze: 16 constraints
         for i in 0..16 {
-            constraints
-                .push(squeeze() * (dense(i) - (bytes(2 * i) + T::two_pow(8) * bytes(2 * i + 1))));
-            constraints.push(
-                squeeze()
-                    * (old_state(i)
-                        - (reset(4 * i)
-                            + T::two_pow(1) * reset(4 * i + 1)
-                            + T::two_pow(2) * reset(4 * i + 2)
-                            + T::two_pow(3) * reset(4 * i + 3))),
-            );
+            // Check resets correspond to the 256-bit prefix digest of the old state (current)
+            constraints.push(squeeze() * (old_state(i) - compose_shifts_from_vec(reset, i)));
         }
 
         constraints
@@ -314,4 +317,14 @@ fn compose_shifts<F: PrimeField, T: ExprOps<F>>(
         + T::two_pow(1) * resets(1, x, y, q)
         + T::two_pow(2) * resets(2, x, y, q)
         + T::two_pow(3) * resets(3, x, y, q)
+}
+
+fn compose_shifts_from_vec<F: PrimeField, T: ExprOps<F>>(
+    resets: impl Fn(usize) -> T,
+    i: usize,
+) -> T {
+    resets(4 * i)
+        + T::two_pow(1) * resets(4 * i + 1)
+        + T::two_pow(2) * resets(4 * i + 2)
+        + T::two_pow(3) * resets(4 * i + 3)
 }
