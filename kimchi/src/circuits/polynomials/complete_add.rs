@@ -15,7 +15,8 @@
 //~ `same_x` is a boolean that is true iff `x1 == x2`.
 //~
 use crate::{circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+    gate::Gate,
+    argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     wires::COLUMNS,

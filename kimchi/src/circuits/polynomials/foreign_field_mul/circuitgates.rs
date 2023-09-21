@@ -91,8 +91,8 @@
 use crate::{
     auto_clone_array,
     circuits::{
-        argument::{ArgumentEnv, Gate},
-        expr::{constraints::ExprOps, Cache},
+        argument::{ArgumentEnv},
+        expr::{constraints::ExprOps, Cache}, gate::Gate,
     }, define_gate,
 };
 use ark_ff::PrimeField;

@@ -3,7 +3,8 @@
 //! and the code for witness generation for the XOR gadget.
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+        gate::Gate,
+        argument::ArgumentEnv,
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, Connect, GateType},
         lookup::{

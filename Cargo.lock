@@ -711,6 +711,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d102f1a462fdcdddce88d6d46c06c074a2d2749b262230333726b06c52bb7585"
 
 [[package]]
+name = "dyn-clone"
+version = "1.0.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23d2f3407d9a573d666de4b5bdf10569d73ca9478087346697dcbae6244bfbcd"
+
+[[package]]
 name = "either"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1097,6 +1103,7 @@ dependencies = [
  "colored",
  "criterion",
  "disjoint-set",
+ "dyn-clone",
  "groupmap",
  "hex",
  "iai",

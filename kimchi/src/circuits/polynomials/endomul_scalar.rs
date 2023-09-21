@@ -3,7 +3,8 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+        gate::Gate,
+        argument::ArgumentEnv,
         constraints::ConstraintSystem,
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},

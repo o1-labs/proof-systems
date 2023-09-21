@@ -4,7 +4,8 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType, Gate, GateHelpers},
+        gate::{Gate, GateHelpers},
+        argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         expr::{
             self,

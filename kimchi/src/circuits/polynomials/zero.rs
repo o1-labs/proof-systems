@@ -7,7 +7,8 @@ use std::marker::PhantomData;
 use ark_ff::PrimeField;
 
 use crate::{circuits::{
-    argument::{ArgumentEnv, Gate},
+    gate::Gate,
+    argument::ArgumentEnv,
     expr::{constraints::ExprOps, Cache},
 }, define_gate};
 

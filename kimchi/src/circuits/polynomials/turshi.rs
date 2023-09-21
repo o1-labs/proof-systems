@@ -81,7 +81,8 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType, Gate, GateHelpers},
+        gate::{Gate, GateHelpers},
+        argument::{Argument, ArgumentEnv, ArgumentType},
         constraints::ConstraintSystem,
         expr::{self, constraints::ExprOps, Cache, Column, E},
         gate::{CircuitGate, GateType},

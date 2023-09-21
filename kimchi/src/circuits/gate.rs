@@ -5,6 +5,7 @@ use crate::{
     circuits::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
+        expr::prologue::*,
         polynomials::{
             complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
             poseidon, range_check, turshi, varbasemul,
@@ -15,6 +16,7 @@ use crate::{
     prover_index::ProverIndex,
 };
 use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
+use dyn_clone::{DynClone, clone_trait_object};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -24,8 +26,8 @@ use thiserror::Error;
 
 use super::{
     argument::{ArgumentType, ArgumentWitness},
-    domains::Domain,
-    expr::{self, constraints::ExprOps, Cache},
+    domains::{Domain, EvaluationDomains},
+    expr::{self, constraints::ExprOps, Cache, ConstantExpr},
     polynomials::{generic, rot, xor},
 };
 
@@ -139,212 +141,141 @@ impl GateType {
         )
     }
     // Get gate definition associated with gate type
-    pub fn to_gate<F: PrimeField>(&self) -> Option<Gate<F>> {
+    pub fn to_gate<F: PrimeField, T: ExprOps<F>>(&self) -> Option<Box<dyn Gate<F, T>>> {
         match self {
-            GateType::Generic => Some(Gate::Generic(generic::Generic::<F>::default())),
-            GateType::Poseidon => Some(Gate::Poseidon(poseidon::Poseidon::<F>::default())),
+            GateType::Generic => Some(generic::Generic::<F>::create()),
+            GateType::Poseidon => Some(poseidon::Poseidon::<F>::create()),
             GateType::CompleteAdd => {
-                Some(Gate::CompleteAdd(complete_add::CompleteAdd::<F>::default()))
+                Some(complete_add::CompleteAdd::<F>::create())
             }
-            GateType::VarBaseMul => Some(Gate::VarBaseMul(varbasemul::VarbaseMul::<F>::default())),
-            GateType::EndoMul => Some(Gate::EndoMul(endosclmul::EndosclMul::<F>::default())),
-            GateType::EndoMulScalar => Some(Gate::EndoMulScalar(
-                endomul_scalar::EndomulScalar::<F>::default(),
-            )),
-            GateType::RangeCheck0 => Some(Gate::RangeCheck0(
-                range_check::circuitgates::RangeCheck0::<F>::default(),
-            )),
-            GateType::RangeCheck1 => Some(Gate::RangeCheck1(
-                range_check::circuitgates::RangeCheck1::<F>::default(),
-            )),
-            GateType::ForeignFieldAdd => Some(Gate::ForeignFieldAdd(
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::default(),
-            )),
-            GateType::ForeignFieldMul => Some(Gate::ForeignFieldMul(
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::default(),
-            )),
-            GateType::Xor16 => Some(Gate::Xor16(xor::Xor16::<F>::default())),
-            GateType::Rot64 => Some(Gate::Rot64(rot::Rot64::<F>::default())),
+            GateType::VarBaseMul => Some(varbasemul::VarbaseMul::<F>::create()),
+            GateType::EndoMul => Some(endosclmul::EndosclMul::<F>::create()),
+            GateType::EndoMulScalar => Some(
+                endomul_scalar::EndomulScalar::<F>::create(),
+            ),
+            GateType::RangeCheck0 => Some(
+                range_check::circuitgates::RangeCheck0::<F>::create(),
+            ),
+            GateType::RangeCheck1 => Some(
+                range_check::circuitgates::RangeCheck1::<F>::create(),
+            ),
+            GateType::ForeignFieldAdd => Some(
+                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::create(),
+            ),
+            GateType::ForeignFieldMul => Some(
+                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::create(),
+            ),
+            GateType::Xor16 => Some(xor::Xor16::<F>::create()),
+            GateType::Rot64 => Some(rot::Rot64::<F>::create()),
             // TODO: What about Zero and Lookup?
             _ => None,
         }
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Gate<F> {
-    // TODO: Is Zero going to be configurable?
-    Generic(generic::Generic<F>),
-    Poseidon(poseidon::Poseidon<F>),
-    CompleteAdd(complete_add::CompleteAdd<F>),
-    VarBaseMul(varbasemul::VarbaseMul<F>),
-    EndoMul(endosclmul::EndosclMul<F>),
-    EndoMulScalar(endomul_scalar::EndomulScalar<F>),
-    // TODO: Is Lookup going to be configurable?
-    CairoClaim(turshi::Claim<F>),
-    CairoInstruction(turshi::Instruction<F>),
-    CairoFlags(turshi::Flags<F>),
-    CairoTransition(turshi::Transition<F>),
-    RangeCheck0(range_check::circuitgates::RangeCheck0<F>),
-    RangeCheck1(range_check::circuitgates::RangeCheck1<F>),
-    ForeignFieldAdd(foreign_field_add::circuitgates::ForeignFieldAdd<F>),
-    ForeignFieldMul(foreign_field_mul::circuitgates::ForeignFieldMul<F>),
-    Xor16(xor::Xor16<F>),
-    Rot64(rot::Rot64<F>),
-}
+pub trait Gate<F: PrimeField, T: ExprOps<F>>: std::fmt::Debug + DynClone {
+    fn name(&self) -> &str;
 
-impl<F: PrimeField> Gate<F> {
-    pub fn gate_type(&self) -> GateType {
-        match *self {
-            Gate::Generic(_) => GateType::Generic,
-            Gate::Poseidon(_) => GateType::Poseidon,
-            Gate::CompleteAdd(_) => GateType::CompleteAdd,
-            Gate::VarBaseMul(_) => GateType::VarBaseMul,
-            Gate::EndoMul(_) => GateType::EndoMul,
-            Gate::EndoMulScalar(_) => GateType::EndoMulScalar,
-            Gate::CairoClaim(_) => GateType::CairoClaim,
-            Gate::CairoInstruction(_) => GateType::CairoInstruction,
-            Gate::CairoFlags(_) => GateType::CairoFlags,
-            Gate::CairoTransition(_) => GateType::CairoTransition,
-            Gate::RangeCheck0(_) => GateType::RangeCheck0,
-            Gate::RangeCheck1(_) => GateType::RangeCheck1,
-            Gate::ForeignFieldAdd(_) => GateType::ForeignFieldAdd,
-            Gate::ForeignFieldMul(_) => GateType::ForeignFieldMul,
-            Gate::Xor16(_) => GateType::Xor16,
-            Gate::Rot64(_) => GateType::Rot64,
-        }
-    }
-
-    pub fn domain(&self) -> Domain {
-        // TODO: In fucture this could be computed from degree of gate constraint
-        // TODO: Check these over to see if any can be reduced
-        match *self {
-            Gate::Generic(_) => Domain::D4,
-            Gate::Poseidon(_) => Domain::D8,
-            Gate::CompleteAdd(_) => Domain::D4,
-            Gate::VarBaseMul(_) => Domain::D8,
-            Gate::EndoMul(_) => Domain::D8,
-            Gate::EndoMulScalar(_) => Domain::D8,
-            Gate::CairoClaim(_) => Domain::D8, // TODO: set Cairo gate domains correctly
-            Gate::CairoInstruction(_) => Domain::D8,
-            Gate::CairoFlags(_) => Domain::D8,
-            Gate::CairoTransition(_) => Domain::D8,
-            Gate::RangeCheck0(_) => Domain::D8,
-            Gate::RangeCheck1(_) => Domain::D8,
-            Gate::ForeignFieldAdd(_) => Domain::D8,
-            Gate::ForeignFieldMul(_) => Domain::D8,
-            Gate::Xor16(_) => Domain::D8,
-            Gate::Rot64(_) => Domain::D8,
-        }
-    }
-
-    pub fn argument_type(&self) -> ArgumentType {
-        match *self {
-            Gate::Generic(_) => ArgumentType::Gate(GateType::Generic),
-            Gate::Poseidon(_) => ArgumentType::Gate(GateType::Poseidon),
-            Gate::CompleteAdd(_) => ArgumentType::Gate(GateType::CompleteAdd),
-            Gate::VarBaseMul(_) => ArgumentType::Gate(GateType::VarBaseMul),
-            Gate::EndoMul(_) => ArgumentType::Gate(GateType::EndoMul),
-            Gate::EndoMulScalar(_) => ArgumentType::Gate(GateType::EndoMulScalar),
-            Gate::CairoClaim(_) => ArgumentType::Gate(GateType::CairoClaim),
-            Gate::CairoFlags(_) => ArgumentType::Gate(GateType::CairoFlags),
-            Gate::CairoTransition(_) => ArgumentType::Gate(GateType::CairoTransition),
-            Gate::CairoInstruction(_) => ArgumentType::Gate(GateType::CairoInstruction),
-            Gate::RangeCheck0(_) => ArgumentType::Gate(GateType::RangeCheck0),
-            Gate::RangeCheck1(_) => ArgumentType::Gate(GateType::RangeCheck1),
-            Gate::ForeignFieldAdd(_) => ArgumentType::Gate(GateType::ForeignFieldAdd),
-            Gate::ForeignFieldMul(_) => ArgumentType::Gate(GateType::ForeignFieldMul),
-            Gate::Xor16(_) => ArgumentType::Gate(GateType::Xor16),
-            Gate::Rot64(_) => ArgumentType::Gate(GateType::Rot64),
-        }
-    }
-
-    pub fn constraint_count(&self) -> u32 {
-        match *self {
-            Gate::Generic(_) => 0,
-            Gate::Poseidon(_) => 0,
-            Gate::CompleteAdd(_) => 0,
-            Gate::VarBaseMul(_) => 0,
-            Gate::EndoMul(_) => 0,
-            Gate::EndoMulScalar(_) => 0,
-            Gate::CairoClaim(_) => 0,
-            Gate::CairoFlags(_) => 0,
-            Gate::CairoTransition(_) => 0,
-            Gate::CairoInstruction(_) => 0,
-            Gate::RangeCheck0(_) => 0,
-            Gate::RangeCheck1(_) => 0,
-            Gate::ForeignFieldAdd(_) => 0,
-            Gate::ForeignFieldMul(_) => 0,
-            Gate::Xor16(_) => 0,
-            Gate::Rot64(_) => 0,
-        }
-    }
-
-    pub fn constraint_checks<T: ExprOps<F>>(
+    fn constraint_checks(
         &self,
         env: &ArgumentEnv<F, T>,
         cache: &mut Cache,
-    ) -> Vec<T> {
-        match *self {
-            Gate::Generic(_) => vec![],
-            Gate::Poseidon(_) => vec![],
-            Gate::CompleteAdd(_) => vec![],
-            Gate::VarBaseMul(_) => vec![],
-            Gate::EndoMul(_) => vec![],
-            Gate::EndoMulScalar(_) => vec![],
-            Gate::CairoClaim(_) => vec![],
-            Gate::CairoFlags(_) => vec![],
-            Gate::CairoTransition(_) => vec![],
-            Gate::CairoInstruction(_) => vec![],
-            Gate::RangeCheck0(_) => vec![],
-            Gate::RangeCheck1(_) => vec![],
-            Gate::ForeignFieldAdd(_) => vec![],
-            Gate::ForeignFieldMul(_) => vec![],
-            Gate::Xor16(_) => vec![],
-            Gate::Rot64(_) => vec![],
+    ) -> Vec<T>;
+}
+
+// Implement dynamic cloning
+impl<F: PrimeField, T: ExprOps<F>> Clone for Box<dyn Gate<F, T>> {
+    fn clone(&self) -> Self {
+        dyn_clone::clone_box(&**self)
+    }
+}
+
+#[macro_export]
+macro_rules! define_gate {
+    ($name:ident<$typ:ident : $bound:ident > , $comment:literal) => {
+        #[doc = "The `"]
+        #[doc = stringify!($name)]
+        #[doc = "`"]
+        #[doc = " gate"]
+        #[doc = $comment]
+        #[derive(Default, Debug, Clone)]
+        pub struct $name<$typ>(PhantomData<$typ>);
+        impl<$typ: $bound> $name<F> {
+            pub fn create<S: ExprOps<$typ>>() -> Box<dyn Gate<$typ, S>> {
+                Box::new(Self::default())
+            }
         }
+    };
+}
+
+pub trait GateHelpers<F: PrimeField> {
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>;
+    fn constraint_count(&self) -> u32;
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>;
+    fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64;
+    fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain;
+    fn latex(&self) -> Vec<Vec<String>>;
+}
+
+impl<F> GateHelpers<F> for dyn Gate<F, expr::Expr<ConstantExpr<F>>>
+where
+    F: PrimeField,
+{
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>
+    {
+        // Generate constraints
+        self.constraint_checks(&ArgumentEnv::default(), cache)
     }
 
-    pub fn constraints(&self, cache: &mut Cache) -> Vec<expr::E<F>> {
-        match *self {
-            Gate::Generic(_) => vec![],
-            Gate::Poseidon(_) => vec![],
-            Gate::CompleteAdd(_) => vec![],
-            Gate::VarBaseMul(_) => vec![],
-            Gate::EndoMul(_) => vec![],
-            Gate::EndoMulScalar(_) => vec![],
-            Gate::CairoClaim(_) => vec![],
-            Gate::CairoFlags(_) => vec![],
-            Gate::CairoTransition(_) => vec![],
-            Gate::CairoInstruction(_) => vec![],
-            Gate::RangeCheck0(_) => vec![],
-            Gate::RangeCheck1(_) => vec![],
-            Gate::ForeignFieldAdd(_) => vec![],
-            Gate::ForeignFieldMul(_) => vec![],
-            Gate::Xor16(_) => vec![],
-            Gate::Rot64(_) => vec![],
-        }
+    fn constraint_count(&self) -> u32
+    {
+        self.constraints(&mut super::expr::Cache::default()).len() as u32
     }
 
-    pub fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> expr::E<F> {
-        match *self {
-            Gate::Generic(_) => expr::E::literal(F::zero()),
-            Gate::Poseidon(_) => expr::E::literal(F::zero()),
-            Gate::CompleteAdd(_) => expr::E::literal(F::zero()),
-            Gate::VarBaseMul(_) => expr::E::literal(F::zero()),
-            Gate::EndoMul(_) => expr::E::literal(F::zero()),
-            Gate::EndoMulScalar(_) => expr::E::literal(F::zero()),
-            Gate::CairoClaim(_) => expr::E::literal(F::zero()),
-            Gate::CairoFlags(_) => expr::E::literal(F::zero()),
-            Gate::CairoTransition(_) => expr::E::literal(F::zero()),
-            Gate::CairoInstruction(_) => expr::E::literal(F::zero()),
-            Gate::RangeCheck0(_) => expr::E::literal(F::zero()),
-            Gate::RangeCheck1(_) => expr::E::literal(F::zero()),
-            Gate::ForeignFieldAdd(_) => expr::E::literal(F::zero()),
-            Gate::ForeignFieldMul(_) => expr::E::literal(F::zero()),
-            Gate::Xor16(_) => expr::E::literal(F::zero()),
-            Gate::Rot64(_) => expr::E::literal(F::zero()),
-        }
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>
+    {
+        let constraints = self.constraints(cache);
+        let alphas =
+            alphas.get_exponents(ArgumentType::Gate(GateType::Zero), constraints.len() as u32);
+        let combined_constraints = E::combine_constraints(alphas, constraints);
+
+        // TODO: Refactor gate_type into u32
+        /* index(gate_type) * */
+        combined_constraints
+    }
+
+    fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64
+    {
+        let mut powers_of_alpha = crate::alphas::Alphas::<F>::default();
+        powers_of_alpha.register(
+            crate::circuits::argument::ArgumentType::Gate(GateType::Zero),
+            self.constraint_count(),
+        );
+        self.combined_constraints(&powers_of_alpha, &mut super::expr::Cache::default())
+            .degree(eval_domains.d1.size)
+    }
+
+    fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain
+    {
+        let degree = self.degree(eval_domains);
+        return if degree <= eval_domains.d1.size {
+            Domain::D1
+        } else if degree <= eval_domains.d2.size {
+            Domain::D2
+        } else if degree <= eval_domains.d4.size {
+            Domain::D4
+        } else if degree <= eval_domains.d8.size {
+            Domain::D8
+        } else {
+            panic!("Unsupported gate domain size");
+        };
+    }
+
+    fn latex(&self) -> Vec<Vec<String>> {
+        self.constraints(&mut expr::Cache::default())
+            .iter()
+            .map(|c| c.latex_str())
+            .collect()
     }
 }
 

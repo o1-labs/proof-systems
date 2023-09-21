@@ -11,7 +11,8 @@
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
 use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+    gate::Gate,
+    argument::ArgumentEnv,
     expr::{constraints::ExprOps, Cache, Column, Variable},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},

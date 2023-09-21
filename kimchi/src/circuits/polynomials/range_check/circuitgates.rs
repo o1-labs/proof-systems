@@ -117,12 +117,12 @@
 use std::marker::PhantomData;
 
 use crate::{circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+    argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{
         constraints::{crumb, ExprOps},
         Cache,
     },
-    gate::GateType,
+    gate::{GateType, Gate},
     polynomial::COLUMNS,
 }, define_gate};
 use ark_ff::PrimeField;

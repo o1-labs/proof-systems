@@ -2,7 +2,8 @@
 
 use crate::{
     circuits::{
-        argument::{ArgumentType, GateHelpers},
+        gate::GateHelpers,
+        argument::ArgumentType,
         expr::{self, l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
@@ -805,7 +806,7 @@ where
             // };
 
             // Check constraints for configured gates
-            for gate in &index.cs.configured_gates {
+            for (_name, gate) in index.cs.configured_gates.iter() {
                 let constraint = gate.combined_constraints(&all_alphas, &mut cache);
                 let eval = constraint.evaluations(&env);
                 if eval.domain().size == t4.domain().size {
@@ -815,7 +816,7 @@ where
                 } else {
                     panic!("Bad evaluation")
                 }
-                check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
+                check_constraint!(index, gate.name(), eval);
             }
 
             // lookup

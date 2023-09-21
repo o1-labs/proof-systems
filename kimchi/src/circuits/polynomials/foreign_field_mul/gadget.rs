@@ -7,7 +7,7 @@ use o1_utils::foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers};
 use crate::{
     alphas::Alphas,
     circuits::{
-        argument::GateHelpers,
+        gate::GateHelpers,
         expr::{Cache, E},
         gate::{CircuitGate, GateType},
         lookup::{

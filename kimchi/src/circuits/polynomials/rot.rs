@@ -3,7 +3,8 @@
 use super::range_check::witness::range_check_0_row;
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+        gate::Gate,
+        argument::ArgumentEnv,
         expr::{
             constraints::{crumb, ExprOps},
             Cache,

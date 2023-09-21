@@ -1,10 +1,10 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::lookup::runtime_tables::RuntimeTableCfg;
+use super::{lookup::runtime_tables::RuntimeTableCfg, gate_registry::GateRegistry, gate::GateHelpers};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
-        gate::{CircuitGate, Gate, GateType},
+        gate::{CircuitGate, GateType},
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
@@ -23,7 +23,7 @@ use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, collections::BTreeSet, sync::Arc};
+use std::{array, collections::{BTreeSet}, sync::Arc};
 
 //
 // ConstraintSystem
@@ -152,7 +152,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub gates: Vec<CircuitGate<F>>,
 
     #[serde(skip)]
-    pub configured_gates: Vec<Gate<F>>,
+    pub configured_gates: GateRegistry<F>,
 
     /// flags for optional features
     pub feature_flags: FeatureFlags,
@@ -581,14 +581,14 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         let gate_selectors: Vec<(GateType, E<F, D<F>>)> = self
             .configured_gates
             .iter()
-            .map(|gate| {
+            .map(|(name, gate)| {
                 (
                     gate.gate_type(),
                     selector_polynomial(
                         gate.gate_type(),
                         &self.gates,
                         &self.domain,
-                        self.domain.get(gate.domain()),
+                        self.domain.get(gate.domain(self.domain)),
                         self.disable_gates_checks,
                     ),
                 )

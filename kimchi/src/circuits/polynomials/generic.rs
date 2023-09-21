@@ -34,7 +34,8 @@
 //~
 
 use crate::circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+    gate::Gate,
+    argument::ArgumentEnv,
     expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,

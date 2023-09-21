@@ -27,7 +27,8 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType, Gate},
+        gate::Gate,
+        argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, CurrOrNext, GateType},
         polynomial::COLUMNS,

@@ -4,6 +4,7 @@ use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr;
+use crate::circuits::gate::GateHelpers;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
     constraints::LookupConfiguration,
@@ -61,15 +62,15 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     let mut cache = expr::Cache::default();
 
-    let mut expr = expr::E::literal(F::zero());
-    expr += expr::E::literal(F::zero());
-    expr += expr::E::literal(F::zero());
-    expr += expr::E::literal(F::zero());
-    expr += expr::E::literal(F::zero());
+    let mut expr = Poseidon::create().combined_constraints(&powers_of_alpha, &mut cache);
+    expr += VarbaseMul::create().combined_constraints(&powers_of_alpha, &mut cache);
+    expr += CompleteAdd::create().combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndosclMul::create().combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndomulScalar::create().combined_constraints(&powers_of_alpha, &mut cache);
 
     {
         let mut range_check0_expr =
-            || expr::E::literal(F::zero());
+            || RangeCheck0::create().combined_constraints(&powers_of_alpha, &mut cache);
 
         if let Some(feature_flags) = feature_flags {
             if feature_flags.range_check0 {
@@ -86,7 +87,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut range_check1_expr =
-            || expr::E::literal(F::zero());
+            || RangeCheck1::create().combined_constraints(&powers_of_alpha, &mut cache);
 
         if let Some(feature_flags) = feature_flags {
             if feature_flags.range_check1 {
@@ -103,7 +104,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut foreign_field_add_expr =
-            || expr::E::literal(F::zero());
+            || ForeignFieldAdd::create().combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_add {
                 expr += foreign_field_add_expr();
@@ -119,7 +120,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut foreign_field_mul_expr =
-            || expr::E::literal(F::zero());
+            || ForeignFieldMul::create().combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_mul {
                 expr += foreign_field_mul_expr();
@@ -134,7 +135,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let mut xor_expr = || expr::E::literal(F::zero());
+        let mut xor_expr = || xor::Xor16::create().combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.xor {
                 expr += xor_expr();
@@ -149,7 +150,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let mut rot_expr = || expr::E::literal(F::zero());
+        let mut rot_expr = || rot::Rot64::create().combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.rot {
                 expr += rot_expr();
@@ -164,11 +165,11 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     if generic {
-        expr += expr::E::literal(F::zero());
+        expr += generic::Generic::create().combined_constraints(&powers_of_alpha, &mut cache);
     }
 
-    // Get the expressions of configured gates
-    for gate in &cs.configured_gates {
+    // Get the expressions of dynamically configured gates
+    for (_name, gate) in cs.configured_gates.iter() {
         expr += gate.combined_constraints(&powers_of_alpha, &mut cache);
     }
 

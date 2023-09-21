@@ -1,11 +1,11 @@
 //! Foreign field addition gate.
 
 use crate::circuits::{
-    argument::{ArgumentEnv, Gate},
+    argument::{ArgumentEnv},
     expr::{
         constraints::{compact_limb, ExprOps},
         Cache,
-    },
+    }, gate::Gate,
 };
 use ark_ff::PrimeField;
 use macros::GateImpl;
