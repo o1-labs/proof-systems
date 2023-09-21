@@ -28,7 +28,25 @@ impl<F: PrimeField> Default for GateRegistry<F> {
         let mut registry = Self::new();
 
         // Register default set of gates
-        registry.register(gates![polynomials::zero::Zero]);
+        registry.register(gates![
+            polynomials::zero::Zero,
+            polynomials::generic::Generic,
+            polynomials::poseidon::Poseidon,
+            polynomials::complete_add::CompleteAdd,
+            polynomials::varbasemul::VarbaseMul,
+            polynomials::endosclmul::EndosclMul,
+            polynomials::endomul_scalar::EndomulScalar,
+            polynomials::turshi::Claim,
+            polynomials::turshi::Instruction,
+            polynomials::turshi::Flags,
+            polynomials::turshi::Transition,
+            polynomials::range_check::circuitgates::RangeCheck0,
+            polynomials::range_check::circuitgates::RangeCheck1,
+            polynomials::foreign_field_add::circuitgates::ForeignFieldAdd,
+            polynomials::foreign_field_mul::circuitgates::ForeignFieldMul,
+            polynomials::xor::Xor16,
+            polynomials::rot::Rot64
+        ]);
         registry
     }
 }
