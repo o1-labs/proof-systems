@@ -4,7 +4,7 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv},
+        argument::ArgumentEnv,
         constraints::ConstraintSystem,
         expr::{
             self,

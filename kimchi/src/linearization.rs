@@ -1,7 +1,7 @@
 //! This module implements the linearization.
 
 use crate::alphas::Alphas;
-use crate::circuits::argument::{Argument, ArgumentType};
+use crate::circuits::argument::ArgumentType;
 use crate::circuits::constraints::ConstraintSystem;
 use crate::circuits::expr;
 use crate::circuits::gate::GateHelpers;

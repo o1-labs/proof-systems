@@ -3,12 +3,12 @@
 use crate::{
     alphas::Alphas,
     circuits::{
-        argument::{Argument, ArgumentEnv},
+        argument::ArgumentEnv,
         constraints::ConstraintSystem,
         expr::prologue::*,
         polynomials::{
             complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, turshi, varbasemul,
+            poseidon, range_check, varbasemul,
         },
         wires::*,
     },
@@ -16,7 +16,7 @@ use crate::{
     prover_index::ProverIndex,
 };
 use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
-use dyn_clone::{clone_trait_object, DynClone};
+use dyn_clone::DynClone;
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};

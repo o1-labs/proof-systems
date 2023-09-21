@@ -27,7 +27,7 @@
 
 use crate::{
     circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
+        argument::ArgumentEnv,
         expr::{constraints::ExprOps, Cache},
         gate::Gate,
         gate::{CircuitGate, CurrOrNext, GateType},

@@ -116,17 +116,14 @@
 
 use std::marker::PhantomData;
 
-use crate::{
-    circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{
-            constraints::{crumb, ExprOps},
-            Cache,
-        },
-        gate::{Gate, GateType},
-        polynomial::COLUMNS,
+use crate::circuits::{
+    argument::ArgumentEnv,
+    expr::{
+        constraints::{crumb, ExprOps},
+        Cache,
     },
-    define_gate,
+    gate::Gate,
+    polynomial::COLUMNS,
 };
 use ark_ff::PrimeField;
 use macros::GateImpl;

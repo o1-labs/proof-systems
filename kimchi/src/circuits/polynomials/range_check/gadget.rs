@@ -6,8 +6,8 @@ use crate::{
     alphas::Alphas,
     circuits::{
         expr::{Cache, E},
+        gate::GateHelpers,
         gate::{CircuitGate, Connect, GateType},
-        gate::{Gate, GateHelpers},
         lookup::{
             self,
             tables::{GateLookupTable, LookupTable},

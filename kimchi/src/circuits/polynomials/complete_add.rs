@@ -14,15 +14,12 @@
 //~ The rest of the values are inaccessible from the permutation argument, but
 //~ `same_x` is a boolean that is true iff `x1 == x2`.
 //~
-use crate::{
-    circuits::{
-        argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, Cache},
-        gate::Gate,
-        gate::{CircuitGate, GateType},
-        wires::COLUMNS,
-    },
-    define_gate,
+use crate::circuits::{
+    argument::ArgumentEnv,
+    expr::{constraints::ExprOps, Cache},
+    gate::CircuitGate,
+    gate::Gate,
+    wires::COLUMNS,
 };
 use ark_ff::{Field, PrimeField};
 use macros::GateImpl;

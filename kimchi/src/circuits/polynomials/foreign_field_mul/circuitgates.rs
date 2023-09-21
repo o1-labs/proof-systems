@@ -95,7 +95,6 @@ use crate::{
         expr::{constraints::ExprOps, Cache},
         gate::Gate,
     },
-    define_gate,
 };
 use ark_ff::PrimeField;
 use macros::GateImpl;
