@@ -14,17 +14,19 @@
 //~ The rest of the values are inaccessible from the permutation argument, but
 //~ `same_x` is a boolean that is true iff `x1 == x2`.
 //~
-use crate::{circuits::{
-    gate::Gate,
-    argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache},
-    gate::{CircuitGate, GateType},
-    wires::COLUMNS,
-}, define_gate};
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{constraints::ExprOps, Cache},
+        gate::Gate,
+        gate::{CircuitGate, GateType},
+        wires::COLUMNS,
+    },
+    define_gate,
+};
 use ark_ff::{Field, PrimeField};
 use macros::GateImpl;
 use std::marker::PhantomData;
-
 
 // This enforces that
 //
@@ -102,11 +104,7 @@ where
         "CompleteAdd"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = env.witness_curr(0);
         let y1 = env.witness_curr(1);

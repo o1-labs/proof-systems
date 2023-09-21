@@ -16,7 +16,7 @@ use crate::{
     prover_index::ProverIndex,
 };
 use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
-use dyn_clone::{DynClone, clone_trait_object};
+use dyn_clone::{clone_trait_object, DynClone};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
 use serde::{Deserialize, Serialize};
@@ -145,26 +145,18 @@ impl GateType {
         match self {
             GateType::Generic => Some(generic::Generic::<F>::create()),
             GateType::Poseidon => Some(poseidon::Poseidon::<F>::create()),
-            GateType::CompleteAdd => {
-                Some(complete_add::CompleteAdd::<F>::create())
-            }
+            GateType::CompleteAdd => Some(complete_add::CompleteAdd::<F>::create()),
             GateType::VarBaseMul => Some(varbasemul::VarbaseMul::<F>::create()),
             GateType::EndoMul => Some(endosclmul::EndosclMul::<F>::create()),
-            GateType::EndoMulScalar => Some(
-                endomul_scalar::EndomulScalar::<F>::create(),
-            ),
-            GateType::RangeCheck0 => Some(
-                range_check::circuitgates::RangeCheck0::<F>::create(),
-            ),
-            GateType::RangeCheck1 => Some(
-                range_check::circuitgates::RangeCheck1::<F>::create(),
-            ),
-            GateType::ForeignFieldAdd => Some(
-                foreign_field_add::circuitgates::ForeignFieldAdd::<F>::create(),
-            ),
-            GateType::ForeignFieldMul => Some(
-                foreign_field_mul::circuitgates::ForeignFieldMul::<F>::create(),
-            ),
+            GateType::EndoMulScalar => Some(endomul_scalar::EndomulScalar::<F>::create()),
+            GateType::RangeCheck0 => Some(range_check::circuitgates::RangeCheck0::<F>::create()),
+            GateType::RangeCheck1 => Some(range_check::circuitgates::RangeCheck1::<F>::create()),
+            GateType::ForeignFieldAdd => {
+                Some(foreign_field_add::circuitgates::ForeignFieldAdd::<F>::create())
+            }
+            GateType::ForeignFieldMul => {
+                Some(foreign_field_mul::circuitgates::ForeignFieldMul::<F>::create())
+            }
             GateType::Xor16 => Some(xor::Xor16::<F>::create()),
             GateType::Rot64 => Some(rot::Rot64::<F>::create()),
             // TODO: What about Zero and Lookup?
@@ -176,11 +168,7 @@ impl GateType {
 pub trait Gate<F: PrimeField, T: ExprOps<F>>: std::fmt::Debug + DynClone {
     fn name(&self) -> &str;
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T>;
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
 }
 
 // Implement dynamic cloning
@@ -221,19 +209,16 @@ impl<F> GateHelpers<F> for dyn Gate<F, expr::Expr<ConstantExpr<F>>>
 where
     F: PrimeField,
 {
-    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>
-    {
+    fn constraints(&self, cache: &mut Cache) -> Vec<E<F>> {
         // Generate constraints
         self.constraint_checks(&ArgumentEnv::default(), cache)
     }
 
-    fn constraint_count(&self) -> u32
-    {
+    fn constraint_count(&self) -> u32 {
         self.constraints(&mut super::expr::Cache::default()).len() as u32
     }
 
-    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>
-    {
+    fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
         let constraints = self.constraints(cache);
         let alphas =
             alphas.get_exponents(ArgumentType::Gate(GateType::Zero), constraints.len() as u32);
@@ -244,8 +229,7 @@ where
         combined_constraints
     }
 
-    fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64
-    {
+    fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64 {
         let mut powers_of_alpha = crate::alphas::Alphas::<F>::default();
         powers_of_alpha.register(
             crate::circuits::argument::ArgumentType::Gate(GateType::Zero),
@@ -255,8 +239,7 @@ where
             .degree(eval_domains.d1.size)
     }
 
-    fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain
-    {
+    fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain {
         let degree = self.degree(eval_domains);
         return if degree <= eval_domains.d1.size {
             Domain::D1

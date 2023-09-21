@@ -11,9 +11,9 @@
 //! and 3.1 of <https://arxiv.org/pdf/math/0208038.pdf> for details.
 
 use crate::circuits::{
-    gate::Gate,
     argument::ArgumentEnv,
     expr::{constraints::ExprOps, Cache, Column, Variable},
+    gate::Gate,
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
@@ -410,11 +410,7 @@ where
         "VarbaseMul"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let Layout {
             base,
             accs,

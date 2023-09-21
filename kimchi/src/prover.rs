@@ -2,10 +2,11 @@
 
 use crate::{
     circuits::{
-        gate::GateHelpers,
         argument::ArgumentType,
         expr::{self, l0_1, Constants, Environment, LookupEnvironment},
+        gate::GateHelpers,
         gate::GateType,
+        gate_registry::GateRegistry,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
         polynomials::{
             complete_add::CompleteAdd,
@@ -21,7 +22,7 @@ use crate::{
             varbasemul::VarbaseMul,
             xor::Xor16,
         },
-        wires::{COLUMNS, PERMUTS}, gate_registry::GateRegistry,
+        wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
     error::ProverError,

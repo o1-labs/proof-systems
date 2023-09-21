@@ -64,7 +64,9 @@ impl<F: PrimeField> GateRegistry<F> {
     }
 
     /// Iterate over the registered gates
-    pub fn iter(&mut self) -> std::collections::btree_map::Iter<'_, String, Box<dyn Gate<F, E<F>>>> {
+    pub fn iter(
+        &mut self,
+    ) -> std::collections::btree_map::Iter<'_, String, Box<dyn Gate<F, E<F>>>> {
         self.gates.iter()
     }
 }

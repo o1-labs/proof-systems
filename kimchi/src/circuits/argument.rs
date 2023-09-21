@@ -4,10 +4,10 @@
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
 
-use std::marker::PhantomData;
 use crate::{alphas::Alphas, circuits::expr::prologue::*};
 use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
+use std::marker::PhantomData;
 
 use super::{
     expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},

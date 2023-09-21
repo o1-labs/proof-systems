@@ -1,11 +1,12 @@
 //! Foreign field addition gate.
 
 use crate::circuits::{
-    argument::{ArgumentEnv},
+    argument::ArgumentEnv,
     expr::{
         constraints::{compact_limb, ExprOps},
         Cache,
-    }, gate::Gate,
+    },
+    gate::Gate,
 };
 use ark_ff::PrimeField;
 use macros::GateImpl;
@@ -143,11 +144,7 @@ where
         "ForeignFieldAdd"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved

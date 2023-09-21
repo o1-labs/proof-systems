@@ -3,10 +3,10 @@
 
 use crate::{
     circuits::{
-        gate::Gate,
         argument::ArgumentEnv,
         constraints::ConstraintSystem,
         expr::{constraints::ExprOps, Cache},
+        gate::Gate,
         gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
@@ -170,11 +170,7 @@ where
         "EndomulScalar"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);

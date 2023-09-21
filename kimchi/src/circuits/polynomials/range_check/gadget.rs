@@ -5,9 +5,9 @@ use ark_ff::{FftField, PrimeField, SquareRootField};
 use crate::{
     alphas::Alphas,
     circuits::{
-        gate::{Gate, GateHelpers},
         expr::{Cache, E},
         gate::{CircuitGate, Connect, GateType},
+        gate::{Gate, GateHelpers},
         lookup::{
             self,
             tables::{GateLookupTable, LookupTable},

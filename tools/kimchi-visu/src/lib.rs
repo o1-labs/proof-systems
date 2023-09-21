@@ -42,10 +42,16 @@ where
 {
     let mut map = HashMap::new();
     map.insert("Poseidon", Poseidon::<G::ScalarField>::create().latex());
-    map.insert("CompleteAdd", CompleteAdd::<G::ScalarField>::create().latex());
+    map.insert(
+        "CompleteAdd",
+        CompleteAdd::<G::ScalarField>::create().latex(),
+    );
     map.insert("VarBaseMul", VarbaseMul::<G::ScalarField>::create().latex());
     map.insert("EndoMul", EndosclMul::<G::ScalarField>::create().latex());
-    map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::create().latex());
+    map.insert(
+        "EndoMulScalar",
+        EndomulScalar::<G::ScalarField>::create().latex(),
+    );
     map
 }
 

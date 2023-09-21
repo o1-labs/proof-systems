@@ -4,7 +4,6 @@
 
 use crate::{
     circuits::{
-        gate::{Gate, GateHelpers},
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         expr::{
@@ -13,6 +12,7 @@ use crate::{
             Cache,
         },
         gate::{CircuitGate, GateType},
+        gate::{Gate, GateHelpers},
         wires::{GateWires, COLUMNS},
     },
     curve::KimchiCurve,
@@ -189,11 +189,7 @@ where
         "EndosclMul"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);

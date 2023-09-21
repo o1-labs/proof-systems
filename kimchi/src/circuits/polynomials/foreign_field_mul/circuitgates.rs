@@ -91,9 +91,11 @@
 use crate::{
     auto_clone_array,
     circuits::{
-        argument::{ArgumentEnv},
-        expr::{constraints::ExprOps, Cache}, gate::Gate,
-    }, define_gate,
+        argument::ArgumentEnv,
+        expr::{constraints::ExprOps, Cache},
+        gate::Gate,
+    },
+    define_gate,
 };
 use ark_ff::PrimeField;
 use macros::GateImpl;
@@ -193,11 +195,7 @@ where
         "ForeignFieldMul"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
         //

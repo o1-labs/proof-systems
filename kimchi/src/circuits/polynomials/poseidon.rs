@@ -27,9 +27,9 @@
 
 use crate::{
     circuits::{
-        gate::Gate,
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{constraints::ExprOps, Cache},
+        gate::Gate,
         gate::{CircuitGate, CurrOrNext, GateType},
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
@@ -342,11 +342,7 @@ where
         "Poseidon"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let mut res = vec![];
 
         let mut idx = 0;

@@ -116,15 +116,18 @@
 
 use std::marker::PhantomData;
 
-use crate::{circuits::{
-    argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{
-        constraints::{crumb, ExprOps},
-        Cache,
+use crate::{
+    circuits::{
+        argument::{Argument, ArgumentEnv, ArgumentType},
+        expr::{
+            constraints::{crumb, ExprOps},
+            Cache,
+        },
+        gate::{Gate, GateType},
+        polynomial::COLUMNS,
     },
-    gate::{GateType, Gate},
-    polynomial::COLUMNS,
-}, define_gate};
+    define_gate,
+};
 use ark_ff::PrimeField;
 use macros::GateImpl;
 
@@ -179,11 +182,7 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -284,11 +283,7 @@ where
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Column 2 is a 2-bit crumb
         let mut constraints = vec![crumb(&env.witness_curr(2))];

@@ -34,9 +34,9 @@
 //~
 
 use crate::circuits::{
-    gate::Gate,
     argument::ArgumentEnv,
     expr::{constraints::ExprOps, Cache},
+    gate::Gate,
     gate::{CircuitGate, GateType},
     polynomial::COLUMNS,
     wires::GateWires,
@@ -77,11 +77,7 @@ where
         "Generic"
     }
 
-    fn constraint_checks(
-        &self,
-        env: &ArgumentEnv<F, T>,
-        _cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);
         let right_coeff1 = env.coeff(1);

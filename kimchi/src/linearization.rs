@@ -55,10 +55,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
-    powers_of_alpha.register(
-        ArgumentType::Gate(GateType::Zero),
-        21,
-    );
+    powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), 21);
 
     let mut cache = expr::Cache::default();
 
@@ -135,7 +132,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let mut xor_expr = || xor::Xor16::create().combined_constraints(&powers_of_alpha, &mut cache);
+        let mut xor_expr =
+            || xor::Xor16::create().combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.xor {
                 expr += xor_expr();
@@ -150,7 +148,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let mut rot_expr = || rot::Rot64::create().combined_constraints(&powers_of_alpha, &mut cache);
+        let mut rot_expr =
+            || rot::Rot64::create().combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.rot {
                 expr += rot_expr();

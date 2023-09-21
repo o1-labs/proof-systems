@@ -1,5 +1,7 @@
 //! This module implements Plonk circuit constraint primitive.
-use super::{lookup::runtime_tables::RuntimeTableCfg, gate_registry::GateRegistry, gate::GateHelpers};
+use super::{
+    gate::GateHelpers, gate_registry::GateRegistry, lookup::runtime_tables::RuntimeTableCfg,
+};
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
@@ -23,7 +25,7 @@ use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, collections::{BTreeSet}, sync::Arc};
+use std::{array, collections::BTreeSet, sync::Arc};
 
 //
 // ConstraintSystem
