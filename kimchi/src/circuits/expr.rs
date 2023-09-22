@@ -3162,15 +3162,12 @@ mod quadricization {
     };
 
     ///extension of columns with necessary extra columns
-
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
     pub enum ColumnExtended<S: ColTrait + Eq + Hash> {
         Inner(S),
         ///extra column used to reduce degree of expressions
         Extended(usize),
     }
-    //creates a new equivalent expression with degree < 2
-    // fn quadricize<C:ColTrait>(exp)->
     impl<S: ColTrait> ColTrait for ColumnExtended<S> {
         fn dom(&self) -> super::Domain {
             match self {
