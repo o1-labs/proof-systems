@@ -79,4 +79,4 @@ Actually there is a distinction between an inductive set $A$, the type underlyin
 
 ---
 
-See this blog post (TODO: copy content of blogpost here)
+See this blog post: https://zkproof.org/2020/06/08/recursive-snarks/
