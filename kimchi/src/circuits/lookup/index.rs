@@ -215,17 +215,27 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // Since we do not assert the lookup constraint on the final `zk_rows` rows, and
                 // because the row before is used to assert that the lookup argument's final
                 // product is 1, we cannot use those rows to store any values.
+                println!("domain size = {d1_size}, nb of zk rows = {zk_rows}");
                 let max_num_entries = d1_size - zk_rows - 1;
+                println!("Max num entries: {max_num_entries}");
 
                 //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
                 //~ 3. Concatenate runtime lookup tables with the ones used by gates
+                println!(
+                    "Number of lookup tables given in parameters: {:?}",
+                    lookup_tables.len()
+                );
                 let mut lookup_tables: Vec<_> = gate_lookup_tables
                     .into_iter()
                     .chain(lookup_tables.into_iter())
                     .collect();
+                println!(
+                    "Number of lookup tables after concatenating with runtime tables: {:?}",
+                    lookup_tables.len()
+                );
 
                 let mut has_table_id_0 = false;
 
@@ -243,6 +253,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         for t in runtime_tables {
                             runtime_len += t.len();
                         }
+                        println!("Runtime table length: {runtime_len}");
 
                         // compute the runtime selector
                         let runtime_selector = {
@@ -271,6 +282,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         for runtime_table in runtime_tables {
                             let (id, first_column) =
                                 (runtime_table.id, runtime_table.first_column.clone());
+                            println!("Runtime table ID: {0}", runtime_table.id);
 
                             // record if table ID 0 is used in one of the runtime tables
                             // note: the check later will still force you to have a fixed table with ID 0
@@ -284,13 +296,28 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             let placeholders = vec![F::zero(); first_column.len()];
                             let data = vec![first_column, placeholders];
                             let table = LookupTable { id, data };
+                            println!(
+                                "Number of lookup tables before pushing runtime table ID {0}: {1}",
+                                runtime_table.id,
+                                lookup_tables.len()
+                            );
                             lookup_tables.push(table);
+                            println!(
+                                "Number of lookup tables after pushing runtime table ID {0}: {1}",
+                                runtime_table.id,
+                                lookup_tables.len()
+                            );
                         }
 
                         (Some(runtime_table_offset), Some(runtime_selector))
                     } else {
                         (None, None)
                     };
+
+                println!(
+                    "Number of tables in lookup tables after merging runtime tables: {0}",
+                    lookup_tables.len()
+                );
 
                 //~ 4. Get the highest number of columns `max_table_width`
                 //~    that a lookup table can have.
@@ -299,6 +326,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     .map(|table| table.data.len())
                     .max()
                     .unwrap_or(0);
+
+                println!("Max table width: {max_table_width}");
 
                 //~ 5. Create the concatenated table of all the fixed lookup tables.
                 //~    It will be of height the size of the domain,

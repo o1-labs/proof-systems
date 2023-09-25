@@ -1379,6 +1379,7 @@ where
                 aggreg_comm.blinders.clone(),
             ));
 
+            println!("Hello, world");
             //~~ * add the combined table polynomial
             let table_blinding = {
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
@@ -1403,11 +1404,14 @@ where
                         let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                         runtime_comm.blinders.unshifted[0]
                     };
+                    println!("{:?}", t);
+                    println!("{:?}", *joint_combiner * runtime_blinder);
                     PolyComm {
                         unshifted: vec![t + *joint_combiner * runtime_blinder],
                         shifted: None,
                     }
                 } else {
+                    println!("{:?}", t);
                     PolyComm {
                         unshifted: vec![t],
                         shifted: None,
