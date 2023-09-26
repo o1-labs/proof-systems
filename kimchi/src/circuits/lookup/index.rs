@@ -432,7 +432,12 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 8. pre-compute polynomial and evaluation form for the look up tables
                 let mut lookup_table_polys: Vec<DP<F>> = vec![];
                 let mut lookup_table8: Vec<E<F, D<F>>> = vec![];
-                for col in lookup_table {
+                for (_i, col) in lookup_table.into_iter().enumerate() {
+                    // if i == 1 {
+                    //     for f in col.clone().into_iter() {
+                    //         println!("{:?}", F::to_string(&f));
+                    //     }
+                    // }
                     let poly = E::<F, D<F>>::from_vec_and_domain(col, domain.d1).interpolate();
                     let eval = poly.evaluate_over_domain_by_ref(domain.d8);
                     lookup_table_polys.push(poly);
@@ -455,6 +460,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     runtime_tables.map(|rt| rt.into_iter().map(Into::into).collect());
 
                 let configuration = LookupConfiguration::new(lookup_info);
+                println!("Ending in index.rs");
 
                 Ok(Some(Self {
                     lookup_selectors,
