@@ -78,19 +78,19 @@ pub const RC: [u64; 24] = [
 //~
 //~ | Columns  | [0...100) | [100...120) | [120...200) | [200...220) | [220...240) | [240...260)  | [260...280) | [280...300)  | [300...320)  | [320...340) | [340...440) |
 //~ | -------- | --------- | ----------- | ----------- | ----------- | ----------- | ------------ | ----------- | ------------ | ------------ | ----------- | ----------- |
-//~ | theta    | state_a   | state_c     | reset_c     | dense_c     | quotient_c  | remainder_c  | bound_c     | dense_rot_c  | expand_rot_c | state_d     | state_e     |
+//~ | theta    | state_a   | state_c     | shifts_c    | dense_c     | quotient_c  | remainder_c  | bound_c     | dense_rot_c  | expand_rot_c | state_d     | state_e     |
 //~
 //~ | Columns  | [440...840) | [840...940) | [940...1040) | [1040...1140) | [1140...1240) | [1240...1340) | [1340...1440) | [1440...1540) |
 //~ | -------- | ----------- | ----------- | ------------ | ------------- | ------------- | ------------- | ------------- | ------------- |
-//~ | pirho    | reset_e     | dense_e     | quotient_e   | remainder_e   | bound_e       | dense_rot_e   | expand_rot_e  | state_b       |
+//~ | pirho    | shifts_e    | dense_e     | quotient_e   | remainder_e   | bound_e       | dense_rot_e   | expand_rot_e  | state_b       |
 //~
 //~ | Columns  | [1540...1940) | [1940...2340) | [2340...2344 |
 //~ | -------- | ------------- | ------------- | ------------ |
-//~ | chi      | reset_b       | reset_sum     | f00          |
+//~ | chi      | shifts_b      | shifts_sum    | f00          |
 //~
 //~ | Columns  | [0...4) | [4...100) |
 //~ | -------- | ------- | --------- |
-//~ | iota     | g00     | state_f   |
+//~ | iota     | g00     | rest_g    |
 //~
 #[derive(Default)]
 pub struct KeccakRound<F>(PhantomData<F>);
@@ -113,7 +113,7 @@ where
         // THETA
         let state_a = state_from_layout!(env.witness_curr_chunk(0, 100));
         let state_c = state_from_layout!(env.witness_curr_chunk(100, 120));
-        let reset_c = state_from_layout!(env.witness_curr_chunk(120, 200));
+        let shifts_c = state_from_layout!(env.witness_curr_chunk(120, 200));
         let dense_c = state_from_layout!(env.witness_curr_chunk(200, 220));
         let quotient_c = state_from_layout!(env.witness_curr_chunk(220, 240));
         let remainder_c = state_from_layout!(env.witness_curr_chunk(240, 260));
@@ -123,7 +123,7 @@ where
         let state_d = state_from_layout!(env.witness_curr_chunk(320, 340));
         let state_e = state_from_layout!(env.witness_curr_chunk(340, 440));
         // PI-RHO
-        let reset_e = state_from_layout!(env.witness_curr_chunk(440, 840));
+        let shifts_e = state_from_layout!(env.witness_curr_chunk(440, 840));
         let dense_e = state_from_layout!(env.witness_curr_chunk(840, 940));
         let quotient_e = state_from_layout!(env.witness_curr_chunk(940, 1040));
         let remainder_e = state_from_layout!(env.witness_curr_chunk(1040, 1140));
@@ -132,8 +132,8 @@ where
         let expand_rot_e = state_from_layout!(env.witness_curr_chunk(1340, 1440));
         let state_b = state_from_layout!(env.witness_curr_chunk(1440, 1540));
         // CHI
-        let reset_b = state_from_layout!(env.witness_curr_chunk(1540, 1940));
-        let reset_sum = state_from_layout!(env.witness_curr_chunk(1940, 2340));
+        let shifts_b = state_from_layout!(env.witness_curr_chunk(1540, 1940));
+        let shifts_sum = state_from_layout!(env.witness_curr_chunk(1940, 2340));
         let mut state_f = env.witness_curr_chunk(2340, 2344);
         let mut tail = env.witness_next_chunk(4, 100);
         state_f.append(&mut tail);
@@ -165,10 +165,10 @@ where
                             + state_a(0, x, 3, q)
                             + state_a(0, x, 4, q)),
                 );
-                constraints.push(state_c(0, x, 0, q) - compose_shifts(reset_c, x, 0, q));
+                constraints.push(state_c(0, x, 0, q) - compose_shifts(shifts_c, x, 0, q));
                 constraints.push(
                     state_d(0, x, 0, q)
-                        - (reset_c(0, (x - 1 + DIM) % DIM, 0, q)
+                        - (shifts_c(0, (x - 1 + DIM) % DIM, 0, q)
                             + expand_rot_c(0, (x + 1) % DIM, 0, q)),
                 );
 
@@ -195,7 +195,7 @@ where
                 constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(*off)));
 
                 for q in 0..QUARTERS {
-                    constraints.push(state_e(0, x, y, q) - compose_shifts(reset_e, x, y, q));
+                    constraints.push(state_e(0, x, y, q) - compose_shifts(shifts_e, x, y, q));
                     constraints
                         .push(state_b(0, y, (2 * x + 3 * y) % DIM, q) - expand_rot_e(0, x, y, q));
                 }
@@ -207,12 +207,12 @@ where
             for x in 0..DIM {
                 for y in 0..DIM {
                     let not =
-                        T::literal(F::from(0x1111111111111111u64)) - reset_b(0, (x + 1) % 5, y, q);
-                    let sum = not + reset_b(1, (x + 2) % 5, y, q);
-                    let and = reset_sum(1, x, y, q);
-                    constraints.push(state_b(0, x, y, q) - compose_shifts(reset_b, x, y, q));
-                    constraints.push(sum - compose_shifts(reset_sum, x, y, q));
-                    constraints.push(state_f(0, x, y, q) - (reset_b(0, x, y, q) + and));
+                        T::literal(F::from(0x1111111111111111u64)) - shifts_b(0, (x + 1) % 5, y, q);
+                    let sum = not + shifts_b(1, (x + 2) % 5, y, q);
+                    let and = shifts_sum(1, x, y, q);
+                    constraints.push(state_b(0, x, y, q) - compose_shifts(shifts_b, x, y, q));
+                    constraints.push(sum - compose_shifts(shifts_sum, x, y, q));
+                    constraints.push(state_f(0, x, y, q) - (shifts_b(0, x, y, q) + and));
                 }
             }
         } // END chi
@@ -229,7 +229,7 @@ where
 //~
 //~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...300) | [300...500] | [500...900) |
 //~ | -------------- | --------- | ----------- | ----------- | ----------- | ----------- | ----------- |
-//~ | Curr           | old_state | new_block   | zeros       | dense       | bytes       | reset       |
+//~ | Curr           | old_state | new_block   | zeros       | dense       | bytes       | shifts      |
 //~ | Next           | xor_state |
 //~
 #[derive(Default)]
@@ -254,13 +254,13 @@ where
         let xor_state = env.witness_next_chunk(0, 100);
         let dense = env.witness_curr_chunk(200, 300);
         let bytes = env.witness_curr_chunk(300, 500);
-        let reset = env.witness_curr_chunk(500, 900);
+        let shifts = env.witness_curr_chunk(500, 900);
         auto_clone_array!(old_state);
         auto_clone_array!(new_block);
         auto_clone_array!(xor_state);
         auto_clone_array!(dense);
         auto_clone_array!(bytes);
-        auto_clone_array!(reset);
+        auto_clone_array!(shifts);
 
         // LOAD COEFFICIENTS
         let root = env.coeff(0);
@@ -281,7 +281,7 @@ where
             // Absorbs the new block by performing XOR with the old state
             constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
             // Check resets correspond to the decomposition of the new state
-            constraints.push(absorb() * (new_block(i) - compose_shifts_from_vec(reset, i)));
+            constraints.push(absorb() * (new_block(i) - compose_shifts_from_vec(shifts, i)));
             // Both phases: check correctness of each dense term (16 bits) by composing two bytes
             constraints.push(dense(i) - (bytes(2 * i) + T::two_pow(8) * bytes(2 * i + 1)));
         }
@@ -289,7 +289,7 @@ where
         // STEP squeeze: 16 constraints
         for i in 0..16 {
             // Check resets correspond to the 256-bit prefix digest of the old state (current)
-            constraints.push(squeeze() * (old_state(i) - compose_shifts_from_vec(reset, i)));
+            constraints.push(squeeze() * (old_state(i) - compose_shifts_from_vec(shifts, i)));
         }
 
         constraints
@@ -308,23 +308,23 @@ fn compose_quarters<F: PrimeField, T: ExprOps<F>>(
 }
 
 fn compose_shifts<F: PrimeField, T: ExprOps<F>>(
-    resets: impl Fn(usize, usize, usize, usize) -> T,
+    shifts: impl Fn(usize, usize, usize, usize) -> T,
     x: usize,
     y: usize,
     q: usize,
 ) -> T {
-    resets(0, x, y, q)
-        + T::two_pow(1) * resets(1, x, y, q)
-        + T::two_pow(2) * resets(2, x, y, q)
-        + T::two_pow(3) * resets(3, x, y, q)
+    shifts(0, x, y, q)
+        + T::two_pow(1) * shifts(1, x, y, q)
+        + T::two_pow(2) * shifts(2, x, y, q)
+        + T::two_pow(3) * shifts(3, x, y, q)
 }
 
 fn compose_shifts_from_vec<F: PrimeField, T: ExprOps<F>>(
-    resets: impl Fn(usize) -> T,
+    shifts: impl Fn(usize) -> T,
     i: usize,
 ) -> T {
-    resets(4 * i)
-        + T::two_pow(1) * resets(4 * i + 1)
-        + T::two_pow(2) * resets(4 * i + 2)
-        + T::two_pow(3) * resets(4 * i + 3)
+    shifts(4 * i)
+        + T::two_pow(1) * shifts(4 * i + 1)
+        + T::two_pow(2) * shifts(4 * i + 2)
+        + T::two_pow(3) * shifts(4 * i + 3)
 }
