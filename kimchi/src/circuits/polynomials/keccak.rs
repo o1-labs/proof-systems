@@ -280,7 +280,7 @@ where
             constraints.push(root() * old_state(i));
             // Absorbs the new block by performing XOR with the old state
             constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
-            // Check resets correspond to the decomposition of the new state
+            // Check shifts correspond to the decomposition of the new state
             constraints.push(absorb() * (new_block(i) - compose_shifts_from_vec(shifts, i)));
             // Both phases: check correctness of each dense term (16 bits) by composing two bytes
             constraints.push(dense(i) - (bytes(2 * i) + T::two_pow(8) * bytes(2 * i + 1)));
@@ -288,7 +288,7 @@ where
 
         // STEP squeeze: 16 constraints
         for i in 0..16 {
-            // Check resets correspond to the 256-bit prefix digest of the old state (current)
+            // Check shifts correspond to the 256-bit prefix digest of the old state (current)
             constraints.push(squeeze() * (old_state(i) - compose_shifts_from_vec(shifts, i)));
         }
 
