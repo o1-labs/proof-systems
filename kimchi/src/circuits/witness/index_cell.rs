@@ -13,7 +13,7 @@ impl<'a> IndexCell<'a> {
     pub fn create(name: &'a str, from: usize, to: usize) -> Box<IndexCell<'a>> {
         Box::new(IndexCell {
             name,
-            length: from - to,
+            length: to - from,
         })
     }
 }
