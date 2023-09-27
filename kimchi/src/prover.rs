@@ -354,6 +354,7 @@ where
                 //~~~ * calculate the contribution to the second column of the lookup table
                 //~~~   (the runtime vector)
                 let (runtime_table_contribution, runtime_table_contribution_d8) = {
+                    println!("Runtime table offset: {:?}", lcs.runtime_table_offset);
                     let mut offset = lcs
                         .runtime_table_offset
                         .expect("runtime configuration missing offset");

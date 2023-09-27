@@ -117,7 +117,9 @@ pub fn sorted<F: PrimeField>(
         counts.entry(t).or_insert(1);
     }
 
-    // TODO: shouldn't we make sure that lookup rows is the same as the number of active gates in the circuit as well? danger: What if we have gates that use lookup but are not counted here?
+    // TODO: shouldn't we make sure that lookup rows is the same as the number
+    // of active gates in the circuit as well? danger: What if we have gates
+    // that use lookup but are not counted here?
     for (i, row) in by_row
         .iter()
         .enumerate()
@@ -193,6 +195,7 @@ pub fn sorted<F: PrimeField>(
         sorted
     };
 
+    println!("Length of sorted: {:?}", sorted.len());
     Ok(sorted)
 }
 
