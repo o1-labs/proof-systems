@@ -397,7 +397,7 @@ mod tests {
 
         let evaluations: Vec<_> = polynomials
             .iter()
-            .zip(comms.into_iter())
+            .zip(comms)
             .map(|(p, commitment)| {
                 let evaluations = evaluation_points
                     .iter()
