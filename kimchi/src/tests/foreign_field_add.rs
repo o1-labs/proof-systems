@@ -27,7 +27,10 @@ use o1_utils::{
     foreign_field::{BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers, Two,
 };
-use poly_commitment::srs::{endos, SRS};
+use poly_commitment::{
+    evaluation_proof::OpeningProof,
+    srs::{endos, SRS},
+};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::array;
 use std::sync::Arc;
@@ -313,7 +316,7 @@ fn create_test_constraint_system_ffadd(
     opcodes: &[FFOps],
     foreign_field_modulus: BigUint,
     full: bool,
-) -> ProverIndex<Vesta> {
+) -> ProverIndex<Vesta, OpeningProof<Vesta>> {
     let (_next_row, gates) = if full {
         full_circuit(opcodes, &foreign_field_modulus)
     } else {
@@ -326,7 +329,7 @@ fn create_test_constraint_system_ffadd(
     let srs = Arc::new(srs);
 
     let (endo_q, _endo_r) = endos::<Pallas>();
-    ProverIndex::<Vesta>::create(cs, endo_q, srs)
+    ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
 }
 
 // helper to reduce lines of code in repetitive test structure
@@ -335,7 +338,10 @@ fn test_ffadd(
     inputs: Vec<BigUint>,
     opcodes: &[FFOps],
     full: bool,
-) -> ([Vec<PallasField>; COLUMNS], ProverIndex<Vesta>) {
+) -> (
+    [Vec<PallasField>; COLUMNS],
+    ProverIndex<Vesta, OpeningProof<Vesta>>,
+) {
     let index = create_test_constraint_system_ffadd(opcodes, foreign_field_modulus.clone(), full);
 
     let witness = if full {
@@ -1493,7 +1499,7 @@ fn test_ffadd_finalization() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
     };
 
     for row in 0..witness[0].len() {

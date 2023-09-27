@@ -1679,7 +1679,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: KimchiCurve> {
+pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1694,7 +1694,8 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
@@ -1704,7 +1705,7 @@ pub struct ProverIndex<G: KimchiCurve> {
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G>>,
+    pub verifier_index: Option<VerifierIndex<G, OpeningProof>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -1742,7 +1743,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve> {
+pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1750,7 +1751,8 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub max_poly_size: usize,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: OnceCell<Arc<SRS<G>>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -1936,6 +1938,8 @@ pub struct PointEvaluations<Evals> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProofEvaluations<Evals> {
+    /// public input polynomials
+    pub public: Option<Evals>,
     /// witness polynomials
     pub w: [Evals; COLUMNS],
     /// permutation polynomial
@@ -2027,12 +2031,16 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<G: AffineCurve, OpeningProof> {
     /// All the polynomial commitments required in the proof
     pub commitments: ProverCommitments<G>,
 
     /// batched commitment opening proof
-    pub proof: OpeningProof<G>,
+    #[serde(bound(
+        serialize = "OpeningProof: Serialize",
+        deserialize = "OpeningProof: Deserialize<'de>"
+    ))]
+    pub proof: OpeningProof,
 
     /// Two evaluations over a number of committed polynomials
     pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
@@ -2157,7 +2165,6 @@ The prover then follows the following steps to create the proof:
    and by then dividing the resulting polynomial with the vanishing polynomial $Z_H$.
    TODO: specify the split of the permutation polynomial into perm and bnd?
 1. commit (hiding) to the quotient polynomial $t$
-   TODO: specify the dummies
 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify)
@@ -2194,7 +2201,6 @@ The prover then follows the following steps to create the proof:
 1. Squeeze the Fq-sponge and absorb the result with the Fr-Sponge.
 1. Absorb the previous recursion challenges.
 1. Compute evaluations for the previous recursion challenges.
-1. Evaluate the negated public polynomial (if present) at $\zeta$ and $\zeta\omega$.
 1. Absorb the unique evaluation of ft: $ft(\zeta\omega)$.
 1. Absorb all the polynomial evaluations in $\zeta$ and $\zeta\omega$:
 	* the public polynomial
@@ -2258,7 +2264,7 @@ We run the following algorithm:
 1. Absorb the commitment to the permutation trace with the Fq-Sponge.
 1. Sample $\alpha'$ with the Fq-Sponge.
 1. Derive $\alpha$ from $\alpha'$ using the endomorphism (TODO: details).
-1. Enforce that the length of the $t$ commitment is of size `PERMUTS`.
+1. Enforce that the length of the $t$ commitment is of size 7.
 1. Absorb the commitment to the quotient polynomial $t$ into the argument.
 1. Sample $\zeta'$ with the Fq-Sponge.
 1. Derive $\zeta$ from $\zeta'$ using the endomorphism (TODO: specify).
