@@ -12,6 +12,7 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
+        polynomials::zero::Zero,
         wires::Wire,
     },
 };
@@ -60,7 +61,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ///       `circuit_gates` - vector of circuit gates comprising this gate
     pub fn create_range_check(start_row: usize) -> (usize, Vec<Self>) {
         let gate = CircuitGate::new(
-            GateType::RangeCheck0,
+            RangeCheck0::<F>::typ(),
             Wire::for_row(start_row),
             vec![F::zero()],
         );
@@ -84,17 +85,21 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         let mut circuit_gates = vec![
             CircuitGate::new(
-                GateType::RangeCheck0,
+                RangeCheck0::<F>::typ(),
                 Wire::for_row(start_row),
                 vec![F::zero()],
             ),
             CircuitGate::new(
-                GateType::RangeCheck0,
+                RangeCheck0::<F>::typ(),
                 Wire::for_row(start_row + 1),
                 vec![coeff],
             ),
-            CircuitGate::new(GateType::RangeCheck1, Wire::for_row(start_row + 2), vec![]),
-            CircuitGate::new(GateType::Zero, Wire::for_row(start_row + 3), vec![]),
+            CircuitGate::new(
+                RangeCheck1::<F>::typ(),
+                Wire::for_row(start_row + 2),
+                vec![],
+            ),
+            CircuitGate::new(Zero::<F>::typ(), Wire::for_row(start_row + 3), vec![]),
         ];
 
         // copy v0p0
@@ -111,50 +116,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         (start_row + circuit_gates.len(), circuit_gates)
     }
-}
-
-/// Get vector of range check circuit gate types
-pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::RangeCheck0, GateType::RangeCheck1]
-}
-
-/// Number of constraints for a given range check circuit gate type
-///
-/// # Panics
-///
-/// Will panic if `typ` is not `RangeCheck`-related gate type.
-// JES: TODO: Remove this function
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::RangeCheck0 => RangeCheck0::<F>::create().constraint_count(),
-        GateType::RangeCheck1 => RangeCheck1::<F>::create().constraint_count(),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get combined constraints for a given range check circuit gate type
-///
-/// # Panics
-///
-/// Will panic if `typ` is not `RangeCheck`-related gate type.
-// JES: TODO: Remove this function
-pub fn circuit_gate_constraints<F: PrimeField>(
-    typ: GateType,
-    alphas: &Alphas<F>,
-    cache: &mut Cache,
-) -> E<F> {
-    match typ {
-        GateType::RangeCheck0 => RangeCheck0::create().combined_constraints(alphas, cache),
-        GateType::RangeCheck1 => RangeCheck1::create().combined_constraints(alphas, cache),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get the combined constraints for all range check circuit gate types
-// JES: TODO: Remove this function
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
-    RangeCheck0::create().combined_constraints(alphas, cache)
-        + RangeCheck1::create().combined_constraints(alphas, cache)
 }
 
 /// Get the range check lookup table

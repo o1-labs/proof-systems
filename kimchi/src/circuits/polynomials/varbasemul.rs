@@ -14,7 +14,8 @@ use crate::circuits::{
     argument::ArgumentEnv,
     expr::{constraints::ExprOps, Cache, Column, Variable},
     gate::Gate,
-    gate::{CircuitGate, CurrOrNext, GateType},
+    gate::{CircuitGate, CurrOrNext},
+    polynomials::zero::Zero,
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::{FftField, PrimeField};
@@ -134,8 +135,8 @@ use CurrOrNext::{Curr, Next};
 impl<F: PrimeField> CircuitGate<F> {
     pub fn create_vbmul(wires: &[GateWires; 2]) -> Vec<Self> {
         vec![
-            CircuitGate::new(GateType::VarBaseMul, wires[0], vec![]),
-            CircuitGate::new(GateType::Zero, wires[1], vec![]),
+            CircuitGate::new(VarbaseMul::<F>::typ(), wires[0], vec![]),
+            CircuitGate::new(Zero::<F>::typ(), wires[1], vec![]),
         ]
     }
 
@@ -150,7 +151,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     pub fn vbmul(&self) -> F {
-        if self.typ == GateType::VarBaseMul {
+        if self.typ == VarbaseMul::<F>::typ() {
             F::one()
         } else {
             F::zero()
@@ -406,10 +407,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for VarbaseMul<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "VarbaseMul"
-    }
-
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let Layout {
             base,

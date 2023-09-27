@@ -1,12 +1,26 @@
 //! This module implements Plonk circuit constraint primitive.
 use super::{
-    gate::GateHelpers, gate_registry::GateRegistry, lookup::runtime_tables::RuntimeTableCfg,
+    gate::GateHelpers,
+    gate_registry::GateRegistry,
+    lookup::runtime_tables::RuntimeTableCfg,
+    polynomials::{
+        complete_add::CompleteAdd,
+        endomul_scalar::EndomulScalar,
+        endosclmul::EndosclMul,
+        foreign_field_add::circuitgates::ForeignFieldAdd,
+        foreign_field_mul::circuitgates::ForeignFieldMul,
+        generic::Generic,
+        range_check::circuitgates::{RangeCheck0, RangeCheck1},
+        rot::Rot64,
+        varbasemul::VarbaseMul,
+        xor::Xor16,
+    },
 };
 use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
-        gate::{CircuitGate, GateType},
+        gate::CircuitGate,
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::{Shifts, ZK_ROWS},
@@ -14,6 +28,7 @@ use crate::{
     },
     curve::KimchiCurve,
     error::SetupError,
+    prover::ProverContext,
     prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, SquareRootField, Zero};
@@ -25,7 +40,7 @@ use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
-use std::{array, collections::BTreeSet, sync::Arc};
+use std::{array, sync::Arc};
 
 //
 // ConstraintSystem
@@ -134,7 +149,7 @@ pub struct ColumnEvaluations<F: PrimeField> {
 
     #[serde(skip)]
     /// Gate selectors and corresponding domains
-    pub gate_selectors: Vec<(GateType, E<F, D<F>>)>,
+    pub gate_selectors: Vec<(String, E<F, D<F>>)>,
 }
 
 #[serde_as]
@@ -154,6 +169,7 @@ pub struct ConstraintSystem<F: PrimeField> {
     pub gates: Vec<CircuitGate<F>>,
 
     #[serde(skip)]
+    // JES: TODO: Implement serialization
     pub configured_gates: GateRegistry<F>,
 
     /// flags for optional features
@@ -192,6 +208,7 @@ pub enum GateError {
 }
 
 pub struct Builder<F: PrimeField> {
+    ctx: ProverContext<F>,
     gates: Vec<CircuitGate<F>>,
     public: usize,
     prev_challenges: usize,
@@ -203,7 +220,7 @@ pub struct Builder<F: PrimeField> {
 
 /// Create selector polynomial for a circuit gate
 pub fn selector_polynomial<F: PrimeField>(
-    gate_type: GateType,
+    gate_type: String,
     gates: &[CircuitGate<F>],
     domain: &EvaluationDomains<F>,
     target_domain: &D<F>,
@@ -247,8 +264,9 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
     /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
-    pub fn create(gates: Vec<CircuitGate<F>>) -> Builder<F> {
+    pub fn create(ctx: ProverContext<F>, gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
+            ctx,
             gates,
             public: 0,
             prev_challenges: 0,
@@ -405,7 +423,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             self.gates
                 .iter()
                 .map(|gate| {
-                    if matches!(gate.typ, GateType::Generic) {
+                    if gate.typ == Generic::<F>::typ() {
                         F::one()
                     } else {
                         F::zero()
@@ -450,7 +468,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 
         // ECC gates
         let complete_add_selector4 = selector_polynomial(
-            GateType::CompleteAdd,
+            CompleteAdd::<F>::typ(),
             &self.gates,
             &self.domain,
             &self.domain.d4,
@@ -458,7 +476,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         );
 
         let mul_selector8 = selector_polynomial(
-            GateType::VarBaseMul,
+            VarbaseMul::<F>::typ(),
             &self.gates,
             &self.domain,
             &self.domain.d8,
@@ -466,7 +484,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         );
 
         let emul_selector8 = selector_polynomial(
-            GateType::EndoMul,
+            EndosclMul::<F>::typ(),
             &self.gates,
             &self.domain,
             &self.domain.d8,
@@ -474,7 +492,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         );
 
         let endomul_scalar_selector8 = selector_polynomial(
-            GateType::EndoMulScalar,
+            EndomulScalar::<F>::typ(),
             &self.gates,
             &self.domain,
             &self.domain.d8,
@@ -491,7 +509,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::RangeCheck0,
+                    RangeCheck0::<F>::typ(),
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -506,7 +524,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::RangeCheck1,
+                    RangeCheck1::<F>::typ(),
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -521,7 +539,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::ForeignFieldAdd,
+                    ForeignFieldAdd::<F>::typ(),
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -536,7 +554,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::ForeignFieldMul,
+                    ForeignFieldMul::<F>::typ(),
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -550,7 +568,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::Xor16,
+                    Xor16::<F>::typ(),
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -564,7 +582,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::Rot64,
+                    Rot64::<F>::typ(),
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -580,14 +598,14 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
         });
 
         // Compute gate selectors for configured gates
-        let gate_selectors: Vec<(GateType, E<F, D<F>>)> = self
+        let gate_selectors: Vec<(String, E<F, D<F>>)> = self
             .configured_gates
             .iter()
             .map(|(name, gate)| {
                 (
-                    gate.gate_type(),
+                    *name,
                     selector_polynomial(
-                        gate.gate_type(),
+                        *name,
                         &self.gates,
                         &self.domain,
                         self.domain.get(gate.domain(self.domain)),
@@ -680,13 +698,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        // Compute the gates configured by this circuit
-        let configured_gates = gates.iter().fold(BTreeSet::new(), |mut set, gate| {
-            if !gate.typ.is_always_configured() {
-                set.insert(gate.typ);
+        // Check that the circuit uses only registered gates
+        for gate in gates {
+            match self.ctx.gates.get(gate.typ) {
+                None => {
+                    return Err(SetupError::ConstraintSystem(format!(
+                        "Invalid gate {}",
+                        gate.typ
+                    )))
+                }
+                Some(_) => (),
             }
-            set
-        });
+        }
 
         let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
 
@@ -747,14 +770,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         };
 
         for gate in &gates {
-            match gate.typ {
-                GateType::RangeCheck0 => feature_flags.range_check0 = true,
-                GateType::RangeCheck1 => feature_flags.range_check1 = true,
-                GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
-                GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
-                GateType::Xor16 => feature_flags.xor = true,
-                GateType::Rot64 => feature_flags.rot = true,
-                _ => (),
+            if gate.typ == RangeCheck0::<F>::typ() {
+                feature_flags.range_check0 = true;
+            } else if gate.typ == RangeCheck1::<F>::typ() {
+                feature_flags.range_check1 = true;
+            } else if gate.typ == ForeignFieldAdd::<F>::typ() {
+                feature_flags.foreign_field_add = true;
+            } else if gate.typ == ForeignFieldMul::<F>::typ() {
+                feature_flags.foreign_field_mul = true;
+            } else if gate.typ == Xor16::<F>::typ() {
+                feature_flags.xor = true;
+            } else if gate.typ == Rot64::<F>::typ() {
+                feature_flags.rot = true;
             }
         }
 
@@ -781,10 +808,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             prev_challenges: self.prev_challenges,
             sid,
             gates,
-            configured_gates: configured_gates
-                .into_iter()
-                .map(|gate_type| gate_type.to_gate().unwrap())
-                .collect(),
+            configured_gates: self.ctx.gates,
             shift: shifts.shifts,
             endo,
             //fr_sponge_params: self.sponge_params,
@@ -812,10 +836,10 @@ pub mod tests {
     use mina_curves::pasta::Fp;
 
     impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
-        pub fn for_testing(gates: Vec<CircuitGate<F>>) -> Self {
+        pub fn for_testing(ctx: ProverContext<F>, gates: Vec<CircuitGate<F>>) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-            ConstraintSystem::<F>::create(gates)
+            ConstraintSystem::<F>::create(ctx, gates)
                 .public(public)
                 .build()
                 .unwrap()
@@ -823,9 +847,9 @@ pub mod tests {
     }
 
     impl ConstraintSystem<Fp> {
-        pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
+        pub fn fp_for_testing(ctx: ProverContext<Fp>, gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
-            Self::for_testing(gates)
+            Self::for_testing(ctx, gates)
         }
     }
 }

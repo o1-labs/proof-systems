@@ -2,11 +2,11 @@
 
 use crate::circuits::{
     expr::Column,
-    gate::GateType,
+    polynomials::{generic::Generic, poseidon::Poseidon},
     wires::{COLUMNS, PERMUTS},
 };
 use ark_ec::AffineCurve;
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{FftField, One, PrimeField, Zero};
 use ark_poly::univariate::DensePolynomial;
 use o1_utils::ExtendedDensePolynomial;
 use poly_commitment::{
@@ -394,7 +394,8 @@ impl<F: FftField> ProofEvaluations<PointEvaluations<Vec<F>>> {
 }
 
 impl<F> ProofEvaluations<F> {
-    pub fn get_column(&self, col: Column) -> Option<&F> {
+    pub fn get_column<T: PrimeField>(&self, col: Column) -> Option<&F>
+    {
         match col {
             Column::Witness(i) => Some(&self.w[i]),
             Column::Z => Some(&self.z),
@@ -404,8 +405,15 @@ impl<F> ProofEvaluations<F> {
             Column::LookupKindIndex(_) => None,
             Column::LookupRuntimeSelector => None,
             Column::LookupRuntimeTable => Some(self.lookup.as_ref()?.runtime.as_ref()?),
-            Column::Index(GateType::Generic) => Some(&self.generic_selector),
-            Column::Index(GateType::Poseidon) => Some(&self.poseidon_selector),
+            Column::Index(gate_type) => {
+                if *gate_type == Generic::<T>::typ() {
+                    Some(&self.generic_selector)
+                } else if *gate_type == Poseidon::<T>::typ() {
+                    Some(&self.poseidon_selector)
+                } else {
+                    panic!("Invalid gate type: {}", gate_type);
+                }
+            }
             Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),

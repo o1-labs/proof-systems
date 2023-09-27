@@ -12,6 +12,7 @@ use crate::{
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::{ProverProof, RecursionChallenge},
+    prover::ProverContext,
     prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
     verifier::verify,
     verifier_index::VerifierIndex,
@@ -25,8 +26,9 @@ use std::{fmt::Write, mem, time::Instant};
 
 // aliases
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 pub(crate) struct TestFramework<G: KimchiCurve> {
+    prover_context: Option<ProverContext<G::ScalarField>>,
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
     public_inputs: Vec<G::ScalarField>,
@@ -44,11 +46,36 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
 #[derive(Clone)]
 pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>);
 
+impl<G: KimchiCurve> Default for TestFramework<G> {
+    fn default() -> Self {
+        TestFramework {
+            prover_context: Some(ProverContext::default()),
+            gates: None,
+            witness: None,
+            public_inputs: vec![],
+            lookup_tables: vec![],
+            runtime_tables_setup: None,
+            runtime_tables: vec![],
+            recursion: vec![],
+            num_prev_challenges: 0,
+            disable_gates_checks: false,
+            prover_index: None,
+            verifier_index: None,
+        }
+    }
+}
+
 impl<G: KimchiCurve> TestFramework<G>
 where
     G::BaseField: PrimeField,
     G::ScalarField: PrimeField,
 {
+    #[must_use]
+    pub(crate) fn prover(mut self, ctx: ProverContext<G::ScalarField>) -> Self {
+        self.prover_context = Some(ctx);
+        self
+    }
+
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
         self.gates = Some(gates);
@@ -103,6 +130,7 @@ where
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
         let index = new_index_for_test_with_lookups::<G>(
+            self.prover_context.unwrap(),
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,

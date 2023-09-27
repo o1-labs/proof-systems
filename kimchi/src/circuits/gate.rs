@@ -2,16 +2,7 @@
 
 use crate::{
     alphas::Alphas,
-    circuits::{
-        argument::ArgumentEnv,
-        constraints::ConstraintSystem,
-        expr::prologue::*,
-        polynomials::{
-            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, varbasemul,
-        },
-        wires::*,
-    },
+    circuits::{argument::ArgumentEnv, constraints::ConstraintSystem, expr::prologue::*, wires::*},
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
@@ -28,7 +19,16 @@ use super::{
     argument::{ArgumentType, ArgumentWitness},
     domains::{Domain, EvaluationDomains},
     expr::{self, constraints::ExprOps, Cache, ConstantExpr},
-    polynomials::{generic, rot, xor},
+    polynomials::{
+        complete_add::CompleteAdd,
+        endomul_scalar::EndomulScalar,
+        endosclmul::EndosclMul,
+        generic::Generic,
+        poseidon::Poseidon,
+        turshi::{Claim, Flags, Instruction, Transition},
+        varbasemul::VarbaseMul,
+        zero::Zero,
+    },
 };
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -58,117 +58,123 @@ impl CurrOrNext {
     }
 }
 
-/// The different types of gates the system supports.
-/// Note that all the gates are mutually exclusive:
-/// they cannot be used at the same time on single row.
-/// If we were ever to support this feature, we would have to make sure
-/// not to re-use powers of alpha across constraints.
-#[repr(C)]
-#[derive(
-    Clone,
-    Copy,
-    Debug,
-    Default,
-    PartialEq,
-    FromPrimitive,
-    ToPrimitive,
-    Serialize,
-    Deserialize,
-    Eq,
-    Hash,
-    PartialOrd,
-    Ord,
-)]
-#[cfg_attr(
-    feature = "ocaml_types",
-    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
-)]
-#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
-#[cfg_attr(test, derive(proptest_derive::Arbitrary))]
-pub enum GateType {
-    #[default]
-    /// Zero gate
-    Zero,
-    /// Generic arithmetic gate
-    Generic,
-    /// Poseidon permutation gate
-    Poseidon,
-    /// Complete EC addition in Affine form
-    CompleteAdd,
-    /// EC variable base scalar multiplication
-    VarBaseMul,
-    /// EC variable base scalar multiplication with group endomorphim optimization
-    EndoMul,
-    /// Gate for computing the scalar corresponding to an endoscaling
-    EndoMulScalar,
-    // Lookup
-    Lookup,
-    /// Cairo
-    CairoClaim,
-    CairoInstruction,
-    CairoFlags,
-    CairoTransition,
-    /// Range check
-    RangeCheck0,
-    RangeCheck1,
-    ForeignFieldAdd,
-    ForeignFieldMul,
-    // Gates for Keccak
-    Xor16,
-    Rot64,
-    Conditional,
-}
+// /// The different types of gates the system supports.
+// /// Note that all the gates are mutually exclusive:
+// /// they cannot be used at the same time on single row.
+// /// If we were ever to support this feature, we would have to make sure
+// /// not to re-use powers of alpha across constraints.
+// #[repr(C)]
+// #[derive(
+//     Clone,
+//     Copy,
+//     Debug,
+//     Default,
+//     PartialEq,
+//     FromPrimitive,
+//     ToPrimitive,
+//     Serialize,
+//     Deserialize,
+//     Eq,
+//     Hash,
+//     PartialOrd,
+//     Ord,
+// )]
+// #[cfg_attr(
+//     feature = "ocaml_types",
+//     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+// )]
+// #[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
+// #[cfg_attr(test, derive(proptest_derive::Arbitrary))]
+// pub enum GateType {
+//     #[default]
+//     /// Zero gate
+//     Zero,
+//     /// Generic arithmetic gate
+//     Generic,
+//     /// Poseidon permutation gate
+//     Poseidon,
+//     /// Complete EC addition in Affine form
+//     CompleteAdd,
+//     /// EC variable base scalar multiplication
+//     VarBaseMul,
+//     /// EC variable base scalar multiplication with group endomorphim optimization
+//     EndoMul,
+//     /// Gate for computing the scalar corresponding to an endoscaling
+//     EndoMulScalar,
+//     // Lookup
+//     Lookup,
+//     /// Cairo
+//     CairoClaim,
+//     CairoInstruction,
+//     CairoFlags,
+//     CairoTransition,
+//     /// Range check
+//     RangeCheck0,
+//     RangeCheck1,
+//     ForeignFieldAdd,
+//     ForeignFieldMul,
+//     // Gates for Keccak
+//     Xor16,
+//     Rot64,
+//     Conditional,
+// }
 
-impl GateType {
-    // TODO: Remove this function once all gates are updated to configurable gates
-    pub fn is_always_configured(&self) -> bool {
-        matches!(
-            self,
-            GateType::Zero
-                | GateType::Lookup
-                | GateType::Generic
-                | GateType::Poseidon
-                | GateType::CompleteAdd
-                | GateType::VarBaseMul
-                | GateType::EndoMul
-                | GateType::EndoMulScalar
-                | GateType::RangeCheck0
-                | GateType::RangeCheck1
-                | GateType::ForeignFieldAdd
-                | GateType::ForeignFieldMul
-                | GateType::Xor16
-                | GateType::Rot64
-        )
-    }
-    // Get gate definition associated with gate type
-    pub fn to_gate<F: PrimeField, T: ExprOps<F>>(&self) -> Option<Box<dyn Gate<F, T>>> {
-        match self {
-            GateType::Generic => Some(generic::Generic::<F>::create()),
-            GateType::Poseidon => Some(poseidon::Poseidon::<F>::create()),
-            GateType::CompleteAdd => Some(complete_add::CompleteAdd::<F>::create()),
-            GateType::VarBaseMul => Some(varbasemul::VarbaseMul::<F>::create()),
-            GateType::EndoMul => Some(endosclmul::EndosclMul::<F>::create()),
-            GateType::EndoMulScalar => Some(endomul_scalar::EndomulScalar::<F>::create()),
-            GateType::RangeCheck0 => Some(range_check::circuitgates::RangeCheck0::<F>::create()),
-            GateType::RangeCheck1 => Some(range_check::circuitgates::RangeCheck1::<F>::create()),
-            GateType::ForeignFieldAdd => {
-                Some(foreign_field_add::circuitgates::ForeignFieldAdd::<F>::create())
-            }
-            GateType::ForeignFieldMul => {
-                Some(foreign_field_mul::circuitgates::ForeignFieldMul::<F>::create())
-            }
-            GateType::Xor16 => Some(xor::Xor16::<F>::create()),
-            GateType::Rot64 => Some(rot::Rot64::<F>::create()),
-            // TODO: What about Zero and Lookup?
-            _ => None,
-        }
-    }
-}
+// impl GateType {
+//     // TODO: Remove this function once all gates are updated to configurable gates
+//     pub fn is_always_configured(&self) -> bool {
+//         matches!(
+//             self,
+//             GateType::Zero
+//                 | GateType::Lookup
+//                 | GateType::Generic
+//                 | GateType::Poseidon
+//                 | GateType::CompleteAdd
+//                 | GateType::VarBaseMul
+//                 | GateType::EndoMul
+//                 | GateType::EndoMulScalar
+//                 | GateType::RangeCheck0
+//                 | GateType::RangeCheck1
+//                 | GateType::ForeignFieldAdd
+//                 | GateType::ForeignFieldMul
+//                 | GateType::Xor16
+//                 | GateType::Rot64
+//         )
+//     }
+//     // Get gate definition associated with gate type
+//     pub fn to_gate<F: PrimeField, T: ExprOps<F>>(&self) -> Option<Box<dyn Gate<F, T>>> {
+//         match self {
+//             GateType::Generic => Some(generic::Generic::<F>::create()),
+//             GateType::Poseidon => Some(poseidon::Poseidon::<F>::create()),
+//             GateType::CompleteAdd => Some(complete_add::CompleteAdd::<F>::create()),
+//             GateType::VarBaseMul => Some(varbasemul::VarbaseMul::<F>::create()),
+//             GateType::EndoMul => Some(endosclmul::EndosclMul::<F>::create()),
+//             GateType::EndoMulScalar => Some(endomul_scalar::EndomulScalar::<F>::create()),
+//             GateType::RangeCheck0 => Some(range_check::circuitgates::RangeCheck0::<F>::create()),
+//             GateType::RangeCheck1 => Some(range_check::circuitgates::RangeCheck1::<F>::create()),
+//             GateType::ForeignFieldAdd => {
+//                 Some(foreign_field_add::circuitgates::ForeignFieldAdd::<F>::create())
+//             }
+//             GateType::ForeignFieldMul => {
+//                 Some(foreign_field_mul::circuitgates::ForeignFieldMul::<F>::create())
+//             }
+//             GateType::Xor16 => Some(xor::Xor16::<F>::create()),
+//             GateType::Rot64 => Some(rot::Rot64::<F>::create()),
+//             // TODO: What about Zero and Lookup?
+//             _ => None,
+//         }
+//     }
+// }
+
+pub type GateType = String;
 
 pub trait Gate<F: PrimeField, T: ExprOps<F>>: std::fmt::Debug + DynClone {
-    fn name(&self) -> &str;
-
+    /// Gate constraints
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
+
+    // Clone this gate for verification
+    // fn clone_for_verification(&self) -> Box<dyn Gate<F, F>> {
+    //     Box::new(Self::<F,F>::clone())
+    // }
 }
 
 // Implement dynamic cloning
@@ -180,15 +186,19 @@ impl<F: PrimeField, T: ExprOps<F>> Clone for Box<dyn Gate<F, T>> {
 
 #[macro_export]
 macro_rules! define_gate {
-    ($name:ident<$typ:ident : $bound:ident > , $comment:literal) => {
+    ($id:ident<$typ:ident : $bound:ident > , $comment:literal) => {
         #[doc = "The `"]
-        #[doc = stringify!($name)]
+        #[doc = stringify!($id)]
         #[doc = "`"]
         #[doc = " gate"]
         #[doc = $comment]
         #[derive(Default, Debug, Clone)]
-        pub struct $name<$typ>(PhantomData<$typ>);
-        impl<$typ: $bound> $name<F> {
+        pub struct $id<$typ>(PhantomData<$typ>);
+        impl<$typ: $bound> $id<F> {
+            pub fn typ() -> String {
+                String::from("$id")
+            }
+
             pub fn create<S: ExprOps<$typ>>() -> Box<dyn Gate<$typ, S>> {
                 Box::new(Self::default())
             }
@@ -197,11 +207,25 @@ macro_rules! define_gate {
 }
 
 pub trait GateHelpers<F: PrimeField> {
+    /// Unique gate identifier (per circuit)
+    fn typ(&self) -> String;
+
+    /// Gate constraints
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>;
+
+    /// Number of constraints
     fn constraint_count(&self) -> u32;
+
+    /// Compute combined constraints
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>;
+
+    /// Compute gate degree
     fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64;
+
+    /// Domain required for gate
     fn domain(&self, eval_domains: EvaluationDomains<F>) -> Domain;
+
+    /// Convert gate to latex
     fn latex(&self) -> Vec<Vec<String>>;
 }
 
@@ -209,6 +233,10 @@ impl<F> GateHelpers<F> for dyn Gate<F, expr::Expr<ConstantExpr<F>>>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        std::any::type_name::<Self>().to_string()
+    }
+
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>> {
         // Generate constraints
         self.constraint_checks(&ArgumentEnv::default(), cache)
@@ -220,8 +248,10 @@ where
 
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
         let constraints = self.constraints(cache);
-        let alphas =
-            alphas.get_exponents(ArgumentType::Gate(GateType::Zero), constraints.len() as u32);
+        let alphas = alphas.get_exponents(
+            ArgumentType::Gate(Zero::<F>::typ()),
+            constraints.len() as u32,
+        );
         let combined_constraints = E::combine_constraints(alphas, constraints);
 
         // TODO: Refactor gate_type into u32
@@ -232,7 +262,7 @@ where
     fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64 {
         let mut powers_of_alpha = crate::alphas::Alphas::<F>::default();
         powers_of_alpha.register(
-            crate::circuits::argument::ArgumentType::Gate(GateType::Zero),
+            crate::circuits::argument::ArgumentType::Gate(Zero::<F>::typ()),
             self.constraint_count(),
         );
         self.combined_constraints(&powers_of_alpha, &mut super::expr::Cache::default())
@@ -263,7 +293,7 @@ where
 }
 
 /// Gate error
-#[derive(Error, Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum CircuitGateError {
     /// Invalid constraint
     #[error("Invalid {0:?} constraint")]
@@ -293,7 +323,7 @@ pub type CircuitGateResult<T> = std::result::Result<T, CircuitGateError>;
 /// A single gate in a circuit.
 pub struct CircuitGate<F: PrimeField> {
     /// type of the gate
-    pub typ: GateType,
+    pub typ: String,
 
     /// gate wiring (for each cell, what cell it is wired to)
     pub wires: GateWires,
@@ -315,7 +345,7 @@ where
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
-        let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
+        let typ = self.typ.as_bytes(); // JES: TODO: OK like this?
         typ.write(&mut w)?;
         for i in 0..COLUMNS {
             self.wires[i].write(&mut w)?;
@@ -332,7 +362,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// this function creates "empty" circuit gate
     pub fn zero(wires: GateWires) -> Self {
-        CircuitGate::new(GateType::Zero, wires, vec![])
+        CircuitGate::new(Zero::<F>::typ(), wires, vec![])
     }
 
     /// This function verifies the consistency of the wire
@@ -348,29 +378,35 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         index: &ProverIndex<G>,
         public: &[F],
     ) -> Result<(), String> {
-        use GateType::*;
-        match self.typ {
-            Zero => Ok(()),
-            // TODO: Refactor these into generic witness verification and replace this function with
-            //       verify_witness()
-            Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon::<G>(row, witness),
-            CompleteAdd => self.verify_complete_add(row, witness),
-            VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
-            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
-            // TODO: implement the verification for the lookup gate
-            Lookup => Ok(()),
-            CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<G>(row, witness, &index.cs)
-            }
+        // Note: this giant if statement will be removed once these gates
+        //       are migrated to generic witness verification
+        return if self.typ == Zero::<F>::typ() {
+            Ok(())
+        } else if self.typ == Generic::<F>::typ() {
+            self.verify_generic(row, witness, public)
+        } else if self.typ == Poseidon::<F>::typ() {
+            self.verify_poseidon::<G>(row, witness)
+        } else if self.typ == CompleteAdd::<F>::typ() {
+            self.verify_complete_add(row, witness)
+        } else if self.typ == VarbaseMul::<F>::typ() {
+            self.verify_vbmul(row, witness)
+        } else if self.typ == EndosclMul::<F>::typ() {
+            self.verify_endomul::<G>(row, witness, &index.cs)
+        } else if self.typ == EndomulScalar::<F>::typ() {
+            self.verify_endomul_scalar::<G>(row, witness, &index.cs)
+        } else if self.typ == Claim::<F>::typ() {
+            self.verify_cairo_gate::<G>(row, witness, &index.cs)
+        } else if self.typ == Instruction::<F>::typ() {
+            self.verify_cairo_gate::<G>(row, witness, &index.cs)
+        } else if self.typ == Flags::<F>::typ() {
+            self.verify_cairo_gate::<G>(row, witness, &index.cs)
+        } else if self.typ == Transition::<F>::typ() {
+            self.verify_cairo_gate::<G>(row, witness, &index.cs)
+        } else {
             // All other gates support generic witness verification
-            _ => {
-                // This could be a configured gate, so use verify_witness, which also covers those
-                self.verify_witness::<G>(row, witness, &index.cs, public)
-                    .map_err(|e| e.to_string())
-            }
-        }
+            self.verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string())
+        };
     }
 
     /// Verify the witness against the constraints
@@ -421,10 +457,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let mut cache = expr::Cache::default();
 
         // Perform witness verification on each constraint for this gate
-        let results = if let Some(gate) = self.typ.to_gate() {
-            gate.constraint_checks(&env, &mut cache)
-        } else {
-            vec![]
+        let results: Vec<F> = match cs.configured_gates.get(self.typ) {
+            // Some(gate) => gate.clone_for_verification().constraint_checks(&env, &mut cache), // JES: TODO
+            Some(_) => vec![],
+            None => vec![],
         };
 
         // Check for failed constraints
@@ -707,7 +743,7 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: String, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
             CircuitGate::new(
                 typ,
                 wires,

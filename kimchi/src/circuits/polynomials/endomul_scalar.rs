@@ -29,7 +29,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
+        ensure_eq!(self.typ, EndomulScalar::<F>::typ(), "incorrect gate type");
 
         let n0 = witness[0][row];
         let n8 = witness[1][row];
@@ -158,7 +158,6 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~   * Constrain $x_6$: `0 = x6 * ( x6^3 - 6 * x6^2 + 11 * x6 - 6 )`
 //~   * Constrain $x_7$: `0 = x7 * ( x7^3 - 6 * x7^2 + 11 * x7 - 6 )`
 //~
-
 #[derive(Default, Debug, Clone, GateImpl)]
 pub struct EndomulScalar<F>(PhantomData<F>);
 
@@ -166,10 +165,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for EndomulScalar<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "EndomulScalar"
-    }
-
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);

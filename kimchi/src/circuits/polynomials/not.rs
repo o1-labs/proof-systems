@@ -2,7 +2,7 @@
 //! for both the implementation running with `Xor16` gates and the one with `Generic` gates.
 //! Note that this module does not include a `Not` gate type.
 use crate::circuits::{
-    gate::{CircuitGate, Connect, GateType},
+    gate::{CircuitGate, Connect},
     polynomial::COLUMNS,
     wires::Wire,
 };
@@ -13,7 +13,7 @@ use std::{array, cmp::max};
 
 use super::{
     generic::GenericGateSpec,
-    xor::{init_xor, num_xors},
+    xor::{init_xor, num_xors, Xor16},
 };
 
 //~ We implement NOT, i.e. bitwise negation, as a gadget in two different ways, needing no new gate type for it. Instead, it reuses the XOR gadget and the Generic gate.
@@ -154,7 +154,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let new_row = gates.len();
         let mut not_gates = (0..n)
             .map(|i| CircuitGate {
-                typ: GateType::Xor16,
+                typ: Xor16::<F>::typ(),
                 wires: Wire::for_row(new_row + i),
                 coeffs: vec![],
             })

@@ -14,7 +14,7 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
-        polynomials::generic::GenericGateSpec,
+        polynomials::{generic::GenericGateSpec, zero::Zero},
         wires::Wire,
     },
 };
@@ -38,7 +38,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let foreign_field_modulus = foreign_field_modulus.to_field_limbs::<F>();
         let circuit_gates = vec![
             CircuitGate {
-                typ: GateType::ForeignFieldMul,
+                typ: ForeignFieldMul::<F>::typ(),
                 wires: Wire::for_row(start_row),
                 coeffs: vec![
                     foreign_field_modulus[2],
@@ -48,7 +48,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 ],
             },
             CircuitGate {
-                typ: GateType::Zero,
+                typ: Zero::<F>::typ(),
                 wires: Wire::for_row(start_row + 1),
                 coeffs: vec![],
             },
@@ -80,47 +80,6 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let g = GenericGateSpec::Plus(hi_limb);
         CircuitGate::extend_generic(gates, curr_row, Wire::for_row(r), g.clone(), Some(g));
     }
-}
-
-// TODO: Check do we use this anywhere
-pub fn circuit_gate_selector_index(typ: GateType) -> usize {
-    match typ {
-        GateType::ForeignFieldMul => 0,
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get vector of foreign field multiplication circuit gate types
-pub fn circuit_gates() -> [GateType; GATE_COUNT] {
-    [GateType::ForeignFieldMul]
-}
-
-/// Get combined constraints for a given foreign field multiplication circuit gate
-// JES: TODO: REMOVE THIS
-pub fn circuit_gate_constraints<F: PrimeField>(
-    typ: GateType,
-    alphas: &Alphas<F>,
-    cache: &mut Cache,
-) -> E<F> {
-    match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::create().combined_constraints(alphas, cache),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Number of constraints for a given foreign field mul circuit gate type
-// JES: TODO: REMOVE THIS
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
-    match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::<F>::create().constraint_count(),
-        _ => panic!("invalid gate type"),
-    }
-}
-
-/// Get the combined constraints for all foreign field multiplication circuit gates
-// JES: TODO: REMOVE THIS
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
-    ForeignFieldMul::create().combined_constraints(alphas, cache)
 }
 
 /// Get the foreign field multiplication lookup table

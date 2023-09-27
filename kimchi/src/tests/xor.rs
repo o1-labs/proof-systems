@@ -3,12 +3,16 @@ use std::{array, cmp::max, sync::Arc};
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, Connect, GateType},
+        gate::{CircuitGate, CircuitGateError, Connect},
         polynomial::COLUMNS,
-        polynomials::{generic::GenericGateSpec, xor},
+        polynomials::{
+            generic::GenericGateSpec,
+            xor::{self, Xor16},
+        },
         wires::Wire,
     },
     curve::KimchiCurve,
+    prover::ProverContext,
     prover_index::ProverIndex,
 };
 use ark_ec::AffineCurve;
@@ -50,7 +54,10 @@ where
     let mut gates = vec![];
     let _next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
 
-    ConstraintSystem::create(gates).build().unwrap()
+    let prover_context = ProverContext::default();
+    ConstraintSystem::create(prover_context, gates)
+        .build()
+        .unwrap()
 }
 
 // Returns the all ones BigUint of bits length
@@ -251,7 +258,10 @@ fn verify_bad_xor_decomposition<G: KimchiCurve>(
         witness[col][0] += G::ScalarField::one();
         assert_eq!(
             cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
-            Err(CircuitGateError::Constraint(GateType::Xor16, bad))
+            Err(CircuitGateError::Constraint(
+                Xor16::<G::ScalarField>::typ(),
+                bad
+            ))
         );
         witness[col][0] -= G::ScalarField::one();
     }
@@ -297,7 +307,11 @@ fn test_extend_xor() {
     gates.connect_cell_pair((0, 0), (2, 0));
     gates.connect_cell_pair((1, 0), (2, 1));
 
-    let cs = ConstraintSystem::create(gates).public(2).build().unwrap();
+    let prover_context = ProverContext::default();
+    let cs = ConstraintSystem::create(prover_context, gates)
+        .public(2)
+        .build()
+        .unwrap();
 
     let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
     witness[0][0] = input1;
@@ -388,7 +402,7 @@ fn test_xor_finalization() {
     };
 
     let index = {
-        let cs = ConstraintSystem::create(gates.clone())
+        let cs = ConstraintSystem::create(ProverContext::default(), gates.clone())
             .lookup(vec![xor::lookup_table()])
             .public(num_inputs)
             .build()

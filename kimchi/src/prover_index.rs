@@ -139,6 +139,7 @@ pub mod testing {
             lookup::{runtime_tables::RuntimeTableCfg, tables::LookupTable},
         },
         precomputed_srs,
+        prover::ProverContext,
     };
     use ark_ff::{PrimeField, SquareRootField};
     use poly_commitment::srs::endos;
@@ -149,6 +150,7 @@ pub mod testing {
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
     pub fn new_index_for_test_with_lookups<G: KimchiCurve>(
+        ctx: ProverContext<G::ScalarField>,
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
@@ -161,7 +163,7 @@ pub mod testing {
         G::ScalarField: PrimeField + SquareRootField,
     {
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        let cs = ConstraintSystem::<G::ScalarField>::create(gates)
+        let cs = ConstraintSystem::<G::ScalarField>::create(ctx, gates)
             .lookup(lookup_tables)
             .runtime(runtime_tables)
             .public(public)
@@ -186,6 +188,7 @@ pub mod testing {
     }
 
     pub fn new_index_for_test<G: KimchiCurve>(
+        ctx: ProverContext<G::ScalarField>,
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
     ) -> ProverIndex<G>
@@ -193,6 +196,6 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
+        new_index_for_test_with_lookups::<G>(ctx, gates, public, 0, vec![], None, false)
     }
 }

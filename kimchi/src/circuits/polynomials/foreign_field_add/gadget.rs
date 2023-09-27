@@ -5,11 +5,12 @@ use num_bigint::BigUint;
 use o1_utils::foreign_field::BigUintForeignFieldHelpers;
 
 use crate::circuits::{
-    gate::{CircuitGate, Connect, GateType},
+    gate::{CircuitGate, Connect},
+    polynomials::zero::Zero,
     wires::Wire,
 };
 
-use super::witness::FFOps;
+use super::{circuitgates::ForeignFieldAdd, witness::FFOps};
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Create foreign field addition gate chain without range checks (needs to wire the range check for result bound manually)
@@ -59,7 +60,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             let mut coeffs = foreign_field_modulus.to_vec();
             coeffs.push(opcode.sign::<F>());
             circuit_gates.append(&mut vec![CircuitGate {
-                typ: GateType::ForeignFieldAdd,
+                typ: ForeignFieldAdd::<F>::typ(),
                 wires: Wire::for_row(next_row + i),
                 coeffs,
             }]);
@@ -69,12 +70,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // Then the final bound gate and the zero gate
         circuit_gates.append(&mut vec![
             CircuitGate {
-                typ: GateType::ForeignFieldAdd,
+                typ: ForeignFieldAdd::<F>::typ(),
                 wires: Wire::for_row(next_row + num),
                 coeffs: final_coeffs,
             },
             CircuitGate {
-                typ: GateType::Zero,
+                typ: Zero::<F>::typ(),
                 wires: Wire::for_row(next_row + num + 1),
                 coeffs: vec![],
             },
@@ -108,12 +109,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         coeffs.push(operation.sign::<F>());
         let circuit_gates = vec![
             CircuitGate {
-                typ: GateType::ForeignFieldAdd,
+                typ: ForeignFieldAdd::<F>::typ(),
                 wires: Wire::for_row(start_row),
                 coeffs,
             },
             CircuitGate {
-                typ: GateType::Zero,
+                typ: Zero::<F>::typ(),
                 wires: Wire::for_row(start_row + 1),
                 coeffs: vec![],
             },

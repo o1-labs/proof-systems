@@ -21,10 +21,6 @@ define_gate!(
 );
 
 impl<F: PrimeField, T: ExprOps<F>> Gate<F, T> for Zero<F> {
-    fn name(&self) -> &str {
-        "Zero"
-    }
-
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         vec![]
     }

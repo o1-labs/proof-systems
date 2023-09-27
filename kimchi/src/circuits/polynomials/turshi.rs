@@ -101,6 +101,8 @@ use turshi::{
     word::{FlagBits, Offsets},
 };
 
+use super::zero::Zero;
+
 const NUM_FLAGS: usize = 16;
 pub const CIRCUIT_GATE_COUNT: usize = 4;
 
@@ -109,21 +111,21 @@ pub const CIRCUIT_GATE_COUNT: usize = 4;
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// This function creates a `CairoClaim` gate
     pub fn create_cairo_claim(wires: GateWires) -> Self {
-        CircuitGate::new(GateType::CairoClaim, wires, vec![])
+        CircuitGate::new(Claim::<F>::typ(), wires, vec![])
     }
     /// This function creates a `CairoInstruction` gate
     pub fn create_cairo_instruction(wires: GateWires) -> Self {
-        CircuitGate::new(GateType::CairoInstruction, wires, vec![])
+        CircuitGate::new(Instruction::<F>::typ(), wires, vec![])
     }
 
     /// This function creates a `CairoFlags` gate
     pub fn create_cairo_flags(wires: GateWires) -> Self {
-        CircuitGate::new(GateType::CairoFlags, wires, vec![])
+        CircuitGate::new(Flags::<F>::typ(), wires, vec![])
     }
 
     /// This function creates a `CairoTransition` gate
     pub fn create_cairo_transition(wires: GateWires) -> Self {
-        CircuitGate::new(GateType::CairoTransition, wires, vec![])
+        CircuitGate::new(Transition::<F>::typ(), wires, vec![])
     }
 
     /// Gadget generator of the whole cairo circuits from an absolute row and number of instructions
@@ -187,7 +189,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // assignments
         let curr: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
         let mut next: [F; COLUMNS] = array::from_fn(|_| F::zero());
-        if self.typ != GateType::Zero {
+        if self.typ != Zero::<F>::typ() {
             next = array::from_fn(|i| witness[i][row + 1]);
         }
 
@@ -198,10 +200,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 h.insert(Column::Witness(i)); // column witness polynomials
             }
             // gate selector polynomials
-            h.insert(Column::Index(GateType::CairoClaim));
-            h.insert(Column::Index(GateType::CairoInstruction));
-            h.insert(Column::Index(GateType::CairoFlags));
-            h.insert(Column::Index(GateType::CairoTransition));
+            h.insert(Column::Index(Claim::<F>::typ()));
+            h.insert(Column::Index(Instruction::<F>::typ()));
+            h.insert(Column::Index(Flags::<F>::typ()));
+            h.insert(Column::Index(Transition::<F>::typ()));
             h
         };
 
@@ -407,6 +409,8 @@ pub mod witness {
 }
 
 pub mod testing {
+    use crate::circuits::polynomials::zero::Zero;
+
     use super::*;
 
     /// verifies that the Cairo gate constraints are solved by the witness depending on its type
@@ -423,28 +427,25 @@ pub mod testing {
         // assignments
         let this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
 
-        match gate.typ {
-            GateType::CairoClaim => {
-                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-                ensure_claim(&this, &next) // CircuitGate::ensure_transition(&this),
-            }
-            GateType::CairoInstruction => {
-                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-                ensure_instruction(&this, &next)
-            }
-            GateType::CairoFlags => {
-                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-                ensure_flags(&this, &next)
-            }
-            GateType::CairoTransition => {
-                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-                ensure_transition(&this, &next)
-            }
-            GateType::Zero => Ok(()),
-            _ => Err(
+        if gate.typ == Claim::<F>::typ() {
+            let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
+            return ensure_claim(&this, &next); // CircuitGate::ensure_transition(&this),
+        } else if gate.typ == Instruction::<F>::typ() {
+            let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
+            return ensure_instruction(&this, &next);
+        } else if gate.typ == Flags::<F>::typ() {
+            let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
+            return ensure_flags(&this, &next);
+        } else if gate.typ == Transition::<F>::typ() {
+            let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
+            return ensure_transition(&this, &next);
+        } else if gate.typ == Zero::<F>::typ() {
+            return Ok(());
+        } else {
+            return Err(
                 "Incorrect GateType: expected CairoInstruction, CairoFlags, CairoTransition, or CairoClaim"
-                    .to_string(),
-            ),
+                    .to_string()
+            );
         }
     }
 
@@ -748,13 +749,18 @@ pub fn circuit_gate_combined_constraints<F: PrimeField>(
     alphas: &Alphas<F>,
     cache: &mut Cache,
 ) -> E<F> {
-    match typ {
-        GateType::CairoClaim => Claim::create().combined_constraints(alphas, cache),
-        GateType::CairoInstruction => Instruction::create().combined_constraints(alphas, cache),
-        GateType::CairoFlags => Flags::create().combined_constraints(alphas, cache),
-        GateType::CairoTransition => Transition::create().combined_constraints(alphas, cache),
-        GateType::Zero => E::literal(F::zero()),
-        _ => panic!("invalid gate type"),
+    if typ == Claim::<F>::typ() {
+        Claim::create().combined_constraints(alphas, cache)
+    } else if typ == Instruction::<F>::typ() {
+        Instruction::create().combined_constraints(alphas, cache)
+    } else if typ == Flags::<F>::typ() {
+        Flags::create().combined_constraints(alphas, cache)
+    } else if typ == Transition::<F>::typ() {
+        Transition::create().combined_constraints(alphas, cache)
+    } else if typ == Zero::<F>::typ() {
+        E::literal(F::zero())
+    } else {
+        panic!("invalid gate type")
     }
 }
 
@@ -765,10 +771,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Claim<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "CairoClaim"
-    }
-
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -804,10 +806,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Instruction<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "CairoInstruction"
-    }
-
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
@@ -952,10 +950,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Flags<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "CairoFlags"
-    }
-
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -1021,10 +1015,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Transition<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "CairoTransition"
-    }
-
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {

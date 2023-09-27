@@ -1,15 +1,20 @@
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError},
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
-            range_check::{self},
+            range_check::{
+                self,
+                circuitgates::{RangeCheck0, RangeCheck1},
+            },
+            zero::Zero as ZeroGate,
         },
         wires::Wire,
     },
     proof::ProverProof,
+    prover::ProverContext,
     prover_index::testing::new_index_for_test_with_lookups,
 };
 
@@ -61,6 +66,7 @@ fn create_test_prover_index(public_size: usize, compact: bool) -> ProverIndex<Ve
     };
 
     new_index_for_test_with_lookups(
+        ProverContext::default(),
         gates,
         public_size,
         0,
@@ -111,7 +117,10 @@ fn verify_range_check0_one_invalid_witness() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
 
     // gates[1] is RangeCheck0
@@ -122,7 +131,10 @@ fn verify_range_check0_one_invalid_witness() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
 }
 
@@ -218,7 +230,7 @@ fn verify_range_check0_invalid_witness() {
             &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::RangeCheck0,
+            typ: RangeCheck0::<PallasField>::typ(),
             src: Wire { row: 0, col: 1 },
             dst: Wire { row: 3, col: 3 }
         })
@@ -236,7 +248,7 @@ fn verify_range_check0_invalid_witness() {
             &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::RangeCheck0,
+            typ: RangeCheck0::<PallasField>::typ(),
             src: Wire { row: 1, col: 2 },
             dst: Wire { row: 3, col: 6 }
         })
@@ -262,7 +274,10 @@ fn verify_range_check0_invalid_witness() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 2))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            2
+        ))
     );
 
     // Invalidate witness
@@ -276,7 +291,10 @@ fn verify_range_check0_invalid_witness() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 3))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            3
+        ))
     );
 }
 
@@ -444,7 +462,10 @@ fn verify_range_check0_invalid_v0_not_in_range() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
@@ -461,7 +482,10 @@ fn verify_range_check0_invalid_v0_not_in_range() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
 }
 
@@ -483,7 +507,10 @@ fn verify_range_check0_invalid_v1_not_in_range() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
@@ -500,7 +527,10 @@ fn verify_range_check0_invalid_v1_not_in_range() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
 }
 
@@ -687,7 +717,10 @@ fn verify_range_check1_one_invalid_witness() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck1, 21))
+        Err(CircuitGateError::Constraint(
+            RangeCheck1::<PallasField>::typ(),
+            21
+        ))
     );
 }
 
@@ -760,7 +793,10 @@ fn verify_range_check1_invalid_witness() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck1, 21))
+        Err(CircuitGateError::Constraint(
+            RangeCheck1::<PallasField>::typ(),
+            21
+        ))
     );
 
     let mut witness = range_check::witness::create_multi::<PallasField>(
@@ -783,7 +819,10 @@ fn verify_range_check1_invalid_witness() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck1, 8))
+        Err(CircuitGateError::Constraint(
+            RangeCheck1::<PallasField>::typ(),
+            8
+        ))
     );
 }
 
@@ -878,7 +917,10 @@ fn verify_range_check1_invalid_v2_not_in_range() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck1, 21))
+        Err(CircuitGateError::Constraint(
+            RangeCheck1::<PallasField>::typ(),
+            21
+        ))
     );
 
     let witness = range_check::witness::create_multi::<PallasField>(
@@ -895,7 +937,10 @@ fn verify_range_check1_invalid_v2_not_in_range() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck1, 21))
+        Err(CircuitGateError::Constraint(
+            RangeCheck1::<PallasField>::typ(),
+            21
+        ))
     );
 }
 
@@ -947,7 +992,7 @@ fn verify_range_check1_test_copy_constraints() {
                     &witness[0][0..index.cs.public]
                 ),
                 Err(CircuitGateError::CopyConstraint {
-                    typ: GateType::Zero,
+                    typ: ZeroGate::<PallasField>::typ(),
                     src: Wire {
                         row: 3,
                         col: 2 * row + col + 2
@@ -1079,11 +1124,15 @@ fn verify_64_bit_range_check() {
     gates[1].wires[2] = Wire { row: 0, col: 0 };
     gates[0].wires[0] = Wire { row: 1, col: 1 };
 
+    let prover_context = ProverContext::default();
+
     // Create constraint system
-    let cs =
-        ConstraintSystem::<Fp>::create(gates /*, mina_poseidon::pasta::fp_kimchi::params()*/)
-            .build()
-            .unwrap();
+    let cs = ConstraintSystem::<Fp>::create(
+        prover_context,
+        gates, /*, mina_poseidon::pasta::fp_kimchi::params()*/
+    )
+    .build()
+    .unwrap();
 
     let index = {
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
@@ -1138,7 +1187,7 @@ fn verify_64_bit_range_check() {
             &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::RangeCheck0,
+            typ: RangeCheck0::<PallasField>::typ(),
             src: Wire { row: 1, col: 1 },
             dst: Wire { row: 1, col: 2 }
         })
@@ -1183,7 +1232,10 @@ fn compact_multi_range_check() {
                 &index.cs,
                 &witness[0][0..index.cs.public]
             ),
-            Err(CircuitGateError::Constraint(GateType::RangeCheck0, 10))
+            Err(CircuitGateError::Constraint(
+                RangeCheck0::<PallasField>::typ(),
+                10
+            ))
         );
     }
 }

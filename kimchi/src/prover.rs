@@ -5,10 +5,23 @@ use crate::{
         argument::ArgumentType,
         expr::{self, l0_1, Constants, Environment, LookupEnvironment},
         gate::GateHelpers,
-        gate::GateType,
         gate_registry::GateRegistry,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
-        polynomials::{foreign_field_mul, generic, permutation, permutation::ZK_ROWS},
+        polynomials::{
+            complete_add::CompleteAdd,
+            endomul_scalar::EndomulScalar,
+            endosclmul::EndosclMul,
+            foreign_field_add::circuitgates::ForeignFieldAdd,
+            foreign_field_mul::circuitgates::ForeignFieldMul,
+            generic::{self, Generic},
+            permutation,
+            permutation::ZK_ROWS,
+            poseidon::Poseidon,
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
+            rot::Rot64,
+            varbasemul::VarbaseMul,
+            xor::Xor16,
+        },
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -62,6 +75,7 @@ macro_rules! check_constraint {
 }
 
 /// Prover context
+#[derive(Clone)]
 pub struct ProverContext<F: PrimeField> {
     /// Configured gates
     pub gates: GateRegistry<F>,
@@ -627,26 +641,37 @@ where
         internal_tracing::checkpoint!(internal_traces; compute_index_evals);
         let env = {
             let mut index_evals = HashMap::new();
-            use GateType::*;
-            index_evals.insert(Generic, &index.column_evaluations.generic_selector4);
-            index_evals.insert(Poseidon, &index.column_evaluations.poseidon_selector8);
             index_evals.insert(
-                CompleteAdd,
+                Generic::<G::ScalarField>::typ(),
+                &index.column_evaluations.generic_selector4,
+            );
+            index_evals.insert(
+                Poseidon::<G::ScalarField>::typ(),
+                &index.column_evaluations.poseidon_selector8,
+            );
+            index_evals.insert(
+                CompleteAdd::<G::ScalarField>::typ(),
                 &index.column_evaluations.complete_add_selector4,
             );
-            index_evals.insert(VarBaseMul, &index.column_evaluations.mul_selector8);
-            index_evals.insert(EndoMul, &index.column_evaluations.emul_selector8);
             index_evals.insert(
-                EndoMulScalar,
+                VarbaseMul::<G::ScalarField>::typ(),
+                &index.column_evaluations.mul_selector8,
+            );
+            index_evals.insert(
+                EndosclMul::<G::ScalarField>::typ(),
+                &index.column_evaluations.emul_selector8,
+            );
+            index_evals.insert(
+                EndomulScalar::<G::ScalarField>::typ(),
                 &index.column_evaluations.endomul_scalar_selector8,
             );
 
             if let Some(selector) = &index.column_evaluations.range_check0_selector8.as_ref() {
-                index_evals.insert(GateType::RangeCheck0, selector);
+                index_evals.insert(RangeCheck0::<G::ScalarField>::typ(), selector);
             }
 
             if let Some(selector) = &index.column_evaluations.range_check1_selector8.as_ref() {
-                index_evals.insert(GateType::RangeCheck1, selector);
+                index_evals.insert(RangeCheck1::<G::ScalarField>::typ(), selector);
             }
 
             if let Some(selector) = index
@@ -654,7 +679,7 @@ where
                 .foreign_field_add_selector8
                 .as_ref()
             {
-                index_evals.insert(GateType::ForeignFieldAdd, selector);
+                index_evals.insert(ForeignFieldAdd::<G::ScalarField>::typ(), selector);
             }
 
             if let Some(selector) = index
@@ -662,20 +687,15 @@ where
                 .foreign_field_mul_selector8
                 .as_ref()
             {
-                index_evals.extend(
-                    foreign_field_mul::gadget::circuit_gates()
-                        .iter()
-                        .enumerate()
-                        .map(|(_, gate_type)| (*gate_type, selector)),
-                );
+                index_evals.insert(ForeignFieldMul::<G::ScalarField>::typ(), selector);
             }
 
             if let Some(selector) = index.column_evaluations.xor_selector8.as_ref() {
-                index_evals.insert(GateType::Xor16, selector);
+                index_evals.insert(Xor16::<G::ScalarField>::typ(), selector);
             }
 
             if let Some(selector) = index.column_evaluations.rot_selector8.as_ref() {
-                index_evals.insert(GateType::Rot64, selector);
+                index_evals.insert(Rot64::<G::ScalarField>::typ(), selector);
             }
 
             // Insert index evaluations for configured gates
@@ -804,7 +824,7 @@ where
                 } else {
                     panic!("Bad evaluation")
                 }
-                check_constraint!(index, gate.name(), eval);
+                check_constraint!(index, gate.typ(), eval);
             }
 
             // lookup

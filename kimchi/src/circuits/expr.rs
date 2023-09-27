@@ -164,7 +164,7 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
     domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
     Witness(usize),
@@ -181,10 +181,17 @@ pub enum Column {
 }
 
 impl Column {
-    fn domain(&self) -> Domain {
+    fn domain<F: PrimeField>(&self) -> Domain {
         match self {
-            Column::Index(GateType::Generic) => Domain::D4,
-            Column::Index(GateType::CompleteAdd) => Domain::D4,
+            Column::Index(gate_type) => {
+                if *gate_type == Generic::<F>::typ() {
+                    Domain::D4
+                } else if *gate_type == CompleteAdd::<F>::typ() {
+                    Domain::D4
+                } else {
+                    panic!("Invalid gate type: {}", gate_type)
+                }
+            }
             _ => Domain::D8,
         }
     }
@@ -226,7 +233,7 @@ impl Column {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
 pub struct Variable {
@@ -656,7 +663,7 @@ pub enum PolishToken<F> {
 }
 
 impl Variable {
-    fn evaluate<F: Field>(
+    fn evaluate<F: PrimeField>(
         &self,
         evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> Result<F, ExprError> {
@@ -673,8 +680,15 @@ impl Variable {
                 LookupAggreg => l.map(|l| l.aggreg),
                 LookupTable => l.map(|l| l.table),
                 LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
-                Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
-                Index(GateType::Generic) => Ok(evals.generic_selector),
+                Index(gate_type) => {
+                    if *gate_type == Poseidon::<F>::typ() {
+                        Ok(evals.poseidon_selector)
+                    } else if *gate_type == Generic::<F>::typ() {
+                        Ok(evals.generic_selector)
+                    } else {
+                        panic!("Invalid gate type: {}", gate_type)
+                    }
+                }
                 Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
                 LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
@@ -689,7 +703,7 @@ impl Variable {
     }
 }
 
-impl<F: FftField> PolishToken<F> {
+impl<F: FftField + PrimeField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
     pub fn evaluate(
         toks: &[PolishToken<F>],
@@ -1377,7 +1391,7 @@ impl<F: Field> Expr<ConstantExpr<F>> {
     }
 }
 
-impl<F: FftField> Expr<ConstantExpr<F>> {
+impl<F: FftField + PrimeField> Expr<ConstantExpr<F>> {
     /// Compile an expression to an RPN expression.
     pub fn to_polish(&self) -> Vec<PolishToken<F>> {
         let mut res = vec![];
@@ -1550,7 +1564,10 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>>
+    where
+        F: PrimeField,
+    {
         self.evaluate_constants(env).evaluations(env)
     }
 }
@@ -1560,7 +1577,7 @@ enum Either<A, B> {
     Right(B),
 }
 
-impl<F: FftField> Expr<F> {
+impl<F: FftField + PrimeField> Expr<F> {
     /// Evaluate an expression into a field element.
     pub fn evaluate(
         &self,
@@ -1604,7 +1621,10 @@ impl<F: FftField> Expr<F> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>>
+    where
+        F: PrimeField,
+    {
         let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
@@ -1653,6 +1673,7 @@ impl<F: FftField> Expr<F> {
     ) -> Either<EvalResult<'a, F>, CacheId>
     where
         'a: 'b,
+        F: PrimeField,
     {
         let dom = (d, get_domain(d, env));
 
@@ -1740,7 +1761,7 @@ impl<F: FftField> Expr<F> {
                     }
                 };
                 EvalResult::SubEvals {
-                    domain: col.domain(),
+                    domain: col.domain::<F>(),
                     shift: row.shift(),
                     evals,
                 }
@@ -1806,7 +1827,7 @@ impl<A> Linearization<A> {
     }
 }
 
-impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+impl<F: FftField + PrimeField> Linearization<Expr<ConstantExpr<F>>> {
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
     pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F>> {
@@ -1814,7 +1835,7 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     }
 }
 
-impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
+impl<F: FftField + PrimeField> Linearization<Vec<PolishToken<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial(
@@ -1844,7 +1865,7 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
     }
 }
 
-impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
+impl<F: FftField + PrimeField> Linearization<Expr<ConstantExpr<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
     pub fn to_polynomial(
@@ -1898,7 +1919,7 @@ fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
     for (m1, c1) in e1.iter() {
         for (m2, c2) in e2.iter() {
             let mut m = m1.clone();
-            m.extend(m2);
+            m.extend(*m2);
             m.sort();
             let c1c2 = c1.clone() * c2.clone();
             let v = res.entry(m).or_insert_with(Expr::<F>::zero);
@@ -2814,7 +2835,10 @@ macro_rules! auto_clone_array {
 pub use auto_clone;
 pub use auto_clone_array;
 
-use super::domains::Domain;
+use super::{
+    domains::Domain,
+    polynomials::{complete_add::CompleteAdd, generic::Generic, poseidon::Poseidon},
+};
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
@@ -2833,6 +2857,7 @@ pub mod test {
             wires::Wire,
         },
         curve::KimchiCurve,
+        prover::ProverContext,
         prover_index::ProverIndex,
     };
     use ark_ff::UniformRand;
@@ -2863,7 +2888,7 @@ pub mod test {
         // Since `d8` is of size `8n`, we are still good with that many evaluations to track the new polynomial.
         // Raising it to the power 9 pushes us out of the domain d8, which will panic.
         let mut expr: E<Fp> = E::zero();
-        expr += index(GateType::CompleteAdd);
+        expr += index(CompleteAdd::<Fp>::typ());
         let expr = expr.pow(9);
 
         // create a dummy env
@@ -2880,8 +2905,9 @@ pub mod test {
                 None,
             ),
         ];
+        let prover_context = ProverContext::new();
         let index = {
-            let constraint_system = ConstraintSystem::fp_for_testing(gates);
+            let constraint_system = ConstraintSystem::fp_for_testing(prover_context, gates);
             let mut srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
             srs.add_lagrange_basis(constraint_system.domain.d1);
             let srs = Arc::new(srs);

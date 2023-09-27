@@ -10,6 +10,7 @@ use crate::circuits::lookup::{
     constraints::LookupConfiguration,
     lookups::{LookupFeatures, LookupInfo, LookupPatterns},
 };
+use crate::circuits::polynomials::generic::Generic;
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
@@ -22,12 +23,12 @@ use crate::circuits::polynomials::{
     rot,
     varbasemul::VarbaseMul,
     xor,
+    zero::Zero as ZeroGate,
 };
 
 use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
-    gate::GateType,
     wires::COLUMNS,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
@@ -55,7 +56,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
-    powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), 21);
+    powers_of_alpha.register(ArgumentType::Gate(ZeroGate::<F>::typ()), 21);
 
     let mut cache = expr::Cache::default();
 
@@ -229,7 +230,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // to make the later addition with the public input work
     if cfg!(debug_assertions) {
         let mut generic_alphas =
-            powers_of_alpha.get_exponents(ArgumentType::Gate(GateType::Generic), 1);
+            powers_of_alpha.get_exponents(ArgumentType::Gate(Generic::<F>::typ()), 1);
         assert_eq!(generic_alphas.next(), Some(0));
     }
 
@@ -249,7 +250,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-pub fn linearization_columns<F: FftField + SquareRootField>(
+pub fn linearization_columns<F: FftField + SquareRootField + PrimeField>(
     feature_flags: Option<&FeatureFlags>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
@@ -315,10 +316,10 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     h.insert(Z);
 
     // the poseidon selector polynomial
-    h.insert(Index(GateType::Poseidon));
+    h.insert(Index(Poseidon::<F>::typ()));
 
     // the generic selector polynomial
-    h.insert(Index(GateType::Generic));
+    h.insert(Index(Generic::<F>::typ()));
 
     h
 }

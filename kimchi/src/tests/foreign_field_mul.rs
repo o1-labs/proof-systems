@@ -1,12 +1,13 @@
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
+        gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect},
         polynomial::COLUMNS,
-        polynomials::foreign_field_mul,
+        polynomials::foreign_field_mul::{self, circuitgates::ForeignFieldMul},
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover::ProverContext,
     tests::framework::TestFramework,
 };
 use ark_ec::AffineCurve;
@@ -200,11 +201,14 @@ where
         None
     };
 
+    let prover_context = ProverContext::default();
     let cs = if let Some(runner) = runner.as_ref() {
         runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
-        ConstraintSystem::create(gates.clone()).build().unwrap()
+        ConstraintSystem::create(prover_context, gates.clone())
+            .build()
+            .unwrap()
     };
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
@@ -262,15 +266,16 @@ where
                     if err_msg[..46] == *"the lookup failed to find a match in the table" {
                         return (
                             Err(CircuitGateError::InvalidLookupConstraint(
-                                GateType::ForeignFieldMul,
+                                ForeignFieldMul::<G::ScalarField>::typ(),
                             )),
                             witness,
                         );
                     } else {
                         return (
-                            Err(CircuitGateError::InvalidConstraint(
-                                GateType::ForeignFieldMul,
-                            )),
+                            Err(CircuitGateError::InvalidConstraint(ForeignFieldMul::<
+                                G::ScalarField,
+                            >::typ(
+                            ))),
                             witness,
                         );
                     }
@@ -312,7 +317,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 1)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                1
+            )),
         );
 
         // Test constraint (C2): invalidate carry0 in [0, 2^2)
@@ -331,7 +339,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 2)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                2
+            )),
         );
 
         // Test constraint (C3): invalidate middle intermediate product p1 decomposition
@@ -350,7 +361,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                3
+            )),
         );
 
         // Test constraint (C4): invalidate carry0
@@ -369,7 +383,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                4
+            )),
         );
 
         // Test constraint (C5): invalid native modulus check but binary modulus checks ok
@@ -392,7 +409,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 6)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                6
+            )),
         );
         // Test constraint (C7): invalidate carry1_crumb1
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
@@ -410,7 +430,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 7)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                7
+            )),
         );
         // Test constraint (C8): invalidate carry1_crumb2
         let (result, witness) = run_test::<G, EFqSponge, EFrSponge>(
@@ -428,7 +451,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 8)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                8
+            )),
         );
 
         // Test constraint (C9): invalidate carry1_bit
@@ -447,7 +473,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                9
+            )),
         );
 
         // Test constraint (C10): invalidate zero check
@@ -466,7 +495,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                10
+            )),
         );
 
         // Test constraint (C11): invalidate quotient high bound
@@ -485,7 +517,10 @@ where
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 11)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<G::ScalarField>::typ(),
+                11
+            )),
         );
     }
 }
@@ -683,7 +718,10 @@ fn test_nonzero_carry0() {
         // The constraint (C4) should fail
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                4
+            ))
         );
         assert_eq!(
             a * b % secp256k1_modulus(),
@@ -746,7 +784,10 @@ fn test_nonzero_carry10() {
     // The constraint (C10) should fail
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            10
+        ))
     );
     assert_eq!(
         a * b % &foreign_field_modulus,
@@ -794,7 +835,10 @@ fn test_nonzero_carry1_hi() {
     // The constraint (C5) should fail
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            10
+        ))
     );
     assert_eq!(
         &a * &a % &foreign_field_modulus,
@@ -843,7 +887,10 @@ fn test_nonzero_second_bit_carry1_hi() {
     // The constraint (C10) should fail
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            10
+        ))
     );
     assert_eq!(
         a * b % secp256k1_modulus(),
@@ -871,7 +918,10 @@ fn test_invalid_carry1_bit() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            9
+        ))
     );
 }
 
@@ -935,7 +985,10 @@ fn test_invalid_wraparound_carry1_hi() {
     // the bit is not a bit
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 9)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            9
+        )),
     );
 }
 
@@ -953,7 +1006,10 @@ fn test_zero_mul_invalid_quotient() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            4
+        )),
     );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -967,7 +1023,10 @@ fn test_zero_mul_invalid_quotient() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            3
+        )),
     );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -981,7 +1040,10 @@ fn test_zero_mul_invalid_quotient() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            5
+        ))
     );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -995,7 +1057,10 @@ fn test_zero_mul_invalid_quotient() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            4
+        ))
     );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -1009,7 +1074,10 @@ fn test_zero_mul_invalid_quotient() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 3))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            3
+        ))
     );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -1023,7 +1091,10 @@ fn test_zero_mul_invalid_quotient() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            5
+        ))
     );
 }
 
@@ -1041,7 +1112,10 @@ fn test_mul_invalid_remainder() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 4))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            4
+        ))
     );
 
     let (result, _) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
@@ -1055,7 +1129,10 @@ fn test_mul_invalid_remainder() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            5
+        ))
     );
 }
 
@@ -1083,7 +1160,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1100,7 +1180,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1117,7 +1200,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1134,7 +1220,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1151,7 +1240,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1168,7 +1260,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1185,7 +1280,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1202,7 +1300,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
         let (result, witness) = run_test::<Vesta, VestaBaseSponge, VestaScalarSponge>(
             false,
@@ -1219,7 +1320,10 @@ fn test_random_multiplicands_carry1_lo() {
         );
         assert_eq!(
             result,
-            Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 10)),
+            Err(CircuitGateError::Constraint(
+                ForeignFieldMul::<PallasField>::typ(),
+                10
+            )),
         );
     }
 }
@@ -1375,7 +1479,10 @@ fn test_native_modulus_constraint() {
     );
     assert_eq!(
         result,
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldMul, 5))
+        Err(CircuitGateError::Constraint(
+            ForeignFieldMul::<PallasField>::typ(),
+            5
+        ))
     );
 }
 
@@ -1462,7 +1569,7 @@ fn test_carry_plookups() {
     assert_eq!(
         result,
         Err(CircuitGateError::InvalidLookupConstraint(
-            GateType::ForeignFieldMul
+            ForeignFieldMul::<PallasField>::typ()
         ))
     );
 }

@@ -15,6 +15,7 @@ use crate::{
             tables::{GateLookupTable, LookupTable},
         },
         polynomial::COLUMNS,
+        polynomials::range_check::circuitgates::RangeCheck0,
         wires::Wire,
         witness::{self, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
@@ -44,17 +45,17 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     pub fn create_rot64(new_row: usize, rot: u32) -> Vec<Self> {
         vec![
             CircuitGate {
-                typ: GateType::Rot64,
+                typ: Rot64::<F>::typ(),
                 wires: Wire::for_row(new_row),
                 coeffs: vec![F::two_pow(rot as u64)],
             },
             CircuitGate {
-                typ: GateType::RangeCheck0,
+                typ: RangeCheck0::<F>::typ(),
                 wires: Wire::for_row(new_row + 1),
                 coeffs: vec![F::zero()],
             },
             CircuitGate {
-                typ: GateType::RangeCheck0,
+                typ: RangeCheck0::<F>::typ(),
                 wires: Wire::for_row(new_row + 2),
                 coeffs: vec![F::zero()],
             },
@@ -208,10 +209,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Rot64<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "Rot"
-    }
-
     // Constraints for rotation of three 64-bit words by any three number of bits modulo 64
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row

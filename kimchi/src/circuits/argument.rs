@@ -17,7 +17,7 @@ use super::{
 use CurrOrNext::{Curr, Next};
 
 /// A constraint type represents a polynomial that will be part of the final equation f (the circuit equation)
-#[derive(PartialEq, Eq, Clone, Copy, Hash, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Hash, Debug, Serialize, Deserialize)]
 pub enum ArgumentType {
     /// Gates in the PLONK constraint system.
     /// As gates are mutually exclusive (a single gate is set per row),

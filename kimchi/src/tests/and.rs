@@ -1,13 +1,17 @@
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError},
         polynomial::COLUMNS,
-        polynomials::{and, xor},
+        polynomials::{
+            and,
+            xor::{self, Xor16},
+        },
         wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover::ProverContext,
 };
 
 use ark_ec::AffineCurve;
@@ -81,8 +85,12 @@ where
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
+    let prover_context = ProverContext::default();
+
     let gates = create_test_gates_and::<G>(bytes);
-    let cs = ConstraintSystem::create(gates).build().unwrap();
+    let cs = ConstraintSystem::create(prover_context, gates)
+        .build()
+        .unwrap();
 
     // Initalize inputs
     let input1 = rng.gen(input1, Some(bytes * 8));
@@ -248,7 +256,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
             assert_eq!(
                 cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
-                    typ: GateType::Xor16,
+                    typ: Xor16::<G::ScalarField>::typ(),
                     src: Wire { row: xor_row, col },
                     dst: Wire { row: and_row, col }
                 })
@@ -259,7 +267,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
             assert_eq!(
                 cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
                 Err(CircuitGateError::CopyConstraint {
-                    typ: GateType::Xor16,
+                    typ: Xor16::<G::ScalarField>::typ(),
                     src: Wire { row: xor_row, col },
                     dst: Wire {
                         row: and_row,
@@ -271,7 +279,10 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
         }
         assert_eq!(
             cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
-            Err(CircuitGateError::Constraint(GateType::Xor16, bad))
+            Err(CircuitGateError::Constraint(
+                Xor16::<G::ScalarField>::typ(),
+                bad
+            ))
         );
         witness[col][xor_row] -= G::ScalarField::one();
         if col < 2 {

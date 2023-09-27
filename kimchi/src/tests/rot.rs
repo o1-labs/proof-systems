@@ -4,16 +4,18 @@ use super::framework::TestFramework;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, Connect, GateType},
+        gate::{CircuitGate, CircuitGateError, Connect},
         polynomial::COLUMNS,
         polynomials::{
             generic::GenericGateSpec,
-            rot::{self, RotMode},
+            range_check::circuitgates::RangeCheck0,
+            rot::{self, Rot64, RotMode},
         },
         wires::Wire,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
+    prover::ProverContext,
     prover_index::ProverIndex,
 };
 use ark_ec::AffineCurve;
@@ -83,7 +85,10 @@ where
     // gate for the zero value
     let gates = create_rot_gadget::<G>(rot, side);
 
-    ConstraintSystem::create(gates).build().unwrap()
+    let prover_context = ProverContext::default();
+    ConstraintSystem::create(prover_context, gates)
+        .build()
+        .unwrap()
 }
 
 // Function to create a prover and verifier to test the ROT circuit
@@ -202,7 +207,10 @@ fn test_bad_constraints() {
         // Decomposition constraint fails
         assert_eq!(
             cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
-            Err(CircuitGateError::Constraint(GateType::Rot64, i + 1))
+            Err(CircuitGateError::Constraint(
+                Rot64::<PallasField>::typ(),
+                i + 1
+            ))
         );
         // undo
         witness[i + 7][1] -= PallasField::from(4u32);
@@ -214,7 +222,7 @@ fn test_bad_constraints() {
     // Decomposition constraint fails
     assert_eq!(
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::Rot64, 9))
+        Err(CircuitGateError::Constraint(Rot64::<PallasField>::typ(), 9))
     );
     // undo
     witness[0][1] -= PallasField::one();
@@ -225,7 +233,10 @@ fn test_bad_constraints() {
     // Rotated word is wrong
     assert_eq!(
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::Rot64, 10))
+        Err(CircuitGateError::Constraint(
+            Rot64::<PallasField>::typ(),
+            10
+        ))
     );
     // undo
     witness[1][1] -= PallasField::one();
@@ -238,7 +249,10 @@ fn test_bad_constraints() {
         // Bound constraint fails
         assert_eq!(
             cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
-            Err(CircuitGateError::Constraint(GateType::Rot64, 11))
+            Err(CircuitGateError::Constraint(
+                Rot64::<PallasField>::typ(),
+                11
+            ))
         );
         // undo
         witness[i + 3][1] -= PallasField::one();
@@ -249,11 +263,14 @@ fn test_bad_constraints() {
     witness[0][3] += PallasField::one();
     assert_eq!(
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::Rot64, 9))
+        Err(CircuitGateError::Constraint(Rot64::<PallasField>::typ(), 9))
     );
     assert_eq!(
         cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
     witness[2][1] -= PallasField::one();
     witness[0][3] -= PallasField::one();
@@ -262,11 +279,14 @@ fn test_bad_constraints() {
     witness[0][2] += PallasField::one();
     assert_eq!(
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::Rot64, 9))
+        Err(CircuitGateError::Constraint(Rot64::<PallasField>::typ(), 9))
     );
     assert_eq!(
         cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
     witness[0][2] -= PallasField::one();
 
@@ -274,7 +294,10 @@ fn test_bad_constraints() {
     witness[0][2] += PallasField::two_pow(64);
     assert_eq!(
         cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
     // Update decomposition
     witness[2][2] += PallasField::one();
@@ -282,7 +305,7 @@ fn test_bad_constraints() {
     assert_eq!(
         cs.gates[2].verify_witness::<Vesta>(2, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::RangeCheck0,
+            typ: RangeCheck0::<PallasField>::typ(),
             src: Wire { row: 2, col: 2 },
             dst: Wire { row: 0, col: 0 }
         })
@@ -295,7 +318,10 @@ fn test_bad_constraints() {
     witness[2][1] += PallasField::two_pow(64);
     assert_eq!(
         cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::RangeCheck0, 9))
+        Err(CircuitGateError::Constraint(
+            RangeCheck0::<PallasField>::typ(),
+            9
+        ))
     );
     // Update decomposition
     witness[2][3] += PallasField::one();
@@ -303,7 +329,7 @@ fn test_bad_constraints() {
     assert_eq!(
         cs.gates[3].verify_witness::<Vesta>(3, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::RangeCheck0,
+            typ: RangeCheck0::<PallasField>::typ(),
             src: Wire { row: 3, col: 2 },
             dst: Wire { row: 2, col: 2 }
         })
@@ -351,7 +377,8 @@ fn test_rot_finalization() {
     };
 
     let index = {
-        let cs = ConstraintSystem::create(gates.clone())
+        let prover_context = ProverContext::default();
+        let cs = ConstraintSystem::create(prover_context, gates.clone())
             .public(num_public_inputs)
             .lookup(vec![rot::lookup_table()])
             .build()

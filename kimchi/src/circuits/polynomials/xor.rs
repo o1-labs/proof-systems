@@ -6,7 +6,7 @@ use crate::{
         argument::ArgumentEnv,
         expr::{constraints::ExprOps, Cache},
         gate::Gate,
-        gate::{CircuitGate, Connect, GateType},
+        gate::{CircuitGate, Connect},
         lookup::{
             self,
             tables::{GateLookupTable, LookupTable},
@@ -65,7 +65,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let num_xors = num_xors(bits);
         let mut xor_gates = (0..num_xors)
             .map(|i| CircuitGate {
-                typ: GateType::Xor16,
+                typ: Xor16::<F>::typ(),
                 wires: Wire::for_row(new_row + i),
                 coeffs: vec![],
             })
@@ -145,10 +145,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Xor16<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "Xor16"
-    }
-
     // Constraints for Xor16
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits

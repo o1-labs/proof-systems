@@ -6,7 +6,13 @@ use crate::circuits::{
         combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
         XOR_TABLE_ID,
     },
+    polynomials::{
+        foreign_field_mul::circuitgates::ForeignFieldMul,
+        range_check::circuitgates::{RangeCheck0, RangeCheck1},
+        rot::Rot64,
+    },
 };
+
 use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{EvaluationDomain, Evaluations as E, Radix2EvaluationDomain as D};
 use o1_utils::field_helpers::i32_to_field;
@@ -109,7 +115,7 @@ impl LookupPatterns {
         let mut kinds = LookupPatterns::default();
         for g in gates.iter() {
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
-                if let Some(lookup_pattern) = LookupPattern::from_gate(g.typ, *r) {
+                if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(g.typ, *r) {
                     kinds[lookup_pattern] = true;
                 }
             }
@@ -222,13 +228,13 @@ impl LookupInfo {
         for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ;
 
-            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
+            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Curr) {
                 update_selector(lookup_pattern, i);
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
                 }
             }
-            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
+            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Next) {
                 update_selector(lookup_pattern, i + 1);
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
@@ -253,10 +259,10 @@ impl LookupInfo {
         for i in 0..gates.len() {
             let typ = gates[i].typ;
 
-            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
+            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Curr) {
                 kinds[i] = lookup_pattern.lookups();
             }
-            if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
+            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Next) {
                 kinds[i + 1] = lookup_pattern.lookups();
             }
         }
@@ -504,32 +510,40 @@ impl LookupPattern {
     }
 
     /// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
-    pub fn from_gate(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
+    pub fn from_gate<F: PrimeField>(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
         use CurrOrNext::{Curr, Next};
-        use GateType::*;
-        match (gate_type, curr_or_next) {
-            (Lookup, Curr) => Some(LookupPattern::Lookup),
-            (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) | (Rot64, Curr) => {
-                Some(LookupPattern::RangeCheck)
-            }
-            (ForeignFieldMul, Curr | Next) => Some(LookupPattern::ForeignFieldMul),
-            (Xor16, Curr) => Some(LookupPattern::Xor),
-            _ => None,
+        if gate_type == RangeCheck0::<F>::typ() && curr_or_next == Curr {
+            Some(LookupPattern::RangeCheck)
+        } else if gate_type == RangeCheck1::<F>::typ() && curr_or_next == Curr {
+            Some(LookupPattern::RangeCheck)
+        } else if gate_type == Rot64::<F>::typ() && curr_or_next == Curr {
+            Some(LookupPattern::RangeCheck)
+        } else if gate_type == ForeignFieldMul::<F>::typ()
+            && (curr_or_next == Curr || curr_or_next == Next)
+        {
+            Some(LookupPattern::ForeignFieldMul)
+        }
+        // JES: TODO Implement
+        // else if gate_type == Lookup::<F>::typ() && curr_or_next == Curr {
+        //     Some(LookupPattern::Lookup)
+        // }
+        else {
+            None
         }
     }
 }
 
-impl GateType {
-    /// Which lookup-patterns should be applied on which rows.
-    pub fn lookup_kinds() -> Vec<LookupPattern> {
-        vec![
-            LookupPattern::Xor,
-            LookupPattern::Lookup,
-            LookupPattern::RangeCheck,
-            LookupPattern::ForeignFieldMul,
-        ]
-    }
-}
+// impl GateType {
+//     /// Which lookup-patterns should be applied on which rows.
+//     pub fn lookup_kinds() -> Vec<LookupPattern> {
+//         vec![
+//             LookupPattern::Xor,
+//             LookupPattern::Lookup,
+//             LookupPattern::RangeCheck,
+//             LookupPattern::ForeignFieldMul,
+//         ]
+//     }
+// }
 
 #[test]
 fn lookup_pattern_constants_correct() {

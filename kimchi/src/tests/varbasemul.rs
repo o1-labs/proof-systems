@@ -1,6 +1,9 @@
 use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    polynomials::varbasemul,
+    gate::CircuitGate,
+    polynomials::{
+        varbasemul::{self, VarbaseMul},
+        zero::Zero as ZeroGate,
+    },
     wires::*,
 };
 use crate::tests::framework::TestFramework;
@@ -35,12 +38,12 @@ fn varbase_mul_test() {
     for i in 0..(chunks * num_scalars) {
         let row = 2 * i;
         gates.push(CircuitGate::new(
-            GateType::VarBaseMul,
+            VarbaseMul::<F>::typ(),
             Wire::for_row(row),
             vec![],
         ));
         gates.push(CircuitGate::new(
-            GateType::Zero,
+            ZeroGate::<F>::typ(),
             Wire::for_row(row + 1),
             vec![],
         ));

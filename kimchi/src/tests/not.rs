@@ -3,12 +3,17 @@ use std::{array, cmp::max};
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, CircuitGateError, GateType},
+        gate::{CircuitGate, CircuitGateError},
         polynomial::COLUMNS,
-        polynomials::{generic::GenericGateSpec, not, xor},
+        polynomials::{
+            generic::{Generic, GenericGateSpec},
+            not,
+            xor::{self, Xor16},
+        },
         wires::Wire,
     },
     curve::KimchiCurve,
+    prover::ProverContext,
     prover_index::testing::new_index_for_test_with_lookups,
     tests::xor::{all_ones, check_xor},
 };
@@ -89,7 +94,11 @@ where
         gates
     };
 
-    ConstraintSystem::create(gates).public(1).build().unwrap()
+    let prover_context = ProverContext::default();
+    ConstraintSystem::create(prover_context, gates)
+        .public(1)
+        .build()
+        .unwrap()
 }
 
 // Constraint system for Not gadget using generic gates
@@ -107,7 +116,11 @@ where
     let _next_row =
         CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(&mut gates, num_nots, 0);
 
-    ConstraintSystem::create(gates).public(1).build().unwrap()
+    let prover_context = ProverContext::default();
+    ConstraintSystem::create(prover_context, gates)
+        .public(1)
+        .build()
+        .unwrap()
 }
 
 // Creates the witness and circuit for NOT gadget using XOR
@@ -393,14 +406,21 @@ fn test_bad_not_gnrc() {
     assert_eq!(
         cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::Generic,
+            typ: Generic::<PallasField>::typ(),
             src: Wire { row: 0, col: 0 },
             dst: Wire { row: 1, col: 0 }
         })
     );
     witness[0][1] += PallasField::one();
-    let index =
-        new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None, false);
+    let index = new_index_for_test_with_lookups(
+        ProverContext::default(),
+        cs.gates,
+        1,
+        0,
+        vec![xor::lookup_table()],
+        None,
+        false,
+    );
     assert_eq!(
         index.cs.gates[1].verify::<Vesta>(1, &witness, &index, &[]),
         Err(("generic: incorrect gate").to_string())
@@ -416,7 +436,7 @@ fn test_bad_not_xor() {
     assert_eq!(
         cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::Generic,
+            typ: Generic::<PallasField>::typ(),
             src: Wire { row: 0, col: 0 },
             dst: Wire { row: 1, col: 1 }
         })
@@ -425,7 +445,7 @@ fn test_bad_not_xor() {
     // decomposition of xor fails
     assert_eq!(
         cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
-        Err(CircuitGateError::Constraint(GateType::Xor16, 2))
+        Err(CircuitGateError::Constraint(Xor16::<PallasField>::typ(), 2))
     );
     // Make the second input zero with correct decomposition to make sure XOR table fails
     witness[0][0] = PallasField::zero();

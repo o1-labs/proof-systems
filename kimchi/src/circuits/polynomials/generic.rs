@@ -36,8 +36,7 @@
 use crate::circuits::{
     argument::ArgumentEnv,
     expr::{constraints::ExprOps, Cache},
-    gate::Gate,
-    gate::{CircuitGate, GateType},
+    gate::{CircuitGate, Gate},
     polynomial::COLUMNS,
     wires::GateWires,
 };
@@ -73,10 +72,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Generic<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "Generic"
-    }
-
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);
@@ -145,7 +140,7 @@ pub enum GenericGateSpec<F> {
 impl<F: PrimeField> CircuitGate<F> {
     /// This allows you to create two generic gates that will fit in one row, check [`Self::create_generic_gadget`] for a better to way to create these gates.
     pub fn create_generic(wires: GateWires, c: [F; GENERIC_COEFFS * 2]) -> Self {
-        CircuitGate::new(GateType::Generic, wires, c.to_vec())
+        CircuitGate::new(Generic::<F>::typ(), wires, c.to_vec())
     }
 
     /// This allows you to create two generic gates by passing the desired
@@ -273,7 +268,7 @@ pub mod testing {
             let zero = F::zero();
 
             // check if it's the correct gate
-            ensure_eq!(self.typ, GateType::Generic, "generic: incorrect gate");
+            ensure_eq!(self.typ, Generic::<F>::typ(), "generic: incorrect gate");
 
             let check_single = |coeffs_offset, register_offset| {
                 let get = |offset| {

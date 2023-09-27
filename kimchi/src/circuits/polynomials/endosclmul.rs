@@ -119,7 +119,7 @@ use std::marker::PhantomData;
 /// variable base scalar multiplication custom Plonk constraints.
 impl<F: PrimeField> CircuitGate<F> {
     pub fn create_endomul(wires: GateWires) -> Self {
-        CircuitGate::new(GateType::EndoMul, wires, vec![])
+        CircuitGate::new(EndosclMul::<F>::typ(), wires, vec![])
     }
 
     /// Verify the `EndoMul` gate.
@@ -133,7 +133,7 @@ impl<F: PrimeField> CircuitGate<F> {
         witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
-        ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
+        ensure_eq!(self.typ, EndosclMul::<F>::typ(), "incorrect gate type");
 
         let this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
         let next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + 1]);
@@ -169,7 +169,7 @@ impl<F: PrimeField> CircuitGate<F> {
     }
 
     pub fn endomul(&self) -> F {
-        if self.typ == GateType::EndoMul {
+        if self.typ == EndosclMul::<F>::typ() {
             F::one()
         } else {
             F::zero()
@@ -185,10 +185,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for EndosclMul<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "EndosclMul"
-    }
-
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);

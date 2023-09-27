@@ -1,7 +1,4 @@
-use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    wires::*,
-};
+use crate::circuits::{gate::CircuitGate, polynomials::complete_add::CompleteAdd, wires::*};
 use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, One, PrimeField, UniformRand, Zero};
 use mina_curves::pasta::{Fp as F, Pallas as Other, Vesta, VestaParameters};
@@ -29,7 +26,7 @@ fn ec_test() {
 
     for row in 0..(num_doubles + num_additions + num_infs) {
         gates.push(CircuitGate::new(
-            GateType::CompleteAdd,
+            CompleteAdd::<F>::typ(),
             Wire::for_row(row),
             vec![],
         ));

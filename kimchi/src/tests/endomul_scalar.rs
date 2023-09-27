@@ -1,7 +1,7 @@
 use crate::{
     circuits::{
-        gate::{CircuitGate, GateType},
-        polynomials::endomul_scalar,
+        gate::CircuitGate,
+        polynomials::endomul_scalar::{self, EndomulScalar},
         wires::*,
     },
     tests::framework::TestFramework,
@@ -36,7 +36,7 @@ fn endomul_scalar_test() {
         for i in 0..rows_per_scalar {
             let row = rows_per_scalar * s + i;
             gates.push(CircuitGate::new(
-                GateType::EndoMulScalar,
+                EndomulScalar::<F>::typ(),
                 Wire::for_row(row),
                 vec![],
             ));

@@ -5,9 +5,8 @@ use crate::{
         argument::ArgumentType,
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
-        gate::GateType,
         lookup::tables::combine_table,
-        polynomials::permutation,
+        polynomials::{generic::Generic, permutation, poseidon::Poseidon},
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
@@ -66,7 +65,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
             ),
             LookupRuntimeTable => None,
             Index(t) => {
-                use GateType::*;
+                // JES: TODO: Fix this
                 match t {
                     Zero => None,
                     Generic => Some(&self.verifier_index.generic_comm),
@@ -76,7 +75,10 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     EndoMul => Some(&self.verifier_index.emul_comm),
                     EndoMulScalar => Some(&self.verifier_index.endomul_scalar_comm),
                     Poseidon => Some(&self.verifier_index.psm_comm),
-                    CairoClaim | CairoInstruction | CairoFlags | CairoTransition => None,
+                    CairoClaim => None,
+                    CairoInstruction => None,
+                    CairoFlags => None,
+                    CairoTransition => None,
                     RangeCheck0 => Some(self.verifier_index.range_check0_comm.as_ref()?),
                     RangeCheck1 => Some(self.verifier_index.range_check1_comm.as_ref()?),
                     ForeignFieldAdd => Some(self.verifier_index.foreign_field_add_comm.as_ref()?),
@@ -111,7 +113,12 @@ where
         index: &VerifierIndex<G>,
         public_comm: &PolyComm<G>,
         public_input: &[G::ScalarField],
-    ) -> Result<OraclesResult<G, EFqSponge>> {
+    ) -> Result<OraclesResult<G, EFqSponge>>
+    where
+        G: KimchiCurve,
+        G::BaseField: PrimeField,
+        G::ScalarField: PrimeField,
+    {
         //~
         //~ #### Fiat-Shamir argument
         //~
@@ -427,8 +434,8 @@ where
             es.push((vec![ft_eval0, ft_eval1], None));
             for col in [
                 Column::Z,
-                Column::Index(GateType::Generic),
-                Column::Index(GateType::Poseidon),
+                Column::Index(Generic::<G::ScalarField>::typ()),
+                Column::Index(Poseidon::<G::ScalarField>::typ()),
             ]
             .into_iter()
             .chain((0..COLUMNS).map(Column::Witness))
@@ -455,9 +462,10 @@ where
             ) {
                 es.push((
                     {
+                        // PointEvaluations<Vec<G::ScalarField>>
                         let evals = self
                             .evals
-                            .get_column(col)
+                            .get_column::<G::ScalarField>(col)
                             .ok_or(VerifyError::MissingEvaluation(col))?;
                         vec![evals.zeta.clone(), evals.zeta_omega.clone()]
                     },
@@ -563,6 +571,7 @@ fn to_batch<'a, G, EFqSponge, EFrSponge>(
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
+    G::ScalarField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<G::ScalarField>,
 {
@@ -739,8 +748,8 @@ where
         //~~ * permutation commitment
         Column::Z,
         //~~ * index commitments that use the coefficients
-        Column::Index(GateType::Generic),
-        Column::Index(GateType::Poseidon),
+        Column::Index(Generic::<G::ScalarField>::typ()),
+        Column::Index(Poseidon::<G::ScalarField>::typ()),
     ]
     .into_iter()
     //~~ * witness commitments
@@ -767,7 +776,7 @@ where
     ) {
         let evals = proof
             .evals
-            .get_column(col)
+            .get_column::<G::ScalarField>(col)
             .ok_or(VerifyError::MissingEvaluation(col))?;
         evaluations.push(Evaluation {
             commitment: context

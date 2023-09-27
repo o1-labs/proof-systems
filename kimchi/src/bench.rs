@@ -16,6 +16,7 @@ use crate::{
         wires::{Wire, COLUMNS},
     },
     proof::ProverProof,
+    prover::ProverContext,
     prover_index::{testing::new_index_for_test, ProverIndex},
     verifier::{batch_verify, Context},
     verifier_index::VerifierIndex,
@@ -60,7 +61,7 @@ impl BenchmarkCtx {
         let group_map = <Vesta as CommitmentCurve>::Map::setup();
 
         // create the index
-        let index = new_index_for_test(gates, 0);
+        let index = new_index_for_test(ProverContext::default(), gates, 0);
 
         assert_eq!(index.cs.domain.d1.log_size_of_group, srs_size_log2, "the test wanted to use an SRS of size {srs_size_log2} but the domain size ended up being {}", index.cs.domain.d1.log_size_of_group);
 

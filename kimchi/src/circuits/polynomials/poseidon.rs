@@ -86,7 +86,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         coeffs: [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW],
     ) -> Self {
         let coeffs = coeffs.iter().flatten().copied().collect();
-        CircuitGate::new(GateType::Poseidon, wires, coeffs)
+        CircuitGate::new(Poseidon::<F>::typ(), wires, coeffs)
     }
 
     /// `create_poseidon_gadget(row, first_and_last_row, round_constants)`  creates an entire set of constraint for a Poseidon hash.
@@ -147,7 +147,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
-            GateType::Poseidon,
+            Poseidon::<F>::typ(),
             "incorrect gate type (should be poseidon)"
         );
 
@@ -196,7 +196,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     pub fn ps(&self) -> F {
-        if self.typ == GateType::Poseidon {
+        if self.typ == Poseidon::<F>::typ() {
             F::one()
         } else {
             F::zero()
@@ -207,7 +207,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     pub fn rc(&self) -> [[F; SPONGE_WIDTH]; ROUNDS_PER_ROW] {
         std::array::from_fn(|round| {
             std::array::from_fn(|col| {
-                if self.typ == GateType::Poseidon {
+                if self.typ == Poseidon::<F>::typ() {
                     self.coeffs[SPONGE_WIDTH * round + col]
                 } else {
                     F::zero()
@@ -338,10 +338,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Poseidon<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "Poseidon"
-    }
-
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let mut res = vec![];
 

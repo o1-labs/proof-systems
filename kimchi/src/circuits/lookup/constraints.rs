@@ -367,7 +367,7 @@ impl<F: Zero> LookupConfiguration<F> {
 /// # Panics
 ///
 /// Will panic if single `element` length is bigger than `max_per_row` length.
-pub fn constraints<F: FftField>(
+pub fn constraints<F: FftField + PrimeField>(
     configuration: &LookupConfiguration<F>,
     generate_feature_flags: bool,
 ) -> Vec<E<F>> {

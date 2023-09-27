@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use ark_ff::PrimeField;
 
-use super::polynomials;
+use super::{gate::GateHelpers, polynomials};
 use crate::circuits::{expr::E, gate::Gate};
 
 pub type GateList<F> = Vec<Box<dyn Gate<F, E<F>>>>;
@@ -16,6 +16,14 @@ macro_rules! gates {
         gates
     }};
 }
+
+// /// Helper to specify a gate type
+// #[macro_export]
+// macro_rules! gate_type {
+//     ($first:ident $(:: $second:ident)* < $typ:ident $(:: $third:ident)* >) => {
+//         $first $(:: $second )* < $typ $( :: $third )* >::gate_type()
+//     };
+// }
 
 // Registry of available gates
 #[derive(Clone, Debug)]
@@ -68,10 +76,10 @@ impl<F: PrimeField> GateRegistry<F> {
 
     /// Register a single gate
     pub fn register_one(&mut self, gate: Box<dyn Gate<F, E<F>>>) {
-        match self.gates.get_key_value(gate.name()) {
+        match self.gates.get_key_value(&gate.typ()) {
             Some(_) => (),
             None => {
-                self.gates.insert(gate.name().to_string(), gate);
+                self.gates.insert(gate.typ(), gate);
             }
         }
     }

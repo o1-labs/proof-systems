@@ -140,10 +140,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for ForeignFieldAdd<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "ForeignFieldAdd"
-    }
-
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 

@@ -1,5 +1,6 @@
 use super::framework::TestFramework;
 use crate::circuits::gate::CircuitGateResult;
+use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldAdd;
 use crate::circuits::polynomials::generic::GenericGateSpec;
 use crate::circuits::{
     constraints::ConstraintSystem,
@@ -12,6 +13,7 @@ use crate::circuits::{
     wires::Wire,
 };
 use crate::curve::KimchiCurve;
+use crate::prover::ProverContext;
 use crate::prover_index::ProverIndex;
 use ark_ec::AffineCurve;
 use ark_ff::{One, PrimeField, SquareRootField, Zero};
@@ -150,7 +152,7 @@ static NULL_CARRY_BOTH: &[u8] = &[
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Check if a given circuit gate is a given foreign field operation
     pub fn check_ffadd_sign(&self, sign: FFOps) -> Result<(), String> {
-        if self.typ != GateType::ForeignFieldAdd {
+        if self.typ != ForeignFieldAdd::<F>::typ() {
             return Err("Gate is not a foreign field add gate".to_string());
         }
         match sign {
@@ -320,7 +322,12 @@ fn create_test_constraint_system_ffadd(
         short_circuit(opcodes, &foreign_field_modulus)
     };
 
-    let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
+    let prover_context = ProverContext::default();
+
+    let cs = ConstraintSystem::create(prover_context, gates)
+        .public(1)
+        .build()
+        .unwrap();
     let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
     srs.add_lagrange_basis(cs.domain.d1);
     let srs = Arc::new(srs);
@@ -758,7 +765,10 @@ fn test_wrong_sum() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldAdd::<PallasField>::typ(),
+            3
+        )),
     );
 }
 
@@ -782,7 +792,10 @@ fn test_wrong_dif() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldAdd::<PallasField>::typ(),
+            3
+        )),
     );
 }
 
@@ -1070,7 +1083,7 @@ fn test_bad_bound() {
             &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::ForeignFieldAdd,
+            typ: ForeignFieldAdd::<PallasField>::typ(),
             src: Wire { row: 2, col: 6 },
             dst: Wire { row: 0, col: 0 }
         }),
@@ -1083,7 +1096,10 @@ fn test_bad_bound() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 1)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldAdd::<PallasField>::typ(),
+            1
+        )),
     );
     witness[6][2] = PallasField::one();
     witness[0][0] = PallasField::one();
@@ -1124,7 +1140,7 @@ fn test_random_bad_input() {
             &witness[0][0..index.cs.public]
         ),
         Err(CircuitGateError::CopyConstraint {
-            typ: GateType::ForeignFieldAdd,
+            typ: ForeignFieldAdd::<PallasField>::typ(),
             src: Wire { row: 1, col: 0 },
             dst: Wire { row: 4, col: 0 }
         }),
@@ -1138,7 +1154,10 @@ fn test_random_bad_input() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldAdd::<PallasField>::typ(),
+            3
+        )),
     );
 }
 
@@ -1167,7 +1186,10 @@ fn test_random_bad_parameters() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldAdd::<PallasField>::typ(),
+            3
+        )),
     );
     witness[7][1] -= PallasField::one();
     // Modify overflow
@@ -1179,7 +1201,10 @@ fn test_random_bad_parameters() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldAdd::<PallasField>::typ(),
+            3
+        )),
     );
     witness[6][1] -= PallasField::one();
     // Modify sign
@@ -1191,7 +1216,10 @@ fn test_random_bad_parameters() {
             &index.cs,
             &witness[0][0..index.cs.public]
         ),
-        Err(CircuitGateError::Constraint(GateType::ForeignFieldAdd, 3)),
+        Err(CircuitGateError::Constraint(
+            ForeignFieldAdd::<PallasField>::typ(),
+            3
+        )),
     );
     index.cs.gates[1].coeffs[3] = PallasField::zero() - index.cs.gates[1].coeffs[3];
     // Check back to normal
@@ -1321,7 +1349,11 @@ fn test_ffadd_no_rc() {
 
     extend_gate_bound_rc(&mut gates);
 
-    let cs = ConstraintSystem::create(gates).public(1).build().unwrap();
+    let prover_context = ProverContext::default();
+    let cs = ConstraintSystem::create(prover_context, gates)
+        .public(1)
+        .build()
+        .unwrap();
 
     // Create inputs
     let inputs = (0..operation_count + 1)
@@ -1396,7 +1428,8 @@ where
         foreign_field_modulus.clone(),
     );
 
-    let cs = ConstraintSystem::create(gates.clone())
+    let prover_context = ProverContext::default();
+    let cs = ConstraintSystem::create(prover_context, gates.clone())
         .public(1)
         .build()
         .unwrap();
@@ -1483,7 +1516,8 @@ fn test_ffadd_finalization() {
     };
 
     let index = {
-        let cs = ConstraintSystem::create(gates.clone())
+        let prover_context = ProverContext::default();
+        let cs = ConstraintSystem::create(prover_context, gates.clone())
             .lookup(vec![range_check::gadget::lookup_table()])
             .public(num_public_inputs)
             .build()

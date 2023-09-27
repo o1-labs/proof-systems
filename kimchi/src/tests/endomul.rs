@@ -1,6 +1,9 @@
 use crate::circuits::{
-    gate::{CircuitGate, GateType},
-    polynomials::endosclmul,
+    gate::CircuitGate,
+    polynomials::{
+        endosclmul::{self, EndosclMul},
+        zero::Zero as ZeroGate,
+    },
     wires::*,
 };
 use crate::tests::framework::TestFramework;
@@ -37,14 +40,18 @@ fn endomul_test() {
         for i in 0..chunks {
             let row = rows_per_scalar * s + i;
             gates.push(CircuitGate::new(
-                GateType::EndoMul,
+                EndosclMul::<F>::typ(),
                 Wire::for_row(row),
                 vec![],
             ));
         }
 
         let row = rows_per_scalar * s + chunks;
-        gates.push(CircuitGate::new(GateType::Zero, Wire::for_row(row), vec![]));
+        gates.push(CircuitGate::new(
+            ZeroGate::<F>::typ(),
+            Wire::for_row(row),
+            vec![],
+        ));
     }
 
     let (endo_q, endo_r) = endos::<Other>();

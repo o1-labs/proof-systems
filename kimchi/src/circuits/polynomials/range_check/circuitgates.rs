@@ -171,10 +171,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for RangeCheck0<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "RangeCheck0"
-    }
-
     // Constraints for RangeCheck0
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
@@ -272,10 +268,6 @@ impl<F, T: ExprOps<F>> Gate<F, T> for RangeCheck1<F>
 where
     F: PrimeField,
 {
-    fn name(&self) -> &str {
-        "RangeCheck1"
-    }
-
     // Constraints for RangeCheck1
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)

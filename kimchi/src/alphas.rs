@@ -20,8 +20,8 @@
 //! for the various [ArgumentType]s.
 //!
 
-use crate::circuits::{argument::ArgumentType, gate::GateType};
-use ark_ff::Field;
+use crate::circuits::{argument::ArgumentType, polynomials::zero::Zero};
+use ark_ff::PrimeField;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
@@ -50,7 +50,7 @@ pub struct Alphas<F> {
     alphas: Option<Vec<F>>,
 }
 
-impl<F: Field> Alphas<F> {
+impl<F: PrimeField> Alphas<F> {
     /// Registers a new [ArgumentType],
     /// associating it with a number `powers` of powers of alpha.
     /// This function will panic if you register the same type twice.
@@ -63,7 +63,7 @@ impl<F: Field> Alphas<F> {
         // across all of them (they're mutually exclusive)
         let ty = if matches!(ty, ArgumentType::Gate(_)) {
             // the zero gate is not used, so we default to it
-            ArgumentType::Gate(GateType::Zero)
+            ArgumentType::Gate(Zero::<F>::typ())
         } else {
             ty
         };
@@ -86,7 +86,7 @@ impl<F: Field> Alphas<F> {
         num: u32,
     ) -> MustConsumeIterator<Range<u32>, u32> {
         let ty = if matches!(ty, ArgumentType::Gate(_)) {
-            ArgumentType::Gate(GateType::Zero)
+            ArgumentType::Gate(Zero::<F>::typ())
         } else {
             ty
         };
@@ -132,7 +132,7 @@ impl<F: Field> Alphas<F> {
         num: u32,
     ) -> MustConsumeIterator<Cloned<Take<Skip<Iter<F>>>>, F> {
         let ty = if matches!(ty, ArgumentType::Gate(_)) {
-            ArgumentType::Gate(GateType::Zero)
+            ArgumentType::Gate(Zero::<F>::typ())
         } else {
             ty
         };
@@ -166,10 +166,10 @@ impl<F: Field> Alphas<F> {
     }
 }
 
-impl<T> Display for Alphas<T> {
+impl<T: PrimeField> Display for Alphas<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for arg in [
-            ArgumentType::Gate(GateType::Zero),
+            ArgumentType::Gate(Zero::<T>::typ()),
             ArgumentType::Permutation,
             //            ArgumentType::Lookup,
         ] {
@@ -242,7 +242,12 @@ mod tests {
     use std::{fs, path::Path};
 
     use super::*;
-    use crate::circuits::gate::GateType;
+    use crate::{
+        circuits::polynomials::{
+            foreign_field_mul::circuitgates::ForeignFieldMul, poseidon::Poseidon,
+        },
+        prover::ProverContext,
+    };
     use mina_curves::pasta::{Fp, Vesta};
 
     // testing [Builder]
@@ -250,9 +255,9 @@ mod tests {
     #[test]
     fn incorrect_alpha_powers() {
         let mut alphas = Alphas::<Fp>::default();
-        alphas.register(ArgumentType::Gate(GateType::Poseidon), 3);
+        alphas.register(ArgumentType::Gate(Poseidon::<Fp>::typ()), 3);
 
-        let mut powers = alphas.get_exponents(ArgumentType::Gate(GateType::Poseidon), 3);
+        let mut powers = alphas.get_exponents(ArgumentType::Gate(Poseidon::<Fp>::typ()), 3);
         assert_eq!(powers.next(), Some(0));
         assert_eq!(powers.next(), Some(1));
         assert_eq!(powers.next(), Some(2));
@@ -270,7 +275,7 @@ mod tests {
     fn register_after_instantiating() {
         let mut alphas = Alphas::<Fp>::default();
         alphas.instantiate(Fp::from(1));
-        alphas.register(ArgumentType::Gate(GateType::Poseidon), 3);
+        alphas.register(ArgumentType::Gate(Poseidon::<Fp>::typ()), 3);
     }
 
     #[test]
@@ -286,15 +291,15 @@ mod tests {
     #[should_panic]
     fn registered_alpha_powers_for_some_constraint_twice() {
         let mut alphas = Alphas::<Fp>::default();
-        alphas.register(ArgumentType::Gate(GateType::Poseidon), 2);
-        alphas.register(ArgumentType::Gate(GateType::ForeignFieldMul), 3);
+        alphas.register(ArgumentType::Gate(Poseidon::<Fp>::typ()), 2);
+        alphas.register(ArgumentType::Gate(ForeignFieldMul::<Fp>::typ()), 3);
     }
 
     #[test]
     fn powers_of_alpha() {
         let mut alphas = Alphas::default();
-        alphas.register(ArgumentType::Gate(GateType::Poseidon), 4);
-        let mut powers = alphas.get_exponents(ArgumentType::Gate(GateType::Poseidon), 4);
+        alphas.register(ArgumentType::Gate(Poseidon::<Fp>::typ()), 4);
+        let mut powers = alphas.get_exponents(ArgumentType::Gate(Poseidon::<Fp>::typ()), 4);
 
         assert_eq!(powers.next(), Some(0));
         assert_eq!(powers.next(), Some(1));
@@ -304,7 +309,7 @@ mod tests {
         let alpha = Fp::from(2);
         alphas.instantiate(alpha);
 
-        let mut alphas = alphas.get_alphas(ArgumentType::Gate(GateType::Poseidon), 4);
+        let mut alphas = alphas.get_alphas(ArgumentType::Gate(Poseidon::<Fp>::typ()), 4);
         assert_eq!(alphas.next(), Some(1.into()));
         assert_eq!(alphas.next(), Some(2.into()));
         assert_eq!(alphas.next(), Some(4.into()));
@@ -322,7 +327,7 @@ mod tests {
     #[test]
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
-        let index = new_index_for_test::<Vesta>(gates, 0);
+        let index = new_index_for_test::<Vesta>(ProverContext::default(), gates, 0);
         let (_linearization, powers_of_alpha) = expr_linearization::<Fp>(&index.cs, true);
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
