@@ -1,4 +1,4 @@
-var sourcesIndex = JSON.parse('{\
+var srcIndex = JSON.parse('{\
 "export_test_vectors":["",[],["main.rs","vectors.rs"]],\
 "flamegraph":["",[],["flamegraph.rs"]],\
 "groupmap":["",[],["lib.rs"]],\
@@ -15,4 +15,4 @@ var sourcesIndex = JSON.parse('{\
 "poly_commitment":["",[],["chunked.rs","combine.rs","commitment.rs","error.rs","evaluation_proof.rs","lib.rs","srs.rs"]],\
 "turshi":["",[],["flags.rs","helper.rs","lib.rs","memory.rs","runner.rs","word.rs"]]\
 }');
-createSourceSidebar();
+createSrcSidebar();
