@@ -6,6 +6,7 @@ use crate::circuits::{
         tables::LookupTable,
     },
     polynomial::COLUMNS,
+    polynomials::lookup::Lookup,
     wires::Wire,
 };
 use ark_ff::Zero;
@@ -42,7 +43,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
 
     // circuit gates
     let gates = (0..num_lookups)
-        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+        .map(|i| CircuitGate::new(Lookup::<Fp>::typ(), Wire::for_row(i), vec![]))
         .collect();
 
     let witness = {
@@ -156,7 +157,7 @@ fn test_runtime_table() {
     let mut gates = vec![];
     for row in 0..20 {
         gates.push(CircuitGate::new(
-            GateType::Lookup,
+            Lookup::<Fp>::typ(),
             Wire::for_row(row),
             vec![],
         ));
@@ -217,7 +218,7 @@ fn test_negative_test_runtime_table_value_not_in_table() {
     let nb_gates = 20;
     for row in 0..nb_gates {
         gates.push(CircuitGate::new(
-            GateType::Lookup,
+            Lookup::<Fp>::typ(),
             Wire::for_row(row),
             vec![],
         ));
@@ -279,7 +280,7 @@ fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnes
     let nb_gates = 20;
     for row in 0..nb_gates {
         gates.push(CircuitGate::new(
-            GateType::Lookup,
+            Lookup::<Fp>::typ(),
             Wire::for_row(row),
             vec![],
         ));
@@ -339,7 +340,7 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     let nb_gates = 20;
     for row in 0..nb_gates {
         gates.push(CircuitGate::new(
-            GateType::Lookup,
+            Lookup::<Fp>::typ(),
             Wire::for_row(row),
             vec![],
         ));

@@ -394,8 +394,7 @@ impl<F: FftField> ProofEvaluations<PointEvaluations<Vec<F>>> {
 }
 
 impl<F> ProofEvaluations<F> {
-    pub fn get_column<T: PrimeField>(&self, col: Column) -> Option<&F>
-    {
+    pub fn get_column<T: PrimeField>(&self, col: Column) -> Option<&F> {
         match col {
             Column::Witness(i) => Some(&self.w[i]),
             Column::Z => Some(&self.z),

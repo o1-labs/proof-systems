@@ -210,13 +210,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // assign powers of alpha to these gates
         let mut alphas = Alphas::<F>::default();
         alphas.register(
-            ArgumentType::Gate(self.typ),
+            ArgumentType::Gate(self.typ.clone()),
             Instruction::<F>::create().constraint_count(),
         );
 
         // Get constraints for this circuit gate
         let constraints =
-            circuit_gate_combined_constraints(self.typ, &alphas, &mut Cache::default());
+            circuit_gate_combined_constraints(self.typ.clone(), &alphas, &mut Cache::default());
 
         // Linearize
         let linearized = constraints.linearize(polys).unwrap();

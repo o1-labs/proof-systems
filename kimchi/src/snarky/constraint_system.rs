@@ -1,7 +1,13 @@
 #![allow(clippy::all)]
 
 use crate::circuits::gate::{CircuitGate, GateType};
-use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
+use crate::circuits::polynomials::complete_add::CompleteAdd;
+use crate::circuits::polynomials::endomul_scalar::EndomulScalar;
+use crate::circuits::polynomials::endosclmul::EndosclMul;
+use crate::circuits::polynomials::generic::Generic;
+use crate::circuits::polynomials::poseidon::{Poseidon, ROUNDS_PER_HASH, SPONGE_WIDTH};
+use crate::circuits::polynomials::varbasemul::VarbaseMul;
+use crate::circuits::polynomials::zero::Zero;
 use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
 use ark_ff::PrimeField;
 use itertools::Itertools;
@@ -440,7 +446,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         // if we still have some pending gates, deal with it first
         if let Some((l, r, o, coeffs)) = self.pending_generic_gate.take() {
             self.pending_generic_gate = None;
-            self.add_row(vec![l, r, o], GateType::Generic, coeffs.clone());
+            self.add_row(vec![l, r, o], Generic::<Field>::typ(), coeffs.clone());
         }
 
         // get gates without holding on an immutable reference
@@ -463,7 +469,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
             let public_var = V::External(row + 1);
             self.wire_(public_var, Row::PublicInput(row), 0);
             public_gates.push(GateSpec {
-                kind: GateType::Generic,
+                kind: Generic::<Field>::typ(),
                 wired_to: Vec::new(),
                 coeffs: pub_selectors.clone(),
             });
@@ -614,7 +620,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     std::mem::replace(&mut self.pending_generic_gate, None)
                 {
                     coeffs.extend(coeffs2);
-                    self.add_row(vec![l, r, o, l2, r2, o2], GateType::Generic, coeffs);
+                    self.add_row(vec![l, r, o, l2, r2, o2], Generic::<Field>::typ(), coeffs);
                 }
             }
         }
@@ -1149,7 +1155,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                         self.constants.poseidon.round_constants[round_4][1],
                         self.constants.poseidon.round_constants[round_4][2],
                     ];
-                    self.add_row(vars, GateType::Poseidon, coeffs);
+                    self.add_row(vars, Poseidon::<Field>::typ(), coeffs);
                 }
 
                 // add_last_row adds the last row containing the output
@@ -1170,7 +1176,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     None,
                     None,
                 ];
-                self.add_row(vars, GateType::Zero, vec![]);
+                self.add_row(vars, Zero::<Field>::typ(), vec![]);
             }
             KimchiConstraint::EcAddComplete {
                 p1,
@@ -1203,7 +1209,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     Some(self.reduce_to_var(inf_z)),
                     Some(self.reduce_to_var(x21_inv)),
                 ];
-                self.add_row(vars, GateType::CompleteAdd, vec![]);
+                self.add_row(vars, CompleteAdd::<Field>::typ(), vec![]);
             }
             KimchiConstraint::EcScale { state } => {
                 for ScaleRound {
@@ -1236,7 +1242,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                         Some(self.reduce_to_var(accs[4].1.clone())),
                     ];
 
-                    self.add_row(curr_row, GateType::VarBaseMul, vec![]);
+                    self.add_row(curr_row, VarbaseMul::<Field>::typ(), vec![]);
 
                     let next_row = vec![
                         Some(self.reduce_to_var(accs[5].0.clone())),
@@ -1253,7 +1259,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                         Some(self.reduce_to_var(ss[4].clone())),
                     ];
 
-                    self.add_row(next_row, GateType::Zero, vec![]);
+                    self.add_row(next_row, Zero::<Field>::typ(), vec![]);
                 }
             }
             KimchiConstraint::EcEndoscale {
@@ -1281,7 +1287,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                         Some(self.reduce_to_var(round.b4)),
                     ];
 
-                    self.add_row(vars, GateType::EndoMul, vec![]);
+                    self.add_row(vars, EndosclMul::<Field>::typ(), vec![]);
                 }
 
                 // last row
@@ -1294,7 +1300,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                     Some(self.reduce_to_var(ys)),
                     Some(self.reduce_to_var(n_acc)),
                 ];
-                self.add_row(vars, GateType::Zero, vec![]);
+                self.add_row(vars, Zero::<Field>::typ(), vec![]);
             }
             KimchiConstraint::EcEndoscalar { state } => {
                 for round in state {
@@ -1314,7 +1320,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
                         Some(self.reduce_to_var(round.x6)),
                         Some(self.reduce_to_var(round.x7)),
                     ];
-                    self.add_row(vars, GateType::EndoMulScalar, vec![]);
+                    self.add_row(vars, EndomulScalar::<Field>::typ(), vec![]);
                 }
             }
         }

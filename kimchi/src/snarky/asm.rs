@@ -4,8 +4,8 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Write;
 use std::hash::Hash;
 
-use crate::circuits::gate::{Circuit, CircuitGate, GateType};
-use crate::circuits::polynomials::generic::{GENERIC_COEFFS, GENERIC_REGISTERS};
+use crate::circuits::gate::{Circuit, CircuitGate};
+use crate::circuits::polynomials::generic::{Generic, GENERIC_COEFFS, GENERIC_REGISTERS};
 use crate::circuits::wires::Wire;
 use ark_ff::PrimeField;
 
@@ -52,7 +52,7 @@ where
                 write!(res, "{typ:?}").unwrap();
                 res.push('<');
 
-                if matches!(typ, GateType::Generic) && coeffs.len() > GENERIC_COEFFS {
+                if *typ == Generic::<F>::typ() && coeffs.len() > GENERIC_COEFFS {
                     // for the double generic gate, split the coeffs in two parts
                     let (gen1, gen2) = coeffs.split_at(GENERIC_COEFFS);
                     res.push_str(&gen1.join(","));
@@ -80,13 +80,13 @@ where
                 ) in wires.iter().enumerate()
                 {
                     if row != *to_row || col != *to_col {
-                        let col_str = if matches!(typ, GateType::Generic) {
+                        let col_str = if *typ == Generic::<F>::typ() {
                             format!(".{}", Self::generic_cols(col))
                         } else {
                             format!("[{col}]")
                         };
 
-                        let to_col = if matches!(self.gates[*to_row].typ, GateType::Generic) {
+                        let to_col = if self.gates[*to_row].typ == Generic::<F>::typ() {
                             format!(".{}", Self::generic_cols(*to_col))
                         } else {
                             format!("[{to_col}]")
@@ -94,7 +94,7 @@ where
 
                         let res = format!("{col_str} -> row{to_row}{to_col}");
 
-                        if matches!(typ, GateType::Generic) && col < GENERIC_REGISTERS {
+                        if *typ == Generic::<F>::typ() && col < GENERIC_REGISTERS {
                             wires1.push(res);
                         } else {
                             wires2.push(res);
@@ -207,7 +207,7 @@ where
 mod tests {
     use mina_curves::pasta::Fp;
 
-    use crate::circuits::wires::Wirable;
+    use crate::circuits::{polynomials::poseidon::Poseidon, wires::Wirable};
 
     use super::*;
 
@@ -216,17 +216,17 @@ mod tests {
         let public_input_size = 1;
         let gates: &Vec<CircuitGate<Fp>> = &vec![
             CircuitGate::new(
-                GateType::Generic,
+                Generic::<Fp>::typ(),
                 Wire::for_row(0),
                 vec![1.into(), 2.into()],
             ),
             CircuitGate::new(
-                GateType::Poseidon,
+                Poseidon::<Fp>::typ(),
                 Wire::for_row(1).wire(0, Wire::new(0, 1)),
                 vec![1.into(), 2.into()],
             ),
             CircuitGate::new(
-                GateType::Generic,
+                Generic::<Fp>::typ(),
                 Wire::for_row(2)
                     .wire(0, Wire::new(1, 2))
                     .wire(3, Wire::new(2, 5))
