@@ -58,8 +58,16 @@ impl CurrOrNext {
     }
 }
 
+// Gate type identifier
 pub type GateType = String;
+
+/// Gate interface
 pub trait Gate<F: PrimeField, T: ExprOps<F>>: std::fmt::Debug + DynClone {
+    /// Unique gate identifier
+    fn typ(&self) -> String {
+        std::any::type_name::<Self>().to_string()
+    }
+
     /// Gate constraints
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
 
@@ -88,7 +96,8 @@ macro_rules! define_gate {
         pub struct $id<$typ>(PhantomData<$typ>);
         impl<$typ: $bound> $id<F> {
             pub fn typ() -> String {
-                String::from("$id")
+                std::any::type_name::<Self>().to_string()
+                // String::from(stringify!($id))
             }
 
             pub fn create<S: ExprOps<$typ>>() -> Box<dyn Gate<$typ, S>> {
@@ -99,9 +108,6 @@ macro_rules! define_gate {
 }
 
 pub trait GateHelpers<F: PrimeField> {
-    /// Unique gate identifier (per circuit)
-    fn typ(&self) -> String;
-
     /// Gate constraints
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>;
 
@@ -125,10 +131,6 @@ impl<F> GateHelpers<F> for dyn Gate<F, expr::Expr<ConstantExpr<F>>>
 where
     F: PrimeField,
 {
-    fn typ(&self) -> String {
-        std::any::type_name::<Self>().to_string()
-    }
-
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>> {
         // Generate constraints
         self.constraint_checks(&ArgumentEnv::default(), cache)
@@ -333,13 +335,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             let wire = self.wires[col];
 
             if wire.col >= PERMUTS {
-                return Err(CircuitGateError::WireColumn(self.typ, col));
+                return Err(CircuitGateError::WireColumn(self.typ.clone(), col));
             }
 
             if witness[col][row] != witness[wire.col][wire.row] {
                 // Pinpoint failed copy constraint
                 return Err(CircuitGateError::CopyConstraint {
-                    typ: self.typ,
+                    typ: self.typ.clone(),
                     src: Wire { row, col },
                     dst: wire,
                 });
@@ -349,7 +351,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         let mut cache = expr::Cache::default();
 
         // Perform witness verification on each constraint for this gate
-        let results: Vec<F> = match cs.configured_gates.get(self.typ) {
+        let results: Vec<F> = match cs.configured_gates.get(self.typ.clone()) {
             // Some(gate) => gate.clone_for_verification().constraint_checks(&env, &mut cache), // JES: TODO
             Some(_) => vec![],
             None => vec![],
@@ -359,7 +361,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         for (i, result) in results.iter().enumerate() {
             if !result.is_zero() {
                 // Pinpoint failed constraint
-                return Err(CircuitGateError::Constraint(self.typ, i + 1));
+                return Err(CircuitGateError::Constraint(self.typ.clone(), i + 1));
             }
         }
 
@@ -379,13 +381,13 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             .map(|col| witness[col][row])
             .collect::<Vec<F>>()
             .try_into()
-            .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
+            .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ.clone(), row))?;
         let witness_next: [F; COLUMNS] = if witness[0].len() > row + 1 {
             (0..witness.len())
                 .map(|col| witness[col][row + 1])
                 .collect::<Vec<F>>()
                 .try_into()
-                .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?
+                .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ.clone(), row))?
         } else {
             [F::zero(); COLUMNS]
         };
@@ -553,7 +555,7 @@ pub mod caml {
     {
         fn from(cg: &CircuitGate<F>) -> Self {
             Self {
-                typ: cg.typ,
+                typ: cg.typ.clone(),
                 wires: array_to_tuple(cg.wires),
                 coeffs: cg.coeffs.clone().into_iter().map(Into::into).collect(),
             }

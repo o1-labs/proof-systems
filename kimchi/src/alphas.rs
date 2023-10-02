@@ -68,7 +68,7 @@ impl<F: PrimeField> Alphas<F> {
             ty
         };
 
-        if self.mapping.insert(ty, (self.next_power, powers)).is_some() {
+        if self.mapping.insert(ty.clone(), (self.next_power, powers)).is_some() {
             panic!("cannot re-register {ty:?}");
         }
 

@@ -673,10 +673,10 @@ impl Variable {
                 .lookup
                 .as_ref()
                 .ok_or(ExprError::LookupShouldNotBeUsed);
-            match self.col {
-                Witness(i) => Ok(evals.w[i]),
+            match &self.col {
+                Witness(i) => Ok(evals.w[*i]),
                 Z => Ok(evals.z),
-                LookupSorted(i) => l.map(|l| l.sorted[i]),
+                LookupSorted(i) => l.map(|l| l.sorted[*i]),
                 LookupAggreg => l.map(|l| l.aggreg),
                 LookupTable => l.map(|l| l.table),
                 LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
@@ -686,13 +686,13 @@ impl Variable {
                     } else if *gate_type == Generic::<F>::typ() {
                         Ok(evals.generic_selector)
                     } else {
-                        panic!("Invalid gate type: {}", gate_type)
+                        Err(ExprError::MissingIndexEvaluation(self.col.clone()))
                     }
                 }
-                Permutation(i) => Ok(evals.s[i]),
-                Coefficient(i) => Ok(evals.coefficients[i]),
-                LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                    Err(ExprError::MissingIndexEvaluation(self.col))
+                Permutation(i) => Ok(evals.s[*i]),
+                Coefficient(i) => Ok(evals.coefficients[*i]),
+                LookupKindIndex(_) | LookupRuntimeSelector => {
+                    Err(ExprError::MissingIndexEvaluation(self.col.clone()))
                 }
             }
         }?;
@@ -1419,7 +1419,7 @@ impl<F: FftField + PrimeField> Expr<ConstantExpr<F>> {
             Expr::Constant(c) => {
                 c.to_polish_(res);
             }
-            Expr::Cell(v) => res.push(PolishToken::Cell(*v)),
+            Expr::Cell(v) => res.push(PolishToken::Cell(v.clone())),
             Expr::VanishesOnLast4Rows => {
                 res.push(PolishToken::VanishesOnLast4Rows);
             }
@@ -1489,7 +1489,7 @@ impl<F: FftField + PrimeField> Expr<ConstantExpr<F>> {
             Pow(x, d) => x.evaluate_constants_(c).pow(*d),
             Square(x) => x.evaluate_constants_(c).square(),
             Constant(x) => Constant(x.value(c)),
-            Cell(v) => Cell(*v),
+            Cell(v) => Cell(v.clone()),
             VanishesOnLast4Rows => VanishesOnLast4Rows,
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
             BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
@@ -1822,7 +1822,7 @@ impl<A> Linearization<A> {
     pub fn map<B, F: Fn(&A) -> B>(&self, f: F) -> Linearization<B> {
         Linearization {
             constant_term: f(&self.constant_term),
-            index_terms: self.index_terms.iter().map(|(c, x)| (*c, f(x))).collect(),
+            index_terms: self.index_terms.iter().map(|(c, x)| (c.clone(), f(x))).collect(),
         }
     }
 }
@@ -1919,7 +1919,7 @@ fn mul_monomials<F: Neg<Output = F> + Clone + One + Zero + PartialEq>(
     for (m1, c1) in e1.iter() {
         for (m2, c2) in e2.iter() {
             let mut m = m1.clone();
-            m.extend(*m2);
+            m.extend(m2.clone());
             m.sort();
             let c1c2 = c1.clone() * c2.clone();
             let v = res.entry(m).or_insert_with(Expr::<F>::zero);
@@ -1991,7 +1991,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
             VanishesOnLast4Rows => constant(VanishesOnLast4Rows),
             Constant(c) => constant(Constant(c.clone())),
-            Cell(var) => sing(vec![*var], Constant(F::one())),
+            Cell(var) => sing(vec![var.clone()], Constant(F::one())),
             BinOp(Op2::Add, e1, e2) => {
                 let mut res = e1.monomials(ev);
                 for (m, c) in e2.monomials(ev) {

@@ -290,7 +290,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
             gate_comms: BTreeMap::from_iter(self.column_evaluations.gate_selectors.iter().map(
                 |(gate_type, selector)| {
                     (
-                        *gate_type,
+                        gate_type.clone(),
                         self.srs.commit_evaluations_non_hiding(domain, selector),
                     )
                 },

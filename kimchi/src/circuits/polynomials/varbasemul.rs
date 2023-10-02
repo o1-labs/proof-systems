@@ -200,11 +200,11 @@ fn single_bit_witness<F: FftField>(
     let mut set = |var, x| set(w, row, var, x);
 
     set(b, b_value);
-    set(input.x, input_value.0);
-    set(input.y, input_value.1);
+    set(input.x.clone(), input_value.0);
+    set(input.y.clone(), input_value.1);
 
-    set(base.x, base_value.0);
-    set(base.y, base_value.1);
+    set(base.x.clone(), base_value.0);
+    set(base.y.clone(), base_value.1);
 
     let s1_value = (input_value.1 - (base_value.1 * (b_value.double() - F::one())))
         / (input_value.0 - base_value.0);
@@ -217,8 +217,8 @@ fn single_bit_witness<F: FftField>(
         input_value.1.double() / (input_value.0.double() + base_value.0 - s1_squared) - s1_value;
     let out_x = base_value.0 + s2.square() - s1_squared;
     let out_y = (input_value.0 - out_x) * s2 - input_value.1;
-    set(output.x, out_x);
-    set(output.y, out_y);
+    set(output.x.clone(), out_x);
+    set(output.y.clone(), out_y);
     (out_x, out_y)
 }
 
@@ -298,8 +298,8 @@ where
         };
 
         match self.row {
-            Curr => env.witness_curr(column_to_index(self.col)),
-            Next => env.witness_next(column_to_index(self.col)),
+            Curr => env.witness_curr(column_to_index(self.col.clone())),
+            Next => env.witness_next(column_to_index(self.col.clone())),
         }
     }
 }
@@ -329,9 +329,9 @@ impl Layout<Variable> {
 
     fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
         Layout {
-            accs: self.accs.map(|point| point.new_from_env(env)),
-            bits: self.bits.map(|var| var.new_from_env(env)),
-            ss: self.ss.map(|s| s.new_from_env(env)),
+            accs: self.accs.clone().map(|point| point.new_from_env(env)),
+            bits: self.bits.clone().map(|var| var.new_from_env(env)),
+            ss: self.ss.clone().map(|s| s.new_from_env(env)),
             base: self.base.new_from_env(env),
             n_prev: self.n_prev.new_from_env(env),
             n_next: self.n_next.new_from_env(env),
@@ -377,16 +377,16 @@ pub fn witness<F: FftField + std::fmt::Display>(
     for (chunk, bs) in bits.chunks(bits_per_chunk).enumerate() {
         let row = row0 + 2 * chunk;
 
-        set(w, row, layout.n_prev, n_acc);
+        set(w, row, layout.n_prev.clone(), n_acc);
         for (i, bs) in bs.iter().enumerate().take(bits_per_chunk) {
             n_acc.double_in_place();
             n_acc += bs;
             acc = single_bit_witness(
                 w,
                 row,
-                layout.bits[i],
+                layout.bits[i].clone(),
                 &layout.base,
-                layout.ss[i],
+                layout.ss[i].clone(),
                 &layout.accs[i],
                 &layout.accs[i + 1],
                 *bs,
@@ -394,7 +394,7 @@ pub fn witness<F: FftField + std::fmt::Display>(
                 acc,
             );
         }
-        set(w, row, layout.n_next, n_acc);
+        set(w, row, layout.n_next.clone(), n_acc);
     }
     VarbaseMulResult { acc, n: n_acc }
 }

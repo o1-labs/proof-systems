@@ -700,7 +700,7 @@ where
 
             // Insert index evaluations for configured gates
             for (gate_type, selector) in &index.column_evaluations.gate_selectors {
-                index_evals.insert(*gate_type, selector);
+                index_evals.insert(gate_type.clone(), selector);
             }
 
             let mds = &G::sponge_params().mds;
@@ -814,7 +814,7 @@ where
             // };
 
             // Check constraints for configured gates
-            for (_name, gate) in index.cs.configured_gates.iter() {
+            for (_name, gate) in index.cs.configured_gates.clone().iter() {
                 let constraint = gate.combined_constraints(&all_alphas, &mut cache);
                 let eval = constraint.evaluations(&env);
                 if eval.domain().size == t4.domain().size {

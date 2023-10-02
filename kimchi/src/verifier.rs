@@ -6,7 +6,23 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{Column, Constants, PolishToken},
         lookup::tables::combine_table,
-        polynomials::{generic::Generic, permutation, poseidon::Poseidon},
+        polynomials::{
+            complete_add::CompleteAdd,
+            endomul_scalar::EndomulScalar,
+            endosclmul::EndosclMul,
+            foreign_field_add::circuitgates::ForeignFieldAdd,
+            foreign_field_mul::circuitgates::ForeignFieldMul,
+            generic::Generic,
+            lookup::Lookup,
+            permutation,
+            poseidon::Poseidon,
+            range_check::circuitgates::{RangeCheck0, RangeCheck1},
+            rot::Rot64,
+            turshi::{Claim, Flags, Instruction, Transition},
+            varbasemul::VarbaseMul,
+            xor::Xor16,
+            zero::Zero as ZeroGate,
+        },
         scalars::RandomOracles,
         wires::{COLUMNS, PERMUTS},
     },
@@ -64,28 +80,45 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     .as_ref()?,
             ),
             LookupRuntimeTable => None,
-            Index(t) => {
-                // JES: TODO: Fix this
-                match t {
-                    Zero => None,
-                    Generic => Some(&self.verifier_index.generic_comm),
-                    Lookup => None,
-                    CompleteAdd => Some(&self.verifier_index.complete_add_comm),
-                    VarBaseMul => Some(&self.verifier_index.mul_comm),
-                    EndoMul => Some(&self.verifier_index.emul_comm),
-                    EndoMulScalar => Some(&self.verifier_index.endomul_scalar_comm),
-                    Poseidon => Some(&self.verifier_index.psm_comm),
-                    CairoClaim => None,
-                    CairoInstruction => None,
-                    CairoFlags => None,
-                    CairoTransition => None,
-                    RangeCheck0 => Some(self.verifier_index.range_check0_comm.as_ref()?),
-                    RangeCheck1 => Some(self.verifier_index.range_check1_comm.as_ref()?),
-                    ForeignFieldAdd => Some(self.verifier_index.foreign_field_add_comm.as_ref()?),
-                    ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
-                    Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
-                    Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
-                    _ => Some(&self.verifier_index.gate_comms[&t]),
+            Index(typ) => {
+                if typ == ZeroGate::<G::ScalarField>::typ() {
+                    None
+                } else if typ == Generic::<G::ScalarField>::typ() {
+                    Some(&self.verifier_index.generic_comm)
+                } else if typ == Lookup::<G::ScalarField>::typ() {
+                    None
+                } else if typ == CompleteAdd::<G::ScalarField>::typ() {
+                    Some(&self.verifier_index.complete_add_comm)
+                } else if typ == VarbaseMul::<G::ScalarField>::typ() {
+                    Some(&self.verifier_index.mul_comm)
+                } else if typ == EndosclMul::<G::ScalarField>::typ() {
+                    Some(&self.verifier_index.emul_comm)
+                } else if typ == EndomulScalar::<G::ScalarField>::typ() {
+                    Some(&self.verifier_index.endomul_scalar_comm)
+                } else if typ == Poseidon::<G::ScalarField>::typ() {
+                    Some(&self.verifier_index.psm_comm)
+                } else if typ == Claim::<G::ScalarField>::typ() {
+                    None
+                } else if typ == Instruction::<G::ScalarField>::typ() {
+                    None
+                } else if typ == Flags::<G::ScalarField>::typ() {
+                    None
+                } else if typ == Transition::<G::ScalarField>::typ() {
+                    None
+                } else if typ == RangeCheck0::<G::ScalarField>::typ() {
+                    Some(self.verifier_index.range_check0_comm.as_ref()?)
+                } else if typ == RangeCheck1::<G::ScalarField>::typ() {
+                    Some(self.verifier_index.range_check1_comm.as_ref()?)
+                } else if typ == ForeignFieldAdd::<G::ScalarField>::typ() {
+                    Some(self.verifier_index.foreign_field_add_comm.as_ref()?)
+                } else if typ == ForeignFieldMul::<G::ScalarField>::typ() {
+                    Some(self.verifier_index.foreign_field_mul_comm.as_ref()?)
+                } else if typ == Xor16::<G::ScalarField>::typ() {
+                    Some(self.verifier_index.xor_comm.as_ref()?)
+                } else if typ == Rot64::<G::ScalarField>::typ() {
+                    Some(self.verifier_index.rot_comm.as_ref()?)
+                } else {
+                    Some(&self.verifier_index.gate_comms[&typ.to_string()])
                 }
             }
         }
@@ -465,7 +498,7 @@ where
                         // PointEvaluations<Vec<G::ScalarField>>
                         let evals = self
                             .evals
-                            .get_column::<G::ScalarField>(col)
+                            .get_column::<G::ScalarField>(col.clone())
                             .ok_or(VerifyError::MissingEvaluation(col))?;
                         vec![evals.zeta.clone(), evals.zeta_omega.clone()]
                     },
@@ -696,11 +729,11 @@ where
                 )
                 .expect("should evaluate");
 
-                let col = *col;
+                let col = col.clone();
                 scalars.push(scalar);
                 commitments.push(
                     context
-                        .get_column(col)
+                        .get_column(col.clone())
                         .ok_or(VerifyError::MissingCommitment(col))?,
                 );
             }
@@ -776,11 +809,11 @@ where
     ) {
         let evals = proof
             .evals
-            .get_column::<G::ScalarField>(col)
-            .ok_or(VerifyError::MissingEvaluation(col))?;
+            .get_column::<G::ScalarField>(col.clone())
+            .ok_or(VerifyError::MissingEvaluation(col.clone()))?;
         evaluations.push(Evaluation {
             commitment: context
-                .get_column(col)
+                .get_column(col.clone())
                 .ok_or(VerifyError::MissingCommitment(col))?
                 .clone(),
             evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],

@@ -1,14 +1,12 @@
 //! Implements a tool to visualize a circuit as an HTML page.
 
-use ark_ff::PrimeField;
 use kimchi::{
     circuits::{
-        argument::{Argument, Gate, GateHelpers},
         expr::{self, constraints::ExprOps},
         polynomials::{
             complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
             poseidon::Poseidon, varbasemul::VarbaseMul,
-        },
+        }, gate::GateHelpers,
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,

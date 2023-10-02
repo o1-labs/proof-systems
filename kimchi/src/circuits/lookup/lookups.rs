@@ -115,7 +115,7 @@ impl LookupPatterns {
         let mut kinds = LookupPatterns::default();
         for g in gates.iter() {
             for r in &[CurrOrNext::Curr, CurrOrNext::Next] {
-                if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(g.typ, *r) {
+                if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(g.typ.clone(), *r) {
                     kinds[lookup_pattern] = true;
                 }
             }
@@ -226,9 +226,9 @@ impl LookupInfo {
 
         // TODO: is take(n) useful here? I don't see why we need this
         for (i, gate) in gates.iter().enumerate().take(n) {
-            let typ = gate.typ;
+            let typ = gate.typ.clone();
 
-            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Curr) {
+            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ.clone(), CurrOrNext::Curr) {
                 update_selector(lookup_pattern, i);
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
@@ -257,9 +257,9 @@ impl LookupInfo {
     pub fn by_row<F: PrimeField>(&self, gates: &[CircuitGate<F>]) -> Vec<Vec<JointLookupSpec<F>>> {
         let mut kinds = vec![vec![]; gates.len() + 1];
         for i in 0..gates.len() {
-            let typ = gates[i].typ;
+            let typ = gates[i].typ.clone();
 
-            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Curr) {
+            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ.clone(), CurrOrNext::Curr) {
                 kinds[i] = lookup_pattern.lookups();
             }
             if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Next) {

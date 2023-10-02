@@ -130,7 +130,7 @@ where
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
         let index = new_index_for_test_with_lookups::<G>(
-            self.prover_context.unwrap(),
+            self.prover_context.clone().unwrap(),
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,

@@ -569,7 +569,7 @@ fn verify_range_check0_test_copy_constraints() {
                     &witness[0][0..index.cs.public]
                 ),
                 Err(CircuitGateError::CopyConstraint {
-                    typ: index.cs.gates[row].typ,
+                    typ: index.cs.gates[row].typ.clone(),
                     src: Wire { row, col },
                     dst: Wire {
                         row: 3,

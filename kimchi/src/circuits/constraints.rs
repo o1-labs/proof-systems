@@ -599,13 +599,13 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 
         // Compute gate selectors for configured gates
         let gate_selectors: Vec<(String, E<F, D<F>>)> = self
-            .configured_gates
+            .configured_gates.clone()
             .iter()
             .map(|(name, gate)| {
                 (
-                    *name,
+                    name.clone(),
                     selector_polynomial(
-                        *name,
+                        name.clone(),
                         &self.gates,
                         &self.domain,
                         self.domain.get(gate.domain(self.domain)),
@@ -699,8 +699,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         assert!(gates.len() > 1);
 
         // Check that the circuit uses only registered gates
-        for gate in gates {
-            match self.ctx.gates.get(gate.typ) {
+        for gate in gates.clone() {
+            match self.ctx.gates.get(gate.typ.clone()) {
                 None => {
                     return Err(SetupError::ConstraintSystem(format!(
                         "Invalid gate {}",

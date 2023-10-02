@@ -17,14 +17,6 @@ macro_rules! gates {
     }};
 }
 
-// /// Helper to specify a gate type
-// #[macro_export]
-// macro_rules! gate_type {
-//     ($first:ident $(:: $second:ident)* < $typ:ident $(:: $third:ident)* >) => {
-//         $first $(:: $second )* < $typ $( :: $third )* >::gate_type()
-//     };
-// }
-
 // Registry of available gates
 #[derive(Clone, Debug)]
 pub struct GateRegistry<F: PrimeField> {

@@ -169,7 +169,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     // Get the expressions of dynamically configured gates
-    for (_name, gate) in cs.configured_gates.iter() {
+    for (_name, gate) in cs.configured_gates.clone().iter() {
         expr += gate.combined_constraints(&powers_of_alpha, &mut cache);
     }
 
