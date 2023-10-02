@@ -40,10 +40,8 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
             let index_column = (0..lookup_table_values.len() as u64)
                 .map(Into::into)
                 .collect();
-            LookupTable {
-                id: id as i32,
-                data: vec![index_column, lookup_table_values.clone()],
-            }
+            LookupTable::create(id as i32, vec![index_column, lookup_table_values.clone()])
+                .expect("setup_lookup_proof: Table creation must succeed")
         })
         .collect();
 
@@ -646,6 +644,7 @@ fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
         .setup();
 }
 
+// TODO @volhovm revisit if this test should be moved to tables::mod
 #[test]
 fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
     let seed: [u8; 32] = thread_rng().gen();
@@ -668,11 +667,8 @@ fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id
         .map(|_| rng.gen_range(1u32..max_len))
         .map(Into::into)
         .collect();
-    let lookup_table = LookupTable {
-        id: table_id,
-        data: vec![indices, values],
-    };
-    let lookup_tables = vec![lookup_table];
+    let lookup_table = LookupTable::create(table_id, vec![indices, values])
+        .expect("Table creation in test must not fail");
     let num_lookups = 20;
 
     // circuit gates
@@ -687,12 +683,13 @@ fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id
     TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
-        .lookup_tables(lookup_tables)
+        .lookup_tables(vec![lookup_table])
         .setup()
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
 }
 
+// TODO @volhovm revisit if this test should be moved to tables::mod
 #[test]
 fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
     let seed: [u8; 32] = thread_rng().gen();
@@ -708,10 +705,8 @@ fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
     let values: Vec<Fp> = (1..(len + 1))
         .map(|_| UniformRand::rand(&mut rng))
         .collect();
-    let lt = LookupTable {
-        id: table_id,
-        data: vec![idx, values],
-    };
+    let lt = LookupTable::create(table_id, vec![idx, values])
+        .expect("Test table creation must not panic");
 
     // Dummy, used for the setup. Only the number of gates must be lower than
     // the length of the table to avoid having a bigger circuit than the table

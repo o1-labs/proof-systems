@@ -18,6 +18,8 @@ pub struct RuntimeTableSpec {
     pub len: usize,
 }
 
+/// A configuration of the runtime table as known at setup time.
+///
 /// Use this type at setup time, to list all the runtime tables.
 ///
 /// Note: care must be taken as table IDs can collide with IDs of other types of lookup tables.
@@ -25,7 +27,8 @@ pub struct RuntimeTableSpec {
 pub struct RuntimeTableCfg<F> {
     /// The table ID.
     pub id: i32,
-    /// The content of the first column of the runtime table.
+    /// The content of the first column of the runtime table, i.e.
+    /// keys when a table is viewed as a (k,v) array.
     pub first_column: Vec<F>,
 }
 
@@ -56,12 +59,13 @@ impl<F> From<RuntimeTableCfg<F>> for RuntimeTableSpec {
 }
 
 /// A runtime table. Runtime tables must match the configuration
-/// that was specified in [`RuntimeTableCfg`].
+/// specified in [`RuntimeTableCfg`].
 #[derive(Debug, Clone)]
 pub struct RuntimeTable<F> {
     /// The table id.
     pub id: i32,
-    /// A single column.
+    /// A single column. Represents runtime table values, where
+    /// ['RuntimeTableCfg'] defines compile-time keys.
     pub data: Vec<F>,
 }
 

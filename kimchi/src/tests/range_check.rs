@@ -68,7 +68,10 @@ fn create_test_prover_index(
         gates,
         public_size,
         0,
-        vec![range_check::gadget::lookup_table()],
+        // specifying lookup table is not necessary,
+        // since it's already passed through patterns implicitly
+        //vec![range_check::gadget::lookup_table()],
+        vec![],
         None,
         false,
         None,

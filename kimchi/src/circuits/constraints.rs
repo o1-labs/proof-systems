@@ -739,16 +739,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             let mut has_table_with_id_0 = false;
             let mut lookup_domain_size: usize = lookup_tables
                 .iter()
-                .map(|LookupTable { id, data }| {
+                .map(|lt| {
                     // See below for the reason
-                    if *id == 0_i32 {
+                    if lt.id() == 0_i32 {
                         has_table_with_id_0 = true
                     }
-                    if data.is_empty() {
-                        0
-                    } else {
-                        data[0].len()
-                    }
+                    lt.len()
                 })
                 .sum();
             // After that on the runtime tables
@@ -872,7 +868,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             &domain,
             zk_rows as usize,
         )
-        .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
+        .map_err(SetupError::LookupCreation)?;
 
         let sid = shifts.map[0].clone();
 
