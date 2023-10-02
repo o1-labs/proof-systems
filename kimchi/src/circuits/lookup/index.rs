@@ -443,3 +443,40 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::circuits::{
+        gate::{CircuitGate, GateType},
+        wires::Wire,
+    };
+    use mina_curves::pasta::Fp;
+
+    #[test]
+    fn test_zero_table_zero_row() {
+        let lookup_r: u64 = 32;
+        let num_lookups: usize = 16;
+        if let Ok(domain) = EvaluationDomains::<Fp>::create(2 * lookup_r as usize) {
+            // Table column that does not contain zeros
+            let lookup_table_values: Vec<_> = (1..lookup_r + 1).map(From::from).collect();
+
+            let lookup_tables: Vec<LookupTable<Fp>> = vec![LookupTable {
+                id: 0,
+                data: vec![lookup_table_values],
+            }];
+
+            let gates: Vec<CircuitGate<Fp>> = (0..num_lookups)
+                .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+                .collect();
+
+            let res =
+                LookupConstraintSystem::create(gates.as_slice(), lookup_tables, None, &domain);
+            assert!(
+                matches!(res, Err(LookupError::TableIDZeroMustHaveZeroEntry)),
+                "LookupConstraintSystem::create(...) returns OK when zero table has no zero rows"
+            );
+        }
+    }
+}
