@@ -2,7 +2,9 @@ use ark_ff::{FftField, One, Zero};
 use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
 
+pub mod bits16;
 pub mod range_check;
+pub mod reset;
 pub mod sparse;
 pub mod xor;
 
@@ -13,8 +15,15 @@ pub const XOR_TABLE_ID: i32 = 0;
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 
-/// The table ID associated with the sparse lookup table.
-pub const SPARSE_TABLE_ID: i32 = 2;
+/// The table ID associated with the 16-bit lookup table.
+pub const BITS16_TABLE_ID: i32 = 2;
+
+/// The table ID associated with the 1-column sparse lookup table.
+pub const SPARSE_TABLE_ID: i32 = 3;
+
+/// The table ID associated with the 2-column sparse lookup table.
+pub const RESET_TABLE_ID: i32 = 4;
+
 //~ spec:endcode
 
 /// Enumerates the different 'fixed' lookup tables used by individual gates
@@ -22,7 +31,9 @@ pub const SPARSE_TABLE_ID: i32 = 2;
 pub enum GateLookupTable {
     Xor,
     RangeCheck,
+    Bits16,
     Sparse,
+    Reset,
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
@@ -68,17 +79,21 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
         GateLookupTable::RangeCheck => range_check::range_check_table(),
+        GateLookupTable::Bits16 => bits16::bits16_table(),
         GateLookupTable::Sparse => sparse::sparse_table(),
+        GateLookupTable::Reset => reset::reset_table(),
     }
 }
 
 impl GateLookupTable {
-    /// Returns the lookup table associated to a [`GateLookupTable`].
+    /// Returns the size of a lookup table associated to a [`GateLookupTable`].
     pub fn table_size(&self) -> usize {
         match self {
             GateLookupTable::Xor => xor::TABLE_SIZE,
             GateLookupTable::RangeCheck => range_check::TABLE_SIZE,
-            GateLookupTable::Sparse => sparse::TABLE_SIZE,
+            GateLookupTable::Bits16 | GateLookupTable::Reset | GateLookupTable::Sparse => {
+                sparse::TABLE_SIZE
+            }
         }
     }
 }
