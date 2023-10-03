@@ -9,10 +9,13 @@ use crate::circuits::{
 };
 use ark_ff::{PrimeField, SquareRootField};
 
-use super::{expand, RATE, RC, ROUNDS};
+use super::{expand_word, RATE, RC, ROUNDS};
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Extends a Keccak circuit to hash one message (already padded to a multiple of 136 bits with 10*1 rule)
+    /// Note:
+    /// Requires at least one more row after the keccak gadget so that
+    /// constraints can access the next row in the squeeze
     pub fn extend_keccak(circuit: &mut Vec<Self>, bytelength: usize) -> usize {
         // pad
         let mut gates = Self::create_keccak(circuit.len(), bytelength);
@@ -65,7 +68,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         CircuitGate {
             typ: GateType::KeccakRound,
             wires: Wire::for_row(new_row),
-            coeffs: expand(RC[round]),
+            coeffs: expand_word(RC[round]),
         }
     }
 }
