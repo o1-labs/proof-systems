@@ -344,8 +344,15 @@ pub const XOR_TABLE_ID: i32 = 0;
 /// The range check table ID.
 pub const RANGE_CHECK_TABLE_ID: i32 = 1;
 
-/// The table ID associated with the sparse lookup table.
-pub const SPARSE_TABLE_ID: i32 = 2;
+/// The table ID associated with the 16-bit lookup table.
+pub const BITS16_TABLE_ID: i32 = 2;
+
+/// The table ID associated with the 1-column sparse lookup table.
+pub const SPARSE_TABLE_ID: i32 = 3;
+
+/// The table ID associated with the 2-column sparse lookup table.
+pub const RESET_TABLE_ID: i32 = 4;
+
 ```
 
 
