@@ -7,18 +7,10 @@ use crate::{
         expr::{constraints::ExprOps, Cache},
         gate::GateType,
     },
+    state_from_vec,
 };
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
-
-#[macro_export]
-macro_rules! state_from_vec {
-    ($expr:expr) => {
-        |i: usize, x: usize, y: usize, q: usize| {
-            $expr[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
-        }
-    };
-}
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64
 /// | x \ y |  0 |  1 |  2 |  3 |  4 |
