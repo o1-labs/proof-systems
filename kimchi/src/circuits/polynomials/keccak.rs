@@ -3,7 +3,10 @@ use crate::{
     auto_clone, auto_clone_array,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
-        expr::{constraints::ExprOps, Cache},
+        expr::{
+            constraints::{boolean, ExprOps},
+            Cache,
+        },
         gate::GateType,
     },
 };
@@ -77,15 +80,15 @@ pub const RC: [u64; 24] = [
 //~
 //~ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //~
-//~ | Columns  | [0...100) | [100...180) | [180...200) | [200...220) | [220...240)  | [240...260) | [260...280)  | [280...300)  |
-//~ | -------- | --------- | ----------- | ----------- | ----------- | ------------ | ----------- | ------------ | ------------ |
-//~ | theta    | state_a   | shifts_c    | dense_c     | quotient_c  | remainder_c  | bound_c     | dense_rot_c  | expand_rot_c |
+//~ | Columns  | [0...100) | [100...180) | [180...200) | [200...205) | [205...225)  | [225...245)  | [245...265)  |
+//~ | -------- | --------- | ----------- | ----------- | ----------- | ------------ | ------------ | ------------ |
+//~ | theta    | state_a   | shifts_c    | dense_c     | quotient_c  | remainder_c  | dense_rot_c  | expand_rot_c |
 //~
-//~ | Columns  | [300...700) | [700...800) | [800...900) | [900...1000) | [1000...1100) | [1100...1200) | [1200...1300) |
+//~ | Columns  | [265...665) | [665...765) | [765...865)  | [865...965) | [965...1065)  | [1065...1165) | [1165...1265) |
 //~ | -------- | ----------- | ----------- | ------------ | ----------- | ------------- | ------------- | ------------- |
 //~ | pirho    | shifts_e    | dense_e     | quotient_e   | remainder_e | bound_e       | dense_rot_e   | expand_rot_e  |
 //~
-//~ | Columns  | [1300...1700) | [1700...2100) |
+//~ | Columns  | [1265...1665) | [1665...2065) |
 //~ | -------- | ------------- | ------------- |
 //~ | chi      | shifts_b      | shifts_sum    |
 //~
@@ -113,24 +116,24 @@ where
         // LOAD STATES FROM WITNESS LAYOUT
         // THETA
         let state_a = state_from_vec!(env.witness_curr_chunk(0, 100));
-        let shifts_c = state_from_vec!(env.witness_curr_chunk(120, 200));
-        let dense_c = state_from_vec!(env.witness_curr_chunk(200, 220));
-        let quotient_c = state_from_vec!(env.witness_curr_chunk(220, 240));
-        let remainder_c = state_from_vec!(env.witness_curr_chunk(240, 260));
-        let bound_c = state_from_vec!(env.witness_curr_chunk(260, 280));
-        let dense_rot_c = state_from_vec!(env.witness_curr_chunk(280, 300));
-        let expand_rot_c = state_from_vec!(env.witness_curr_chunk(300, 320));
+        let shifts_c = state_from_vec!(env.witness_curr_chunk(100, 180));
+        let dense_c = state_from_vec!(env.witness_curr_chunk(180, 200));
+        let quotient_c = env.witness_curr_chunk(200, 205);
+        auto_clone_array!(quotient_c);
+        let remainder_c = state_from_vec!(env.witness_curr_chunk(205, 225));
+        let dense_rot_c = state_from_vec!(env.witness_curr_chunk(225, 245));
+        let expand_rot_c = state_from_vec!(env.witness_curr_chunk(245, 265));
         // PI-RHO
-        let shifts_e = state_from_vec!(env.witness_curr_chunk(440, 840));
-        let dense_e = state_from_vec!(env.witness_curr_chunk(840, 940));
-        let quotient_e = state_from_vec!(env.witness_curr_chunk(940, 1040));
-        let remainder_e = state_from_vec!(env.witness_curr_chunk(1040, 1140));
-        let bound_e = state_from_vec!(env.witness_curr_chunk(1140, 1240));
-        let dense_rot_e = state_from_vec!(env.witness_curr_chunk(1240, 1340));
-        let expand_rot_e = state_from_vec!(env.witness_curr_chunk(1340, 1440));
+        let shifts_e = state_from_vec!(env.witness_curr_chunk(265, 665));
+        let dense_e = state_from_vec!(env.witness_curr_chunk(665, 765));
+        let quotient_e = state_from_vec!(env.witness_curr_chunk(765, 865));
+        let remainder_e = state_from_vec!(env.witness_curr_chunk(865, 965));
+        let bound_e = state_from_vec!(env.witness_curr_chunk(965, 1065));
+        let dense_rot_e = state_from_vec!(env.witness_curr_chunk(1065, 1165));
+        let expand_rot_e = state_from_vec!(env.witness_curr_chunk(1165, 1265));
         // CHI
-        let shifts_b = state_from_vec!(env.witness_curr_chunk(1540, 1940));
-        let shifts_sum = state_from_vec!(env.witness_curr_chunk(1940, 2340));
+        let shifts_b = state_from_vec!(env.witness_curr_chunk(1265, 1665));
+        let shifts_sum = state_from_vec!(env.witness_curr_chunk(1665, 2065));
         // IOTA
         let state_g = state_from_vec!(env.witness_next_chunk(0, 100));
 
@@ -144,14 +147,12 @@ where
         // STEP theta: 5 * ( 3 + 4 * 1 ) = 35 constraints
         for x in 0..DIM {
             let word_c = compose_quarters(dense_c, x, 0);
-            let quo_c = compose_quarters(quotient_c, x, 0);
             let rem_c = compose_quarters(remainder_c, x, 0);
-            let bnd_c = compose_quarters(bound_c, x, 0);
             let rot_c = compose_quarters(dense_rot_c, x, 0);
             constraints
-                .push(word_c * T::two_pow(1) - (quo_c.clone() * T::two_pow(64) + rem_c.clone()));
-            constraints.push(rot_c - (quo_c.clone() + rem_c));
-            constraints.push(bnd_c - (quo_c + T::two_pow(64) - T::two_pow(1)));
+                .push(word_c * T::two_pow(1) - (quotient_c(x) * T::two_pow(64) + rem_c.clone()));
+            constraints.push(rot_c - (quotient_c(x) + rem_c));
+            constraints.push(boolean(&quotient_c(x)));
 
             for q in 0..QUARTERS {
                 state_c[x][q] = state_a(0, x, 0, q)
