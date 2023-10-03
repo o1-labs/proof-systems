@@ -14,7 +14,7 @@ pub const DIM: usize = 5;
 pub const QUARTERS: usize = 4;
 
 #[macro_export]
-macro_rules! state_from_layout {
+macro_rules! state_from_vec {
     ($expr:expr) => {
         |i: usize, x: usize, y: usize, q: usize| {
             $expr[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
@@ -30,12 +30,13 @@ macro_rules! state_from_layout {
 /// | 2     | 62 |  6 | 43 | 15 | 61 |
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
-pub const OFF: [[u64; DIM]; DIM] = [
-    [0, 36, 3, 41, 18],
-    [1, 44, 10, 45, 2],
-    [62, 6, 43, 15, 61],
-    [28, 55, 25, 21, 56],
-    [27, 20, 39, 8, 14],
+/// Note that the order of the indexing is [y][x] to match the encoding of the witness algorithm
+pub(crate) const OFF: [[u64; DIM]; DIM] = [
+    [0, 1, 62, 28, 27],
+    [36, 44, 6, 55, 20],
+    [3, 10, 43, 25, 39],
+    [41, 45, 15, 21, 8],
+    [18, 2, 61, 56, 14],
 ];
 
 pub const RC: [u64; 24] = [
@@ -111,38 +112,38 @@ where
 
         // LOAD STATES FROM WITNESS LAYOUT
         // THETA
-        let state_a = state_from_layout!(env.witness_curr_chunk(0, 100));
-        let state_c = state_from_layout!(env.witness_curr_chunk(100, 120));
-        let shifts_c = state_from_layout!(env.witness_curr_chunk(120, 200));
-        let dense_c = state_from_layout!(env.witness_curr_chunk(200, 220));
-        let quotient_c = state_from_layout!(env.witness_curr_chunk(220, 240));
-        let remainder_c = state_from_layout!(env.witness_curr_chunk(240, 260));
-        let bound_c = state_from_layout!(env.witness_curr_chunk(260, 280));
-        let dense_rot_c = state_from_layout!(env.witness_curr_chunk(280, 300));
-        let expand_rot_c = state_from_layout!(env.witness_curr_chunk(300, 320));
-        let state_d = state_from_layout!(env.witness_curr_chunk(320, 340));
-        let state_e = state_from_layout!(env.witness_curr_chunk(340, 440));
+        let state_a = state_from_vec!(env.witness_curr_chunk(0, 100));
+        let state_c = state_from_vec!(env.witness_curr_chunk(100, 120));
+        let shifts_c = state_from_vec!(env.witness_curr_chunk(120, 200));
+        let dense_c = state_from_vec!(env.witness_curr_chunk(200, 220));
+        let quotient_c = state_from_vec!(env.witness_curr_chunk(220, 240));
+        let remainder_c = state_from_vec!(env.witness_curr_chunk(240, 260));
+        let bound_c = state_from_vec!(env.witness_curr_chunk(260, 280));
+        let dense_rot_c = state_from_vec!(env.witness_curr_chunk(280, 300));
+        let expand_rot_c = state_from_vec!(env.witness_curr_chunk(300, 320));
+        let state_d = state_from_vec!(env.witness_curr_chunk(320, 340));
+        let state_e = state_from_vec!(env.witness_curr_chunk(340, 440));
         // PI-RHO
-        let shifts_e = state_from_layout!(env.witness_curr_chunk(440, 840));
-        let dense_e = state_from_layout!(env.witness_curr_chunk(840, 940));
-        let quotient_e = state_from_layout!(env.witness_curr_chunk(940, 1040));
-        let remainder_e = state_from_layout!(env.witness_curr_chunk(1040, 1140));
-        let bound_e = state_from_layout!(env.witness_curr_chunk(1140, 1240));
-        let dense_rot_e = state_from_layout!(env.witness_curr_chunk(1240, 1340));
-        let expand_rot_e = state_from_layout!(env.witness_curr_chunk(1340, 1440));
-        let state_b = state_from_layout!(env.witness_curr_chunk(1440, 1540));
+        let shifts_e = state_from_vec!(env.witness_curr_chunk(440, 840));
+        let dense_e = state_from_vec!(env.witness_curr_chunk(840, 940));
+        let quotient_e = state_from_vec!(env.witness_curr_chunk(940, 1040));
+        let remainder_e = state_from_vec!(env.witness_curr_chunk(1040, 1140));
+        let bound_e = state_from_vec!(env.witness_curr_chunk(1140, 1240));
+        let dense_rot_e = state_from_vec!(env.witness_curr_chunk(1240, 1340));
+        let expand_rot_e = state_from_vec!(env.witness_curr_chunk(1340, 1440));
+        let state_b = state_from_vec!(env.witness_curr_chunk(1440, 1540));
         // CHI
-        let shifts_b = state_from_layout!(env.witness_curr_chunk(1540, 1940));
-        let shifts_sum = state_from_layout!(env.witness_curr_chunk(1940, 2340));
+        let shifts_b = state_from_vec!(env.witness_curr_chunk(1540, 1940));
+        let shifts_sum = state_from_vec!(env.witness_curr_chunk(1940, 2340));
         let mut state_f = env.witness_curr_chunk(2340, 2344);
         let mut tail = env.witness_next_chunk(4, 100);
         state_f.append(&mut tail);
-        let state_f = state_from_layout!(state_f);
+        let state_f = state_from_vec!(state_f);
         // IOTA
         let mut state_g = env.witness_next_chunk(0, 4);
         let mut tail = env.witness_next_chunk(4, 100);
         state_g.append(&mut tail);
-        let state_g = state_from_layout!(state_g);
+        let state_g = state_from_vec!(state_g);
 
         // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
         for x in 0..DIM {
@@ -180,8 +181,8 @@ where
         } // END theta
 
         // STEP pirho: 5 * 5 * (3 + 4 * 2) = 275 constraints
-        for (x, row) in OFF.iter().enumerate() {
-            for (y, off) in row.iter().enumerate() {
+        for (y, col) in OFF.iter().enumerate() {
+            for (x, off) in col.iter().enumerate() {
                 let word_e = compose_quarters(dense_e, x, y);
                 let quo_e = compose_quarters(quotient_e, x, y);
                 let rem_e = compose_quarters(remainder_e, x, y);
