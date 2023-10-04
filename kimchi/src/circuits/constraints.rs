@@ -674,7 +674,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             let LookupFeatures { patterns, .. } = &lookup_features;
             for pattern in patterns.into_iter() {
                 if let Some(gate_table) = pattern.table() {
-                    num_lookups += gate_table.table_size();
+                    for (_, table) in gate_table.iter().enumerate() {
+                        num_lookups += table.table_size();
+                    }
                 }
             }
             num_lookups

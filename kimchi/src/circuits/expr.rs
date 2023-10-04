@@ -581,6 +581,9 @@ impl ColTrait for Column {
             Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
                 evals.foreign_field_mul_lookup_selector
             }
+            Column::LookupKindIndex(LookupPattern::KeccakRound) => {
+                evals.keccak_round_lookup_selector
+            }
             Column::LookupRuntimeSelector => evals.runtime_lookup_table_selector,
             Index(_) => None,
         }

@@ -234,13 +234,17 @@ impl LookupInfo {
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
                 update_selector(lookup_pattern, i);
                 if let Some(table_kind) = lookup_pattern.table() {
-                    gate_tables.insert(table_kind);
+                    for (_i, table) in table_kind.iter().enumerate() {
+                        gate_tables.insert(*table);
+                    }
                 }
             }
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
                 update_selector(lookup_pattern, i + 1);
                 if let Some(table_kind) = lookup_pattern.table() {
-                    gate_tables.insert(table_kind);
+                    for (_i, table) in table_kind.iter().enumerate() {
+                        gate_tables.insert(*table);
+                    }
                 }
             }
         }
@@ -630,14 +634,18 @@ impl LookupPattern {
         }
     }
 
-    /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
-    pub fn table(&self) -> Option<GateLookupTable> {
+    /// Returns the lookup table(s) used by the pattern, or `None` if no specific table is required.
+    pub fn table(&self) -> Option<Vec<GateLookupTable>> {
         match self {
-            LookupPattern::Xor => Some(GateLookupTable::Xor),
+            LookupPattern::Xor => Some(vec![GateLookupTable::Xor]),
             LookupPattern::Lookup => None,
-            LookupPattern::RangeCheck => Some(GateLookupTable::RangeCheck),
-            LookupPattern::ForeignFieldMul => Some(GateLookupTable::RangeCheck),
-            LookupPattern::KeccakRound => Some(GateLookupTable::Sparse),
+            LookupPattern::RangeCheck => Some(vec![GateLookupTable::RangeCheck]),
+            LookupPattern::ForeignFieldMul => Some(vec![GateLookupTable::RangeCheck]),
+            LookupPattern::KeccakRound => Some(vec![
+                GateLookupTable::Sparse,
+                GateLookupTable::Reset,
+                GateLookupTable::Bits16,
+            ]),
         }
     }
 
@@ -652,6 +660,7 @@ impl LookupPattern {
             }
             (ForeignFieldMul, Curr | Next) => Some(LookupPattern::ForeignFieldMul),
             (Xor16, Curr) => Some(LookupPattern::Xor),
+            (KeccakRound, Curr) => Some(LookupPattern::KeccakRound),
             _ => None,
         }
     }
@@ -665,6 +674,7 @@ impl GateType {
             LookupPattern::Lookup,
             LookupPattern::RangeCheck,
             LookupPattern::ForeignFieldMul,
+            LookupPattern::KeccakRound,
         ]
     }
 }
