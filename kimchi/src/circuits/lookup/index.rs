@@ -224,7 +224,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 3. Concatenate runtime lookup tables with the ones used by gates
                 let mut lookup_tables: Vec<_> = gate_lookup_tables
                     .into_iter()
-                    .chain(lookup_tables.into_iter())
+                    .chain(lookup_tables)
                     .collect();
 
                 let mut has_table_id_0 = false;
@@ -296,7 +296,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 //~    that a lookup table can have.
                 let max_table_width = lookup_tables
                     .iter()
-                    .map(|table| table.data.len())
+                    .map(|table| table.width())
                     .max()
                     .unwrap_or(0);
 
@@ -348,7 +348,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let mut has_table_id_0_with_zero_entry = false;
 
                 for table in &lookup_tables {
-                    let table_len = table.data[0].len();
+                    let table_len = table.len();
 
                     if table.id == 0 {
                         has_table_id_0 = true;
@@ -366,6 +366,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
+                        // See GH issue: https://github.com/MinaProtocol/mina/issues/14097
                         if col.len() != table_len {
                             return Err(LookupError::InconsistentTableLength);
                         }
@@ -373,7 +374,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     }
 
                     //~~ * Fill in any unused columns with 0 (to match the dummy value)
-                    for lookup_table in lookup_table.iter_mut().skip(table.data.len()) {
+                    for lookup_table in lookup_table.iter_mut().skip(table.width()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
                 }

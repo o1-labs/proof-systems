@@ -16,6 +16,7 @@ use crate::{
 use ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 use num_traits::cast::ToPrimitive;
 use o1_utils::hasher::CryptoDigest;
+use poly_commitment::OpenProof;
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
@@ -193,11 +194,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    pub fn verify<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify<G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<G, OpeningProof>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;

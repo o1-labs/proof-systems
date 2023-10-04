@@ -23,26 +23,29 @@ use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::{univariate::DensePolynomial, EvaluationDomain, Polynomial};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use o1_utils::ExtendedDensePolynomial;
-use poly_commitment::commitment::{
-    absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+use poly_commitment::{
+    commitment::{
+        absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation, PolyComm,
+    },
+    OpenProof, SRS as _,
 };
 use rand::thread_rng;
 
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
-pub struct Context<'a, G: KimchiCurve> {
+pub struct Context<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// The [VerifierIndex] associated to the proof
-    pub verifier_index: &'a VerifierIndex<G>,
+    pub verifier_index: &'a VerifierIndex<G, OpeningProof>,
 
     /// The proof to verify
-    pub proof: &'a ProverProof<G>,
+    pub proof: &'a ProverProof<G, OpeningProof>,
 
     /// The public input used in the creation of the proof
     pub public_input: &'a [G::ScalarField],
 }
 
-impl<'a, G: KimchiCurve> Context<'a, G> {
+impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof> {
     pub fn get_column(&self, col: Column) -> Option<&'a PolyComm<G>> {
         use Column::*;
         match col {
@@ -88,7 +91,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
     }
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<G, OpeningProof>
 where
     G::BaseField: PrimeField,
 {
@@ -106,7 +109,7 @@ where
         EFrSponge: FrSponge<G::ScalarField>,
     >(
         &self,
-        index: &VerifierIndex<G>,
+        index: &VerifierIndex<G, OpeningProof>,
         public_comm: &PolyComm<G>,
         public_input: Option<&[G::ScalarField]>,
     ) -> Result<OraclesResult<G, EFqSponge>> {
@@ -130,7 +133,7 @@ where
         let zk_rows = index.zk_rows;
 
         //~ 1. Setup the Fq-Sponge.
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         //~ 1. Absorb the digest of the VerifierIndex.
         let verifier_index_digest = index.digest::<EFqSponge>();
@@ -560,7 +563,7 @@ where
                     ))
                 }
 
-                combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().g.len())
+                combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().max_poly_size())
             };
 
         let oracles = RandomOracles {
@@ -593,7 +596,12 @@ where
 }
 
 /// Enforce the length of evaluations inside [`Proof`].
-fn check_proof_evals_len<G>(proof: &ProverProof<G>, expected_size: usize) -> Result<()>
+/// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
+/// The length value is prone to future change.
+fn check_proof_evals_len<G, OpeningProof>(
+    proof: &ProverProof<G, OpeningProof>,
+    expected_size: usize,
+) -> Result<()>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
@@ -730,11 +738,11 @@ where
     Ok(())
 }
 
-fn to_batch<'a, G, EFqSponge, EFrSponge>(
-    verifier_index: &VerifierIndex<G>,
-    proof: &'a ProverProof<G>,
+fn to_batch<'a, G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G>>(
+    verifier_index: &VerifierIndex<G, OpeningProof>,
+    proof: &'a ProverProof<G, OpeningProof>,
     public_input: &'a [<G as AffineCurve>::ScalarField],
-) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
+) -> Result<BatchEvaluationProof<'a, G, EFqSponge, OpeningProof>>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
@@ -783,12 +791,14 @@ where
         }
         let lgr_comm = verifier_index
             .srs()
-            .lagrange_bases
-            .get(&verifier_index.domain.size())
+            .get_lagrange_basis(verifier_index.domain.size())
             .expect("pre-computed committed lagrange bases not found");
         let com: Vec<_> = lgr_comm.iter().take(verifier_index.public).collect();
         if public_input.is_empty() {
-            PolyComm::new(vec![verifier_index.srs().h; chunk_size], None)
+            PolyComm::new(
+                vec![verifier_index.srs().blinding_commitment(); chunk_size],
+                None,
+            )
         } else {
             let elm: Vec<_> = public_input.iter().map(|s| -*s).collect();
             let public_comm = PolyComm::<G>::multi_scalar_mul(&com, &elm);
@@ -1137,10 +1147,10 @@ where
 /// # Errors
 ///
 /// Will give error if `proof(s)` are not verified as valid.
-pub fn verify<G, EFqSponge, EFrSponge>(
+pub fn verify<G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G>>(
     group_map: &G::Map,
-    verifier_index: &VerifierIndex<G>,
-    proof: &ProverProof<G>,
+    verifier_index: &VerifierIndex<G, OpeningProof>,
+    proof: &ProverProof<G, OpeningProof>,
     public_input: &[G::ScalarField],
 ) -> Result<()>
 where
@@ -1154,7 +1164,7 @@ where
         proof,
         public_input,
     }];
-    batch_verify::<G, EFqSponge, EFrSponge>(group_map, &proofs)
+    batch_verify::<G, EFqSponge, EFrSponge, OpeningProof>(group_map, &proofs)
 }
 
 /// This function verifies the batch of zk-proofs
@@ -1164,9 +1174,9 @@ where
 /// # Errors
 ///
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
-pub fn batch_verify<G, EFqSponge, EFrSponge>(
+pub fn batch_verify<G, EFqSponge, EFrSponge, OpeningProof: OpenProof<G>>(
     group_map: &G::Map,
-    proofs: &[Context<G>],
+    proofs: &[Context<G, OpeningProof>],
 ) -> Result<()>
 where
     G: KimchiCurve,
@@ -1190,7 +1200,7 @@ where
     // TODO: Account for the different SRS lengths
     let srs = proofs[0].verifier_index.srs();
     for &Context { verifier_index, .. } in proofs {
-        if verifier_index.srs().g.len() != srs.g.len() {
+        if verifier_index.srs().max_poly_size() != srs.max_poly_size() {
             return Err(VerifyError::DifferentSRS);
         }
     }
@@ -1203,7 +1213,7 @@ where
         public_input,
     } in proofs
     {
-        batch.push(to_batch::<G, EFqSponge, EFrSponge>(
+        batch.push(to_batch::<G, EFqSponge, EFrSponge, OpeningProof>(
             verifier_index,
             proof,
             public_input,
@@ -1211,7 +1221,7 @@ where
     }
 
     //~ 1. Use the [`PolyCom.verify`](#polynomial-commitments) to verify the partially evaluated proofs.
-    if srs.verify::<EFqSponge, _>(group_map, &mut batch, &mut thread_rng()) {
+    if OpeningProof::verify(srs, group_map, &mut batch, &mut thread_rng()) {
         Ok(())
     } else {
         Err(VerifyError::OpenProof)

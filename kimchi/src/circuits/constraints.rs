@@ -21,6 +21,7 @@ use ark_poly::{
 };
 use o1_utils::ExtendedEvaluations;
 use once_cell::sync::OnceCell;
+use poly_commitment::OpenProof;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::array;
@@ -268,7 +269,12 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+impl<
+        F: PrimeField + SquareRootField,
+        G: KimchiCurve<ScalarField = F>,
+        OpeningProof: OpenProof<G>,
+    > ProverIndex<G, OpeningProof>
+{
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
     ///     witness: wire assignment witness
@@ -312,7 +318,7 @@ impl<F: PrimeField + SquareRootField, G: KimchiCurve<ScalarField = F>> ProverInd
             }
 
             // check the gate's satisfiability
-            gate.verify::<G>(row, &witness, self, public)
+            gate.verify(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -678,8 +684,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
 
-        let num_lookups = {
-            let mut num_lookups: usize = lookup_tables
+        let lookup_domain_size = {
+            // First we sum over the lookup table size
+            let mut lookup_domain_size: usize = lookup_tables
                 .iter()
                 .map(
                     |LookupTable { data, id: _ }| {
@@ -691,16 +698,20 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                     },
                 )
                 .sum();
-            for runtime_table in runtime_tables.iter() {
-                num_lookups += runtime_table.len();
+            // After that on the runtime tables
+            if let Some(runtime_tables) = runtime_tables.as_ref() {
+                for runtime_table in runtime_tables.iter() {
+                    lookup_domain_size += runtime_table.len();
+                }
             }
+            // And we add the built-in tables, depending on the features.
             let LookupFeatures { patterns, .. } = &lookup_features;
             for pattern in patterns.into_iter() {
                 if let Some(gate_table) = pattern.table() {
-                    num_lookups += gate_table.table_size();
+                    lookup_domain_size += gate_table.table_size();
                 }
             }
-            num_lookups
+            lookup_domain_size
         };
 
         //~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
@@ -727,7 +738,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~    ```
         //~
         let (zk_rows, domain_size_lower_bound) = {
-            let circuit_lower_bound = std::cmp::max(gates.len(), num_lookups + 1);
+            let circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + 1);
             let get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows as usize;
 
             let mut zk_rows = 3;
@@ -863,6 +874,34 @@ pub mod tests {
         pub fn fp_for_testing(gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
             Self::for_testing(gates)
+        }
+    }
+
+    #[test]
+    pub fn test_domains_computation_with_runtime_tables() {
+        let dummy_gate = CircuitGate {
+            typ: GateType::Generic,
+            wires: [Wire::new(0, 0); PERMUTS],
+            coeffs: vec![Fp::zero()],
+        };
+        // inputs + expected output
+        let data = [((10, 10), 128), ((0, 0), 8), ((5, 100), 512)];
+        for ((number_of_rt_cfgs, size), expected_domain_size) in data.into_iter() {
+            let builder = ConstraintSystem::create(vec![dummy_gate.clone(), dummy_gate.clone()]);
+            let table_ids: Vec<i32> = (0..number_of_rt_cfgs).collect();
+            let rt_cfgs: Vec<RuntimeTableCfg<Fp>> = table_ids
+                .into_iter()
+                .map(|table_id| {
+                    let indexes: Vec<u32> = (0..size).collect();
+                    let first_column: Vec<Fp> = indexes.into_iter().map(Fp::from).collect();
+                    RuntimeTableCfg {
+                        id: table_id,
+                        first_column,
+                    }
+                })
+                .collect();
+            let res = builder.runtime(Some(rt_cfgs)).build().unwrap();
+            assert_eq!(res.domain.d1.size, expected_domain_size)
         }
     }
 }
