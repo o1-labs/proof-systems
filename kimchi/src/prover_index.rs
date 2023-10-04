@@ -69,7 +69,8 @@ where
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
+        let (linearization, powers_of_alpha) =
+            expr_linearization(Some(&cs.feature_flags), true, cs.zk_rows as usize);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
@@ -170,6 +171,7 @@ pub mod testing {
             .public(public)
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
+            .max_poly_size(override_srs_size)
             .build()
             .unwrap();
 

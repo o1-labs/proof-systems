@@ -252,6 +252,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            zk_rows: cs.zk_rows,
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);

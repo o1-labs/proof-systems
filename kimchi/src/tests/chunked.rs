@@ -22,7 +22,7 @@ fn test_generic_gate_with_srs_override(
     override_srs_size: Option<usize>,
 ) {
     let public = vec![Fp::from(1u8); 5];
-    let circuit_size = (1 << circuit_size_log_2) - 5;
+    let circuit_size = (1 << circuit_size_log_2) - 15;
 
     let mut gates_row = iterate(0, |&i| i + 1);
     let mut gates = Vec::with_capacity(circuit_size);
