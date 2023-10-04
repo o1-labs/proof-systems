@@ -224,7 +224,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 3. Concatenate runtime lookup tables with the ones used by gates
                 let mut lookup_tables: Vec<_> = gate_lookup_tables
                     .into_iter()
-                    .chain(lookup_tables.into_iter())
+                    .chain(lookup_tables)
                     .collect();
 
                 let mut has_table_id_0 = false;
