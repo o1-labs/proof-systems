@@ -15,6 +15,8 @@ use std::collections::HashSet;
 use std::ops::{Mul, Neg};
 use strum_macros::EnumIter;
 
+use super::tables::{BITS16_TABLE_ID, RESET_TABLE_ID};
+
 type Evaluations<Field> = E<Field, D<Field>>;
 
 //~ Lookups patterns are extremely flexible and can be configured in a number of ways.
@@ -507,65 +509,63 @@ impl LookupPattern {
                 // Theta
                 for i in 0..20 {
                     // 2-column lookups
-                    let reset0_c = curr_row(120 + i);
+                    let shift0_c = curr_row(120 + i);
                     let dense_c = curr_row(200 + i);
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(dense_c), l(reset0_c)],
+                        table_id: LookupTableID::Constant(RESET_TABLE_ID),
+                        entry: vec![l(dense_c), l(shift0_c)],
                     });
                     let dense_rot_c = curr_row(280 + i);
                     let expand_rot_c = curr_row(300 + i);
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        table_id: LookupTableID::Constant(RESET_TABLE_ID),
                         entry: vec![l(dense_rot_c), l(expand_rot_c)],
                     });
 
                     // Second column lookups
-                    let reset1_c = curr_row(140 + i);
-                    let reset2_c = curr_row(160 + i);
-                    let reset3_c = curr_row(180 + i);
-                    /*
+                    let shift1_c = curr_row(140 + i);
+                    let shift2_c = curr_row(160 + i);
+                    let shift3_c = curr_row(180 + i);
+
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset1_c)],
+                        entry: vec![l(shift1_c)],
                     });
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset2_c)],
+                        entry: vec![l(shift2_c)],
                     });
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset3_c)],
+                        entry: vec![l(shift3_c)],
                     });
-                    */
 
                     // First column lookups
                     let quotient_c = curr_row(220 + i);
                     let remainder_c = curr_row(240 + i);
                     let bound_c = curr_row(260 + i);
-                    /*
+
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                         entry: vec![l(quotient_c)],
                     });
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                         entry: vec![l(remainder_c)],
                     });
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                         entry: vec![l(bound_c)],
                     });
-                    */
                 }
                 // PiRho
                 for i in 0..100 {
                     // 2-column lookups
-                    let reset0_e = curr_row(440 + i);
+                    let shift0_e = curr_row(440 + i);
                     let dense_e = curr_row(840 + i);
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(dense_e), l(reset0_e)],
+                        table_id: LookupTableID::Constant(RESET_TABLE_ID),
+                        entry: vec![l(dense_e), l(shift0_e)],
                     });
                     let dense_rot_e = curr_row(1240 + i);
                     let expand_rot_e = curr_row(1340 + i);
@@ -575,57 +575,55 @@ impl LookupPattern {
                     });
 
                     // Second column lookups
-                    let reset1_e = curr_row(540 + i);
-                    let reset2_e = curr_row(640 + i);
-                    let reset3_e = curr_row(740 + i);
-                    /*
+                    let shift1_e = curr_row(540 + i);
+                    let shift2_e = curr_row(640 + i);
+                    let shift3_e = curr_row(740 + i);
+
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset1_e)],
+                        entry: vec![l(shift1_e)],
                     });
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset2_e)],
+                        entry: vec![l(shift2_e)],
                     });
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset3_e)],
+                        entry: vec![l(shift3_e)],
                     });
-                    */
 
                     // First column lookups
                     let quotient_e = curr_row(940 + i);
                     let remainder_e = curr_row(1040 + i);
                     let bound_e = curr_row(1140 + i);
-                    /*
+
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                         entry: vec![l(quotient_e)],
                     });
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                         entry: vec![l(remainder_e)],
                     });
                     lookups.push(JointLookup {
-                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                         entry: vec![l(bound_e)],
                     });
-                    */
                 }
                 // Chi
                 for i in 0..400 {
                     // Second column lookups
-                    let reset_b: LocalPosition = curr_row(1540 + i);
-                    let reset_sum = curr_row(1940 + i);
-                    /*
+                    let shift_b: LocalPosition = curr_row(1540 + i);
+                    let shift_sum = curr_row(1940 + i);
+
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset_b)],
+                        entry: vec![l(shift_b)],
                     });
                     lookups.push(JointLookup {
                         table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
-                        entry: vec![l(reset_sum)],
-                    });*/
+                        entry: vec![l(shift_sum)],
+                    });
                 }
                 lookups
             }
