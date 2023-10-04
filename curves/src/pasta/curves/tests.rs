@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use crate::pasta::{Fp, Pallas};
 use ark_algebra_test_templates::{curves::*, groups::*};
-use ark_ec::AffineCurve;
+use ark_ec::AffineRepr;
 use ark_std::test_rng;
 use num_bigint::BigUint;
 use rand::Rng;
