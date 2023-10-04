@@ -17,8 +17,8 @@ use crate::{
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-use ark_ec::AffineCurve;
-use ark_ff::{One, PrimeField, SquareRootField, Zero};
+use ark_ec::AffineRepr;
+use ark_ff::{One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
 use mina_curves::pasta::{Fp, Pallas, Vesta, VestaParameters};
 use mina_poseidon::{
@@ -35,8 +35,8 @@ use poly_commitment::{
 use rand::{rngs::StdRng, Rng};
 use std::{array, sync::Arc};
 
-type PallasField = <Pallas as AffineCurve>::BaseField;
-type VestaField = <Vesta as AffineCurve>::BaseField;
+type PallasField = <Pallas as AffineRepr>::BaseField;
+type VestaField = <Vesta as AffineRepr>::BaseField;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 
@@ -146,7 +146,7 @@ static NULL_CARRY_BOTH: &[u8] = &[
     0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x03, 0xD2,
 ];
 
-impl<F: PrimeField + SquareRootField> CircuitGate<F> {
+impl<F: PrimeField> CircuitGate<F> {
     /// Check if a given circuit gate is a given foreign field operation
     pub fn check_ffadd_sign(&self, sign: FFOps) -> Result<(), String> {
         if self.typ != GateType::ForeignFieldAdd {
@@ -175,7 +175,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 // Outputs tuple (next_row, circuit_gates) where
 //  next_row      - next row after this gate
 //  circuit_gates - vector of circuit gates comprising this gate
-fn short_circuit<F: PrimeField + SquareRootField>(
+fn short_circuit<F: PrimeField>(
     opcodes: &[FFOps],
     foreign_field_modulus: &BigUint,
 ) -> (usize, Vec<CircuitGate<F>>) {
@@ -208,7 +208,7 @@ fn short_circuit<F: PrimeField + SquareRootField>(
 // Outputs tuple (next_row, circuit_gates) where
 //  next_row      - next row after this gate
 //  circuit_gates - vector of circuit gates comprising this gate
-fn full_circuit<F: PrimeField + SquareRootField>(
+fn full_circuit<F: PrimeField>(
     opcodes: &[FFOps],
     foreign_field_modulus: &BigUint,
 ) -> (usize, Vec<CircuitGate<F>>) {

@@ -3,8 +3,8 @@
 use crate::circuits::domains::EvaluationDomains;
 use ark_ff::FftField;
 use ark_poly::{
-    univariate::DensePolynomial as DP, EvaluationDomain, Evaluations as E,
-    Radix2EvaluationDomain as D, UVPolynomial,
+    univariate::DensePolynomial as DP, DenseUVPolynomial, EvaluationDomain, Evaluations as E,
+    Radix2EvaluationDomain as D,
 };
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;

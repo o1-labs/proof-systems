@@ -1,33 +1,11 @@
 use std::str::FromStr;
 
-use ark_algebra_test_templates::{curves::*, groups::*};
-use ark_ec::AffineCurve;
-use ark_std::test_rng;
-use mina_curves::pasta::{curves::pallas, Fp, Pallas};
+use ark_algebra_test_templates::*;
+use mina_curves::pasta::{Fp, Pallas, ProjectivePallas, ProjectiveVesta};
 use num_bigint::BigUint;
-use rand::Rng;
 
-#[test]
-fn test_pallas_projective_curve() {
-    curve_tests::<pallas::ProjectivePallas>();
-
-    sw_tests::<pallas::PallasParameters>();
-}
-
-#[test]
-fn test_pallas_projective_group() {
-    let mut rng = test_rng();
-    let a: pallas::ProjectivePallas = rng.gen();
-    let b: pallas::ProjectivePallas = rng.gen();
-    group_test(a, b);
-}
-
-#[test]
-fn test_pallas_generator() {
-    let generator = pallas::Pallas::prime_subgroup_generator();
-    assert!(generator.is_on_curve());
-    assert!(generator.is_in_correct_subgroup_assuming_on_curve());
-}
+test_group!(g1; ProjectivePallas; sw);
+test_group!(g2; ProjectiveVesta; sw);
 
 #[test]
 fn test_regression_vesta_biguint_into_returns_canonical_representation() {
@@ -40,7 +18,7 @@ fn test_regression_vesta_biguint_into_returns_canonical_representation() {
         "12418654782883325593414442427049395787963493412651469444558597405572177144507",
     )
     .unwrap();
-    let p1 = Pallas::new(p_x, p_y, false);
+    let p1 = Pallas::new_unchecked(p_x, p_y);
     let p_x_biguint: BigUint = p1.x.into();
     let p_y_biguint: BigUint = p1.y.into();
 
@@ -64,7 +42,7 @@ fn test_regression_vesta_addition_affine() {
         "12418654782883325593414442427049395787963493412651469444558597405572177144507",
     )
     .unwrap();
-    let p1 = Pallas::new(p1_x, p1_y, false);
+    let p1 = Pallas::new_unchecked(p1_x, p1_y);
 
     let p2_x = Fp::from_str(
         "20444556541222657078399132219657928148671392403212669005631716460534733845831",
@@ -74,12 +52,12 @@ fn test_regression_vesta_addition_affine() {
         "12418654782883325593414442427049395787963493412651469444558597405572177144507",
     )
     .unwrap();
-    let p2 = Pallas::new(p2_x, p2_y, false);
+    let p2 = Pallas::new_unchecked(p2_x, p2_y);
 
     // The type annotation ensures we have a point with affine coordinates,
     // relying on implicit conversion if the addition outputs a point in a
     // different coordinates set.
-    let p3: Pallas = p1 + p2;
+    let p3: Pallas = (p1 + p2).into();
 
     let expected_p3_x = BigUint::from_str(
         "8503465768106391777493614032514048814691664078728891710322960303815233784505",

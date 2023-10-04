@@ -36,8 +36,8 @@ use crate::{
 };
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
-    Radix2EvaluationDomain as D, UVPolynomial,
+    univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D,
 };
 use itertools::Itertools;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
@@ -1504,7 +1504,7 @@ internal_tracing::decl_traces!(internal_traces;
 pub mod caml {
     use super::*;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use poly_commitment::{
         commitment::caml::{CamlOpeningProof, CamlPolyComm},
         evaluation_proof::OpeningProof,
@@ -1592,7 +1592,7 @@ pub mod caml {
 
     impl<G, CamlG> From<LookupCommitments<G>> for CamlLookupCommitments<CamlG>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
     {
         fn from(
@@ -1612,7 +1612,7 @@ pub mod caml {
 
     impl<G, CamlG> From<CamlLookupCommitments<CamlG>> for LookupCommitments<G>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
         fn from(
@@ -1636,7 +1636,7 @@ pub mod caml {
 
     impl<G, CamlG> From<ProverCommitments<G>> for CamlProverCommitments<CamlG>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
     {
         fn from(prover_comm: ProverCommitments<G>) -> Self {
@@ -1669,7 +1669,7 @@ pub mod caml {
 
     impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<G>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
         fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<G> {
@@ -1722,7 +1722,7 @@ pub mod caml {
     impl<G, CamlG, CamlF> From<(ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)>
         for CamlProofWithPublic<CamlG, CamlF>
     where
-        G: AffineCurve,
+        G: AffineRepr,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
@@ -1746,7 +1746,7 @@ pub mod caml {
         for (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)
     where
         CamlF: Clone,
-        G: AffineCurve + From<CamlG>,
+        G: AffineRepr + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
         fn from(

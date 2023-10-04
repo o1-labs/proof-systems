@@ -1,9 +1,9 @@
-use ark_bn254::{Fr as ScalarField, G1Affine as G1, G2Affine as G2, Parameters};
-use ark_ec::bn::Bn;
-use ark_ff::{UniformRand, Zero};
+use ark_bn254::{Config, Fr as ScalarField, G1Affine as G1, G2Affine as G2};
+use ark_ec::{bn::Bn, AffineRepr};
+use ark_ff::UniformRand;
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Polynomial, Radix2EvaluationDomain as D,
-    UVPolynomial,
+    univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Polynomial,
+    Radix2EvaluationDomain as D,
 };
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use poly_commitment::{
@@ -74,7 +74,7 @@ fn test_kzg_proof() {
 
     let polyscale = ScalarField::rand(&mut rng);
 
-    let kzg_proof = KZGProof::<Bn<Parameters>>::create(
+    let kzg_proof = KZGProof::<Bn<Config>>::create(
         &srs,
         polynomials_and_blinders.as_slice(),
         &evaluation_points,
@@ -89,8 +89,8 @@ fn test_kzg_proof() {
 /// Our points in G2 are not actually in the correct subgroup and serialize well.
 #[test]
 fn check_srs_g2_valid_and_serializes() {
-    type BN254 = ark_ec::bn::Bn<ark_bn254::Parameters>;
-    type BN254G2BaseField = <BN254 as ark_ec::PairingEngine>::Fqe;
+    type BN254 = Bn<Config>;
+    type BN254G2BaseField = <G2 as AffineRepr>::BaseField;
     type Fp = ark_bn254::Fr;
 
     let mut rng = o1_utils::tests::make_test_rng(None);
@@ -112,9 +112,10 @@ fn check_srs_g2_valid_and_serializes() {
 
         // Check it serializes well
         let actual_y: BN254G2BaseField = actual.y;
-        let res = actual_y.serialize(vec.as_mut_slice());
+        let res = actual_y.serialize_compressed(vec.as_mut_slice());
         assert!(res.is_ok());
-        let expected: BN254G2BaseField = CanonicalDeserialize::deserialize(vec.as_slice()).unwrap();
+        let expected: BN254G2BaseField =
+            CanonicalDeserialize::deserialize_compressed(vec.as_slice()).unwrap();
         assert!(expected == actual_y, "serialization failed");
     }
 }

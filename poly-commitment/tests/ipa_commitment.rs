@@ -1,7 +1,8 @@
+use ark_ec::AffineRepr;
 use ark_ff::{One, UniformRand, Zero};
 use ark_poly::{
-    univariate::DensePolynomial, EvaluationDomain, Evaluations, Polynomial,
-    Radix2EvaluationDomain as D, Radix2EvaluationDomain, UVPolynomial,
+    univariate::DensePolynomial, DenseUVPolynomial, EvaluationDomain, Evaluations, Polynomial,
+    Radix2EvaluationDomain as D, Radix2EvaluationDomain,
 };
 use groupmap::GroupMap;
 use mina_curves::pasta::{Fp, Vesta as VestaG};

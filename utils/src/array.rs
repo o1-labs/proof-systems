@@ -114,11 +114,11 @@ macro_rules! box_array2 {
 mod tests {
     use super::*;
 
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use ark_ff::{UniformRand, Zero};
     use mina_curves::pasta::Pallas as CurvePoint;
 
-    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
 
     #[test]
     /// Tests whether initialising different arrays creates a stack
