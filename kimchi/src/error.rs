@@ -22,9 +22,6 @@ pub enum ProverError {
     #[error("the lookup failed to find a match in the table: row={0}")]
     ValueNotInTable(usize),
 
-    #[error("SRS size is smaller than the domain size required by the circuit")]
-    SRSTooSmall,
-
     #[error("the runtime tables provided did not match the index's configuration")]
     RuntimeTablesInconsistent,
 

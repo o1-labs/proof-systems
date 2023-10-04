@@ -177,12 +177,7 @@ where
         VerifierIndex<G, OpeningProof>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
-
-        // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_poly_size() < d1_size {
-            return Err(ProverError::SRSTooSmall);
-        }
 
         let (_, endo_r) = G::endos();
 

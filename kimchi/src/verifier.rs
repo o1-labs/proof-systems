@@ -1188,11 +1188,6 @@ where
         if verifier_index.srs().max_poly_size() != srs.max_poly_size() {
             return Err(VerifyError::DifferentSRS);
         }
-
-        // also make sure that the SRS is not smaller than the domain size
-        if verifier_index.srs().max_poly_size() < verifier_index.domain.size() {
-            return Err(VerifyError::SRSTooSmall);
-        }
     }
 
     //~ 1. Validate each proof separately following the [partial verification](#partial-verification) steps.
