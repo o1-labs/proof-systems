@@ -7,7 +7,7 @@ use turshi::{CairoMemory, CairoProgram};
 
 #[test]
 fn test_cairo_should_fail() {
-    let instrs = vec![0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
+    let instrs = [0x480680017fff8000, 10, 0x208b7fff7fff7ffe]
         .iter()
         .map(|&i: &i64| F::from(i))
         .collect();
@@ -30,7 +30,7 @@ fn test_cairo_should_fail() {
 
 #[test]
 fn test_cairo_gate() {
-    let instrs = vec![
+    let instrs = [
         0x400380007ffc7ffd,
         0x482680017ffc8000,
         1,

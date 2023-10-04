@@ -29,7 +29,7 @@ use num_bigint::BigUint;
 use poly_commitment::{
     commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof,
 };
-use std::{fmt::Write, mem, time::Instant};
+use std::{fmt::Write, time::Instant};
 
 // aliases
 
@@ -123,7 +123,7 @@ where
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
-        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups_and_custom_srs(
             self.gates.take().unwrap(),
@@ -156,7 +156,7 @@ where
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
-        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
