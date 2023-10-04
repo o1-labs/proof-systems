@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+#![cfg_attr(feature = "wasm_types", feature(int_log))]
+
 #[macro_use]
 extern crate num_derive;
 
