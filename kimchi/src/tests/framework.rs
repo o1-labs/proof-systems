@@ -123,7 +123,7 @@ where
 
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>) -> OpeningProof::SRS>(
+    pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
     ) -> TestRunner<G, OpeningProof> {
@@ -139,6 +139,7 @@ where
             lookup_tables,
             runtime_tables_setup,
             self.disable_gates_checks,
+            self.override_srs_size,
             get_srs,
         );
         println!(
