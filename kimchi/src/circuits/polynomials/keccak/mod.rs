@@ -50,12 +50,12 @@ pub(crate) const RC: [u64; 24] = [
 
 // Takes a dense u64 word and decomposes it into a vector of 4 dense quarters
 pub(crate) fn decompose(word: u64) -> Vec<u64> {
-    let mut quarters = vec![];
-    quarters.push(word % (1 << 16));
-    quarters.push((word / (1 << 16)) % (1 << 16));
-    quarters.push((word / (1 << 32)) % (1 << 16));
-    quarters.push((word / (1 << 48)) % (1 << 16));
-    quarters
+    vec![
+        word % (1 << 16),
+        (word / (1 << 16)) % (1 << 16),
+        (word / (1 << 32)) % (1 << 16),
+        (word / (1 << 48)) % (1 << 16),
+    ]
 }
 
 /// Expands a quarter of a word into the sparse representation as a u64
