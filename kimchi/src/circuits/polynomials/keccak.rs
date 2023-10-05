@@ -169,7 +169,7 @@ where
                 constraints.push(state_c(0, x, 0, q) - compose_shifts(shifts_c, x, 0, q));
                 constraints.push(
                     state_d(0, x, 0, q)
-                        - (shifts_c(0, (x - 1 + DIM) % DIM, 0, q)
+                        - (shifts_c(0, (x + DIM - 1) % DIM, 0, q)
                             + expand_rot_c(0, (x + 1) % DIM, 0, q)),
                 );
 
