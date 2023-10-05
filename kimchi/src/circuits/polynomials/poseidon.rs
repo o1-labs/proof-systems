@@ -30,7 +30,7 @@ use crate::{
         argument::ArgumentEnv,
         expr::{constraints::ExprOps, Cache},
         gate::Gate,
-        gate::{CircuitGate, CurrOrNext, GateType},
+        gate::{CircuitGate, CurrOrNext},
         polynomial::COLUMNS,
         wires::{GateWires, Wire},
     },
@@ -338,6 +338,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Poseidon<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Poseidon")
+    }
+
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let mut res = vec![];
 

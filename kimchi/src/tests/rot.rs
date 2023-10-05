@@ -85,8 +85,7 @@ where
     // gate for the zero value
     let gates = create_rot_gadget::<G>(rot, side);
 
-    let prover_context = ProverContext::default();
-    ConstraintSystem::create(prover_context, gates)
+    ConstraintSystem::create(&ProverContext::default(), gates)
         .build()
         .unwrap()
 }
@@ -377,8 +376,7 @@ fn test_rot_finalization() {
     };
 
     let index = {
-        let prover_context = ProverContext::default();
-        let cs = ConstraintSystem::create(prover_context, gates.clone())
+        let cs = ConstraintSystem::create(&ProverContext::default(), gates.clone())
             .public(num_public_inputs)
             .lookup(vec![rot::lookup_table()])
             .build()

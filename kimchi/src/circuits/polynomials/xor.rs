@@ -145,6 +145,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Xor16<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Xor16")
+    }
+
     // Constraints for Xor16
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits

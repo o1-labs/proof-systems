@@ -11,7 +11,7 @@ use crate::{
             constraints::{boolean, ExprOps},
             Cache,
         },
-        gate::{CircuitGate, GateType},
+        gate::CircuitGate,
         gate::{Gate, GateHelpers},
         wires::{GateWires, COLUMNS},
     },
@@ -185,6 +185,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for EndosclMul<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("EndosclMul")
+    }
+
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);

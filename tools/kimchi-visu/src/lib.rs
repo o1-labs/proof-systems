@@ -3,10 +3,11 @@
 use kimchi::{
     circuits::{
         expr::{self, constraints::ExprOps},
+        gate::GateHelpers,
         polynomials::{
             complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
             poseidon::Poseidon, varbasemul::VarbaseMul,
-        }, gate::GateHelpers,
+        },
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,

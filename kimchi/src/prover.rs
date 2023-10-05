@@ -2,6 +2,7 @@
 
 use crate::{
     circuits::{
+        self,
         argument::ArgumentType,
         expr::{self, l0_1, Constants, Environment, LookupEnvironment},
         gate::GateHelpers,
@@ -814,17 +815,23 @@ where
             // };
 
             // Check constraints for configured gates
+            println!("create_recursive() computing combined constraints");
             for (_name, gate) in index.cs.configured_gates.clone().iter() {
-                let constraint = gate.combined_constraints(&all_alphas, &mut cache);
-                let eval = constraint.evaluations(&env);
-                if eval.domain().size == t4.domain().size {
-                    t4 += &eval;
-                } else if eval.domain().size == t8.domain().size {
-                    t8 += &eval;
-                } else {
-                    panic!("Bad evaluation")
+                if !circuits::gate::is_always_configured::<G::ScalarField>(gate.typ())
+                    && gate.constraint_count() > 0
+                {
+                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
+                    let eval = constraint.evaluations(&env);
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
+                    } else {
+                        panic!("Bad evaluation: gate = {}", gate.typ());
+                    }
+
+                    check_constraint!(index, gate.typ(), eval);
                 }
-                check_constraint!(index, gate.typ(), eval);
             }
 
             // lookup

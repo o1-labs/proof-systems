@@ -6,8 +6,8 @@ use crate::{
         argument::ArgumentEnv,
         constraints::ConstraintSystem,
         expr::{constraints::ExprOps, Cache},
+        gate::CircuitGate,
         gate::Gate,
-        gate::{CircuitGate, GateType},
         wires::COLUMNS,
     },
     curve::KimchiCurve,
@@ -165,6 +165,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for EndomulScalar<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("EndomulScalar")
+    }
+
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);

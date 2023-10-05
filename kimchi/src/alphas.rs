@@ -68,7 +68,11 @@ impl<F: PrimeField> Alphas<F> {
             ty
         };
 
-        if self.mapping.insert(ty.clone(), (self.next_power, powers)).is_some() {
+        if self
+            .mapping
+            .insert(ty.clone(), (self.next_power, powers))
+            .is_some()
+        {
             panic!("cannot re-register {ty:?}");
         }
 
@@ -327,7 +331,7 @@ mod tests {
     #[test]
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
-        let index = new_index_for_test::<Vesta>(ProverContext::default(), gates, 0);
+        let index = new_index_for_test::<Vesta>(&ProverContext::default(), gates, 0);
         let (_linearization, powers_of_alpha) = expr_linearization::<Fp>(&index.cs, true);
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();

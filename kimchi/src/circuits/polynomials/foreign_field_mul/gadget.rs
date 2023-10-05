@@ -4,19 +4,14 @@ use ark_ff::{PrimeField, SquareRootField};
 use num_bigint::BigUint;
 use o1_utils::foreign_field::{BigUintForeignFieldHelpers, ForeignFieldHelpers};
 
-use crate::{
-    alphas::Alphas,
-    circuits::{
-        expr::{Cache, E},
-        gate::GateHelpers,
-        gate::{CircuitGate, GateType},
-        lookup::{
-            self,
-            tables::{GateLookupTable, LookupTable},
-        },
-        polynomials::{generic::GenericGateSpec, zero::Zero},
-        wires::Wire,
+use crate::circuits::{
+    gate::CircuitGate,
+    lookup::{
+        self,
+        tables::{GateLookupTable, LookupTable},
     },
+    polynomials::{generic::GenericGateSpec, zero::Zero},
+    wires::Wire,
 };
 
 use super::circuitgates::ForeignFieldMul;

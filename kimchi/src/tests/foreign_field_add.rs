@@ -4,7 +4,7 @@ use crate::circuits::polynomials::foreign_field_add::circuitgates::ForeignFieldA
 use crate::circuits::polynomials::generic::GenericGateSpec;
 use crate::circuits::{
     constraints::ConstraintSystem,
-    gate::{CircuitGate, CircuitGateError, Connect, GateType},
+    gate::{CircuitGate, CircuitGateError, Connect},
     polynomial::COLUMNS,
     polynomials::{
         foreign_field_add::witness::{self, FFOps},
@@ -322,9 +322,7 @@ fn create_test_constraint_system_ffadd(
         short_circuit(opcodes, &foreign_field_modulus)
     };
 
-    let prover_context = ProverContext::default();
-
-    let cs = ConstraintSystem::create(prover_context, gates)
+    let cs = ConstraintSystem::create(&ProverContext::default(), gates)
         .public(1)
         .build()
         .unwrap();
@@ -1349,8 +1347,7 @@ fn test_ffadd_no_rc() {
 
     extend_gate_bound_rc(&mut gates);
 
-    let prover_context = ProverContext::default();
-    let cs = ConstraintSystem::create(prover_context, gates)
+    let cs = ConstraintSystem::create(&ProverContext::default(), gates)
         .public(1)
         .build()
         .unwrap();
@@ -1428,8 +1425,7 @@ where
         foreign_field_modulus.clone(),
     );
 
-    let prover_context = ProverContext::default();
-    let cs = ConstraintSystem::create(prover_context, gates.clone())
+    let cs = ConstraintSystem::create(&ProverContext::default(), gates.clone())
         .public(1)
         .build()
         .unwrap();
@@ -1516,8 +1512,7 @@ fn test_ffadd_finalization() {
     };
 
     let index = {
-        let prover_context = ProverContext::default();
-        let cs = ConstraintSystem::create(prover_context, gates.clone())
+        let cs = ConstraintSystem::create(&ProverContext::default(), gates.clone())
             .lookup(vec![range_check::gadget::lookup_table()])
             .public(num_public_inputs)
             .build()

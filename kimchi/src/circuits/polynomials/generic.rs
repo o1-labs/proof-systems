@@ -72,6 +72,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Generic<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Generic")
+    }
+
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);

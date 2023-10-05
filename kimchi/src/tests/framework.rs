@@ -71,9 +71,28 @@ where
     G::ScalarField: PrimeField,
 {
     #[must_use]
-    pub(crate) fn prover(mut self, ctx: ProverContext<G::ScalarField>) -> Self {
-        self.prover_context = Some(ctx);
-        self
+    fn new() -> Self {
+        TestFramework {
+            prover_context: None,
+            gates: None,
+            witness: None,
+            public_inputs: vec![],
+            lookup_tables: vec![],
+            runtime_tables_setup: None,
+            runtime_tables: vec![],
+            recursion: vec![],
+            num_prev_challenges: 0,
+            disable_gates_checks: false,
+            prover_index: None,
+            verifier_index: None,
+        }
+    }
+
+    #[must_use]
+    pub(crate) fn create(ctx: &ProverContext<G::ScalarField>) -> Self {
+        let mut framework = TestFramework::new();
+        framework.prover_context = Some(ctx.clone());
+        framework
     }
 
     #[must_use]
@@ -129,8 +148,12 @@ where
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
+        println!(
+            "prover_context gates = {}",
+            self.prover_context.clone().unwrap().gates.gates.len()
+        );
         let index = new_index_for_test_with_lookups::<G>(
-            self.prover_context.clone().unwrap(),
+            &self.prover_context.clone().unwrap(),
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -141,6 +164,11 @@ where
         println!(
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
+        );
+
+        println!(
+            "index gates = {}",
+            index.clone().cs.configured_gates.gates.len()
         );
 
         self.verifier_index = Some(index.verifier_index());

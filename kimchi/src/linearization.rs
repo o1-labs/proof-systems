@@ -3,7 +3,6 @@
 use crate::alphas::Alphas;
 use crate::circuits::argument::ArgumentType;
 use crate::circuits::constraints::ConstraintSystem;
-use crate::circuits::expr;
 use crate::circuits::gate::GateHelpers;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
@@ -25,6 +24,7 @@ use crate::circuits::polynomials::{
     xor,
     zero::Zero as ZeroGate,
 };
+use crate::circuits::{expr, gate};
 
 use crate::circuits::{
     constraints::FeatureFlags,
@@ -169,9 +169,16 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     // Get the expressions of dynamically configured gates
+    println!(
+        "linearization::constraint_expr() computing combined constraints: gates = {}",
+        cs.configured_gates.gates.len()
+    );
     for (_name, gate) in cs.configured_gates.clone().iter() {
-        expr += gate.combined_constraints(&powers_of_alpha, &mut cache);
+        if !gate::is_always_configured::<F>(gate.typ()) {
+            expr += gate.combined_constraints(&powers_of_alpha, &mut cache);
+        }
     }
+    println!("Done");
 
     // permutation
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);

@@ -1,6 +1,5 @@
 pub mod and;
 pub mod complete_add;
-pub mod conditional;
 pub mod endomul_scalar;
 pub mod endosclmul;
 pub mod foreign_field_add;

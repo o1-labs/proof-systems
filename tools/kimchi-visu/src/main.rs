@@ -5,7 +5,8 @@ use kimchi::{
         wires::Wire,
     },
     curve::KimchiCurve,
-    prover_index::testing::new_index_for_test, prover::ProverContext,
+    prover::ProverContext,
+    prover_index::testing::new_index_for_test,
 };
 use kimchi_visu::{visu, Witness};
 use mina_curves::pasta::{Fp, Vesta};
@@ -59,7 +60,7 @@ fn main() {
     };
 
     // create the index
-    let index = new_index_for_test::<Vesta>(ProverContext::default(), gates, public);
+    let index = new_index_for_test::<Vesta>(&ProverContext::default(), gates, public);
 
     // create the witness
     let mut witness = Witness::new(row + 1).inner();

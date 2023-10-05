@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use ark_ff::PrimeField;
 
-use super::{gate::GateHelpers, polynomials};
-use crate::circuits::{expr::E, gate::Gate};
+use crate::circuits::{expr::E, gate::Gate, polynomials};
 
 pub type GateList<F> = Vec<Box<dyn Gate<F, E<F>>>>;
 
@@ -82,9 +81,7 @@ impl<F: PrimeField> GateRegistry<F> {
     }
 
     /// Iterate over the registered gates
-    pub fn iter(
-        &mut self,
-    ) -> std::collections::btree_map::Iter<'_, String, Box<dyn Gate<F, E<F>>>> {
+    pub fn iter(&self) -> std::collections::btree_map::Iter<'_, String, Box<dyn Gate<F, E<F>>>> {
         self.gates.iter()
     }
 }

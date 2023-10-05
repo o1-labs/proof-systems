@@ -190,6 +190,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for ForeignFieldMul<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("ForeignFieldMul")
+    }
+
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 

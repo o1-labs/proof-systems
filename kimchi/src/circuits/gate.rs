@@ -23,10 +23,15 @@ use super::{
         complete_add::CompleteAdd,
         endomul_scalar::EndomulScalar,
         endosclmul::EndosclMul,
+        foreign_field_add::circuitgates::ForeignFieldAdd,
+        foreign_field_mul::circuitgates::ForeignFieldMul,
         generic::Generic,
         poseidon::Poseidon,
+        range_check::circuitgates::{RangeCheck0, RangeCheck1},
+        rot::Rot64,
         turshi::{Claim, Flags, Instruction, Transition},
         varbasemul::VarbaseMul,
+        xor::Xor16,
         zero::Zero,
     },
 };
@@ -61,20 +66,41 @@ impl CurrOrNext {
 // Gate type identifier
 pub type GateType = String;
 
+/// Check if given gate is an "always configured gate"
+pub fn is_always_configured<F: PrimeField>(gate: GateType) -> bool {
+    [
+        Zero::<F>::typ(),
+        Generic::<F>::typ(),
+        Poseidon::<F>::typ(),
+        CompleteAdd::<F>::typ(),
+        VarbaseMul::<F>::typ(),
+        EndosclMul::<F>::typ(),
+        EndomulScalar::<F>::typ(),
+        Claim::<F>::typ(),
+        Instruction::<F>::typ(),
+        Flags::<F>::typ(),
+        Transition::<F>::typ(),
+        RangeCheck0::<F>::typ(),
+        RangeCheck1::<F>::typ(),
+        ForeignFieldAdd::<F>::typ(),
+        ForeignFieldMul::<F>::typ(),
+        Xor16::<F>::typ(),
+        Rot64::<F>::typ(),
+    ]
+    .contains(&gate)
+}
+
 /// Gate interface
 pub trait Gate<F: PrimeField, T: ExprOps<F>>: std::fmt::Debug + DynClone {
     /// Unique gate identifier
-    fn typ(&self) -> String {
-        std::any::type_name::<Self>().to_string()
-    }
+    fn typ(&self) -> String;
+
+    // fn typ(&self) -> String {
+    //     std::any::type_name::<Self>().to_string()
+    // }
 
     /// Gate constraints
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
-
-    // Clone this gate for verification
-    // fn clone_for_verification(&self) -> Box<dyn Gate<F, F>> {
-    //     Box::new(Self::<F,F>::clone())
-    // }
 }
 
 // Implement dynamic cloning
@@ -96,8 +122,8 @@ macro_rules! define_gate {
         pub struct $id<$typ>(PhantomData<$typ>);
         impl<$typ: $bound> $id<F> {
             pub fn typ() -> String {
-                std::any::type_name::<Self>().to_string()
-                // String::from(stringify!($id))
+                // std::any::type_name::<Self>().to_string()
+                String::from(stringify!($id))
             }
 
             pub fn create<S: ExprOps<$typ>>() -> Box<dyn Gate<$typ, S>> {
@@ -142,15 +168,12 @@ where
 
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
         let constraints = self.constraints(cache);
-        let alphas = alphas.get_exponents(
-            ArgumentType::Gate(Zero::<F>::typ()),
-            constraints.len() as u32,
-        );
+        println!("typ               = {}", self.typ());
+        println!("constraints.len() = {}", constraints.len());
+        let alphas = alphas.get_exponents(ArgumentType::Gate(self.typ()), constraints.len() as u32);
         let combined_constraints = E::combine_constraints(alphas, constraints);
 
-        // TODO: Refactor gate_type into u32
-        /* index(gate_type) * */
-        combined_constraints
+        index(self.typ()) * combined_constraints
     }
 
     fn degree(&self, eval_domains: EvaluationDomains<F>) -> u64 {

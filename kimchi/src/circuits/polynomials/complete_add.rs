@@ -97,6 +97,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for CompleteAdd<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("CompleteAdd")
+    }
+
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         // This function makes 2 + 1 + 1 + 1 + 2 = 7 constraints
         let x1 = env.witness_curr(0);

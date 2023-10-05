@@ -1,6 +1,6 @@
 use super::framework::{print_witness, TestFramework};
 use crate::circuits::{
-    gate::{CircuitGate, GateType},
+    gate::CircuitGate,
     lookup::{
         runtime_tables::{RuntimeTable, RuntimeTableCfg},
         tables::LookupTable,

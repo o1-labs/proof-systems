@@ -66,7 +66,7 @@ fn create_test_prover_index(public_size: usize, compact: bool) -> ProverIndex<Ve
     };
 
     new_index_for_test_with_lookups(
-        ProverContext::default(),
+        &ProverContext::default(),
         gates,
         public_size,
         0,
@@ -1124,11 +1124,9 @@ fn verify_64_bit_range_check() {
     gates[1].wires[2] = Wire { row: 0, col: 0 };
     gates[0].wires[0] = Wire { row: 1, col: 1 };
 
-    let prover_context = ProverContext::default();
-
     // Create constraint system
     let cs = ConstraintSystem::<Fp>::create(
-        prover_context,
+        &ProverContext::default(),
         gates, /*, mina_poseidon::pasta::fp_kimchi::params()*/
     )
     .build()

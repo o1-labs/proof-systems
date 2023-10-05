@@ -201,12 +201,11 @@ where
         None
     };
 
-    let prover_context = ProverContext::default();
     let cs = if let Some(runner) = runner.as_ref() {
         runner.clone().prover_index().cs.clone()
     } else {
         // If not full mode, just create constraint system (this is much faster)
-        ConstraintSystem::create(prover_context, gates.clone())
+        ConstraintSystem::create(&ProverContext::default(), gates.clone())
             .build()
             .unwrap()
     };

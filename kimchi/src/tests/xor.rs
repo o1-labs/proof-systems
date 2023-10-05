@@ -54,8 +54,7 @@ where
     let mut gates = vec![];
     let _next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
 
-    let prover_context = ProverContext::default();
-    ConstraintSystem::create(prover_context, gates)
+    ConstraintSystem::create(&ProverContext::default(), gates)
         .build()
         .unwrap()
 }
@@ -307,8 +306,7 @@ fn test_extend_xor() {
     gates.connect_cell_pair((0, 0), (2, 0));
     gates.connect_cell_pair((1, 0), (2, 1));
 
-    let prover_context = ProverContext::default();
-    let cs = ConstraintSystem::create(prover_context, gates)
+    let cs = ConstraintSystem::create(&ProverContext::default(), gates)
         .public(2)
         .build()
         .unwrap();
@@ -402,7 +400,7 @@ fn test_xor_finalization() {
     };
 
     let index = {
-        let cs = ConstraintSystem::create(ProverContext::default(), gates.clone())
+        let cs = ConstraintSystem::create(&ProverContext::default(), gates.clone())
             .lookup(vec![xor::lookup_table()])
             .public(num_inputs)
             .build()

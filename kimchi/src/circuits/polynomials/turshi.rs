@@ -771,6 +771,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Claim<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Claim")
+    }
+
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -806,6 +810,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Instruction<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Instruction")
+    }
+
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
@@ -950,6 +958,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Flags<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Flags")
+    }
+
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -1015,6 +1027,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Transition<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Transition")
+    }
+
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {

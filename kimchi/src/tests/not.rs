@@ -94,8 +94,7 @@ where
         gates
     };
 
-    let prover_context = ProverContext::default();
-    ConstraintSystem::create(prover_context, gates)
+    ConstraintSystem::create(&ProverContext::default(), gates)
         .public(1)
         .build()
         .unwrap()
@@ -116,8 +115,7 @@ where
     let _next_row =
         CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(&mut gates, num_nots, 0);
 
-    let prover_context = ProverContext::default();
-    ConstraintSystem::create(prover_context, gates)
+    ConstraintSystem::create(&ProverContext::default(), gates)
         .public(1)
         .build()
         .unwrap()
@@ -413,7 +411,7 @@ fn test_bad_not_gnrc() {
     );
     witness[0][1] += PallasField::one();
     let index = new_index_for_test_with_lookups(
-        ProverContext::default(),
+        &ProverContext::default(),
         cs.gates,
         1,
         0,

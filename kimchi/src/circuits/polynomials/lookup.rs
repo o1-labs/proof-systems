@@ -18,7 +18,11 @@ use crate::{
 define_gate!(Lookup<F: PrimeField>, "Implements the lookup gate type");
 
 impl<F: PrimeField, T: ExprOps<F>> Gate<F, T> for Lookup<F> {
-    fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn typ(&self) -> String {
+        String::from("Lookup")
+    }
+
+    fn constraint_checks(&self, _env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         vec![]
     }
 }

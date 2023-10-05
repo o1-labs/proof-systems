@@ -2,19 +2,14 @@
 
 use ark_ff::{FftField, PrimeField, SquareRootField};
 
-use crate::{
-    alphas::Alphas,
-    circuits::{
-        expr::{Cache, E},
-        gate::GateHelpers,
-        gate::{CircuitGate, Connect, GateType},
-        lookup::{
-            self,
-            tables::{GateLookupTable, LookupTable},
-        },
-        polynomials::zero::Zero,
-        wires::Wire,
+use crate::circuits::{
+    gate::{CircuitGate, Connect},
+    lookup::{
+        self,
+        tables::{GateLookupTable, LookupTable},
     },
+    polynomials::zero::Zero,
+    wires::Wire,
 };
 
 use super::circuitgates::{RangeCheck0, RangeCheck1};

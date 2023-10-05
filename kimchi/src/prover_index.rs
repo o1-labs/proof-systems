@@ -75,6 +75,10 @@ impl<G: KimchiCurve> ProverIndex<G> {
         cs.endo = endo_q;
 
         // pre-compute the linearization
+        println!(
+            "pre-compute the linearization: gates = {}",
+            cs.configured_gates.gates.len()
+        );
         let (linearization, powers_of_alpha) = expr_linearization(&cs, true);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
@@ -150,7 +154,7 @@ pub mod testing {
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
     pub fn new_index_for_test_with_lookups<G: KimchiCurve>(
-        ctx: ProverContext<G::ScalarField>,
+        ctx: &ProverContext<G::ScalarField>,
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
@@ -162,6 +166,8 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
+        println!("ctx gates = {}", ctx.gates.gates.len());
+
         // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
         let cs = ConstraintSystem::<G::ScalarField>::create(ctx, gates)
             .lookup(lookup_tables)
@@ -172,23 +178,29 @@ pub mod testing {
             .build()
             .unwrap();
 
+        println!("cs gates = {}", cs.configured_gates.gates.len());
+
         let mut srs = if cs.domain.d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
             // TODO: we should trim it if it's smaller
+            println!("Using precomputed SRS");
             precomputed_srs::get_srs()
         } else {
             // TODO: we should resume the SRS generation starting from the serialized one
+            println!("Computing SRS");
             SRS::<G>::create(cs.domain.d1.size())
         };
 
+        println!("Adding lagrange basis");
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<G::OtherCurve>();
+        println!("Creating prover index");
         ProverIndex::<G>::create(cs, endo_q, srs)
     }
 
     pub fn new_index_for_test<G: KimchiCurve>(
-        ctx: ProverContext<G::ScalarField>,
+        ctx: &ProverContext<G::ScalarField>,
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
     ) -> ProverIndex<G>

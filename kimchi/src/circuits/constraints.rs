@@ -264,9 +264,9 @@ impl<F: PrimeField> ConstraintSystem<F> {
     /// 1. Create your instance of your builder for the constraint system using `crate(gates, sponge params)`
     /// 2. Iterativelly invoke any desired number of steps: `public(), lookup(), runtime(), precomputations()``
     /// 3. Finally call the `build()` method and unwrap the `Result` to obtain your `ConstraintSystem`
-    pub fn create(ctx: ProverContext<F>, gates: Vec<CircuitGate<F>>) -> Builder<F> {
+    pub fn create(ctx: &ProverContext<F>, gates: Vec<CircuitGate<F>>) -> Builder<F> {
         Builder {
-            ctx,
+            ctx: ctx.clone(),
             gates,
             public: 0,
             prev_challenges: 0,
@@ -599,7 +599,8 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 
         // Compute gate selectors for configured gates
         let gate_selectors: Vec<(String, E<F, D<F>>)> = self
-            .configured_gates.clone()
+            .configured_gates
+            .clone()
             .iter()
             .map(|(name, gate)| {
                 (
@@ -700,12 +701,15 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         // Check that the circuit uses only registered gates
         for gate in gates.clone() {
+            println!("gate_count = {}", self.ctx.gates.gates.len());
+            println!("looking up '{}'", gate.typ.clone());
             match self.ctx.gates.get(gate.typ.clone()) {
                 None => {
+                    println!("Got none");
                     return Err(SetupError::ConstraintSystem(format!(
-                        "Invalid gate {}",
+                        "Invalid gate '{}'",
                         gate.typ
-                    )))
+                    )));
                 }
                 Some(_) => (),
             }
@@ -836,7 +840,7 @@ pub mod tests {
     use mina_curves::pasta::Fp;
 
     impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
-        pub fn for_testing(ctx: ProverContext<F>, gates: Vec<CircuitGate<F>>) -> Self {
+        pub fn for_testing(ctx: &ProverContext<F>, gates: Vec<CircuitGate<F>>) -> Self {
             let public = 0;
             // not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
             ConstraintSystem::<F>::create(ctx, gates)
@@ -847,7 +851,7 @@ pub mod tests {
     }
 
     impl ConstraintSystem<Fp> {
-        pub fn fp_for_testing(ctx: ProverContext<Fp>, gates: Vec<CircuitGate<Fp>>) -> Self {
+        pub fn fp_for_testing(ctx: &ProverContext<Fp>, gates: Vec<CircuitGate<Fp>>) -> Self {
             //let fp_sponge_params = mina_poseidon::pasta::fp_kimchi::params();
             Self::for_testing(ctx, gates)
         }

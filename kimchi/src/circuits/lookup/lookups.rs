@@ -228,7 +228,9 @@ impl LookupInfo {
         for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ.clone();
 
-            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ.clone(), CurrOrNext::Curr) {
+            if let Some(lookup_pattern) =
+                LookupPattern::from_gate::<F>(typ.clone(), CurrOrNext::Curr)
+            {
                 update_selector(lookup_pattern, i);
                 if let Some(table_kind) = lookup_pattern.table() {
                     gate_tables.insert(table_kind);
@@ -259,7 +261,9 @@ impl LookupInfo {
         for i in 0..gates.len() {
             let typ = gates[i].typ.clone();
 
-            if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ.clone(), CurrOrNext::Curr) {
+            if let Some(lookup_pattern) =
+                LookupPattern::from_gate::<F>(typ.clone(), CurrOrNext::Curr)
+            {
                 kinds[i] = lookup_pattern.lookups();
             }
             if let Some(lookup_pattern) = LookupPattern::from_gate::<F>(typ, CurrOrNext::Next) {

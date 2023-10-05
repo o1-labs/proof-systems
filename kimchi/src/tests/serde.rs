@@ -58,7 +58,7 @@ mod tests {
         let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
         fill_in_witness(0, &mut witness, &public);
 
-        let index = new_index_for_test(ProverContext::default(), gates, public.len());
+        let index = new_index_for_test(&ProverContext::default(), gates, public.len());
         let verifier_index = index.verifier_index();
 
         let verifier_index_serialize =

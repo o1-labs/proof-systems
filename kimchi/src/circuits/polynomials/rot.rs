@@ -9,7 +9,7 @@ use crate::{
             Cache,
         },
         gate::Gate,
-        gate::{CircuitGate, Connect, GateType},
+        gate::{CircuitGate, Connect},
         lookup::{
             self,
             tables::{GateLookupTable, LookupTable},
@@ -209,6 +209,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for Rot64<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("Rot64")
+    }
+
     // Constraints for rotation of three 64-bit words by any three number of bits modulo 64
     // (stored in coefficient as a power-of-two form)
     //   * Operates on Curr row

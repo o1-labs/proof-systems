@@ -189,7 +189,7 @@ impl Column {
                 } else if *gate_type == CompleteAdd::<F>::typ() {
                     Domain::D4
                 } else {
-                    panic!("Invalid gate type: {}", gate_type)
+                    Domain::D8
                 }
             }
             _ => Domain::D8,
@@ -1822,7 +1822,11 @@ impl<A> Linearization<A> {
     pub fn map<B, F: Fn(&A) -> B>(&self, f: F) -> Linearization<B> {
         Linearization {
             constant_term: f(&self.constant_term),
-            index_terms: self.index_terms.iter().map(|(c, x)| (c.clone(), f(x))).collect(),
+            index_terms: self
+                .index_terms
+                .iter()
+                .map(|(c, x)| (c.clone(), f(x)))
+                .collect(),
         }
     }
 }
@@ -2905,9 +2909,8 @@ pub mod test {
                 None,
             ),
         ];
-        let prover_context = ProverContext::new();
         let index = {
-            let constraint_system = ConstraintSystem::fp_for_testing(prover_context, gates);
+            let constraint_system = ConstraintSystem::fp_for_testing(&ProverContext::new(), gates);
             let mut srs = SRS::<Vesta>::create(constraint_system.domain.d1.size());
             srs.add_lagrange_basis(constraint_system.domain.d1);
             let srs = Arc::new(srs);

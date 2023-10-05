@@ -407,6 +407,10 @@ impl<F, T: ExprOps<F>> Gate<F, T> for VarbaseMul<F>
 where
     F: PrimeField,
 {
+    fn typ(&self) -> String {
+        String::from("VarbaseMul")
+    }
+
     fn constraint_checks(&self, env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let Layout {
             base,

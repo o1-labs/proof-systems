@@ -410,10 +410,9 @@ impl<F> ProofEvaluations<F> {
                 } else if *gate_type == Poseidon::<T>::typ() {
                     Some(&self.poseidon_selector)
                 } else {
-                    panic!("Invalid gate type: {}", gate_type);
+                    None
                 }
             }
-            Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),
         }

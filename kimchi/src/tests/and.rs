@@ -88,7 +88,7 @@ where
     let prover_context = ProverContext::default();
 
     let gates = create_test_gates_and::<G>(bytes);
-    let cs = ConstraintSystem::create(prover_context, gates)
+    let cs = ConstraintSystem::create(&prover_context, gates)
         .build()
         .unwrap();
 
