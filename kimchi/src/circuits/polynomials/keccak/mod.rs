@@ -63,9 +63,15 @@ pub(crate) fn expand(quarter: u64) -> u64 {
     u64::from_str_radix(&format!("{:b}", quarter), 16).unwrap()
 }
 
+/// Expands a u64 word into a vector of 4 sparse u64 quarters
 pub(crate) fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
     decompose(word)
         .iter()
         .map(|q| T::literal(F::from(expand(*q))))
         .collect::<Vec<T>>()
+}
+
+/// On input a length, returns the smallest multiple of RATE that is greater than the bytelength
+pub(crate) fn padded_length(bytelength: usize) -> usize {
+    (bytelength / RATE + 1) * RATE
 }

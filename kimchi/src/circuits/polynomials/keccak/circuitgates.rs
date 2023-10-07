@@ -20,13 +20,12 @@ use std::marker::PhantomData;
 /// | 2     | 62 |  6 | 43 | 15 | 61 |
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
-/// Note that the order of the indexing is [y][x] to match the encoding of the witness algorithm
-pub(crate) const OFF: [[u64; DIM]; DIM] = [
-    [0, 1, 62, 28, 27],
-    [36, 44, 6, 55, 20],
-    [3, 10, 43, 25, 39],
-    [41, 45, 15, 21, 8],
-    [18, 2, 61, 56, 14],
+const OFF: [[u64; DIM]; DIM] = [
+    [0, 36, 3, 41, 18],
+    [1, 44, 10, 45, 2],
+    [62, 6, 43, 15, 61],
+    [28, 55, 25, 21, 56],
+    [27, 20, 39, 8, 14],
 ];
 
 //~

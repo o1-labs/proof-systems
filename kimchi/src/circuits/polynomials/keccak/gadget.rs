@@ -5,29 +5,34 @@ use crate::circuits::{
 };
 use ark_ff::{PrimeField, SquareRootField};
 
-use super::{expand_word, RATE, RC, ROUNDS};
+use super::{expand_word, padded_length, RATE, RC, ROUNDS};
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
-    /// Extends a Keccak circuit to hash one message (already padded to a multiple of 136 bits with 10*1 rule)
+    /// Extends a Keccak circuit to hash one message
     /// Note:
-    /// Requires at least one more row after the keccak gadget so that
+    /// Requires at least one more row after the Keccak gadget so that
     /// constraints can access the next row in the squeeze
     pub fn extend_keccak(circuit: &mut Vec<Self>, bytelength: usize) -> usize {
-        // pad
         let mut gates = Self::create_keccak(circuit.len(), bytelength);
         circuit.append(&mut gates);
         circuit.len()
     }
 
-    /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, for a padded message of a given bytelength
+    /// Creates a Keccak256 circuit, capacity 512 bits, rate 1088 bits, message of a given bytelength
     fn create_keccak(new_row: usize, bytelength: usize) -> Vec<Self> {
+        let padded_len = padded_length(bytelength);
+        let extra_bytes = padded_len - bytelength;
+        let num_blocks = padded_len / RATE;
         let mut gates = vec![];
-        for block in 0..(bytelength / RATE) {
-            if block == 0 {
-                gates.push(Self::create_keccak_root(new_row + gates.len()));
-            } else {
-                gates.push(Self::create_keccak_absorb(new_row + gates.len()));
-            }
+        for block in 0..num_blocks {
+            let root = block == 0;
+            let pad = block == num_blocks - 1;
+            gates.push(Self::create_keccak_absorb(
+                new_row + gates.len(),
+                root,
+                pad,
+                extra_bytes,
+            ));
             for round in 0..ROUNDS {
                 gates.push(Self::create_keccak_round(new_row + gates.len(), round));
             }
@@ -40,23 +45,32 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         CircuitGate {
             typ: GateType::KeccakSponge,
             wires: Wire::for_row(new_row),
-            coeffs: vec![F::zero(), F::zero(), F::one()],
+            coeffs: vec![F::zero(), F::one()],
         }
     }
 
-    fn create_keccak_absorb(new_row: usize) -> Self {
-        CircuitGate {
-            typ: GateType::KeccakSponge,
-            wires: Wire::for_row(new_row),
-            coeffs: vec![F::zero(), F::one(), F::zero()],
+    fn create_keccak_absorb(new_row: usize, root: bool, pad: bool, pad_bytes: usize) -> Self {
+        let mut coeffs = vec![F::zero(); 336];
+        coeffs[0] = F::one(); // absorb
+        if root {
+            coeffs[2] = F::one(); // root
         }
-    }
-
-    fn create_keccak_root(new_row: usize) -> Self {
+        if pad {
+            // Check pad 0x01 (0x00 ... 0x00)* 0x80 or 0x81 if only one byte for padding
+            for i in 0..pad_bytes {
+                coeffs[140 - i] = F::one(); // flag for padding
+                if i == 0 {
+                    coeffs[335 - i] += F::from(0x80u8); // pad
+                }
+                if i == pad_bytes - 1 {
+                    coeffs[335 - i] += F::one(); // pad
+                }
+            }
+        }
         CircuitGate {
             typ: GateType::KeccakSponge,
             wires: Wire::for_row(new_row),
-            coeffs: vec![F::one(), F::zero(), F::zero()],
+            coeffs,
         }
     }
 
