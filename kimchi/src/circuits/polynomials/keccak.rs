@@ -228,9 +228,9 @@ where
 }
 
 //~
-//~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...300) | [300...500] | [500...900) |
-//~ | -------------- | --------- | ----------- | ----------- | ----------- | ----------- | ----------- |
-//~ | Curr           | old_state | new_block   | zeros       | dense       | bytes       | shifts      |
+//~ | `KeccakSponge` | [0...100) | [100...168) | [168...200) | [200...400] | [400...800) |
+//~ | -------------- | --------- | ----------- | ----------- | ----------- | ----------- |
+//~ | Curr           | old_state | new_block   | zeros       | bytes       | shifts      |
 //~ | Next           | xor_state |
 //~
 #[derive(Default)]
@@ -241,7 +241,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
-    const CONSTRAINTS: u32 = 448;
+    const CONSTRAINTS: u32 = 568;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -253,13 +253,11 @@ where
         let mut zeros = env.witness_curr_chunk(168, 200);
         new_block.append(&mut zeros);
         let xor_state = env.witness_next_chunk(0, 100);
-        let dense = env.witness_curr_chunk(200, 300);
-        let bytes = env.witness_curr_chunk(300, 500);
-        let shifts = env.witness_curr_chunk(500, 900);
+        let bytes = env.witness_curr_chunk(200, 400);
+        let shifts = env.witness_curr_chunk(400, 800);
         auto_clone_array!(old_state);
         auto_clone_array!(new_block);
         auto_clone_array!(xor_state);
-        auto_clone_array!(dense);
         auto_clone_array!(bytes);
         auto_clone_array!(shifts);
 
@@ -267,11 +265,15 @@ where
         let root = env.coeff(0);
         let absorb = env.coeff(1);
         let squeeze = env.coeff(2);
+        let flags = env.coeff_chunk(4, 140);
+        let pad = env.coeff_chunk(200, 336);
         auto_clone!(root);
         auto_clone!(absorb);
         auto_clone!(squeeze);
+        auto_clone_array!(flags);
+        auto_clone_array!(pad);
 
-        // STEP absorb: 32 + 100 * 4 = 432
+        // 32 + 100 * 4 + 136 = 568
         for z in zeros {
             // Absorb phase pads with zeros the new state
             constraints.push(absorb() * z);
@@ -281,16 +283,14 @@ where
             constraints.push(root() * old_state(i));
             // Absorbs the new block by performing XOR with the old state
             constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
-            // Check shifts correspond to the decomposition of the new state
+            // In absorb, Check shifts correspond to the decomposition of the new state
             constraints.push(absorb() * (new_block(i) - compose_shifts_from_vec(shifts, i)));
-            // Both phases: check correctness of each dense term (16 bits) by composing two bytes
-            constraints.push(dense(i) - (bytes(2 * i) + T::two_pow(8) * bytes(2 * i + 1)));
-        }
-
-        // STEP squeeze: 16 constraints
-        for i in 0..16 {
-            // Check shifts correspond to the 256-bit prefix digest of the old state (current)
+            // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
             constraints.push(squeeze() * (old_state(i) - compose_shifts_from_vec(shifts, i)));
+        }
+        for i in 0..136 {
+            // Check padding
+            constraints.push(flags(i) * (pad(i) - bytes(i)));
         }
 
         constraints

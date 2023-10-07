@@ -104,6 +104,15 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
         T::coeff(idx, self.data.as_ref())
     }
 
+    /// Chunk of consecutive coefficients in an interval [from, to)
+    pub fn coeff_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.coeff(i));
+        }
+        chunk
+    }
+
     /// Constant value (see [ConstantExpr] for supported constants)
     pub fn constant(&self, expr: ConstantExpr<F>) -> T {
         T::constant(expr, self.data.as_ref())
