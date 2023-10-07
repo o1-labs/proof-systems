@@ -21,6 +21,23 @@ macro_rules! state_from_vec {
     };
 }
 
+/// Creates the 5x5 table of rotation bits for Keccak modulo 64
+/// | x \ y |  0 |  1 |  2 |  3 |  4 |
+/// | ----- | -- | -- | -- | -- | -- |
+/// | 0     |  0 | 36 |  3 | 41 | 18 |
+/// | 1     |  1 | 44 | 10 | 45 |  2 |
+/// | 2     | 62 |  6 | 43 | 15 | 61 |
+/// | 3     | 28 | 55 | 25 | 21 | 56 |
+/// | 4     | 27 | 20 | 39 |  8 | 14 |
+/// Note that the order of the indexing is [y][x] to match the encoding of the witness algorithm
+pub(crate) const OFF: [[u64; DIM]; DIM] = [
+    [0, 1, 62, 28, 27],
+    [36, 44, 6, 55, 20],
+    [3, 10, 43, 25, 39],
+    [41, 45, 15, 21, 8],
+    [18, 2, 61, 56, 14],
+];
+
 pub(crate) const RC: [u64; 24] = [
     0x0000000000000001,
     0x0000000000008082,

@@ -1,5 +1,5 @@
 //! Keccak gadget
-use super::{DIM, QUARTERS};
+use super::{DIM, OFF, QUARTERS};
 use crate::{
     auto_clone, auto_clone_array,
     circuits::{
@@ -11,22 +11,6 @@ use crate::{
 };
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
-
-/// Creates the 5x5 table of rotation bits for Keccak modulo 64
-/// | x \ y |  0 |  1 |  2 |  3 |  4 |
-/// | ----- | -- | -- | -- | -- | -- |
-/// | 0     |  0 | 36 |  3 | 41 | 18 |
-/// | 1     |  1 | 44 | 10 | 45 |  2 |
-/// | 2     | 62 |  6 | 43 | 15 | 61 |
-/// | 3     | 28 | 55 | 25 | 21 | 56 |
-/// | 4     | 27 | 20 | 39 |  8 | 14 |
-const OFF: [[u64; DIM]; DIM] = [
-    [0, 36, 3, 41, 18],
-    [1, 44, 10, 45, 2],
-    [62, 6, 43, 15, 61],
-    [28, 55, 25, 21, 56],
-    [27, 20, 39, 8, 14],
-];
 
 //~
 //~ | `KeccakRound` | [0...440) | [440...1540) | [1540...2344) |
