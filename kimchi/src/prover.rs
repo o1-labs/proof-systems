@@ -1388,23 +1388,30 @@ where
             ));
 
             //~~ * add the combined table polynomial
-            let table_blinding = if lcs.runtime_selector.is_some() {
-                let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
-                let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
+            let table_blinding = {
+                let table_id_combiner = lookup_context.table_id_combiner.as_ref().unwrap();
+                let base_blinding = *table_id_combiner;
+                if lcs.runtime_selector.is_some() {
+                    let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
+                    let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
 
-                let unshifted = runtime_comm
-                    .blinders
-                    .unshifted
-                    .iter()
-                    .map(|blinding| *joint_combiner * blinding)
-                    .collect();
+                    let unshifted = runtime_comm
+                        .blinders
+                        .unshifted
+                        .iter()
+                        .map(|blinding| *joint_combiner * blinding + base_blinding)
+                        .collect();
 
-                PolyComm {
-                    unshifted,
-                    shifted: None,
+                    PolyComm {
+                        unshifted,
+                        shifted: None,
+                    }
+                } else {
+                    PolyComm {
+                        unshifted: vec![base_blinding; num_chunks],
+                        shifted: None,
+                    }
                 }
-            } else {
-                non_hiding(num_chunks)
             };
 
             let joint_lookup_table = lookup_context.joint_lookup_table.as_ref().unwrap();
