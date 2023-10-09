@@ -1389,11 +1389,14 @@ where
 
             //~~ * add the combined table polynomial
             let table_blinding = {
+                let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
                 let table_id_combiner = lookup_context.table_id_combiner.as_ref().unwrap();
-                let base_blinding = *table_id_combiner;
+                let max_joint_size = lcs.configuration.lookup_info.max_joint_size;
+                let base_blinding = (1..max_joint_size).fold(G::ScalarField::one(), |acc, _| {
+                    G::ScalarField::one() + *joint_combiner * acc
+                }) + *table_id_combiner;
                 if lcs.runtime_selector.is_some() {
                     let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
-                    let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
 
                     let unshifted = runtime_comm
                         .blinders
