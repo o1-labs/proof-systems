@@ -1143,23 +1143,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kimchi-asm"
-version = "0.1.0"
-dependencies = [
- "ark-ec",
- "ark-ff",
- "kimchi",
- "mina-curves",
- "mina-poseidon",
- "o1-utils",
- "poly-commitment",
- "serde",
- "serde_json",
- "serde_with",
- "tinytemplate",
-]
-
-[[package]]
 name = "kimchi-visu"
 version = "0.1.0"
 dependencies = [
