@@ -3,6 +3,7 @@
 use crate::{
     circuits::{
         argument::{Argument, ArgumentType},
+        constraints::zk_rows_strict_lower_bound,
         expr::{self, l0_1, Constants, Environment, LookupEnvironment},
         gate::GateType,
         lookup::{self, runtime_tables::RuntimeTable, tables::combine_table_entry},
@@ -13,7 +14,6 @@ use crate::{
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
-            permutation::ZK_ROWS,
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
@@ -177,12 +177,7 @@ where
         VerifierIndex<G, OpeningProof>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
-
-        // make sure that the SRS is not smaller than the domain size
         let d1_size = index.cs.domain.d1.size();
-        if index.srs.max_poly_size() < d1_size {
-            return Err(ProverError::SRSTooSmall);
-        }
 
         let (_, endo_r) = G::endos();
 
@@ -205,19 +200,27 @@ where
         //~ 1. Ensure we have room in the witness for the zero-knowledge rows.
         //~    We currently expect the witness not to be of the same length as the domain,
         //~    but instead be of the length of the (smaller) circuit.
-        //~    If we cannot add `ZK_ROWS` rows to the columns of the witness before reaching
+        //~    If we cannot add `zk_rows` rows to the columns of the witness before reaching
         //~    the size of the domain, abort.
         let length_witness = witness[0].len();
         let length_padding = d1_size
             .checked_sub(length_witness)
             .ok_or(ProverError::NoRoomForZkInWitness)?;
 
-        if length_padding < ZK_ROWS as usize {
+        let zero_knowledge_limit = zk_rows_strict_lower_bound(num_chunks);
+        if (index.cs.zk_rows as usize) < zero_knowledge_limit {
+            return Err(ProverError::NotZeroKnowledge(
+                zero_knowledge_limit,
+                index.cs.zk_rows as usize,
+            ));
+        }
+
+        if length_padding < index.cs.zk_rows as usize {
             return Err(ProverError::NoRoomForZkInWitness);
         }
 
         //~ 1. Pad the witness columns with Zero gates to make them the same length as the domain.
-        //~    Then, randomize the last `ZK_ROWS` of each columns.
+        //~    Then, randomize the last `zk_rows` of each columns.
         internal_tracing::checkpoint!(internal_traces; pad_witness);
         for w in &mut witness {
             if w.len() != length_witness {
@@ -228,7 +231,7 @@ where
             w.extend(std::iter::repeat(G::ScalarField::zero()).take(length_padding));
 
             // zk-rows
-            for row in w.iter_mut().rev().take(ZK_ROWS as usize) {
+            for row in w.iter_mut().rev().take(index.cs.zk_rows as usize) {
                 *row = <G::ScalarField as UniformRand>::rand(rng);
             }
         }
@@ -371,7 +374,7 @@ where
                     }
 
                     // zero-knowledge
-                    for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
+                    for e in evals.iter_mut().rev().take(index.cs.zk_rows as usize) {
                         *e = <G::ScalarField as UniformRand>::rand(rng);
                     }
 
@@ -508,13 +511,21 @@ where
                 joint_combiner,
                 table_id_combiner,
                 &lcs.configuration.lookup_info,
+                index.cs.zk_rows as usize,
             )?;
 
             //~~ * Randomize the last `EVALS` rows in each of the sorted polynomials
             //~~   in order to add zero-knowledge to the protocol.
             let sorted: Vec<_> = sorted
                 .into_iter()
-                .map(|chunk| lookup::constraints::zk_patch(chunk, index.cs.domain.d1, rng))
+                .map(|chunk| {
+                    lookup::constraints::zk_patch(
+                        chunk,
+                        index.cs.domain.d1,
+                        index.cs.zk_rows as usize,
+                        rng,
+                    )
+                })
                 .collect();
 
             //~~ * Commit each of the sorted polynomials.
@@ -569,6 +580,7 @@ where
                 lookup_context.sorted.as_ref().unwrap(),
                 rng,
                 &lcs.configuration.lookup_info,
+                index.cs.zk_rows as usize,
             )?;
 
             //~~ * Commit to the aggregation polynomial.
@@ -698,10 +710,14 @@ where
                     joint_combiner: lookup_context.joint_combiner,
                     endo_coefficient: index.cs.endo,
                     mds,
+                    zk_rows: index.cs.zk_rows,
                 },
                 witness: &lagrange.d8.this.w,
                 coefficient: &index.column_evaluations.coefficients8,
-                vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
+                vanishes_on_zero_knowledge_and_previous_rows: &index
+                    .cs
+                    .precomputations()
+                    .vanishes_on_zero_knowledge_and_previous_rows,
                 z: &lagrange.d8.this.z,
                 l0_1: l0_1(index.cs.domain.d1),
                 domain: index.cs.domain,
@@ -802,7 +818,11 @@ where
             // lookup
             {
                 if let Some(lcs) = index.cs.lookup_constraint_system.as_ref() {
-                    let constraints = lookup::constraints::constraints(&lcs.configuration, false);
+                    let constraints = lookup::constraints::constraints(
+                        &lcs.configuration,
+                        false,
+                        index.cs.zk_rows as usize,
+                    );
                     let constraints_len = u32::try_from(constraints.len())
                         .expect("not expecting a large amount of constraints");
                     let lookup_alphas =

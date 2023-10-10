@@ -71,6 +71,7 @@ fn create_test_prover_index(
         vec![range_check::gadget::lookup_table()],
         None,
         false,
+        None,
     )
 }
 

@@ -130,6 +130,8 @@ where
             }
         };
 
+        let zk_rows = index.zk_rows;
+
         //~ 1. Setup the Fq-Sponge.
         let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
@@ -372,7 +374,8 @@ where
 
         //~ 1. Compute the evaluation of $ft(\zeta)$.
         let ft_eval0 = {
-            let zkp = index.zkpm().evaluate(&zeta);
+            let permutation_vanishing_polynomial =
+                index.permutation_vanishing_polynomial_m().evaluate(&zeta);
             let zeta1m1 = zeta1 - G::ScalarField::one();
 
             let mut alpha_powers =
@@ -387,7 +390,10 @@ where
                 .next()
                 .expect("missing power of alpha for permutation");
 
-            let init = (evals.w[PERMUTS - 1].zeta + gamma) * evals.z.zeta_omega * alpha0 * zkp;
+            let init = (evals.w[PERMUTS - 1].zeta + gamma)
+                * evals.z.zeta_omega
+                * alpha0
+                * permutation_vanishing_polynomial;
             let mut ft_eval0 = evals
                 .w
                 .iter()
@@ -405,7 +411,10 @@ where
                 .iter()
                 .zip(index.shift.iter())
                 .map(|(w, s)| gamma + (beta * zeta * s) + w.zeta)
-                .fold(alpha0 * zkp * evals.z.zeta, |x, y| x * y);
+                .fold(
+                    alpha0 * permutation_vanishing_polynomial * evals.z.zeta,
+                    |x, y| x * y,
+                );
 
             let numerator = ((zeta1m1 * alpha1 * (zeta - index.w()))
                 + (zeta1m1 * alpha2 * (zeta - G::ScalarField::one())))
@@ -423,6 +432,7 @@ where
                 joint_combiner: joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: index.endo,
                 mds: &G::sponge_params().mds,
+                zk_rows,
             };
 
             ft_eval0 -= PolishToken::evaluate(
@@ -747,6 +757,8 @@ where
     //~ Essentially, this steps verifies that $f(\zeta) = t(\zeta) * Z_H(\zeta)$.
     //~
 
+    let zk_rows = verifier_index.zk_rows;
+
     if proof.prev_challenges.len() != verifier_index.prev_challenges {
         return Err(VerifyError::IncorrectPrevChallengesLength(
             verifier_index.prev_challenges,
@@ -836,7 +848,9 @@ where
     //~    in which case the evaluation should be used in place of the commitment.
     let f_comm = {
         // the permutation is written manually (not using the expr framework)
-        let zkp = verifier_index.zkpm().evaluate(&oracles.zeta);
+        let permutation_vanishing_polynomial = verifier_index
+            .permutation_vanishing_polynomial_m()
+            .evaluate(&oracles.zeta);
 
         let alphas = all_alphas.get_alphas(ArgumentType::Permutation, permutation::CONSTRAINTS);
 
@@ -846,7 +860,7 @@ where
             oracles.beta,
             oracles.gamma,
             alphas,
-            zkp,
+            permutation_vanishing_polynomial,
         )];
 
         // other gates are implemented using the expression framework
@@ -859,6 +873,7 @@ where
                 joint_combiner: oracles.joint_combiner.as_ref().map(|j| j.1),
                 endo_coefficient: verifier_index.endo,
                 mds: &G::sponge_params().mds,
+                zk_rows,
             };
 
             for (col, tokens) in &verifier_index.linearization.index_terms {
@@ -1187,11 +1202,6 @@ where
     for &Context { verifier_index, .. } in proofs {
         if verifier_index.srs().max_poly_size() != srs.max_poly_size() {
             return Err(VerifyError::DifferentSRS);
-        }
-
-        // also make sure that the SRS is not smaller than the domain size
-        if verifier_index.srs().max_poly_size() < verifier_index.domain.size() {
-            return Err(VerifyError::SRSTooSmall);
         }
     }
 

@@ -29,7 +29,7 @@ use num_bigint::BigUint;
 use poly_commitment::{
     commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof,
 };
-use std::{fmt::Write, mem, time::Instant};
+use std::{fmt::Write, time::Instant};
 
 // aliases
 
@@ -49,6 +49,7 @@ where
     recursion: Vec<RecursionChallenge<G>>,
     num_prev_challenges: usize,
     disable_gates_checks: bool,
+    override_srs_size: Option<usize>,
 
     prover_index: Option<ProverIndex<G, OpeningProof>>,
     verifier_index: Option<VerifierIndex<G, OpeningProof>>,
@@ -114,16 +115,22 @@ where
         self
     }
 
+    #[must_use]
+    pub(crate) fn override_srs_size(mut self, size: usize) -> Self {
+        self.override_srs_size = Some(size);
+        self
+    }
+
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>) -> OpeningProof::SRS>(
+    pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
     ) -> TestRunner<G, OpeningProof> {
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
-        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups_and_custom_srs(
             self.gates.take().unwrap(),
@@ -132,6 +139,7 @@ where
             lookup_tables,
             runtime_tables_setup,
             self.disable_gates_checks,
+            self.override_srs_size,
             get_srs,
         );
         println!(
@@ -156,7 +164,7 @@ where
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
-        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
 
         let index = new_index_for_test_with_lookups::<G>(
             self.gates.take().unwrap(),
@@ -165,6 +173,7 @@ where
             lookup_tables,
             runtime_tables_setup,
             self.disable_gates_checks,
+            self.override_srs_size,
         );
         println!(
             "- time to create prover index: {:?}s",

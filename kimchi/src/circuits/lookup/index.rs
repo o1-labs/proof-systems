@@ -7,7 +7,6 @@ use crate::circuits::{
         lookups::{LookupInfo, LookupPattern},
         tables::LookupTable,
     },
-    polynomials::permutation::ZK_ROWS,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField};
 use ark_poly::{
@@ -204,6 +203,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
         lookup_tables: Vec<LookupTable<F>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         domain: &EvaluationDomains<F>,
+        zk_rows: usize,
     ) -> Result<Option<Self>, LookupError> {
         //~ 1. If no lookup is used in the circuit, do not create a lookup index
         match LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {
@@ -212,10 +212,10 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let d1_size = domain.d1.size();
 
                 // The maximum number of entries that can be provided across all tables.
-                // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
+                // Since we do not assert the lookup constraint on the final `zk_rows` rows, and
                 // because the row before is used to assert that the lookup argument's final
                 // product is 1, we cannot use those rows to store any values.
-                let max_num_entries = d1_size - (ZK_ROWS as usize) - 1;
+                let max_num_entries = d1_size - zk_rows - 1;
 
                 //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
                 let (lookup_selectors, gate_lookup_tables) =
@@ -224,7 +224,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 //~ 3. Concatenate runtime lookup tables with the ones used by gates
                 let mut lookup_tables: Vec<_> = gate_lookup_tables
                     .into_iter()
-                    .chain(lookup_tables.into_iter())
+                    .chain(lookup_tables)
                     .collect();
 
                 let mut has_table_id_0 = false;
@@ -257,8 +257,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                                     .take(d1_size - runtime_table_offset - runtime_len),
                             );
 
-                            // although the last ZK_ROWS are fine
-                            for e in evals.iter_mut().rev().take(ZK_ROWS as usize) {
+                            // although the last zk_rows are fine
+                            for e in evals.iter_mut().rev().take(zk_rows) {
                                 *e = F::zero();
                             }
 

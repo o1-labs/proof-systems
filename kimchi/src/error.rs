@@ -10,6 +10,11 @@ pub enum ProverError {
     #[error("the circuit is too large")]
     NoRoomForZkInWitness,
 
+    #[error(
+        "there are not enough random rows to achieve zero-knowledge (expected: {0}, got: {1})"
+    )]
+    NotZeroKnowledge(usize, usize),
+
     #[error("the witness columns are not all the same size")]
     WitnessCsInconsistent,
 
@@ -21,9 +26,6 @@ pub enum ProverError {
 
     #[error("the lookup failed to find a match in the table: row={0}")]
     ValueNotInTable(usize),
-
-    #[error("SRS size is smaller than the domain size required by the circuit")]
-    SRSTooSmall,
 
     #[error("the runtime tables provided did not match the index's configuration")]
     RuntimeTablesInconsistent,
@@ -82,12 +84,22 @@ pub enum VerifyError {
 
 /// Errors that can arise when preparing the setup
 #[derive(Error, Debug, Clone)]
+pub enum DomainCreationError {
+    #[error("could not compute the size of domain for {0}")]
+    DomainSizeFailed(usize),
+
+    #[error("construction of domain {0} for size {1} failed")]
+    DomainConstructionFailed(String, usize),
+}
+
+/// Errors that can arise when preparing the setup
+#[derive(Error, Debug, Clone)]
 pub enum SetupError {
     #[error("the domain could not be constructed: {0}")]
     ConstraintSystem(String),
 
     #[error("the domain could not be constructed: {0}")]
-    DomainCreation(&'static str),
+    DomainCreation(DomainCreationError),
 }
 
 /// Errors that can arise when creating a verifier index
