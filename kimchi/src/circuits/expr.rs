@@ -2609,7 +2609,7 @@ where
                 if *i > 0 {
                     format!("unnormalized_lagrange_basis(zk_rows + {})", *i)
                 } else if *i == 0 {
-                    format!("unnormalized_lagrange_basis(zk_rows)")
+                    "unnormalized_lagrange_basis(zk_rows)".to_string()
                 } else {
                     format!("unnormalized_lagrange_basis(zk_rows - {})", (-*i))
                 }
