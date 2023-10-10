@@ -11,7 +11,7 @@ use crate::{
         wires::*,
     },
     curve::KimchiCurve,
-    error::SetupError,
+    error::{DomainCreationError, SetupError},
     prover_index::ProverIndex,
 };
 use ark_ff::{PrimeField, SquareRootField, Zero};
@@ -752,7 +752,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 while {
                     let domain_size = D::<F>::compute_size_of_domain(domain_size_lower_bound)
                         .ok_or(SetupError::DomainCreation(
-                            "could not compute size of domain",
+                            DomainCreationError::DomainSizeFailed(domain_size_lower_bound),
                         ))?;
                     let num_chunks = domain_size / max_poly_size;
                     zk_rows = (zk_rows_strict_lower_bound(num_chunks) + 1) as u64;
@@ -766,7 +766,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         //~ 1. Create a domain for the circuit. That is,
         //~    compute the smallest subgroup of the field that
         //~    has order greater or equal to `n + zk_rows` elements.
-        let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)?;
+        let domain = EvaluationDomains::<F>::create(domain_size_lower_bound)
+            .map_err(SetupError::DomainCreation)?;
 
         assert!(domain.d1.size > zk_rows);
 
