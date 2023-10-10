@@ -10,7 +10,7 @@ use ark_ff::Field;
 ///
 /// Will panic if `data` is invalid.
 pub fn sparse_table<F: Field>() -> LookupTable<F> {
-    let mut data = vec![vec![]; 2];
+    let mut data = vec![vec![]; 1];
 
     // Sparse expansion table
     for i in 0u64..=0xFFFF {
