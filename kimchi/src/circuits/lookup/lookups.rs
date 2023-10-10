@@ -730,6 +730,8 @@ impl LookupPattern {
             }
             (ForeignFieldMul, Curr | Next) => Some(LookupPattern::ForeignFieldMul),
             (Xor16, Curr) => Some(LookupPattern::Xor),
+            (KeccakRound, Curr) => Some(LookupPattern::KeccakRound),
+            (KeccakSponge, Curr) => Some(LookupPattern::KeccakSponge),
             _ => None,
         }
     }
