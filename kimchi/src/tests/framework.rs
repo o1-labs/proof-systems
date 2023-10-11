@@ -148,10 +148,6 @@ where
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
 
-        println!(
-            "prover_context gates = {}",
-            self.prover_context.clone().unwrap().gates.gates.len()
-        );
         let index = new_index_for_test_with_lookups::<G>(
             &self.prover_context.clone().unwrap(),
             self.gates.take().unwrap(),
@@ -164,11 +160,6 @@ where
         println!(
             "- time to create prover index: {:?}s",
             start.elapsed().as_secs()
-        );
-
-        println!(
-            "index gates = {}",
-            index.clone().cs.configured_gates.gates.len()
         );
 
         self.verifier_index = Some(index.verifier_index());

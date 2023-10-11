@@ -1,6 +1,6 @@
 //! This module implements Plonk circuit constraint primitive.
 use super::{
-    gate::GateHelpers,
+    gate::{is_always_configured, GateHelpers},
     gate_registry::GateRegistry,
     lookup::runtime_tables::RuntimeTableCfg,
     polynomials::{
@@ -602,6 +602,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             .configured_gates
             .clone()
             .iter()
+            .filter(|(_name, gate)| !is_always_configured::<F>(gate.typ()))
             .map(|(name, gate)| {
                 (
                     name.clone(),
@@ -701,11 +702,8 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         // Check that the circuit uses only registered gates
         for gate in gates.clone() {
-            println!("gate_count = {}", self.ctx.gates.gates.len());
-            println!("looking up '{}'", gate.typ.clone());
             match self.ctx.gates.get(gate.typ.clone()) {
                 None => {
-                    println!("Got none");
                     return Err(SetupError::ConstraintSystem(format!(
                         "Invalid gate '{}'",
                         gate.typ

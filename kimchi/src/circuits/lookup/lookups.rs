@@ -8,8 +8,10 @@ use crate::circuits::{
     },
     polynomials::{
         foreign_field_mul::circuitgates::ForeignFieldMul,
+        lookup::Lookup,
         range_check::circuitgates::{RangeCheck0, RangeCheck1},
         rot::Rot64,
+        xor::Xor16,
     },
 };
 
@@ -516,22 +518,21 @@ impl LookupPattern {
     /// Returns the lookup pattern used by a [`GateType`] on a given row (current or next).
     pub fn from_gate<F: PrimeField>(gate_type: GateType, curr_or_next: CurrOrNext) -> Option<Self> {
         use CurrOrNext::{Curr, Next};
-        if gate_type == RangeCheck0::<F>::typ() && curr_or_next == Curr {
-            Some(LookupPattern::RangeCheck)
-        } else if gate_type == RangeCheck1::<F>::typ() && curr_or_next == Curr {
-            Some(LookupPattern::RangeCheck)
-        } else if gate_type == Rot64::<F>::typ() && curr_or_next == Curr {
+        if (gate_type == RangeCheck0::<F>::typ() && curr_or_next == Curr)
+            || (gate_type == RangeCheck1::<F>::typ()
+                && (curr_or_next == Curr || curr_or_next == Next))
+            || (gate_type == Rot64::<F>::typ() && curr_or_next == Curr)
+        {
             Some(LookupPattern::RangeCheck)
         } else if gate_type == ForeignFieldMul::<F>::typ()
             && (curr_or_next == Curr || curr_or_next == Next)
         {
             Some(LookupPattern::ForeignFieldMul)
-        }
-        // JES: TODO Implement
-        // else if gate_type == Lookup::<F>::typ() && curr_or_next == Curr {
-        //     Some(LookupPattern::Lookup)
-        // }
-        else {
+        } else if gate_type == Xor16::<F>::typ() && curr_or_next == Curr {
+            Some(LookupPattern::Xor)
+        } else if gate_type == Lookup::<F>::typ() && curr_or_next == Curr {
+            Some(LookupPattern::Lookup)
+        } else {
             None
         }
     }

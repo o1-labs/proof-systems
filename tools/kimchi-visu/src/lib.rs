@@ -2,7 +2,6 @@
 
 use kimchi::{
     circuits::{
-        expr::{self, constraints::ExprOps},
         gate::GateHelpers,
         polynomials::{
             complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
@@ -16,7 +15,6 @@ use poly_commitment::commitment::CommitmentCurve;
 use serde::Serialize;
 use std::{
     collections::HashMap,
-    fmt::Display,
     fs::{self, File},
     io::Write,
     path::Path,

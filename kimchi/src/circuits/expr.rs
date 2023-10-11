@@ -184,9 +184,7 @@ impl Column {
     fn domain<F: PrimeField>(&self) -> Domain {
         match self {
             Column::Index(gate_type) => {
-                if *gate_type == Generic::<F>::typ() {
-                    Domain::D4
-                } else if *gate_type == CompleteAdd::<F>::typ() {
+                if *gate_type == Generic::<F>::typ() || *gate_type == CompleteAdd::<F>::typ() {
                     Domain::D4
                 } else {
                     Domain::D8

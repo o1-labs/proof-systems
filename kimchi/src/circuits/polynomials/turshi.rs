@@ -429,23 +429,23 @@ pub mod testing {
 
         if gate.typ == Claim::<F>::typ() {
             let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-            return ensure_claim(&this, &next); // CircuitGate::ensure_transition(&this),
+            ensure_claim(&this, &next) // CircuitGate::ensure_transition(&this),
         } else if gate.typ == Instruction::<F>::typ() {
             let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-            return ensure_instruction(&this, &next);
+            ensure_instruction(&this, &next)
         } else if gate.typ == Flags::<F>::typ() {
             let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-            return ensure_flags(&this, &next);
+            ensure_flags(&this, &next)
         } else if gate.typ == Transition::<F>::typ() {
             let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
-            return ensure_transition(&this, &next);
+            ensure_transition(&this, &next)
         } else if gate.typ == Zero::<F>::typ() {
-            return Ok(());
+            Ok(())
         } else {
-            return Err(
+            Err(
                 "Incorrect GateType: expected CairoInstruction, CairoFlags, CairoTransition, or CairoClaim"
                     .to_string()
-            );
+            )
         }
     }
 

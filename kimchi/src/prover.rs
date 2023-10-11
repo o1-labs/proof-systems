@@ -814,8 +814,64 @@ where
             //     }
             // };
 
+            {
+                let range_check0_enabled =
+                    index.column_evaluations.range_check0_selector8.is_some();
+                let range_check1_enabled =
+                    index.column_evaluations.range_check1_selector8.is_some();
+                let foreign_field_addition_enabled = index
+                    .column_evaluations
+                    .foreign_field_add_selector8
+                    .is_some();
+                let foreign_field_multiplication_enabled = index
+                    .column_evaluations
+                    .foreign_field_mul_selector8
+                    .is_some();
+                let xor_enabled = index.column_evaluations.xor_selector8.is_some();
+                let rot_enabled = index.column_evaluations.rot_selector8.is_some();
+
+                for gate in [
+                    (
+                        &CompleteAdd::create(),
+                        // (&CompleteAdd::create() as &dyn Gate::<G::ScalarField, E<G::ScalarField>>),
+                        true,
+                    ),
+                    (&VarbaseMul::create(), true),
+                    (&EndosclMul::create(), true),
+                    (&EndomulScalar::create(), true),
+                    (&Poseidon::create(), true),
+                    // Range check gates
+                    (&RangeCheck0::create(), range_check0_enabled),
+                    (&RangeCheck1::create(), range_check1_enabled),
+                    // Foreign field addition gate
+                    (&ForeignFieldAdd::create(), foreign_field_addition_enabled),
+                    // Foreign field multiplication gate
+                    (
+                        &ForeignFieldMul::create(),
+                        foreign_field_multiplication_enabled,
+                    ),
+                    // Xor gate
+                    (&Xor16::create(), xor_enabled),
+                    // Rot gate
+                    (&Rot64::create(), rot_enabled),
+                ]
+                .into_iter()
+                .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
+                {
+                    let constraint = gate.combined_constraints(&all_alphas, &mut cache);
+                    let eval = constraint.evaluations(&env);
+                    if eval.domain().size == t4.domain().size {
+                        t4 += &eval;
+                    } else if eval.domain().size == t8.domain().size {
+                        t8 += &eval;
+                    } else {
+                        panic!("Bad evaluation")
+                    }
+                    check_constraint!(index, gate.typ(), eval);
+                }
+            };
+
             // Check constraints for configured gates
-            println!("create_recursive() computing combined constraints");
             for (_name, gate) in index.cs.configured_gates.clone().iter() {
                 if !circuits::gate::is_always_configured::<G::ScalarField>(gate.typ())
                     && gate.constraint_count() > 0

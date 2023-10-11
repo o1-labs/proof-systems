@@ -169,16 +169,11 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     // Get the expressions of dynamically configured gates
-    println!(
-        "linearization::constraint_expr() computing combined constraints: gates = {}",
-        cs.configured_gates.gates.len()
-    );
     for (_name, gate) in cs.configured_gates.clone().iter() {
         if !gate::is_always_configured::<F>(gate.typ()) {
             expr += gate.combined_constraints(&powers_of_alpha, &mut cache);
         }
     }
-    println!("Done");
 
     // permutation
     powers_of_alpha.register(ArgumentType::Permutation, permutation::CONSTRAINTS);

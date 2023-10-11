@@ -26,6 +26,7 @@ use super::{
         foreign_field_add::circuitgates::ForeignFieldAdd,
         foreign_field_mul::circuitgates::ForeignFieldMul,
         generic::Generic,
+        lookup::Lookup,
         poseidon::Poseidon,
         range_check::circuitgates::{RangeCheck0, RangeCheck1},
         rot::Rot64,
@@ -70,6 +71,7 @@ pub type GateType = String;
 pub fn is_always_configured<F: PrimeField>(gate: GateType) -> bool {
     [
         Zero::<F>::typ(),
+        Lookup::<F>::typ(),
         Generic::<F>::typ(),
         Poseidon::<F>::typ(),
         CompleteAdd::<F>::typ(),
@@ -127,7 +129,8 @@ macro_rules! define_gate {
             }
 
             pub fn create<S: ExprOps<$typ>>() -> Box<dyn Gate<$typ, S>> {
-                Box::new(Self::default())
+                // Box::new(Self::default())
+                Box::<Self>::default()
             }
         }
     };
@@ -168,8 +171,6 @@ where
 
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
         let constraints = self.constraints(cache);
-        println!("typ               = {}", self.typ());
-        println!("constraints.len() = {}", constraints.len());
         let alphas = alphas.get_exponents(ArgumentType::Gate(self.typ()), constraints.len() as u32);
         let combined_constraints = E::combine_constraints(alphas, constraints);
 
@@ -213,22 +214,22 @@ where
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 pub enum CircuitGateError {
     /// Invalid constraint
-    #[error("Invalid {0:?} constraint")]
+    #[error("Invalid {0} constraint")]
     InvalidConstraint(GateType),
     /// Invalid constraint with number
-    #[error("Invalid {0:?} constraint: {1}")]
+    #[error("Invalid {0} constraint: {1}")]
     Constraint(GateType, usize),
     /// Invalid wire column
-    #[error("Invalid {0:?} wire column: {1}")]
+    #[error("Invalid {0} wire column: {1}")]
     WireColumn(GateType, usize),
     /// Disconnected wires
-    #[error("Invalid {typ:?} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
+    #[error("Invalid {typ} copy constraint: {},{} -> {},{}", .src.row, .src.col, .dst.row, .dst.col)]
     CopyConstraint { typ: GateType, src: Wire, dst: Wire },
     /// Invalid lookup
-    #[error("Invalid {0:?} lookup constraint")]
+    #[error("Invalid {0} lookup constraint")]
     InvalidLookupConstraint(GateType),
     /// Failed to get witness for row
-    #[error("Failed to get {0:?} witness for row {1}")]
+    #[error("Failed to get {0} witness for row {1}")]
     FailedToGetWitnessForRow(GateType, usize),
 }
 
@@ -262,7 +263,7 @@ where
 impl<F: PrimeField> ToBytes for CircuitGate<F> {
     #[inline]
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
-        let typ = self.typ.as_bytes(); // JES: TODO: OK like this?
+        let typ = self.typ.as_bytes(); // JES: TODO: Rust <-> OCaml bindings related changes
         typ.write(&mut w)?;
         for i in 0..COLUMNS {
             self.wires[i].write(&mut w)?;
@@ -297,7 +298,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     ) -> Result<(), String> {
         // Note: this giant if statement will be removed once these gates
         //       are migrated to generic witness verification
-        return if self.typ == Zero::<F>::typ() {
+        if self.typ == Zero::<F>::typ() {
             Ok(())
         } else if self.typ == Generic::<F>::typ() {
             self.verify_generic(row, witness, public)
@@ -311,19 +312,17 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             self.verify_endomul::<G>(row, witness, &index.cs)
         } else if self.typ == EndomulScalar::<F>::typ() {
             self.verify_endomul_scalar::<G>(row, witness, &index.cs)
-        } else if self.typ == Claim::<F>::typ() {
-            self.verify_cairo_gate::<G>(row, witness, &index.cs)
-        } else if self.typ == Instruction::<F>::typ() {
-            self.verify_cairo_gate::<G>(row, witness, &index.cs)
-        } else if self.typ == Flags::<F>::typ() {
-            self.verify_cairo_gate::<G>(row, witness, &index.cs)
-        } else if self.typ == Transition::<F>::typ() {
+        } else if self.typ == Claim::<F>::typ()
+            || self.typ == Instruction::<F>::typ()
+            || self.typ == Flags::<F>::typ()
+            || self.typ == Transition::<F>::typ()
+        {
             self.verify_cairo_gate::<G>(row, witness, &index.cs)
         } else {
             // All other gates support generic witness verification
             self.verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string())
-        };
+        }
     }
 
     /// Verify the witness against the constraints
@@ -375,8 +374,17 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         // Perform witness verification on each constraint for this gate
         let results: Vec<F> = match cs.configured_gates.get(self.typ.clone()) {
-            // Some(gate) => gate.clone_for_verification().constraint_checks(&env, &mut cache), // JES: TODO
-            Some(_) => vec![],
+            Some(gate) => {
+                if gate.typ() == Zero::<F>::typ()
+                    || gate.typ() == Generic::<F>::typ()
+                    || gate.typ() == Lookup::<F>::typ()
+                {
+                    // TODO: implement the verification for these gates
+                    vec![]
+                } else {
+                    gate.constraint_checks(&env, &mut cache)
+                }
+            }
             None => vec![],
         };
 

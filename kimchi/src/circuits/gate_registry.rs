@@ -4,22 +4,28 @@ use ark_ff::PrimeField;
 
 use crate::circuits::{expr::E, gate::Gate, polynomials};
 
-pub type GateList<F> = Vec<Box<dyn Gate<F, E<F>>>>;
+pub type GateDef<F> = (Box<dyn Gate<F, E<F>>>, Box<dyn Gate<F, F>>);
+pub type GateList<F> = Vec<GateDef<F>>;
 
 /// Helper to specify a bunch of gates
 #[macro_export]
 macro_rules! gates {
     ($($first:ident $(:: $second:ident)*),*) => { {
-        let mut gates = GateList::new();
-        $( gates.push($first:: $( $second:: )* create()); )*
-        gates
+        // let mut gates = vec![];
+        // $( gates.push(($first:: $( $second:: )* create(), $first:: $( $second:: )* create())); )*
+        // gates
+        // JES: TODO: remove comment
+        vec![
+        $( ($first:: $( $second:: )* create(), $first:: $( $second:: )* create()), )*
+        ]
     }};
 }
 
 // Registry of available gates
 #[derive(Clone, Debug)]
 pub struct GateRegistry<F: PrimeField> {
-    pub gates: BTreeMap<String, Box<dyn Gate<F, E<F>>>>,
+    expressions: BTreeMap<String, Box<dyn Gate<F, E<F>>>>,
+    verifiers: BTreeMap<String, Box<dyn Gate<F, F>>>,
 }
 
 impl<F: PrimeField> Default for GateRegistry<F> {
@@ -29,6 +35,7 @@ impl<F: PrimeField> Default for GateRegistry<F> {
         // Register default set of gates
         registry.register(gates![
             polynomials::zero::Zero,
+            polynomials::lookup::Lookup,
             polynomials::generic::Generic,
             polynomials::poseidon::Poseidon,
             polynomials::complete_add::CompleteAdd,
@@ -54,8 +61,14 @@ impl<F: PrimeField> GateRegistry<F> {
     /// Create a new empty GateRegistry
     pub fn new() -> Self {
         Self {
-            gates: BTreeMap::new(),
+            expressions: BTreeMap::new(),
+            verifiers: BTreeMap::new(),
         }
+    }
+
+    /// Get the number of registered gates
+    pub fn count(&self) -> usize {
+        self.expressions.len()
     }
 
     /// Register a bunch of gates
@@ -66,22 +79,23 @@ impl<F: PrimeField> GateRegistry<F> {
     }
 
     /// Register a single gate
-    pub fn register_one(&mut self, gate: Box<dyn Gate<F, E<F>>>) {
-        match self.gates.get_key_value(&gate.typ()) {
+    pub fn register_one(&mut self, gate: GateDef<F>) {
+        match self.expressions.get_key_value(&gate.0.typ()) {
             Some(_) => (),
             None => {
-                self.gates.insert(gate.typ(), gate);
+                self.expressions.insert(gate.0.typ(), gate.0);
+                self.verifiers.insert(gate.1.typ(), gate.1);
             }
         }
     }
 
     /// Obtain a gate from the registry
-    pub fn get(&self, name: String) -> Option<&Box<dyn Gate<F, E<F>>>> {
-        self.gates.get(&name)
+    pub fn get(&self, name: String) -> Option<&Box<dyn Gate<F, F>>> {
+        self.verifiers.get(&name)
     }
 
     /// Iterate over the registered gates
     pub fn iter(&self) -> std::collections::btree_map::Iter<'_, String, Box<dyn Gate<F, E<F>>>> {
-        self.gates.iter()
+        self.expressions.iter()
     }
 }

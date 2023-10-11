@@ -49,7 +49,7 @@ where
                 };
                 write!(res, "row{row}.{is_pub}").unwrap();
                 let coeffs = Self::parse_coeffs(&vars, coeffs);
-                write!(res, "{typ:?}").unwrap();
+                write!(res, "{typ}").unwrap();
                 res.push('<');
 
                 if *typ == Generic::<F>::typ() && coeffs.len() > GENERIC_COEFFS {

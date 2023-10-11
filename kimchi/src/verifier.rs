@@ -97,13 +97,11 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                     Some(&self.verifier_index.endomul_scalar_comm)
                 } else if typ == Poseidon::<G::ScalarField>::typ() {
                     Some(&self.verifier_index.psm_comm)
-                } else if typ == Claim::<G::ScalarField>::typ() {
-                    None
-                } else if typ == Instruction::<G::ScalarField>::typ() {
-                    None
-                } else if typ == Flags::<G::ScalarField>::typ() {
-                    None
-                } else if typ == Transition::<G::ScalarField>::typ() {
+                } else if typ == Claim::<G::ScalarField>::typ()
+                    || typ == Instruction::<G::ScalarField>::typ()
+                    || typ == Flags::<G::ScalarField>::typ()
+                    || typ == Transition::<G::ScalarField>::typ()
+                {
                     None
                 } else if typ == RangeCheck0::<G::ScalarField>::typ() {
                     Some(self.verifier_index.range_check0_comm.as_ref()?)
@@ -118,7 +116,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
                 } else if typ == Rot64::<G::ScalarField>::typ() {
                     Some(self.verifier_index.rot_comm.as_ref()?)
                 } else {
-                    Some(&self.verifier_index.gate_comms[&typ.to_string()])
+                    Some(&self.verifier_index.gate_comms[&typ])
                 }
             }
         }
