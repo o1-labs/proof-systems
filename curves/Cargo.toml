@@ -10,10 +10,11 @@ edition = "2021"
 license = "Apache-2.0"
 
 [dependencies]
-ark-ec = { version = "0.3.0", features = ["parallel"] }
-ark-ff = { version = "0.3.0", features = ["parallel", "asm"] }
+ark-ec = { version = "0.4.2", features = ["parallel"] }
+ark-ff = { version = "0.4.2", features = ["parallel", "asm"] }
 
 [dev-dependencies]
-rand = { version = "0.8.0", default-features = false }
-ark-algebra-test-templates = "0.3.0"
-ark-std = "0.3.0"
+rand = { version = "0.8.5", default-features = false }
+ark-test-curves = "0.4.2"
+ark-algebra-test-templates = "0.4.2"
+ark-std = "0.4.0"
