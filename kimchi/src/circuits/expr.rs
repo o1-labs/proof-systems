@@ -21,11 +21,11 @@ use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::{cmp::Ordering, fmt, iter::FromIterator};
 use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
-use std::{fmt, iter::FromIterator};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
