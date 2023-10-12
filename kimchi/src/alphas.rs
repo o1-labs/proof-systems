@@ -326,7 +326,6 @@ mod tests {
         let (_linearization, powers_of_alpha) = expr_linearization::<Fp>(
             Some(&index.cs.feature_flags),
             true,
-            index.cs.zk_rows as usize,
         );
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
