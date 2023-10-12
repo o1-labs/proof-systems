@@ -2605,15 +2605,11 @@ where
             UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: true,
                 offset: i,
-            }) => {
-                if *i > 0 {
-                    format!("unnormalized_lagrange_basis(zk_rows + {})", *i)
-                } else if *i == 0 {
-                    "unnormalized_lagrange_basis(zk_rows)".to_string()
-                } else {
-                    format!("unnormalized_lagrange_basis(zk_rows - {})", (-*i))
-                }
-            }
+            }) => match i.cmp(&0) {
+                Ordering::Greater => format!("unnormalized_lagrange_basis(zk_rows + {})", *i),
+                Ordering::Equal => "unnormalized_lagrange_basis(zk_rows)".to_string(),
+                Ordering::Less => format!("unnormalized_lagrange_basis(zk_rows - {})", (-*i)),
+            },
             UnnormalizedLagrangeBasis(RowOffset {
                 zk_rows: false,
                 offset: i,
