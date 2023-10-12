@@ -23,15 +23,11 @@ use thiserror::Error;
 /// Represents an error found when computing the lookup constraint system
 #[derive(Debug, Error)]
 pub enum LookupError {
-    #[error("One of the lookup tables has columns of different lengths")]
-    InconsistentTableLength,
     #[error("The combined lookup table is larger than allowed by the domain size. Observed: {length}, expected: {maximum_allowed}")]
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
     },
-    #[error("The table with id 0 must have an entry of all zeros")]
-    TableIDZeroMustHaveZeroEntry,
 }
 
 /// Lookup selectors
@@ -227,8 +223,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     .chain(lookup_tables)
                     .collect();
 
-                let mut has_table_id_0 = false;
-
                 // if we are using runtime tables
                 let (runtime_table_offset, runtime_selector) =
                     if let Some(runtime_tables) = &runtime_tables {
@@ -272,11 +266,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             let (id, first_column) =
                                 (runtime_table.id, runtime_table.first_column.clone());
 
-                            // record if table ID 0 is used in one of the runtime tables
-                            // note: the check later will still force you to have a fixed table with ID 0
-                            if id == 0 {
-                                has_table_id_0 = true;
-                            }
+                            // @volhovm: Do we need to enforce that there is at least one table
+                            // with id 0?
 
                             // important: we still need a placeholder column to make sure that
                             // if all other tables have a single column
@@ -345,17 +336,11 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let mut table_ids: Vec<F> = Vec::with_capacity(d1_size);
 
                 let mut non_zero_table_id = false;
-                let mut has_table_id_0_with_zero_entry = false;
 
                 for table in &lookup_tables {
                     let table_len = table.len();
 
-                    if table.id == 0 {
-                        has_table_id_0 = true;
-                        if table.has_zero_entry() {
-                            has_table_id_0_with_zero_entry = true;
-                        }
-                    } else {
+                    if table.id != 0 {
                         non_zero_table_id = true;
                     }
 
@@ -366,10 +351,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     for (i, col) in table.data.iter().enumerate() {
-                        // See GH issue: https://github.com/MinaProtocol/mina/issues/14097
-                        if col.len() != table_len {
-                            return Err(LookupError::InconsistentTableLength);
-                        }
                         lookup_table[i].extend(col);
                     }
 
@@ -377,12 +358,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     for lookup_table in lookup_table.iter_mut().skip(table.width()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
-                }
-
-                // If a table has ID 0, then it must have a zero entry.
-                // This is for the dummy lookups to work.
-                if has_table_id_0 && !has_table_id_0_with_zero_entry {
-                    return Err(LookupError::TableIDZeroMustHaveZeroEntry);
                 }
 
                 // Note: we use `>=` here to leave space for the dummy value.
@@ -440,46 +415,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     configuration,
                 }))
             }
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-    use crate::circuits::{
-        gate::{CircuitGate, GateType},
-        wires::Wire,
-    };
-    use mina_curves::pasta::Fp;
-
-    #[test]
-    fn test_zero_table_zero_row() {
-        let lookup_r: u64 = 32;
-        let num_lookups: usize = 16;
-        if let Ok(domain) = EvaluationDomains::<Fp>::create(2 * lookup_r as usize) {
-            // Table column that /does not/ contain zeros
-            let lookup_table_values_1: Vec<_> = (1..lookup_r+1).map(From::from).collect();
-            // Another table column that /does/ contain zeros.
-            // Jointly two tables /do not/ have a full zero now.
-            let lookup_table_values_2: Vec<_> = (0..lookup_r).map(From::from).collect();
-
-            let lookup_tables: Vec<LookupTable<Fp>> = vec![LookupTable {
-                id: 0,
-                data: vec![lookup_table_values_1, lookup_table_values_2],
-            }];
-
-            let gates: Vec<CircuitGate<Fp>> = (0..num_lookups)
-                .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
-                .collect();
-
-            let res =
-                LookupConstraintSystem::create(gates.as_slice(), lookup_tables, None, &domain);
-            assert!(
-                matches!(res, Err(LookupError::TableIDZeroMustHaveZeroEntry)),
-                "LookupConstraintSystem::create(...) must fail when zero table has no zero rows"
-            );
         }
     }
 }

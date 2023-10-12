@@ -1,6 +1,7 @@
 use ark_ff::{FftField, One, Zero};
 use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 pub mod range_check;
 pub mod xor;
@@ -27,12 +28,41 @@ pub struct LookupTable<F> {
     pub data: Vec<Vec<F>>,
 }
 
+/// Represents inconsistency errors during table construction and composition.
+#[derive(Debug, Error)]
+pub enum LookupTableError {
+    #[error("One of the lookup tables has columns of different lengths")]
+    InconsistentTableLength,
+    #[error("The table with id 0 must have an entry of all zeros")]
+    TableIDZeroMustHaveZeroEntry,
+}
+
 impl<F> LookupTable<F>
 where
     F: FftField,
 {
+    pub fn create(id: i32, data: Vec<Vec<F>>) -> Result<Self, LookupTableError> {
+        let res = LookupTable { id, data };
+        let table_len = res.len();
+
+        // All columns in the table must have same length
+        for col in res.data.iter() {
+            if col.len() != table_len {
+                return Err(LookupTableError::InconsistentTableLength);
+            }
+        }
+
+        // If a table has ID 0, then it must have a zero entry.
+        // This is for the dummy lookups to work.
+        if id == 0 && !res.has_zero_entry() {
+            return Err(LookupTableError::TableIDZeroMustHaveZeroEntry);
+        }
+
+        Ok(res)
+    }
+
     /// Return true if the table has an entry (row) containing all zeros.
-    pub fn has_zero_entry(&self) -> bool {
+    fn has_zero_entry(&self) -> bool {
         // reminder: a table is written as a list of columns,
         // not as a list of row entries.
         for row in 0..self.len() {
@@ -58,8 +88,11 @@ where
         self.data.len()
     }
 
-    /// Returns the length of the table.
+    /// Returns the length (height) of the table.
     pub fn len(&self) -> usize {
+        if self.is_empty() {
+            panic!("LookupTable#len() is called on an empty table")
+        }
         self.data[0].len()
     }
 
@@ -210,5 +243,46 @@ pub mod caml {
                     .collect(),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use mina_curves::pasta::Fp;
+
+    #[test]
+    fn test_zero_table_zero_row() {
+        let lookup_r: u64 = 32;
+        // Table column that /does not/ contain zeros
+        let lookup_table_values_1: Vec<_> = (1..lookup_r + 1).map(From::from).collect();
+        // Another table column that /does/ contain zeros.
+        let lookup_table_values_2: Vec<_> = (0..lookup_r).map(From::from).collect();
+
+        // Jointly two columns /do not/ have a full zero now.
+        let table: Result<LookupTable<Fp>, _> =
+            LookupTable::create(0, vec![lookup_table_values_1, lookup_table_values_2]);
+
+        assert!(
+            matches!(table, Err(LookupTableError::TableIDZeroMustHaveZeroEntry)),
+            "LookupTable::create(...) must fail when zero table has no zero rows"
+        );
+    }
+
+    #[test]
+    fn test_inconsistent_lengths() {
+        let lookup_r: u64 = 32;
+        // Two columns of different lengths
+        let lookup_table_values_1: Vec<_> = (0..2 * lookup_r).map(From::from).collect();
+        let lookup_table_values_2: Vec<_> = (0..lookup_r).map(From::from).collect();
+
+        let table: Result<LookupTable<Fp>, _> =
+            LookupTable::create(0, vec![lookup_table_values_1, lookup_table_values_2]);
+
+        assert!(
+            matches!(table, Err(LookupTableError::InconsistentTableLength)),
+            "LookupTable::create(...) must fail when columns are not of the same length"
+        );
     }
 }
