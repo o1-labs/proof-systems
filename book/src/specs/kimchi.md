@@ -1860,6 +1860,9 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
+
+    /// Vertical slice custom gate flag
+    pub custom_gate_type: bool,
 }
 ```
 

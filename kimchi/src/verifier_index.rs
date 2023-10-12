@@ -148,6 +148,9 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
+
+    /// Vertical slice custom gate flag
+    pub custom_gate_type: bool,
 }
 //~spec:endcode
 
@@ -310,6 +313,7 @@ where
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
+            custom_gate_type: self.cs.custom_gate_type,
         }
     }
 }
@@ -434,6 +438,7 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
 
             linearization: _,
             powers_of_alpha: _,
+            custom_gate_type: _,
         } = &self;
 
         // Always present

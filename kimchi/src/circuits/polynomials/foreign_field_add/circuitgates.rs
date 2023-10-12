@@ -208,3 +208,52 @@ fn is_carry<F: PrimeField, T: ExprOps<F>>(flag: &T) -> T {
     // Carry bits are -1, 0, or 1.
     flag.clone() * (flag.clone() - T::one()) * (flag.clone() + T::one())
 }
+
+/// Conditional gate
+///    * This gate operates on the Curr row only
+///    * Can constrain up to two conditional expressions
+#[derive(Default, Debug, Clone)]
+pub struct Conditional<F>(PhantomData<F>);
+
+impl<F> Argument<F> for Conditional<F>
+where
+    F: PrimeField,
+{
+    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Conditional);
+    const CONSTRAINTS: u32 = 4;
+    // DEGREE is 4
+
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+        let mut constraints = vec![];
+
+        // Outputs r1 and r2
+        let output = [env.witness_curr(0), env.witness_curr(3)];
+
+        // Operands x1 and x2
+        let x = [env.witness_curr(1), env.witness_curr(4)];
+
+        // Operands y1 and y2
+        let y = [env.witness_curr(2), env.witness_curr(5)];
+
+        // Condition values b, b1 and b2
+        let b = env.witness_curr(6);
+        let b1 = env.witness_curr(7);
+        let b2 = env.witness_curr(8);
+
+        // C1: Constrain b \in [0, 3]
+        constraints.push(b.crumb());
+
+        // C2: b = 2 * b1 + b2
+        constraints.push(b - (T::from(2u64) * b1.clone() + b2.clone()));
+
+        // C3: r1 = b1 * x1 + (1 - b1) * y1
+        constraints
+            .push(output[0].clone() - (b1.clone() * x[0].clone() + (T::one() - b1) * y[0].clone()));
+
+        // C4: r2 = b2 * x2 + (1 - b2) * y2
+        constraints
+            .push(output[1].clone() - (b2.clone() * x[1].clone() + (T::one() - b2) * y[1].clone()));
+
+        constraints
+    }
+}
