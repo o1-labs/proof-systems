@@ -84,12 +84,22 @@ pub enum VerifyError {
 
 /// Errors that can arise when preparing the setup
 #[derive(Error, Debug, Clone)]
+pub enum DomainCreationError {
+    #[error("could not compute the size of domain for {0}")]
+    DomainSizeFailed(usize),
+
+    #[error("construction of domain {0} for size {1} failed")]
+    DomainConstructionFailed(String, usize),
+}
+
+/// Errors that can arise when preparing the setup
+#[derive(Error, Debug, Clone)]
 pub enum SetupError {
     #[error("the domain could not be constructed: {0}")]
     ConstraintSystem(String),
 
     #[error("the domain could not be constructed: {0}")]
-    DomainCreation(&'static str),
+    DomainCreation(DomainCreationError),
 }
 
 /// Errors that can arise when creating a verifier index
