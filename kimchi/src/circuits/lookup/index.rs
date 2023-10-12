@@ -459,12 +459,15 @@ mod tests {
         let lookup_r: u64 = 32;
         let num_lookups: usize = 16;
         if let Ok(domain) = EvaluationDomains::<Fp>::create(2 * lookup_r as usize) {
-            // Table column that does not contain zeros
-            let lookup_table_values: Vec<_> = (1..lookup_r + 1).map(From::from).collect();
+            // Table column that /does not/ contain zeros
+            let lookup_table_values_1: Vec<_> = (1..lookup_r+1).map(From::from).collect();
+            // Another table column that /does/ contain zeros.
+            // Jointly two tables /do not/ have a full zero now.
+            let lookup_table_values_2: Vec<_> = (0..lookup_r).map(From::from).collect();
 
             let lookup_tables: Vec<LookupTable<Fp>> = vec![LookupTable {
                 id: 0,
-                data: vec![lookup_table_values],
+                data: vec![lookup_table_values_1, lookup_table_values_2],
             }];
 
             let gates: Vec<CircuitGate<Fp>> = (0..num_lookups)
@@ -475,7 +478,7 @@ mod tests {
                 LookupConstraintSystem::create(gates.as_slice(), lookup_tables, None, &domain);
             assert!(
                 matches!(res, Err(LookupError::TableIDZeroMustHaveZeroEntry)),
-                "LookupConstraintSystem::create(...) returns OK when zero table has no zero rows"
+                "LookupConstraintSystem::create(...) must fail when zero table has no zero rows"
             );
         }
     }
