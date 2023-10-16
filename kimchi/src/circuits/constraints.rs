@@ -688,15 +688,13 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             // First we sum over the lookup table size
             let mut lookup_domain_size: usize = lookup_tables
                 .iter()
-                .map(
-                    |lt| {
-                        if lt.data().is_empty() {
-                            0
-                        } else {
-                            lt.data()[0].len()
-                        }
-                    },
-                )
+                .map(|lt| {
+                    if lt.data().is_empty() {
+                        0
+                    } else {
+                        lt.data()[0].len()
+                    }
+                })
                 .sum();
             // After that on the runtime tables
             if let Some(runtime_tables) = runtime_tables.as_ref() {

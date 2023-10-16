@@ -275,7 +275,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             let placeholders = vec![F::zero(); first_column.len()];
                             let data = vec![first_column, placeholders];
                             // TODO Check it does not fail actually. Maybe this should throw a different error.
-                            let table = LookupTable::create(id, data).expect("Runtime table creation must succeed");
+                            let table = LookupTable::create(id, data)
+                                .expect("Runtime table creation must succeed");
 
                             lookup_tables.push(table);
                         }
