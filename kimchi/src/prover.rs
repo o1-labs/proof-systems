@@ -11,7 +11,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::circuitgates::ForeignFieldAdd,
+            foreign_field_add::circuitgates::{Conditional, ForeignFieldAdd},
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
             poseidon::Poseidon,
@@ -788,7 +788,15 @@ where
                     (&RangeCheck0::default(), range_check0_enabled),
                     (&RangeCheck1::default(), range_check1_enabled),
                     // Foreign field addition gate
-                    (&ForeignFieldAdd::default(), foreign_field_addition_enabled),
+                    (
+                        &ForeignFieldAdd::default(),
+                        (foreign_field_addition_enabled && !index.cs.custom_gate_type),
+                    ),
+                    // Alternative foreign field addition gate
+                    (
+                        &Conditional::default(),
+                        (foreign_field_addition_enabled && index.cs.custom_gate_type),
+                    ),
                     // Foreign field multiplication gate
                     (
                         &ForeignFieldMul::default(),
