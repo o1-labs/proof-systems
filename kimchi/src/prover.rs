@@ -953,7 +953,7 @@ where
                 .column_evaluations
                 .coefficients8
                 .iter()
-                .map(|c| chunked_evals_for_evaluations(&c))
+                .map(|c| chunked_evals_for_evaluations(c))
                 .collect(),
             w: witness_poly
                 .iter()
