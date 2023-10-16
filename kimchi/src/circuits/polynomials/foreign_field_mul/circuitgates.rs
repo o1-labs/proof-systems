@@ -183,9 +183,9 @@ pub fn compose_carry<F: PrimeField, T: ExprOps<F>>(carry: &[T; 11]) -> T {
 ///    * This gate operates on the Curr and Next rows
 ///    * It uses copy, plookup, crumb and custom constraints
 #[derive(Default)]
-pub struct ForeignFieldMul<F>(PhantomData<F>);
+pub struct ForeignFieldMul<const W: usize, F>(PhantomData<F>);
 
-impl<F> Argument<F> for ForeignFieldMul<F>
+impl<const W: usize, F> Argument<W, F> for ForeignFieldMul<W, F>
 where
     F: PrimeField,
 {
@@ -193,7 +193,7 @@ where
     const CONSTRAINTS: u32 = 11;
     // DEGREE is 4
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
         //

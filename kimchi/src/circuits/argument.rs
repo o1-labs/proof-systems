@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use super::{
     expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
-    polynomial::COLUMNS,
 };
 use CurrOrNext::{Curr, Next};
 
@@ -37,12 +36,12 @@ pub enum ArgumentType {
 /// created with ArgumentData and F = Field or F = PrimeField, then the constraints
 /// are built as expressions of real field elements and can be evaluated directly on
 /// the witness without using the prover.
-pub struct ArgumentEnv<F: 'static, T> {
-    data: Option<ArgumentData<F>>,
+pub struct ArgumentEnv<const W: usize, F: 'static, T> {
+    data: Option<ArgumentData<W, F>>,
     phantom_data: PhantomData<T>,
 }
 
-impl<F, T> Default for ArgumentEnv<F, T> {
+impl<const W: usize, F, T> Default for ArgumentEnv<W, F, T> {
     /// Initialize the environment for creating Expr constraints for use with prover/verifier
     fn default() -> Self {
         ArgumentEnv {
@@ -52,10 +51,10 @@ impl<F, T> Default for ArgumentEnv<F, T> {
     }
 }
 
-impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
+impl<const W: usize, F: Field, T: ExprOps<F>> ArgumentEnv<W, F, T> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
-    pub fn create(witness: ArgumentWitness<F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
+    pub fn create(witness: ArgumentWitness<W, F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
         ArgumentEnv {
             data: Some(ArgumentData {
                 witness,
@@ -103,9 +102,9 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
 }
 
 /// Argument environment data for constraints of field elements
-pub struct ArgumentData<F: 'static> {
+pub struct ArgumentData<const W: usize, F: 'static> {
     /// Witness rows
-    pub witness: ArgumentWitness<F>,
+    pub witness: ArgumentWitness<W, F>,
     /// Gate coefficients
     pub coeffs: Vec<F>,
     /// Constants
@@ -113,14 +112,14 @@ pub struct ArgumentData<F: 'static> {
 }
 
 /// Witness data for a argument
-pub struct ArgumentWitness<T> {
+pub struct ArgumentWitness<const W: usize, T> {
     /// Witness for current row
-    pub curr: [T; COLUMNS],
+    pub curr: [T; W],
     /// Witness for next row
-    pub next: [T; COLUMNS],
+    pub next: [T; W],
 }
 
-impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
+impl<const W: usize, T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<W, T> {
     type Output = T;
 
     fn index(&self, idx: (CurrOrNext, usize)) -> &T {
@@ -132,7 +131,7 @@ impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
 }
 
 /// The interface for a minimal argument implementation.
-pub trait Argument<F: PrimeField> {
+pub trait Argument<const W: usize, F: PrimeField> {
     /// The type of constraints that this will produce.
     /// This is important to enforce that we don't combine the constraints
     /// with powers of alpha that collide with other mutually inclusive arguments.
@@ -142,7 +141,7 @@ pub trait Argument<F: PrimeField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
     fn constraints(cache: &mut Cache) -> Vec<E<F>> {
@@ -167,20 +166,20 @@ pub trait Argument<F: PrimeField> {
     }
 }
 
-pub trait DynArgument<F: PrimeField> {
+pub trait DynArgument<const W: usize, F: PrimeField> {
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>;
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>;
     fn argument_type(&self) -> ArgumentType;
 }
 
-impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
+impl<const W: usize, F: PrimeField, T: Argument<W, F>> DynArgument<W, F> for T {
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>> {
-        <Self as Argument<F>>::constraints(cache)
+        <Self as Argument<W, F>>::constraints(cache)
     }
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
-        <Self as Argument<F>>::combined_constraints(alphas, cache)
+        <Self as Argument<W, F>>::combined_constraints(alphas, cache)
     }
     fn argument_type(&self) -> ArgumentType {
-        <Self as Argument<F>>::ARGUMENT_TYPE
+        <Self as Argument<W, F>>::ARGUMENT_TYPE
     }
 }

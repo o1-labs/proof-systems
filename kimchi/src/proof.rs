@@ -1,10 +1,6 @@
 //! This module implements the data structures of a proof.
 
-use crate::circuits::{
-    expr::Column,
-    gate::GateType,
-    wires::{COLUMNS, PERMUTS},
-};
+use crate::circuits::{expr::Column, gate::GateType, wires::PERMUTS};
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -60,16 +56,16 @@ pub struct LookupEvaluations<Evals> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<Evals> {
+pub struct ProofEvaluations<const W: usize, Evals> {
     /// witness polynomials
-    pub w: [Evals; COLUMNS],
+    pub w: Vec<Evals>,
     /// permutation polynomial
     pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    pub coefficients: [Evals; COLUMNS],
+    pub coefficients: Vec<Evals>,
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
@@ -95,9 +91,9 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverCommitments<G: AffineCurve> {
+pub struct ProverCommitments<const W: usize, G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    pub w_comm: [PolyComm<G>; COLUMNS],
+    pub w_comm: Vec<PolyComm<G>>,
     /// The commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
@@ -110,15 +106,15 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<const W: usize, G: AffineCurve> {
     /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<G>,
+    pub commitments: ProverCommitments<W, G>,
 
     /// batched commitment opening proof
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
+    pub evals: ProofEvaluations<W, PointEvaluations<Vec<G::ScalarField>>>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -195,8 +191,8 @@ impl<Eval> LookupEvaluations<Eval> {
     }
 }
 
-impl<Eval> ProofEvaluations<Eval> {
-    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<Eval2> {
+impl<const W: usize, Eval> ProofEvaluations<W, Eval> {
+    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<W, Eval2> {
         let ProofEvaluations {
             w,
             z,
@@ -207,63 +203,31 @@ impl<Eval> ProofEvaluations<Eval> {
             poseidon_selector,
         } = self;
         ProofEvaluations {
-            w: w.map(f),
+            w: w.into_iter().map(f).collect(),
             z: f(z),
             s: s.map(f),
-            coefficients: coefficients.map(f),
+            coefficients: coefficients.into_iter().map(f).collect(),
             lookup: lookup.map(|x| LookupEvaluations::map(x, f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
         }
     }
 
-    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> ProofEvaluations<Eval2> {
+    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> ProofEvaluations<W, Eval2> {
         let ProofEvaluations {
-            w: [w0, w1, w2, w3, w4, w5, w6, w7, w8, w9, w10, w11, w12, w13, w14],
+            w,
             z,
             s: [s0, s1, s2, s3, s4, s5],
-            coefficients: [c0, c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, c14],
+            coefficients,
             lookup,
             generic_selector,
             poseidon_selector,
         } = self;
         ProofEvaluations {
-            w: [
-                f(w0),
-                f(w1),
-                f(w2),
-                f(w3),
-                f(w4),
-                f(w5),
-                f(w6),
-                f(w7),
-                f(w8),
-                f(w9),
-                f(w10),
-                f(w11),
-                f(w12),
-                f(w13),
-                f(w14),
-            ],
+            w: w.iter().map(f).collect(),
             z: f(z),
             s: [f(s0), f(s1), f(s2), f(s3), f(s4), f(s5)],
-            coefficients: [
-                f(c0),
-                f(c1),
-                f(c2),
-                f(c3),
-                f(c4),
-                f(c5),
-                f(c6),
-                f(c7),
-                f(c8),
-                f(c9),
-                f(c10),
-                f(c11),
-                f(c12),
-                f(c13),
-                f(c14),
-            ],
+            coefficients: coefficients.iter().map(f).collect(),
             lookup: lookup.as_ref().map(|l| l.map_ref(f)),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
@@ -363,20 +327,20 @@ impl<G: AffineCurve> RecursionChallenge<G> {
     }
 }
 
-impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
+impl<const W: usize, F: Zero + Copy> ProofEvaluations<W, PointEvaluations<F>> {
     pub fn dummy_with_witness_evaluations(
-        curr: [F; COLUMNS],
-        next: [F; COLUMNS],
-    ) -> ProofEvaluations<PointEvaluations<F>> {
+        curr: [F; W],
+        next: [F; W],
+    ) -> ProofEvaluations<W, PointEvaluations<F>> {
         let pt = |curr, next| PointEvaluations {
             zeta: curr,
             zeta_omega: next,
         };
         ProofEvaluations {
-            w: array::from_fn(|i| pt(curr[i], next[i])),
+            w: curr.iter().zip(next).map(|(c, n)| pt(*c, n)).collect(),
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
-            coefficients: array::from_fn(|_| pt(F::zero(), F::zero())),
+            coefficients: vec![pt(F::zero(), F::zero()); W],
             lookup: None,
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
@@ -384,8 +348,8 @@ impl<F: Zero + Copy> ProofEvaluations<PointEvaluations<F>> {
     }
 }
 
-impl<F: FftField> ProofEvaluations<PointEvaluations<Vec<F>>> {
-    pub fn combine(&self, pt: &PointEvaluations<F>) -> ProofEvaluations<PointEvaluations<F>> {
+impl<const W: usize, F: FftField> ProofEvaluations<W, PointEvaluations<Vec<F>>> {
+    pub fn combine(&self, pt: &PointEvaluations<F>) -> ProofEvaluations<W, PointEvaluations<F>> {
         self.map_ref(&|evals| PointEvaluations {
             zeta: DensePolynomial::eval_polynomial(&evals.zeta, pt.zeta),
             zeta_omega: DensePolynomial::eval_polynomial(&evals.zeta_omega, pt.zeta_omega),
@@ -393,7 +357,7 @@ impl<F: FftField> ProofEvaluations<PointEvaluations<Vec<F>>> {
     }
 }
 
-impl<F> ProofEvaluations<F> {
+impl<const W: usize, F> ProofEvaluations<W, F> {
     pub fn get_column(&self, col: Column) -> Option<&F> {
         match col {
             Column::Witness(i) => Some(&self.w[i]),

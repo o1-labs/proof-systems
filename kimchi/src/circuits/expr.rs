@@ -8,7 +8,6 @@ use crate::{
             lookups::{LookupPattern, LookupPatterns},
         },
         polynomials::permutation::eval_vanishes_on_last_4_rows,
-        wires::COLUMNS,
     },
     proof::{PointEvaluations, ProofEvaluations},
 };
@@ -91,11 +90,11 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct Environment<'a, F: FftField> {
+pub struct Environment<'a, const W: usize, F: FftField> {
     /// The witness column polynomials
-    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
+    pub witness: &'a [Evaluations<F, D<F>>; W],
     /// The coefficient column polynomials
-    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
+    pub coefficient: &'a [Evaluations<F, D<F>>; W],
     /// The polynomial which vanishes on the last 4 elements of the domain.
     pub vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
@@ -113,7 +112,7 @@ pub struct Environment<'a, F: FftField> {
     pub lookup: Option<LookupEnvironment<'a, F>>,
 }
 
-impl<'a, F: FftField> Environment<'a, F> {
+impl<'a, const W: usize, F: FftField> Environment<'a, W, F> {
     fn get_column(&self, col: &Column) -> Option<&'a Evaluations<F, D<F>>> {
         use Column::*;
         let lookup = self.lookup.as_ref();
@@ -656,9 +655,9 @@ pub enum PolishToken<F> {
 }
 
 impl Variable {
-    fn evaluate<F: Field>(
+    fn evaluate<const W: usize, F: Field>(
         &self,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ProofEvaluations<W, PointEvaluations<F>>,
     ) -> Result<F, ExprError> {
         let point_evaluations = {
             use Column::*;
@@ -691,11 +690,11 @@ impl Variable {
 
 impl<F: FftField> PolishToken<F> {
     /// Evaluate an RPN expression to a field element.
-    pub fn evaluate(
+    pub fn evaluate<const W: usize>(
         toks: &[PolishToken<F>],
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ProofEvaluations<W, PointEvaluations<F>>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         let mut stack = vec![];
@@ -894,11 +893,11 @@ pub fn pows<F: Field>(x: F, n: usize) -> Vec<F> {
 /// = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-fn unnormalized_lagrange_evals<F: FftField>(
+fn unnormalized_lagrange_evals<const W: usize, F: FftField>(
     l0_1: F,
     i: i32,
     res_domain: Domain,
-    env: &Environment<F>,
+    env: &Environment<W, F>,
 ) -> Evaluations<F, D<F>> {
     let k = match res_domain {
         Domain::D1 => 1,
@@ -1358,7 +1357,7 @@ impl<'a, F: FftField> EvalResult<'a, F> {
     }
 }
 
-fn get_domain<F: FftField>(d: Domain, env: &Environment<F>) -> D<F> {
+fn get_domain<const W: usize, F: FftField>(d: Domain, env: &Environment<W, F>) -> D<F> {
     match d {
         Domain::D1 => env.domain.d1,
         Domain::D2 => env.domain.d2,
@@ -1499,22 +1498,22 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Evaluate an expression as a field element against an environment.
-    pub fn evaluate(
+    pub fn evaluate<const W: usize>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
-        env: &Environment<F>,
+        evals: &ProofEvaluations<W, PointEvaluations<F>>,
+        env: &Environment<W, F>,
     ) -> Result<F, ExprError> {
         self.evaluate_(d, pt, evals, &env.constants)
     }
 
     /// Evaluate an expression as a field element against the constants.
-    pub fn evaluate_(
+    pub fn evaluate_<const W: usize>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ProofEvaluations<W, PointEvaluations<F>>,
         c: &Constants<F>,
     ) -> Result<F, ExprError> {
         use Expr::*;
@@ -1553,12 +1552,12 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
     }
 
     /// Evaluate the constant expressions in this expression down into field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Expr<F> {
+    pub fn evaluate_constants<const W: usize>(&self, env: &Environment<W, F>) -> Expr<F> {
         self.evaluate_constants_(&env.constants)
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations<const W: usize>(&self, env: &Environment<'_, W, F>) -> Evaluations<F, D<F>> {
         self.evaluate_constants(env).evaluations(env)
     }
 }
@@ -1570,11 +1569,11 @@ enum Either<A, B> {
 
 impl<F: FftField> Expr<F> {
     /// Evaluate an expression into a field element.
-    pub fn evaluate(
+    pub fn evaluate<const W: usize>(
         &self,
         d: D<F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ProofEvaluations<W, PointEvaluations<F>>,
     ) -> Result<F, ExprError> {
         use Expr::*;
         match self {
@@ -1612,7 +1611,7 @@ impl<F: FftField> Expr<F> {
     }
 
     /// Compute the polynomial corresponding to this expression, in evaluation form.
-    pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
+    pub fn evaluations<const W: usize>(&self, env: &Environment<'_, W, F>) -> Evaluations<F, D<F>> {
         let d1_size = env.domain.d1.size;
         let deg = self.degree(d1_size);
         let d = if deg <= d1_size {
@@ -1653,11 +1652,11 @@ impl<F: FftField> Expr<F> {
         }
     }
 
-    fn evaluations_helper<'a, 'b>(
+    fn evaluations_helper<'a, 'b, const W: usize>(
         &self,
         cache: &'b mut HashMap<CacheId, EvalResult<'a, F>>,
         d: Domain,
-        env: &Environment<'a, F>,
+        env: &Environment<'a, W, F>,
     ) -> Either<EvalResult<'a, F>, CacheId>
     where
         'a: 'b,
@@ -1817,7 +1816,10 @@ impl<A> Linearization<A> {
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     /// Evaluate the constants in a linearization with `ConstantExpr<F>` coefficients down
     /// to literal field elements.
-    pub fn evaluate_constants(&self, env: &Environment<F>) -> Linearization<Expr<F>> {
+    pub fn evaluate_constants<const W: usize>(
+        &self,
+        env: &Environment<W, F>,
+    ) -> Linearization<Expr<F>> {
         self.map(|e| e.evaluate_constants(env))
     }
 }
@@ -1825,11 +1827,11 @@ impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
 impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(
+    pub fn to_polynomial<const W: usize>(
         &self,
-        env: &Environment<F>,
+        env: &Environment<W, F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ProofEvaluations<W, PointEvaluations<F>>,
     ) -> (F, Evaluations<F, D<F>>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
@@ -1855,11 +1857,11 @@ impl<F: FftField> Linearization<Vec<PolishToken<F>>> {
 impl<F: FftField> Linearization<Expr<ConstantExpr<F>>> {
     /// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    pub fn to_polynomial(
+    pub fn to_polynomial<const W: usize>(
         &self,
-        env: &Environment<F>,
+        env: &Environment<W, F>,
         pt: F,
-        evals: &ProofEvaluations<PointEvaluations<F>>,
+        evals: &ProofEvaluations<W, PointEvaluations<F>>,
     ) -> (F, DensePolynomial<F>) {
         let cs = &env.constants;
         let n = env.domain.d1.size();
@@ -2600,13 +2602,20 @@ pub mod constraints {
         fn literal(x: F) -> Self;
 
         // Witness variable
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self;
+        fn witness<const W: usize>(
+            row: CurrOrNext,
+            col: usize,
+            env: Option<&ArgumentData<W, F>>,
+        ) -> Self;
 
         /// Coefficient
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
+        fn coeff<const W: usize>(col: usize, env: Option<&ArgumentData<W, F>>) -> Self;
 
         /// Create a constant
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self;
+        fn constant<const W: usize>(
+            expr: ConstantExpr<F>,
+            env: Option<&ArgumentData<W, F>>,
+        ) -> Self;
 
         /// Cache item
         fn cache(&self, cache: &mut Cache) -> Self;
@@ -2656,15 +2665,19 @@ pub mod constraints {
             Expr::Constant(ConstantExpr::Literal(x))
         }
 
-        fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        fn witness<const W: usize>(
+            row: CurrOrNext,
+            col: usize,
+            _: Option<&ArgumentData<W, F>>,
+        ) -> Self {
             witness(col, row)
         }
 
-        fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        fn coeff<const W: usize>(col: usize, _: Option<&ArgumentData<W, F>>) -> Self {
             coeff(col)
         }
 
-        fn constant(expr: ConstantExpr<F>, _: Option<&ArgumentData<F>>) -> Self {
+        fn constant<const W: usize>(expr: ConstantExpr<F>, _: Option<&ArgumentData<W, F>>) -> Self {
             Expr::Constant(expr)
         }
 
@@ -2714,21 +2727,28 @@ pub mod constraints {
             x
         }
 
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
+        fn witness<const W: usize>(
+            row: CurrOrNext,
+            col: usize,
+            env: Option<&ArgumentData<W, F>>,
+        ) -> Self {
             match env {
                 Some(data) => data.witness[(row, col)],
                 None => panic!("Missing witness"),
             }
         }
 
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
+        fn coeff<const W: usize>(col: usize, env: Option<&ArgumentData<W, F>>) -> Self {
             match env {
                 Some(data) => data.coeffs[col],
                 None => panic!("Missing coefficients"),
             }
         }
 
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
+        fn constant<const W: usize>(
+            expr: ConstantExpr<F>,
+            env: Option<&ArgumentData<W, F>>,
+        ) -> Self {
             match env {
                 Some(data) => expr.value(&data.constants),
                 None => panic!("Missing constants"),
@@ -2835,6 +2855,7 @@ pub mod test {
             constraints::ConstraintSystem,
             expr::constraints::ExprOps,
             gate::CircuitGate,
+            polynomial::COLUMNS,
             polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
             wires::Wire,
         },
@@ -2893,7 +2914,7 @@ pub mod test {
             let srs = Arc::new(srs);
 
             let (endo_q, _endo_r) = endos::<Pallas>();
-            ProverIndex::<Vesta>::create(constraint_system, endo_q, srs)
+            ProverIndex::<COLUMNS, Vesta>::create(constraint_system, endo_q, srs)
         };
 
         let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());

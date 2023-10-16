@@ -165,9 +165,9 @@ use ark_ff::PrimeField;
 //~ where the notation `vpi` and `vci` defined in the "Layout" section above.
 
 #[derive(Default)]
-pub struct RangeCheck0<F>(PhantomData<F>);
+pub struct RangeCheck0<const W: usize, F>(PhantomData<F>);
 
-impl<F> Argument<F> for RangeCheck0<F>
+impl<const W: usize, F> Argument<W, F> for RangeCheck0<W, F>
 where
     F: PrimeField,
 {
@@ -178,7 +178,7 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -266,9 +266,9 @@ where
 //~ where the notation `v2ci` and `v2pi` defined in the "Layout" section above.
 
 #[derive(Default)]
-pub struct RangeCheck1<F>(PhantomData<F>);
+pub struct RangeCheck1<const W: usize, F>(PhantomData<F>);
 
-impl<F> Argument<F> for RangeCheck1<F>
+impl<const W: usize, F> Argument<W, F> for RangeCheck1<W, F>
 where
     F: PrimeField,
 {
@@ -279,7 +279,7 @@ where
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Column 2 is a 2-bit crumb
         let mut constraints = vec![crumb(&env.witness_curr(2))];

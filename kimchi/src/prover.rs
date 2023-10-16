@@ -20,7 +20,7 @@ use crate::{
             varbasemul::VarbaseMul,
             xor::Xor16,
         },
-        wires::{COLUMNS, PERMUTS},
+        wires::PERMUTS,
     },
     curve::KimchiCurve,
     error::ProverError,
@@ -114,7 +114,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<const W: usize, G: KimchiCurve> ProverProof<W, G>
 where
     G::BaseField: PrimeField,
 {
@@ -125,12 +125,12 @@ where
     /// Will give error if `create_recursive` process fails.
     pub fn create<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: FrSponge<W, G::ScalarField>,
     >(
         groupmap: &G::Map,
-        witness: [Vec<G::ScalarField>; COLUMNS],
+        witness: [Vec<G::ScalarField>; W],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<W, G>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
@@ -153,14 +153,14 @@ where
     /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: FrSponge<W, G::ScalarField>,
     >(
         group_map: &G::Map,
-        mut witness: [Vec<G::ScalarField>; COLUMNS],
+        mut witness: [Vec<G::ScalarField>; W],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<W, G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
-        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
+        blinders: Option<[Option<PolyComm<G::ScalarField>>; W]>,
     ) -> Result<Self> {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
 
@@ -262,7 +262,7 @@ where
         //~    we can use the `commit_evaluation` optimization.
         internal_tracing::checkpoint!(internal_traces; commit_to_witness_columns);
         let mut w_comm = vec![];
-        for col in 0..COLUMNS {
+        for col in 0..W {
             // witness coeff -> witness eval
             let witness_eval =
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
@@ -291,7 +291,7 @@ where
             w_comm.push(com);
         }
 
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+        let w_comm: [BlindedCommitment<G>; W] = w_comm
             .try_into()
             .expect("previous loop is of the correct length");
 
@@ -304,7 +304,7 @@ where
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
+        let witness_poly: [DensePolynomial<G::ScalarField>; W] = array::from_fn(|i| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -533,7 +533,7 @@ where
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
-            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
+            let aggreg = lookup::constraints::aggregation::<W, _, G::ScalarField>(
                 lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
@@ -695,7 +695,10 @@ where
             // generic
             let mut t4 = {
                 let generic_constraint =
-                    generic::Generic::combined_constraints(&all_alphas, &mut cache);
+                    generic::Generic::<W, G::ScalarField>::combined_constraints(
+                        &all_alphas,
+                        &mut cache,
+                    );
                 let generic4 = generic_constraint.evaluations(&env);
 
                 if cfg!(debug_assertions) {
@@ -738,7 +741,7 @@ where
 
                 for gate in [
                     (
-                        (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
+                        (&CompleteAdd::default() as &dyn DynArgument<W, G::ScalarField>),
                         true,
                     ),
                     (&VarbaseMul::default(), true),
@@ -943,22 +946,28 @@ where
             };
 
         internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
-        let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
+        let chunked_evals = ProofEvaluations::<W, PointEvaluations<Vec<G::ScalarField>>> {
             s: array::from_fn(|i| {
                 chunked_evals_for_evaluations(
                     &index.column_evaluations.permutation_coefficients8[i],
                 )
             }),
-            coefficients: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
-            }),
-            w: array::from_fn(|i| {
-                let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            }),
+            coefficients: index
+                .column_evaluations
+                .coefficients8
+                .iter()
+                .map(|c| chunked_evals_for_evaluations(&c))
+                .collect(),
+            w: witness_poly
+                .iter()
+                .map(|w| {
+                    let chunked = w.to_chunked_polynomial(index.max_poly_size);
+                    PointEvaluations {
+                        zeta: chunked.evaluate_chunks(zeta),
+                        zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                    }
+                })
+                .collect(),
 
             z: {
                 let chunked = z_poly.to_chunked_polynomial(index.max_poly_size);
@@ -1252,7 +1261,7 @@ where
 
         let proof = Self {
             commitments: ProverCommitments {
-                w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
+                w_comm: w_comm.iter().map(|w| w.commitment.clone()).collect(),
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup,

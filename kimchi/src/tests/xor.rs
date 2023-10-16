@@ -50,7 +50,7 @@ where
     let mut gates = vec![];
     let _next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
 
-    ConstraintSystem::create(gates).build().unwrap()
+    ConstraintSystem::create(gates).build::<COLUMNS>().unwrap()
 }
 
 // Returns the all ones BigUint of bits length
@@ -140,7 +140,12 @@ where
     let (cs, witness) = setup_xor::<G>(in1, in2, bits);
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<COLUMNS, G>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
@@ -163,7 +168,7 @@ fn test_prove_and_verify_xor() {
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -250,14 +255,14 @@ fn verify_bad_xor_decomposition<G: KimchiCurve>(
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
         witness[col][0] += G::ScalarField::one();
         assert_eq!(
-            cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<COLUMNS, G>(0, witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][0] -= G::ScalarField::one();
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<G>(0, witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<COLUMNS, G>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -297,16 +302,24 @@ fn test_extend_xor() {
     gates.connect_cell_pair((0, 0), (2, 0));
     gates.connect_cell_pair((1, 0), (2, 1));
 
-    let cs = ConstraintSystem::create(gates).public(2).build().unwrap();
+    let cs = ConstraintSystem::create(gates)
+        .public(2)
+        .build::<COLUMNS>()
+        .unwrap();
 
     let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
     witness[0][0] = input1;
     witness[0][1] = input2;
-    xor::extend_xor_witness::<Fp>(&mut witness, input1, input2, bits);
+    xor::extend_xor_witness::<COLUMNS, Fp>(&mut witness, input1, input2, bits);
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
@@ -338,7 +351,7 @@ fn test_bad_xor() {
     }
 
     assert_eq!(
-        TestFramework::<Vesta>::default()
+        TestFramework::<COLUMNS, Vesta>::default()
             .gates(gates)
             .witness(witness)
             .setup()
@@ -383,7 +396,7 @@ fn test_xor_finalization() {
         cols[0][0] = input1;
         cols[0][1] = input2;
 
-        xor::extend_xor_witness::<Fp>(&mut cols, input1, input2, 128);
+        xor::extend_xor_witness::<COLUMNS, Fp>(&mut cols, input1, input2, 128);
         cols
     };
 
@@ -391,19 +404,19 @@ fn test_xor_finalization() {
         let cs = ConstraintSystem::create(gates.clone())
             .lookup(vec![xor::lookup_table()])
             .public(num_inputs)
-            .build()
+            .build::<COLUMNS>()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<Vesta>::create(cs, endo_q, srs)
+        ProverIndex::<COLUMNS, Vesta>::create(cs, endo_q, srs)
     };
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<Vesta>(
+            index.cs.gates[row].verify_witness::<COLUMNS, Vesta>(
                 row,
                 &witness,
                 &index.cs,
@@ -413,7 +426,7 @@ fn test_xor_finalization() {
         );
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])

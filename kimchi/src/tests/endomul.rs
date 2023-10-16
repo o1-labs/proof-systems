@@ -110,7 +110,7 @@ fn endomul_test() {
         assert_eq!(x.into_repr(), res.n.into_repr());
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

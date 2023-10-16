@@ -64,7 +64,7 @@ fn endomul_scalar_test() {
         );
     }
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

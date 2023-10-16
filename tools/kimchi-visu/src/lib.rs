@@ -36,7 +36,7 @@ struct Context {
 }
 
 /// Allows us to quickly implement a LaTeX encoder for each gate
-trait LaTeX<F>: Argument<F>
+trait LaTeX<const W: usize, F>: Argument<W, F>
 where
     F: PrimeField,
 {
@@ -49,24 +49,24 @@ where
 }
 
 /// Implement [LaTeX] for all gates
-impl<T, F> LaTeX<F> for T
+impl<const W: usize, T, F> LaTeX<W, F> for T
 where
-    T: Argument<F>,
+    T: Argument<W, F>,
     F: PrimeField + Display,
 {
 }
 
 ///
-pub fn latex_constraints<G>() -> HashMap<&'static str, Vec<Vec<String>>>
+pub fn latex_constraints<const W: usize, G>() -> HashMap<&'static str, Vec<Vec<String>>>
 where
     G: CommitmentCurve,
 {
     let mut map = HashMap::new();
-    map.insert("Poseidon", Poseidon::<G::ScalarField>::latex());
-    map.insert("CompleteAdd", CompleteAdd::<G::ScalarField>::latex());
-    map.insert("VarBaseMul", VarbaseMul::<G::ScalarField>::latex());
-    map.insert("EndoMul", EndosclMul::<G::ScalarField>::latex());
-    map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::latex());
+    map.insert("Poseidon", Poseidon::<W, G::ScalarField>::latex());
+    map.insert("CompleteAdd", CompleteAdd::<W, G::ScalarField>::latex());
+    map.insert("VarBaseMul", VarbaseMul::<W, G::ScalarField>::latex());
+    map.insert("EndoMul", EndosclMul::<W, G::ScalarField>::latex());
+    map.insert("EndoMulScalar", EndomulScalar::<W, G::ScalarField>::latex());
     map
 }
 
@@ -75,7 +75,10 @@ where
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
+pub fn visu<const W: usize, G: KimchiCurve>(
+    index: &ProverIndex<W, G>,
+    witness: Option<Witness<G::ScalarField>>,
+) {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");
     let mut data = format!("const index = {index};");
@@ -89,7 +92,7 @@ pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::S
     }
 
     // serialize constraints
-    let constraints = latex_constraints::<G>();
+    let constraints = latex_constraints::<W, G>();
     let constraints = serde_json::to_string(&constraints).expect("couldn't serialize constraints");
     data = format!("{data}const constraints = {constraints};");
 

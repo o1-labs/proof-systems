@@ -35,7 +35,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-pub fn constraints_expr<F: PrimeField + SquareRootField>(
+pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
@@ -46,20 +46,20 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // The gate type argument can just be the zero gate.
     powers_of_alpha.register(
         ArgumentType::Gate(GateType::Zero),
-        VarbaseMul::<F>::CONSTRAINTS,
+        VarbaseMul::<W, F>::CONSTRAINTS,
     );
 
     let mut cache = expr::Cache::default();
 
-    let mut expr = Poseidon::combined_constraints(&powers_of_alpha, &mut cache);
-    expr += VarbaseMul::combined_constraints(&powers_of_alpha, &mut cache);
-    expr += CompleteAdd::combined_constraints(&powers_of_alpha, &mut cache);
-    expr += EndosclMul::combined_constraints(&powers_of_alpha, &mut cache);
-    expr += EndomulScalar::combined_constraints(&powers_of_alpha, &mut cache);
+    let mut expr = Poseidon::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += VarbaseMul::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += CompleteAdd::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndosclMul::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
+    expr += EndomulScalar::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
 
     {
         let mut range_check0_expr =
-            || RangeCheck0::combined_constraints(&powers_of_alpha, &mut cache);
+            || RangeCheck0::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
 
         if let Some(feature_flags) = feature_flags {
             if feature_flags.range_check0 {
@@ -76,7 +76,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut range_check1_expr =
-            || RangeCheck1::combined_constraints(&powers_of_alpha, &mut cache);
+            || RangeCheck1::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
 
         if let Some(feature_flags) = feature_flags {
             if feature_flags.range_check1 {
@@ -93,7 +93,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut foreign_field_add_expr =
-            || ForeignFieldAdd::combined_constraints(&powers_of_alpha, &mut cache);
+            || ForeignFieldAdd::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_add {
                 expr += foreign_field_add_expr();
@@ -109,7 +109,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut foreign_field_mul_expr =
-            || ForeignFieldMul::combined_constraints(&powers_of_alpha, &mut cache);
+            || ForeignFieldMul::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.foreign_field_mul {
                 expr += foreign_field_mul_expr();
@@ -124,7 +124,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let mut xor_expr = || xor::Xor16::combined_constraints(&powers_of_alpha, &mut cache);
+        let mut xor_expr =
+            || xor::Xor16::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.xor {
                 expr += xor_expr();
@@ -139,7 +140,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     {
-        let mut rot_expr = || rot::Rot64::combined_constraints(&powers_of_alpha, &mut cache);
+        let mut rot_expr =
+            || rot::Rot64::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.rot {
                 expr += rot_expr();
@@ -154,7 +156,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     }
 
     if generic {
-        expr += generic::Generic::combined_constraints(&powers_of_alpha, &mut cache);
+        expr += generic::Generic::<W, F>::combined_constraints(&powers_of_alpha, &mut cache);
     }
 
     // permutation
@@ -222,7 +224,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(None, generic);
+            let (feature_flagged_expr, _) = constraints_expr::<W, F>(None, generic);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -316,13 +318,13 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
-pub fn expr_linearization<F: PrimeField + SquareRootField>(
+pub fn expr_linearization<const W: usize, F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr::<W, F>(feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)

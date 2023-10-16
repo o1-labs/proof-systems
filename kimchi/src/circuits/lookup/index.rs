@@ -199,7 +199,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
     /// # Errors
     ///
     /// Will give error if inputs validation do not match.
-    pub fn create(
+    pub fn create<const W: usize>(
         gates: &[CircuitGate<F>],
         lookup_tables: Vec<LookupTable<F>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
@@ -219,7 +219,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                 //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
                 let (lookup_selectors, gate_lookup_tables) =
-                    lookup_info.selector_polynomials_and_tables(domain, gates);
+                    lookup_info.selector_polynomials_and_tables::<W, F>(domain, gates);
 
                 //~ 3. Concatenate runtime lookup tables with the ones used by gates
                 let mut lookup_tables: Vec<_> = gate_lookup_tables

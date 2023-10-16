@@ -21,7 +21,7 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 //~spec:startcode
-pub struct ProverIndex<G: KimchiCurve> {
+pub struct ProverIndex<const W: usize, G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -41,12 +41,12 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+    #[serde(bound = "ColumnEvaluations<W, G::ScalarField>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<W, G::ScalarField>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G>>,
+    pub verifier_index: Option<VerifierIndex<W, G>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -54,7 +54,7 @@ pub struct ProverIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<G: KimchiCurve> ProverIndex<G> {
+impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
     /// this function compiles the index from constraints
     ///
     /// # Panics
@@ -75,7 +75,8 @@ impl<G: KimchiCurve> ProverIndex<G> {
         cs.endo = endo_q;
 
         // pre-compute the linearization
-        let (linearization, powers_of_alpha) = expr_linearization(Some(&cs.feature_flags), true);
+        let (linearization, powers_of_alpha) =
+            expr_linearization::<W, G::ScalarField>(Some(&cs.feature_flags), true);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
@@ -148,14 +149,14 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
-    pub fn new_index_for_test_with_lookups<G: KimchiCurve>(
+    pub fn new_index_for_test_with_lookups<const W: usize, G: KimchiCurve>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
-    ) -> ProverIndex<G>
+    ) -> ProverIndex<W, G>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
@@ -167,7 +168,7 @@ pub mod testing {
             .public(public)
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
-            .build()
+            .build::<W>()
             .unwrap();
 
         let mut srs = if cs.domain.d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
@@ -182,17 +183,17 @@ pub mod testing {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<G::OtherCurve>();
-        ProverIndex::<G>::create(cs, endo_q, srs)
+        ProverIndex::<W, G>::create(cs, endo_q, srs)
     }
 
-    pub fn new_index_for_test<G: KimchiCurve>(
+    pub fn new_index_for_test<const W: usize, G: KimchiCurve>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
-    ) -> ProverIndex<G>
+    ) -> ProverIndex<W, G>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
+        new_index_for_test_with_lookups::<W, G>(gates, public, 0, vec![], None, false)
     }
 }

@@ -96,28 +96,31 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
-pub fn circuit_gate_constraints<F: PrimeField>(
+pub fn circuit_gate_constraints<const W: usize, F: PrimeField>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,
 ) -> E<F> {
     match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::combined_constraints(alphas, cache),
+        GateType::ForeignFieldMul => ForeignFieldMul::<W, F>::combined_constraints(alphas, cache),
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Number of constraints for a given foreign field mul circuit gate type
-pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
+pub fn circuit_gate_constraint_count<const W: usize, F: PrimeField>(typ: GateType) -> u32 {
     match typ {
-        GateType::ForeignFieldMul => ForeignFieldMul::<F>::CONSTRAINTS,
+        GateType::ForeignFieldMul => ForeignFieldMul::<W, F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
 
 /// Get the combined constraints for all foreign field multiplication circuit gates
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
-    ForeignFieldMul::combined_constraints(alphas, cache)
+pub fn combined_constraints<const W: usize, F: PrimeField>(
+    alphas: &Alphas<F>,
+    cache: &mut Cache,
+) -> E<F> {
+    ForeignFieldMul::<W, F>::combined_constraints(alphas, cache)
 }
 
 /// Get the foreign field multiplication lookup table

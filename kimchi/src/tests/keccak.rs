@@ -16,7 +16,7 @@ type PallasField = <Pallas as AffineCurve>::BaseField;
 fn create_test_constraint_system() -> ConstraintSystem<Fp> {
     let (mut next_row, mut gates) = { CircuitGate::<Fp>::create_keccak(0) };
 
-    ConstraintSystem::create(gates).build().unwrap()
+    gates
 }
 
 #[test]

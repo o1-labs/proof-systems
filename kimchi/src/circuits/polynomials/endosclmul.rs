@@ -125,16 +125,16 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
-    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul<const W: usize, G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
-        let next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + 1]);
+        let this: [F; W] = std::array::from_fn(|i| witness[i][row]);
+        let next: [F; W] = std::array::from_fn(|i| witness[i][row + 1]);
 
         let pt = F::from(123456u64);
 
@@ -147,10 +147,10 @@ impl<F: PrimeField> CircuitGate<F> {
             endo_coefficient: cs.endo,
         };
 
-        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
+        let evals: ProofEvaluations<W, PointEvaluations<G::ScalarField>> =
             ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
-        let constraints = EndosclMul::constraints(&mut Cache::default());
+        let constraints = EndosclMul::<W, F>::constraints(&mut Cache::default());
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
@@ -176,16 +176,16 @@ impl<F: PrimeField> CircuitGate<F> {
 
 /// Implementation of the `EndosclMul` gate.
 #[derive(Default)]
-pub struct EndosclMul<F>(PhantomData<F>);
+pub struct EndosclMul<const W: usize, F>(PhantomData<F>);
 
-impl<F> Argument<F> for EndosclMul<F>
+impl<const W: usize, F> Argument<W, F> for EndosclMul<W, F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);

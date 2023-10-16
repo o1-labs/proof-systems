@@ -89,7 +89,7 @@ fn varbase_mul_test() {
         start.elapsed()
     );
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

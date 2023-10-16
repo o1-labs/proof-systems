@@ -7,7 +7,7 @@ use crate::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{zk_polynomial, zk_w3},
-        wires::{COLUMNS, PERMUTS},
+        wires::PERMUTS,
     },
     curve::KimchiCurve,
     error::VerifierIndexError,
@@ -56,7 +56,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve> {
+pub struct VerifierIndex<const W: usize, G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -76,7 +76,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub sigma_comm: [PolyComm<G>; PERMUTS],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub coefficients_comm: [PolyComm<G>; COLUMNS],
+    pub coefficients_comm: Vec<PolyComm<G>>,
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub generic_comm: PolyComm<G>,
@@ -149,13 +149,13 @@ pub struct VerifierIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<G: KimchiCurve> ProverIndex<G> {
+impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
     /// Produces the [`VerifierIndex`] from the prover's [`ProverIndex`].
     ///
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    pub fn verifier_index(&self) -> VerifierIndex<G> {
+    pub fn verifier_index(&self) -> VerifierIndex<W, G> {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
         }
@@ -215,12 +215,12 @@ impl<G: KimchiCurve> ProverIndex<G> {
                     &self.column_evaluations.permutation_coefficients8[i],
                 )
             }),
-            coefficients_comm: array::from_fn(|i| {
-                self.srs.commit_evaluations_non_hiding(
-                    domain,
-                    &self.column_evaluations.coefficients8[i],
-                )
-            }),
+            coefficients_comm: self
+                .column_evaluations
+                .coefficients8
+                .iter()
+                .map(|c| self.srs.commit_evaluations_non_hiding(domain, c))
+                .collect::<Vec<_>>(),
             generic_comm: mask_fixed(
                 self.srs.commit_evaluations_non_hiding(
                     domain,
@@ -301,7 +301,7 @@ impl<G: KimchiCurve> ProverIndex<G> {
     }
 }
 
-impl<G: KimchiCurve> VerifierIndex<G> {
+impl<const W: usize, G: KimchiCurve> VerifierIndex<W, G> {
     /// Gets srs from [`VerifierIndex`] lazily
     pub fn srs(&self) -> &Arc<SRS<G>>
     where

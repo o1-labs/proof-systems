@@ -42,7 +42,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         polynomial::WitnessOverDomains,
-        wires::{Wire, COLUMNS, PERMUTS},
+        wires::{Wire, PERMUTS},
     },
     curve::KimchiCurve,
     error::ProverError,
@@ -191,7 +191,7 @@ where
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<W, G> {
     /// permutation quotient poly contribution computation
     ///
     /// # Errors
@@ -204,7 +204,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
         &self,
-        lagrange: &WitnessOverDomains<F>,
+        lagrange: &WitnessOverDomains<W, F>,
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
@@ -324,7 +324,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &ProofEvaluations<PointEvaluations<F>>,
+        e: &ProofEvaluations<W, PointEvaluations<F>>,
         zeta: F,
         beta: F,
         gamma: F,
@@ -349,8 +349,8 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
-    pub fn perm_scalars(
-        e: &ProofEvaluations<PointEvaluations<F>>,
+    pub fn perm_scalars<const W: usize>(
+        e: &ProofEvaluations<W, PointEvaluations<F>>,
         beta: F,
         gamma: F,
         mut alphas: impl Iterator<Item = F>,
@@ -390,7 +390,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<W, G> {
     /// permutation aggregation polynomial computation
     ///
     /// # Errors
@@ -402,7 +402,7 @@ impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
     /// Will panic if `first element` is not 1.
     pub fn perm_aggreg(
         &self,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),

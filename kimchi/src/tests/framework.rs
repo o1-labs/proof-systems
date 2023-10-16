@@ -26,9 +26,9 @@ use std::{fmt::Write, time::Instant};
 // aliases
 
 #[derive(Default, Clone)]
-pub(crate) struct TestFramework<G: KimchiCurve> {
+pub(crate) struct TestFramework<const W: usize, G: KimchiCurve> {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
-    witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
+    witness: Option<[Vec<G::ScalarField>; W]>,
     public_inputs: Vec<G::ScalarField>,
     lookup_tables: Vec<LookupTable<G::ScalarField>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
@@ -36,15 +36,14 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     recursion: Vec<RecursionChallenge<G>>,
     num_prev_challenges: usize,
     disable_gates_checks: bool,
-
-    prover_index: Option<ProverIndex<G>>,
-    verifier_index: Option<VerifierIndex<G>>,
+    prover_index: Option<ProverIndex<W, G>>,
+    verifier_index: Option<VerifierIndex<W, G>>,
 }
 
 #[derive(Clone)]
-pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>);
+pub(crate) struct TestRunner<const W: usize, G: KimchiCurve>(TestFramework<W, G>);
 
-impl<G: KimchiCurve> TestFramework<G>
+impl<const W: usize, G: KimchiCurve> TestFramework<W, G>
 where
     G::BaseField: PrimeField,
     G::ScalarField: PrimeField,
@@ -56,7 +55,7 @@ where
     }
 
     #[must_use]
-    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; COLUMNS]) -> Self {
+    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; W]) -> Self {
         self.witness = Some(witness);
         self
     }
@@ -96,13 +95,13 @@ where
 
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> TestRunner<G> {
+    pub(crate) fn setup(mut self) -> TestRunner<W, G> {
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
-        let index = new_index_for_test_with_lookups::<G>(
+        let index = new_index_for_test_with_lookups::<W, G>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -122,7 +121,7 @@ where
     }
 }
 
-impl<G: KimchiCurve> TestRunner<G>
+impl<const W: usize, G: KimchiCurve> TestRunner<W, G>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
@@ -143,12 +142,12 @@ where
     }
 
     #[must_use]
-    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; COLUMNS]) -> Self {
+    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; W]) -> Self {
         self.0.witness = Some(witness);
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<G> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<W, G> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -157,7 +156,7 @@ where
     pub(crate) fn prove<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: FrSponge<W, G::ScalarField>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -188,7 +187,7 @@ where
     pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: FrSponge<W, G::ScalarField>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -219,7 +218,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge>(
+        verify::<W, G, EFqSponge, EFrSponge>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

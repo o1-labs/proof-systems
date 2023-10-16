@@ -137,11 +137,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
-    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_poseidon<const W: usize, G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
@@ -328,18 +328,16 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
 #[derive(Default)]
-pub struct Poseidon<F>(PhantomData<F>);
+pub struct Poseidon<const W: usize, F>(PhantomData<F>);
 
-impl<F> Poseidon<F> where F: Field {}
-
-impl<F> Argument<F> for Poseidon<F>
+impl<const W: usize, F> Argument<W, F> for Poseidon<W, F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T> {
         let mut res = vec![];
 
         let mut idx = 0;

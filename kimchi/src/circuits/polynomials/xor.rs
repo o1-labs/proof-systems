@@ -10,7 +10,6 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
-        polynomial::COLUMNS,
         wires::Wire,
         witness::{self, ConstantCell, CopyBitsCell, VariableBitsCell, Variables, WitnessCell},
     },
@@ -137,9 +136,9 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 //~ ```
 
 #[derive(Default)]
-pub struct Xor16<F>(PhantomData<F>);
+pub struct Xor16<const W: usize, F>(PhantomData<F>);
 
-impl<F> Argument<F> for Xor16<F>
+impl<const W: usize, F> Argument<W, F> for Xor16<W, F>
 where
     F: PrimeField,
 {
@@ -150,7 +149,7 @@ where
     //   * Operates on Curr and Next rows
     //   * Constrain the decomposition of `in1`, `in2` and `out` of multiples of 16 bits
     //   * The actual XOR is performed thanks to the plookups of 4-bit XORs.
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
         let two = T::from(2u64);
         // in1 = in1_0 + in1_1 * 2^4 + in1_2 * 2^8 + in1_3 * 2^12 + next_in1 * 2^16
         // in2 = in2_0 + in2_1 * 2^4 + in2_2 * 2^8 + in2_3 * 2^12 + next_in2 * 2^16
@@ -169,10 +168,10 @@ where
 }
 
 // Witness layout
-fn layout<F: PrimeField>(
+fn layout<const W: usize, F: PrimeField>(
     curr_row: usize,
     bits: usize,
-) -> Vec<Vec<Box<dyn WitnessCell<COLUMNS, F, F>>>> {
+) -> Vec<Vec<Box<dyn WitnessCell<W, F, F>>>> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
         .map(|i| xor_row(i, curr_row + i))
@@ -181,10 +180,10 @@ fn layout<F: PrimeField>(
     layout
 }
 
-fn xor_row<F: PrimeField>(
+fn xor_row<const W: usize, F: PrimeField>(
     nybble: usize,
     curr_row: usize,
-) -> Vec<Box<dyn WitnessCell<COLUMNS, F, F>>> {
+) -> Vec<Box<dyn WitnessCell<W, F, F>>> {
     let start = nybble * 16;
     vec![
         VariableBitsCell::create("in1", start, None),
@@ -205,7 +204,7 @@ fn xor_row<F: PrimeField>(
     ]
 }
 
-fn zero_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<COLUMNS, F, F>>> {
+fn zero_row<const W: usize, F: PrimeField>() -> Vec<Box<dyn WitnessCell<W, F, F>>> {
     vec![
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
@@ -225,8 +224,8 @@ fn zero_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<COLUMNS, F, F>>> {
     ]
 }
 
-pub(crate) fn init_xor<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+pub(crate) fn init_xor<const W: usize, F: PrimeField>(
+    witness: &mut [Vec<F>; W],
     curr_row: usize,
     bits: usize,
     words: (F, F, F),
@@ -243,14 +242,14 @@ pub(crate) fn init_xor<F: PrimeField>(
 
 /// Extends the Xor rows to the full witness
 /// Panics if the words are larger than the desired bits
-pub fn extend_xor_witness<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+pub fn extend_xor_witness<const W: usize, F: PrimeField>(
+    witness: &mut [Vec<F>; W],
     input1: F,
     input2: F,
     bits: usize,
 ) {
-    let xor_witness = create_xor_witness(input1, input2, bits);
-    for col in 0..COLUMNS {
+    let xor_witness = create_xor_witness::<W, F>(input1, input2, bits);
+    for col in 0..W {
         witness[col].extend(xor_witness[col].iter());
     }
 }
@@ -258,7 +257,11 @@ pub fn extend_xor_witness<F: PrimeField>(
 /// Create a Xor for up to the native length starting at row 0
 /// Input: first input and second input, bits length, current row
 /// Panics if the desired bits is smaller than the inputs length
-pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [Vec<F>; COLUMNS] {
+pub fn create_xor_witness<const W: usize, F: PrimeField>(
+    input1: F,
+    input2: F,
+    bits: usize,
+) -> [Vec<F>; W] {
     let input1_big = input1.to_biguint();
     let input2_big = input2.to_biguint();
     if bits < input1_big.bitlen() || bits < input2_big.bitlen() {
@@ -266,8 +269,7 @@ pub fn create_xor_witness<F: PrimeField>(input1: F, input2: F, bits: usize) -> [
     }
     let output = BigUint::bitwise_xor(&input1_big, &input2_big);
 
-    let mut xor_witness: [Vec<F>; COLUMNS] =
-        array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits)]);
+    let mut xor_witness: [Vec<F>; W] = array::from_fn(|_| vec![F::zero(); 1 + num_xors(bits)]);
 
     init_xor(
         &mut xor_witness,

@@ -37,7 +37,6 @@ use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
-    polynomial::COLUMNS,
     wires::GateWires,
 };
 use crate::{curve::KimchiCurve, prover_index::ProverIndex};
@@ -65,16 +64,16 @@ pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
 
 /// Implementation of the `Generic` gate
 #[derive(Default)]
-pub struct Generic<F>(PhantomData<F>);
+pub struct Generic<const W: usize, F>(PhantomData<F>);
 
-impl<F> Argument<F> for Generic<F>
+impl<const W: usize, F> Argument<W, F> for Generic<W, F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
     const CONSTRAINTS: u32 = 2;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);
         let right_coeff1 = env.coeff(1);
@@ -257,14 +256,14 @@ pub mod testing {
         /// # Errors
         ///
         /// Will give error if `self.typ` is not `GateType::Generic`.
-        pub fn verify_generic(
+        pub fn verify_generic<const W: usize>(
             &self,
             row: usize,
-            witness: &[Vec<F>; COLUMNS],
+            witness: &[Vec<F>; W],
             public: &[F],
         ) -> Result<(), String> {
             // assignments
-            let this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
+            let this: [F; W] = array::from_fn(|i| witness[i][row]);
 
             // constants
             let zero = F::zero();
@@ -307,14 +306,14 @@ pub mod testing {
         }
     }
 
-    impl<F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<G> {
+    impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<W, G> {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,
-            witness: &[DensePolynomial<F>; COLUMNS],
+            witness: &[DensePolynomial<F>; W],
             public: &DensePolynomial<F>,
         ) -> bool {
-            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
+            let coefficientsm: [_; W] = array::from_fn(|i| {
                 self.column_evaluations.coefficients8[i]
                     .clone()
                     .interpolate()
@@ -364,7 +363,10 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `gates_row` is None.
-    pub fn create_circuit<F: PrimeField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
+    pub fn create_circuit<const W: usize, F: PrimeField>(
+        start_row: usize,
+        public: usize,
+    ) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
@@ -420,9 +422,9 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `witness_row` is None.
-    pub fn fill_in_witness<F: FftField>(
+    pub fn fill_in_witness<const W: usize, F: FftField>(
         start_row: usize,
-        witness: &mut [Vec<F>; COLUMNS],
+        witness: &mut [Vec<F>; W],
         public: &[F],
     ) {
         // fill witness

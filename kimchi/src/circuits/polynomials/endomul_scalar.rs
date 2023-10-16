@@ -21,10 +21,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMulScalar`, or there are errors in gate values.
-    pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul_scalar<const W: usize, G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
@@ -158,16 +158,16 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~
 
 #[derive(Default)]
-pub struct EndomulScalar<F>(PhantomData<F>);
+pub struct EndomulScalar<const W: usize, F>(PhantomData<F>);
 
-impl<F> Argument<F> for EndomulScalar<F>
+impl<const W: usize, F> Argument<W, F> for EndomulScalar<W, F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);
