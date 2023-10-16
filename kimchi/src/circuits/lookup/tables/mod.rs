@@ -24,8 +24,8 @@ pub enum GateLookupTable {
 /// A table of values that can be used for a lookup, along with the ID for the table.
 #[derive(Debug, Clone)]
 pub struct LookupTable<F> {
-    pub id: i32,
-    pub data: Vec<Vec<F>>,
+    id: i32,
+    data: Vec<Vec<F>>,
 }
 
 /// Represents inconsistency errors during table construction and composition.
@@ -99,6 +99,16 @@ where
     /// Returns `true` if the lookup table is empty, `false` otherwise.
     pub fn is_empty(&self) -> bool {
         self.data.is_empty()
+    }
+
+    /// Returns table id.
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
+    /// Returns table data.
+    pub fn data(&self) -> &Vec<Vec<F>> {
+        &self.data
     }
 }
 

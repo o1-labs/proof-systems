@@ -33,10 +33,10 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
             let index_column = (0..lookup_table_values.len() as u64)
                 .map(Into::into)
                 .collect();
-            LookupTable {
-                id: id as i32,
-                data: vec![index_column, lookup_table_values.clone()],
-            }
+            LookupTable::create(
+                id as i32,
+                vec![index_column, lookup_table_values.clone()]
+            ).expect("setup_lookup_proof: Table creation must succeed")
         })
         .collect();
 

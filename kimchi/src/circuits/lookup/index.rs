@@ -274,7 +274,9 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             // we don't use the second table as table ID column.
                             let placeholders = vec![F::zero(); first_column.len()];
                             let data = vec![first_column, placeholders];
-                            let table = LookupTable { id, data };
+                            // TODO Check it does not fail actually. Maybe this should throw a different error.
+                            let table = LookupTable::create(id, data).expect("Runtime table creation must succeed");
+
                             lookup_tables.push(table);
                         }
 
@@ -340,17 +342,17 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 for table in &lookup_tables {
                     let table_len = table.len();
 
-                    if table.id != 0 {
+                    if table.id() != 0 {
                         non_zero_table_id = true;
                     }
 
                     //~~ * Update the corresponding entries in a table id vector (of size the domain as well)
                     //~    with the table ID of the table.
-                    let table_id: F = i32_to_field(table.id);
+                    let table_id: F = i32_to_field(table.id());
                     table_ids.extend(repeat_n(table_id, table_len));
 
                     //~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
-                    for (i, col) in table.data.iter().enumerate() {
+                    for (i, col) in table.data().iter().enumerate() {
                         lookup_table[i].extend(col);
                     }
 

@@ -689,11 +689,11 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             let mut lookup_domain_size: usize = lookup_tables
                 .iter()
                 .map(
-                    |LookupTable { data, id: _ }| {
-                        if data.is_empty() {
+                    |lt| {
+                        if lt.data().is_empty() {
                             0
                         } else {
-                            data[0].len()
+                            lt.data()[0].len()
                         }
                     },
                 )
