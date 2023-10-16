@@ -22,10 +22,12 @@ type BaseSponge = DefaultFqSponge<VestaParameters, SpongeParams>;
 type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_sizes: Vec<usize>) {
-    let lookup_table_values: Vec<Vec<_>> = table_sizes
+    let mut lookup_table_values: Vec<Vec<_>> = table_sizes
         .iter()
         .map(|size| (0..*size).map(|_| rand::random()).collect())
         .collect();
+    // Zero table must have a zero row
+    lookup_table_values[0][0] = From::from(0);
     let lookup_tables = lookup_table_values
         .iter()
         .enumerate()

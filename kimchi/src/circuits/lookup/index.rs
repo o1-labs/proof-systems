@@ -1,4 +1,3 @@
-use super::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 use crate::circuits::{
     domains::EvaluationDomains,
     gate::CircuitGate,
@@ -6,6 +5,7 @@ use crate::circuits::{
         constraints::LookupConfiguration,
         lookups::{LookupInfo, LookupPattern},
         tables::LookupTable,
+        runtime_tables::{RuntimeTableCfg, RuntimeTableSpec},
     },
 };
 use ark_ff::{FftField, PrimeField, SquareRootField};
