@@ -1298,6 +1298,7 @@ internal_tracing::decl_traces!(internal_traces;
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::circuits::wires::COLUMNS;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
     use poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
@@ -1420,31 +1421,29 @@ pub mod caml {
     // CamlProverCommitments<CamlG> <-> ProverCommitments<G>
     //
 
-    impl<G, CamlG> From<ProverCommitments<G>> for CamlProverCommitments<CamlG>
+    impl<G, CamlG> From<ProverCommitments<COLUMNS, G>> for CamlProverCommitments<CamlG>
     where
         G: AffineCurve,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
     {
-        fn from(prover_comm: ProverCommitments<G>) -> Self {
-            let [w_comm0, w_comm1, w_comm2, w_comm3, w_comm4, w_comm5, w_comm6, w_comm7, w_comm8, w_comm9, w_comm10, w_comm11, w_comm12, w_comm13, w_comm14] =
-                prover_comm.w_comm;
+        fn from(prover_comm: ProverCommitments<COLUMNS, G>) -> Self {
             Self {
                 w_comm: (
-                    w_comm0.into(),
-                    w_comm1.into(),
-                    w_comm2.into(),
-                    w_comm3.into(),
-                    w_comm4.into(),
-                    w_comm5.into(),
-                    w_comm6.into(),
-                    w_comm7.into(),
-                    w_comm8.into(),
-                    w_comm9.into(),
-                    w_comm10.into(),
-                    w_comm11.into(),
-                    w_comm12.into(),
-                    w_comm13.into(),
-                    w_comm14.into(),
+                    prover_comm.w_comm[0].clone().into(),
+                    prover_comm.w_comm[1].clone().into(),
+                    prover_comm.w_comm[2].clone().into(),
+                    prover_comm.w_comm[3].clone().into(),
+                    prover_comm.w_comm[4].clone().into(),
+                    prover_comm.w_comm[5].clone().into(),
+                    prover_comm.w_comm[6].clone().into(),
+                    prover_comm.w_comm[7].clone().into(),
+                    prover_comm.w_comm[8].clone().into(),
+                    prover_comm.w_comm[9].clone().into(),
+                    prover_comm.w_comm[10].clone().into(),
+                    prover_comm.w_comm[11].clone().into(),
+                    prover_comm.w_comm[12].clone().into(),
+                    prover_comm.w_comm[13].clone().into(),
+                    prover_comm.w_comm[14].clone().into(),
                 ),
                 z_comm: prover_comm.z_comm.into(),
                 t_comm: prover_comm.t_comm.into(),
@@ -1453,12 +1452,12 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<G>
+    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<COLUMNS, G>
     where
         G: AffineCurve,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
-        fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<G> {
+        fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<COLUMNS, G> {
             let (
                 w_comm0,
                 w_comm1,
@@ -1477,7 +1476,7 @@ pub mod caml {
                 w_comm14,
             ) = caml_prover_comm.w_comm;
             ProverCommitments {
-                w_comm: [
+                w_comm: vec![
                     w_comm0.into(),
                     w_comm1.into(),
                     w_comm2.into(),
@@ -1505,13 +1504,14 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<(ProverProof<COLUMNS, G>, Vec<G::ScalarField>)>
+        for CamlProverProof<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
+        fn from(pp: (ProverProof<COLUMNS, G>, Vec<G::ScalarField>)) -> Self {
             Self {
                 commitments: pp.0.commitments.into(),
                 proof: pp.0.proof.into(),
@@ -1523,12 +1523,15 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>>
+        for (ProverProof<COLUMNS, G>, Vec<G::ScalarField>)
     where
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> (ProverProof<G>, Vec<G::ScalarField>) {
+        fn from(
+            caml_pp: CamlProverProof<CamlG, CamlF>,
+        ) -> (ProverProof<COLUMNS, G>, Vec<G::ScalarField>) {
             let proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),

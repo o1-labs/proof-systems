@@ -339,6 +339,7 @@ impl<const W: usize, F> ProofEvaluations<W, F> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::circuits::wires::COLUMNS;
     use poly_commitment::commitment::caml::CamlPolyComm;
 
     //
@@ -495,12 +496,13 @@ pub mod caml {
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
 
-    impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>>> for CamlProofEvaluations<CamlF>
+    impl<F, CamlF> From<ProofEvaluations<COLUMNS, PointEvaluations<Vec<F>>>>
+        for CamlProofEvaluations<CamlF>
     where
         F: Clone,
         CamlF: From<F>,
     {
-        fn from(pe: ProofEvaluations<PointEvaluations<Vec<F>>>) -> Self {
+        fn from(pe: ProofEvaluations<COLUMNS, PointEvaluations<Vec<F>>>) -> Self {
             let w = (
                 pe.w[0]
                     .clone()
@@ -632,13 +634,14 @@ pub mod caml {
         }
     }
 
-    impl<F, CamlF> From<CamlProofEvaluations<CamlF>> for ProofEvaluations<PointEvaluations<Vec<F>>>
+    impl<F, CamlF> From<CamlProofEvaluations<CamlF>>
+        for ProofEvaluations<COLUMNS, PointEvaluations<Vec<F>>>
     where
         F: Clone,
         F: From<CamlF>,
     {
         fn from(cpe: CamlProofEvaluations<CamlF>) -> Self {
-            let w = [
+            let w = vec![
                 cpe.w.0.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.1.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.2.map(&|x| x.into_iter().map(Into::into).collect()),
@@ -655,7 +658,7 @@ pub mod caml {
                 cpe.w.13.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.14.map(&|x| x.into_iter().map(Into::into).collect()),
             ];
-            let coefficients = [
+            let coefficients = vec![
                 cpe.coefficients
                     .0
                     .map(&|x| x.into_iter().map(Into::into).collect()),
