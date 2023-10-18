@@ -68,9 +68,9 @@ pub(crate) fn eval_exp_error<'a, F: Field, E: FoldingEnv<F>>(
     }
 }
 
-pub(crate) fn compute_error<'a, F: Field, E: FoldingEnv<F>>(
+pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
     exp: &IntegratedFoldingExpr<F>,
-    env: &'a E,
+    env: &E,
     u: (F, F),
 ) -> Vec<F> {
     let add = |a, b| EvalLeaf::bin_op(a, b, |a, b| *a + b, |a, b| *a += b);

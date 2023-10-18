@@ -1,9 +1,8 @@
+use super::{CacheId, GateType};
 use crate::circuits::{
     expr::{Column, Expr, FeatureFlag, Op2, Variable},
     gate::CurrOrNext,
 };
-
-use super::{CacheId, GateType};
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum FoldingColumn {
@@ -282,7 +281,10 @@ fn simplify_expression<C: Copy, F: Fn(&FeatureFlag) -> bool>(
                 Op2::Mul => FoldingExp::Mul(e1, e2),
             }
         }
-        Expr::UnnormalizedLagrangeBasis(i) => FoldingExp::UnnormalizedLagrangeBasis(*i),
+        Expr::UnnormalizedLagrangeBasis(i) => {
+            assert!(!i.zk_rows);
+            FoldingExp::UnnormalizedLagrangeBasis(i.offset)
+        }
         Expr::Cache(id, e) => {
             let e = simplify_expression(e, flag_resolver);
             FoldingExp::Cache(*id, Box::new(e))
@@ -294,8 +296,10 @@ fn simplify_expression<C: Copy, F: Fn(&FeatureFlag) -> bool>(
                 simplify_expression(e2, flag_resolver)
             }
         }
-        Expr::VanishesOnLast4Rows | Expr::Pow(_, _) => {
+        Expr::Pow(_, _) => {
             unreachable!()
         }
+        //TODO: check that this is fine
+        Expr::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
     }
 }

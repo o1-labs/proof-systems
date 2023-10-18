@@ -1,17 +1,15 @@
 use self::error::compute_error;
-use crate::{
-    circuits::{
-        expr::{CacheId, Expr, FeatureFlag},
-        gate::GateType,
-    },
-    curve::KimchiCurve,
+use crate::circuits::{
+    expr::{CacheId, Expr, FeatureFlag},
+    gate::GateType,
 };
 use ark_ff::{Field, One, Zero};
 use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain};
 use expressions::{folding_expression, IntegratedFoldingExpr};
 pub use instance_witness::{InstanceTrait, RelaxedInstance, RelaxedWitness, WitnessTrait};
 use instance_witness::{RelaxableInstance, RelaxablePair};
-use poly_commitment::{srs::SRS, PolyComm};
+use poly_commitment::PolyComm;
+use poly_commitment::{commitment::CommitmentCurve, SRS};
 use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 
 mod error;
@@ -94,7 +92,7 @@ impl<'a, F: Field> EvalLeaf<'a, F> {
 }
 struct Env<'a, G, I, W>
 where
-    G: KimchiCurve,
+    G: CommitmentCurve,
     I: InstanceTrait<G>,
     W: WitnessTrait<G>,
 {
@@ -107,7 +105,7 @@ where
 }
 impl<'a, G, I, W> FoldingEnv<G::ScalarField> for Env<'a, G, I, W>
 where
-    G: KimchiCurve,
+    G: CommitmentCurve,
     I: InstanceTrait<G>,
     W: WitnessTrait<G>,
 {
@@ -150,33 +148,33 @@ where
         vec![zero; self.len]
     }
 }
-pub trait Sponge<G: KimchiCurve> {
+pub trait Sponge<G: CommitmentCurve> {
     fn challenge(absorbe: &PolyComm<G>) -> G::ScalarField;
 }
 
-pub struct FoldingScheme<G: KimchiCurve, S: Sponge<G>> {
+pub struct FoldingScheme<G: CommitmentCurve, S: Sponge<G>, C: SRS<G>> {
     _sponge: PhantomData<S>,
     // original_exp: Expr<ConstantExpr<G::ScalarField>>,
     expression: IntegratedFoldingExpr<G::ScalarField>,
     index: HashMap<GateType, Vec<G::ScalarField>>,
     coefficients: Vec<Vec<G::ScalarField>>,
     shift: Vec<G::ScalarField>,
-    srs: Arc<SRS<G>>,
+    srs: Arc<C>,
     domain: Radix2EvaluationDomain<G::ScalarField>,
     zero_commitment: PolyComm<G>,
     zero_vec: Vec<G::ScalarField>,
 }
-impl<G: KimchiCurve, S: Sponge<G>> FoldingScheme<G, S> {
+impl<G: CommitmentCurve, S: Sponge<G>, C: SRS<G>> FoldingScheme<G, S, C> {
     pub fn new<F: Fn(&FeatureFlag) -> bool>(
         expression: &Expr<G::ScalarField>,
         index: HashMap<GateType, Vec<G::ScalarField>>,
         coefficients: Vec<Vec<G::ScalarField>>,
-        srs: Arc<SRS<G>>,
+        srs: Arc<C>,
         domain: Radix2EvaluationDomain<G::ScalarField>,
         flag_resolver: &F,
     ) -> Self {
         let expression = folding_expression(expression, flag_resolver);
-        let shift = domain.elements().into_iter().collect();
+        let shift = domain.elements().collect();
         let zero: G::ScalarField = G::ScalarField::zero();
         let evals = std::iter::repeat(zero).take(domain.size()).collect();
         let zero_vec_evals = Evaluations::from_vec_and_domain(evals, domain);
@@ -209,7 +207,7 @@ impl<G: KimchiCurve, S: Sponge<G>> FoldingScheme<G, S> {
         let a = a.relax(&self.zero_vec, self.zero_commitment.clone());
         let b = b.relax(&self.zero_vec, self.zero_commitment.clone());
 
-        let len = a.1.witness.len();
+        let len = a.1.witness.rows();
         let u = (a.0.u, b.0.u);
 
         let env = Env {
