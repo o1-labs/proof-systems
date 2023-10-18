@@ -70,7 +70,7 @@ where
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) =
-            expr_linearization(&cs, Some(&cs.feature_flags), true);
+            expr_linearization(cs.custom_gate_type, Some(&cs.feature_flags), true);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 

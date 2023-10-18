@@ -38,7 +38,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
-    cs: &ConstraintSystem<F>, // TODO: pass boolean instead!
+    custom_gate_type: bool,
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
@@ -96,7 +96,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     {
         let mut foreign_field_add_expr = || {
-            if cs.custom_gate_type {
+            if custom_gate_type {
                 Conditional::combined_constraints(&powers_of_alpha, &mut cache)
             } else {
                 ForeignFieldAdd::combined_constraints(&powers_of_alpha, &mut cache)
@@ -230,7 +230,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(cs, None, generic);
+            let (feature_flagged_expr, _) = constraints_expr(custom_gate_type, None, generic);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -345,13 +345,13 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 ///
 /// Will panic if the `linearization` process fails.
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
-    cs: &ConstraintSystem<F>,
+    custom_gate_type: bool,
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr(cs, feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr(custom_gate_type, feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)
