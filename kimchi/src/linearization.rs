@@ -12,7 +12,7 @@ use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
     endosclmul::EndosclMul,
-    foreign_field_add::circuitgates::ForeignFieldAdd,
+    foreign_field_add::circuitgates::{AssertEq1, ForeignFieldAdd},
     foreign_field_mul::circuitgates::ForeignFieldMul,
     generic, permutation,
     poseidon::Poseidon,
@@ -38,6 +38,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
+    override_ffadd: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -91,7 +92,21 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         }
     }
 
-    {
+    if override_ffadd {
+        let mut foreign_field_add_expr =
+            || AssertEq1::combined_constraints(&powers_of_alpha, &mut cache);
+        if let Some(feature_flags) = feature_flags {
+            if feature_flags.foreign_field_add {
+                expr += foreign_field_add_expr();
+            }
+        } else {
+            expr += Expr::IfFeature(
+                FeatureFlag::ForeignFieldAdd,
+                Box::new(foreign_field_add_expr()),
+                Box::new(Expr::zero()),
+            );
+        }
+    } else {
         let mut foreign_field_add_expr =
             || ForeignFieldAdd::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
@@ -222,7 +237,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(None, generic);
+            let (feature_flagged_expr, _) = constraints_expr(None, generic, override_ffadd);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -339,10 +354,11 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
+    override_ffadd: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic, override_ffadd);
 
     let linearization = expr
         .linearize(evaluated_cols)

@@ -148,6 +148,8 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
+
+    pub override_ffadd: bool,
 }
 //~spec:endcode
 
@@ -310,6 +312,7 @@ where
             endo: self.cs.endo,
             lookup_index,
             linearization: self.linearization.clone(),
+            override_ffadd: self.cs.override_ffadd,
         }
     }
 }
@@ -434,6 +437,7 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
 
             linearization: _,
             powers_of_alpha: _,
+            override_ffadd: _,
         } = &self;
 
         // Always present

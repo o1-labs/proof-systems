@@ -173,6 +173,8 @@ pub struct ConstraintSystem<F: PrimeField> {
 
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
+
+    pub override_ffadd: bool,
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -194,6 +196,7 @@ pub struct Builder<F: PrimeField> {
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
+    override_ffadd: bool,
     max_poly_size: Option<usize>,
 }
 
@@ -253,6 +256,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
+            override_ffadd: false,
         }
     }
 
@@ -667,6 +671,12 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         self
     }
 
+    /// Disable gates checks (for testing; only enables with development builds)
+    pub fn override_ffadd(mut self, override_ffadd: bool) -> Self {
+        self.override_ffadd = override_ffadd;
+        self
+    }
+
     pub fn max_poly_size(mut self, max_poly_size: Option<usize>) -> Self {
         self.max_poly_size = max_poly_size;
         self
@@ -845,6 +855,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             feature_flags,
             precomputations: domain_constant_evaluation,
             disable_gates_checks: self.disable_gates_checks,
+            override_ffadd: self.override_ffadd,
         };
 
         match self.precomputations {
