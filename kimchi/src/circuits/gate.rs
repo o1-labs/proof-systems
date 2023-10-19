@@ -229,10 +229,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             KeccakRound => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             KeccakSponge => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
         }
     }
