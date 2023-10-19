@@ -484,6 +484,8 @@ impl<G: KimchiCurve> VerifierIndex<G> {
                     lookup,
                     range_check,
                     ffmul,
+                    keccak_round: _,
+                    keccak_sponge: _,
                 },
         }) = lookup_index
         {
