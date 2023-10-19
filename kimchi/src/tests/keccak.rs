@@ -3,28 +3,38 @@ use std::array;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
-        gate::{CircuitGate, GateType},
+        gate::{CircuitGate, CircuitGateResult, GateType},
         polynomials::keccak::{
-            collapse, compose, decompose, expand, pad, reset, shift,
+            collapse, compose, decompose, expand, padded_length, reset, shift,
             witness::extend_keccak_witness, KECCAK_COLS, QUARTERS,
         },
         wires::Wire,
     },
     curve::KimchiCurve,
+    plonk_sponge::FrSponge,
+    tests::framework::TestFramework,
 };
+use ark_ec::{AffineCurve, ProjectiveCurve};
 use ark_ff::{Field, PrimeField, Zero};
-use mina_curves::pasta::Pallas;
+use mina_curves::pasta::{Fq, Pallas, PallasParameters};
+use mina_poseidon::{
+    constants::PlonkSpongeConstantsKimchi,
+    sponge::{DefaultFqSponge, DefaultFrSponge},
+    FqSponge,
+};
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, FieldHelpers};
 
-fn create_test_constraint_system<G: KimchiCurve>(
-    bytelength: usize,
-) -> ConstraintSystem<G::ScalarField>
+type SpongeParams = PlonkSpongeConstantsKimchi;
+type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
+type PallasScalarSponge = DefaultFrSponge<Fq, SpongeParams>;
+
+fn create_test_gates<G: KimchiCurve>(bytelength: usize) -> Vec<CircuitGate<G::ScalarField>>
 where
     G::BaseField: PrimeField,
 {
     let mut gates = vec![];
-    let next_row = CircuitGate::extend_keccak(&mut gates, bytelength);
+    let next_row = CircuitGate::<G::ScalarField>::extend_keccak(&mut gates, bytelength);
     // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next row
     gates.push(CircuitGate {
         typ: GateType::Zero,
@@ -113,18 +123,21 @@ fn print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
 }
 
 // Sets up test for a given message and desired input bytelength
-fn test_keccak<G: KimchiCurve>(message: BigUint) -> BigUint
+fn test_keccak<G: KimchiCurve, EFqSponge, EFrSponge>(
+    message: BigUint,
+    full: bool,
+) -> (CircuitGateResult<()>, BigUint)
 where
     G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<KECCAK_COLS, G::ScalarField>,
 {
     let bytelength = message.to_bytes_be().len();
-    let padded_len = {
-        let mut sized = message.to_bytes_be();
-        sized.resize(bytelength - sized.len(), 0);
-        pad(&sized).len()
-    };
-    let _index = create_test_constraint_system::<G>(padded_len);
-    let witness = create_keccak_witness::<G>(message);
+    let padded_len = padded_length(bytelength);
+
+    let gates = create_test_gates::<G>(padded_len);
+    let witness: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>;
+        KECCAK_COLS] = create_keccak_witness::<G>(message);
 
     for r in 1..=24 {
         print_witness::<G::ScalarField>(&witness, r);
@@ -141,8 +154,46 @@ where
     }
     println!();
     println!();
+    let hash = BigUint::from_bytes_be(&hash);
 
-    BigUint::from_bytes_be(&hash)
+    let runner = if full {
+        // Create prover index with test framework
+        Some(
+            TestFramework::<KECCAK_COLS, G>::default()
+                .gates(gates.clone())
+                .setup(),
+        )
+    } else {
+        None
+    };
+    let cs = if let Some(runner) = runner.as_ref() {
+        runner.clone().prover_index().cs.clone()
+    } else {
+        ConstraintSystem::create(gates.clone())
+            .build::<KECCAK_COLS>()
+            .unwrap()
+    };
+
+    // Perform witness verification that everything is ok before invalidation (quick checks)
+    for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
+        let result =
+            gate.verify_witness::<KECCAK_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        if result.is_err() {
+            return (result, hash);
+        }
+    }
+
+    if let Some(runner) = runner.as_ref() {
+        // Perform full test that everything is ok before invalidation
+        assert_eq!(
+            runner
+                .clone()
+                .witness(witness.clone())
+                .prove_and_verify::<EFqSponge, EFrSponge>(),
+            Ok(())
+        );
+    }
+    (Ok(()), hash)
 }
 
 #[test]
@@ -212,9 +263,9 @@ fn test_bitwise_sparse_representation() {
 #[test]
 // Tests a random block of 1080 bits
 fn test_random_block() {
-    let claim_random = test_keccak::<Pallas>(
+    let (_,claim_random) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge >(
         BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126"),
-    );
+    false);
     let hash_random =
         BigUint::from_hex("845e9dd4e22b4917a80c5419a0ddb3eebf5f4f7cc6035d827314a18b718f751f");
     assert_eq!(claim_random, hash_random);
@@ -223,7 +274,10 @@ fn test_random_block() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_dummy() {
-    let claim1 = test_keccak::<Pallas>(BigUint::from_bytes_be(&[0x00]));
+    let (_, claim1) = test_keccak::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+        BigUint::from_bytes_be(&[0x00]),
+        false,
+    );
     let hash1 =
         BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
     assert_eq!(claim1, hash1);
@@ -232,7 +286,7 @@ fn test_dummy() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_blocks() {
-    let claim_3blocks = test_keccak::<Pallas>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"));
+    let (_,claim_3blocks) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"), false);
     let hash_3blocks =
         BigUint::from_hex("7e369e1a4362148fca24c67c76f14dbe24b75c73e9b0efdb8c46056c8514287e");
     assert_eq!(claim_3blocks, hash_3blocks);
