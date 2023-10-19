@@ -150,7 +150,7 @@ impl<F: PrimeField> CircuitGate<F> {
         let evals: ProofEvaluations<W, PointEvaluations<G::ScalarField>> =
             ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
-        let constraints = EndosclMul::<W, F>::constraints(&mut Cache::default());
+        let constraints = EndosclMul::<F>::constraints(&mut Cache::default());
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
@@ -176,16 +176,16 @@ impl<F: PrimeField> CircuitGate<F> {
 
 /// Implementation of the `EndosclMul` gate.
 #[derive(Default)]
-pub struct EndosclMul<const W: usize, F>(PhantomData<F>);
+pub struct EndosclMul<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for EndosclMul<W, F>
+impl<F> Argument<F> for EndosclMul<F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);

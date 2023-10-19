@@ -64,16 +64,16 @@ pub const DOUBLE_GENERIC_REGISTERS: usize = GENERIC_REGISTERS * 2;
 
 /// Implementation of the `Generic` gate
 #[derive(Default)]
-pub struct Generic<const W: usize, F>(PhantomData<F>);
+pub struct Generic<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for Generic<W, F>
+impl<F> Argument<F> for Generic<F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
     const CONSTRAINTS: u32 = 2;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);
         let right_coeff1 = env.coeff(1);

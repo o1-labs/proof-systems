@@ -328,16 +328,16 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// The rth position in this array contains the alphas used for the equations that
 /// constrain the values of the (r+1)th state.
 #[derive(Default)]
-pub struct Poseidon<const W: usize, F>(PhantomData<F>);
+pub struct Poseidon<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for Poseidon<W, F>
+impl<F> Argument<F> for Poseidon<F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let mut res = vec![];
 
         let mut idx = 0;

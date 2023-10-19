@@ -695,10 +695,7 @@ where
             // generic
             let mut t4 = {
                 let generic_constraint =
-                    generic::Generic::<W, G::ScalarField>::combined_constraints(
-                        &all_alphas,
-                        &mut cache,
-                    );
+                    generic::Generic::combined_constraints(&all_alphas, &mut cache);
                 let generic4 = generic_constraint.evaluations(&env);
 
                 if cfg!(debug_assertions) {
@@ -741,7 +738,7 @@ where
 
                 for gate in [
                     (
-                        (&CompleteAdd::default() as &dyn DynArgument<W, G::ScalarField>),
+                        (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
                         true,
                     ),
                     (&VarbaseMul::default(), true),

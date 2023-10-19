@@ -36,7 +36,7 @@ struct Context {
 }
 
 /// Allows us to quickly implement a LaTeX encoder for each gate
-trait LaTeX<const W: usize, F>: Argument<W, F>
+trait LaTeX<F>: Argument<F>
 where
     F: PrimeField,
 {
@@ -49,24 +49,24 @@ where
 }
 
 /// Implement [LaTeX] for all gates
-impl<const W: usize, T, F> LaTeX<W, F> for T
+impl<T, F> LaTeX<F> for T
 where
-    T: Argument<W, F>,
+    T: Argument<F>,
     F: PrimeField + Display,
 {
 }
 
 ///
-pub fn latex_constraints<const W: usize, G>() -> HashMap<&'static str, Vec<Vec<String>>>
+pub fn latex_constraints<G>() -> HashMap<&'static str, Vec<Vec<String>>>
 where
     G: CommitmentCurve,
 {
     let mut map = HashMap::new();
-    map.insert("Poseidon", Poseidon::<W, G::ScalarField>::latex());
-    map.insert("CompleteAdd", CompleteAdd::<W, G::ScalarField>::latex());
-    map.insert("VarBaseMul", VarbaseMul::<W, G::ScalarField>::latex());
-    map.insert("EndoMul", EndosclMul::<W, G::ScalarField>::latex());
-    map.insert("EndoMulScalar", EndomulScalar::<W, G::ScalarField>::latex());
+    map.insert("Poseidon", Poseidon::<G::ScalarField>::latex());
+    map.insert("CompleteAdd", CompleteAdd::<G::ScalarField>::latex());
+    map.insert("VarBaseMul", VarbaseMul::<G::ScalarField>::latex());
+    map.insert("EndoMul", EndosclMul::<G::ScalarField>::latex());
+    map.insert("EndoMulScalar", EndomulScalar::<G::ScalarField>::latex());
     map
 }
 
@@ -92,7 +92,7 @@ pub fn visu<const W: usize, G: KimchiCurve>(
     }
 
     // serialize constraints
-    let constraints = latex_constraints::<W, G>();
+    let constraints = latex_constraints::<G>();
     let constraints = serde_json::to_string(&constraints).expect("couldn't serialize constraints");
     data = format!("{data}const constraints = {constraints};");
 

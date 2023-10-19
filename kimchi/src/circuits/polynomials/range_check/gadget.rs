@@ -123,10 +123,10 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraint_count<const W: usize, F: PrimeField>(typ: GateType) -> u32 {
+pub fn circuit_gate_constraint_count<F: PrimeField>(typ: GateType) -> u32 {
     match typ {
-        GateType::RangeCheck0 => RangeCheck0::<W, F>::CONSTRAINTS,
-        GateType::RangeCheck1 => RangeCheck1::<W, F>::CONSTRAINTS,
+        GateType::RangeCheck0 => RangeCheck0::<F>::CONSTRAINTS,
+        GateType::RangeCheck1 => RangeCheck1::<F>::CONSTRAINTS,
         _ => panic!("invalid gate type"),
     }
 }
@@ -136,14 +136,14 @@ pub fn circuit_gate_constraint_count<const W: usize, F: PrimeField>(typ: GateTyp
 /// # Panics
 ///
 /// Will panic if `typ` is not `RangeCheck`-related gate type.
-pub fn circuit_gate_constraints<const W: usize, F: PrimeField>(
+pub fn circuit_gate_constraints<F: PrimeField>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,
 ) -> E<F> {
     match typ {
-        GateType::RangeCheck0 => RangeCheck0::<W, F>::combined_constraints(alphas, cache),
-        GateType::RangeCheck1 => RangeCheck1::<W, F>::combined_constraints(alphas, cache),
+        GateType::RangeCheck0 => RangeCheck0::combined_constraints(alphas, cache),
+        GateType::RangeCheck1 => RangeCheck1::combined_constraints(alphas, cache),
         _ => panic!("invalid gate type"),
     }
 }
@@ -153,8 +153,8 @@ pub fn combined_constraints<const W: usize, F: PrimeField>(
     alphas: &Alphas<F>,
     cache: &mut Cache,
 ) -> E<F> {
-    RangeCheck0::<W, F>::combined_constraints(alphas, cache)
-        + RangeCheck1::<W, F>::combined_constraints(alphas, cache)
+    RangeCheck0::combined_constraints(alphas, cache)
+        + RangeCheck1::combined_constraints(alphas, cache)
 }
 
 /// Get the range check lookup table

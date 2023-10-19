@@ -133,16 +133,16 @@ use std::{array, marker::PhantomData};
 /// Implementation of the foreign field addition gate
 /// - Operates on Curr and Next rows.
 #[derive(Default)]
-pub struct ForeignFieldAdd<const W: usize, F>(PhantomData<F>);
+pub struct ForeignFieldAdd<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for ForeignFieldAdd<W, F>
+impl<F> Argument<F> for ForeignFieldAdd<F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
     const CONSTRAINTS: u32 = 4;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let foreign_modulus: [T; LIMB_COUNT] = array::from_fn(|i| env.coeff(i));
 
         // stored as coefficient for better correspondance with the relation being proved

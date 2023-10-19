@@ -158,16 +158,16 @@ fn polynomial<F: Field, T: ExprOps<F>>(coeffs: &[F], x: &T) -> T {
 //~
 
 #[derive(Default)]
-pub struct EndomulScalar<const W: usize, F>(PhantomData<F>);
+pub struct EndomulScalar<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for EndomulScalar<W, F>
+impl<F> Argument<F> for EndomulScalar<F>
 where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMulScalar);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let n0 = env.witness_curr(0);
         let n8 = env.witness_curr(1);
         let a0 = env.witness_curr(2);

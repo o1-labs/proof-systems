@@ -254,7 +254,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             mds: &G::sponge_params().mds,
         };
         // Create the argument environment for the constraints over field elements
-        let env = ArgumentEnv::<W, F, F>::create(argument_witness, self.coeffs.clone(), constants);
+        let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
 
         // Check the wiring (i.e. copy constraints) for this gate
         // Note: Gates can operated on row Curr or Curr and Next.
@@ -342,7 +342,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; W],
-    ) -> CircuitGateResult<ArgumentWitness<W, F>> {
+    ) -> CircuitGateResult<ArgumentWitness<F>> {
         // Get the part of the witness relevant to this gate
         let witness_curr: [F; W] = (0..witness.len())
             .map(|col| witness[col][row])
@@ -359,9 +359,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             [F::zero(); W]
         };
 
-        Ok(ArgumentWitness::<W, F> {
-            curr: witness_curr,
-            next: witness_next,
+        Ok(ArgumentWitness::<F> {
+            curr: witness_curr.to_vec(),
+            next: witness_next.to_vec(),
         })
     }
 }

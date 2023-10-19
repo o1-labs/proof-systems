@@ -40,25 +40,25 @@ pub trait WitnessCell<const N: usize, F: Field, T> {
 /// - layout: the partial layout to initialize from
 /// - variables: the hashmap of variables to get the values from
 #[allow(clippy::too_many_arguments)]
-pub fn init_cell<const N: usize, F: PrimeField, T>(
-    witness: &mut [Vec<F>; N],
+pub fn init_cell<const W: usize, F: PrimeField, T>(
+    witness: &mut [Vec<F>; W],
     offset: usize,
     row: usize,
     col: usize,
     cell: usize,
     index: usize,
-    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    layout: &[Vec<Box<dyn WitnessCell<W, F, T>>>],
     variables: &Variables<T>,
 ) {
     witness[col][row + offset] = layout[row][cell].value(witness, variables, index);
 }
 
 /// Initialize a witness row based on layout and computed variables
-pub fn init_row<const N: usize, F: PrimeField, T>(
-    witness: &mut [Vec<F>; N],
+pub fn init_row<const W: usize, F: PrimeField, T>(
+    witness: &mut [Vec<F>; W],
     offset: usize,
     row: usize,
-    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    layout: &[Vec<Box<dyn WitnessCell<W, F, T>>>],
     variables: &Variables<T>,
 ) {
     let mut col = 0;
@@ -72,10 +72,10 @@ pub fn init_row<const N: usize, F: PrimeField, T>(
 }
 
 /// Initialize a witness based on layout and computed variables
-pub fn init<const N: usize, F: PrimeField, T>(
-    witness: &mut [Vec<F>; N],
+pub fn init<const W: usize, F: PrimeField, T>(
+    witness: &mut [Vec<F>; W],
     offset: usize,
-    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    layout: &[Vec<Box<dyn WitnessCell<W, F, T>>>],
     variables: &Variables<T>,
 ) {
     for row in 0..layout.len() {

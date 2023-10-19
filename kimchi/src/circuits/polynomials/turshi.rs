@@ -205,10 +205,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         // assign powers of alpha to these gates
         let mut alphas = Alphas::<F>::default();
-        alphas.register(
-            ArgumentType::Gate(self.typ),
-            Instruction::<W, F>::CONSTRAINTS,
-        );
+        alphas.register(ArgumentType::Gate(self.typ), Instruction::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
         let constraints =
@@ -748,18 +745,18 @@ pub fn circuit_gate_combined_constraints<const W: usize, F: PrimeField>(
     cache: &mut Cache,
 ) -> E<F> {
     match typ {
-        GateType::CairoClaim => Claim::<W, F>::combined_constraints(alphas, cache),
-        GateType::CairoInstruction => Instruction::<W, F>::combined_constraints(alphas, cache),
-        GateType::CairoFlags => Flags::<W, F>::combined_constraints(alphas, cache),
-        GateType::CairoTransition => Transition::<W, F>::combined_constraints(alphas, cache),
+        GateType::CairoClaim => Claim::combined_constraints(alphas, cache),
+        GateType::CairoInstruction => Instruction::combined_constraints(alphas, cache),
+        GateType::CairoFlags => Flags::combined_constraints(alphas, cache),
+        GateType::CairoTransition => Transition::combined_constraints(alphas, cache),
         GateType::Zero => E::literal(F::zero()),
         _ => panic!("invalid gate type"),
     }
 }
 
-pub struct Claim<const W: usize, F>(PhantomData<F>);
+pub struct Claim<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for Claim<W, F>
+impl<F> Argument<F> for Claim<F>
 where
     F: PrimeField,
 {
@@ -768,7 +765,7 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let pc_ini = env.witness_curr(0); // copy from public input
         let ap_ini = env.witness_curr(1); // copy from public input
         let pc_fin = env.witness_curr(2); // copy from public input
@@ -794,9 +791,9 @@ where
     }
 }
 
-pub struct Instruction<const W: usize, F>(PhantomData<F>);
+pub struct Instruction<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for Instruction<W, F>
+impl<F> Argument<F> for Instruction<F>
 where
     F: PrimeField,
 {
@@ -805,7 +802,7 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         // load all variables of the witness corresponding to Cairoinstruction gates
         let pc = env.witness_curr(0);
         let ap = env.witness_curr(1);
@@ -940,9 +937,9 @@ where
     }
 }
 
-pub struct Flags<const W: usize, F>(PhantomData<F>);
+pub struct Flags<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for Flags<W, F>
+impl<F> Argument<F> for Flags<F>
 where
     F: PrimeField,
 {
@@ -951,7 +948,7 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // Load current row
         let f_pc_abs = env.witness_curr(7);
         let f_pc_rel = env.witness_curr(8);
@@ -1007,9 +1004,9 @@ where
     }
 }
 
-pub struct Transition<const W: usize, F>(PhantomData<F>);
+pub struct Transition<F>(PhantomData<F>);
 
-impl<const W: usize, F> Argument<W, F> for Transition<W, F>
+impl<F> Argument<F> for Transition<F>
 where
     F: PrimeField,
 {
@@ -1018,7 +1015,7 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<W, F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // load computed updated registers
         let pcup = env.witness_curr(7);
         let apup = env.witness_curr(8);
