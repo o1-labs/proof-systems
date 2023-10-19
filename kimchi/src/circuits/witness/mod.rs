@@ -1,8 +1,10 @@
 use ark_ff::{Field, PrimeField};
+
 mod constant_cell;
 mod copy_bits_cell;
 mod copy_cell;
 mod copy_shift_cell;
+mod index_cell;
 mod variable_bits_cell;
 mod variable_cell;
 mod variables;
@@ -12,49 +14,69 @@ pub use self::{
     copy_bits_cell::CopyBitsCell,
     copy_cell::CopyCell,
     copy_shift_cell::CopyShiftCell,
+    index_cell::IndexCell,
     variable_bits_cell::VariableBitsCell,
     variable_cell::VariableCell,
     variables::{variable_map, variables, Variables},
 };
 
-use super::polynomial::COLUMNS;
-
 /// Witness cell interface
-pub trait WitnessCell<F: Field> {
-    fn value(&self, witness: &mut [Vec<F>; COLUMNS], variables: &Variables<F>) -> F;
+pub trait WitnessCell<const N: usize, F: Field, T> {
+    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<T>, index: usize) -> F;
+
+    fn length(&self) -> usize {
+        1
+    }
 }
 
 /// Initialize a witness cell based on layout and computed variables
-pub fn init_cell<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+/// Inputs:
+/// - witness: the witness to initialize with values
+/// - offset: the row offset of the witness before initialization
+/// - row: the row index inside the partial layout
+/// - col: the column index inside the witness
+/// - cell: the cell index inside the partial layout (for any but IndexCell, it must be the same as col)
+/// - index: the index within the variable (for IndexCell, 0 otherwise)
+/// - layout: the partial layout to initialize from
+/// - variables: the hashmap of variables to get the values from
+#[allow(clippy::too_many_arguments)]
+pub fn init_cell<const N: usize, F: PrimeField, T>(
+    witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
     col: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
-    variables: &Variables<F>,
+    cell: usize,
+    index: usize,
+    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    variables: &Variables<T>,
 ) {
-    witness[col][row + offset] = layout[row][col].value(witness, variables);
+    witness[col][row + offset] = layout[row][cell].value(witness, variables, index);
 }
 
 /// Initialize a witness row based on layout and computed variables
-pub fn init_row<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+pub fn init_row<const N: usize, F: PrimeField, T>(
+    witness: &mut [Vec<F>; N],
     offset: usize,
     row: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
-    variables: &Variables<F>,
+    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    variables: &Variables<T>,
 ) {
-    for col in 0..COLUMNS {
-        init_cell(witness, offset, row, col, layout, variables);
+    let mut col = 0;
+    for cell in 0..layout[row].len() {
+        // The loop will only run more than once if the cell is an IndexCell
+        for index in 0..layout[row][cell].length() {
+            init_cell(witness, offset, row, col, cell, index, layout, variables);
+            col += 1;
+        }
     }
 }
 
 /// Initialize a witness based on layout and computed variables
-pub fn init<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+pub fn init<const N: usize, F: PrimeField, T>(
+    witness: &mut [Vec<F>; N],
     offset: usize,
-    layout: &[[Box<dyn WitnessCell<F>>; COLUMNS]],
-    variables: &Variables<F>,
+    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    variables: &Variables<T>,
 ) {
     for row in 0..layout.len() {
         init_row(witness, offset, row, layout, variables);
@@ -67,6 +89,7 @@ mod tests {
 
     use super::*;
 
+    use crate::circuits::polynomial::COLUMNS;
     use ark_ec::AffineCurve;
     use ark_ff::{Field, One, Zero};
     use mina_curves::pasta::Pallas;
@@ -74,7 +97,7 @@ mod tests {
 
     #[test]
     fn zero_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<PallasField>>; COLUMNS]> = vec![[
+        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![vec![
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
@@ -102,7 +125,7 @@ mod tests {
         }
 
         // Set a single cell to zero
-        init_cell(&mut witness, 0, 0, 4, &layout, &variables!());
+        init_cell(&mut witness, 0, 0, 4, 4, 0, &layout, &variables!());
         assert_eq!(witness[4][0], PallasField::zero());
 
         // Set all the cells to zero
@@ -117,8 +140,8 @@ mod tests {
 
     #[test]
     fn mixed_layout() {
-        let layout: Vec<[Box<dyn WitnessCell<PallasField>>; COLUMNS]> = vec![
-            [
+        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![
+            vec![
                 ConstantCell::create(PallasField::from(12u32)),
                 ConstantCell::create(PallasField::from(0xa5a3u32)),
                 ConstantCell::create(PallasField::from(0x800u32)),
@@ -135,7 +158,7 @@ mod tests {
                 ConstantCell::create(PallasField::zero()),
                 ConstantCell::create(PallasField::zero()),
             ],
-            [
+            vec![
                 CopyCell::create(0, 0),
                 CopyBitsCell::create(0, 1, 4, 8),
                 CopyShiftCell::create(0, 2, 8),
