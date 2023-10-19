@@ -1689,7 +1689,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<G: KimchiCurve> {
+pub struct ProverIndex<const W: usize, G: KimchiCurve> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1709,12 +1709,12 @@ pub struct ProverIndex<G: KimchiCurve> {
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "ColumnEvaluations<G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<G::ScalarField>,
+    #[serde(bound = "ColumnEvaluations<W, G::ScalarField>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<W, G::ScalarField>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G>>,
+    pub verifier_index: Option<VerifierIndex<W, G>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -1752,7 +1752,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve> {
+pub struct VerifierIndex<const W: usize, G: KimchiCurve> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1772,7 +1772,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub sigma_comm: [PolyComm<G>; PERMUTS],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub coefficients_comm: [PolyComm<G>; COLUMNS],
+    pub coefficients_comm: Vec<PolyComm<G>>,
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub generic_comm: PolyComm<G>,
@@ -1961,16 +1961,16 @@ pub struct LookupEvaluations<Evals> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<Evals> {
+pub struct ProofEvaluations<const W: usize, Evals> {
     /// witness polynomials
-    pub w: [Evals; COLUMNS],
+    pub w: Vec<Evals>,
     /// permutation polynomial
     pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    pub coefficients: [Evals; COLUMNS],
+    pub coefficients: Vec<Evals>,
     /// lookup-related evaluations
     pub lookup: Option<LookupEvaluations<Evals>>,
     /// evaluation of the generic selector polynomial
@@ -1996,9 +1996,9 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverCommitments<G: AffineCurve> {
+pub struct ProverCommitments<const W: usize, G: AffineCurve> {
     /// The commitments to the witness (execution trace)
-    pub w_comm: [PolyComm<G>; COLUMNS],
+    pub w_comm: Vec<PolyComm<G>>,
     /// The commitment to the permutation polynomial
     pub z_comm: PolyComm<G>,
     /// The commitment to the quotient polynomial
@@ -2011,15 +2011,15 @@ pub struct ProverCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve> {
+pub struct ProverProof<const W: usize, G: AffineCurve> {
     /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<G>,
+    pub commitments: ProverCommitments<W, G>,
 
     /// batched commitment opening proof
     pub proof: OpeningProof<G>,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>>,
+    pub evals: ProofEvaluations<W, PointEvaluations<Vec<G::ScalarField>>>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]

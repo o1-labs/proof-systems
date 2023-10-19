@@ -41,7 +41,7 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
+        let de_pf: ProverProof<COLUMNS, Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
         ctx.batch_verification(&vec![(de_pf, public_input)]);
@@ -50,7 +50,7 @@ mod tests {
     #[test]
     pub fn test_serialization() {
         let public = vec![Fp::from(3u8); 5];
-        let gates = create_circuit(0, public.len());
+        let gates = create_circuit::<COLUMNS, Fp>(0, public.len());
 
         // create witness
         let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
@@ -72,7 +72,7 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>> =
+        let mut verifier_index_deserialize: VerifierIndex<COLUMNS, GroupAffine<VestaParameters>> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
@@ -83,7 +83,7 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge>(
+        verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

@@ -9,7 +9,7 @@ use crate::{
         lookup::tables::combine_table,
         polynomials::permutation,
         scalars::RandomOracles,
-        wires::{COLUMNS, PERMUTS},
+        wires::PERMUTS,
     },
     curve::KimchiCurve,
     error::VerifyError,
@@ -32,18 +32,18 @@ use rand::thread_rng;
 /// The result of a proof verification.
 pub type Result<T> = std::result::Result<T, VerifyError>;
 
-pub struct Context<'a, G: KimchiCurve> {
+pub struct Context<'a, const W: usize, G: KimchiCurve> {
     /// The [VerifierIndex] associated to the proof
-    pub verifier_index: &'a VerifierIndex<G>,
+    pub verifier_index: &'a VerifierIndex<W, G>,
 
     /// The proof to verify
-    pub proof: &'a ProverProof<G>,
+    pub proof: &'a ProverProof<W, G>,
 
     /// The public input used in the creation of the proof
     pub public_input: &'a [G::ScalarField],
 }
 
-impl<'a, G: KimchiCurve> Context<'a, G> {
+impl<'a, const W: usize, G: KimchiCurve> Context<'a, W, G> {
     pub fn get_column(&self, col: Column) -> Option<&'a PolyComm<G>> {
         use Column::*;
         match col {
@@ -91,7 +91,7 @@ impl<'a, G: KimchiCurve> Context<'a, G> {
     }
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<const W: usize, G: KimchiCurve> ProverProof<W, G>
 where
     G::BaseField: PrimeField,
 {
@@ -106,10 +106,10 @@ where
     /// Will panic if `PolishToken` evaluation is invalid.
     pub fn oracles<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: FrSponge<W, G::ScalarField>,
     >(
         &self,
-        index: &VerifierIndex<G>,
+        index: &VerifierIndex<W, G>,
         public_comm: &PolyComm<G>,
         public_input: &[G::ScalarField],
     ) -> Result<OraclesResult<G, EFqSponge>> {
@@ -432,8 +432,8 @@ where
                 Column::Index(GateType::Poseidon),
             ]
             .into_iter()
-            .chain((0..COLUMNS).map(Column::Witness))
-            .chain((0..COLUMNS).map(Column::Coefficient))
+            .chain((0..W).map(Column::Witness))
+            .chain((0..W).map(Column::Coefficient))
             .chain((0..PERMUTS - 1).map(Column::Permutation))
             .chain(
                 index
@@ -501,7 +501,7 @@ where
 /// Enforce the length of evaluations inside [`Proof`].
 /// Atm, the length of evaluations(both `zeta` and `zeta_omega`) SHOULD be 1.
 /// The length value is prone to future change.
-fn check_proof_evals_len<G>(proof: &ProverProof<G>) -> Result<()>
+fn check_proof_evals_len<const W: usize, G>(proof: &ProverProof<W, G>) -> Result<()>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
@@ -556,16 +556,16 @@ where
     Ok(())
 }
 
-fn to_batch<'a, G, EFqSponge, EFrSponge>(
-    verifier_index: &VerifierIndex<G>,
-    proof: &'a ProverProof<G>,
+fn to_batch<'a, const W: usize, G, EFqSponge, EFrSponge>(
+    verifier_index: &VerifierIndex<W, G>,
+    proof: &'a ProverProof<W, G>,
     public_input: &'a [<G as AffineCurve>::ScalarField],
 ) -> Result<BatchEvaluationProof<'a, G, EFqSponge>>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: FrSponge<W, G::ScalarField>,
 {
     //~
     //~ #### Partial verification
@@ -745,9 +745,9 @@ where
     ]
     .into_iter()
     //~~ * witness commitments
-    .chain((0..COLUMNS).map(Column::Witness))
+    .chain((0..W).map(Column::Witness))
     //~~ * coefficient commitments
-    .chain((0..COLUMNS).map(Column::Coefficient))
+    .chain((0..W).map(Column::Coefficient))
     //~~ * sigma commitments
     .chain((0..PERMUTS - 1).map(Column::Permutation))
     //~~ * lookup commitments
@@ -860,24 +860,24 @@ where
 /// # Errors
 ///
 /// Will give error if `proof(s)` are not verified as valid.
-pub fn verify<G, EFqSponge, EFrSponge>(
+pub fn verify<const W: usize, G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    verifier_index: &VerifierIndex<G>,
-    proof: &ProverProof<G>,
+    verifier_index: &VerifierIndex<W, G>,
+    proof: &ProverProof<W, G>,
     public_input: &[G::ScalarField],
 ) -> Result<()>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: FrSponge<W, G::ScalarField>,
 {
     let proofs = vec![Context {
         verifier_index,
         proof,
         public_input,
     }];
-    batch_verify::<G, EFqSponge, EFrSponge>(group_map, &proofs)
+    batch_verify::<W, G, EFqSponge, EFrSponge>(group_map, &proofs)
 }
 
 /// This function verifies the batch of zk-proofs
@@ -887,15 +887,15 @@ where
 /// # Errors
 ///
 /// Will give error if `srs` of `proof` is invalid or `verify` process fails.
-pub fn batch_verify<G, EFqSponge, EFrSponge>(
+pub fn batch_verify<const W: usize, G, EFqSponge, EFrSponge>(
     group_map: &G::Map,
-    proofs: &[Context<G>],
+    proofs: &[Context<W, G>],
 ) -> Result<()>
 where
     G: KimchiCurve,
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField>,
+    EFrSponge: FrSponge<W, G::ScalarField>,
 {
     //~ #### Batch verification of proofs
     //~
@@ -931,7 +931,7 @@ where
         public_input,
     } in proofs
     {
-        batch.push(to_batch::<G, EFqSponge, EFrSponge>(
+        batch.push(to_batch::<W, G, EFqSponge, EFrSponge>(
             verifier_index,
             proof,
             public_input,

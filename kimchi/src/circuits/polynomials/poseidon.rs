@@ -137,11 +137,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
-    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_poseidon<const W: usize, G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
@@ -329,8 +329,6 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 /// constrain the values of the (r+1)th state.
 #[derive(Default)]
 pub struct Poseidon<F>(PhantomData<F>);
-
-impl<F> Poseidon<F> where F: Field {}
 
 impl<F> Argument<F> for Poseidon<F>
 where

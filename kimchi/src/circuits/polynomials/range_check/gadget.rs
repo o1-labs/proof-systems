@@ -149,7 +149,10 @@ pub fn circuit_gate_constraints<F: PrimeField>(
 }
 
 /// Get the combined constraints for all range check circuit gate types
-pub fn combined_constraints<F: PrimeField>(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
+pub fn combined_constraints<const W: usize, F: PrimeField>(
+    alphas: &Alphas<F>,
+    cache: &mut Cache,
+) -> E<F> {
     RangeCheck0::combined_constraints(alphas, cache)
         + RangeCheck1::combined_constraints(alphas, cache)
 }

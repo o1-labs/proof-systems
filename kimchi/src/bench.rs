@@ -28,8 +28,8 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub struct BenchmarkCtx {
     num_gates: usize,
     group_map: BWParameters<VestaParameters>,
-    index: ProverIndex<Vesta>,
-    verifier_index: VerifierIndex<Vesta>,
+    index: ProverIndex<COLUMNS, Vesta>,
+    verifier_index: VerifierIndex<COLUMNS, Vesta>,
 }
 
 impl BenchmarkCtx {
@@ -77,7 +77,7 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> (ProverProof<Vesta>, Vec<Fp>) {
+    pub fn create_proof(&self) -> (ProverProof<COLUMNS, Vesta>, Vec<Fp>) {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
@@ -96,7 +96,7 @@ impl BenchmarkCtx {
         )
     }
 
-    pub fn batch_verification(&self, batch: &[(ProverProof<Vesta>, Vec<Fp>)]) {
+    pub fn batch_verification(&self, batch: &[(ProverProof<COLUMNS, Vesta>, Vec<Fp>)]) {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()
@@ -106,7 +106,7 @@ impl BenchmarkCtx {
                 public_input: public,
             })
             .collect();
-        batch_verify::<Vesta, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
+        batch_verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
     }
 }
 

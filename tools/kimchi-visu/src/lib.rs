@@ -75,7 +75,10 @@ where
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-pub fn visu<G: KimchiCurve>(index: &ProverIndex<G>, witness: Option<Witness<G::ScalarField>>) {
+pub fn visu<const W: usize, G: KimchiCurve>(
+    index: &ProverIndex<W, G>,
+    witness: Option<Witness<G::ScalarField>>,
+) {
     // serialize index
     let index = serde_json::to_string(index).expect("couldn't serialize index");
     let mut data = format!("const index = {index};");

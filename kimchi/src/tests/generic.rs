@@ -15,14 +15,14 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_generic_gate() {
-    let gates = create_circuit(0, 0);
+    let gates = create_circuit::<COLUMNS, Fp>(0, 0);
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &[]);
 
     // create and verify proof based on the witness
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -33,14 +33,14 @@ fn test_generic_gate() {
 #[test]
 fn test_generic_gate_pub() {
     let public = vec![Fp::from(3u8); 5];
-    let gates = create_circuit(0, public.len());
+    let gates = create_circuit::<COLUMNS, Fp>(0, public.len());
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
@@ -52,14 +52,14 @@ fn test_generic_gate_pub() {
 #[test]
 fn test_generic_gate_pub_all_zeros() {
     let public = vec![Fp::from(0u8); 5];
-    let gates = create_circuit(0, public.len());
+    let gates = create_circuit::<COLUMNS, Fp>(0, public.len());
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)
@@ -71,14 +71,14 @@ fn test_generic_gate_pub_all_zeros() {
 #[test]
 fn test_generic_gate_pub_empty() {
     let public = vec![];
-    let gates = create_circuit(0, public.len());
+    let gates = create_circuit::<COLUMNS, Fp>(0, public.len());
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &public);
 
     // create and verify proof based on the witness
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public)

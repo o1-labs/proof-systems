@@ -20,7 +20,7 @@ use crate::{
             varbasemul::VarbaseMul,
             xor::Xor16,
         },
-        wires::{COLUMNS, PERMUTS},
+        wires::PERMUTS,
     },
     curve::KimchiCurve,
     error::ProverError,
@@ -114,7 +114,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<G: KimchiCurve> ProverProof<G>
+impl<const W: usize, G: KimchiCurve> ProverProof<W, G>
 where
     G::BaseField: PrimeField,
 {
@@ -125,12 +125,12 @@ where
     /// Will give error if `create_recursive` process fails.
     pub fn create<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: FrSponge<W, G::ScalarField>,
     >(
         groupmap: &G::Map,
-        witness: [Vec<G::ScalarField>; COLUMNS],
+        witness: [Vec<G::ScalarField>; W],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<W, G>,
     ) -> Result<Self> {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
@@ -153,14 +153,14 @@ where
     /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField>,
+        EFrSponge: FrSponge<W, G::ScalarField>,
     >(
         group_map: &G::Map,
-        mut witness: [Vec<G::ScalarField>; COLUMNS],
+        mut witness: [Vec<G::ScalarField>; W],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<G>,
+        index: &ProverIndex<W, G>,
         prev_challenges: Vec<RecursionChallenge<G>>,
-        blinders: Option<[Option<PolyComm<G::ScalarField>>; COLUMNS]>,
+        blinders: Option<[Option<PolyComm<G::ScalarField>>; W]>,
     ) -> Result<Self> {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
 
@@ -262,7 +262,7 @@ where
         //~    we can use the `commit_evaluation` optimization.
         internal_tracing::checkpoint!(internal_traces; commit_to_witness_columns);
         let mut w_comm = vec![];
-        for col in 0..COLUMNS {
+        for col in 0..W {
             // witness coeff -> witness eval
             let witness_eval =
                 Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
@@ -291,7 +291,7 @@ where
             w_comm.push(com);
         }
 
-        let w_comm: [BlindedCommitment<G>; COLUMNS] = w_comm
+        let w_comm: [BlindedCommitment<G>; W] = w_comm
             .try_into()
             .expect("previous loop is of the correct length");
 
@@ -304,7 +304,7 @@ where
         //~    As mentioned above, we commit using the evaluations form rather than the coefficients
         //~    form so we can take advantage of the sparsity of the evaluations (i.e., there are many
         //~    0 entries and entries that have less-than-full-size field elemnts.)
-        let witness_poly: [DensePolynomial<G::ScalarField>; COLUMNS] = array::from_fn(|i| {
+        let witness_poly: [DensePolynomial<G::ScalarField>; W] = array::from_fn(|i| {
             Evaluations::<G::ScalarField, D<G::ScalarField>>::from_vec_and_domain(
                 witness[i].clone(),
                 index.cs.domain.d1,
@@ -533,7 +533,7 @@ where
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
-            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField>(
+            let aggreg = lookup::constraints::aggregation::<W, _, G::ScalarField>(
                 lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
@@ -943,22 +943,28 @@ where
             };
 
         internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
-        let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>> {
+        let chunked_evals = ProofEvaluations::<W, PointEvaluations<Vec<G::ScalarField>>> {
             s: array::from_fn(|i| {
                 chunked_evals_for_evaluations(
                     &index.column_evaluations.permutation_coefficients8[i],
                 )
             }),
-            coefficients: array::from_fn(|i| {
-                chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
-            }),
-            w: array::from_fn(|i| {
-                let chunked = witness_poly[i].to_chunked_polynomial(index.max_poly_size);
-                PointEvaluations {
-                    zeta: chunked.evaluate_chunks(zeta),
-                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                }
-            }),
+            coefficients: index
+                .column_evaluations
+                .coefficients8
+                .iter()
+                .map(|c| chunked_evals_for_evaluations(c))
+                .collect(),
+            w: witness_poly
+                .iter()
+                .map(|w| {
+                    let chunked = w.to_chunked_polynomial(index.max_poly_size);
+                    PointEvaluations {
+                        zeta: chunked.evaluate_chunks(zeta),
+                        zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                    }
+                })
+                .collect(),
 
             z: {
                 let chunked = z_poly.to_chunked_polynomial(index.max_poly_size);
@@ -1252,7 +1258,7 @@ where
 
         let proof = Self {
             commitments: ProverCommitments {
-                w_comm: array::from_fn(|i| w_comm[i].commitment.clone()),
+                w_comm: w_comm.iter().map(|w| w.commitment.clone()).collect(),
                 z_comm: z_comm.commitment,
                 t_comm: t_comm.commitment,
                 lookup,
@@ -1292,6 +1298,7 @@ internal_tracing::decl_traces!(internal_traces;
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
+    use crate::circuits::wires::COLUMNS;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
     use poly_commitment::commitment::caml::{CamlOpeningProof, CamlPolyComm};
@@ -1414,31 +1421,29 @@ pub mod caml {
     // CamlProverCommitments<CamlG> <-> ProverCommitments<G>
     //
 
-    impl<G, CamlG> From<ProverCommitments<G>> for CamlProverCommitments<CamlG>
+    impl<G, CamlG> From<ProverCommitments<COLUMNS, G>> for CamlProverCommitments<CamlG>
     where
         G: AffineCurve,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
     {
-        fn from(prover_comm: ProverCommitments<G>) -> Self {
-            let [w_comm0, w_comm1, w_comm2, w_comm3, w_comm4, w_comm5, w_comm6, w_comm7, w_comm8, w_comm9, w_comm10, w_comm11, w_comm12, w_comm13, w_comm14] =
-                prover_comm.w_comm;
+        fn from(prover_comm: ProverCommitments<COLUMNS, G>) -> Self {
             Self {
                 w_comm: (
-                    w_comm0.into(),
-                    w_comm1.into(),
-                    w_comm2.into(),
-                    w_comm3.into(),
-                    w_comm4.into(),
-                    w_comm5.into(),
-                    w_comm6.into(),
-                    w_comm7.into(),
-                    w_comm8.into(),
-                    w_comm9.into(),
-                    w_comm10.into(),
-                    w_comm11.into(),
-                    w_comm12.into(),
-                    w_comm13.into(),
-                    w_comm14.into(),
+                    prover_comm.w_comm[0].clone().into(),
+                    prover_comm.w_comm[1].clone().into(),
+                    prover_comm.w_comm[2].clone().into(),
+                    prover_comm.w_comm[3].clone().into(),
+                    prover_comm.w_comm[4].clone().into(),
+                    prover_comm.w_comm[5].clone().into(),
+                    prover_comm.w_comm[6].clone().into(),
+                    prover_comm.w_comm[7].clone().into(),
+                    prover_comm.w_comm[8].clone().into(),
+                    prover_comm.w_comm[9].clone().into(),
+                    prover_comm.w_comm[10].clone().into(),
+                    prover_comm.w_comm[11].clone().into(),
+                    prover_comm.w_comm[12].clone().into(),
+                    prover_comm.w_comm[13].clone().into(),
+                    prover_comm.w_comm[14].clone().into(),
                 ),
                 z_comm: prover_comm.z_comm.into(),
                 t_comm: prover_comm.t_comm.into(),
@@ -1447,12 +1452,12 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<G>
+    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<COLUMNS, G>
     where
         G: AffineCurve,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
-        fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<G> {
+        fn from(caml_prover_comm: CamlProverCommitments<CamlG>) -> ProverCommitments<COLUMNS, G> {
             let (
                 w_comm0,
                 w_comm1,
@@ -1471,7 +1476,7 @@ pub mod caml {
                 w_comm14,
             ) = caml_prover_comm.w_comm;
             ProverCommitments {
-                w_comm: [
+                w_comm: vec![
                     w_comm0.into(),
                     w_comm1.into(),
                     w_comm2.into(),
@@ -1499,13 +1504,14 @@ pub mod caml {
     // ProverProof<G> <-> CamlProverProof<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G>, Vec<G::ScalarField>)> for CamlProverProof<CamlG, CamlF>
+    impl<G, CamlG, CamlF> From<(ProverProof<COLUMNS, G>, Vec<G::ScalarField>)>
+        for CamlProverProof<CamlG, CamlF>
     where
         G: AffineCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
     {
-        fn from(pp: (ProverProof<G>, Vec<G::ScalarField>)) -> Self {
+        fn from(pp: (ProverProof<COLUMNS, G>, Vec<G::ScalarField>)) -> Self {
             Self {
                 commitments: pp.0.commitments.into(),
                 proof: pp.0.proof.into(),
@@ -1517,12 +1523,15 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>> for (ProverProof<G>, Vec<G::ScalarField>)
+    impl<G, CamlG, CamlF> From<CamlProverProof<CamlG, CamlF>>
+        for (ProverProof<COLUMNS, G>, Vec<G::ScalarField>)
     where
         G: AffineCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
     {
-        fn from(caml_pp: CamlProverProof<CamlG, CamlF>) -> (ProverProof<G>, Vec<G::ScalarField>) {
+        fn from(
+            caml_pp: CamlProverProof<CamlG, CamlF>,
+        ) -> (ProverProof<COLUMNS, G>, Vec<G::ScalarField>) {
             let proof = ProverProof {
                 commitments: caml_pp.commitments.into(),
                 proof: caml_pp.proof.into(),

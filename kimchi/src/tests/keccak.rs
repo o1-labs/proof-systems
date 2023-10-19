@@ -32,7 +32,7 @@ where
         coeffs: vec![],
     });
 
-    ConstraintSystem::create(gates).build().unwrap()
+    gates
 }
 
 fn create_keccak_witness<G: KimchiCurve>(message: BigUint) -> [Vec<G::ScalarField>; KECCAK_COLS]

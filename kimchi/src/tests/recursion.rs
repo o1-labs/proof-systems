@@ -21,14 +21,14 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_recursion() {
-    let gates = create_circuit(0, 0);
+    let gates = create_circuit::<COLUMNS, Fp>(0, 0);
 
     // create witness
     let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &[]);
 
     // setup
-    let test_runner = TestFramework::<Vesta>::default()
+    let test_runner = TestFramework::<COLUMNS, Vesta>::default()
         .num_prev_challenges(1)
         .gates(gates)
         .witness(witness)

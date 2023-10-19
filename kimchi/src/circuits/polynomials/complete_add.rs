@@ -18,7 +18,6 @@ use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
-    wires::COLUMNS,
 };
 use ark_ff::{Field, PrimeField};
 use std::marker::PhantomData;
@@ -228,10 +227,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Panics
     ///
     /// Will panic if `multiplicative inverse` operation between gate values fails.
-    pub fn verify_complete_add(
+    pub fn verify_complete_add<const W: usize>(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
     ) -> Result<(), String> {
         let x1 = witness[0][row];
         let y1 = witness[1][row];

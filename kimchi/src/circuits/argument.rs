@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use super::{
     expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
-    polynomial::COLUMNS,
 };
 use CurrOrNext::{Curr, Next};
 
@@ -142,9 +141,9 @@ pub struct ArgumentData<F: 'static> {
 /// Witness data for a argument
 pub struct ArgumentWitness<T> {
     /// Witness for current row
-    pub curr: [T; COLUMNS],
+    pub curr: Vec<T>,
     /// Witness for next row
-    pub next: [T; COLUMNS],
+    pub next: Vec<T>,
 }
 
 impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {

@@ -95,7 +95,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
@@ -189,7 +189,7 @@ fn test_runtime_table() {
     print_witness(&witness, 0, 20);
 
     // run test
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_tables_setup)
@@ -245,7 +245,7 @@ fn test_negative_test_runtime_table_value_not_in_table() {
     };
 
     // run prover only as the error should be raised while creating the proof.
-    let err = TestFramework::<Vesta>::default()
+    let err = TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -307,7 +307,7 @@ fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnes
     };
 
     // We only run the prover. No need to verify.
-    let err = TestFramework::<Vesta>::default()
+    let err = TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -367,7 +367,7 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     };
 
     // We only run the prover. No need to verify.
-    let err = TestFramework::<Vesta>::default()
+    let err = TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])

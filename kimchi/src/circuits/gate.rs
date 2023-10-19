@@ -167,6 +167,7 @@ impl<F: PrimeField> ToBytes for CircuitGate<F> {
     fn write<W: Write>(&self, mut w: W) -> IoResult<()> {
         let typ: u8 = ToPrimitive::to_u8(&self.typ).unwrap();
         typ.write(&mut w)?;
+        // TODO: update to use real value of width here
         for i in 0..COLUMNS {
             self.wires[i].write(&mut w)?;
         }
@@ -191,41 +192,41 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    pub fn verify<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify<const W: usize, G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
-        index: &ProverIndex<G>,
+        witness: &[Vec<F>; W],
+        index: &ProverIndex<W, G>,
         public: &[F],
     ) -> Result<(), String> {
         use GateType::*;
         match self.typ {
             Zero => Ok(()),
             Generic => self.verify_generic(row, witness, public),
-            Poseidon => self.verify_poseidon::<G>(row, witness),
+            Poseidon => self.verify_poseidon::<W, G>(row, witness),
             CompleteAdd => self.verify_complete_add(row, witness),
             VarBaseMul => self.verify_vbmul(row, witness),
-            EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
-            EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
+            EndoMul => self.verify_endomul::<W, G>(row, witness, &index.cs),
+            EndoMulScalar => self.verify_endomul_scalar::<W, G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
-                self.verify_cairo_gate::<G>(row, witness, &index.cs)
+                self.verify_cairo_gate::<W, G>(row, witness, &index.cs)
             }
             RangeCheck0 | RangeCheck1 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldAdd => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             ForeignFieldMul => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Xor16 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             Rot64 => self
-                .verify_witness::<G>(row, witness, &index.cs, public)
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             KeccakRound => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
@@ -237,10 +238,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     /// Verify the witness against the constraints
-    pub fn verify_witness<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_witness<const W: usize, G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
         cs: &ConstraintSystem<F>,
         _public: &[F],
     ) -> CircuitGateResult<()> {
@@ -347,30 +348,30 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     // Return the part of the witness relevant to this gate at the given row offset
-    fn argument_witness(
+    fn argument_witness<const W: usize>(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
     ) -> CircuitGateResult<ArgumentWitness<F>> {
         // Get the part of the witness relevant to this gate
-        let witness_curr: [F; COLUMNS] = (0..witness.len())
+        let witness_curr: [F; W] = (0..witness.len())
             .map(|col| witness[col][row])
             .collect::<Vec<F>>()
             .try_into()
             .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?;
-        let witness_next: [F; COLUMNS] = if witness[0].len() > row + 1 {
+        let witness_next: [F; W] = if witness[0].len() > row + 1 {
             (0..witness.len())
                 .map(|col| witness[col][row + 1])
                 .collect::<Vec<F>>()
                 .try_into()
                 .map_err(|_| CircuitGateError::FailedToGetWitnessForRow(self.typ, row))?
         } else {
-            [F::zero(); COLUMNS]
+            [F::zero(); W]
         };
 
         Ok(ArgumentWitness::<F> {
-            curr: witness_curr,
-            next: witness_next,
+            curr: witness_curr.to_vec(),
+            next: witness_next.to_vec(),
         })
     }
 }
@@ -613,7 +614,7 @@ mod tests {
     }
 
     prop_compose! {
-        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate<Fp> {
+        fn arb_circuit_gate()(typ: GateType, wires: GateWires, coeffs in arb_fp_vec(25)) -> CircuitGate< Fp> {
             CircuitGate::new(
                 typ,
                 wires,

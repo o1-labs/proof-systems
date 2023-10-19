@@ -35,7 +35,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-pub fn constraints_expr<F: PrimeField + SquareRootField>(
+pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
@@ -224,7 +224,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(None, generic);
+            let (feature_flagged_expr, _) = constraints_expr::<W, F>(None, generic);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -320,13 +320,13 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
-pub fn expr_linearization<F: PrimeField + SquareRootField>(
+pub fn expr_linearization<const W: usize, F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr::<W, F>(feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)

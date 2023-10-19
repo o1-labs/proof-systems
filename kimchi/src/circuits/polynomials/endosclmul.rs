@@ -125,16 +125,16 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
-    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul<const W: usize, G: KimchiCurve<ScalarField = F>>(
         &self,
         row: usize,
-        witness: &[Vec<F>; COLUMNS],
+        witness: &[Vec<F>; W],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
-        let next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + 1]);
+        let this: [F; W] = std::array::from_fn(|i| witness[i][row]);
+        let next: [F; W] = std::array::from_fn(|i| witness[i][row + 1]);
 
         let pt = F::from(123456u64);
 
@@ -147,10 +147,10 @@ impl<F: PrimeField> CircuitGate<F> {
             endo_coefficient: cs.endo,
         };
 
-        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
+        let evals: ProofEvaluations<W, PointEvaluations<G::ScalarField>> =
             ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
-        let constraints = EndosclMul::constraints(&mut Cache::default());
+        let constraints = EndosclMul::<F>::constraints(&mut Cache::default());
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {

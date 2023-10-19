@@ -89,7 +89,10 @@ where
         gates
     };
 
-    ConstraintSystem::create(gates).public(1).build().unwrap()
+    ConstraintSystem::create(gates)
+        .public(1)
+        .build::<COLUMNS>()
+        .unwrap()
 }
 
 // Constraint system for Not gadget using generic gates
@@ -107,7 +110,10 @@ where
     let _next_row =
         CircuitGate::<G::ScalarField>::extend_not_gadget_unchecked_length(&mut gates, num_nots, 0);
 
-    ConstraintSystem::create(gates).public(1).build().unwrap()
+    ConstraintSystem::create(gates)
+        .public(1)
+        .build::<COLUMNS>()
+        .unwrap()
 }
 
 // Creates the witness and circuit for NOT gadget using XOR
@@ -150,7 +156,12 @@ where
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<COLUMNS, G>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
@@ -206,7 +217,12 @@ where
     // test public input and not generic gate
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<G>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<COLUMNS, G>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
@@ -273,7 +289,7 @@ fn test_prove_and_verify_not_xor() {
     let witness =
         create_not_witness_checked_length::<PallasField>(rng.gen_field_with_bits(bits), Some(bits));
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
@@ -309,7 +325,7 @@ fn test_prove_and_verify_five_not_gnrc() {
         bits,
     );
 
-    TestFramework::<Vesta>::default()
+    TestFramework::<COLUMNS, Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![
@@ -391,7 +407,7 @@ fn test_bad_not_gnrc() {
     // modify public input row to make sure the copy constraint fails and the generic gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<COLUMNS, Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::Generic,
             src: Wire { row: 0, col: 0 },
@@ -402,7 +418,7 @@ fn test_bad_not_gnrc() {
     let index =
         new_index_for_test_with_lookups(cs.gates, 1, 0, vec![xor::lookup_table()], None, false);
     assert_eq!(
-        index.cs.gates[1].verify::<Vesta>(1, &witness, &index, &[]),
+        index.cs.gates[1].verify::<COLUMNS, Vesta>(1, &witness, &index, &[]),
         Err(("generic: incorrect gate").to_string())
     );
 }
@@ -414,7 +430,7 @@ fn test_bad_not_xor() {
     // modify public input row to make sure the copy constraint fails and the XOR gate also fails
     witness[0][0] += PallasField::one();
     assert_eq!(
-        cs.gates[0].verify_witness::<Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<COLUMNS, Vesta>(0, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::CopyConstraint {
             typ: GateType::Generic,
             src: Wire { row: 0, col: 0 },
@@ -424,7 +440,7 @@ fn test_bad_not_xor() {
     witness[1][1] += PallasField::one();
     // decomposition of xor fails
     assert_eq!(
-        cs.gates[1].verify_witness::<Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[1].verify_witness::<COLUMNS, Vesta>(1, &witness, &cs, &witness[0][0..cs.public]),
         Err(CircuitGateError::Constraint(GateType::Xor16, 2))
     );
     // Make the second input zero with correct decomposition to make sure XOR table fails
@@ -436,7 +452,7 @@ fn test_bad_not_xor() {
     witness[10][1] = PallasField::zero();
 
     assert_eq!(
-        TestFramework::<Vesta>::default()
+        TestFramework::<COLUMNS, Vesta>::default()
             .gates(cs.gates)
             .witness(witness)
             .setup()
