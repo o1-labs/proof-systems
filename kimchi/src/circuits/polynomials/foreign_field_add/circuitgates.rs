@@ -227,17 +227,17 @@ where
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
-        // Outputs r1 and r2
+        // Output
         let output = env.witness_curr(0);
 
-        // Operands x1 and x2
+        // Operand x
         let x = env.witness_curr(1);
 
-        // Operands y1 and y2
+        // Operand y
         let y = env.witness_curr(2);
 
-        // Condition values b, b1 and b2
-        let b = env.witness_curr(6);
+        // Condition value b
+        let b = env.witness_curr(3);
 
         // C1: Constrain b \in [0, 3]
         constraints.push(b.boolean());

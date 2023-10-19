@@ -153,8 +153,8 @@ pub trait Argument<F: PrimeField> {
     /// Returns constraints safely combined via the passed combinator.
     fn combined_constraints(alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
         let constraints = Self::constraints(cache);
-        assert_eq!(constraints.len(), Self::CONSTRAINTS as usize);
-        let alphas = alphas.get_exponents(Self::ARGUMENT_TYPE, Self::CONSTRAINTS);
+        let alphas =
+            alphas.get_exponents(Self::ARGUMENT_TYPE, constraints.len().try_into().unwrap());
         let combined_constraints = E::combine_constraints(alphas, constraints);
 
         // An optional gate type, if used to define a gate.
