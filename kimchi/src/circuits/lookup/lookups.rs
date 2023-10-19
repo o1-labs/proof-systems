@@ -4,7 +4,7 @@ use crate::circuits::{
     lookup::index::LookupSelectors,
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-        XOR_TABLE_ID,
+        SPARSE_TABLE_ID, XOR_TABLE_ID,
     },
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Mul, Neg};
 use strum_macros::EnumIter;
+
+use super::tables::{BITS16_TABLE_ID, RESET_TABLE_ID};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -47,6 +49,8 @@ pub struct LookupPatterns {
     pub lookup: bool,
     pub range_check: bool,
     pub foreign_field_mul: bool,
+    pub keccak_round: bool,
+    pub keccak_sponge: bool,
 }
 
 impl IntoIterator for LookupPatterns {
@@ -60,6 +64,8 @@ impl IntoIterator for LookupPatterns {
             lookup,
             range_check,
             foreign_field_mul,
+            keccak_round,
+            keccak_sponge,
         } = self;
 
         let mut patterns = Vec::with_capacity(5);
@@ -76,6 +82,12 @@ impl IntoIterator for LookupPatterns {
         if foreign_field_mul {
             patterns.push(LookupPattern::ForeignFieldMul)
         }
+        if keccak_round {
+            patterns.push(LookupPattern::KeccakRound);
+        }
+        if keccak_sponge {
+            patterns.push(LookupPattern::KeccakSponge)
+        }
         patterns.into_iter()
     }
 }
@@ -89,6 +101,8 @@ impl std::ops::Index<LookupPattern> for LookupPatterns {
             LookupPattern::Lookup => &self.lookup,
             LookupPattern::RangeCheck => &self.range_check,
             LookupPattern::ForeignFieldMul => &self.foreign_field_mul,
+            LookupPattern::KeccakRound => &self.keccak_round,
+            LookupPattern::KeccakSponge => &self.keccak_sponge,
         }
     }
 }
@@ -100,6 +114,8 @@ impl std::ops::IndexMut<LookupPattern> for LookupPatterns {
             LookupPattern::Lookup => &mut self.lookup,
             LookupPattern::RangeCheck => &mut self.range_check,
             LookupPattern::ForeignFieldMul => &mut self.foreign_field_mul,
+            LookupPattern::KeccakRound => &mut self.keccak_round,
+            LookupPattern::KeccakSponge => &mut self.keccak_sponge,
         }
     }
 }
@@ -157,7 +173,7 @@ impl LookupFeatures {
 }
 
 /// Describes the desired lookup configuration.
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct LookupInfo {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
@@ -225,13 +241,17 @@ impl LookupInfo {
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
                 update_selector(lookup_pattern, i);
                 if let Some(table_kind) = lookup_pattern.table() {
-                    gate_tables.insert(table_kind);
+                    for (_i, table) in table_kind.iter().enumerate() {
+                        gate_tables.insert(*table);
+                    }
                 }
             }
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Next) {
                 update_selector(lookup_pattern, i + 1);
                 if let Some(table_kind) = lookup_pattern.table() {
-                    gate_tables.insert(table_kind);
+                    for (_i, table) in table_kind.iter().enumerate() {
+                        gate_tables.insert(*table);
+                    }
                 }
             }
         }
@@ -386,12 +406,16 @@ pub enum LookupPattern {
     Lookup,
     RangeCheck,
     ForeignFieldMul,
+    KeccakRound,
+    KeccakSponge,
 }
 
 impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
+            LookupPattern::KeccakRound => 1760,
+            LookupPattern::KeccakSponge => 800,
             LookupPattern::Xor | LookupPattern::RangeCheck | LookupPattern::ForeignFieldMul => 4,
             LookupPattern::Lookup => 3,
         }
@@ -401,7 +425,7 @@ impl LookupPattern {
     pub fn max_joint_size(&self) -> u32 {
         match self {
             LookupPattern::Xor => 3,
-            LookupPattern::Lookup => 2,
+            LookupPattern::Lookup | LookupPattern::KeccakRound | LookupPattern::KeccakSponge => 2,
             LookupPattern::ForeignFieldMul | LookupPattern::RangeCheck => 1,
         }
     }
@@ -490,16 +514,208 @@ impl LookupPattern {
                     })
                     .collect()
             }
+            LookupPattern::KeccakRound => {
+                let mut lookups =
+                    Vec::with_capacity(LookupPattern::KeccakRound.max_lookups_per_row());
+                let l = |loc: LocalPosition| SingleLookup {
+                    value: vec![(F::one(), loc)],
+                };
+                // Theta
+                for i in 0..20 {
+                    // 2-column lookups
+                    let shift0_c = curr_row(120 + i);
+                    let dense_c = curr_row(200 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(RESET_TABLE_ID),
+                        entry: vec![l(dense_c), l(shift0_c)],
+                    });
+                    let dense_rot_c = curr_row(280 + i);
+                    let expand_rot_c = curr_row(300 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(RESET_TABLE_ID),
+                        entry: vec![l(dense_rot_c), l(expand_rot_c)],
+                    });
+
+                    // Second column lookups
+                    let shift1_c = curr_row(140 + i);
+                    let shift2_c = curr_row(160 + i);
+                    let shift3_c = curr_row(180 + i);
+
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift1_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift2_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift3_c)],
+                    });
+
+                    // First column lookups
+                    let quotient_c = curr_row(220 + i);
+                    let remainder_c = curr_row(240 + i);
+                    let bound_c = curr_row(260 + i);
+
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
+                        entry: vec![l(quotient_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
+                        entry: vec![l(remainder_c)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
+                        entry: vec![l(bound_c)],
+                    });
+                }
+                // PiRho
+                for i in 0..100 {
+                    // 2-column lookups
+                    let shift0_e = curr_row(440 + i);
+                    let dense_e = curr_row(840 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(RESET_TABLE_ID),
+                        entry: vec![l(dense_e), l(shift0_e)],
+                    });
+                    let dense_rot_e = curr_row(1240 + i);
+                    let expand_rot_e = curr_row(1340 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(dense_rot_e), l(expand_rot_e)],
+                    });
+
+                    // Second column lookups
+                    let shift1_e = curr_row(540 + i);
+                    let shift2_e = curr_row(640 + i);
+                    let shift3_e = curr_row(740 + i);
+
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift1_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift2_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift3_e)],
+                    });
+
+                    // First column lookups
+                    let quotient_e = curr_row(940 + i);
+                    let remainder_e = curr_row(1040 + i);
+                    let bound_e = curr_row(1140 + i);
+
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
+                        entry: vec![l(quotient_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
+                        entry: vec![l(remainder_e)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(BITS16_TABLE_ID),
+                        entry: vec![l(bound_e)],
+                    });
+                }
+                // Chi
+                for i in 0..400 {
+                    // Second column lookups
+                    let shift_b: LocalPosition = curr_row(1540 + i);
+                    let shift_sum = curr_row(1940 + i);
+
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift_b)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift_sum)],
+                    });
+                }
+                lookups
+            }
+            LookupPattern::KeccakSponge => {
+                let mut lookups =
+                    Vec::with_capacity(LookupPattern::KeccakSponge.max_lookups_per_row());
+                let l = |loc: LocalPosition| SingleLookup {
+                    value: vec![(F::one(), loc)],
+                };
+                for i in 0..100 {
+                    let shift1 = curr_row(500 + i);
+                    let shift2 = curr_row(600 + i);
+                    let shift3 = curr_row(700 + i);
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift1)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift2)],
+                    });
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
+                        entry: vec![l(shift3)],
+                    });
+                    for b in 0..2 {
+                        let byte = curr_row(200 + 2 * i + b);
+                        // byte < 12 bits
+                        lookups.push(JointLookup {
+                            table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                            entry: vec![SingleLookup {
+                                value: vec![(F::one(), byte)],
+                            }],
+                        });
+                        // byte * 2^4 < 12 bits
+                        lookups.push(JointLookup {
+                            table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                            entry: vec![SingleLookup {
+                                value: vec![(F::from(2u64).pow([4u64]), byte)],
+                            }],
+                        });
+                    }
+                    let byte1 = curr_row(200 + 2 * i);
+                    let byte2 = curr_row(201 + 2 * i);
+                    let shift0 = curr_row(400 + i);
+                    // dense := byte1 + byte2 * 2^8 and dense used for first column of RESET table
+                    lookups.push(JointLookup {
+                        table_id: LookupTableID::Constant(RESET_TABLE_ID),
+                        entry: vec![
+                            SingleLookup {
+                                value: vec![(F::from(256u32), byte2), (F::one(), byte1)],
+                            },
+                            l(shift0),
+                        ],
+                    });
+                }
+                lookups
+            }
         }
     }
 
-    /// Returns the lookup table used by the pattern, or `None` if no specific table is rqeuired.
-    pub fn table(&self) -> Option<GateLookupTable> {
+    /// Returns the lookup table(s) used by the pattern, or `None` if no specific table is required.
+    pub fn table(&self) -> Option<Vec<GateLookupTable>> {
         match self {
-            LookupPattern::Xor => Some(GateLookupTable::Xor),
+            LookupPattern::Xor => Some(vec![GateLookupTable::Xor]),
             LookupPattern::Lookup => None,
-            LookupPattern::RangeCheck => Some(GateLookupTable::RangeCheck),
-            LookupPattern::ForeignFieldMul => Some(GateLookupTable::RangeCheck),
+            LookupPattern::RangeCheck => Some(vec![GateLookupTable::RangeCheck]),
+            LookupPattern::ForeignFieldMul => Some(vec![GateLookupTable::RangeCheck]),
+            LookupPattern::KeccakRound => Some(vec![
+                GateLookupTable::Sparse,
+                GateLookupTable::Reset,
+                GateLookupTable::Bits16,
+            ]),
+            LookupPattern::KeccakSponge => Some(vec![
+                GateLookupTable::Sparse,
+                GateLookupTable::Reset,
+                GateLookupTable::RangeCheck,
+            ]),
         }
     }
 
@@ -527,6 +743,8 @@ impl GateType {
             LookupPattern::Lookup,
             LookupPattern::RangeCheck,
             LookupPattern::ForeignFieldMul,
+            LookupPattern::KeccakRound,
+            LookupPattern::KeccakSponge,
         ]
     }
 }
