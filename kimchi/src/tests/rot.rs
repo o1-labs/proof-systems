@@ -425,7 +425,7 @@ fn test_keccak_table() {
             gates.connect_64bit(zero_row, rot_row - 1);
         }
     }
-    let cs = ConstraintSystem::create(gates).build().unwrap();
+    let cs = ConstraintSystem::create(gates).build::<COLUMNS>().unwrap();
 
     let state: [[u64; DIM]; DIM] = array::from_fn(|_| {
         array::from_fn(|_| rand::thread_rng().gen_range(0..2u128.pow(64)) as u64)
@@ -442,7 +442,12 @@ fn test_keccak_table() {
 
     for row in 0..=48 {
         assert_eq!(
-            cs.gates[row].verify_witness::<Vesta>(row, &witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+                row,
+                &witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Ok(())
         );
     }
