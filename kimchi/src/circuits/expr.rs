@@ -166,6 +166,10 @@ fn unnormalized_lagrange_basis<F: FftField>(domain: &D<F>, i: i32, pt: &F) -> F 
     domain.evaluate_vanishing_polynomial(*pt) / (*pt - omega_i)
 }
 
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing one of the polynomials involved in the PLONK IOP.
 pub enum Column {
@@ -228,6 +232,10 @@ impl Column {
     }
 }
 
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 /// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
@@ -260,6 +268,13 @@ impl Variable {
     }
 }
 
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MdsPosition { pub row: usize, pub col: usize }
+
 #[derive(Clone, Debug, PartialEq)]
 /// An arithmetic expression over
 ///
@@ -275,9 +290,9 @@ pub enum ConstantExpr<F> {
     // that they are known at compile time. This should be extracted out into two
     // separate constant expression types.
     EndoCoefficient,
-    Mds { row: usize, col: usize },
+    Mds(MdsPosition),
     Literal(F),
-    Pow(Box<ConstantExpr<F>>, u64),
+    Pow(Box<ConstantExpr<F>>, usize),
     // TODO: I think having separate Add, Sub, Mul constructors is faster than
     // having a BinOp constructor :(
     Add(Box<ConstantExpr<F>>, Box<ConstantExpr<F>>),
@@ -293,10 +308,7 @@ impl<F: Copy> ConstantExpr<F> {
             ConstantExpr::Gamma => res.push(PolishToken::Gamma),
             ConstantExpr::JointCombiner => res.push(PolishToken::JointCombiner),
             ConstantExpr::EndoCoefficient => res.push(PolishToken::EndoCoefficient),
-            ConstantExpr::Mds { row, col } => res.push(PolishToken::Mds {
-                row: *row,
-                col: *col,
-            }),
+            ConstantExpr::Mds(pos) => res.push(PolishToken::Mds(*pos)),
             ConstantExpr::Add(x, y) => {
                 x.as_ref().to_polish_(res);
                 y.as_ref().to_polish_(res);
@@ -330,7 +342,7 @@ impl<F: Field> ConstantExpr<F> {
         use ConstantExpr::*;
         match self {
             Literal(x) => Literal(x.pow([p])),
-            x => Pow(Box::new(x), p),
+            x => Pow(Box::new(x), p as usize),
         }
     }
 
@@ -343,9 +355,9 @@ impl<F: Field> ConstantExpr<F> {
             Gamma => c.gamma,
             JointCombiner => c.joint_combiner.expect("joint lookup was not expected"),
             EndoCoefficient => c.endo_coefficient,
-            Mds { row, col } => c.mds[*row][*col],
+            Mds(MdsPosition { row, col }) => c.mds[*row][*col],
             Literal(x) => *x,
-            Pow(x, p) => x.value(c).pow([*p]),
+            Pow(x, p) => x.value(c).pow([*p as u64]),
             Mul(x, y) => x.value(c) * y.value(c),
             Add(x, y) => x.value(c) + y.value(c),
             Sub(x, y) => x.value(c) - y.value(c),
@@ -459,6 +471,10 @@ impl FeatureFlag {
     }
 }
 
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RowOffset {
     pub zk_rows: bool,
@@ -486,7 +502,7 @@ pub enum Expr<C> {
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     UnnormalizedLagrangeBasis(RowOffset),
-    Pow(Box<Expr<C>>, u64),
+    Pow(Box<Expr<C>>, usize),
     Cache(CacheId, Box<Expr<C>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
     IfFeature(FeatureFlag, Box<Expr<C>>, Box<Expr<C>>),
@@ -636,6 +652,10 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
 /// For efficiency of evaluation, we compile expressions to
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Enum)
+)]
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PolishToken<F> {
     Alpha,
@@ -643,14 +663,11 @@ pub enum PolishToken<F> {
     Gamma,
     JointCombiner,
     EndoCoefficient,
-    Mds {
-        row: usize,
-        col: usize,
-    },
+    Mds(MdsPosition),
     Literal(F),
     Cell(Variable),
     Dup,
-    Pow(u64),
+    Pow(usize),
     Add,
     Mul,
     Sub,
@@ -765,7 +782,7 @@ impl<F: FftField> PolishToken<F> {
                     stack.push(c.joint_combiner.expect("no joint lookup was expected"))
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
-                Mds { row, col } => stack.push(c.mds[*row][*col]),
+                Mds(MdsPosition { row, col }) => stack.push(c.mds[*row][*col]),
                 VanishesOnZeroKnowledgeAndPreviousRows => {
                     stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
                 }
@@ -785,7 +802,7 @@ impl<F: FftField> PolishToken<F> {
                 },
                 Pow(n) => {
                     let i = stack.len() - 1;
-                    stack[i] = stack[i].pow([*n]);
+                    stack[i] = stack[i].pow([*n as u64]);
                 }
                 Add => {
                     let y = stack.pop().ok_or(ExprError::EmptyStack)?;
@@ -859,7 +876,7 @@ impl<C> Expr<C> {
             BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) => {
                 std::cmp::max((*x).degree(d1_size, zk_rows), (*y).degree(d1_size, zk_rows))
             }
-            Pow(e, d) => d * e.degree(d1_size, zk_rows),
+            Pow(e, d) => (*d as u64) * e.degree(d1_size, zk_rows),
             Cache(_, e) => e.degree(d1_size, zk_rows),
             IfFeature(_, e1, e2) => {
                 std::cmp::max(e1.degree(d1_size, zk_rows), e2.degree(d1_size, zk_rows))
@@ -1537,7 +1554,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         // TODO: Use cache
         match self {
             Double(x) => x.evaluate_constants_(c).double(),
-            Pow(x, d) => x.evaluate_constants_(c).pow(*d),
+            Pow(x, d) => x.evaluate_constants_(c).pow(*d as u64),
             Square(x) => x.evaluate_constants_(c).square(),
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
@@ -1578,7 +1595,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
         match self {
             Double(x) => x.evaluate_(d, pt, evals, c).map(|x| x.double()),
             Constant(x) => Ok(x.value(c)),
-            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow([*p])),
+            Pow(x, p) => Ok(x.evaluate_(d, pt, evals, c)?.pow([*p as u64])),
             BinOp(Op2::Mul, x, y) => {
                 let x = (*x).evaluate_(d, pt, evals, c)?;
                 let y = (*y).evaluate_(d, pt, evals, c)?;
@@ -1646,7 +1663,7 @@ impl<F: FftField> Expr<F> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
-            Pow(x, p) => Ok(x.evaluate(d, pt, zk_rows, evals)?.pow([*p])),
+            Pow(x, p) => Ok(x.evaluate(d, pt, zk_rows, evals)?.pow([*p as u64])),
             Double(x) => x.evaluate(d, pt, zk_rows, evals).map(|x| x.double()),
             Square(x) => x.evaluate(d, pt, zk_rows, evals).map(|x| x.square()),
             BinOp(Op2::Mul, x, y) => {
@@ -1800,9 +1817,9 @@ impl<F: FftField> Expr<F> {
             Expr::Pow(x, p) => {
                 let x = x.evaluations_helper(cache, d, env);
                 match x {
-                    Either::Left(x) => x.pow(*p, (d, get_domain(d, env))),
+                    Either::Left(x) => x.pow(*p as u64, (d, get_domain(d, env))),
                     Either::Right(id) => {
-                        id.get_from(cache).unwrap().pow(*p, (d, get_domain(d, env)))
+                        id.get_from(cache).unwrap().pow(*p as u64, (d, get_domain(d, env)))
                     }
                 }
             }
@@ -1975,7 +1992,7 @@ impl<F: One> Expr<F> {
         if p == 0 {
             return Constant(F::one());
         }
-        Pow(Box::new(self), p)
+        Pow(Box::new(self), p as usize)
     }
 }
 
@@ -2035,6 +2052,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
 
         match self {
             Pow(x, d) => {
+                let d = *d as u64;
                 // Run the multiplication logic with square and multiply
                 let mut acc = sing(vec![], Expr::<F>::one());
                 let mut acc_is_one = true;
@@ -2427,7 +2445,7 @@ where
             Gamma => "gamma".to_string(),
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
+            Mds(MdsPosition { row, col }) => format!("mds({row}, {col})"),
             Literal(x) => format!("field(\"0x{}\")", x.into_repr()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha_pow({n})"),
@@ -2447,7 +2465,7 @@ where
             Gamma => "\\gamma".to_string(),
             JointCombiner => "joint\\_combiner".to_string(),
             EndoCoefficient => "endo\\_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
+            Mds(MdsPosition { row, col }) => format!("mds({row}, {col})"),
             Literal(x) => format!("\\mathbb{{F}}({})", x.into_repr().into()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("\\alpha^{{{n}}}"),
@@ -2467,7 +2485,7 @@ where
             Gamma => "gamma".to_string(),
             JointCombiner => "joint_combiner".to_string(),
             EndoCoefficient => "endo_coefficient".to_string(),
-            Mds { row, col } => format!("mds({row}, {col})"),
+            Mds(MdsPosition { row, col }) => format!("mds({row}, {col})"),
             Literal(x) => format!("0x{}", x.to_hex()),
             Pow(x, n) => match x.as_ref() {
                 Alpha => format!("alpha^{n}"),

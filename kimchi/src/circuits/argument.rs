@@ -11,7 +11,7 @@ use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants, MdsPosition},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -98,7 +98,7 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
 
     /// Helper to access maximum distance separable matrix constant at row, col
     pub fn mds(&self, row: usize, col: usize) -> T {
-        T::constant(ConstantExpr::<F>::Mds { row, col }, self.data.as_ref())
+        T::constant(ConstantExpr::<F>::Mds(MdsPosition { row, col }), self.data.as_ref())
     }
 }
 
