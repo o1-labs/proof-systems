@@ -70,7 +70,7 @@ where
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) =
-            expr_linearization(Some(&cs.feature_flags), true, cs.override_ffadd);
+            expr_linearization(Some(&cs.feature_flags), true, cs.override_ffadd.is_some());
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 

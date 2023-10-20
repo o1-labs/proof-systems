@@ -1861,7 +1861,8 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
 
-    pub override_ffadd: bool,
+    #[serde(skip)] // TODO: Don't skip
+    pub override_ffadd: Option<Vec<PolishToken<G::ScalarField>>>,
 }
 ```
 

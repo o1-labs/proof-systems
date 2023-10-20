@@ -775,7 +775,7 @@ where
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
 
-                let ffadd = if index.cs.override_ffadd {
+                let ffadd = if index.cs.override_ffadd.is_some() {
                     Box::new(AssertEq1::default()) as Box<dyn DynArgument<G::ScalarField>>
                 } else {
                     Box::new(ForeignFieldAdd::default()) as Box<dyn DynArgument<G::ScalarField>>

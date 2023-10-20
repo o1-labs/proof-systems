@@ -98,7 +98,10 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
 
     /// Helper to access maximum distance separable matrix constant at row, col
     pub fn mds(&self, row: usize, col: usize) -> T {
-        T::constant(ConstantExpr::<F>::Mds(MdsPosition { row, col }), self.data.as_ref())
+        T::constant(
+            ConstantExpr::<F>::Mds(MdsPosition { row, col }),
+            self.data.as_ref(),
+        )
     }
 }
 

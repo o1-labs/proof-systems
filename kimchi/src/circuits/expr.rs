@@ -273,7 +273,10 @@ impl Variable {
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub struct MdsPosition { pub row: usize, pub col: usize }
+pub struct MdsPosition {
+    pub row: usize,
+    pub col: usize,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 /// An arithmetic expression over
@@ -679,6 +682,32 @@ pub enum PolishToken<F> {
     SkipIf(FeatureFlag, usize),
     /// Skip the given number of tokens if the feature is disabled.
     SkipIfNot(FeatureFlag, usize),
+}
+
+impl<A> PolishToken<A> {
+    pub fn map<B, F: Fn(A) -> B>(self, f: F) -> PolishToken<B> {
+        match self {
+            PolishToken::Alpha => PolishToken::Alpha,
+            PolishToken::Beta => PolishToken::Beta,
+            PolishToken::Gamma => PolishToken::Gamma,
+            PolishToken::JointCombiner => PolishToken::JointCombiner,
+            PolishToken::EndoCoefficient => PolishToken::EndoCoefficient,
+            PolishToken::Mds(pos) => PolishToken::Mds(pos),
+            PolishToken::Literal(x) => PolishToken::Literal(f(x)),
+            PolishToken::Cell(v) => PolishToken::Cell(v),
+            PolishToken::Dup => PolishToken::Dup,
+            PolishToken::Pow(i) => PolishToken::Pow(i),
+            PolishToken::Add => PolishToken::Add,
+            PolishToken::Mul => PolishToken::Mul,
+            PolishToken::Sub => PolishToken::Sub,
+            PolishToken::VanishesOnZeroKnowledgeAndPreviousRows => PolishToken::VanishesOnZeroKnowledgeAndPreviousRows,
+            PolishToken::UnnormalizedLagrangeBasis(off) => PolishToken::UnnormalizedLagrangeBasis(off),
+            PolishToken::Store => PolishToken::Store,
+            PolishToken::Load(i) => PolishToken::Load(i),
+            PolishToken::SkipIf(flag, i) => PolishToken::SkipIf(flag, i),
+            PolishToken::SkipIfNot(flag, i) => PolishToken::SkipIfNot(flag, i),
+        }
+    }
 }
 
 impl Variable {
@@ -1818,9 +1847,10 @@ impl<F: FftField> Expr<F> {
                 let x = x.evaluations_helper(cache, d, env);
                 match x {
                     Either::Left(x) => x.pow(*p as u64, (d, get_domain(d, env))),
-                    Either::Right(id) => {
-                        id.get_from(cache).unwrap().pow(*p as u64, (d, get_domain(d, env)))
-                    }
+                    Either::Right(id) => id
+                        .get_from(cache)
+                        .unwrap()
+                        .pow(*p as u64, (d, get_domain(d, env))),
                 }
             }
             Expr::VanishesOnZeroKnowledgeAndPreviousRows => EvalResult::SubEvals {

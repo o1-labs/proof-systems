@@ -4,6 +4,7 @@ use crate::{
     circuits::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
+        expr::PolishToken,
         gate::{CircuitGate, GateType},
         lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
@@ -174,7 +175,8 @@ pub struct ConstraintSystem<F: PrimeField> {
     /// Disable gates checks (for testing; only enables with development builds)
     pub disable_gates_checks: bool,
 
-    pub override_ffadd: bool,
+    #[serde(skip)] // TODO: Don't skip
+    pub override_ffadd: Option<Vec<PolishToken<F>>>,
 }
 
 /// Represents an error found when verifying a witness with a gate
@@ -196,7 +198,7 @@ pub struct Builder<F: PrimeField> {
     runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
     precomputations: Option<Arc<DomainConstantEvaluations<F>>>,
     disable_gates_checks: bool,
-    override_ffadd: bool,
+    override_ffadd: Option<Vec<PolishToken<F>>>,
     max_poly_size: Option<usize>,
 }
 
@@ -256,7 +258,7 @@ impl<F: PrimeField> ConstraintSystem<F> {
             precomputations: None,
             disable_gates_checks: false,
             max_poly_size: None,
-            override_ffadd: false,
+            override_ffadd: None,
         }
     }
 
@@ -672,7 +674,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     }
 
     /// Disable gates checks (for testing; only enables with development builds)
-    pub fn override_ffadd(mut self, override_ffadd: bool) -> Self {
+    pub fn override_ffadd(mut self, override_ffadd: Option<Vec<PolishToken<F>>>) -> Self {
         self.override_ffadd = override_ffadd;
         self
     }
