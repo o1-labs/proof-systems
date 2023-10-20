@@ -7,6 +7,8 @@ use ark_ff::{PrimeField, SquareRootField};
 
 use super::{expand_word, padded_length, RATE, RC, ROUNDS};
 
+const SPONGE_COEFFS: usize = 336;
+
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Extends a Keccak circuit to hash one message
     /// Note:
@@ -45,7 +47,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         CircuitGate {
             typ: GateType::KeccakSponge,
             wires: Wire::for_row(new_row),
-            coeffs: vec![F::zero(), F::one()],
+            coeffs: {
+                let mut c = vec![F::zero(); SPONGE_COEFFS];
+                c[1] = F::one();
+                c
+            },
         }
     }
 
