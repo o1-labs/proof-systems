@@ -11,7 +11,7 @@ use crate::{
             complete_add::CompleteAdd,
             endomul_scalar::EndomulScalar,
             endosclmul::EndosclMul,
-            foreign_field_add::circuitgates::{AssertEq1, ForeignFieldAdd},
+            foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic, permutation,
             poseidon::Poseidon,
@@ -775,12 +775,6 @@ where
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
 
-                let ffadd = if index.cs.override_ffadd.is_some() {
-                    Box::new(AssertEq1::default()) as Box<dyn DynArgument<G::ScalarField>>
-                } else {
-                    Box::new(ForeignFieldAdd::default()) as Box<dyn DynArgument<G::ScalarField>>
-                };
-
                 for gate in [
                     (
                         (&CompleteAdd::default() as &dyn DynArgument<G::ScalarField>),
@@ -794,7 +788,10 @@ where
                     (&RangeCheck0::default(), range_check0_enabled),
                     (&RangeCheck1::default(), range_check1_enabled),
                     // Foreign field addition gate
-                    (&*ffadd, foreign_field_addition_enabled),
+                    (
+                        &ForeignFieldAdd::default(),
+                        foreign_field_addition_enabled && index.cs.override_ffadd.is_none(),
+                    ),
                     // Foreign field multiplication gate
                     (
                         &ForeignFieldMul::default(),
@@ -818,6 +815,20 @@ where
                         panic!("Bad evaluation")
                     }
                     check_constraint!(index, format!("{:?}", gate.argument_type()), eval);
+                }
+
+                if foreign_field_addition_enabled {
+                    if let Some(override_ffadd) = index.cs.override_ffadd.as_ref() {
+                        let eval = expr::E::of_polish(&override_ffadd).evaluations(&env);
+                        if eval.domain().size == t4.domain().size {
+                            t4 += &eval;
+                        } else if eval.domain().size == t8.domain().size {
+                            t8 += &eval;
+                        } else {
+                            panic!("Bad evaluation")
+                        }
+                        check_constraint!(index, "OverriddenForeignFieldAdd", eval);
+                    }
                 }
             };
 

@@ -700,8 +700,12 @@ impl<A> PolishToken<A> {
             PolishToken::Add => PolishToken::Add,
             PolishToken::Mul => PolishToken::Mul,
             PolishToken::Sub => PolishToken::Sub,
-            PolishToken::VanishesOnZeroKnowledgeAndPreviousRows => PolishToken::VanishesOnZeroKnowledgeAndPreviousRows,
-            PolishToken::UnnormalizedLagrangeBasis(off) => PolishToken::UnnormalizedLagrangeBasis(off),
+            PolishToken::VanishesOnZeroKnowledgeAndPreviousRows => {
+                PolishToken::VanishesOnZeroKnowledgeAndPreviousRows
+            }
+            PolishToken::UnnormalizedLagrangeBasis(off) => {
+                PolishToken::UnnormalizedLagrangeBasis(off)
+            }
             PolishToken::Store => PolishToken::Store,
             PolishToken::Load(i) => PolishToken::Load(i),
             PolishToken::SkipIf(flag, i) => PolishToken::SkipIf(flag, i),
@@ -1571,6 +1575,61 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 }
             }
         }
+    }
+
+    pub fn of_polish(tokens: &[PolishToken<F>]) -> Self {
+        let mut stack = vec![];
+        for token in tokens.iter() {
+            match token {
+                PolishToken::Alpha => stack.push(Expr::Constant(ConstantExpr::Alpha)),
+                PolishToken::Beta => stack.push(Expr::Constant(ConstantExpr::Beta)),
+                PolishToken::Gamma => stack.push(Expr::Constant(ConstantExpr::Gamma)),
+                PolishToken::JointCombiner => {
+                    stack.push(Expr::Constant(ConstantExpr::JointCombiner))
+                }
+                PolishToken::EndoCoefficient => {
+                    stack.push(Expr::Constant(ConstantExpr::EndoCoefficient))
+                }
+                PolishToken::Mds(pos) => stack.push(Expr::Constant(ConstantExpr::Mds(*pos))),
+                PolishToken::Literal(x) => stack.push(Expr::Constant(ConstantExpr::Literal(*x))),
+                PolishToken::Cell(v) => stack.push(Expr::Cell(*v)),
+                PolishToken::Dup => {
+                    let x = stack.pop().unwrap();
+                    stack.push(x.clone());
+                    stack.push(x)
+                }
+                PolishToken::Pow(i) => {
+                    let x = stack.pop().unwrap();
+                    stack.push(Expr::Pow(Box::new(x), *i));
+                }
+                PolishToken::Add => {
+                    let y = stack.pop().unwrap();
+                    let x = stack.pop().unwrap();
+                    stack.push(Expr::BinOp(Op2::Add, Box::new(x), Box::new(y)));
+                }
+                PolishToken::Mul => {
+                    let y = stack.pop().unwrap();
+                    let x = stack.pop().unwrap();
+                    stack.push(Expr::BinOp(Op2::Mul, Box::new(x), Box::new(y)));
+                }
+                PolishToken::Sub => {
+                    let y = stack.pop().unwrap();
+                    let x = stack.pop().unwrap();
+                    stack.push(Expr::BinOp(Op2::Sub, Box::new(x), Box::new(y)));
+                }
+                PolishToken::VanishesOnZeroKnowledgeAndPreviousRows => {
+                    stack.push(Expr::VanishesOnZeroKnowledgeAndPreviousRows)
+                }
+                PolishToken::UnnormalizedLagrangeBasis(off) => {
+                    stack.push(Expr::UnnormalizedLagrangeBasis(*off))
+                }
+                PolishToken::Store => todo!(),
+                PolishToken::Load(_i) => todo!(),
+                PolishToken::SkipIf(_flag, _i) => todo!(),
+                PolishToken::SkipIfNot(_flag, _i) => todo!(),
+            }
+        }
+        stack.pop().unwrap()
     }
 
     /// The expression `beta`.

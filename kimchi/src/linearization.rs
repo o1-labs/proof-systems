@@ -12,7 +12,7 @@ use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
     endosclmul::EndosclMul,
-    foreign_field_add::circuitgates::{AssertEq1, ForeignFieldAdd},
+    foreign_field_add::circuitgates::ForeignFieldAdd,
     foreign_field_mul::circuitgates::ForeignFieldMul,
     generic, permutation,
     poseidon::Poseidon,
@@ -92,21 +92,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
         }
     }
 
-    if override_ffadd {
-        let mut foreign_field_add_expr =
-            || AssertEq1::combined_constraints(&powers_of_alpha, &mut cache);
-        if let Some(feature_flags) = feature_flags {
-            if feature_flags.foreign_field_add {
-                expr += foreign_field_add_expr();
-            }
-        } else {
-            expr += Expr::IfFeature(
-                FeatureFlag::ForeignFieldAdd,
-                Box::new(foreign_field_add_expr()),
-                Box::new(Expr::zero()),
-            );
-        }
-    } else {
+    if !override_ffadd {
         let mut foreign_field_add_expr =
             || ForeignFieldAdd::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {

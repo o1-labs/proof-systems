@@ -203,21 +203,6 @@ where
     }
 }
 
-#[derive(Default)]
-pub struct AssertEq1<F>(PhantomData<F>);
-
-impl<F> Argument<F> for AssertEq1<F>
-where
-    F: PrimeField,
-{
-    const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::ForeignFieldAdd);
-    const CONSTRAINTS: u32 = 1;
-
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
-        vec![env.witness_curr(0) - T::from(1u64)]
-    }
-}
-
 // Auxiliary function to obtain the constraints to check a carry flag
 fn is_carry<F: PrimeField, T: ExprOps<F>>(flag: &T) -> T {
     // Carry bits are -1, 0, or 1.

@@ -444,6 +444,12 @@ where
             )
             .unwrap();
 
+            if let Some(override_ffadd) = index.override_ffadd.as_ref() {
+                ft_eval0 -=
+                    PolishToken::evaluate(override_ffadd, index.domain, zeta, &evals, &constants)
+                        .unwrap();
+            }
+
             ft_eval0
         };
 
