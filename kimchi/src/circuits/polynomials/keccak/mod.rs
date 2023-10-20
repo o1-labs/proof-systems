@@ -13,12 +13,21 @@ use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
 
 #[macro_export]
-macro_rules! state_from_vec {
-    ($expr:expr) => {
-        |i: usize, x: usize, y: usize, q: usize| {
-            $expr[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
+macro_rules! grid {
+    (20, $v:expr) => {{
+        |x: usize, q: usize| $v[q + QUARTERS * x].clone()
+    }};
+    (80, $v:expr) => {{
+        |i: usize, x: usize, q: usize| $v[q + QUARTERS * (x + DIM * i)].clone()
+    }};
+    (100, $v:expr) => {{
+        |y: usize, x: usize, q: usize| $v[q + QUARTERS * (x + DIM * y)].clone()
+    }};
+    (400, $v:expr) => {{
+        |i: usize, y: usize, x: usize, q: usize| {
+            $v[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
         }
-    };
+    }};
 }
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64

@@ -7,10 +7,48 @@ use crate::{
         expr::{constraints::ExprOps, Cache},
         gate::GateType,
     },
-    state_from_vec,
+    grid,
 };
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
+
+#[macro_export]
+macro_rules! from_quarters {
+    ($quarters:ident, $x:ident) => {
+        $quarters($x, 0)
+            + T::two_pow(16) * $quarters($x, 1)
+            + T::two_pow(32) * $quarters($x, 2)
+            + T::two_pow(48) * $quarters($x, 3)
+    };
+    ($quarters:ident, $y:ident, $x:ident) => {
+        $quarters($y, $x, 0)
+            + T::two_pow(16) * $quarters($y, $x, 1)
+            + T::two_pow(32) * $quarters($y, $x, 2)
+            + T::two_pow(48) * $quarters($y, $x, 3)
+    };
+}
+
+#[macro_export]
+macro_rules! from_shifts {
+    ($shifts:ident, $i:ident) => {
+        $shifts($i)
+            + T::two_pow(1) * $shifts(100 + $i)
+            + T::two_pow(2) * $shifts(200 + $i)
+            + T::two_pow(3) * $shifts(300 + $i)
+    };
+    ($shifts:ident, $x:ident, $q:ident) => {
+        $shifts(0, $x, $q)
+            + T::two_pow(1) * $shifts(1, $x, $q)
+            + T::two_pow(2) * $shifts(2, $x, $q)
+            + T::two_pow(3) * $shifts(3, $x, $q)
+    };
+    ($shifts:ident, $y:ident, $x:ident, $q:ident) => {
+        $shifts(0, $y, $x, $q)
+            + T::two_pow(1) * $shifts(1, $y, $x, $q)
+            + T::two_pow(2) * $shifts(2, $y, $x, $q)
+            + T::two_pow(3) * $shifts(3, $y, $x, $q)
+    };
+}
 
 //~
 //~ | `KeccakRound` | [0...440) | [440...1540) | [1540...2344) |
@@ -58,46 +96,46 @@ where
 
         // LOAD STATES FROM WITNESS LAYOUT
         // THETA
-        let state_a = state_from_vec!(env.witness_curr_chunk(0, 100));
-        let state_c = state_from_vec!(env.witness_curr_chunk(100, 120));
-        let shifts_c = state_from_vec!(env.witness_curr_chunk(120, 200));
-        let dense_c = state_from_vec!(env.witness_curr_chunk(200, 220));
-        let quotient_c = state_from_vec!(env.witness_curr_chunk(220, 240));
-        let remainder_c = state_from_vec!(env.witness_curr_chunk(240, 260));
-        let bound_c = state_from_vec!(env.witness_curr_chunk(260, 280));
-        let dense_rot_c = state_from_vec!(env.witness_curr_chunk(280, 300));
-        let expand_rot_c = state_from_vec!(env.witness_curr_chunk(300, 320));
-        let state_d = state_from_vec!(env.witness_curr_chunk(320, 340));
-        let state_e = state_from_vec!(env.witness_curr_chunk(340, 440));
+        let state_a = grid!(100, env.witness_curr_chunk(0, 100));
+        let state_c = grid!(20, env.witness_curr_chunk(100, 120));
+        let shifts_c = grid!(80, env.witness_curr_chunk(120, 200));
+        let dense_c = grid!(20, env.witness_curr_chunk(200, 220));
+        let quotient_c = grid!(20, env.witness_curr_chunk(220, 240));
+        let remainder_c = grid!(20, env.witness_curr_chunk(240, 260));
+        let bound_c = grid!(20, env.witness_curr_chunk(260, 280));
+        let dense_rot_c = grid!(20, env.witness_curr_chunk(280, 300));
+        let expand_rot_c = grid!(20, env.witness_curr_chunk(300, 320));
+        let state_d = grid!(20, env.witness_curr_chunk(320, 340));
+        let state_e = grid!(100, env.witness_curr_chunk(340, 440));
         // PI-RHO
-        let shifts_e = state_from_vec!(env.witness_curr_chunk(440, 840));
-        let dense_e = state_from_vec!(env.witness_curr_chunk(840, 940));
-        let quotient_e = state_from_vec!(env.witness_curr_chunk(940, 1040));
-        let remainder_e = state_from_vec!(env.witness_curr_chunk(1040, 1140));
-        let bound_e = state_from_vec!(env.witness_curr_chunk(1140, 1240));
-        let dense_rot_e = state_from_vec!(env.witness_curr_chunk(1240, 1340));
-        let expand_rot_e = state_from_vec!(env.witness_curr_chunk(1340, 1440));
-        let state_b = state_from_vec!(env.witness_curr_chunk(1440, 1540));
+        let shifts_e = grid!(400, env.witness_curr_chunk(440, 840));
+        let dense_e = grid!(100, env.witness_curr_chunk(840, 940));
+        let quotient_e = grid!(100, env.witness_curr_chunk(940, 1040));
+        let remainder_e = grid!(100, env.witness_curr_chunk(1040, 1140));
+        let bound_e = grid!(100, env.witness_curr_chunk(1140, 1240));
+        let dense_rot_e = grid!(100, env.witness_curr_chunk(1240, 1340));
+        let expand_rot_e = grid!(100, env.witness_curr_chunk(1340, 1440));
+        let state_b = grid!(100, env.witness_curr_chunk(1440, 1540));
         // CHI
-        let shifts_b = state_from_vec!(env.witness_curr_chunk(1540, 1940));
-        let shifts_sum = state_from_vec!(env.witness_curr_chunk(1940, 2340));
-        let mut state_f = env.witness_curr_chunk(2340, 2344);
+        let shifts_b = grid!(400, env.witness_curr_chunk(1540, 1940));
+        let shifts_sum = grid!(400, env.witness_curr_chunk(1940, 2340));
+        let mut state_f: Vec<T> = env.witness_curr_chunk(2340, 2344);
         let mut tail = env.witness_next_chunk(4, 100);
         state_f.append(&mut tail);
-        let state_f = state_from_vec!(state_f);
+        let state_f = grid!(100, state_f);
         // IOTA
         let mut state_g = env.witness_next_chunk(0, 4);
         let mut tail = env.witness_next_chunk(4, 100);
         state_g.append(&mut tail);
-        let state_g = state_from_vec!(state_g);
+        let state_g = grid!(100, state_g);
 
         // STEP theta: 5 * ( 3 + 4 * (3 + 5 * 1) ) = 175 constraints
         for x in 0..DIM {
-            let word_c = compose_quarters(dense_c, x, 0);
-            let quo_c = compose_quarters(quotient_c, x, 0);
-            let rem_c = compose_quarters(remainder_c, x, 0);
-            let bnd_c = compose_quarters(bound_c, x, 0);
-            let rot_c = compose_quarters(dense_rot_c, x, 0);
+            let word_c = from_quarters!(dense_c, x);
+            let quo_c = from_quarters!(quotient_c, x);
+            let rem_c = from_quarters!(remainder_c, x);
+            let bnd_c = from_quarters!(bound_c, x);
+            let rot_c = from_quarters!(dense_rot_c, x);
             constraints
                 .push(word_c * T::two_pow(1) - (quo_c.clone() * T::two_pow(64) + rem_c.clone()));
             constraints.push(rot_c - (quo_c.clone() + rem_c));
@@ -105,23 +143,21 @@ where
 
             for q in 0..QUARTERS {
                 constraints.push(
-                    state_c(0, x, 0, q)
-                        - (state_a(0, x, 0, q)
-                            + state_a(0, x, 1, q)
-                            + state_a(0, x, 2, q)
-                            + state_a(0, x, 3, q)
-                            + state_a(0, x, 4, q)),
+                    state_c(x, q)
+                        - (state_a(0, x, q)
+                            + state_a(1, x, q)
+                            + state_a(2, x, q)
+                            + state_a(3, x, q)
+                            + state_a(4, x, q)),
                 );
-                constraints.push(state_c(0, x, 0, q) - compose_shifts(shifts_c, x, 0, q));
+                constraints.push(state_c(x, q) - from_shifts!(shifts_c, x, q));
                 constraints.push(
-                    state_d(0, x, 0, q)
-                        - (shifts_c(0, (x + DIM - 1) % DIM, 0, q)
-                            + expand_rot_c(0, (x + 1) % DIM, 0, q)),
+                    state_d(x, q)
+                        - (shifts_c(0, (x + DIM - 1) % DIM, q) + expand_rot_c((x + 1) % DIM, q)),
                 );
 
                 for y in 0..DIM {
-                    constraints
-                        .push(state_e(0, x, y, q) - (state_a(0, x, y, q) + state_d(0, x, 0, q)));
+                    constraints.push(state_e(y, x, q) - (state_a(y, x, q) + state_d(x, q)));
                 }
             }
         } // END theta
@@ -129,11 +165,11 @@ where
         // STEP pirho: 5 * 5 * (3 + 4 * 2) = 275 constraints
         for (y, col) in OFF.iter().enumerate() {
             for (x, off) in col.iter().enumerate() {
-                let word_e = compose_quarters(dense_e, x, y);
-                let quo_e = compose_quarters(quotient_e, x, y);
-                let rem_e = compose_quarters(remainder_e, x, y);
-                let bnd_e = compose_quarters(bound_e, x, y);
-                let rot_e = compose_quarters(dense_rot_e, x, y);
+                let word_e = from_quarters!(dense_e, y, x);
+                let quo_e = from_quarters!(quotient_e, y, x);
+                let rem_e = from_quarters!(remainder_e, y, x);
+                let bnd_e = from_quarters!(bound_e, y, x);
+                let rot_e = from_quarters!(dense_rot_e, y, x);
 
                 constraints.push(
                     word_e * T::two_pow(*off) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
@@ -142,9 +178,8 @@ where
                 constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(*off)));
 
                 for q in 0..QUARTERS {
-                    constraints.push(state_e(0, x, y, q) - compose_shifts(shifts_e, x, y, q));
-                    constraints
-                        .push(state_b(0, y, (2 * x + 3 * y) % DIM, q) - expand_rot_e(0, x, y, q));
+                    constraints.push(state_e(y, x, q) - from_shifts!(shifts_e, y, x, q));
+                    constraints.push(state_b((2 * x + 3 * y) % DIM, y, q) - expand_rot_e(y, x, q));
                 }
             }
         } // END pirho
@@ -153,20 +188,20 @@ where
         for q in 0..QUARTERS {
             for x in 0..DIM {
                 for y in 0..DIM {
-                    let not =
-                        T::literal(F::from(0x1111111111111111u64)) - shifts_b(0, (x + 1) % 5, y, q);
-                    let sum = not + shifts_b(1, (x + 2) % 5, y, q);
-                    let and = shifts_sum(1, x, y, q);
-                    constraints.push(state_b(0, x, y, q) - compose_shifts(shifts_b, x, y, q));
-                    constraints.push(sum - compose_shifts(shifts_sum, x, y, q));
-                    constraints.push(state_f(0, x, y, q) - (shifts_b(0, x, y, q) + and));
+                    let not = T::literal(F::from(0x1111111111111111u64))
+                        - shifts_b(0, y, (x + 1) % DIM, q);
+                    let sum = not + shifts_b(0, y, (x + 2) % DIM, q);
+                    let and = shifts_sum(1, y, x, q);
+                    constraints.push(state_b(y, x, q) - from_shifts!(shifts_b, y, x, q));
+                    constraints.push(sum - from_shifts!(shifts_sum, y, x, q));
+                    constraints.push(state_f(y, x, q) - (shifts_b(0, y, x, q) + and));
                 }
             }
         } // END chi
 
         // STEP iota: 4 constraints
         for (q, c) in rc.iter().enumerate() {
-            constraints.push(state_g(0, 0, 0, q) - (state_f(0, 0, 0, q) + c.clone()));
+            constraints.push(state_g(0, 0, q) - (state_f(0, 0, q) + c.clone()));
         } // END iota
 
         constraints
@@ -195,9 +230,8 @@ where
 
         // LOAD WITNESS
         let old_state = env.witness_curr_chunk(0, 100);
-        let mut new_block = env.witness_curr_chunk(100, 168);
-        let mut zeros = env.witness_curr_chunk(168, 200);
-        new_block.append(&mut zeros);
+        let new_block = env.witness_curr_chunk(100, 200);
+        let zeros = env.witness_curr_chunk(168, 200);
         let xor_state = env.witness_next_chunk(0, 100);
         let bytes = env.witness_curr_chunk(200, 400);
         let shifts = env.witness_curr_chunk(400, 800);
@@ -208,9 +242,9 @@ where
         auto_clone_array!(shifts);
 
         // LOAD COEFFICIENTS
-        let root = env.coeff(0);
-        let absorb = env.coeff(1);
-        let squeeze = env.coeff(2);
+        let absorb = env.coeff(0);
+        let squeeze = env.coeff(1);
+        let root = env.coeff(2);
         let flags = env.coeff_chunk(4, 140);
         let pad = env.coeff_chunk(200, 336);
         auto_clone!(root);
@@ -230,9 +264,9 @@ where
             // Absorbs the new block by performing XOR with the old state
             constraints.push(absorb() * (xor_state(i) - (old_state(i) + new_block(i))));
             // In absorb, Check shifts correspond to the decomposition of the new state
-            constraints.push(absorb() * (new_block(i) - compose_shifts_from_vec(shifts, i)));
+            constraints.push(absorb() * (new_block(i) - from_shifts!(shifts, i)));
             // In squeeze, Check shifts correspond to the 256-bit prefix digest of the old state (current)
-            constraints.push(squeeze() * (old_state(i) - compose_shifts_from_vec(shifts, i)));
+            constraints.push(squeeze() * (old_state(i) - from_shifts!(shifts, i)));
         }
         for i in 0..136 {
             // Check padding
@@ -241,37 +275,4 @@ where
 
         constraints
     }
-}
-
-fn compose_quarters<F: PrimeField, T: ExprOps<F>>(
-    quarters: impl Fn(usize, usize, usize, usize) -> T,
-    x: usize,
-    y: usize,
-) -> T {
-    quarters(0, x, y, 0)
-        + T::two_pow(16) * quarters(0, x, y, 1)
-        + T::two_pow(32) * quarters(0, x, y, 2)
-        + T::two_pow(48) * quarters(0, x, y, 3)
-}
-
-fn compose_shifts<F: PrimeField, T: ExprOps<F>>(
-    shifts: impl Fn(usize, usize, usize, usize) -> T,
-    x: usize,
-    y: usize,
-    q: usize,
-) -> T {
-    shifts(0, x, y, q)
-        + T::two_pow(1) * shifts(1, x, y, q)
-        + T::two_pow(2) * shifts(2, x, y, q)
-        + T::two_pow(3) * shifts(3, x, y, q)
-}
-
-fn compose_shifts_from_vec<F: PrimeField, T: ExprOps<F>>(
-    shifts: impl Fn(usize) -> T,
-    i: usize,
-) -> T {
-    shifts(4 * i)
-        + T::two_pow(1) * shifts(4 * i + 1)
-        + T::two_pow(2) * shifts(4 * i + 2)
-        + T::two_pow(3) * shifts(4 * i + 3)
 }
