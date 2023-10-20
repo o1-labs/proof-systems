@@ -9,7 +9,7 @@ use crate::{
         polynomials::keccak::ROUNDS,
         witness::{self, IndexCell, Variables, WitnessCell},
     },
-    state_from_vec, variable_map,
+    grid, variable_map,
 };
 use ark_ff::PrimeField;
 use num_bigint::BigUint;
@@ -167,16 +167,16 @@ impl Theta {
     }
 
     fn compute_state_c(state_a: &[u64]) -> Vec<u64> {
-        let state_a = state_from_vec!(state_a);
+        let state_a = grid!(100, state_a);
         let mut state_c = vec![];
         for x in 0..DIM {
             for q in 0..QUARTERS {
                 state_c.push(
-                    state_a(0, x, 0, q)
-                        + state_a(0, x, 1, q)
-                        + state_a(0, x, 2, q)
-                        + state_a(0, x, 3, q)
-                        + state_a(0, x, 4, q),
+                    state_a(0, x, q)
+                        + state_a(1, x, q)
+                        + state_a(2, x, q)
+                        + state_a(3, x, q)
+                        + state_a(4, x, q),
                 );
             }
         }
@@ -184,27 +184,25 @@ impl Theta {
     }
 
     fn compute_state_d(shifts_c: &[u64], expand_rot_c: &[u64]) -> Vec<u64> {
-        let shifts_c = state_from_vec!(shifts_c);
-        let expand_rot_c = state_from_vec!(expand_rot_c);
+        let shifts_c = grid!(20, shifts_c);
+        let expand_rot_c = grid!(20, expand_rot_c);
         let mut state_d = vec![];
         for x in 0..DIM {
             for q in 0..QUARTERS {
-                state_d.push(
-                    shifts_c(0, (x + DIM - 1) % DIM, 0, q) + expand_rot_c(0, (x + 1) % DIM, 0, q),
-                );
+                state_d.push(shifts_c((x + DIM - 1) % DIM, q) + expand_rot_c((x + 1) % DIM, q));
             }
         }
         state_d
     }
 
     fn compute_state_e(state_a: &[u64], state_d: &[u64]) -> Vec<u64> {
-        let state_a = state_from_vec!(state_a);
-        let state_d = state_from_vec!(state_d);
+        let state_a = grid!(100, state_a);
+        let state_d = grid!(20, state_d);
         let mut state_e = vec![];
         for y in 0..DIM {
             for x in 0..DIM {
                 for q in 0..QUARTERS {
-                    state_e.push(state_a(0, x, y, q) + state_d(0, x, 0, q));
+                    state_e.push(state_a(y, x, q) + state_d(x, q));
                 }
             }
         }
@@ -236,11 +234,11 @@ impl PiRho {
         );
 
         let mut state_b = vec![vec![vec![0; QUARTERS]; DIM]; DIM];
-        let aux = state_from_vec!(rotation_e.expand_rot);
+        let aux = grid!(100, rotation_e.expand_rot);
         for y in 0..DIM {
             for x in 0..DIM {
                 for q in 0..QUARTERS {
-                    state_b[(2 * x + 3 * y) % DIM][y][q] = aux(0, x, y, q);
+                    state_b[(2 * x + 3 * y) % DIM][y][q] = aux(y, x, q);
                 }
             }
         }
@@ -268,24 +266,24 @@ struct Chi {
 impl Chi {
     fn create(state_b: &[u64]) -> Self {
         let shifts_b = shift(state_b);
-        let shiftsb = state_from_vec!(shifts_b);
+        let shiftsb = grid!(400, shifts_b);
         let mut sum = vec![];
         for y in 0..DIM {
             for x in 0..DIM {
                 for q in 0..QUARTERS {
-                    let not = 0x1111111111111111u64 - shiftsb(0, (x + 1) % DIM, y, q);
-                    sum.push(not + shiftsb(0, (x + 2) % DIM, y, q));
+                    let not = 0x1111111111111111u64 - shiftsb(0, y, (x + 1) % DIM, q);
+                    sum.push(not + shiftsb(0, y, (x + 2) % DIM, q));
                 }
             }
         }
         let shifts_sum = shift(&sum);
-        let shiftsum = state_from_vec!(shifts_sum);
+        let shiftsum = grid!(400, shifts_sum);
         let mut state_f = vec![];
         for y in 0..DIM {
             for x in 0..DIM {
                 for q in 0..QUARTERS {
-                    let and = shiftsum(1, x, y, q);
-                    state_f.push(shiftsb(0, x, y, q) + and);
+                    let and = shiftsum(1, y, x, q);
+                    state_f.push(shiftsb(0, y, x, q) + and);
                 }
             }
         }
