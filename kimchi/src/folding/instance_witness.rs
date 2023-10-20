@@ -111,7 +111,7 @@ impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxedInstance<G, I> {
             u,
             error_commitment: error,
         } = self;
-        let error_commitment = &error + &error_commitment.scale(challenge);
+        let error_commitment = &error - &error_commitment.scale(challenge);
         RelaxedInstance {
             instance,
             u,
@@ -145,7 +145,7 @@ impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxedInstance<G, I> {
 impl<G: CommitmentCurve, W: WitnessTrait<G>> RelaxedWitness<G, W> {
     pub fn add_error(mut self, error: Vec<G::ScalarField>, challenge: G::ScalarField) -> Self {
         for (a, b) in self.error_vec.iter_mut().zip(error.into_iter()) {
-            *a += b * challenge;
+            *a -= b * challenge;
         }
         self
     }
