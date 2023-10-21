@@ -1782,4 +1782,28 @@ pub mod caml {
             (proof, caml_pp.public.into_iter().map(Into::into).collect())
         }
     }
+
+    impl<G, CamlG, CamlF> From<(ProverProof<G, ProvingProof<P>>, Vec<G::ScalarField>)>
+        for CamlProofWithPublic<CamlG, CamlF>
+    where
+        G: AffineCurve,
+        CamlG: From<G>,
+        CamlF: From<G::ScalarField>,
+        P: Pairing,
+    {
+        fn from(pp: (ProverProof<G, ProvingProof<P>>, Vec<G::ScalarField>)) -> Self {
+            let (public_evals, evals) = pp.0.evals.into();
+            CamlProofWithPublic {
+                public_evals,
+                proof: CamlProverProof {
+                    commitments: pp.0.commitments.into(),
+                    proof: pp.0.proof.into(),
+                    evals,
+                    ft_eval1: pp.0.ft_eval1.into(),
+                    public: pp.1.into_iter().map(Into::into).collect(),
+                    prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
+                },
+            }
+        }
+    }
 }
