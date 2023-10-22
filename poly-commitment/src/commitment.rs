@@ -1288,14 +1288,16 @@ pub mod caml {
     // proving proof
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlPairingProof<Pair: PairingEngine> {
-        pub quotient: Pair::G1Affine,
-        pub blinding: <Pair::G1Affine as AffineCurve>::ScalarField,
+    pub struct CamlPairingProof<G, F> {
+        pub quotient: G,
+        pub blinding: F,
     }
 
-    impl<Pair> From<PairingProof<Pair>> for CamlPairingProof<Pair>
+    impl<CamlG, CamlF, Pair> From<PairingProof<Pair>> for CamlPairingProof<CamlG, CamlF>
     where
         Pair: PairingEngine,
+        CamlG: From<Pair::G1Affine>,
+        CamlF: From<<Pair::G1Affine as AffineCurve>::ScalarField>,
     {
         fn from(pairing_proof: PairingProof<Pair>) -> Self {
             Self {
@@ -1305,11 +1307,13 @@ pub mod caml {
         }
     }
 
-    impl<Pair> From<CamlPairingProof<Pair>> for PairingProof<Pair>
+    impl<CamlG, CamlF, Pair> From<CamlPairingProof<CamlG, CamlF>> for PairingProof<Pair>
     where
         Pair: PairingEngine,
+        CamlG: Into<Pair::G1Affine>,
+        CamlF: Into<<Pair::G1Affine as AffineCurve>::ScalarField>,
     {
-        fn from(caml: CamlPairingProof<Pair>) -> Self {
+        fn from(caml: CamlPairingProof<CamlG, CamlF>) -> Self {
             Self {
                 quotient: caml.quotient.into(),
                 blinding: caml.blinding.into(),

@@ -1516,18 +1516,15 @@ pub mod caml {
     use super::*;
     use crate::proof::caml::{CamlProofEvaluations, CamlRecursionChallenge};
     use ark_ec::AffineCurve;
-    use poly_commitment::{
-        commitment::caml::{CamlOpeningProof, CamlPolyComm},
-        evaluation_proof::OpeningProof,
-    };
+    use poly_commitment::{commitment::caml::CamlPolyComm, OpenProof};
 
     #[cfg(feature = "internal_tracing")]
     pub use internal_traces::caml::CamlTraces as CamlProverTraces;
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProofWithPublic<CamlG, CamlF> {
+    pub struct CamlProofWithPublic<CamlG, CamlF, CamlP> {
         pub public_evals: Option<PointEvaluations<Vec<CamlF>>>,
-        pub proof: CamlProverProof<CamlG, CamlF>,
+        pub proof: CamlProverProof<CamlG, CamlF, CamlP>,
     }
 
     //
@@ -1535,9 +1532,9 @@ pub mod caml {
     //
 
     #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
-    pub struct CamlProverProof<CamlG, CamlF> {
+    pub struct CamlProverProof<CamlG, CamlF, CamlP> {
         pub commitments: CamlProverCommitments<CamlG>,
-        pub proof: CamlOpeningProof<CamlG, CamlF>,
+        pub proof: CamlP,
         // OCaml doesn't have sized arrays, so we have to convert to a tuple..
         pub evals: CamlProofEvaluations<CamlF>,
         pub ft_eval1: CamlF,
@@ -1730,14 +1727,16 @@ pub mod caml {
     // ProverProof<G> <-> CamlProofWithPublic<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF> From<(ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)>
-        for CamlProofWithPublic<CamlG, CamlF>
+    impl<G, CamlG, CamlF, P, CamlP> From<(ProverProof<G, P>, Vec<G::ScalarField>)>
+        for CamlProofWithPublic<CamlG, CamlF, CamlP>
     where
-        G: AffineCurve,
+        G: AffineCurve + CommitmentCurve,
         CamlG: From<G>,
         CamlF: From<G::ScalarField>,
+        P: OpenProof<G>,
+        CamlP: From<P>,
     {
-        fn from(pp: (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)) -> Self {
+        fn from(pp: (ProverProof<G, P>, Vec<G::ScalarField>)) -> Self {
             let (public_evals, evals) = pp.0.evals.into();
             CamlProofWithPublic {
                 public_evals,
@@ -1753,16 +1752,17 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
-        for (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>)
+    impl<G, CamlG, CamlF, P, CamlP> From<CamlProofWithPublic<CamlG, CamlF, CamlP>>
+        for (ProverProof<G, P>, Vec<G::ScalarField>)
     where
         CamlF: Clone,
-        G: AffineCurve + From<CamlG>,
+        G: AffineCurve + CommitmentCurve + From<CamlG>,
         G::ScalarField: From<CamlF>,
+        P: OpenProof<G> + From<CamlP>,
     {
         fn from(
-            caml_pp: CamlProofWithPublic<CamlG, CamlF>,
-        ) -> (ProverProof<G, OpeningProof<G>>, Vec<G::ScalarField>) {
+            caml_pp: CamlProofWithPublic<CamlG, CamlF, CamlP>,
+        ) -> (ProverProof<G, P>, Vec<G::ScalarField>) {
             let CamlProofWithPublic {
                 public_evals,
                 proof: caml_pp,
@@ -1780,30 +1780,6 @@ pub mod caml {
             };
 
             (proof, caml_pp.public.into_iter().map(Into::into).collect())
-        }
-    }
-
-    impl<G, CamlG, CamlF> From<(ProverProof<G, ProvingProof<P>>, Vec<G::ScalarField>)>
-        for CamlProofWithPublic<CamlG, CamlF>
-    where
-        G: AffineCurve,
-        CamlG: From<G>,
-        CamlF: From<G::ScalarField>,
-        P: Pairing,
-    {
-        fn from(pp: (ProverProof<G, ProvingProof<P>>, Vec<G::ScalarField>)) -> Self {
-            let (public_evals, evals) = pp.0.evals.into();
-            CamlProofWithPublic {
-                public_evals,
-                proof: CamlProverProof {
-                    commitments: pp.0.commitments.into(),
-                    proof: pp.0.proof.into(),
-                    evals,
-                    ft_eval1: pp.0.ft_eval1.into(),
-                    public: pp.1.into_iter().map(Into::into).collect(),
-                    prev_challenges: pp.0.prev_challenges.into_iter().map(Into::into).collect(),
-                },
-            }
         }
     }
 }
