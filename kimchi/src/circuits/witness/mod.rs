@@ -21,8 +21,8 @@ pub use self::{
 };
 
 /// Witness cell interface
-pub trait WitnessCell<const N: usize, F: Field, T> {
-    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<T>, index: usize) -> F;
+pub trait WitnessCell<const W: usize, F: Field, T> {
+    fn value(&self, witness: &mut [Vec<F>; W], variables: &Variables<T>, index: usize) -> F;
 
     fn length(&self) -> usize {
         1
