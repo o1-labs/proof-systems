@@ -5,7 +5,7 @@ use ark_ff::PrimeField;
 
 use super::KECCAK_COLS;
 
-type _Layout<const N: usize, F> = Vec<Box<dyn WitnessCell<N, F, Vec<F>>>>;
+type _Layout<const W: usize, F> = Vec<Box<dyn WitnessCell<W, F, Vec<F>>>>;
 
 fn _layout_round<F: PrimeField>() -> _Layout<KECCAK_COLS, F> {
     vec![
