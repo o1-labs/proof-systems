@@ -83,8 +83,8 @@ impl<'a, const W: usize, G: KimchiCurve> Context<'a, W, G> {
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
-                    KeccakRound => todo!(),
-                    KeccakSponge => todo!(),
+                    KeccakRound => Some(self.verifier_index.keccak_round_comm.as_ref()?),
+                    KeccakSponge => Some(self.verifier_index.keccak_sponge_comm.as_ref()?),
                 }
             }
         }
