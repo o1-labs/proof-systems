@@ -1809,15 +1809,22 @@ pub mod caml {
     // ProverProof<G> <-> CamlBN254ProofWithPublic<CamlG, CamlF>
     //
 
-    impl<G, CamlG, CamlF, Pair> From<(ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>)>
-        for CamlBN254ProofWithPublic<CamlG, CamlF>
+    impl<CamlG, CamlF, Pair>
+        From<(
+            ProverProof<<Pair as PairingEngine>::G1Affine, PairingProof<Pair>>,
+            Vec<<<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField>,
+        )> for CamlBN254ProofWithPublic<CamlG, CamlF>
     where
-        G: Pair::G1Affine,
-        CamlG: From<G>,
-        CamlF: From<G::ScalarField>,
+        CamlG: From<<Pair as PairingEngine>::G1Affine>,
+        CamlF: From<<<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField>,
         Pair: PairingEngine,
     {
-        fn from(pp: (ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>)) -> Self {
+        fn from(
+            pp: (
+                ProverProof<<Pair as PairingEngine>::G1Affine, PairingProof<Pair>>,
+                Vec<<<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField>,
+            ),
+        ) -> Self {
             let (public_evals, evals) = pp.0.evals.into();
             CamlBN254ProofWithPublic {
                 public_evals,
@@ -1833,17 +1840,23 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG, CamlF, Pair> From<CamlBN254ProofWithPublic<CamlG, CamlF>>
-        for (ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>)
+    impl<CamlG, CamlF, Pair> From<CamlBN254ProofWithPublic<CamlG, CamlF>>
+        for (
+            ProverProof<<Pair as PairingEngine>::G1Affine, PairingProof<Pair>>,
+            Vec<<<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField>,
+        )
     where
         CamlF: Clone,
-        G: AffineCurve + CommitmentCurve + From<CamlG>,
-        G::ScalarField: From<CamlF>,
         Pair: PairingEngine,
+        <Pair as PairingEngine>::G1Affine: From<CamlG>,
+        <<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField: From<CamlF>,
     {
         fn from(
             caml_pp: CamlBN254ProofWithPublic<CamlG, CamlF>,
-        ) -> (ProverProof<G, PairingProof<Pair>>, Vec<G::ScalarField>) {
+        ) -> (
+            ProverProof<<Pair as PairingEngine>::G1Affine, PairingProof<Pair>>,
+            Vec<<<Pair as PairingEngine>::G1Affine as AffineCurve>::ScalarField>,
+        ) {
             let CamlBN254ProofWithPublic {
                 public_evals,
                 proof: caml_pp,
