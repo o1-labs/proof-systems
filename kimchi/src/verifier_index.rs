@@ -131,6 +131,14 @@ pub struct VerifierIndex<
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
+    /// Keccak round commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_round_comm: Option<PolyComm<G>>,
+
+    /// Keccak sponge commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_sponge_comm: Option<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -296,6 +304,18 @@ where
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
+            keccak_round_comm: self
+                .column_evaluations
+                .keccak_round_selector8
+                .as_ref()
+                .map(|eval4| self.srs.commit_evaluations_non_hiding(domain, eval4)),
+
+            keccak_sponge_comm: self
+                .column_evaluations
+                .keccak_sponge_selector8
+                .as_ref()
+                .map(|eval4| self.srs.commit_evaluations_non_hiding(domain, eval4)),
+
             shift: self.cs.shift,
             permutation_vanishing_polynomial_m: {
                 let cell = OnceCell::new();
@@ -431,6 +451,8 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
             foreign_field_mul_comm,
             xor_comm,
             rot_comm,
+            keccak_round_comm,
+            keccak_sponge_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -483,6 +505,14 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
 
         if let Some(rot_comm) = rot_comm {
             fq_sponge.absorb_g(&rot_comm.unshifted);
+        }
+
+        if let Some(keccak_round_comm) = keccak_round_comm {
+            fq_sponge.absorb_g(&keccak_round_comm.unshifted);
+        }
+
+        if let Some(keccak_sponge_comm) = keccak_sponge_comm {
+            fq_sponge.absorb_g(&keccak_sponge_comm.unshifted);
         }
 
         // Lookup index; optional

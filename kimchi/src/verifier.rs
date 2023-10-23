@@ -93,8 +93,8 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
-                    KeccakRound => todo!(),
-                    KeccakSponge => todo!(),
+                    KeccakRound => Some(self.verifier_index.keccak_round_comm.as_ref()?),
+                    KeccakSponge => Some(self.verifier_index.keccak_sponge_comm.as_ref()?),
                 }
             }
         }

@@ -138,11 +138,11 @@ pub struct ColumnEvaluations<F: PrimeField, const COLUMNS: usize = KIMCHI_COLS> 
 
     /// Keccak round gate selector over domain d4
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_round_selector4: Option<E<F, D<F>>>,
+    pub keccak_round_selector8: Option<E<F, D<F>>>,
 
     /// Keccak sponge gate selector over domain d4
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_sponge_selector4: Option<E<F, D<F>>>,
+    pub keccak_sponge_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -604,7 +604,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let keccak_round_selector4 = {
+        let keccak_round_selector8 = {
             if !self.feature_flags.keccak_round {
                 None
             } else {
@@ -612,13 +612,13 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     GateType::KeccakRound,
                     &self.gates,
                     &self.domain,
-                    &self.domain.d4,
+                    &self.domain.d8,
                     self.disable_gates_checks,
                 ))
             }
         };
 
-        let keccak_sponge_selector4 = {
+        let keccak_sponge_selector8 = {
             if !self.feature_flags.keccak_sponge {
                 None
             } else {
@@ -626,7 +626,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     GateType::KeccakSponge,
                     &self.gates,
                     &self.domain,
-                    &self.domain.d4,
+                    &self.domain.d8,
                     self.disable_gates_checks,
                 ))
             }
@@ -653,8 +653,8 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_mul_selector8,
             xor_selector8,
             rot_selector8,
-            keccak_round_selector4,
-            keccak_sponge_selector4,
+            keccak_round_selector8,
+            keccak_sponge_selector8,
         }
     }
 }
