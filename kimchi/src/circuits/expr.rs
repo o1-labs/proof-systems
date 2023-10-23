@@ -7,7 +7,7 @@ use crate::{
             index::LookupSelectors,
             lookups::{LookupPattern, LookupPatterns},
         },
-        polynomials::permutation::eval_vanishes_on_last_4_rows,
+        polynomials::permutation::eval_vanishes_on_last_n_rows,
         wires::COLUMNS,
     },
     proof::{PointEvaluations, ProofEvaluations},
@@ -21,11 +21,11 @@ use o1_utils::{foreign_field::ForeignFieldHelpers, FieldHelpers};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::ops::{Add, AddAssign, Mul, Neg, Sub};
+use std::{cmp::Ordering, fmt, iter::FromIterator};
 use std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
 };
-use std::{fmt, iter::FromIterator};
 use thiserror::Error;
 use CurrOrNext::{Curr, Next};
 
@@ -67,6 +67,8 @@ pub struct Constants<F: 'static> {
     pub endo_coefficient: F,
     /// The MDS matrix
     pub mds: &'static Vec<Vec<F>>,
+    /// The number of zero-knowledge rows
+    pub zk_rows: u64,
 }
 
 /// The polynomials specific to the lookup argument.
@@ -96,8 +98,8 @@ pub struct Environment<'a, F: FftField> {
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
     pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
-    /// The polynomial which vanishes on the last 4 elements of the domain.
-    pub vanishes_on_last_4_rows: &'a Evaluations<F, D<F>>,
+    /// The polynomial that vanishes on the zero-knowledge rows and the row before.
+    pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
     pub z: &'a Evaluations<F, D<F>>,
     /// The index selector polynomials.
@@ -457,11 +459,17 @@ impl FeatureFlag {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RowOffset {
+    pub zk_rows: bool,
+    pub offset: i32,
+}
+
 /// An multi-variate polynomial over the base ring `C` with
 /// variables
 ///
 /// - `Cell(v)` for `v : Variable`
-/// - VanishesOnLast4Rows
+/// - VanishesOnZeroKnowledgeAndPreviousRows
 /// - UnnormalizedLagrangeBasis(i) for `i : i32`
 ///
 /// This represents a PLONK "custom constraint", which enforces that
@@ -474,10 +482,10 @@ pub enum Expr<C> {
     Double(Box<Expr<C>>),
     Square(Box<Expr<C>>),
     BinOp(Op2, Box<Expr<C>>, Box<Expr<C>>),
-    VanishesOnLast4Rows,
+    VanishesOnZeroKnowledgeAndPreviousRows,
     /// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
-    UnnormalizedLagrangeBasis(i32),
+    UnnormalizedLagrangeBasis(RowOffset),
     Pow(Box<Expr<C>>, u64),
     Cache(CacheId, Box<Expr<C>>),
     /// If the feature flag is enabled, return the first expression; otherwise, return the second.
@@ -488,9 +496,10 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
     fn apply_feature_flags_inner(&self, features: &FeatureFlags) -> (Expr<C>, bool) {
         use Expr::*;
         match self {
-            Constant(_) | Cell(_) | VanishesOnLast4Rows | UnnormalizedLagrangeBasis(_) => {
-                (self.clone(), false)
-            }
+            Constant(_)
+            | Cell(_)
+            | VanishesOnZeroKnowledgeAndPreviousRows
+            | UnnormalizedLagrangeBasis(_) => (self.clone(), false),
             Double(c) => {
                 let (c_reduced, reduce_further) = c.apply_feature_flags_inner(features);
                 if reduce_further && c_reduced.is_zero() {
@@ -645,8 +654,8 @@ pub enum PolishToken<F> {
     Add,
     Mul,
     Sub,
-    VanishesOnLast4Rows,
-    UnnormalizedLagrangeBasis(i32),
+    VanishesOnZeroKnowledgeAndPreviousRows,
+    UnnormalizedLagrangeBasis(RowOffset),
     Store,
     Load(usize),
     /// Skip the given number of tokens if the feature is enabled.
@@ -662,24 +671,63 @@ impl Variable {
     ) -> Result<F, ExprError> {
         let point_evaluations = {
             use Column::*;
-            let l = evals
-                .lookup
-                .as_ref()
-                .ok_or(ExprError::LookupShouldNotBeUsed);
             match self.col {
                 Witness(i) => Ok(evals.w[i]),
                 Z => Ok(evals.z),
-                LookupSorted(i) => l.map(|l| l.sorted[i]),
-                LookupAggreg => l.map(|l| l.aggreg),
-                LookupTable => l.map(|l| l.table),
-                LookupRuntimeTable => l.and_then(|l| l.runtime.ok_or(ExprError::MissingRuntime)),
+                LookupSorted(i) => {
+                    evals.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(self.col))
+                }
+                LookupAggreg => evals
+                    .lookup_aggregation
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                LookupTable => evals
+                    .lookup_table
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                LookupRuntimeTable => evals
+                    .runtime_lookup_table
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
                 Index(GateType::Poseidon) => Ok(evals.poseidon_selector),
                 Index(GateType::Generic) => Ok(evals.generic_selector),
+                Index(GateType::CompleteAdd) => Ok(evals.complete_add_selector),
+                Index(GateType::VarBaseMul) => Ok(evals.mul_selector),
+                Index(GateType::EndoMul) => Ok(evals.emul_selector),
+                Index(GateType::EndoMulScalar) => Ok(evals.endomul_scalar_selector),
+                Index(GateType::RangeCheck0) => evals
+                    .range_check0_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::RangeCheck1) => evals
+                    .range_check1_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::ForeignFieldAdd) => evals
+                    .foreign_field_add_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::ForeignFieldMul) => evals
+                    .foreign_field_mul_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::Xor16) => evals
+                    .xor_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(GateType::Rot64) => evals
+                    .rot_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
                 Permutation(i) => Ok(evals.s[i]),
                 Coefficient(i) => Ok(evals.coefficients[i]),
-                LookupKindIndex(_) | LookupRuntimeSelector | Index(_) => {
-                    Err(ExprError::MissingIndexEvaluation(self.col))
-                }
+                Column::LookupKindIndex(LookupPattern::Xor) => evals
+                    .xor_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::Lookup) => evals
+                    .lookup_gate_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::RangeCheck) => evals
+                    .range_check_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => evals
+                    .foreign_field_mul_lookup_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Column::LookupRuntimeSelector => evals
+                    .runtime_lookup_table_selector
+                    .ok_or(ExprError::MissingIndexEvaluation(self.col)),
+                Index(_) => Err(ExprError::MissingIndexEvaluation(self.col)),
             }
         }?;
         match self.row {
@@ -718,9 +766,16 @@ impl<F: FftField> PolishToken<F> {
                 }
                 EndoCoefficient => stack.push(c.endo_coefficient),
                 Mds { row, col } => stack.push(c.mds[*row][*col]),
-                VanishesOnLast4Rows => stack.push(eval_vanishes_on_last_4_rows(d, pt)),
+                VanishesOnZeroKnowledgeAndPreviousRows => {
+                    stack.push(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
+                }
                 UnnormalizedLagrangeBasis(i) => {
-                    stack.push(unnormalized_lagrange_basis(&d, *i, &pt))
+                    let offset = if i.zk_rows {
+                        -(c.zk_rows as i32) + i.offset
+                    } else {
+                        i.offset
+                    };
+                    stack.push(unnormalized_lagrange_basis(&d, offset, &pt))
                 }
                 Literal(x) => stack.push(*x),
                 Dup => stack.push(stack[stack.len() - 1]),
@@ -791,22 +846,24 @@ impl<C> Expr<C> {
         Expr::Constant(c)
     }
 
-    fn degree(&self, d1_size: u64) -> u64 {
+    fn degree(&self, d1_size: u64, zk_rows: u64) -> u64 {
         use Expr::*;
         match self {
-            Double(x) => x.degree(d1_size),
+            Double(x) => x.degree(d1_size, zk_rows),
             Constant(_) => 0,
-            VanishesOnLast4Rows => 4,
+            VanishesOnZeroKnowledgeAndPreviousRows => zk_rows + 1,
             UnnormalizedLagrangeBasis(_) => d1_size,
             Cell(_) => d1_size,
-            Square(x) => 2 * x.degree(d1_size),
-            BinOp(Op2::Mul, x, y) => (*x).degree(d1_size) + (*y).degree(d1_size),
+            Square(x) => 2 * x.degree(d1_size, zk_rows),
+            BinOp(Op2::Mul, x, y) => (*x).degree(d1_size, zk_rows) + (*y).degree(d1_size, zk_rows),
             BinOp(Op2::Add, x, y) | BinOp(Op2::Sub, x, y) => {
-                std::cmp::max((*x).degree(d1_size), (*y).degree(d1_size))
+                std::cmp::max((*x).degree(d1_size, zk_rows), (*y).degree(d1_size, zk_rows))
             }
-            Pow(e, d) => d * e.degree(d1_size),
-            Cache(_, e) => e.degree(d1_size),
-            IfFeature(_, e1, e2) => std::cmp::max(e1.degree(d1_size), e2.degree(d1_size)),
+            Pow(e, d) => d * e.degree(d1_size, zk_rows),
+            Cache(_, e) => e.degree(d1_size, zk_rows),
+            IfFeature(_, e1, e2) => {
+                std::cmp::max(e1.degree(d1_size, zk_rows), e2.degree(d1_size, zk_rows))
+            }
         }
     }
 }
@@ -1414,8 +1471,8 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 c.to_polish_(res);
             }
             Expr::Cell(v) => res.push(PolishToken::Cell(*v)),
-            Expr::VanishesOnLast4Rows => {
-                res.push(PolishToken::VanishesOnLast4Rows);
+            Expr::VanishesOnZeroKnowledgeAndPreviousRows => {
+                res.push(PolishToken::VanishesOnZeroKnowledgeAndPreviousRows);
             }
             Expr::UnnormalizedLagrangeBasis(i) => {
                 res.push(PolishToken::UnnormalizedLagrangeBasis(*i));
@@ -1484,7 +1541,7 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
             Square(x) => x.evaluate_constants_(c).square(),
             Constant(x) => Constant(x.value(c)),
             Cell(v) => Cell(*v),
-            VanishesOnLast4Rows => VanishesOnLast4Rows,
+            VanishesOnZeroKnowledgeAndPreviousRows => VanishesOnZeroKnowledgeAndPreviousRows,
             UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(*i),
             BinOp(Op2::Add, x, y) => x.evaluate_constants_(c) + y.evaluate_constants_(c),
             BinOp(Op2::Mul, x, y) => x.evaluate_constants_(c) * y.evaluate_constants_(c),
@@ -1538,8 +1595,17 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 let y = (*y).evaluate_(d, pt, evals, c)?;
                 Ok(x - y)
             }
-            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
+            VanishesOnZeroKnowledgeAndPreviousRows => {
+                Ok(eval_vanishes_on_last_n_rows(d, c.zk_rows + 1, pt))
+            }
+            UnnormalizedLagrangeBasis(i) => {
+                let offset = if i.zk_rows {
+                    -(c.zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                Ok(unnormalized_lagrange_basis(&d, offset, &pt))
+            }
             Cell(v) => v.evaluate(evals),
             Cache(_, e) => e.evaluate_(d, pt, evals, c),
             IfFeature(feature, e1, e2) => {
@@ -1574,38 +1640,48 @@ impl<F: FftField> Expr<F> {
         &self,
         d: D<F>,
         pt: F,
+        zk_rows: u64,
         evals: &ProofEvaluations<PointEvaluations<F>>,
     ) -> Result<F, ExprError> {
         use Expr::*;
         match self {
             Constant(x) => Ok(*x),
-            Pow(x, p) => Ok(x.evaluate(d, pt, evals)?.pow([*p])),
-            Double(x) => x.evaluate(d, pt, evals).map(|x| x.double()),
-            Square(x) => x.evaluate(d, pt, evals).map(|x| x.square()),
+            Pow(x, p) => Ok(x.evaluate(d, pt, zk_rows, evals)?.pow([*p])),
+            Double(x) => x.evaluate(d, pt, zk_rows, evals).map(|x| x.double()),
+            Square(x) => x.evaluate(d, pt, zk_rows, evals).map(|x| x.square()),
             BinOp(Op2::Mul, x, y) => {
-                let x = (*x).evaluate(d, pt, evals)?;
-                let y = (*y).evaluate(d, pt, evals)?;
+                let x = (*x).evaluate(d, pt, zk_rows, evals)?;
+                let y = (*y).evaluate(d, pt, zk_rows, evals)?;
                 Ok(x * y)
             }
             BinOp(Op2::Add, x, y) => {
-                let x = (*x).evaluate(d, pt, evals)?;
-                let y = (*y).evaluate(d, pt, evals)?;
+                let x = (*x).evaluate(d, pt, zk_rows, evals)?;
+                let y = (*y).evaluate(d, pt, zk_rows, evals)?;
                 Ok(x + y)
             }
             BinOp(Op2::Sub, x, y) => {
-                let x = (*x).evaluate(d, pt, evals)?;
-                let y = (*y).evaluate(d, pt, evals)?;
+                let x = (*x).evaluate(d, pt, zk_rows, evals)?;
+                let y = (*y).evaluate(d, pt, zk_rows, evals)?;
                 Ok(x - y)
             }
-            VanishesOnLast4Rows => Ok(eval_vanishes_on_last_4_rows(d, pt)),
-            UnnormalizedLagrangeBasis(i) => Ok(unnormalized_lagrange_basis(&d, *i, &pt)),
+            VanishesOnZeroKnowledgeAndPreviousRows => {
+                Ok(eval_vanishes_on_last_n_rows(d, zk_rows + 1, pt))
+            }
+            UnnormalizedLagrangeBasis(i) => {
+                let offset = if i.zk_rows {
+                    -(zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                Ok(unnormalized_lagrange_basis(&d, offset, &pt))
+            }
             Cell(v) => v.evaluate(evals),
-            Cache(_, e) => e.evaluate(d, pt, evals),
+            Cache(_, e) => e.evaluate(d, pt, zk_rows, evals),
             IfFeature(feature, e1, e2) => {
                 if feature.is_enabled() {
-                    e1.evaluate(d, pt, evals)
+                    e1.evaluate(d, pt, zk_rows, evals)
                 } else {
-                    e2.evaluate(d, pt, evals)
+                    e2.evaluate(d, pt, zk_rows, evals)
                 }
             }
         }
@@ -1614,7 +1690,7 @@ impl<F: FftField> Expr<F> {
     /// Compute the polynomial corresponding to this expression, in evaluation form.
     pub fn evaluations(&self, env: &Environment<'_, F>) -> Evaluations<F, D<F>> {
         let d1_size = env.domain.d1.size;
-        let deg = self.degree(d1_size);
+        let deg = self.degree(d1_size, env.constants.zk_rows);
         let d = if deg <= d1_size {
             Domain::D1
         } else if deg <= 4 * d1_size {
@@ -1730,16 +1806,23 @@ impl<F: FftField> Expr<F> {
                     }
                 }
             }
-            Expr::VanishesOnLast4Rows => EvalResult::SubEvals {
+            Expr::VanishesOnZeroKnowledgeAndPreviousRows => EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: 0,
-                evals: env.vanishes_on_last_4_rows,
+                evals: env.vanishes_on_zero_knowledge_and_previous_rows,
             },
             Expr::Constant(x) => EvalResult::Constant(*x),
-            Expr::UnnormalizedLagrangeBasis(i) => EvalResult::Evals {
-                domain: d,
-                evals: unnormalized_lagrange_evals(env.l0_1, *i, d, env),
-            },
+            Expr::UnnormalizedLagrangeBasis(i) => {
+                let offset = if i.zk_rows {
+                    -(env.constants.zk_rows as i32) + i.offset
+                } else {
+                    i.offset
+                };
+                EvalResult::Evals {
+                    domain: d,
+                    evals: unnormalized_lagrange_evals(env.l0_1, offset, d, env),
+                }
+            }
             Expr::Cell(Variable { col, row }) => {
                 let evals: &'a Evaluations<F, D<F>> = {
                     match env.get_column(col) {
@@ -1930,7 +2013,7 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             Cell(v) => evaluated.contains(&v.col),
             Double(x) => x.is_constant(evaluated),
             BinOp(_, x, y) => x.is_constant(evaluated) && y.is_constant(evaluated),
-            VanishesOnLast4Rows => true,
+            VanishesOnZeroKnowledgeAndPreviousRows => true,
             UnnormalizedLagrangeBasis(_) => true,
             Cache(_, x) => x.is_constant(evaluated),
             IfFeature(_, e1, e2) => e1.is_constant(evaluated) && e2.is_constant(evaluated),
@@ -1976,7 +2059,9 @@ impl<F: Neg<Output = F> + Clone + One + Zero + PartialEq> Expr<F> {
             }
             Cache(_, e) => e.monomials(ev),
             UnnormalizedLagrangeBasis(i) => constant(UnnormalizedLagrangeBasis(*i)),
-            VanishesOnLast4Rows => constant(VanishesOnLast4Rows),
+            VanishesOnZeroKnowledgeAndPreviousRows => {
+                constant(VanishesOnZeroKnowledgeAndPreviousRows)
+            }
             Constant(c) => constant(Constant(c.clone())),
             Cell(var) => sing(vec![*var], Constant(F::one())),
             BinOp(Op2::Add, e1, e2) => {
@@ -2428,8 +2513,12 @@ where
             Double(x) => format!("double({})", x.ocaml(cache)),
             Constant(x) => x.ocaml(),
             Cell(v) => format!("cell({})", v.ocaml()),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            UnnormalizedLagrangeBasis(i) => {
+                format!("unnormalized_lagrange_basis({}, {})", i.zk_rows, i.offset)
+            }
+            VanishesOnZeroKnowledgeAndPreviousRows => {
+                "vanishes_on_zero_knowledge_and_previous_rows".to_string()
+            }
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.ocaml(cache), y.ocaml(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.ocaml(cache), y.ocaml(cache)),
@@ -2477,8 +2566,21 @@ where
             Double(x) => format!("2 ({})", x.latex(cache)),
             Constant(x) => x.latex(),
             Cell(v) => v.latex(),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized\\_lagrange\\_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes\\_on\\_last\\_4\\_rows".to_string(),
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: true,
+                offset: i,
+            }) => {
+                format!("unnormalized\\_lagrange\\_basis(zk\\_rows + {})", *i)
+            }
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: false,
+                offset: i,
+            }) => {
+                format!("unnormalized\\_lagrange\\_basis({})", *i)
+            }
+            VanishesOnZeroKnowledgeAndPreviousRows => {
+                "vanishes\\_on\\_zero\\_knowledge\\_and\\_previous\\_row".to_string()
+            }
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} \\cdot {})", x.latex(cache), y.latex(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.latex(cache), y.latex(cache)),
@@ -2500,8 +2602,23 @@ where
             Double(x) => format!("double({})", x.text(cache)),
             Constant(x) => x.text(),
             Cell(v) => v.text(),
-            UnnormalizedLagrangeBasis(i) => format!("unnormalized_lagrange_basis({})", *i),
-            VanishesOnLast4Rows => "vanishes_on_last_4_rows".to_string(),
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: true,
+                offset: i,
+            }) => match i.cmp(&0) {
+                Ordering::Greater => format!("unnormalized_lagrange_basis(zk_rows + {})", *i),
+                Ordering::Equal => "unnormalized_lagrange_basis(zk_rows)".to_string(),
+                Ordering::Less => format!("unnormalized_lagrange_basis(zk_rows - {})", (-*i)),
+            },
+            UnnormalizedLagrangeBasis(RowOffset {
+                zk_rows: false,
+                offset: i,
+            }) => {
+                format!("unnormalized_lagrange_basis({})", *i)
+            }
+            VanishesOnZeroKnowledgeAndPreviousRows => {
+                "vanishes_on_zero_knowledge_and_previous_rows".to_string()
+            }
             BinOp(Op2::Add, x, y) => format!("({} + {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Mul, x, y) => format!("({} * {})", x.text(cache), y.text(cache)),
             BinOp(Op2::Sub, x, y) => format!("({} - {})", x.text(cache), y.text(cache)),
@@ -2832,18 +2949,18 @@ pub mod test {
     use super::*;
     use crate::{
         circuits::{
-            constraints::ConstraintSystem,
-            expr::constraints::ExprOps,
-            gate::CircuitGate,
-            polynomials::{generic::GenericGateSpec, permutation::ZK_ROWS},
-            wires::Wire,
+            constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
+            polynomials::generic::GenericGateSpec, wires::Wire,
         },
         curve::KimchiCurve,
         prover_index::ProverIndex,
     };
     use ark_ff::UniformRand;
     use mina_curves::pasta::{Fp, Pallas, Vesta};
-    use poly_commitment::srs::{endos, SRS};
+    use poly_commitment::{
+        evaluation_proof::OpeningProof,
+        srs::{endos, SRS},
+    };
     use rand::{prelude::StdRng, SeedableRng};
     use std::array;
     use std::sync::Arc;
@@ -2893,7 +3010,7 @@ pub mod test {
             let srs = Arc::new(srs);
 
             let (endo_q, _endo_r) = endos::<Pallas>();
-            ProverIndex::<Vesta>::create(constraint_system, endo_q, srs)
+            ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
         };
 
         let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
@@ -2908,10 +3025,14 @@ pub mod test {
                 joint_combiner: None,
                 endo_coefficient: one,
                 mds: &Vesta::sponge_params().mds,
+                zk_rows: 3,
             },
             witness: &domain_evals.d8.this.w,
             coefficient: &index.column_evaluations.coefficients8,
-            vanishes_on_last_4_rows: &index.cs.precomputations().vanishes_on_last_4_rows,
+            vanishes_on_zero_knowledge_and_previous_rows: &index
+                .cs
+                .precomputations()
+                .vanishes_on_zero_knowledge_and_previous_rows,
             z: &domain_evals.d8.this.z,
             l0_1: l0_1(index.cs.domain.d1),
             domain: index.cs.domain,
@@ -2925,7 +3046,8 @@ pub mod test {
 
     #[test]
     fn test_unnormalized_lagrange_basis() {
-        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + ZK_ROWS as usize)
+        let zk_rows = 3;
+        let domain = EvaluationDomains::<Fp>::create(2usize.pow(10) + zk_rows)
             .expect("failed to create evaluation domain");
         let rng = &mut StdRng::from_seed([17u8; 32]);
 
