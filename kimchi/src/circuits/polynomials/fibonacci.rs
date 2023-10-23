@@ -17,6 +17,8 @@ use crate::{
 use ark_ff::{PrimeField, SquareRootField};
 use std::{array, marker::PhantomData};
 
+pub(crate) const FIB_COLS: usize = 3000;
+
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a fibonacci gadget
     pub fn create_fib_gadget(new_row: usize) -> (usize, Vec<Self>) {
@@ -45,10 +47,10 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Fibonacci);
-    const CONSTRAINTS: u32 = 28;
+    const CONSTRAINTS: u32 = (FIB_COLS - 2) as u32;
 
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
-        (0..28)
+        (0..FIB_COLS - 2)
             .map(|i| env.witness_curr(i) + env.witness_curr(i + 1) - env.witness_curr(i + 2))
             .collect::<Vec<T>>()
     }

@@ -1,15 +1,17 @@
+use crate::circuits::gate::CircuitGateError::Constraint;
+use crate::circuits::gate::GateType;
 use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateResult},
-        polynomials::fibonacci::create_fib_witness,
+        polynomials::fibonacci::{create_fib_witness, FIB_COLS},
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     tests::framework::TestFramework,
 };
 use ark_ec::{AffineCurve, ProjectiveCurve};
-use ark_ff::PrimeField;
+use ark_ff::{One, PrimeField};
 use mina_curves::pasta::{Fq, Pallas, PallasParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -25,44 +27,42 @@ fn test_fib<G: KimchiCurve, EFqSponge, EFrSponge>(full: bool) -> CircuitGateResu
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<30, G::ScalarField>,
+    EFrSponge: FrSponge<FIB_COLS, G::ScalarField>,
 {
     let (_, mut gates) = CircuitGate::<G::ScalarField>::create_fib_gadget(0);
     let (_, mut gate2) = CircuitGate::<G::ScalarField>::create_fib_gadget(1);
 
     gates.append(&mut gate2);
 
-    let witness: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>; 30] =
-        create_fib_witness::<30, G::ScalarField>();
+    let mut witness: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>;
+        FIB_COLS] = create_fib_witness::<FIB_COLS, G::ScalarField>();
 
     println!("entering runner");
     let runner = if full {
         // Create prover index with test framework
         Some(
-            TestFramework::<30, G>::default()
+            TestFramework::<FIB_COLS, G>::default()
                 .gates(gates.clone())
                 .setup(),
         )
     } else {
         None
     };
-    println!("entering constraint system");
     let cs = if let Some(runner) = runner.as_ref() {
         runner.clone().prover_index().cs.clone()
     } else {
         ConstraintSystem::create(gates.clone())
-            .build::<30>()
+            .build::<FIB_COLS>()
             .unwrap()
     };
-    println!("enter constraint system");
-    // Perform witness verification that everything is ok before invalidation (quick checks)
+
+    witness[100][0] += &G::ScalarField::one();
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
-        let result = gate.verify_witness::<30, G>(row, &witness, &cs, &witness[0][0..cs.public]);
-        if result.is_err() {
-            return result;
-        }
+        let result =
+            gate.verify_witness::<FIB_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        assert_eq!(result, Err(Constraint(GateType::Fibonacci, 99)));
     }
-    println!("entering prover");
+    witness[100][0] -= &G::ScalarField::one();
     if let Some(runner) = runner.as_ref() {
         // Perform full test that everything is ok before invalidation
         assert_eq!(
