@@ -774,9 +774,20 @@
 <a href="#774" id="774">774</a>
 <a href="#775" id="775">775</a>
 <a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
-        expr::{prologue::<span class="kw-2">*</span>, Column, ConstantExpr},
+        expr::{prologue::<span class="kw-2">*</span>, Column, ConstantExpr, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -799,9 +810,6 @@
 <span class="doccomment">/// Number of constraints produced by the argument.
 </span><span class="kw">pub const </span>CONSTRAINTS: u32 = <span class="number">7</span>;
 
-<span class="doccomment">/// The number of random values to append to columns for zero-knowledge.
-</span><span class="kw">pub const </span>ZK_ROWS: usize = <span class="number">3</span>;
-
 <span class="doccomment">/// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
 ///
@@ -811,13 +819,15 @@
 </span><span class="kw">pub fn </span>zk_patch&lt;R: Rng + <span class="question-mark">?</span>Sized, F: FftField&gt;(
     <span class="kw-2">mut </span>e: Vec&lt;F&gt;,
     d: D&lt;F&gt;,
+    zk_rows: usize,
     rng: <span class="kw-2">&amp;mut </span>R,
 ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
     <span class="kw">let </span>n = d.size();
     <span class="kw">let </span>k = e.len();
-    <span class="macro">assert!</span>(k &lt;= n - ZK_ROWS);
-    e.extend((<span class="number">0</span>..((n - ZK_ROWS) - k)).map(|<span class="kw">_</span>| F::zero()));
-    e.extend((<span class="number">0</span>..ZK_ROWS).map(|<span class="kw">_</span>| F::rand(rng)));
+    <span class="kw">let </span>last_non_zk_row = n - zk_rows;
+    <span class="macro">assert!</span>(k &lt;= last_non_zk_row);
+    e.extend((k..last_non_zk_row).map(|<span class="kw">_</span>| F::zero()));
+    e.extend((<span class="number">0</span>..zk_rows).map(|<span class="kw">_</span>| F::rand(rng)));
     Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(e, d)
 }
 
@@ -869,6 +879,7 @@
     joint_combiner: F,
     table_id_combiner: F,
     lookup_info: <span class="kw-2">&amp;</span>LookupInfo,
+    zk_rows: usize,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;Vec&lt;F&gt;&gt;, ProverError&gt; {
     <span class="comment">// We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
@@ -876,7 +887,7 @@
     </span><span class="kw">let </span>n = d1.size();
     <span class="kw">let </span><span class="kw-2">mut </span>counts: HashMap&lt;<span class="kw-2">&amp;</span>F, usize&gt; = HashMap::new();
 
-    <span class="kw">let </span>lookup_rows = n - ZK_ROWS - <span class="number">1</span>;
+    <span class="kw">let </span>lookup_rows = n - zk_rows - <span class="number">1</span>;
     <span class="kw">let </span>by_row = lookup_info.by_row(gates);
     <span class="kw">let </span>max_lookups_per_row = lookup_info.max_per_row;
 
@@ -1014,13 +1025,14 @@
     sorted: <span class="kw-2">&amp;</span>[Evaluations&lt;F, D&lt;F&gt;&gt;],
     rng: <span class="kw-2">&amp;mut </span>R,
     lookup_info: <span class="kw-2">&amp;</span>LookupInfo,
+    zk_rows: usize,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Evaluations&lt;F, D&lt;F&gt;&gt;, ProverError&gt;
 <span class="kw">where
     </span>R: Rng + <span class="question-mark">?</span>Sized,
     F: PrimeField,
 {
     <span class="kw">let </span>n = d1.size();
-    <span class="kw">let </span>lookup_rows = n - ZK_ROWS - <span class="number">1</span>;
+    <span class="kw">let </span>lookup_rows = n - zk_rows - <span class="number">1</span>;
     <span class="kw">let </span>beta1: F = F::one() + beta;
     <span class="kw">let </span>gammabeta1 = gamma * beta1;
     <span class="kw">let </span><span class="kw-2">mut </span>lookup_aggreg = <span class="macro">vec!</span>[F::one()];
@@ -1092,11 +1104,11 @@
             </span>lookup_aggreg[i + <span class="number">1</span>] <span class="kw-2">*</span>= prev;
         });
 
-    <span class="kw">let </span>res = zk_patch(lookup_aggreg, d1, rng);
+    <span class="kw">let </span>res = zk_patch(lookup_aggreg, d1, zk_rows, rng);
 
     <span class="comment">// check that the final evaluation is equal to 1
     </span><span class="kw">if </span><span class="macro">cfg!</span>(debug_assertions) {
-        <span class="kw">let </span>final_val = res.evals[d1.size() - (ZK_ROWS + <span class="number">1</span>)];
+        <span class="kw">let </span>final_val = res.evals[d1.size() - (zk_rows + <span class="number">1</span>)];
         <span class="kw">if </span>final_val != F::one() {
             <span class="macro">panic!</span>(<span class="string">&quot;aggregation incorrect: {final_val}&quot;</span>);
         }
@@ -1375,14 +1387,20 @@
     </span><span class="kw">let </span>aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    <span class="kw">let </span>final_lookup_row: i32 = -(ZK_ROWS <span class="kw">as </span>i32) - <span class="number">1</span>;
+    <span class="kw">let </span>final_lookup_row = RowOffset {
+        zk_rows: <span class="bool-val">true</span>,
+        offset: -<span class="number">1</span>,
+    };
 
     <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[
-        <span class="comment">// the accumulator except for the last 4 rows
+        <span class="comment">// the accumulator except for the last zk_rows+1 rows
         // (contains the zk-rows and the last value of the accumulator)
-        </span>E::VanishesOnLast4Rows * aggreg_equation,
+        </span>E::VanishesOnZeroKnowledgeAndPreviousRows * aggreg_equation,
         <span class="comment">// the initial value of the accumulator
-        </span>E::UnnormalizedLagrangeBasis(<span class="number">0</span>) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        </span>E::UnnormalizedLagrangeBasis(RowOffset {
+            zk_rows: <span class="bool-val">false</span>,
+            offset: <span class="number">0</span>,
+        }) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         <span class="comment">// Check that the final value of the accumulator is 1
         </span>E::UnnormalizedLagrangeBasis(final_lookup_row)
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
@@ -1396,8 +1414,11 @@
                 </span>final_lookup_row
             } <span class="kw">else </span>{
                 <span class="comment">// Check compatibility of the first elements
-                </span><span class="number">0
-            </span>};
+                </span>RowOffset {
+                    zk_rows: <span class="bool-val">false</span>,
+                    offset: <span class="number">0</span>,
+                }
+            };
             <span class="kw">let </span><span class="kw-2">mut </span>expr = E::UnnormalizedLagrangeBasis(first_or_last)
                 * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + <span class="number">1</span>)));
             <span class="kw">if </span>generate_feature_flags {
@@ -1455,12 +1476,13 @@
     table_id_combiner: <span class="kw-2">&amp;</span>F,
     sorted: <span class="kw-2">&amp;</span>[Evaluations&lt;F, D&lt;F&gt;&gt;],
     lookup_info: <span class="kw-2">&amp;</span>LookupInfo,
+    zk_rows: usize,
 ) {
     sorted
         .iter()
         .for_each(|s| <span class="macro">assert_eq!</span>(d1.size, s.domain().size));
     <span class="kw">let </span>n = d1.size();
-    <span class="kw">let </span>lookup_rows = n - ZK_ROWS - <span class="number">1</span>;
+    <span class="kw">let </span>lookup_rows = n - zk_rows - <span class="number">1</span>;
 
     <span class="comment">// Check that the (desnakified) sorted table is
     // 1. Sorted

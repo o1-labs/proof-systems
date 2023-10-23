@@ -1031,6 +1031,7 @@
 <a href="#1031" id="1031">1031</a>
 <a href="#1032" id="1032">1032</a>
 <a href="#1033" id="1033">1033</a>
+<a href="#1034" id="1034">1034</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//!This implements the constraints of the Cairo gates
 //!
 //! Cairo programs can have the following assembly-like instructions:
@@ -1259,6 +1260,7 @@
             joint_combiner: <span class="prelude-val">None</span>,
             endo_coefficient: cs.endo,
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            zk_rows: <span class="number">3</span>,
         };
 
         <span class="kw">let </span>pt = F::rand(rng);

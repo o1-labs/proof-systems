@@ -513,6 +513,14 @@
 <a href="#513" id="513">513</a>
 <a href="#514" id="514">514</a>
 <a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the verifier index as [`VerifierIndex`].
 //! You can derive this struct from the [`ProverIndex`] struct.
 
@@ -521,11 +529,10 @@
     circuits::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
-        polynomials::permutation::{zk_polynomial, zk_w3},
+        polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
-    error::VerifierIndexError,
     prover_index::ProverIndex,
 };
 <span class="kw">use </span>ark_ff::{One, PrimeField};
@@ -534,7 +541,7 @@
 <span class="kw">use </span>once_cell::sync::OnceCell;
 <span class="kw">use </span>poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
-    srs::SRS,
+    OpenProof, SRS <span class="kw">as _</span>,
 };
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
@@ -571,15 +578,18 @@
 
 <span class="attr">#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-</span><span class="kw">pub struct </span>VerifierIndex&lt;G: KimchiCurve&gt; {
+</span><span class="kw">pub struct </span>VerifierIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
     <span class="doccomment">/// evaluation domain
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>domain: D&lt;G::ScalarField&gt;,
     <span class="doccomment">/// maximal size of polynomial section
     </span><span class="kw">pub </span>max_poly_size: usize,
+    <span class="doccomment">/// the number of randomized rows to achieve zero knowledge
+    </span><span class="kw">pub </span>zk_rows: u64,
     <span class="doccomment">/// polynomial commitment keys
     </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>srs: OnceCell&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
+    #[serde(bound(deserialize = <span class="string">&quot;OpeningProof::SRS: Default&quot;</span>))]
+    </span><span class="kw">pub </span>srs: Arc&lt;OpeningProof::SRS&gt;,
     <span class="doccomment">/// number of public inputs
     </span><span class="kw">pub </span>public: usize,
     <span class="doccomment">/// number of previous evaluation challenges, for recursive proving
@@ -644,7 +654,7 @@
     </span><span class="kw">pub </span>shift: [G::ScalarField; PERMUTS],
     <span class="doccomment">/// zero-knowledge polynomial
     </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>zkpm: OnceCell&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
+    </span><span class="kw">pub </span>permutation_vanishing_polynomial_m: OnceCell&lt;DensePolynomial&lt;G::ScalarField&gt;&gt;,
     <span class="comment">// TODO(mimoo): isn&#39;t this redundant with domain.d1.group_gen ?
     </span><span class="doccomment">/// domain offset for zero-knowledge
     </span><span class="attr">#[serde(skip)]
@@ -664,13 +674,19 @@
 }
 <span class="comment">//~spec:endcode
 
-</span><span class="kw">impl</span>&lt;G: KimchiCurve&gt; ProverIndex&lt;G&gt; {
+</span><span class="kw">impl</span>&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; ProverIndex&lt;G, OpeningProof&gt;
+<span class="kw">where
+    </span>G::BaseField: PrimeField,
+{
     <span class="doccomment">/// Produces the [`VerifierIndex`] from the prover&#39;s [`ProverIndex`].
     ///
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    </span><span class="kw">pub fn </span>verifier_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; VerifierIndex&lt;G&gt; {
+    </span><span class="kw">pub fn </span>verifier_index(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; VerifierIndex&lt;G, OpeningProof&gt;
+    <span class="kw">where
+        </span>VerifierIndex&lt;G, OpeningProof&gt;: Clone,
+    {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index) = <span class="kw-2">&amp;</span><span class="self">self</span>.verifier_index {
             <span class="kw">return </span>verifier_index.clone();
         }
@@ -691,7 +707,7 @@
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
-                    lookup_info: cs.configuration.lookup_info.clone(),
+                    lookup_info: cs.configuration.lookup_info,
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
@@ -715,14 +731,11 @@
         </span>VerifierIndex {
             domain,
             max_poly_size: <span class="self">self</span>.max_poly_size,
+            zk_rows: <span class="self">self</span>.cs.zk_rows,
             powers_of_alpha: <span class="self">self</span>.powers_of_alpha.clone(),
             public: <span class="self">self</span>.cs.public,
             prev_challenges: <span class="self">self</span>.cs.prev_challenges,
-            srs: {
-                <span class="kw">let </span>cell = OnceCell::new();
-                cell.set(Arc::clone(<span class="kw-2">&amp;</span><span class="self">self</span>.srs)).unwrap();
-                cell
-            },
+            srs: Arc::clone(<span class="kw-2">&amp;</span><span class="self">self</span>.srs),
 
             sigma_comm: array::from_fn(|i| {
                 <span class="self">self</span>.srs.commit_evaluations_non_hiding(
@@ -748,21 +761,23 @@
                 <span class="kw-2">&amp;</span><span class="self">self</span>.column_evaluations.poseidon_selector8,
             )),
 
-            complete_add_comm: <span class="self">self</span>.srs.commit_evaluations_non_hiding(
+            complete_add_comm: mask_fixed(<span class="self">self</span>.srs.commit_evaluations_non_hiding(
                 domain,
                 <span class="kw-2">&amp;</span><span class="self">self</span>.column_evaluations.complete_add_selector4,
+            )),
+            mul_comm: mask_fixed(
+                <span class="self">self</span>.srs
+                    .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span><span class="self">self</span>.column_evaluations.mul_selector8),
             ),
-            mul_comm: <span class="self">self
-                </span>.srs
-                .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span><span class="self">self</span>.column_evaluations.mul_selector8),
-            emul_comm: <span class="self">self
-                </span>.srs
-                .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span><span class="self">self</span>.column_evaluations.emul_selector8),
+            emul_comm: mask_fixed(
+                <span class="self">self</span>.srs
+                    .commit_evaluations_non_hiding(domain, <span class="kw-2">&amp;</span><span class="self">self</span>.column_evaluations.emul_selector8),
+            ),
 
-            endomul_scalar_comm: <span class="self">self</span>.srs.commit_evaluations_non_hiding(
+            endomul_scalar_comm: mask_fixed(<span class="self">self</span>.srs.commit_evaluations_non_hiding(
                 domain,
                 <span class="kw-2">&amp;</span><span class="self">self</span>.column_evaluations.endomul_scalar_selector8,
-            ),
+            )),
 
             range_check0_comm: <span class="self">self
                 </span>.column_evaluations
@@ -799,14 +814,20 @@
                 .map(|eval8| <span class="self">self</span>.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: <span class="self">self</span>.cs.shift,
-            zkpm: {
+            permutation_vanishing_polynomial_m: {
                 <span class="kw">let </span>cell = OnceCell::new();
-                cell.set(<span class="self">self</span>.cs.precomputations().zkpm.clone()).unwrap();
+                cell.set(
+                    <span class="self">self</span>.cs
+                        .precomputations()
+                        .permutation_vanishing_polynomial_m
+                        .clone(),
+                )
+                .unwrap();
                 cell
             },
             w: {
                 <span class="kw">let </span>cell = OnceCell::new();
-                cell.set(zk_w3(<span class="self">self</span>.cs.domain.d1)).unwrap();
+                cell.set(zk_w(<span class="self">self</span>.cs.domain.d1, <span class="self">self</span>.cs.zk_rows)).unwrap();
                 cell
             },
             endo: <span class="self">self</span>.cs.endo,
@@ -816,27 +837,24 @@
     }
 }
 
-<span class="kw">impl</span>&lt;G: KimchiCurve&gt; VerifierIndex&lt;G&gt; {
+<span class="kw">impl</span>&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; VerifierIndex&lt;G, OpeningProof&gt; {
     <span class="doccomment">/// Gets srs from [`VerifierIndex`] lazily
-    </span><span class="kw">pub fn </span>srs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Arc&lt;SRS&lt;G&gt;&gt;
+    </span><span class="kw">pub fn </span>srs(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Arc&lt;OpeningProof::SRS&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
     {
-        <span class="self">self</span>.srs.get_or_init(|| {
-            <span class="kw">let </span><span class="kw-2">mut </span>srs = SRS::&lt;G&gt;::create(<span class="self">self</span>.max_poly_size);
-            srs.add_lagrange_basis(<span class="self">self</span>.domain);
-            Arc::new(srs)
-        })
+        <span class="kw-2">&amp;</span><span class="self">self</span>.srs
     }
 
-    <span class="doccomment">/// Gets zkpm from [`VerifierIndex`] lazily
-    </span><span class="kw">pub fn </span>zkpm(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt; {
-        <span class="self">self</span>.zkpm.get_or_init(|| zk_polynomial(<span class="self">self</span>.domain))
+    <span class="doccomment">/// Gets permutation_vanishing_polynomial_m from [`VerifierIndex`] lazily
+    </span><span class="kw">pub fn </span>permutation_vanishing_polynomial_m(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>DensePolynomial&lt;G::ScalarField&gt; {
+        <span class="self">self</span>.permutation_vanishing_polynomial_m
+            .get_or_init(|| vanishes_on_last_n_rows(<span class="self">self</span>.domain, <span class="self">self</span>.zk_rows))
     }
 
     <span class="doccomment">/// Gets w from [`VerifierIndex`] lazily
     </span><span class="kw">pub fn </span>w(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>G::ScalarField {
-        <span class="self">self</span>.w.get_or_init(|| zk_w3(<span class="self">self</span>.domain))
+        <span class="self">self</span>.w.get_or_init(|| zk_w(<span class="self">self</span>.domain, <span class="self">self</span>.zk_rows))
     }
 
     <span class="doccomment">/// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS and an optional offset in the file.
@@ -845,12 +863,15 @@
     ///
     /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
     </span><span class="kw">pub fn </span>from_file(
-        srs: <span class="prelude-ty">Option</span>&lt;Arc&lt;SRS&lt;G&gt;&gt;&gt;,
+        srs: Arc&lt;OpeningProof::SRS&gt;,
         path: <span class="kw-2">&amp;</span>Path,
         offset: <span class="prelude-ty">Option</span>&lt;u64&gt;,
         <span class="comment">// TODO: we shouldn&#39;t have to pass these
         </span>endo: G::ScalarField,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, String&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, String&gt;
+    <span class="kw">where
+        </span>OpeningProof::SRS: Default,
+    {
         <span class="comment">// open file
         </span><span class="kw">let </span>file = File::open(path).map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
@@ -865,13 +886,7 @@
             .map_err(|e| e.to_string())<span class="question-mark">?</span>;
 
         <span class="comment">// fill in the rest
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(srs) = srs {
-            verifier_index
-                .srs
-                .set(srs)
-                .map_err(|<span class="kw">_</span>| VerifierIndexError::SRSHasBeenSet.to_string())<span class="question-mark">?</span>;
-        };
-
+        </span>verifier_index.srs = srs;
         verifier_index.endo = endo;
 
         <span class="prelude-val">Ok</span>(verifier_index)
@@ -904,11 +919,12 @@
     </span><span class="kw">pub fn </span>digest&lt;EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) -&gt; G::BaseField {
-        <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        <span class="kw">let </span><span class="kw-2">mut </span>fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
         <span class="comment">// We fully expand this to make the compiler check that we aren&#39;t missing any commitments
         </span><span class="kw">let </span>VerifierIndex {
             domain: <span class="kw">_</span>,
             max_poly_size: <span class="kw">_</span>,
+            zk_rows: <span class="kw">_</span>,
             srs: <span class="kw">_</span>,
             public: <span class="kw">_</span>,
             prev_challenges: <span class="kw">_</span>,
@@ -935,7 +951,7 @@
             </span>lookup_index,
 
             shift: <span class="kw">_</span>,
-            zkpm: <span class="kw">_</span>,
+            permutation_vanishing_polynomial_m: <span class="kw">_</span>,
             w: <span class="kw">_</span>,
             endo: <span class="kw">_</span>,
 

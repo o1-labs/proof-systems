@@ -67,8 +67,6 @@
 </pre></div><pre class="rust"><code><span class="doccomment">//! This contains the [DomainConstantEvaluations] which is used to provide precomputations to a [ConstraintSystem](super::constraints::ConstraintSystem).
 
 </span><span class="kw">use </span><span class="kw">crate</span>::circuits::domains::EvaluationDomains;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::permutation::zk_polynomial;
-<span class="kw">use </span><span class="kw">crate</span>::circuits::polynomials::permutation::ZK_ROWS;
 <span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::EvaluationDomain;
 <span class="kw">use </span>ark_poly::UVPolynomial;
@@ -76,7 +74,7 @@
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 
-<span class="kw">use </span><span class="kw">super</span>::polynomials::permutation::vanishes_on_last_4_rows;
+<span class="kw">use </span><span class="kw">super</span>::polynomials::permutation::{permutation_vanishing_polynomial, vanishes_on_last_n_rows};
 
 <span class="attr">#[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -92,18 +90,18 @@
     <span class="doccomment">/// 0-th Lagrange evaluated over domain.d8
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
     </span><span class="kw">pub </span>constant_1_d8: E&lt;F, D&lt;F&gt;&gt;,
-    <span class="doccomment">/// the polynomial that vanishes on the last four rows
+    <span class="doccomment">/// the polynomial that vanishes on the zero-knowledge rows and the row before
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>vanishes_on_last_4_rows: E&lt;F, D&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>vanishes_on_zero_knowledge_and_previous_rows: E&lt;F, D&lt;F&gt;&gt;,
     <span class="doccomment">/// zero-knowledge polynomial over domain.d8
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>zkpl: E&lt;F, D&lt;F&gt;&gt;,
+    </span><span class="kw">pub </span>permutation_vanishing_polynomial_l: E&lt;F, D&lt;F&gt;&gt;,
     <span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;o1_utils::serialization::SerdeAs&quot;</span>)]
-    </span><span class="kw">pub </span>zkpm: DP&lt;F&gt;,
+    </span><span class="kw">pub </span>permutation_vanishing_polynomial_m: DP&lt;F&gt;,
 }
 
 <span class="kw">impl</span>&lt;F: FftField&gt; DomainConstantEvaluations&lt;F&gt; {
-    <span class="kw">pub fn </span>create(domain: EvaluationDomains&lt;F&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+    <span class="kw">pub fn </span>create(domain: EvaluationDomains&lt;F&gt;, zk_rows: u64) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
         <span class="kw">let </span>poly_x_d1 = DP::from_coefficients_slice(<span class="kw-2">&amp;</span>[F::zero(), F::one()])
             .evaluate_over_domain_by_ref(domain.d8);
         <span class="kw">let </span>constant_1_d4 =
@@ -111,22 +109,24 @@
         <span class="kw">let </span>constant_1_d8 =
             E::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(<span class="macro">vec!</span>[F::one(); domain.d8.size()], domain.d8);
 
-        <span class="kw">let </span>vanishes_on_last_4_rows =
-            vanishes_on_last_4_rows(domain.d1).evaluate_over_domain(domain.d8);
+        <span class="kw">let </span>vanishes_on_zero_knowledge_and_previous_rows =
+            vanishes_on_last_n_rows(domain.d1, zk_rows + <span class="number">1</span>).evaluate_over_domain(domain.d8);
 
-        <span class="macro">assert!</span>(domain.d1.size &gt; ZK_ROWS);
+        <span class="macro">assert!</span>(domain.d1.size &gt; zk_rows);
 
         <span class="comment">// x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-        </span><span class="kw">let </span>zkpm = zk_polynomial(domain.d1);
-        <span class="kw">let </span>zkpl = zkpm.evaluate_over_domain_by_ref(domain.d8);
+        </span><span class="kw">let </span>permutation_vanishing_polynomial_m =
+            permutation_vanishing_polynomial(domain.d1, zk_rows);
+        <span class="kw">let </span>permutation_vanishing_polynomial_l =
+            permutation_vanishing_polynomial_m.evaluate_over_domain_by_ref(domain.d8);
 
         <span class="prelude-val">Some</span>(DomainConstantEvaluations {
             poly_x_d1,
             constant_1_d4,
             constant_1_d8,
-            vanishes_on_last_4_rows,
-            zkpl,
-            zkpm,
+            vanishes_on_zero_knowledge_and_previous_rows,
+            permutation_vanishing_polynomial_l,
+            permutation_vanishing_polynomial_m,
         })
     }
 }

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CONSTRAINTS","ZK_ROWS"],"fn":["eval_vanishes_on_last_4_rows","eval_zk_polynomial","vanishes_on_last_4_rows","zk_polynomial","zk_w3"],"struct":["Shifts"]};
+window.SIDEBAR_ITEMS = {"constant":["CONSTRAINTS"],"fn":["eval_permutation_vanishing_polynomial","eval_vanishes_on_last_n_rows","permutation_vanishing_polynomial","vanishes_on_last_n_rows","zk_w"],"struct":["Shifts"]};

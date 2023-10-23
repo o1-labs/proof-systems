@@ -136,6 +136,11 @@
 <a href="#136" id="136">136</a>
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::array;
 
 <span class="kw">use </span>groupmap::{BWParameters, GroupMap};
@@ -145,7 +150,7 @@
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 <span class="kw">use </span>o1_utils::math;
-<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
+<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
 
 <span class="kw">use crate</span>::{
     circuits::{
@@ -166,8 +171,8 @@
 <span class="kw">pub struct </span>BenchmarkCtx {
     num_gates: usize,
     group_map: BWParameters&lt;VestaParameters&gt;,
-    index: ProverIndex&lt;Vesta&gt;,
-    verifier_index: VerifierIndex&lt;Vesta&gt;,
+    index: ProverIndex&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;,
+    verifier_index: VerifierIndex&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;,
 }
 
 <span class="kw">impl </span>BenchmarkCtx {
@@ -215,7 +220,7 @@
     }
 
     <span class="doccomment">/// Produces a proof
-    </span><span class="kw">pub fn </span>create_proof(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (ProverProof&lt;Vesta&gt;, Vec&lt;Fp&gt;) {
+    </span><span class="kw">pub fn </span>create_proof(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (ProverProof&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;, Vec&lt;Fp&gt;) {
         <span class="comment">// create witness
         </span><span class="kw">let </span>witness: [Vec&lt;Fp&gt;; COLUMNS] = array::from_fn(|<span class="kw">_</span>| <span class="macro">vec!</span>[<span class="number">1u32</span>.into(); <span class="self">self</span>.num_gates]);
 
@@ -234,7 +239,8 @@
         )
     }
 
-    <span class="kw">pub fn </span>batch_verification(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[(ProverProof&lt;Vesta&gt;, Vec&lt;Fp&gt;)]) {
+    <span class="attr">#[allow(clippy::type_complexity)]
+    </span><span class="kw">pub fn </span>batch_verification(<span class="kw-2">&amp;</span><span class="self">self</span>, batch: <span class="kw-2">&amp;</span>[(ProverProof&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;, Vec&lt;Fp&gt;)]) {
         <span class="comment">// verify the proof
         </span><span class="kw">let </span>batch: Vec&lt;<span class="kw">_</span>&gt; = batch
             .iter()
@@ -244,7 +250,11 @@
                 public_input: public,
             })
             .collect();
-        batch_verify::&lt;Vesta, BaseSponge, ScalarSponge&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>.group_map, <span class="kw-2">&amp;</span>batch).unwrap();
+        batch_verify::&lt;Vesta, BaseSponge, ScalarSponge, OpeningProof&lt;Vesta&gt;&gt;(
+            <span class="kw-2">&amp;</span><span class="self">self</span>.group_map,
+            <span class="kw-2">&amp;</span>batch,
+        )
+        .unwrap();
     }
 }
 

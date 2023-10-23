@@ -196,6 +196,45 @@
 <a href="#196" id="196">196</a>
 <a href="#197" id="197">197</a>
 <a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the prover index as [`ProverIndex`].
 
 </span><span class="kw">use crate</span>::{
@@ -208,9 +247,9 @@
     linearization::expr_linearization,
     verifier_index::VerifierIndex,
 };
-<span class="kw">use </span>ark_poly::EvaluationDomain;
+<span class="kw">use </span>ark_ff::PrimeField;
 <span class="kw">use </span>mina_poseidon::FqSponge;
-<span class="kw">use </span>poly_commitment::srs::SRS;
+<span class="kw">use </span>poly_commitment::{OpenProof, SRS <span class="kw">as _</span>};
 <span class="kw">use </span>serde::{de::DeserializeOwned, Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::sync::Arc;
@@ -219,7 +258,7 @@
 </span><span class="attr">#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 </span><span class="comment">//~spec:startcode
-</span><span class="kw">pub struct </span>ProverIndex&lt;G: KimchiCurve&gt; {
+</span><span class="kw">pub struct </span>ProverIndex&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; {
     <span class="doccomment">/// constraints system polynomials
     </span><span class="attr">#[serde(bound = <span class="string">&quot;ConstraintSystem&lt;G::ScalarField&gt;: Serialize + DeserializeOwned&quot;</span>)]
     </span><span class="kw">pub </span>cs: ConstraintSystem&lt;G::ScalarField&gt;,
@@ -234,7 +273,8 @@
 
     <span class="doccomment">/// polynomial commitment keys
     </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>srs: Arc&lt;SRS&lt;G&gt;&gt;,
+    #[serde(bound(deserialize = <span class="string">&quot;OpeningProof::SRS: Default&quot;</span>))]
+    </span><span class="kw">pub </span>srs: Arc&lt;OpeningProof::SRS&gt;,
 
     <span class="doccomment">/// maximal size of polynomial section
     </span><span class="kw">pub </span>max_poly_size: usize,
@@ -244,7 +284,7 @@
 
     <span class="doccomment">/// The verifier index corresponding to this prover index
     </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub </span>verifier_index: <span class="prelude-ty">Option</span>&lt;VerifierIndex&lt;G&gt;&gt;,
+    </span><span class="kw">pub </span>verifier_index: <span class="prelude-ty">Option</span>&lt;VerifierIndex&lt;G, OpeningProof&gt;&gt;,
 
     <span class="doccomment">/// The verifier index digest corresponding to this prover index
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Option&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
@@ -252,24 +292,17 @@
 }
 <span class="comment">//~spec:endcode
 
-</span><span class="kw">impl</span>&lt;G: KimchiCurve&gt; ProverIndex&lt;G&gt; {
+</span><span class="kw">impl</span>&lt;G: KimchiCurve, OpeningProof: OpenProof&lt;G&gt;&gt; ProverIndex&lt;G, OpeningProof&gt;
+<span class="kw">where
+    </span>G::BaseField: PrimeField,
+{
     <span class="doccomment">/// this function compiles the index from constraints
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `polynomial segment size` is bigger than `circuit`.
     </span><span class="kw">pub fn </span>create(
         <span class="kw-2">mut </span>cs: ConstraintSystem&lt;G::ScalarField&gt;,
         endo_q: G::ScalarField,
-        srs: Arc&lt;SRS&lt;G&gt;&gt;,
+        srs: Arc&lt;OpeningProof::SRS&gt;,
     ) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>max_poly_size = srs.g.len();
-        <span class="kw">if </span>cs.public &gt; <span class="number">0 </span>{
-            <span class="macro">assert!</span>(
-                max_poly_size &gt;= cs.domain.d1.size(),
-                <span class="string">&quot;polynomial segment size has to be not smaller than that of the circuit!&quot;
-            </span>);
-        }
+        <span class="kw">let </span>max_poly_size = srs.max_poly_size();
         cs.endo = endo_q;
 
         <span class="comment">// pre-compute the linearization
@@ -297,7 +330,10 @@
         EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;,
     &gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-    ) -&gt; G::BaseField {
+    ) -&gt; G::BaseField
+    <span class="kw">where
+        </span>VerifierIndex&lt;G, OpeningProof&gt;: Clone,
+    {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index_digest) = <span class="self">self</span>.verifier_index_digest {
             <span class="kw">return </span>verifier_index_digest;
         }
@@ -314,7 +350,10 @@
     <span class="doccomment">/// Retrieve or compute the digest for the corresponding verifier index.
     </span><span class="kw">pub fn </span>verifier_index_digest&lt;EFqSponge: Clone + FqSponge&lt;G::BaseField, G, G::ScalarField&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) -&gt; G::BaseField {
+    ) -&gt; G::BaseField
+    <span class="kw">where
+        </span>VerifierIndex&lt;G, OpeningProof&gt;: Clone,
+    {
         <span class="kw">if let </span><span class="prelude-val">Some</span>(verifier_index_digest) = <span class="self">self</span>.verifier_index_digest {
             <span class="kw">return </span>verifier_index_digest;
         }
@@ -339,7 +378,46 @@
         precomputed_srs,
     };
     <span class="kw">use </span>ark_ff::{PrimeField, SquareRootField};
-    <span class="kw">use </span>poly_commitment::srs::endos;
+    <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
+    <span class="kw">use </span>poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
+
+    <span class="attr">#[allow(clippy::too_many_arguments)]
+    </span><span class="kw">pub fn </span>new_index_for_test_with_lookups_and_custom_srs&lt;
+        G: KimchiCurve,
+        OpeningProof: OpenProof&lt;G&gt;,
+        F: FnMut(D&lt;G::ScalarField&gt;, usize) -&gt; OpeningProof::SRS,
+    &gt;(
+        gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
+        public: usize,
+        prev_challenges: usize,
+        lookup_tables: Vec&lt;LookupTable&lt;G::ScalarField&gt;&gt;,
+        runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;G::ScalarField&gt;&gt;&gt;,
+        disable_gates_checks: bool,
+        override_srs_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+        <span class="kw-2">mut </span>get_srs: F,
+    ) -&gt; ProverIndex&lt;G, OpeningProof&gt;
+    <span class="kw">where
+        </span>G::BaseField: PrimeField,
+        G::ScalarField: PrimeField + SquareRootField,
+    {
+        <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
+        </span><span class="kw">let </span>cs = ConstraintSystem::&lt;G::ScalarField&gt;::create(gates)
+            .lookup(lookup_tables)
+            .runtime(runtime_tables)
+            .public(public)
+            .prev_challenges(prev_challenges)
+            .disable_gates_checks(disable_gates_checks)
+            .max_poly_size(override_srs_size)
+            .build()
+            .unwrap();
+
+        <span class="kw">let </span>srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
+        <span class="kw">let </span>srs = get_srs(cs.domain.d1, srs_size);
+        <span class="kw">let </span>srs = Arc::new(srs);
+
+        <span class="kw">let </span><span class="kw-2">&amp;</span>endo_q = G::other_curve_endo();
+        ProverIndex::create(cs, endo_q, srs)
+    }
 
     <span class="doccomment">/// Create new index for lookups.
     ///
@@ -353,45 +431,45 @@
         lookup_tables: Vec&lt;LookupTable&lt;G::ScalarField&gt;&gt;,
         runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;G::ScalarField&gt;&gt;&gt;,
         disable_gates_checks: bool,
-    ) -&gt; ProverIndex&lt;G&gt;
+        override_srs_size: <span class="prelude-ty">Option</span>&lt;usize&gt;,
+    ) -&gt; ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        <span class="comment">// not sure if theres a smarter way instead of the double unwrap, but should be fine in the test
-        </span><span class="kw">let </span>cs = ConstraintSystem::&lt;G::ScalarField&gt;::create(gates)
-            .lookup(lookup_tables)
-            .runtime(runtime_tables)
-            .public(public)
-            .prev_challenges(prev_challenges)
-            .disable_gates_checks(disable_gates_checks)
-            .build()
-            .unwrap();
+        new_index_for_test_with_lookups_and_custom_srs(
+            gates,
+            public,
+            prev_challenges,
+            lookup_tables,
+            runtime_tables,
+            disable_gates_checks,
+            override_srs_size,
+            |d1: D&lt;G::ScalarField&gt;, size: usize| {
+                <span class="kw">let </span>log2_size = size.ilog2();
+                <span class="kw">let </span><span class="kw-2">mut </span>srs = <span class="kw">if </span>log2_size &lt;= precomputed_srs::SERIALIZED_SRS_SIZE {
+                    <span class="comment">// TODO: we should trim it if it&#39;s smaller
+                    </span>precomputed_srs::get_srs()
+                } <span class="kw">else </span>{
+                    <span class="comment">// TODO: we should resume the SRS generation starting from the serialized one
+                    </span>SRS::&lt;G&gt;::create(size)
+                };
 
-        <span class="kw">let </span><span class="kw-2">mut </span>srs = <span class="kw">if </span>cs.domain.d1.log_size_of_group &lt;= precomputed_srs::SERIALIZED_SRS_SIZE {
-            <span class="comment">// TODO: we should trim it if it&#39;s smaller
-            </span>precomputed_srs::get_srs()
-        } <span class="kw">else </span>{
-            <span class="comment">// TODO: we should resume the SRS generation starting from the serialized one
-            </span>SRS::&lt;G&gt;::create(cs.domain.d1.size())
-        };
-
-        srs.add_lagrange_basis(cs.domain.d1);
-        <span class="kw">let </span>srs = Arc::new(srs);
-
-        <span class="kw">let </span>(endo_q, _endo_r) = endos::&lt;G::OtherCurve&gt;();
-        ProverIndex::&lt;G&gt;::create(cs, endo_q, srs)
+                srs.add_lagrange_basis(d1);
+                srs
+            },
+        )
     }
 
     <span class="kw">pub fn </span>new_index_for_test&lt;G: KimchiCurve&gt;(
         gates: Vec&lt;CircuitGate&lt;G::ScalarField&gt;&gt;,
         public: usize,
-    ) -&gt; ProverIndex&lt;G&gt;
+    ) -&gt; ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;
     <span class="kw">where
         </span>G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::&lt;G&gt;(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="bool-val">false</span>)
+        new_index_for_test_with_lookups::&lt;G&gt;(gates, public, <span class="number">0</span>, <span class="macro">vec!</span>[], <span class="prelude-val">None</span>, <span class="bool-val">false</span>, <span class="prelude-val">None</span>)
     }
 }
 </code></pre></div></section></main></body></html>

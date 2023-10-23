@@ -73,12 +73,15 @@
 <a href="#73" id="73">73</a>
 <a href="#74" id="74">74</a>
 <a href="#75" id="75">75</a>
+<a href="#76" id="76">76</a>
+<a href="#77" id="77">77</a>
+<a href="#78" id="78">78</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ark_ff::FftField;
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>Domain};
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 
-<span class="kw">use </span><span class="kw">crate</span>::error::SetupError;
+<span class="kw">use </span><span class="kw">crate</span>::error::DomainCreationError;
 
 <span class="attr">#[serde_as]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -97,26 +100,29 @@
     <span class="doccomment">/// Creates 4 evaluation domains `d1` (of size `n`), `d2` (of size `2n`), `d4` (of size `4n`),
     /// and `d8` (of size `8n`). If generator of `d8` is `g`, the generator
     /// of `d4` is `g^2`, the generator of `d2` is `g^4`, and the generator of `d1` is `g^8`.
-    </span><span class="kw">pub fn </span>create(n: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, SetupError&gt; {
-        <span class="kw">let </span>n = Domain::&lt;F&gt;::compute_size_of_domain(n).ok_or(SetupError::DomainCreation(
-            <span class="string">&quot;could not compute size of domain&quot;</span>,
-        ))<span class="question-mark">?</span>;
+    </span><span class="kw">pub fn </span>create(n: usize) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, DomainCreationError&gt; {
+        <span class="kw">let </span>n = Domain::&lt;F&gt;::compute_size_of_domain(n)
+            .ok_or(DomainCreationError::DomainSizeFailed(n))<span class="question-mark">?</span>;
 
-        <span class="kw">let </span>d1 = Domain::&lt;F&gt;::new(n).ok_or(SetupError::DomainCreation(
-            <span class="string">&quot;construction of domain d1 did not work as intended&quot;</span>,
+        <span class="kw">let </span>d1 = Domain::&lt;F&gt;::new(n).ok_or(DomainCreationError::DomainConstructionFailed(
+            <span class="string">&quot;d1&quot;</span>.to_string(),
+            n,
         ))<span class="question-mark">?</span>;
 
         <span class="comment">// we also create domains of larger sizes
         // to efficiently operate on polynomials in evaluation form.
         // (in evaluation form, the domain needs to grow as the degree of a polynomial grows)
-        </span><span class="kw">let </span>d2 = Domain::&lt;F&gt;::new(<span class="number">2 </span>* n).ok_or(SetupError::DomainCreation(
-            <span class="string">&quot;construction of domain d2 did not work as intended&quot;</span>,
+        </span><span class="kw">let </span>d2 = Domain::&lt;F&gt;::new(<span class="number">2 </span>* n).ok_or(DomainCreationError::DomainConstructionFailed(
+            <span class="string">&quot;d2&quot;</span>.to_string(),
+            <span class="number">2 </span>* n,
         ))<span class="question-mark">?</span>;
-        <span class="kw">let </span>d4 = Domain::&lt;F&gt;::new(<span class="number">4 </span>* n).ok_or(SetupError::DomainCreation(
-            <span class="string">&quot;construction of domain d4 did not work as intended&quot;</span>,
+        <span class="kw">let </span>d4 = Domain::&lt;F&gt;::new(<span class="number">4 </span>* n).ok_or(DomainCreationError::DomainConstructionFailed(
+            <span class="string">&quot;d4&quot;</span>.to_string(),
+            <span class="number">4 </span>* n,
         ))<span class="question-mark">?</span>;
-        <span class="kw">let </span>d8 = Domain::&lt;F&gt;::new(<span class="number">8 </span>* n).ok_or(SetupError::DomainCreation(
-            <span class="string">&quot;construction of domain d8 did not work as intended&quot;</span>,
+        <span class="kw">let </span>d8 = Domain::&lt;F&gt;::new(<span class="number">8 </span>* n).ok_or(DomainCreationError::DomainConstructionFailed(
+            <span class="string">&quot;d8&quot;</span>.to_string(),
+            <span class="number">8 </span>* n,
         ))<span class="question-mark">?</span>;
 
         <span class="comment">// ensure the relationship between the three domains in case the library&#39;s behavior changes

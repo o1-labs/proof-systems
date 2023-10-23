@@ -457,6 +457,9 @@
 <a href="#457" id="457">457</a>
 <a href="#458" id="458">458</a>
 <a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the double generic gate.
 
 </span><span class="comment">//~ The double generic gate contains two generic gates.
@@ -502,6 +505,7 @@
 <span class="kw">use crate</span>::{curve::KimchiCurve, prover_index::ProverIndex};
 <span class="kw">use </span>ark_ff::{FftField, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::univariate::DensePolynomial;
+<span class="kw">use </span>poly_commitment::OpenProof;
 <span class="kw">use </span>std::array;
 <span class="kw">use </span>std::marker::PhantomData;
 
@@ -766,7 +770,9 @@
         }
     }
 
-    <span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;&gt; ProverIndex&lt;G&gt; {
+    <span class="kw">impl</span>&lt;F: PrimeField, G: KimchiCurve&lt;ScalarField = F&gt;, OpeningProof: OpenProof&lt;G&gt;&gt;
+        ProverIndex&lt;G, OpeningProof&gt;
+    {
         <span class="doccomment">/// Function to verify the generic polynomials with a witness.
         </span><span class="kw">pub fn </span>verify_generic(
             <span class="kw-2">&amp;</span><span class="self">self</span>,

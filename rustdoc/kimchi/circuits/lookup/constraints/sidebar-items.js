@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CONSTRAINTS","ZK_ROWS"],"fn":["aggregation","constraints","sorted","verify","zk_patch"],"struct":["LookupConfiguration"]};
+window.SIDEBAR_ITEMS = {"constant":["CONSTRAINTS"],"fn":["aggregation","constraints","sorted","verify","zk_patch"],"struct":["LookupConfiguration"]};

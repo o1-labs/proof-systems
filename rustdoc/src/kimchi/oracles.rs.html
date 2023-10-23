@@ -143,7 +143,7 @@
 <span class="attr">#[cfg(feature = <span class="string">&quot;ocaml_types&quot;</span>)]
 </span><span class="kw">pub mod </span>caml {
     <span class="kw">use </span>ark_ff::PrimeField;
-    <span class="kw">use </span>poly_commitment::commitment::shift_scalar;
+    <span class="kw">use </span>poly_commitment::{commitment::shift_scalar, evaluation_proof::OpeningProof};
 
     <span class="kw">use crate</span>::{
         circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,
@@ -162,8 +162,8 @@
 
     <span class="kw">pub fn </span>create_caml_oracles&lt;G, CamlF, EFqSponge, EFrSponge, CurveParams&gt;(
         lgr_comm: Vec&lt;PolyComm&lt;G&gt;&gt;,
-        index: VerifierIndex&lt;G&gt;,
-        proof: ProverProof&lt;G&gt;,
+        index: VerifierIndex&lt;G, OpeningProof&lt;G&gt;&gt;,
+        proof: ProverProof&lt;G, OpeningProof&lt;G&gt;&gt;,
         public_input: <span class="kw-2">&amp;</span>[G::ScalarField],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;CamlOracles&lt;CamlF&gt;, VerifyError&gt;
     <span class="kw">where
@@ -181,7 +181,7 @@
         <span class="kw">let </span>p_comm = PolyComm::&lt;G&gt;::multi_scalar_mul(<span class="kw-2">&amp;</span>lgr_comm_refs, <span class="kw-2">&amp;</span>negated_public);
 
         <span class="kw">let </span>oracles_result =
-            proof.oracles::&lt;EFqSponge, EFrSponge&gt;(<span class="kw-2">&amp;</span>index, <span class="kw-2">&amp;</span>p_comm, public_input)<span class="question-mark">?</span>;
+            proof.oracles::&lt;EFqSponge, EFrSponge&gt;(<span class="kw-2">&amp;</span>index, <span class="kw-2">&amp;</span>p_comm, <span class="prelude-val">Some</span>(public_input))<span class="question-mark">?</span>;
 
         <span class="kw">let </span>(<span class="kw-2">mut </span>sponge, combined_inner_product, public_evals, digest, oracles) = (
             oracles_result.fq_sponge,

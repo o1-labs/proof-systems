@@ -92,7 +92,6 @@
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
 <a href="#94" id="94">94</a>
-<a href="#95" id="95">95</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This adds a few utility functions for the [DensePolynomial] arkworks type.
 
 </span><span class="kw">use </span>ark_ff::Field;
@@ -117,8 +116,8 @@
     </span><span class="kw">fn </span>eval_polynomial(coeffs: <span class="kw-2">&amp;</span>[F], x: F) -&gt; F;
 
     <span class="doccomment">/// Convert a polynomial into chunks.
-    /// Implementors must ensure that the result contains at least 1 chunk.
-    </span><span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, size: usize) -&gt; ChunkedPolynomial&lt;F&gt;;
+    /// Implementors must ensure that the result contains exactly num_chunks.
+    </span><span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, num_chunks: usize, size: usize) -&gt; ChunkedPolynomial&lt;F&gt;;
 }
 
 <span class="kw">impl</span>&lt;F: Field&gt; ExtendedDensePolynomial&lt;F&gt; <span class="kw">for </span>DensePolynomial&lt;F&gt; {
@@ -141,18 +140,15 @@
         DensePolynomial::from_coefficients_slice(coeffs).evaluate(<span class="kw-2">&amp;</span>x)
     }
 
-    <span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, chunk_size: usize) -&gt; ChunkedPolynomial&lt;F&gt; {
-        <span class="comment">// Ensure that there is always at least 1 polynomial in the resulting chunked polynomial.
-        </span><span class="kw">if </span><span class="self">self</span>.coeffs.is_empty() {
-            <span class="kw">return </span>ChunkedPolynomial {
-                polys: <span class="macro">vec!</span>[DensePolynomial::from_coefficients_vec(<span class="macro">vec!</span>[])],
-                size: chunk_size,
-            };
-        }
-
-        <span class="kw">let </span><span class="kw-2">mut </span>chunk_polys: Vec&lt;DensePolynomial&lt;F&gt;&gt; = <span class="macro">vec!</span>[];
+    <span class="kw">fn </span>to_chunked_polynomial(<span class="kw-2">&amp;</span><span class="self">self</span>, num_chunks: usize, chunk_size: usize) -&gt; ChunkedPolynomial&lt;F&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>chunk_polys: Vec&lt;DensePolynomial&lt;F&gt;&gt; = Vec::with_capacity(num_chunks);
         <span class="kw">for </span>chunk <span class="kw">in </span><span class="self">self</span>.coeffs.chunks(chunk_size) {
             chunk_polys.push(DensePolynomial::from_coefficients_slice(chunk));
+        }
+
+        <span class="comment">// Pad unused chunks with zeros.
+        </span><span class="kw">for _ in </span>chunk_polys.len()..num_chunks {
+            chunk_polys.push(DensePolynomial::from_coefficients_vec(<span class="macro">vec!</span>[]));
         }
 
         ChunkedPolynomial {
@@ -178,12 +174,14 @@
         <span class="kw">let </span>one = Fp::one();
         <span class="kw">let </span>two = one + one;
         <span class="kw">let </span>three = two + one;
+        <span class="kw">let </span>num_chunks = <span class="number">4</span>;
 
         <span class="comment">// 1 + x + x^2 + x^3 + x^4 + x^5 + x^6 + x^7
         </span><span class="kw">let </span>coeffs = [one, one, one, one, one, one, one, one];
         <span class="kw">let </span>f = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>coeffs);
-        <span class="kw">let </span>evals = f.to_chunked_polynomial(<span class="number">2</span>).evaluate_chunks(two);
-        <span class="kw">for </span>eval <span class="kw">in </span>evals.into_iter().take(<span class="number">4</span>) {
+        <span class="kw">let </span>evals = f.to_chunked_polynomial(num_chunks, <span class="number">2</span>).evaluate_chunks(two);
+        <span class="macro">assert_eq!</span>(evals.len(), num_chunks);
+        <span class="kw">for </span>eval <span class="kw">in </span>evals.into_iter().take(num_chunks) {
             <span class="macro">assert!</span>(eval == three);
         }
     }

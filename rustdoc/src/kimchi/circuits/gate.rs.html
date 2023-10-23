@@ -625,6 +625,8 @@
 <a href="#625" id="625">625</a>
 <a href="#626" id="626">626</a>
 <a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk constraint gate primitive.
 
 </span><span class="kw">use crate</span>::{
@@ -643,6 +645,7 @@
 <span class="kw">use </span>ark_ff::{bytes::ToBytes, PrimeField, SquareRootField};
 <span class="kw">use </span>num_traits::cast::ToPrimitive;
 <span class="kw">use </span>o1_utils::hasher::CryptoDigest;
+<span class="kw">use </span>poly_commitment::OpenProof;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>serde_with::serde_as;
 <span class="kw">use </span>std::io::{<span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write};
@@ -820,11 +823,11 @@
     /// # Errors
     ///
     /// Will give error if verify process returns error.
-    </span><span class="kw">pub fn </span>verify&lt;G: KimchiCurve&lt;ScalarField = F&gt;&gt;(
+    </span><span class="kw">pub fn </span>verify&lt;G: KimchiCurve&lt;ScalarField = F&gt;, OpeningProof: OpenProof&lt;G&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         row: usize,
         witness: <span class="kw-2">&amp;</span>[Vec&lt;F&gt;; COLUMNS],
-        index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;,
+        index: <span class="kw-2">&amp;</span>ProverIndex&lt;G, OpeningProof&gt;,
         public: <span class="kw-2">&amp;</span>[F],
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), String&gt; {
         <span class="kw">use </span>GateType::<span class="kw-2">*</span>;
@@ -878,6 +881,7 @@
             joint_combiner: <span class="prelude-val">Some</span>(F::one()),
             endo_coefficient: cs.endo,
             mds: <span class="kw-2">&amp;</span>G::sponge_params().mds,
+            zk_rows: cs.zk_rows,
         };
         <span class="comment">// Create the argument environment for the constraints over field elements
         </span><span class="kw">let </span>env = ArgumentEnv::&lt;F, F&gt;::create(argument_witness, <span class="self">self</span>.coeffs.clone(), constants);

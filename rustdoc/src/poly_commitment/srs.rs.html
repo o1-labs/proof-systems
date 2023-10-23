@@ -246,13 +246,57 @@
 <a href="#246" id="246">246</a>
 <a href="#247" id="247">247</a>
 <a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the Marlin structured reference string primitive
 
 </span><span class="kw">use </span><span class="kw">crate</span>::commitment::CommitmentCurve;
 <span class="kw">use </span><span class="kw">crate</span>::PolyComm;
 <span class="kw">use </span>ark_ec::{AffineCurve, ProjectiveCurve};
-<span class="kw">use </span>ark_ff::{BigInteger, PrimeField, Zero};
+<span class="kw">use </span>ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{EvaluationDomain, Radix2EvaluationDomain <span class="kw">as </span>D};
+<span class="kw">use </span>ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 <span class="kw">use </span>blake2::{Blake2b512, Digest};
 <span class="kw">use </span>groupmap::GroupMap;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -263,7 +307,8 @@
 
 <span class="attr">#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Eq)]
-</span><span class="kw">pub struct </span>SRS&lt;G: CommitmentCurve&gt; {
+#[serde(bound = <span class="string">&quot;G: CanonicalDeserialize + CanonicalSerialize&quot;</span>)]
+</span><span class="kw">pub struct </span>SRS&lt;G&gt; {
     <span class="doccomment">/// The vector of group elements for committing to polynomials in coefficient form
     </span><span class="attr">#[serde_as(<span class="kw">as </span>= <span class="string">&quot;Vec&lt;o1_utils::serialization::SerdeAs&gt;&quot;</span>)]
     </span><span class="kw">pub </span>g: Vec&lt;G&gt;,
@@ -279,7 +324,7 @@
 
 <span class="kw">impl</span>&lt;G&gt; PartialEq <span class="kw">for </span>SRS&lt;G&gt;
 <span class="kw">where
-    </span>G: CommitmentCurve,
+    </span>G: PartialEq,
 {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="self">self</span>.g == other.g &amp;&amp; <span class="self">self</span>.h == other.h
@@ -307,27 +352,35 @@
 
 <span class="kw">fn </span>point_of_random_bytes&lt;G: CommitmentCurve&gt;(map: <span class="kw-2">&amp;</span>G::Map, random_bytes: <span class="kw-2">&amp;</span>[u8]) -&gt; G
 <span class="kw">where
-    </span>G::BaseField: PrimeField,
+    </span>G::BaseField: Field,
 {
     <span class="comment">// packing in bit-representation
     </span><span class="kw">const </span>N: usize = <span class="number">31</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>bits = [<span class="bool-val">false</span>; <span class="number">8 </span>* N];
-    <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
-        <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
-            bits[<span class="number">8 </span>* i + j] = (random_bytes[i] &gt;&gt; j) &amp; <span class="number">1 </span>== <span class="number">1</span>;
-        }
-    }
+    <span class="kw">let </span>extension_degree = G::BaseField::extension_degree() <span class="kw">as </span>usize;
 
-    <span class="kw">let </span>n = &lt;G::BaseField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_be(<span class="kw-2">&amp;</span>bits);
-    <span class="kw">let </span>t = G::BaseField::from_repr(n).expect(<span class="string">&quot;packing code has a bug&quot;</span>);
+    <span class="kw">let </span><span class="kw-2">mut </span>base_fields = Vec::with_capacity(N * extension_degree);
+
+    <span class="kw">for </span>base_count <span class="kw">in </span><span class="number">0</span>..extension_degree {
+        <span class="kw">let </span><span class="kw-2">mut </span>bits = [<span class="bool-val">false</span>; <span class="number">8 </span>* N];
+        <span class="kw">let </span>offset = base_count * N;
+        <span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..N {
+            <span class="kw">for </span>j <span class="kw">in </span><span class="number">0</span>..<span class="number">8 </span>{
+                bits[<span class="number">8 </span>* i + j] = (random_bytes[offset + i] &gt;&gt; j) &amp; <span class="number">1 </span>== <span class="number">1</span>;
+            }
+        }
+
+        <span class="kw">let </span>n =
+            &lt;&lt;G::BaseField <span class="kw">as </span>Field&gt;::BasePrimeField <span class="kw">as </span>PrimeField&gt;::BigInt::from_bits_be(<span class="kw-2">&amp;</span>bits);
+        <span class="kw">let </span>t = &lt;&lt;G::BaseField <span class="kw">as </span>Field&gt;::BasePrimeField <span class="kw">as </span>PrimeField&gt;::from_repr(n)
+            .expect(<span class="string">&quot;packing code has a bug&quot;</span>);
+        base_fields.push(t)
+    }
+    <span class="kw">let </span>t = G::BaseField::from_base_prime_field_elems(<span class="kw-2">&amp;</span>base_fields).unwrap();
     <span class="kw">let </span>(x, y) = map.to_group(t);
     G::of_coordinates(x, y)
 }
 
-<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt;
-<span class="kw">where
-    </span>G::BaseField: PrimeField,
-{
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt; {
     <span class="kw">pub fn </span>max_degree(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; usize {
         <span class="self">self</span>.g.len()
     }
@@ -467,6 +520,39 @@
         <span class="self">self</span>.lagrange_bases.insert(n, chunked_commitments);
     }
 
+    <span class="doccomment">/// This function creates a trusted-setup SRS instance for circuits with number of rows up to `depth`.
+    </span><span class="kw">pub fn </span>create_trusted_setup(x: G::ScalarField, depth: usize) -&gt; <span class="self">Self </span>{
+        <span class="kw">let </span>m = G::Map::setup();
+
+        <span class="kw">let </span><span class="kw-2">mut </span>x_pow = G::ScalarField::one();
+        <span class="kw">let </span>g: Vec&lt;<span class="kw">_</span>&gt; = (<span class="number">0</span>..depth)
+            .map(|<span class="kw">_</span>| {
+                <span class="kw">let </span>res = G::prime_subgroup_generator().mul(x_pow);
+                x_pow <span class="kw-2">*</span>= x;
+                res.into_affine()
+            })
+            .collect();
+
+        <span class="kw">const </span>MISC: usize = <span class="number">1</span>;
+        <span class="kw">let </span>[h]: [G; MISC] = array::from_fn(|i| {
+            <span class="kw">let </span><span class="kw-2">mut </span>h = Blake2b512::new();
+            h.update(<span class="string">&quot;srs_misc&quot;</span>.as_bytes());
+            h.update((i <span class="kw">as </span>u32).to_be_bytes());
+            point_of_random_bytes(<span class="kw-2">&amp;</span>m, <span class="kw-2">&amp;</span>h.finalize())
+        });
+
+        SRS {
+            g,
+            h,
+            lagrange_bases: HashMap::new(),
+        }
+    }
+}
+
+<span class="kw">impl</span>&lt;G: CommitmentCurve&gt; SRS&lt;G&gt;
+<span class="kw">where
+    </span>G::BaseField: PrimeField,
+{
     <span class="doccomment">/// This function creates SRS instance for circuits with number of rows up to `depth`.
     </span><span class="kw">pub fn </span>create(depth: usize) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>m = G::Map::setup();

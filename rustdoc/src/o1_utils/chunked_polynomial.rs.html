@@ -76,6 +76,10 @@
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains a type [ChunkedPolynomial],
 //! and a number of helper methods to deal with chunked polynomials.
 //! Polynomials that cut in several polynomials of the same length.
@@ -142,6 +146,7 @@
         <span class="kw">let </span>one = Fp::one();
         <span class="kw">let </span>zeta = one + one;
         <span class="kw">let </span>zeta_n = zeta.square();
+        <span class="kw">let </span>num_chunks = <span class="number">4</span>;
         <span class="kw">let </span>res = (one + zeta)
             * (one + zeta_n + zeta_n * zeta.square() + zeta_n * zeta.square() * zeta.square());
 
@@ -149,7 +154,10 @@
         </span><span class="kw">let </span>coeffs = [one, one, one, one, one, one, one, one];
         <span class="kw">let </span>f = DensePolynomial::from_coefficients_slice(<span class="kw-2">&amp;</span>coeffs);
 
-        <span class="kw">let </span>eval = f.to_chunked_polynomial(<span class="number">2</span>).linearize(zeta_n).evaluate(<span class="kw-2">&amp;</span>zeta);
+        <span class="kw">let </span>eval = f
+            .to_chunked_polynomial(num_chunks, <span class="number">2</span>)
+            .linearize(zeta_n)
+            .evaluate(<span class="kw-2">&amp;</span>zeta);
 
         <span class="macro">assert!</span>(eval == res);
     }

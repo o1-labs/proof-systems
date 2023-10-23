@@ -97,71 +97,220 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module contains a useful trait for recursion: [KimchiCurve],
 //! which defines how a pair of curves interact.
 
-</span><span class="kw">use </span>ark_ec::{short_weierstrass_jacobian::GroupAffine, ModelParameters};
+</span><span class="kw">use </span>ark_ec::{short_weierstrass_jacobian::GroupAffine, AffineCurve, ModelParameters};
 <span class="kw">use </span>mina_curves::pasta::curves::{
     pallas::{LegacyPallasParameters, PallasParameters},
     vesta::{LegacyVestaParameters, VestaParameters},
 };
 <span class="kw">use </span>mina_poseidon::poseidon::ArithmeticSpongeParams;
 <span class="kw">use </span>once_cell::sync::Lazy;
-<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, srs::endos};
+<span class="kw">use </span>poly_commitment::{
+    commitment::{CommitmentCurve, EndoCurve},
+    srs::endos,
+};
 
 <span class="doccomment">/// Represents additional information that a curve needs in order to be used with Kimchi
-</span><span class="kw">pub trait </span>KimchiCurve: CommitmentCurve {
+</span><span class="kw">pub trait </span>KimchiCurve: CommitmentCurve + EndoCurve {
     <span class="doccomment">/// A human readable name.
     </span><span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str;
 
-    <span class="doccomment">/// The other curve that forms the cycle used for recursion.
-    </span><span class="kw">type </span>OtherCurve: KimchiCurve&lt;
-        ScalarField = <span class="self">Self</span>::BaseField,
-        BaseField = <span class="self">Self</span>::ScalarField,
-        OtherCurve = <span class="self">Self</span>,
-    &gt;;
-
     <span class="doccomment">/// Provides the sponge params to be used with this curve.
-    /// If the params for the base field are needed, they can be obtained from [`KimchiCurve::OtherCurve`].
     </span><span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt;;
 
-    <span class="doccomment">/// Provides the coefficients for the curve endomorphism called (q,r) in some places.
+    <span class="doccomment">/// Provides the sponge params to be used with the other curve.
+    </span><span class="kw">fn </span>other_curve_sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::BaseField&gt;;
+
+    <span class="doccomment">/// Provides the coefficients for the curve endomorphism, called (q,r) in some places.
     </span><span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField);
+
+    <span class="doccomment">/// Provides the coefficient for the curve endomorphism over the other field, called q in some
+    /// places.
+    </span><span class="kw">fn </span>other_curve_endo() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self</span>::ScalarField;
+
+    <span class="doccomment">/// Accessor for the other curve&#39;s prime subgroup generator, as coordinates
+    </span><span class="comment">// TODO: This leaked from snarky.rs. Stop the bleed.
+    </span><span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField);
+}
+
+<span class="kw">fn </span>vesta_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
+    &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
+    &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
+) {
+    <span class="kw">static </span>VESTA_ENDOS: Lazy&lt;(
+        &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
+        &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
+    )&gt; = Lazy::new(endos::&lt;GroupAffine&lt;VestaParameters&gt;&gt;);
+    <span class="kw-2">&amp;</span>VESTA_ENDOS
+}
+
+<span class="kw">fn </span>pallas_endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(
+    &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
+    &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
+) {
+    <span class="kw">static </span>PALLAS_ENDOS: Lazy&lt;(
+        &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
+        &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
+    )&gt; = Lazy::new(endos::&lt;GroupAffine&lt;PallasParameters&gt;&gt;);
+    <span class="kw-2">&amp;</span>PALLAS_ENDOS
 }
 
 <span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;VestaParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;vesta&quot;</span>;
 
-    <span class="kw">type </span>OtherCurve = GroupAffine&lt;PallasParameters&gt;;
-
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
         mina_poseidon::pasta::fp_kimchi::static_params()
     }
 
+    <span class="kw">fn </span>other_curve_sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::BaseField&gt; {
+        mina_poseidon::pasta::fq_kimchi::static_params()
+    }
+
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
-        <span class="kw">static </span>VESTA_ENDOS: Lazy&lt;(
-            &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
-            &lt;VestaParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
-        )&gt; = Lazy::new(endos::&lt;GroupAffine&lt;VestaParameters&gt;&gt;);
-        <span class="kw-2">&amp;</span>VESTA_ENDOS
+        vesta_endos()
+    }
+
+    <span class="kw">fn </span>other_curve_endo() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self</span>::ScalarField {
+        <span class="kw-2">&amp;</span>pallas_endos().<span class="number">0
+    </span>}
+
+    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        GroupAffine::&lt;PallasParameters&gt;::prime_subgroup_generator()
+            .to_coordinates()
+            .unwrap()
     }
 }
 
 <span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;PallasParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;pallas&quot;</span>;
 
-    <span class="kw">type </span>OtherCurve = GroupAffine&lt;VestaParameters&gt;;
-
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
         mina_poseidon::pasta::fq_kimchi::static_params()
     }
 
+    <span class="kw">fn </span>other_curve_sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::BaseField&gt; {
+        mina_poseidon::pasta::fp_kimchi::static_params()
+    }
+
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
-        <span class="kw">static </span>PALLAS_ENDOS: Lazy&lt;(
-            &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::BaseField,
-            &lt;PallasParameters <span class="kw">as </span>ModelParameters&gt;::ScalarField,
-        )&gt; = Lazy::new(endos::&lt;GroupAffine&lt;PallasParameters&gt;&gt;);
-        <span class="kw-2">&amp;</span>PALLAS_ENDOS
+        pallas_endos()
+    }
+
+    <span class="kw">fn </span>other_curve_endo() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self</span>::ScalarField {
+        <span class="kw-2">&amp;</span>vesta_endos().<span class="number">0
+    </span>}
+
+    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        GroupAffine::&lt;VestaParameters&gt;::prime_subgroup_generator()
+            .to_coordinates()
+            .unwrap()
     }
 }
 
@@ -172,28 +321,89 @@
 </span><span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;LegacyVestaParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;legacy_vesta&quot;</span>;
 
-    <span class="kw">type </span>OtherCurve = GroupAffine&lt;LegacyPallasParameters&gt;;
-
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
         mina_poseidon::pasta::fp_legacy::static_params()
     }
 
+    <span class="kw">fn </span>other_curve_sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::BaseField&gt; {
+        mina_poseidon::pasta::fq_legacy::static_params()
+    }
+
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
-        GroupAffine::&lt;VestaParameters&gt;::endos()
+        vesta_endos()
+    }
+
+    <span class="kw">fn </span>other_curve_endo() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self</span>::ScalarField {
+        <span class="kw-2">&amp;</span>pallas_endos().<span class="number">0
+    </span>}
+
+    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        GroupAffine::&lt;PallasParameters&gt;::prime_subgroup_generator()
+            .to_coordinates()
+            .unwrap()
     }
 }
 
 <span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;LegacyPallasParameters&gt; {
     <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;legacy_pallas&quot;</span>;
 
-    <span class="kw">type </span>OtherCurve = GroupAffine&lt;LegacyVestaParameters&gt;;
-
     <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
         mina_poseidon::pasta::fq_legacy::static_params()
     }
 
+    <span class="kw">fn </span>other_curve_sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::BaseField&gt; {
+        mina_poseidon::pasta::fp_legacy::static_params()
+    }
+
     <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
-        GroupAffine::&lt;PallasParameters&gt;::endos()
+        pallas_endos()
+    }
+
+    <span class="kw">fn </span>other_curve_endo() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self</span>::ScalarField {
+        <span class="kw-2">&amp;</span>vesta_endos().<span class="number">0
+    </span>}
+
+    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        GroupAffine::&lt;VestaParameters&gt;::prime_subgroup_generator()
+            .to_coordinates()
+            .unwrap()
+    }
+}
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;bn254&quot;</span>)]
+</span><span class="kw">use </span>mina_poseidon::dummy_values::kimchi_dummy;
+
+<span class="attr">#[cfg(feature = <span class="string">&quot;bn254&quot;</span>)]
+</span><span class="kw">impl </span>KimchiCurve <span class="kw">for </span>GroupAffine&lt;ark_bn254::g1::Parameters&gt; {
+    <span class="kw">const </span>NAME: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str = <span class="string">&quot;bn254&quot;</span>;
+
+    <span class="kw">fn </span>sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::ScalarField&gt; {
+        <span class="comment">// TODO: Generate some params
+        </span><span class="kw">static </span>PARAMS: Lazy&lt;ArithmeticSpongeParams&lt;ark_bn254::Fr&gt;&gt; = Lazy::new(kimchi_dummy);
+        <span class="kw-2">&amp;</span>PARAMS
+    }
+
+    <span class="kw">fn </span>other_curve_sponge_params() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;<span class="self">Self</span>::BaseField&gt; {
+        <span class="comment">// TODO: Generate some params
+        </span><span class="kw">static </span>PARAMS: Lazy&lt;ArithmeticSpongeParams&lt;ark_bn254::Fq&gt;&gt; = Lazy::new(kimchi_dummy);
+        <span class="kw-2">&amp;</span>PARAMS
+    }
+
+    <span class="kw">fn </span>endos() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>(<span class="self">Self</span>::BaseField, <span class="self">Self</span>::ScalarField) {
+        <span class="kw">static </span>ENDOS: Lazy&lt;(ark_bn254::Fq, ark_bn254::Fr)&gt; =
+            Lazy::new(endos::&lt;ark_bn254::G1Affine&gt;);
+        <span class="kw-2">&amp;</span>ENDOS
+    }
+
+    <span class="kw">fn </span>other_curve_endo() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span><span class="self">Self</span>::ScalarField {
+        <span class="comment">// TODO: Dummy value, this is definitely not right
+        </span><span class="kw">static </span>ENDO: Lazy&lt;ark_bn254::Fr&gt; = Lazy::new(|| <span class="number">13u64</span>.into());
+        <span class="kw-2">&amp;</span>ENDO
+    }
+
+    <span class="kw">fn </span>other_curve_prime_subgroup_generator() -&gt; (<span class="self">Self</span>::ScalarField, <span class="self">Self</span>::ScalarField) {
+        <span class="comment">// TODO: Dummy value, this is definitely not right
+        </span>(<span class="number">44u64</span>.into(), <span class="number">88u64</span>.into())
     }
 }
 </code></pre></div></section></main></body></html>

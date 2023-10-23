@@ -28,16 +28,10 @@
 <a href="#28" id="28">28</a>
 <a href="#29" id="29">29</a>
 <a href="#30" id="30">30</a>
-<a href="#31" id="31">31</a>
-<a href="#32" id="32">32</a>
-<a href="#33" id="33">33</a>
-<a href="#34" id="34">34</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Constants used for poseidon.
 
-</span><span class="kw">use </span>ark_ec::AffineCurve;
-<span class="kw">use </span>ark_ff::Field;
+</span><span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>mina_poseidon::poseidon::ArithmeticSpongeParams;
-<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
 
 <span class="kw">use </span><span class="kw">crate</span>::curve::KimchiCurve;
 
@@ -54,10 +48,8 @@
 {
     <span class="kw">pub fn </span>new&lt;Curve: KimchiCurve&lt;ScalarField = F&gt;&gt;() -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>poseidon = Curve::sponge_params().clone();
-        <span class="kw">let </span>(endo_q, _endo_r) = Curve::OtherCurve::endos();
-        <span class="kw">let </span>base = Curve::OtherCurve::prime_subgroup_generator()
-            .to_coordinates()
-            .unwrap();
+        <span class="kw">let </span>endo_q = Curve::other_curve_endo();
+        <span class="kw">let </span>base = Curve::other_curve_prime_subgroup_generator();
 
         <span class="self">Self </span>{
             poseidon,

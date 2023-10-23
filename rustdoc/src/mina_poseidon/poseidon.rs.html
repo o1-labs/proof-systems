@@ -127,22 +127,9 @@
 <a href="#127" id="127">127</a>
 <a href="#128" id="128">128</a>
 <a href="#129" id="129">129</a>
-<a href="#130" id="130">130</a>
-<a href="#131" id="131">131</a>
-<a href="#132" id="132">132</a>
-<a href="#133" id="133">133</a>
-<a href="#134" id="134">134</a>
-<a href="#135" id="135">135</a>
-<a href="#136" id="136">136</a>
-<a href="#137" id="137">137</a>
-<a href="#138" id="138">138</a>
-<a href="#139" id="139">139</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Poseidon Hash Function primitive
 
-</span><span class="attr">#[cfg(feature = <span class="string">&quot;debug_sponge&quot;</span>)]
-</span><span class="kw">use </span>std::sync::atomic::{AtomicU64, Ordering::SeqCst};
-
-<span class="kw">use </span><span class="kw">crate</span>::constants::SpongeConstants;
+</span><span class="kw">use </span><span class="kw">crate</span>::constants::SpongeConstants;
 <span class="kw">use </span><span class="kw">crate</span>::permutation::{full_round, poseidon_block_cipher};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
@@ -191,8 +178,6 @@
     </span><span class="kw">pub </span>state: Vec&lt;F&gt;,
     params: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>ArithmeticSpongeParams&lt;F&gt;,
     <span class="kw">pub </span>constants: std::marker::PhantomData&lt;SC&gt;,
-    <span class="attr">#[cfg(feature = <span class="string">&quot;debug_sponge&quot;</span>)]
-    </span><span class="kw">pub </span>id: u64,
 }
 
 <span class="kw">impl</span>&lt;F: Field, SC: SpongeConstants&gt; ArithmeticSponge&lt;F, SC&gt; {
@@ -216,17 +201,12 @@
             state.push(F::zero());
         }
 
-        <span class="attr">#[cfg(feature = <span class="string">&quot;debug_sponge&quot;</span>)]
-        </span><span class="kw">static </span>COUNTER: AtomicU64 = AtomicU64::new(<span class="number">0</span>);
-
         ArithmeticSponge {
             state,
             rate,
             sponge_state: SpongeState::Absorbed(<span class="number">0</span>),
             params,
             constants: std::marker::PhantomData,
-            <span class="attr">#[cfg(feature = <span class="string">&quot;debug_sponge&quot;</span>)]
-            </span>id: COUNTER.fetch_add(<span class="number">1</span>, SeqCst),
         }
     }
 

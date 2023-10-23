@@ -442,6 +442,7 @@
 <a href="#442" id="442">442</a>
 <a href="#443" id="443">443</a>
 <a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::runtime_tables::{RuntimeTableCfg, RuntimeTableSpec};
 <span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
@@ -451,7 +452,6 @@
         lookups::{LookupInfo, LookupPattern},
         tables::LookupTable,
     },
-    polynomials::permutation::ZK_ROWS,
 };
 <span class="kw">use </span>ark_ff::{FftField, PrimeField, SquareRootField};
 <span class="kw">use </span>ark_poly::{
@@ -648,6 +648,7 @@
         lookup_tables: Vec&lt;LookupTable&lt;F&gt;&gt;,
         runtime_tables: <span class="prelude-ty">Option</span>&lt;Vec&lt;RuntimeTableCfg&lt;F&gt;&gt;&gt;,
         domain: <span class="kw-2">&amp;</span>EvaluationDomains&lt;F&gt;,
+        zk_rows: usize,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt;, LookupError&gt; {
         <span class="comment">//~ 1. If no lookup is used in the circuit, do not create a lookup index
         </span><span class="kw">match </span>LookupInfo::create_from_gates(gates, runtime_tables.is_some()) {
@@ -656,10 +657,10 @@
                 <span class="kw">let </span>d1_size = domain.d1.size();
 
                 <span class="comment">// The maximum number of entries that can be provided across all tables.
-                // Since we do not assert the lookup constraint on the final `ZK_ROWS` rows, and
+                // Since we do not assert the lookup constraint on the final `zk_rows` rows, and
                 // because the row before is used to assert that the lookup argument&#39;s final
                 // product is 1, we cannot use those rows to store any values.
-                </span><span class="kw">let </span>max_num_entries = d1_size - (ZK_ROWS <span class="kw">as </span>usize) - <span class="number">1</span>;
+                </span><span class="kw">let </span>max_num_entries = d1_size - zk_rows - <span class="number">1</span>;
 
                 <span class="comment">//~ 2. Get the lookup selectors and lookup tables (TODO: how?)
                 </span><span class="kw">let </span>(lookup_selectors, gate_lookup_tables) =
@@ -701,8 +702,8 @@
                                     .take(d1_size - runtime_table_offset - runtime_len),
                             );
 
-                            <span class="comment">// although the last ZK_ROWS are fine
-                            </span><span class="kw">for </span>e <span class="kw">in </span>evals.iter_mut().rev().take(ZK_ROWS <span class="kw">as </span>usize) {
+                            <span class="comment">// although the last zk_rows are fine
+                            </span><span class="kw">for </span>e <span class="kw">in </span>evals.iter_mut().rev().take(zk_rows) {
                                 <span class="kw-2">*</span>e = F::zero();
                             }
 
@@ -740,7 +741,7 @@
                 //~    that a lookup table can have.
                 </span><span class="kw">let </span>max_table_width = lookup_tables
                     .iter()
-                    .map(|table| table.data.len())
+                    .map(|table| table.width())
                     .max()
                     .unwrap_or(<span class="number">0</span>);
 
@@ -792,7 +793,7 @@
                 <span class="kw">let </span><span class="kw-2">mut </span>has_table_id_0_with_zero_entry = <span class="bool-val">false</span>;
 
                 <span class="kw">for </span>table <span class="kw">in </span><span class="kw-2">&amp;</span>lookup_tables {
-                    <span class="kw">let </span>table_len = table.data[<span class="number">0</span>].len();
+                    <span class="kw">let </span>table_len = table.len();
 
                     <span class="kw">if </span>table.id == <span class="number">0 </span>{
                         has_table_id_0 = <span class="bool-val">true</span>;
@@ -810,14 +811,15 @@
 
                     <span class="comment">//~~ * Copy the entries from the table to new rows in the corresponding columns of the concatenated table.
                     </span><span class="kw">for </span>(i, col) <span class="kw">in </span>table.data.iter().enumerate() {
-                        <span class="kw">if </span>col.len() != table_len {
+                        <span class="comment">// See GH issue: https://github.com/MinaProtocol/mina/issues/14097
+                        </span><span class="kw">if </span>col.len() != table_len {
                             <span class="kw">return </span><span class="prelude-val">Err</span>(LookupError::InconsistentTableLength);
                         }
                         lookup_table[i].extend(col);
                     }
 
                     <span class="comment">//~~ * Fill in any unused columns with 0 (to match the dummy value)
-                    </span><span class="kw">for </span>lookup_table <span class="kw">in </span>lookup_table.iter_mut().skip(table.data.len()) {
+                    </span><span class="kw">for </span>lookup_table <span class="kw">in </span>lookup_table.iter_mut().skip(table.width()) {
                         lookup_table.extend(repeat_n(F::zero(), table_len));
                     }
                 }

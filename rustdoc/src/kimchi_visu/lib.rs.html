@@ -125,6 +125,11 @@
 <a href="#125" id="125">125</a>
 <a href="#126" id="126">126</a>
 <a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Implements a tool to visualize a circuit as an HTML page.
 
 </span><span class="kw">use </span>ark_ff::PrimeField;
@@ -140,7 +145,7 @@
     curve::KimchiCurve,
     prover_index::ProverIndex,
 };
-<span class="kw">use </span>poly_commitment::commitment::CommitmentCurve;
+<span class="kw">use </span>poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
 <span class="kw">use </span>serde::Serialize;
 <span class="kw">use </span>std::{
     collections::HashMap,
@@ -202,7 +207,12 @@
 /// # Panics
 ///
 /// Will panic if `TinyTemplate::render()` returns `Error` or `std::fs::File::create()` returns `Error`.
-</span><span class="kw">pub fn </span>visu&lt;G: KimchiCurve&gt;(index: <span class="kw-2">&amp;</span>ProverIndex&lt;G&gt;, witness: <span class="prelude-ty">Option</span>&lt;Witness&lt;G::ScalarField&gt;&gt;) {
+</span><span class="kw">pub fn </span>visu&lt;G: KimchiCurve&gt;(
+    index: <span class="kw-2">&amp;</span>ProverIndex&lt;G, OpeningProof&lt;G&gt;&gt;,
+    witness: <span class="prelude-ty">Option</span>&lt;Witness&lt;G::ScalarField&gt;&gt;,
+) <span class="kw">where
+    </span>G::BaseField: PrimeField,
+{
     <span class="comment">// serialize index
     </span><span class="kw">let </span>index = serde_json::to_string(index).expect(<span class="string">&quot;couldn&#39;t serialize index&quot;</span>);
     <span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">format!</span>(<span class="string">&quot;const index = {index};&quot;</span>);

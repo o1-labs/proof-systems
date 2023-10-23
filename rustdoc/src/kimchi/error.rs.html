@@ -91,6 +91,23 @@
 <a href="#91" id="91">91</a>
 <a href="#92" id="92">92</a>
 <a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements the [`ProverError`] type.
 
 </span><span class="kw">use </span>poly_commitment::error::CommitmentError;
@@ -102,6 +119,11 @@
 </span><span class="kw">pub enum </span>ProverError {
     <span class="attr">#[error(<span class="string">&quot;the circuit is too large&quot;</span>)]
     </span>NoRoomForZkInWitness,
+
+    <span class="attr">#[error(
+        <span class="string">&quot;there are not enough random rows to achieve zero-knowledge (expected: {0}, got: {1})&quot;
+    </span>)]
+    </span>NotZeroKnowledge(usize, usize),
 
     <span class="attr">#[error(<span class="string">&quot;the witness columns are not all the same size&quot;</span>)]
     </span>WitnessCsInconsistent,
@@ -115,9 +137,6 @@
     <span class="attr">#[error(<span class="string">&quot;the lookup failed to find a match in the table: row={0}&quot;</span>)]
     </span>ValueNotInTable(usize),
 
-    <span class="attr">#[error(<span class="string">&quot;SRS size is smaller than the domain size required by the circuit&quot;</span>)]
-    </span>SRSTooSmall,
-
     <span class="attr">#[error(<span class="string">&quot;the runtime tables provided did not match the index&#39;s configuration&quot;</span>)]
     </span>RuntimeTablesInconsistent,
 
@@ -128,8 +147,8 @@
 <span class="doccomment">/// Errors that can arise when verifying a proof
 </span><span class="attr">#[derive(Error, Debug, Clone, Copy)]
 </span><span class="kw">pub enum </span>VerifyError {
-    <span class="attr">#[error(<span class="string">&quot;the commitment to {0} is of an unexpected size&quot;</span>)]
-    </span>IncorrectCommitmentLength(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
+    <span class="attr">#[error(<span class="string">&quot;the commitment to {0} is of an unexpected size (expected {1}, got {2})&quot;</span>)]
+    </span>IncorrectCommitmentLength(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str, usize, usize),
 
     <span class="attr">#[error(<span class="string">&quot;the public input is of an unexpected size (expected {0})&quot;</span>)]
     </span>IncorrectPubicInputLength(usize),
@@ -137,8 +156,10 @@
     <span class="attr">#[error(<span class="string">&quot;the previous challenges have an unexpected length (expected {0}, got {1})&quot;</span>)]
     </span>IncorrectPrevChallengesLength(usize, usize),
 
-    <span class="attr">#[error(<span class="string">&quot;proof malformed: an evaluation was of the incorrect size (all evaluations are expected to be of length 1)&quot;</span>)]
-    </span>IncorrectEvaluationsLength,
+    <span class="attr">#[error(
+        <span class="string">&quot;proof malformed: an evaluation for {2} was of the incorrect size (expected {0}, got {1})&quot;
+    </span>)]
+    </span>IncorrectEvaluationsLength(usize, usize, <span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
 
     <span class="attr">#[error(<span class="string">&quot;the opening proof failed to verify&quot;</span>)]
     </span>OpenProof,
@@ -164,8 +185,21 @@
     <span class="attr">#[error(<span class="string">&quot;the evaluation for {0:?} is missing&quot;</span>)]
     </span>MissingEvaluation(<span class="kw">crate</span>::circuits::expr::Column),
 
+    <span class="attr">#[error(<span class="string">&quot;the evaluation for PublicInput is missing&quot;</span>)]
+    </span>MissingPublicInputEvaluation,
+
     <span class="attr">#[error(<span class="string">&quot;the commitment for {0:?} is missing&quot;</span>)]
     </span>MissingCommitment(<span class="kw">crate</span>::circuits::expr::Column),
+}
+
+<span class="doccomment">/// Errors that can arise when preparing the setup
+</span><span class="attr">#[derive(Error, Debug, Clone)]
+</span><span class="kw">pub enum </span>DomainCreationError {
+    <span class="attr">#[error(<span class="string">&quot;could not compute the size of domain for {0}&quot;</span>)]
+    </span>DomainSizeFailed(usize),
+
+    <span class="attr">#[error(<span class="string">&quot;construction of domain {0} for size {1} failed&quot;</span>)]
+    </span>DomainConstructionFailed(String, usize),
 }
 
 <span class="doccomment">/// Errors that can arise when preparing the setup
@@ -175,7 +209,7 @@
     </span>ConstraintSystem(String),
 
     <span class="attr">#[error(<span class="string">&quot;the domain could not be constructed: {0}&quot;</span>)]
-    </span>DomainCreation(<span class="kw-2">&amp;</span><span class="lifetime">&#39;static </span>str),
+    </span>DomainCreation(DomainCreationError),
 }
 
 <span class="doccomment">/// Errors that can arise when creating a verifier index
