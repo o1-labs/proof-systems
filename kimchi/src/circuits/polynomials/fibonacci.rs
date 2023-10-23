@@ -18,23 +18,21 @@ use ark_ff::{PrimeField, SquareRootField};
 use std::{array, marker::PhantomData};
 
 pub(crate) const FIB_COLS: usize = 3000;
+pub(crate) const FIB_ROWS: usize = 0xFFFF + 1;
 
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Creates a fibonacci gadget
     pub fn create_fib_gadget(new_row: usize) -> (usize, Vec<Self>) {
-        let fib_gates = vec![CircuitGate {
-            typ: GateType::Fibonacci,
-            wires: Wire::for_row(new_row),
-            coeffs: vec![],
-        }];
-
-        (new_row + 1, fib_gates)
+        let mut gates = vec![];
+        for _ in 0..FIB_ROWS {
+            gates.push(CircuitGate {
+                typ: GateType::Fibonacci,
+                wires: Wire::for_row(new_row),
+                coeffs: vec![],
+            });
+        }
+        (new_row + gates.len(), gates)
     }
-}
-
-/// Get the xor lookup table
-pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
-    lookup::tables::get_table::<F>(GateLookupTable::Xor)
 }
 
 //~ Fibonacci -> Wide gate of 30 columns
@@ -57,9 +55,12 @@ where
 }
 type Layout<const W: usize, F> = Vec<Box<dyn WitnessCell<W, F, Vec<F>>>>;
 
-// Witness layout
-fn fib_layout<const W: usize, F: PrimeField>() -> [Layout<W, F>; 1] {
-    [vec![IndexCell::create("fibonacci", 0, W)]]
+fn fib_row<const W: usize, F: PrimeField>() -> Layout<W, F> {
+    vec![IndexCell::create("fibonacci", 0, W)]
+}
+
+fn fib_layout<const W: usize, F: PrimeField>() -> [Layout<W, F>; W] {
+    array::from_fn(|_| fib_row::<W, F>())
 }
 
 pub(crate) fn init_fib<const W: usize, F: PrimeField>(witness: &mut [Vec<F>; W], curr_row: usize) {
@@ -74,11 +75,13 @@ pub(crate) fn init_fib<const W: usize, F: PrimeField>(witness: &mut [Vec<F>; W],
 }
 
 pub fn create_fib_witness<const W: usize, F: PrimeField>() -> [Vec<F>; W] {
-    let mut fib_wit: [Vec<F>; W] = array::from_fn(|_| vec![F::zero(); 1]);
-    fib_wit[1] = vec![F::one()];
+    let mut fib_wit: [Vec<F>; W] = array::from_fn(|_| vec![F::zero(); FIB_ROWS]);
 
-    for i in 0..W - 2 {
-        fib_wit[i + 2] = vec![fib_wit[i][0] + fib_wit[i + 1][0]];
+    for row in 0..FIB_ROWS {
+        fib_wit[1][row] = F::one();
+        for col in 0..W - 2 {
+            fib_wit[col + 2][row] = fib_wit[col][row] + fib_wit[col + 1][row];
+        }
     }
 
     init_fib(&mut fib_wit, 0);

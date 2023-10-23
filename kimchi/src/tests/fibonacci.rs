@@ -29,10 +29,7 @@ where
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     EFrSponge: FrSponge<FIB_COLS, G::ScalarField>,
 {
-    let (_, mut gates) = CircuitGate::<G::ScalarField>::create_fib_gadget(0);
-    let (_, mut gate2) = CircuitGate::<G::ScalarField>::create_fib_gadget(1);
-
-    gates.append(&mut gate2);
+    let (_, gates) = CircuitGate::<G::ScalarField>::create_fib_gadget(0);
 
     let mut witness: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>;
         FIB_COLS] = create_fib_witness::<FIB_COLS, G::ScalarField>();
@@ -56,13 +53,13 @@ where
             .unwrap()
     };
 
-    witness[100][0] += &G::ScalarField::one();
+    //witness[100][0] += &G::ScalarField::one();
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
             gate.verify_witness::<FIB_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
         assert_eq!(result, Err(Constraint(GateType::Fibonacci, 99)));
     }
-    witness[100][0] -= &G::ScalarField::one();
+    //witness[100][0] -= &G::ScalarField::one();
     if let Some(runner) = runner.as_ref() {
         // Perform full test that everything is ok before invalidation
         assert_eq!(
