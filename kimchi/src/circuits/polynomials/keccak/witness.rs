@@ -19,7 +19,7 @@ use super::{
     RATE,
 };
 
-type Layout<const N: usize, F> = Vec<Box<dyn WitnessCell<N, F, Vec<F>>>>;
+type Layout<const W: usize, F> = Vec<Box<dyn WitnessCell<W, F, Vec<F>>>>;
 
 fn layout_round<F: PrimeField>() -> [Layout<KECCAK_COLS, F>; 1] {
     [vec![
