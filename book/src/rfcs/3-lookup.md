@@ -44,16 +44,16 @@ The equality between the multisets can be proved with the permutation argument o
 * final: $\mathsf{acc}_n = 1$
 * for every $0 < i \leq n$:
     $$
-    \mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(\gamma + (1+\beta) f_{i-1})(\gamma + t_{i-1} + \beta t_i)}{(\gamma + s_{i-1} + \beta s_{i})}
+    \mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(\gamma + (1+\beta) f_{i-1}) \cdot (\gamma + t_{i-1} + \beta t_i)}{(\gamma + s_{i-1} + \beta s_{i})(\gamma + s_{n+i-1} + \beta s_{n+i})}
     $$
 
-Note that the plookup paper uses a slightly different equation to make the proof work. I believe the proof would work with the above equation, but for simplicity let's just use the equation published in plookup:
+Note that the plookup paper uses a slightly different equation to make the proof work. It is possible that the proof would work with the above equation, but for simplicity let's just use the equation published in plookup:
 
 $$
-\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta)(\gamma + f_{i-1})(\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})}
+\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot (\gamma + f_{i-1}) \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
 $$
 
-> Note: in plookup $s$ is too large, and so needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. We ignore this for now.
+> Note: in plookup $s$ is longer than $n$ ($|s| = |f| + |t|$), and thus it needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. This leads to the two terms in the denominator as shown above, so that the degree of $\gamma (1 + \beta)$ is equal in the nominator and denominator.
 
 ### Lookup tables
 
@@ -89,7 +89,7 @@ For example, the following **query** tells us that we want to check if $r_0 \opl
 The grand product argument for the lookup consraint will look like this at this point:
 
 $$
-\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta){\color{green}(\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i))}(\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})}
+\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot {\color{green}(\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i))} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
 $$
 
 Not all rows need to perform queries into a lookup table. We will use a query selector in the next section to make the constraints work with this in mind.
@@ -106,7 +106,7 @@ The associated **query selector** tells us on which rows the query into the XOR 
 
 Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time. Currently only the ChaCha gates make use of the lookups.
 
-The grand product argument for the lookup constraint looks like this now:
+With the selectors, the grand product argument for the lookup constraint has the following form:
 
 $$
 \mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot {\color{green}\mathsf{query}} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})}
@@ -121,13 +121,13 @@ $$
 \end{align}
 $$
 
-### Queries, not query
+### Supporting multiple queries
 
-Since we allow multiple queries per row, we define multiple **queries**, where each query is associated with a **lookup selector**.
+Since we would like to allow multiple table lookups per row, we define multiple **queries**, where each query is associated with a **lookup selector**.
 
 At the moment of this writing, the `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
 
-**Important**: to make constraints work, this means that each row must make $4$ queries. (Potentially some or all of them are dummy queries.)
+**Important**: to make constraints work, this means that each row must make $4$ queries. Potentially some or all of them are dummy queries.
 
 For example, the `ChaCha0`, `ChaCha1`, and `ChaCha2` gates will jointly apply the following 4 XOR queries on the current and following rows:
 
@@ -160,7 +160,7 @@ Using the previous section's method, we'd have to use $8$ different lookup selec
 The grand product argument for the lookup constraint looks like this now:
 
 $$
-\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{{\color{green}(1+\beta)^4 \cdot \mathsf{query}} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})}
+\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{{\color{green}(1+\beta)^4 \cdot \mathsf{query}} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})\times \ldots}
 $$
 
 where $\color{green}{\mathsf{query}}$ is constructed as:
@@ -184,10 +184,13 @@ $$
 \end{align}
 $$
 
-Note that:
+Note that there's now $4$ dummy queries, and they only appear when none of the lookup selectors are active.
+If a pattern uses less than $4$ queries, it has to be padded with dummy queries as well.
 
-* There's now $4$ dummy queries, and they only appear when none of the lookup selectors are active
-* If a pattern uses less than $4$ queries, they'd have to pad their queries with dummy queries as well
+Finally, note that the denominator of the grand product argument is incomplete in the formula above.
+Since the nominator has degree $5$ in $\gamma (1 + \beta)$, the denominator must match too.
+This is achieved by having a longer $s$, and referring to it $5$ times.
+The denominator thus becomes $\prod_{k=1}^{5} (\gamma (1+\beta) + s_{kn+i-1} + \beta s_{kn+i})$.
 
 ## Back to the grand product argument
 
@@ -205,25 +208,29 @@ What about the second vector $s$?
 
 ## The sorted vector $s$
 
-The second vector $s$ is of size
+We said earlier that in original plonk the size of $s$ is equal to $|s| = |f|+|t|$, where $f$ encodes queries, and $t$ encodes the lookup table.
+With our multi-query approach, the second vector $s$ is of the size
 
-$$n \cdot |\text{queries}| + |\text{lookup\_table}|$$
+$$n \cdot |\#\text{queries}| + |\text{lookup\_table}|$$
 
 That is, it contains the $n$ elements of each **query vectors** (the actual values being looked up, after being combined with the joint combinator, that's $4$ per row), as well as the elements of our lookup table (after being combined as well).
 
 Because the vector $s$ is larger than the domain size $n$, it is split into several vectors of size $n$. Specifically, in the plonkup paper, the two halves of $s$, which are then interpolated as $h_1$ and $h_2$.
-
+The denominator in plonk in the vector form is
 $$
-\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{{\color{green}(1+\beta)^4 \cdot \mathsf{query}} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta)+s_{n+i-1} + \beta s_{n+i})}
+\big(\gamma(1+\beta) + s_{i-1} + \beta s_{i}\big)\big(\gamma(1+\beta)+s_{n+i-1} + \beta s_{n+i}\big)
+$$
+which, when interpolated into $h_1$ and $h_2$, becomes
+$$
+\big(\gamma(1+\beta) + h_1(x) + \beta h_1(g \cdot x)\big)\big(\gamma(1+\beta) + h_2(x) + \beta h_2(g \cdot x)\big)
 $$
 
-Since one has to compute the difference of every contiguous pairs, the last element of the first half is the replicated as the first element of the second half ($s_{n-1} = s_{n}$), and a separate constraint enforces that continuity on the interpolated polynomials $h_1$ and $h_2$:
+Since one has to compute the difference of every contiguous pairs, the last element of the first half is the replicated as the first element of the second half ($s_{n-1} = s_{n}$).
+Hence, a separate constraint must be added to enforce that continuity on the interpolated polynomials $h_1$ and $h_2$:
 
-$$L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$$
+$$L_{n-1}(X)\cdot\big(h_1(X) - h_2(g \cdot X)\big) \equiv 0$$
 
-which is equivalent to checking that
-
-$$h_1(g^{n-1}) = h_2(1)$$
+which is equivalent to checking that $h_1(g^{n-1}) = h_2(1)$.
 
 ## The sorted vector $s$ in kimchi
 
@@ -244,7 +251,7 @@ The first problem can be solved in two ways:
 The snake technique rearranges $s$ into the following shape:
 
 ```
-                     __    _
+                           __    _
           s_0 |  s_{2n-1} |  |  | |
           ... |       ... |  |  | |
       s_{n-1} |       s_n |  |  | |
@@ -252,21 +259,35 @@ The snake technique rearranges $s$ into the following shape:
               h1         h2  h3 ...
 ```
 
-so that the denominator becomes the following equation:
+Assuming that for now we have only one bend and two polynomials $h_1(X),h_2(X)$, the denominator has the following form:
 
-$$(\gamma(1+\beta) + h_1(x) + \beta h_1(x \cdot g))(\gamma(1+\beta)+ h_2(x \cdot g) + \beta h_2(x))$$
+$$\big(\gamma(1+\beta) + h_1(x) + \beta h_1(x \cdot g)\big)\big(\gamma(1+\beta)+ h_2(x \cdot g) + \beta h_2(x)\big)$$
 
-and the snake doing a U-turn is constrained via something like
+and the snake doing a U-turn is constrained via $s_{n-1} = s_n$, enforced by the following equation:
 
 $$L_{n-1} \cdot (h_1(x) - h_2(x)) = 0$$
 
-If there's an $h_3$ (because the table is very large, for example), then you'd have something like:
+In practice, $s$ will have more sections than just two.
+Assume that we have $k$ sections in total, then the denominator generalizes to
 
-$$(\gamma(1+\beta) + h_1(x) + \beta h_1(x \cdot g))(\gamma(1+\beta)+ h_2(x \cdot g) + \beta h_2(x))\color{green}{(\gamma(1+\beta)+ h_3(x) + \beta h_3(x \cdot g))}$$
+$$
+\prod_{i=1}^k \gamma(1+\beta) + h_i(x \cdot g^{\delta_{0,\ i \text{ mod } 2}}) + \beta h_i(x \cdot g^{\delta_{1,\ i \text{ mod } 2}})
+$$
 
-with the added U-turn constraint:
+where $\delta_{i,j}$ is Kronecker delta, equal to $1$ when $i$ is even (for the first term) or odd (for the second one), and equal to $0$ otherwise.
 
-$$L_{0} \cdot (h_2(x) - h_3(x)) = 0$$
+Similarly, the U-turn constraints now become
+
+$$
+\begin{align*}
+L_{n-1}(X) \cdot (h_2(X) - h_1(X)) &\equiv 0\\
+\color{green}L_{0}(X) \cdot (h_3(X) - h_2(X)) &\color{green}\equiv 0\\
+\color{green}L_{n-1}(X) \cdot (h_4(X) - h_3(X)) &\color{green}\equiv 0\\
+\ldots
+\end{align*}
+$$
+
+In our concrete case with $4$ simultaneous lookups the vector $s$ has to be split into $k= 5$ sections --- each denominator term in the accumulator accounts for $4$ queries ($f$) and $1$ table consistency check ($t$).
 
 ## Unsorted $t$ in $s$
 
