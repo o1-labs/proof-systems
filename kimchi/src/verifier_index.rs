@@ -124,6 +124,18 @@ pub struct VerifierIndex<const W: usize, G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
+    /// Keccak round commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_round_comm: Option<PolyComm<G>>,
+
+    /// Keccak sponge commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_sponge_comm: Option<PolyComm<G>>,
+
+    /// Fibonacci commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub fib_comm: Option<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],
@@ -283,6 +295,24 @@ impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
+            keccak_round_comm: self
+                .column_evaluations
+                .keccak_round_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+
+            keccak_sponge_comm: self
+                .column_evaluations
+                .keccak_sponge_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+
+            fib_comm: self
+                .column_evaluations
+                .fib_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+
             shift: self.cs.shift,
             zkpm: {
                 let cell = OnceCell::new();
@@ -415,6 +445,9 @@ impl<const W: usize, G: KimchiCurve> VerifierIndex<W, G> {
             foreign_field_mul_comm,
             xor_comm,
             rot_comm,
+            keccak_round_comm,
+            keccak_sponge_comm,
+            fib_comm,
 
             // Lookup index; optional
             lookup_index,
@@ -467,6 +500,18 @@ impl<const W: usize, G: KimchiCurve> VerifierIndex<W, G> {
 
         if let Some(rot_comm) = rot_comm {
             fq_sponge.absorb_g(&rot_comm.unshifted);
+        }
+
+        if let Some(keccak_round_comm) = keccak_round_comm {
+            fq_sponge.absorb_g(&keccak_round_comm.unshifted);
+        }
+
+        if let Some(keccak_sponge_comm) = keccak_sponge_comm {
+            fq_sponge.absorb_g(&keccak_sponge_comm.unshifted);
+        }
+
+        if let Some(fib_comm) = fib_comm {
+            fq_sponge.absorb_g(&fib_comm.unshifted);
         }
 
         // Lookup index; optional

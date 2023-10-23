@@ -21,7 +21,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{argument::ArgumentWitness, expr};
+use super::{argument::ArgumentWitness, expr, polynomials::fibonacci};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -110,6 +110,8 @@ pub enum GateType {
     Rot64,
     KeccakRound,
     KeccakSponge,
+    // Test
+    Fibonacci,
 }
 
 /// Gate error
@@ -234,6 +236,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             KeccakSponge => self
                 .verify_witness::<W, G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
+            Fibonacci => self
+                .verify_witness::<W, G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -332,6 +337,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             GateType::KeccakSponge => {
                 keccak::circuitgates::KeccakSponge::constraint_checks(&env, &mut cache)
             }
+            GateType::Fibonacci => fibonacci::Fibonacci::constraint_checks(&env, &mut cache),
         };
 
         // Check for failed constraints

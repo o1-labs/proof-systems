@@ -49,6 +49,8 @@ pub struct FeatureFlags {
     pub keccak_round: bool,
     /// Keccak sponge gate
     pub keccak_sponge: bool,
+    /// Fibonacci gate
+    pub fib: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
 }
@@ -137,11 +139,15 @@ pub struct ColumnEvaluations<const W: usize, F: PrimeField> {
 
     /// Keccak round gate selector over domain d4
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_round_selector4: Option<E<F, D<F>>>,
+    pub keccak_round_selector8: Option<E<F, D<F>>>,
 
     /// Keccak sponge gate selector over domain d4
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_sponge_selector4: Option<E<F, D<F>>>,
+    pub keccak_sponge_selector8: Option<E<F, D<F>>>,
+
+    /// Fibonacci gate selector over domain d4
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub fib_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -581,7 +587,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let keccak_round_selector4 = {
+        let keccak_round_selector8 = {
             if !self.feature_flags.keccak_round {
                 None
             } else {
@@ -589,13 +595,13 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     GateType::KeccakRound,
                     &self.gates,
                     &self.domain,
-                    &self.domain.d4,
+                    &self.domain.d8,
                     self.disable_gates_checks,
                 ))
             }
         };
 
-        let keccak_sponge_selector4 = {
+        let keccak_sponge_selector8 = {
             if !self.feature_flags.keccak_sponge {
                 None
             } else {
@@ -603,7 +609,21 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
                     GateType::KeccakSponge,
                     &self.gates,
                     &self.domain,
-                    &self.domain.d4,
+                    &self.domain.d8,
+                    self.disable_gates_checks,
+                ))
+            }
+        };
+
+        let fib_selector8 = {
+            if !self.feature_flags.fib {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::Fibonacci,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
                     self.disable_gates_checks,
                 ))
             }
@@ -630,8 +650,9 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_mul_selector8,
             xor_selector8,
             rot_selector8,
-            keccak_round_selector4,
-            keccak_sponge_selector4,
+            keccak_round_selector8,
+            keccak_sponge_selector8,
+            fib_selector8,
         }
     }
 }
@@ -759,6 +780,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             rot: false,
             keccak_round: false,
             keccak_sponge: false,
+            fib: false,
         };
 
         for gate in &gates {

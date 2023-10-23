@@ -1820,6 +1820,18 @@ pub struct VerifierIndex<const W: usize, G: KimchiCurve> {
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
+    /// Keccak round commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_round_comm: Option<PolyComm<G>>,
+
+    /// Keccak sponge commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_sponge_comm: Option<PolyComm<G>>,
+
+    /// Fibonacci commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub fib_comm: Option<PolyComm<G>>,
+
     /// wire coordinate shifts
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub shift: [G::ScalarField; PERMUTS],

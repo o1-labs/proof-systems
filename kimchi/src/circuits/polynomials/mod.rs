@@ -2,6 +2,7 @@ pub mod and;
 pub mod complete_add;
 pub mod endomul_scalar;
 pub mod endosclmul;
+pub mod fibonacci;
 pub mod foreign_field_add;
 pub mod foreign_field_mul;
 pub mod generic;

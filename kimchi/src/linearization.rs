@@ -256,6 +256,7 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
                 rot: true,
                 keccak_round: true,
                 keccak_sponge: true,
+                fib: true,
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,

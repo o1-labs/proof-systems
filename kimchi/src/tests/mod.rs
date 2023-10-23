@@ -2,6 +2,7 @@ mod and;
 mod ec;
 mod endomul;
 mod endomul_scalar;
+mod fibonacci;
 mod foreign_field_add;
 mod foreign_field_mul;
 mod framework;
