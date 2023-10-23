@@ -514,8 +514,8 @@ impl<const W: usize, G: KimchiCurve> VerifierIndex<W, G> {
                     lookup,
                     range_check,
                     ffmul,
-                    keccak_round: _,
-                    keccak_sponge: _,
+                    //keccak_round: _,
+                    //keccak_sponge: _,
                 },
         }) = lookup_index
         {

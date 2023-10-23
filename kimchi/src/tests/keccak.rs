@@ -152,7 +152,6 @@ where
     println!();
     println!();
     let hash = BigUint::from_bytes_be(&hash);
-    println!("entering runner");
     let runner = if full {
         // Create prover index with test framework
         Some(
@@ -163,7 +162,6 @@ where
     } else {
         None
     };
-    println!("entering constraint system");
     let cs = if let Some(runner) = runner.as_ref() {
         runner.clone().prover_index().cs.clone()
     } else {
@@ -171,7 +169,6 @@ where
             .build::<KECCAK_COLS>()
             .unwrap()
     };
-    println!("enter constraint system");
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
@@ -180,7 +177,7 @@ where
             return (result, hash);
         }
     }
-    println!("entering prover");
+
     if let Some(runner) = runner.as_ref() {
         // Perform full test that everything is ok before invalidation
         assert_eq!(
