@@ -45,10 +45,12 @@ pub struct LookupSelectors<T> {
     pub range_check: Option<T>,
     /// Foreign field multiplication pattern lookup selector
     pub ffmul: Option<T>,
+    /*
     /// Keccak round pattern lookup selector
     pub keccak_round: Option<T>,
     /// Keccak sponge pattern lookup selector
     pub keccak_sponge: Option<T>,
+    */
 }
 
 #[serde_as]
@@ -62,10 +64,12 @@ struct LookupSelectorsSerdeAs<F: FftField> {
     pub range_check: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub ffmul: Option<E<F, D<F>>>,
+    /*
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub keccak_round: Option<E<F, D<F>>>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub keccak_sponge: Option<E<F, D<F>>>,
+    */
 }
 
 impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
@@ -80,8 +84,8 @@ impl<F: FftField> serde_with::SerializeAs<LookupSelectors<E<F, D<F>>>>
             lookup: val.lookup.clone(),
             range_check: val.range_check.clone(),
             ffmul: val.ffmul.clone(),
-            keccak_round: val.keccak_round.clone(),
-            keccak_sponge: val.keccak_sponge.clone(),
+            //keccak_round: val.keccak_round.clone(),
+            //keccak_sponge: val.keccak_sponge.clone(),
         };
         repr.serialize(serializer)
     }
@@ -99,16 +103,16 @@ impl<'de, F: FftField> serde_with::DeserializeAs<'de, LookupSelectors<E<F, D<F>>
             lookup,
             range_check,
             ffmul,
-            keccak_round,
-            keccak_sponge,
+            //keccak_round,
+            //keccak_sponge,
         } = LookupSelectorsSerdeAs::deserialize(deserializer)?;
         Ok(LookupSelectors {
             xor,
             lookup,
             range_check,
             ffmul,
-            keccak_round,
-            keccak_sponge,
+            //keccak_round,
+            //keccak_sponge,
         })
     }
 }
@@ -122,8 +126,8 @@ impl<T> std::ops::Index<LookupPattern> for LookupSelectors<T> {
             LookupPattern::Lookup => &self.lookup,
             LookupPattern::RangeCheck => &self.range_check,
             LookupPattern::ForeignFieldMul => &self.ffmul,
-            LookupPattern::KeccakRound => &self.keccak_round,
-            LookupPattern::KeccakSponge => &self.keccak_sponge,
+            //LookupPattern::KeccakRound => &self.keccak_round,
+            //LookupPattern::KeccakSponge => &self.keccak_sponge,
         }
     }
 }
@@ -135,8 +139,8 @@ impl<T> std::ops::IndexMut<LookupPattern> for LookupSelectors<T> {
             LookupPattern::Lookup => &mut self.lookup,
             LookupPattern::RangeCheck => &mut self.range_check,
             LookupPattern::ForeignFieldMul => &mut self.ffmul,
-            LookupPattern::KeccakRound => &mut self.keccak_round,
-            LookupPattern::KeccakSponge => &mut self.keccak_sponge,
+            //LookupPattern::KeccakRound => &mut self.keccak_round,
+            //LookupPattern::KeccakSponge => &mut self.keccak_sponge,
         }
     }
 }
@@ -148,8 +152,8 @@ impl<T> LookupSelectors<T> {
             lookup,
             range_check,
             ffmul,
-            keccak_round,
-            keccak_sponge,
+            //keccak_round,
+            //keccak_sponge,
         } = self;
         // This closure isn't really redundant -- it shields the parameter from a copy -- but
         // clippy isn't smart enough to figure that out..
@@ -160,8 +164,8 @@ impl<T> LookupSelectors<T> {
             lookup: lookup.map(f),
             range_check: range_check.map(f),
             ffmul: ffmul.map(f),
-            keccak_round: keccak_round.map(f),
-            keccak_sponge: keccak_sponge.map(f),
+            //keccak_round: keccak_round.map(f),
+            //keccak_sponge: keccak_sponge.map(f),
         }
     }
 
@@ -171,8 +175,8 @@ impl<T> LookupSelectors<T> {
             lookup: self.lookup.as_ref(),
             range_check: self.range_check.as_ref(),
             ffmul: self.ffmul.as_ref(),
-            keccak_round: self.keccak_round.as_ref(),
-            keccak_sponge: self.keccak_sponge.as_ref(),
+            //keccak_round: self.keccak_round.as_ref(),
+            //keccak_sponge: self.keccak_sponge.as_ref(),
         }
     }
 }

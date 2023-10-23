@@ -530,8 +530,8 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
                     lookup,
                     range_check,
                     ffmul,
-                    keccak_round: _,
-                    keccak_sponge: _,
+                    //keccak_round: _,
+                    //keccak_sponge: _,
                 },
         }) = lookup_index
         {

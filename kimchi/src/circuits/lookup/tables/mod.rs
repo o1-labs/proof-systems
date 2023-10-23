@@ -2,10 +2,10 @@ use ark_ff::{FftField, One, Zero};
 use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
 
-pub mod bits16;
+//pub mod bits16;
 pub mod range_check;
-pub mod reset;
-pub mod sparse;
+//pub mod reset;
+//pub mod sparse;
 pub mod xor;
 
 //~ spec:startcode
@@ -31,9 +31,11 @@ pub const RESET_TABLE_ID: i32 = 4;
 pub enum GateLookupTable {
     Xor,
     RangeCheck,
-    Bits16,
-    Sparse,
-    Reset,
+    /*
+        Bits16,
+        Sparse,
+        Reset,
+    */
 }
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
@@ -86,9 +88,9 @@ pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
         GateLookupTable::RangeCheck => range_check::range_check_table(),
-        GateLookupTable::Bits16 => bits16::bits16_table(),
-        GateLookupTable::Sparse => sparse::sparse_table(),
-        GateLookupTable::Reset => reset::reset_table(),
+        //GateLookupTable::Bits16 => bits16::bits16_table(),
+        //GateLookupTable::Sparse => sparse::sparse_table(),
+        //GateLookupTable::Reset => reset::reset_table(),
     }
 }
 
@@ -98,9 +100,9 @@ impl GateLookupTable {
         match self {
             GateLookupTable::Xor => xor::TABLE_SIZE,
             GateLookupTable::RangeCheck => range_check::TABLE_SIZE,
-            GateLookupTable::Bits16 | GateLookupTable::Reset | GateLookupTable::Sparse => {
+            /*GateLookupTable::Bits16 | GateLookupTable::Reset | GateLookupTable::Sparse => {
                 sparse::TABLE_SIZE
-            }
+            }*/
         }
     }
 }
