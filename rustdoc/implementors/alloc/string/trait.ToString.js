@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"kimchi_optimism":[["impl <a class=\"trait\" href=\"https://doc.rust-lang.org/nightly/alloc/string/trait.ToString.html\" title=\"trait alloc::string::ToString\">ToString</a> for <a class=\"struct\" href=\"kimchi_optimism/cannon/struct.State.html\" title=\"struct kimchi_optimism::cannon::State\">State</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()
