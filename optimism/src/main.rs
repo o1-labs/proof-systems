@@ -1,5 +1,8 @@
 use clap::{arg, value_parser, Arg, ArgAction, Command};
-use kimchi_optimism::cannon::{State, VmConfiguration};
+use kimchi_optimism::{
+    cannon::{State, VmConfiguration},
+    mips::witness,
+};
 use std::{fs::File, io::BufReader, process::ExitCode};
 
 fn cli() -> VmConfiguration {
@@ -116,7 +119,7 @@ pub fn main() -> ExitCode {
 
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
-    let _state: State = serde_json::from_reader(reader).expect("Error reading input state file");
+    let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
 
     if let Some(host_program) = configuration.host {
         println!("Launching host program {}", host_program.name);
@@ -126,6 +129,14 @@ pub fn main() -> ExitCode {
             .spawn()
             .expect("Could not spawn host process");
     };
+
+    let page_size = 1 << 12;
+
+    let mut env = witness::Env::<ark_bn254::Fq>::create(page_size, state);
+
+    while !env.halt {
+        env.step();
+    }
 
     // TODO: Logic
     ExitCode::FAILURE
