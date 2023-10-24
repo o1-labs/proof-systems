@@ -1,6 +1,6 @@
 use clap::{arg, value_parser, Arg, ArgAction, Command};
-use kimchi_optimism::cannon::VmConfiguration;
-use std::process::ExitCode;
+use kimchi_optimism::cannon::{State, VmConfiguration};
+use std::{fs::File, io::BufReader, process::ExitCode};
 
 fn cli() -> VmConfiguration {
     use kimchi_optimism::cannon::*;
@@ -117,6 +117,23 @@ pub fn main() -> ExitCode {
     let configuration = cli();
 
     println!("configuration\n{:#?}", configuration);
+
+    let file = File::open(configuration.input_state_file).expect("file");
+
+    let reader = BufReader::new(file);
+    // Read the JSON contents of the file as an instance of `State`.
+    let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
+
+    if let Some(host_program) = configuration.host {
+        println!("Launching host program {}", host_program.name);
+
+        let _child = std::process::Command::new(host_program.name)
+            .args(host_program.arguments)
+            .spawn()
+            .expect("Could not spawn host process");
+    };
+
+    println!("{}", state.to_string());
 
     // TODO: Logic
     ExitCode::FAILURE
