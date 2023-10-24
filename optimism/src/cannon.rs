@@ -1,12 +1,28 @@
 // Data structure and stuff for compatibility with Cannon
 
+use base64::{engine::general_purpose, Engine as _};
+use libflate::zlib::Decoder;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
+use std::io::Read;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
     pub index: u32,
-    pub data: String,
+    #[serde(deserialize_with = "from_base64")]
+    pub data: Vec<u8>,
+}
+
+fn from_base64<'de, D>(deserializer: D) -> Result<Vec<u8>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    let b64_decoded = general_purpose::STANDARD.decode(s).unwrap();
+    let mut decoder = Decoder::new(&b64_decoded[..]).unwrap();
+    let mut data = Vec::new();
+    decoder.read_to_end(&mut data).unwrap();
+    Ok(data)
 }
 
 // The renaming below keeps compatibility with OP Cannon's state format
