@@ -13,7 +13,8 @@ license = "Apache-2.0"
 path = "src/lib.rs"
 
 [dependencies]
-kimchi = { path = "../kimchi", version = "0.1.0" }
+ark-bn254 = { version = "0.3.0" }
+kimchi = { path = "../kimchi", version = "0.1.0", features = [ "bn254" ] }
 poly-commitment = { path = "../poly-commitment", version = "0.1.0" }
 groupmap = { path = "../groupmap", version = "0.1.0" }
 mina-curves = { path = "../curves", version = "0.1.0" }
