@@ -132,6 +132,9 @@
 <a href="#132" id="132">132</a>
 <a href="#133" id="133">133</a>
 <a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
 </pre></div><pre class="rust"><code><span class="comment">// Data structure and stuff for compatibility with Cannon
 
 </span><span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
@@ -139,6 +142,8 @@
 <span class="kw">use </span>regex::Regex;
 <span class="kw">use </span>serde::{Deserialize, Deserializer, Serialize};
 <span class="kw">use </span>std::io::Read;
+
+<span class="kw">pub const </span>PAGE_SIZE: usize = <span class="number">4096</span>;
 
 <span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>Page {
@@ -156,6 +161,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>decoder = Decoder::new(<span class="kw-2">&amp;</span>b64_decoded[..]).unwrap();
     <span class="kw">let </span><span class="kw-2">mut </span>data = Vec::new();
     decoder.read_to_end(<span class="kw-2">&amp;mut </span>data).unwrap();
+    <span class="macro">assert_eq!</span>(data.len(), PAGE_SIZE);
     <span class="prelude-val">Ok</span>(data)
 }
 
