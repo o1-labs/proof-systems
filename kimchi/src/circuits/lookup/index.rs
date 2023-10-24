@@ -4,8 +4,8 @@ use crate::circuits::{
     lookup::{
         constraints::LookupConfiguration,
         lookups::{LookupInfo, LookupPattern},
-        tables::LookupTable,
         runtime_tables::{RuntimeTableCfg, RuntimeTableSpec},
+        tables::LookupTable,
     },
 };
 use ark_ff::{FftField, PrimeField, SquareRootField};
@@ -27,6 +27,10 @@ pub enum LookupError {
     LookupTableTooLong {
         length: usize,
         maximum_allowed: usize,
+    },
+    #[error("Cannot create a combined table since ids for sub-tables are colliding. The collision type is: {collision_type}")]
+    LookupTableIdCollision {
+        collision_type: String,
     },
 }
 
@@ -223,9 +227,32 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     .chain(lookup_tables)
                     .collect();
 
+                // Checks whether iterator collects any duplicates, and if yes, raises
+                // a corresponding LookupTableIdCollision error.
+                fn check_id_duplicates<'a, I:Iterator<Item = &'a i32>>(iter: I, msg: &str) -> Result<(),LookupError>  {
+                    use itertools::Itertools;
+                    match iter.duplicates().collect::<Vec<_>>() {
+                        dups if !dups.is_empty() => {
+                            Err(LookupError::LookupTableIdCollision {
+                                collision_type: format!("{}: {:?}", msg, dups).to_string()
+                            })
+                        },
+                        _ => {Ok(())}
+                    }
+                }
+
+                let fixed_lookup_tables_ids: Vec<i32> = lookup_tables.iter().map(|lt| lt.id()).collect();
+                check_id_duplicates(fixed_lookup_tables_ids.iter(),"fixed lookup table duplicates")?;
+
                 // if we are using runtime tables
                 let (runtime_table_offset, runtime_selector) =
                     if let Some(runtime_tables) = &runtime_tables {
+                        let runtime_tables_ids: Vec<i32> = runtime_tables.iter().map(|rt| rt.id).collect();
+                        check_id_duplicates(runtime_tables_ids.iter(), "runtime table duplicates")?;
+                        check_id_duplicates(runtime_tables_ids.iter().chain(fixed_lookup_tables_ids.iter()),
+                                         "duplicates between runtime and fixed tables")?;
+
+
                         // save the offset of the end of the table
                         let mut runtime_table_offset = 0;
                         for table in &lookup_tables {
@@ -266,8 +293,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                             let (id, first_column) =
                                 (runtime_table.id, runtime_table.first_column.clone());
 
-                            // @volhovm: Do we need to enforce that there is at least one table
-                            // with id 0?
 
                             // important: we still need a placeholder column to make sure that
                             // if all other tables have a single column
@@ -389,6 +414,9 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_table8.push(eval);
                 }
 
+
+                // @volhovm: Do we need to enforce that there is at least one table
+                // with id 0?
                 //~ 9. pre-compute polynomial and evaluation form for the table IDs,
                 //~    only if a table with an ID different from zero was used.
                 let (table_ids, table_ids8) = if non_zero_table_id {
