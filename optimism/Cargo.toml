@@ -28,3 +28,5 @@ ark-ff = { version = "0.3.0", features = [ "parallel" ] }
 clap = "4.4.6"
 hex = "0.4.3"
 regex = "1.10.2"
+libflate = "2"
+base64 = "0.21.5"

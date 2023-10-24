@@ -116,7 +116,7 @@ pub fn main() -> ExitCode {
 
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
-    let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
+    let _state: State = serde_json::from_reader(reader).expect("Error reading input state file");
 
     if let Some(host_program) = configuration.host {
         println!("Launching host program {}", host_program.name);
@@ -126,8 +126,6 @@ pub fn main() -> ExitCode {
             .spawn()
             .expect("Could not spawn host process");
     };
-
-    println!("{}", state.to_string());
 
     // TODO: Logic
     ExitCode::FAILURE
