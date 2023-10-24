@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-deb46770fd761b69.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (1c05d50c8 2023-10-21)" data-channel="nightly" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5f34af1a0ee6bacd.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kimchi/src/circuits/expr.rs`."><title>expr.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (cd674d617 2023-10-24)" data-channel="nightly" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-5f34af1a0ee6bacd.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -3046,57 +3046,9 @@
 <a href="#3046" id="3046">3046</a>
 <a href="#3047" id="3047">3047</a>
 <a href="#3048" id="3048">3048</a>
-<a href="#3049" id="3049">3049</a>
-<a href="#3050" id="3050">3050</a>
-<a href="#3051" id="3051">3051</a>
-<a href="#3052" id="3052">3052</a>
-<a href="#3053" id="3053">3053</a>
-<a href="#3054" id="3054">3054</a>
-<a href="#3055" id="3055">3055</a>
-<a href="#3056" id="3056">3056</a>
-<a href="#3057" id="3057">3057</a>
-<a href="#3058" id="3058">3058</a>
-<a href="#3059" id="3059">3059</a>
-<a href="#3060" id="3060">3060</a>
-<a href="#3061" id="3061">3061</a>
-<a href="#3062" id="3062">3062</a>
-<a href="#3063" id="3063">3063</a>
-<a href="#3064" id="3064">3064</a>
-<a href="#3065" id="3065">3065</a>
-<a href="#3066" id="3066">3066</a>
-<a href="#3067" id="3067">3067</a>
-<a href="#3068" id="3068">3068</a>
-<a href="#3069" id="3069">3069</a>
-<a href="#3070" id="3070">3070</a>
-<a href="#3071" id="3071">3071</a>
-<a href="#3072" id="3072">3072</a>
-<a href="#3073" id="3073">3073</a>
-<a href="#3074" id="3074">3074</a>
-<a href="#3075" id="3075">3075</a>
-<a href="#3076" id="3076">3076</a>
-<a href="#3077" id="3077">3077</a>
-<a href="#3078" id="3078">3078</a>
-<a href="#3079" id="3079">3079</a>
-<a href="#3080" id="3080">3080</a>
-<a href="#3081" id="3081">3081</a>
-<a href="#3082" id="3082">3082</a>
-<a href="#3083" id="3083">3083</a>
-<a href="#3084" id="3084">3084</a>
-<a href="#3085" id="3085">3085</a>
-<a href="#3086" id="3086">3086</a>
-<a href="#3087" id="3087">3087</a>
-<a href="#3088" id="3088">3088</a>
-<a href="#3089" id="3089">3089</a>
-<a href="#3090" id="3090">3090</a>
-<a href="#3091" id="3091">3091</a>
-<a href="#3092" id="3092">3092</a>
-<a href="#3093" id="3093">3093</a>
-<a href="#3094" id="3094">3094</a>
-<a href="#3095" id="3095">3095</a>
-<a href="#3096" id="3096">3096</a>
-<a href="#3097" id="3097">3097</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
+        berkeley_columns,
         constraints::FeatureFlags,
         domains::EvaluationDomains,
         gate::{CurrOrNext, GateType},
@@ -3107,7 +3059,7 @@
         polynomials::permutation::eval_vanishes_on_last_n_rows,
         wires::COLUMNS,
     },
-    proof::{PointEvaluations, ProofEvaluations},
+    proof::PointEvaluations,
 };
 <span class="kw">use </span>ark_ff::{FftField, Field, One, PrimeField, Zero};
 <span class="kw">use </span>ark_poly::{
@@ -3118,7 +3070,11 @@
 <span class="kw">use </span>rayon::prelude::<span class="kw-2">*</span>;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::{Add, AddAssign, Mul, Neg, Sub};
-<span class="kw">use </span>std::{cmp::Ordering, fmt, iter::FromIterator};
+<span class="kw">use </span>std::{
+    cmp::Ordering,
+    fmt::{<span class="self">self</span>, Debug},
+    iter::FromIterator,
+};
 <span class="kw">use </span>std::{
     collections::{HashMap, HashSet},
     ops::MulAssign,
@@ -3129,7 +3085,7 @@
 <span class="kw">use </span><span class="self">self</span>::constraints::ExprOps;
 
 <span class="attr">#[derive(Debug, Error)]
-</span><span class="kw">pub enum </span>ExprError {
+</span><span class="kw">pub enum </span>ExprError&lt;Column&gt; {
     <span class="attr">#[error(<span class="string">&quot;Empty stack&quot;</span>)]
     </span>EmptyStack,
 
@@ -3143,7 +3099,7 @@
     </span>MissingIndexEvaluation(Column),
 
     <span class="attr">#[error(<span class="string">&quot;Linearization failed (too many unevaluated columns: {0:?}&quot;</span>)]
-    </span>FailedLinearization(Vec&lt;Variable&gt;),
+    </span>FailedLinearization(Vec&lt;Variable&lt;Column&gt;&gt;),
 
     <span class="attr">#[error(<span class="string">&quot;runtime table not available&quot;</span>)]
     </span>MissingRuntime,
@@ -3212,9 +3168,20 @@
     </span><span class="kw">pub </span>lookup: <span class="prelude-ty">Option</span>&lt;LookupEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt;&gt;,
 }
 
-<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; Environment&lt;<span class="lifetime">&#39;a</span>, F&gt; {
-    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span>Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt; {
-        <span class="kw">use </span>Column::<span class="kw-2">*</span>;
+<span class="kw">pub trait </span>ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; {
+    <span class="kw">type </span>Column;
+    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt;;
+    <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; D&lt;F&gt;;
+    <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt;;
+    <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;;
+    <span class="kw">fn </span>l0_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F;
+}
+
+<span class="kw">impl</span>&lt;<span class="lifetime">&#39;a</span>, F: FftField&gt; ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt; <span class="kw">for </span>Environment&lt;<span class="lifetime">&#39;a</span>, F&gt; {
+    <span class="kw">type </span>Column = berkeley_columns::Column;
+
+    <span class="kw">fn </span>get_column(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="kw-2">&amp;</span><span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt;&gt; {
+        <span class="kw">use </span>berkeley_columns::Column::<span class="kw-2">*</span>;
         <span class="kw">let </span>lookup = <span class="self">self</span>.lookup.as_ref();
         <span class="kw">match </span>col {
             Witness(i) =&gt; <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.witness[<span class="kw-2">*</span>i]),
@@ -3232,6 +3199,27 @@
             },
             Permutation(<span class="kw">_</span>) =&gt; <span class="prelude-val">None</span>,
         }
+    }
+
+    <span class="kw">fn </span>get_domain(<span class="kw-2">&amp;</span><span class="self">self</span>, d: Domain) -&gt; D&lt;F&gt; {
+        <span class="kw">match </span>d {
+            Domain::D1 =&gt; <span class="self">self</span>.domain.d1,
+            Domain::D2 =&gt; <span class="self">self</span>.domain.d2,
+            Domain::D4 =&gt; <span class="self">self</span>.domain.d4,
+            Domain::D8 =&gt; <span class="self">self</span>.domain.d8,
+        }
+    }
+
+    <span class="kw">fn </span>get_constants(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>Constants&lt;F&gt; {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.constants
+    }
+
+    <span class="kw">fn </span>vanishes_on_zero_knowledge_and_previous_rows(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;a </span>Evaluations&lt;F, D&lt;F&gt;&gt; {
+        <span class="self">self</span>.vanishes_on_zero_knowledge_and_previous_rows
+    }
+
+    <span class="kw">fn </span>l0_1(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; F {
+        <span class="self">self</span>.l0_1
     }
 }
 
@@ -3263,98 +3251,18 @@
     domain.evaluate_vanishing_polynomial(<span class="kw-2">*</span>pt) / (<span class="kw-2">*</span>pt - omega_i)
 }
 
-<span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
-</span><span class="doccomment">/// A type representing one of the polynomials involved in the PLONK IOP.
-</span><span class="kw">pub enum </span>Column {
-    Witness(usize),
-    Z,
-    LookupSorted(usize),
-    LookupAggreg,
-    LookupTable,
-    LookupKindIndex(LookupPattern),
-    LookupRuntimeSelector,
-    LookupRuntimeTable,
-    Index(GateType),
-    Coefficient(usize),
-    Permutation(usize),
-}
-
-<span class="kw">impl </span>Column {
-    <span class="kw">fn </span>domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain {
-        <span class="kw">match </span><span class="self">self </span>{
-            Column::Index(GateType::Generic) =&gt; Domain::D4,
-            Column::Index(GateType::CompleteAdd) =&gt; Domain::D4,
-            <span class="kw">_ </span>=&gt; Domain::D8,
-        }
-    }
-
-    <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">match </span><span class="self">self </span>{
-            Column::Witness(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;w_{{{i}}}&quot;</span>),
-            Column::Z =&gt; <span class="string">&quot;Z&quot;</span>.to_string(),
-            Column::LookupSorted(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;s_{{{i}}}&quot;</span>),
-            Column::LookupAggreg =&gt; <span class="string">&quot;a&quot;</span>.to_string(),
-            Column::LookupTable =&gt; <span class="string">&quot;t&quot;</span>.to_string(),
-            Column::LookupKindIndex(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;k_{{{i:?}}}&quot;</span>),
-            Column::LookupRuntimeSelector =&gt; <span class="string">&quot;rts&quot;</span>.to_string(),
-            Column::LookupRuntimeTable =&gt; <span class="string">&quot;rt&quot;</span>.to_string(),
-            Column::Index(gate) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;{gate:?}&quot;</span>)
-            }
-            Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c_{{{i}}}&quot;</span>),
-            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_{{{i}}}&quot;</span>),
-        }
-    }
-
-    <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">match </span><span class="self">self </span>{
-            Column::Witness(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;w[{i}]&quot;</span>),
-            Column::Z =&gt; <span class="string">&quot;Z&quot;</span>.to_string(),
-            Column::LookupSorted(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;s[{i}]&quot;</span>),
-            Column::LookupAggreg =&gt; <span class="string">&quot;a&quot;</span>.to_string(),
-            Column::LookupTable =&gt; <span class="string">&quot;t&quot;</span>.to_string(),
-            Column::LookupKindIndex(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;k[{i:?}]&quot;</span>),
-            Column::LookupRuntimeSelector =&gt; <span class="string">&quot;rts&quot;</span>.to_string(),
-            Column::LookupRuntimeTable =&gt; <span class="string">&quot;rt&quot;</span>.to_string(),
-            Column::Index(gate) =&gt; {
-                <span class="macro">format!</span>(<span class="string">&quot;{gate:?}&quot;</span>)
-            }
-            Column::Coefficient(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;c[{i}]&quot;</span>),
-            Column::Permutation(i) =&gt; <span class="macro">format!</span>(<span class="string">&quot;sigma_[{i}]&quot;</span>),
-        }
-    }
+<span class="kw">pub trait </span>GenericColumn {
+    <span class="kw">fn </span>domain(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Domain;
 }
 
 <span class="attr">#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 </span><span class="doccomment">/// A type representing a variable which can appear in a constraint. It specifies a column
 /// and a relative position (Curr or Next)
-</span><span class="kw">pub struct </span>Variable {
+</span><span class="kw">pub struct </span>Variable&lt;Column&gt; {
     <span class="doccomment">/// The column of this variable
     </span><span class="kw">pub </span>col: Column,
     <span class="doccomment">/// The row (Curr of Next) of this variable
     </span><span class="kw">pub </span>row: CurrOrNext,
-}
-
-<span class="kw">impl </span>Variable {
-    <span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="macro">format!</span>(<span class="string">&quot;var({:?}, {:?})&quot;</span>, <span class="self">self</span>.col, <span class="self">self</span>.row)
-    }
-
-    <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">let </span>col = <span class="self">self</span>.col.latex();
-        <span class="kw">match </span><span class="self">self</span>.row {
-            Curr =&gt; col,
-            Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;\\tilde{{{col}}}&quot;</span>),
-        }
-    }
-
-    <span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">let </span>col = <span class="self">self</span>.col.text();
-        <span class="kw">match </span><span class="self">self</span>.row {
-            Curr =&gt; <span class="macro">format!</span>(<span class="string">&quot;Curr({col})&quot;</span>),
-            Next =&gt; <span class="macro">format!</span>(<span class="string">&quot;Next({col})&quot;</span>),
-        }
-    }
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
@@ -3383,7 +3291,7 @@
 }
 
 <span class="kw">impl</span>&lt;F: Copy&gt; ConstantExpr&lt;F&gt; {
-    <span class="kw">fn </span>to_polish_(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F&gt;&gt;) {
+    <span class="kw">fn </span>to_polish_&lt;Column&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;) {
         <span class="kw">match </span><span class="self">self </span>{
             ConstantExpr::Alpha =&gt; res.push(PolishToken::Alpha),
             ConstantExpr::Beta =&gt; res.push(PolishToken::Beta),
@@ -3518,7 +3426,7 @@
 }
 
 <span class="kw">impl </span>Op2 {
-    <span class="kw">fn </span>to_polish&lt;A&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PolishToken&lt;A&gt; {
+    <span class="kw">fn </span>to_polish&lt;A, Column&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; PolishToken&lt;A, Column&gt; {
         <span class="kw">use </span>Op2::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Add =&gt; PolishToken::Add,
@@ -3573,24 +3481,26 @@
 /// the corresponding combination of the polynomials corresponding to
 /// the above variables should vanish on the PLONK domain.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
-</span><span class="kw">pub enum </span>Expr&lt;C&gt; {
+</span><span class="kw">pub enum </span>Expr&lt;C, Column&gt; {
     Constant(C),
-    Cell(Variable),
-    Double(Box&lt;Expr&lt;C&gt;&gt;),
-    Square(Box&lt;Expr&lt;C&gt;&gt;),
-    BinOp(Op2, Box&lt;Expr&lt;C&gt;&gt;, Box&lt;Expr&lt;C&gt;&gt;),
+    Cell(Variable&lt;Column&gt;),
+    Double(Box&lt;Expr&lt;C, Column&gt;&gt;),
+    Square(Box&lt;Expr&lt;C, Column&gt;&gt;),
+    BinOp(Op2, Box&lt;Expr&lt;C, Column&gt;&gt;, Box&lt;Expr&lt;C, Column&gt;&gt;),
     VanishesOnZeroKnowledgeAndPreviousRows,
     <span class="doccomment">/// UnnormalizedLagrangeBasis(i) is
     /// (x^n - 1) / (x - omega^i)
     </span>UnnormalizedLagrangeBasis(RowOffset),
-    Pow(Box&lt;Expr&lt;C&gt;&gt;, u64),
-    Cache(CacheId, Box&lt;Expr&lt;C&gt;&gt;),
+    Pow(Box&lt;Expr&lt;C, Column&gt;&gt;, u64),
+    Cache(CacheId, Box&lt;Expr&lt;C, Column&gt;&gt;),
     <span class="doccomment">/// If the feature flag is enabled, return the first expression; otherwise, return the second.
-    </span>IfFeature(FeatureFlag, Box&lt;Expr&lt;C&gt;&gt;, Box&lt;Expr&lt;C&gt;&gt;),
+    </span>IfFeature(FeatureFlag, Box&lt;Expr&lt;C, Column&gt;&gt;, Box&lt;Expr&lt;C, Column&gt;&gt;),
 }
 
-<span class="kw">impl</span>&lt;C: Zero + One + Neg&lt;Output = C&gt; + PartialEq + Clone&gt; Expr&lt;C&gt; {
-    <span class="kw">fn </span>apply_feature_flags_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; (Expr&lt;C&gt;, bool) {
+<span class="kw">impl</span>&lt;C: Zero + One + Neg&lt;Output = C&gt; + PartialEq + Clone, Column: Clone + PartialEq&gt;
+    Expr&lt;C, Column&gt;
+{
+    <span class="kw">fn </span>apply_feature_flags_inner(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; (Expr&lt;C, Column&gt;, bool) {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Constant(<span class="kw">_</span>)
@@ -3724,7 +3634,7 @@
             }
         }
     }
-    <span class="kw">pub fn </span>apply_feature_flags(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; Expr&lt;C&gt; {
+    <span class="kw">pub fn </span>apply_feature_flags(<span class="kw-2">&amp;</span><span class="self">self</span>, features: <span class="kw-2">&amp;</span>FeatureFlags) -&gt; Expr&lt;C, Column&gt; {
         <span class="kw">let </span>(res, <span class="kw">_</span>) = <span class="self">self</span>.apply_feature_flags_inner(features);
         res
     }
@@ -3734,7 +3644,7 @@
 /// [reverse Polish notation](https://en.wikipedia.org/wiki/Reverse_Polish_notation)
 /// expressions, which are vectors of the below tokens.
 </span><span class="attr">#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-</span><span class="kw">pub enum </span>PolishToken&lt;F&gt; {
+</span><span class="kw">pub enum </span>PolishToken&lt;F, Column&gt; {
     Alpha,
     Beta,
     Gamma,
@@ -3745,7 +3655,7 @@
         col: usize,
     },
     Literal(F),
-    Cell(Variable),
+    Cell(Variable&lt;Column&gt;),
     Dup,
     Pow(u64),
     Add,
@@ -3761,72 +3671,17 @@
     </span>SkipIfNot(FeatureFlag, usize),
 }
 
-<span class="kw">impl </span>Variable {
-    <span class="kw">fn </span>evaluate&lt;F: Field&gt;(
+<span class="kw">pub trait </span>ColumnEvaluations&lt;F&gt; {
+    <span class="kw">type </span>Column;
+    <span class="kw">fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, col: <span class="self">Self</span>::Column) -&gt; <span class="prelude-ty">Result</span>&lt;PointEvaluations&lt;F&gt;, ExprError&lt;<span class="self">Self</span>::Column&gt;&gt;;
+}
+
+<span class="kw">impl</span>&lt;Column: Copy&gt; Variable&lt;Column&gt; {
+    <span class="kw">fn </span>evaluate&lt;F: Field, Evaluations: ColumnEvaluations&lt;F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        evals: <span class="kw-2">&amp;</span>ProofEvaluations&lt;PointEvaluations&lt;F&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&gt; {
-        <span class="kw">let </span>point_evaluations = {
-            <span class="kw">use </span>Column::<span class="kw-2">*</span>;
-            <span class="kw">match </span><span class="self">self</span>.col {
-                Witness(i) =&gt; <span class="prelude-val">Ok</span>(evals.w[i]),
-                Z =&gt; <span class="prelude-val">Ok</span>(evals.z),
-                LookupSorted(i) =&gt; {
-                    evals.lookup_sorted[i].ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col))
-                }
-                LookupAggreg =&gt; evals
-                    .lookup_aggregation
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                LookupTable =&gt; evals
-                    .lookup_table
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                LookupRuntimeTable =&gt; evals
-                    .runtime_lookup_table
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Index(GateType::Poseidon) =&gt; <span class="prelude-val">Ok</span>(evals.poseidon_selector),
-                Index(GateType::Generic) =&gt; <span class="prelude-val">Ok</span>(evals.generic_selector),
-                Index(GateType::CompleteAdd) =&gt; <span class="prelude-val">Ok</span>(evals.complete_add_selector),
-                Index(GateType::VarBaseMul) =&gt; <span class="prelude-val">Ok</span>(evals.mul_selector),
-                Index(GateType::EndoMul) =&gt; <span class="prelude-val">Ok</span>(evals.emul_selector),
-                Index(GateType::EndoMulScalar) =&gt; <span class="prelude-val">Ok</span>(evals.endomul_scalar_selector),
-                Index(GateType::RangeCheck0) =&gt; evals
-                    .range_check0_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Index(GateType::RangeCheck1) =&gt; evals
-                    .range_check1_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Index(GateType::ForeignFieldAdd) =&gt; evals
-                    .foreign_field_add_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Index(GateType::ForeignFieldMul) =&gt; evals
-                    .foreign_field_mul_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Index(GateType::Xor16) =&gt; evals
-                    .xor_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Index(GateType::Rot64) =&gt; evals
-                    .rot_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Permutation(i) =&gt; <span class="prelude-val">Ok</span>(evals.s[i]),
-                Coefficient(i) =&gt; <span class="prelude-val">Ok</span>(evals.coefficients[i]),
-                Column::LookupKindIndex(LookupPattern::Xor) =&gt; evals
-                    .xor_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Column::LookupKindIndex(LookupPattern::Lookup) =&gt; evals
-                    .lookup_gate_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Column::LookupKindIndex(LookupPattern::RangeCheck) =&gt; evals
-                    .range_check_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Column::LookupKindIndex(LookupPattern::ForeignFieldMul) =&gt; evals
-                    .foreign_field_mul_lookup_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Column::LookupRuntimeSelector =&gt; evals
-                    .runtime_lookup_table_selector
-                    .ok_or(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-                Index(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(ExprError::MissingIndexEvaluation(<span class="self">self</span>.col)),
-            }
-        }<span class="question-mark">?</span>;
+        evals: <span class="kw-2">&amp;</span>Evaluations,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
+        <span class="kw">let </span>point_evaluations = evals.evaluate(<span class="self">self</span>.col)<span class="question-mark">?</span>;
         <span class="kw">match </span><span class="self">self</span>.row {
             CurrOrNext::Curr =&gt; <span class="prelude-val">Ok</span>(point_evaluations.zeta),
             CurrOrNext::Next =&gt; <span class="prelude-val">Ok</span>(point_evaluations.zeta_omega),
@@ -3834,15 +3689,15 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField&gt; PolishToken&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: Copy&gt; PolishToken&lt;F, Column&gt; {
     <span class="doccomment">/// Evaluate an RPN expression to a field element.
-    </span><span class="kw">pub fn </span>evaluate(
-        toks: <span class="kw-2">&amp;</span>[PolishToken&lt;F&gt;],
+    </span><span class="kw">pub fn </span>evaluate&lt;Evaluations: ColumnEvaluations&lt;F, Column = Column&gt;&gt;(
+        toks: <span class="kw-2">&amp;</span>[PolishToken&lt;F, Column&gt;],
         d: D&lt;F&gt;,
         pt: F,
-        evals: <span class="kw-2">&amp;</span>ProofEvaluations&lt;PointEvaluations&lt;F&gt;&gt;,
+        evals: <span class="kw-2">&amp;</span>Evaluations,
         c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>stack = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>cache: Vec&lt;F&gt; = <span class="macro">vec!</span>[];
 
@@ -3924,9 +3779,9 @@
     }
 }
 
-<span class="kw">impl</span>&lt;C&gt; Expr&lt;C&gt; {
+<span class="kw">impl</span>&lt;C, Column&gt; Expr&lt;C, Column&gt; {
     <span class="doccomment">/// Convenience function for constructing cell variables.
-    </span><span class="kw">pub fn </span>cell(col: Column, row: CurrOrNext) -&gt; Expr&lt;C&gt; {
+    </span><span class="kw">pub fn </span>cell(col: Column, row: CurrOrNext) -&gt; Expr&lt;C, Column&gt; {
         Expr::Cell(Variable { col, row })
     }
 
@@ -3939,7 +3794,7 @@
     }
 
     <span class="doccomment">/// Convenience function for constructing constant expressions.
-    </span><span class="kw">pub fn </span>constant(c: C) -&gt; Expr&lt;C&gt; {
+    </span><span class="kw">pub fn </span>constant(c: C) -&gt; Expr&lt;C, Column&gt; {
         Expr::Constant(c)
     }
 
@@ -3965,7 +3820,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt;
+<span class="kw">impl</span>&lt;F&gt; fmt::Display <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;
 <span class="kw">where
     </span>F: PrimeField,
 {
@@ -3975,7 +3830,7 @@
 }
 
 <span class="attr">#[derive(Clone, Copy, Debug, PartialEq, FromPrimitive, ToPrimitive)]
-</span><span class="kw">enum </span>Domain {
+</span><span class="kw">pub enum </span>Domain {
     D1 = <span class="number">1</span>,
     D2 = <span class="number">2</span>,
     D4 = <span class="number">4</span>,
@@ -4048,11 +3903,11 @@
 /// = (omega^{q n} omega_8^{r n} - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega_8^k - omega^i)
 /// = ((omega_8^n)^r - 1) / (omega^q omega_8^r - omega^i)
-</span><span class="kw">fn </span>unnormalized_lagrange_evals&lt;F: FftField&gt;(
+</span><span class="kw">fn </span>unnormalized_lagrange_evals&lt;<span class="lifetime">&#39;a</span>, F: FftField, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F&gt;&gt;(
     l0_1: F,
     i: i32,
     res_domain: Domain,
-    env: <span class="kw-2">&amp;</span>Environment&lt;F&gt;,
+    env: <span class="kw-2">&amp;</span>Environment,
 ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
     <span class="kw">let </span>k = <span class="kw">match </span>res_domain {
         Domain::D1 =&gt; <span class="number">1</span>,
@@ -4060,9 +3915,9 @@
         Domain::D4 =&gt; <span class="number">4</span>,
         Domain::D8 =&gt; <span class="number">8</span>,
     };
-    <span class="kw">let </span>res_domain = get_domain(res_domain, env);
+    <span class="kw">let </span>res_domain = env.get_domain(res_domain);
 
-    <span class="kw">let </span>d1 = env.domain.d1;
+    <span class="kw">let </span>d1 = env.get_domain(Domain::D1);
     <span class="kw">let </span>n = d1.size;
     <span class="comment">// Renormalize negative values to wrap around at domain size
     </span><span class="kw">let </span>i = <span class="kw">if </span>i &lt; <span class="number">0 </span>{
@@ -4512,16 +4367,7 @@
     }
 }
 
-<span class="kw">fn </span>get_domain&lt;F: FftField&gt;(d: Domain, env: <span class="kw-2">&amp;</span>Environment&lt;F&gt;) -&gt; D&lt;F&gt; {
-    <span class="kw">match </span>d {
-        Domain::D1 =&gt; env.domain.d1,
-        Domain::D2 =&gt; env.domain.d2,
-        Domain::D4 =&gt; env.domain.d4,
-        Domain::D8 =&gt; env.domain.d8,
-    }
-}
-
-<span class="kw">impl</span>&lt;F: Field&gt; Expr&lt;ConstantExpr&lt;F&gt;&gt; {
+<span class="kw">impl</span>&lt;F: Field, Column: PartialEq&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="doccomment">/// Convenience function for constructing expressions from literal
     /// field elements.
     </span><span class="kw">pub fn </span>literal(x: F) -&gt; <span class="self">Self </span>{
@@ -4531,7 +4377,7 @@
     <span class="doccomment">/// Combines multiple constraints `[c0, ..., cn]` into a single constraint
     /// `alpha^alpha0 * c0 + alpha^{alpha0 + 1} * c1 + ... + alpha^{alpha0 + n} * cn`.
     </span><span class="kw">pub fn </span>combine_constraints(alphas: <span class="kw">impl </span>Iterator&lt;Item = u32&gt;, cs: Vec&lt;<span class="self">Self</span>&gt;) -&gt; <span class="self">Self </span>{
-        <span class="kw">let </span>zero = Expr::&lt;ConstantExpr&lt;F&gt;&gt;::zero();
+        <span class="kw">let </span>zero = Expr::&lt;ConstantExpr&lt;F&gt;, Column&gt;::zero();
         cs.into_iter()
             .zip_eq(alphas)
             .map(|(c, i)| Expr::Constant(ConstantExpr::Alpha.pow(i <span class="kw">as </span>u64)) * c)
@@ -4539,16 +4385,20 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField&gt; Expr&lt;ConstantExpr&lt;F&gt;&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: Copy&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="doccomment">/// Compile an expression to an RPN expression.
-    </span><span class="kw">pub fn </span>to_polish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;PolishToken&lt;F&gt;&gt; {
+    </span><span class="kw">pub fn </span>to_polish(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Vec&lt;PolishToken&lt;F, Column&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[];
         <span class="kw">let </span><span class="kw-2">mut </span>cache = HashMap::new();
         <span class="self">self</span>.to_polish_(<span class="kw-2">&amp;mut </span>cache, <span class="kw-2">&amp;mut </span>res);
         res
     }
 
-    <span class="kw">fn </span>to_polish_(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, usize&gt;, res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F&gt;&gt;) {
+    <span class="kw">fn </span>to_polish_(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, usize&gt;,
+        res: <span class="kw-2">&amp;mut </span>Vec&lt;PolishToken&lt;F, Column&gt;&gt;,
+    ) {
         <span class="kw">match </span><span class="self">self </span>{
             Expr::Double(x) =&gt; {
                 x.to_polish_(cache, res);
@@ -4628,8 +4478,10 @@
     </span><span class="kw">pub fn </span>beta() -&gt; <span class="self">Self </span>{
         Expr::Constant(ConstantExpr::Beta)
     }
+}
 
-    <span class="kw">fn </span>evaluate_constants_(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;) -&gt; Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy + GenericColumn&gt; Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
+    <span class="kw">fn </span>evaluate_constants_(<span class="kw-2">&amp;</span><span class="self">self</span>, c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;) -&gt; Expr&lt;F, Column&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="comment">// TODO: Use cache
         </span><span class="kw">match </span><span class="self">self </span>{
@@ -4653,24 +4505,28 @@
     }
 
     <span class="doccomment">/// Evaluate an expression as a field element against an environment.
-    </span><span class="kw">pub fn </span>evaluate(
+    </span><span class="kw">pub fn </span>evaluate&lt;
+        <span class="lifetime">&#39;a</span>,
+        Evaluations: ColumnEvaluations&lt;F, Column = Column&gt;,
+        Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;,
+    &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         d: D&lt;F&gt;,
         pt: F,
-        evals: <span class="kw-2">&amp;</span>ProofEvaluations&lt;PointEvaluations&lt;F&gt;&gt;,
-        env: <span class="kw-2">&amp;</span>Environment&lt;F&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&gt; {
-        <span class="self">self</span>.evaluate_(d, pt, evals, <span class="kw-2">&amp;</span>env.constants)
+        evals: <span class="kw-2">&amp;</span>Evaluations,
+        env: <span class="kw-2">&amp;</span>Environment,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
+        <span class="self">self</span>.evaluate_(d, pt, evals, env.get_constants())
     }
 
     <span class="doccomment">/// Evaluate an expression as a field element against the constants.
-    </span><span class="kw">pub fn </span>evaluate_(
+    </span><span class="kw">pub fn </span>evaluate_&lt;Evaluations: ColumnEvaluations&lt;F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         d: D&lt;F&gt;,
         pt: F,
-        evals: <span class="kw-2">&amp;</span>ProofEvaluations&lt;PointEvaluations&lt;F&gt;&gt;,
+        evals: <span class="kw-2">&amp;</span>Evaluations,
         c: <span class="kw-2">&amp;</span>Constants&lt;F&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; x.evaluate_(d, pt, evals, c).map(|x| x.double()),
@@ -4716,12 +4572,18 @@
     }
 
     <span class="doccomment">/// Evaluate the constant expressions in this expression down into field elements.
-    </span><span class="kw">pub fn </span>evaluate_constants(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;F&gt;) -&gt; Expr&lt;F&gt; {
-        <span class="self">self</span>.evaluate_constants_(<span class="kw-2">&amp;</span>env.constants)
+    </span><span class="kw">pub fn </span>evaluate_constants&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        env: <span class="kw-2">&amp;</span>Environment,
+    ) -&gt; Expr&lt;F, Column&gt; {
+        <span class="self">self</span>.evaluate_constants_(env.get_constants())
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
-    </span><span class="kw">pub fn </span>evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;<span class="lifetime">&#39;_</span>, F&gt;) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
+    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        env: <span class="kw-2">&amp;</span>Environment,
+    ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
         <span class="self">self</span>.evaluate_constants(env).evaluations(env)
     }
 }
@@ -4731,15 +4593,15 @@
     Right(B),
 }
 
-<span class="kw">impl</span>&lt;F: FftField&gt; Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: Copy + GenericColumn&gt; Expr&lt;F, Column&gt; {
     <span class="doccomment">/// Evaluate an expression into a field element.
-    </span><span class="kw">pub fn </span>evaluate(
+    </span><span class="kw">pub fn </span>evaluate&lt;Evaluations: ColumnEvaluations&lt;F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         d: D&lt;F&gt;,
         pt: F,
         zk_rows: u64,
-        evals: <span class="kw-2">&amp;</span>ProofEvaluations&lt;PointEvaluations&lt;F&gt;&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&gt; {
+        evals: <span class="kw-2">&amp;</span>Evaluations,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;F, ExprError&lt;Column&gt;&gt; {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Constant(x) =&gt; <span class="prelude-val">Ok</span>(<span class="kw-2">*</span>x),
@@ -4785,9 +4647,12 @@
     }
 
     <span class="doccomment">/// Compute the polynomial corresponding to this expression, in evaluation form.
-    </span><span class="kw">pub fn </span>evaluations(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;<span class="lifetime">&#39;_</span>, F&gt;) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
-        <span class="kw">let </span>d1_size = env.domain.d1.size;
-        <span class="kw">let </span>deg = <span class="self">self</span>.degree(d1_size, env.constants.zk_rows);
+    </span><span class="kw">pub fn </span>evaluations&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        env: <span class="kw-2">&amp;</span>Environment,
+    ) -&gt; Evaluations&lt;F, D&lt;F&gt;&gt; {
+        <span class="kw">let </span>d1_size = env.get_domain(Domain::D1).size;
+        <span class="kw">let </span>deg = <span class="self">self</span>.degree(d1_size, env.get_constants().zk_rows);
         <span class="kw">let </span>d = <span class="kw">if </span>deg &lt;= d1_size {
             Domain::D1
         } <span class="kw">else if </span>deg &lt;= <span class="number">4 </span>* d1_size {
@@ -4810,13 +4675,13 @@
                 <span class="macro">assert_eq!</span>(domain, d);
                 evals
             }
-            EvalResult::Constant(x) =&gt; EvalResult::init_((d, get_domain(d, env)), |<span class="kw">_</span>| x),
+            EvalResult::Constant(x) =&gt; EvalResult::init_((d, env.get_domain(d)), |<span class="kw">_</span>| x),
             EvalResult::SubEvals {
                 evals,
                 domain: d_sub,
                 shift: s,
             } =&gt; {
-                <span class="kw">let </span>res_domain = get_domain(d, env);
+                <span class="kw">let </span>res_domain = env.get_domain(d);
                 <span class="kw">let </span>scale = (d_sub <span class="kw">as </span>usize) / (d <span class="kw">as </span>usize);
                 <span class="macro">assert!</span>(scale != <span class="number">0</span>);
                 EvalResult::init_((d, res_domain), |i| {
@@ -4826,16 +4691,16 @@
         }
     }
 
-    <span class="kw">fn </span>evaluations_helper&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>&gt;(
+    <span class="kw">fn </span>evaluations_helper&lt;<span class="lifetime">&#39;a</span>, <span class="lifetime">&#39;b</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         cache: <span class="kw-2">&amp;</span><span class="lifetime">&#39;b </span><span class="kw-2">mut </span>HashMap&lt;CacheId, EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt;&gt;,
         d: Domain,
-        env: <span class="kw-2">&amp;</span>Environment&lt;<span class="lifetime">&#39;a</span>, F&gt;,
+        env: <span class="kw-2">&amp;</span>Environment,
     ) -&gt; Either&lt;EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt;, CacheId&gt;
     <span class="kw">where
         </span><span class="lifetime">&#39;a</span>: <span class="lifetime">&#39;b</span>,
     {
-        <span class="kw">let </span>dom = (d, get_domain(d, env));
+        <span class="kw">let </span>dom = (d, env.get_domain(d));
 
         <span class="kw">let </span>res: EvalResult&lt;<span class="lifetime">&#39;a</span>, F&gt; = <span class="kw">match </span><span class="self">self </span>{
             Expr::Square(x) =&gt; <span class="kw">match </span>x.evaluations_helper(cache, d, env) {
@@ -4897,27 +4762,27 @@
             Expr::Pow(x, p) =&gt; {
                 <span class="kw">let </span>x = x.evaluations_helper(cache, d, env);
                 <span class="kw">match </span>x {
-                    Either::Left(x) =&gt; x.pow(<span class="kw-2">*</span>p, (d, get_domain(d, env))),
+                    Either::Left(x) =&gt; x.pow(<span class="kw-2">*</span>p, (d, env.get_domain(d))),
                     Either::Right(id) =&gt; {
-                        id.get_from(cache).unwrap().pow(<span class="kw-2">*</span>p, (d, get_domain(d, env)))
+                        id.get_from(cache).unwrap().pow(<span class="kw-2">*</span>p, (d, env.get_domain(d)))
                     }
                 }
             }
             Expr::VanishesOnZeroKnowledgeAndPreviousRows =&gt; EvalResult::SubEvals {
                 domain: Domain::D8,
                 shift: <span class="number">0</span>,
-                evals: env.vanishes_on_zero_knowledge_and_previous_rows,
+                evals: env.vanishes_on_zero_knowledge_and_previous_rows(),
             },
             Expr::Constant(x) =&gt; EvalResult::Constant(<span class="kw-2">*</span>x),
             Expr::UnnormalizedLagrangeBasis(i) =&gt; {
                 <span class="kw">let </span>offset = <span class="kw">if </span>i.zk_rows {
-                    -(env.constants.zk_rows <span class="kw">as </span>i32) + i.offset
+                    -(env.get_constants().zk_rows <span class="kw">as </span>i32) + i.offset
                 } <span class="kw">else </span>{
                     i.offset
                 };
                 EvalResult::Evals {
                     domain: d,
-                    evals: unnormalized_lagrange_evals(env.l0_1, offset, d, env),
+                    evals: unnormalized_lagrange_evals(env.l0_1(), offset, d, env),
                 }
             }
             Expr::Cell(Variable { col, row }) =&gt; {
@@ -4934,7 +4799,7 @@
                 }
             }
             Expr::BinOp(op, e1, e2) =&gt; {
-                <span class="kw">let </span>dom = (d, get_domain(d, env));
+                <span class="kw">let </span>dom = (d, env.get_domain(d));
                 <span class="kw">let </span>f = |x: EvalResult&lt;F&gt;, y: EvalResult&lt;F&gt;| <span class="kw">match </span>op {
                     Op2::Mul =&gt; x.mul(y, dom),
                     Op2::Add =&gt; x.add(y, dom),
@@ -4970,12 +4835,12 @@
 <span class="attr">#[derive(Clone, Debug, Serialize, Deserialize)]
 </span><span class="doccomment">/// A &quot;linearization&quot;, which is linear combination with `E` coefficients of
 /// columns.
-</span><span class="kw">pub struct </span>Linearization&lt;E&gt; {
+</span><span class="kw">pub struct </span>Linearization&lt;E, Column&gt; {
     <span class="kw">pub </span>constant_term: E,
     <span class="kw">pub </span>index_terms: Vec&lt;(Column, E)&gt;,
 }
 
-<span class="kw">impl</span>&lt;E: Default&gt; Default <span class="kw">for </span>Linearization&lt;E&gt; {
+<span class="kw">impl</span>&lt;E: Default, Column&gt; Default <span class="kw">for </span>Linearization&lt;E, Column&gt; {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         Linearization {
             constant_term: E::default(),
@@ -4984,9 +4849,9 @@
     }
 }
 
-<span class="kw">impl</span>&lt;A&gt; Linearization&lt;A&gt; {
+<span class="kw">impl</span>&lt;A, Column: Copy&gt; Linearization&lt;A, Column&gt; {
     <span class="doccomment">/// Apply a function to all the coefficients in the linearization.
-    </span><span class="kw">pub fn </span>map&lt;B, F: Fn(<span class="kw-2">&amp;</span>A) -&gt; B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, f: F) -&gt; Linearization&lt;B&gt; {
+    </span><span class="kw">pub fn </span>map&lt;B, F: Fn(<span class="kw-2">&amp;</span>A) -&gt; B&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, f: F) -&gt; Linearization&lt;B, Column&gt; {
         Linearization {
             constant_term: f(<span class="kw-2">&amp;</span><span class="self">self</span>.constant_term),
             index_terms: <span class="self">self</span>.index_terms.iter().map(|(c, x)| (<span class="kw-2">*</span>c, f(x))).collect(),
@@ -4994,28 +4859,38 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField&gt; Linearization&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: PartialEq + Copy + GenericColumn&gt;
+    Linearization&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;, Column&gt;
+{
     <span class="doccomment">/// Evaluate the constants in a linearization with `ConstantExpr&lt;F&gt;` coefficients down
     /// to literal field elements.
-    </span><span class="kw">pub fn </span>evaluate_constants(<span class="kw-2">&amp;</span><span class="self">self</span>, env: <span class="kw-2">&amp;</span>Environment&lt;F&gt;) -&gt; Linearization&lt;Expr&lt;F&gt;&gt; {
+    </span><span class="kw">pub fn </span>evaluate_constants&lt;<span class="lifetime">&#39;a</span>, Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;&gt;(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        env: <span class="kw-2">&amp;</span>Environment,
+    ) -&gt; Linearization&lt;Expr&lt;F, Column&gt;, Column&gt; {
         <span class="self">self</span>.map(|e| e.evaluate_constants(env))
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField&gt; Linearization&lt;Vec&lt;PolishToken&lt;F&gt;&gt;&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: Copy + Debug&gt; Linearization&lt;Vec&lt;PolishToken&lt;F, Column&gt;&gt;, Column&gt; {
     <span class="doccomment">/// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    </span><span class="kw">pub fn </span>to_polynomial(
+    </span><span class="kw">pub fn </span>to_polynomial&lt;
+        <span class="lifetime">&#39;a</span>,
+        ColEvaluations: ColumnEvaluations&lt;F, Column = Column&gt;,
+        Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;,
+    &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        env: <span class="kw-2">&amp;</span>Environment&lt;F&gt;,
+        env: <span class="kw-2">&amp;</span>Environment,
         pt: F,
-        evals: <span class="kw-2">&amp;</span>ProofEvaluations&lt;PointEvaluations&lt;F&gt;&gt;,
+        evals: <span class="kw-2">&amp;</span>ColEvaluations,
     ) -&gt; (F, Evaluations&lt;F, D&lt;F&gt;&gt;) {
-        <span class="kw">let </span>cs = <span class="kw-2">&amp;</span>env.constants;
-        <span class="kw">let </span>n = env.domain.d1.size();
+        <span class="kw">let </span>cs = env.get_constants();
+        <span class="kw">let </span>d1 = env.get_domain(Domain::D1);
+        <span class="kw">let </span>n = d1.size();
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[F::zero(); n];
         <span class="self">self</span>.index_terms.iter().for_each(|(idx, c)| {
-            <span class="kw">let </span>c = PolishToken::evaluate(c, env.domain.d1, pt, evals, cs).unwrap();
+            <span class="kw">let </span>c = PolishToken::evaluate(c, d1, pt, evals, cs).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
                 .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
@@ -5024,28 +4899,35 @@
                 .enumerate()
                 .for_each(|(i, r)| <span class="kw-2">*</span>r += c * e.evals[scale * i]);
         });
-        <span class="kw">let </span>p = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(res, env.domain.d1);
+        <span class="kw">let </span>p = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(res, d1);
         (
-            PolishToken::evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>.constant_term, env.domain.d1, pt, evals, cs).unwrap(),
+            PolishToken::evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>.constant_term, d1, pt, evals, cs).unwrap(),
             p,
         )
     }
 }
 
-<span class="kw">impl</span>&lt;F: FftField&gt; Linearization&lt;Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt; {
+<span class="kw">impl</span>&lt;F: FftField, Column: Debug + PartialEq + Copy + GenericColumn&gt;
+    Linearization&lt;Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;, Column&gt;
+{
     <span class="doccomment">/// Given a linearization and an environment, compute the polynomial corresponding to the
     /// linearization, in evaluation form.
-    </span><span class="kw">pub fn </span>to_polynomial(
+    </span><span class="kw">pub fn </span>to_polynomial&lt;
+        <span class="lifetime">&#39;a</span>,
+        ColEvaluations: ColumnEvaluations&lt;F, Column = Column&gt;,
+        Environment: ColumnEnvironment&lt;<span class="lifetime">&#39;a</span>, F, Column = Column&gt;,
+    &gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        env: <span class="kw-2">&amp;</span>Environment&lt;F&gt;,
+        env: <span class="kw-2">&amp;</span>Environment,
         pt: F,
-        evals: <span class="kw-2">&amp;</span>ProofEvaluations&lt;PointEvaluations&lt;F&gt;&gt;,
+        evals: <span class="kw-2">&amp;</span>ColEvaluations,
     ) -&gt; (F, DensePolynomial&lt;F&gt;) {
-        <span class="kw">let </span>cs = <span class="kw-2">&amp;</span>env.constants;
-        <span class="kw">let </span>n = env.domain.d1.size();
+        <span class="kw">let </span>cs = env.get_constants();
+        <span class="kw">let </span>d1 = env.get_domain(Domain::D1);
+        <span class="kw">let </span>n = d1.size();
         <span class="kw">let </span><span class="kw-2">mut </span>res = <span class="macro">vec!</span>[F::zero(); n];
         <span class="self">self</span>.index_terms.iter().for_each(|(idx, c)| {
-            <span class="kw">let </span>c = c.evaluate_(env.domain.d1, pt, evals, cs).unwrap();
+            <span class="kw">let </span>c = c.evaluate_(d1, pt, evals, cs).unwrap();
             <span class="kw">let </span>e = env
                 .get_column(idx)
                 .unwrap_or_else(|| <span class="macro">panic!</span>(<span class="string">&quot;Index polynomial {idx:?} not found&quot;</span>));
@@ -5054,17 +4936,12 @@
                 .enumerate()
                 .for_each(|(i, r)| <span class="kw-2">*</span>r += c * e.evals[scale * i])
         });
-        <span class="kw">let </span>p = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(res, env.domain.d1).interpolate();
-        (
-            <span class="self">self</span>.constant_term
-                .evaluate_(env.domain.d1, pt, evals, cs)
-                .unwrap(),
-            p,
-        )
+        <span class="kw">let </span>p = Evaluations::&lt;F, D&lt;F&gt;&gt;::from_vec_and_domain(res, d1).interpolate();
+        (<span class="self">self</span>.constant_term.evaluate_(d1, pt, evals, cs).unwrap(), p)
     }
 }
 
-<span class="kw">impl</span>&lt;F: One&gt; Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: One, Column&gt; Expr&lt;F, Column&gt; {
     <span class="doccomment">/// Exponentiate an expression
     </span><span class="attr">#[must_use]
     </span><span class="kw">pub fn </span>pow(<span class="self">self</span>, p: u64) -&gt; <span class="self">Self </span>{
@@ -5076,27 +4953,32 @@
     }
 }
 
-<span class="kw">type </span>Monomials&lt;F&gt; = HashMap&lt;Vec&lt;Variable&gt;, Expr&lt;F&gt;&gt;;
+<span class="kw">type </span>Monomials&lt;F, Column&gt; = HashMap&lt;Vec&lt;Variable&lt;Column&gt;&gt;, Expr&lt;F, Column&gt;&gt;;
 
-<span class="kw">fn </span>mul_monomials&lt;F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq&gt;(
-    e1: <span class="kw-2">&amp;</span>Monomials&lt;F&gt;,
-    e2: <span class="kw-2">&amp;</span>Monomials&lt;F&gt;,
-) -&gt; Monomials&lt;F&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>res: HashMap&lt;<span class="kw">_</span>, Expr&lt;F&gt;&gt; = HashMap::new();
+<span class="kw">fn </span>mul_monomials&lt;
+    F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq,
+    Column: Ord + Copy + std::hash::Hash,
+&gt;(
+    e1: <span class="kw-2">&amp;</span>Monomials&lt;F, Column&gt;,
+    e2: <span class="kw-2">&amp;</span>Monomials&lt;F, Column&gt;,
+) -&gt; Monomials&lt;F, Column&gt; {
+    <span class="kw">let </span><span class="kw-2">mut </span>res: HashMap&lt;<span class="kw">_</span>, Expr&lt;F, Column&gt;&gt; = HashMap::new();
     <span class="kw">for </span>(m1, c1) <span class="kw">in </span>e1.iter() {
         <span class="kw">for </span>(m2, c2) <span class="kw">in </span>e2.iter() {
             <span class="kw">let </span><span class="kw-2">mut </span>m = m1.clone();
             m.extend(m2);
             m.sort();
             <span class="kw">let </span>c1c2 = c1.clone() * c2.clone();
-            <span class="kw">let </span>v = res.entry(m).or_insert_with(Expr::&lt;F&gt;::zero);
+            <span class="kw">let </span>v = res.entry(m).or_insert_with(Expr::&lt;F, Column&gt;::zero);
             <span class="kw-2">*</span>v = v.clone() + c1c2;
         }
     }
     res
 }
 
-<span class="kw">impl</span>&lt;F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq&gt; Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: Neg&lt;Output = F&gt; + Clone + One + Zero + PartialEq, Column: Ord + Copy + std::hash::Hash&gt;
+    Expr&lt;F, Column&gt;
+{
     <span class="comment">// TODO: This function (which takes linear time)
     // is called repeatedly in monomials, yielding quadratic behavior for
     // that function. It&#39;s ok for now as we only call that function once on
@@ -5117,13 +4999,13 @@
         }
     }
 
-    <span class="kw">fn </span>monomials(<span class="kw-2">&amp;</span><span class="self">self</span>, ev: <span class="kw-2">&amp;</span>HashSet&lt;Column&gt;) -&gt; HashMap&lt;Vec&lt;Variable&gt;, Expr&lt;F&gt;&gt; {
-        <span class="kw">let </span>sing = |v: Vec&lt;Variable&gt;, c: Expr&lt;F&gt;| {
+    <span class="kw">fn </span>monomials(<span class="kw-2">&amp;</span><span class="self">self</span>, ev: <span class="kw-2">&amp;</span>HashSet&lt;Column&gt;) -&gt; HashMap&lt;Vec&lt;Variable&lt;Column&gt;&gt;, Expr&lt;F, Column&gt;&gt; {
+        <span class="kw">let </span>sing = |v: Vec&lt;Variable&lt;Column&gt;&gt;, c: Expr&lt;F, Column&gt;| {
             <span class="kw">let </span><span class="kw-2">mut </span>h = HashMap::new();
             h.insert(v, c);
             h
         };
-        <span class="kw">let </span>constant = |e: Expr&lt;F&gt;| sing(<span class="macro">vec!</span>[], e);
+        <span class="kw">let </span>constant = |e: Expr&lt;F, Column&gt;| sing(<span class="macro">vec!</span>[], e);
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
 
         <span class="kw">if </span><span class="self">self</span>.is_constant(ev) {
@@ -5133,7 +5015,7 @@
         <span class="kw">match </span><span class="self">self </span>{
             Pow(x, d) =&gt; {
                 <span class="comment">// Run the multiplication logic with square and multiply
-                </span><span class="kw">let </span><span class="kw-2">mut </span>acc = sing(<span class="macro">vec!</span>[], Expr::&lt;F&gt;::one());
+                </span><span class="kw">let </span><span class="kw-2">mut </span>acc = sing(<span class="macro">vec!</span>[], Expr::&lt;F, Column&gt;::one());
                 <span class="kw">let </span><span class="kw-2">mut </span>acc_is_one = <span class="bool-val">true</span>;
                 <span class="kw">let </span>x = x.monomials(ev);
 
@@ -5242,9 +5124,9 @@
     </span><span class="kw">pub fn </span>linearize(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         evaluated: HashSet&lt;Column&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;Linearization&lt;Expr&lt;F&gt;&gt;, ExprError&gt; {
-        <span class="kw">let </span><span class="kw-2">mut </span>res: HashMap&lt;Column, Expr&lt;F&gt;&gt; = HashMap::new();
-        <span class="kw">let </span><span class="kw-2">mut </span>constant_term: Expr&lt;F&gt; = <span class="self">Self</span>::zero();
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;Linearization&lt;Expr&lt;F, Column&gt;, Column&gt;, ExprError&lt;Column&gt;&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>res: HashMap&lt;Column, Expr&lt;F, Column&gt;&gt; = HashMap::new();
+        <span class="kw">let </span><span class="kw-2">mut </span>constant_term: Expr&lt;F, Column&gt; = <span class="self">Self</span>::zero();
         <span class="kw">let </span>monomials = <span class="self">self</span>.monomials(<span class="kw-2">&amp;</span>evaluated);
 
         <span class="kw">for </span>(m, c) <span class="kw">in </span>monomials {
@@ -5376,7 +5258,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero&gt; Zero <span class="kw">for </span>Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: Zero, Column&gt; Zero <span class="kw">for </span>Expr&lt;F, Column&gt; {
     <span class="kw">fn </span>zero() -&gt; <span class="self">Self </span>{
         Expr::Constant(F::zero())
     }
@@ -5389,7 +5271,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero + One + PartialEq&gt; One <span class="kw">for </span>Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: Zero + One + PartialEq, Column: PartialEq&gt; One <span class="kw">for </span>Expr&lt;F, Column&gt; {
     <span class="kw">fn </span>one() -&gt; <span class="self">Self </span>{
         Expr::Constant(F::one())
     }
@@ -5402,10 +5284,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: One + Neg&lt;Output = F&gt;&gt; Neg <span class="kw">for </span>Expr&lt;F&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F&gt;;
+<span class="kw">impl</span>&lt;F: One + Neg&lt;Output = F&gt;, Column&gt; Neg <span class="kw">for </span>Expr&lt;F, Column&gt; {
+    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
 
-    <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; Expr&lt;F&gt; {
+    <span class="kw">fn </span>neg(<span class="self">self</span>) -&gt; Expr&lt;F, Column&gt; {
         <span class="kw">match </span><span class="self">self </span>{
             Expr::Constant(x) =&gt; Expr::Constant(x.neg()),
             e =&gt; Expr::BinOp(
@@ -5417,8 +5299,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero&gt; Add&lt;Expr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;F&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F&gt;;
+<span class="kw">impl</span>&lt;F: Zero, Column&gt; Add&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
+    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
     <span class="kw">fn </span>add(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
         <span class="kw">if </span><span class="self">self</span>.is_zero() {
             <span class="kw">return </span>other;
@@ -5430,7 +5312,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero + Clone&gt; AddAssign&lt;Expr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: Zero + Clone, Column: Clone&gt; AddAssign&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
     <span class="kw">fn </span>add_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
         <span class="kw">if </span><span class="self">self</span>.is_zero() {
             <span class="kw-2">*</span><span class="self">self </span>= other;
@@ -5440,8 +5322,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero + One + PartialEq&gt; Mul&lt;Expr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;F&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F&gt;;
+<span class="kw">impl</span>&lt;F: Zero + One + PartialEq, Column: PartialEq&gt; Mul&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
+    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
     <span class="kw">fn </span>mul(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
         <span class="kw">if </span><span class="self">self</span>.is_zero() || other.is_zero() {
             <span class="kw">return </span><span class="self">Self</span>::zero();
@@ -5457,9 +5339,10 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F&gt; MulAssign&lt;Expr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;F&gt;
+<span class="kw">impl</span>&lt;F, Column&gt; MulAssign&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt;
 <span class="kw">where
     </span>F: Zero + One + PartialEq + Clone,
+    Column: PartialEq + Clone,
 {
     <span class="kw">fn </span>mul_assign(<span class="kw-2">&amp;mut </span><span class="self">self</span>, other: <span class="self">Self</span>) {
         <span class="kw">if </span><span class="self">self</span>.is_zero() || other.is_zero() {
@@ -5472,8 +5355,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Zero&gt; Sub&lt;Expr&lt;F&gt;&gt; <span class="kw">for </span>Expr&lt;F&gt; {
-    <span class="kw">type </span>Output = Expr&lt;F&gt;;
+<span class="kw">impl</span>&lt;F: Zero, Column&gt; Sub&lt;Expr&lt;F, Column&gt;&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
+    <span class="kw">type </span>Output = Expr&lt;F, Column&gt;;
     <span class="kw">fn </span>sub(<span class="self">self</span>, other: <span class="self">Self</span>) -&gt; <span class="self">Self </span>{
         <span class="kw">if </span>other.is_zero() {
             <span class="kw">return </span><span class="self">self</span>;
@@ -5482,13 +5365,13 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field&gt; From&lt;u64&gt; <span class="kw">for </span>Expr&lt;F&gt; {
+<span class="kw">impl</span>&lt;F: Field, Column&gt; From&lt;u64&gt; <span class="kw">for </span>Expr&lt;F, Column&gt; {
     <span class="kw">fn </span>from(x: u64) -&gt; <span class="self">Self </span>{
         Expr::Constant(F::from(x))
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field&gt; From&lt;u64&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt; {
+<span class="kw">impl</span>&lt;F: Field, Column&gt; From&lt;u64&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
     <span class="kw">fn </span>from(x: u64) -&gt; <span class="self">Self </span>{
         Expr::Constant(ConstantExpr::Literal(F::from(x)))
     }
@@ -5500,8 +5383,8 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F: Field&gt; Mul&lt;F&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt; {
-    <span class="kw">type </span>Output = Expr&lt;ConstantExpr&lt;F&gt;&gt;;
+<span class="kw">impl</span>&lt;F: Field, Column: PartialEq&gt; Mul&lt;F&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, Column&gt; {
+    <span class="kw">type </span>Output = Expr&lt;ConstantExpr&lt;F&gt;, Column&gt;;
 
     <span class="kw">fn </span>mul(<span class="self">self</span>, y: F) -&gt; <span class="self">Self</span>::Output {
         Expr::Constant(ConstantExpr::Literal(y)) * <span class="self">self
@@ -5577,7 +5460,7 @@
     }
 }
 
-<span class="kw">impl</span>&lt;F&gt; Expr&lt;ConstantExpr&lt;F&gt;&gt;
+<span class="kw">impl</span>&lt;F&gt; Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;
 <span class="kw">where
     </span>F: PrimeField,
 {
@@ -5604,7 +5487,10 @@
 
     <span class="doccomment">/// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    </span><span class="kw">fn </span>ocaml(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt;) -&gt; String {
+    </span><span class="kw">fn </span>ocaml(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
+    ) -&gt; String {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.ocaml(cache)),
@@ -5657,7 +5543,10 @@
         res
     }
 
-    <span class="kw">fn </span>latex(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt;) -&gt; String {
+    <span class="kw">fn </span>latex(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
+    ) -&gt; String {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;2 ({})&quot;</span>, x.latex(cache)),
@@ -5693,7 +5582,10 @@
 
     <span class="doccomment">/// Recursively print the expression,
     /// except for the cached expression that are stored in the `cache`.
-    </span><span class="kw">fn </span>text(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;&gt;&gt;) -&gt; String {
+    </span><span class="kw">fn </span>text(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        cache: <span class="kw-2">&amp;mut </span>HashMap&lt;CacheId, Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;&gt;,
+    ) -&gt; String {
         <span class="kw">use </span>Expr::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Double(x) =&gt; <span class="macro">format!</span>(<span class="string">&quot;double({})&quot;</span>, x.text(cache)),
@@ -5826,24 +5718,34 @@
         </span><span class="kw">fn </span>cache(<span class="kw-2">&amp;</span><span class="self">self</span>, cache: <span class="kw-2">&amp;mut </span>Cache) -&gt; <span class="self">Self</span>;
     }
 
-    <span class="kw">impl</span>&lt;F&gt; ExprOps&lt;F&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;&gt;
+    <span class="kw">impl</span>&lt;F&gt; ExprOps&lt;F&gt; <span class="kw">for </span>Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;
     <span class="kw">where
         </span>F: PrimeField,
+        Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;: std::fmt::Display,
     {
         <span class="kw">fn </span>two_pow(pow: u64) -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;&gt;::literal(&lt;F <span class="kw">as </span>Two&lt;F&gt;&gt;::two_pow(pow))
+            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(&lt;F <span class="kw">as </span>Two&lt;F&gt;&gt;::two_pow(pow))
         }
 
         <span class="kw">fn </span>two_to_limb() -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_limb())
+            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;
+                F,
+            &gt;&gt;::two_to_limb(
+            ))
         }
 
         <span class="kw">fn </span>two_to_2limb() -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_2limb())
+            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;
+                F,
+            &gt;&gt;::two_to_2limb(
+            ))
         }
 
         <span class="kw">fn </span>two_to_3limb() -&gt; <span class="self">Self </span>{
-            Expr::&lt;ConstantExpr&lt;F&gt;&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;F&gt;&gt;::two_to_3limb())
+            Expr::&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;::literal(&lt;F <span class="kw">as </span>ForeignFieldHelpers&lt;
+                F,
+            &gt;&gt;::two_to_3limb(
+            ))
         }
 
         <span class="kw">fn </span>double(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self </span>{
@@ -5979,7 +5881,7 @@
 //
 
 </span><span class="doccomment">/// An alias for the intended usage of the expression type in constructing constraints.
-</span><span class="kw">pub type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;&gt;;
+</span><span class="kw">pub type </span>E&lt;F&gt; = Expr&lt;ConstantExpr&lt;F&gt;, berkeley_columns::Column&gt;;
 
 <span class="doccomment">/// Convenience function to create a constant as [Expr].
 </span><span class="kw">pub fn </span>constant&lt;F&gt;(x: F) -&gt; E&lt;F&gt; {
@@ -5988,7 +5890,7 @@
 
 <span class="doccomment">/// Helper function to quickly create an expression for a witness.
 </span><span class="kw">pub fn </span>witness&lt;F&gt;(i: usize, row: CurrOrNext) -&gt; E&lt;F&gt; {
-    E::&lt;F&gt;::cell(Column::Witness(i), row)
+    E::&lt;F&gt;::cell(berkeley_columns::Column::Witness(i), row)
 }
 
 <span class="doccomment">/// Same as [witness] but for the current row.
@@ -6003,11 +5905,11 @@
 
 <span class="doccomment">/// Handy function to quickly create an expression for a gate.
 </span><span class="kw">pub fn </span>index&lt;F&gt;(g: GateType) -&gt; E&lt;F&gt; {
-    E::&lt;F&gt;::cell(Column::Index(g), CurrOrNext::Curr)
+    E::&lt;F&gt;::cell(berkeley_columns::Column::Index(g), CurrOrNext::Curr)
 }
 
 <span class="kw">pub fn </span>coeff&lt;F&gt;(i: usize) -&gt; E&lt;F&gt; {
-    E::&lt;F&gt;::cell(Column::Coefficient(i), CurrOrNext::Curr)
+    E::&lt;F&gt;::cell(berkeley_columns::Column::Coefficient(i), CurrOrNext::Curr)
 }
 
 <span class="doccomment">/// Auto clone macro - Helps make constraints more readable
