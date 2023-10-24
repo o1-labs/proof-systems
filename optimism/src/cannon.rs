@@ -6,6 +6,8 @@ use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::io::Read;
 
+pub const PAGE_SIZE: usize = 4096;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
     pub index: u32,
@@ -22,6 +24,7 @@ where
     let mut decoder = Decoder::new(&b64_decoded[..]).unwrap();
     let mut data = Vec::new();
     decoder.read_to_end(&mut data).unwrap();
+    assert_eq!(data.len(), PAGE_SIZE);
     Ok(data)
 }
 
