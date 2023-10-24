@@ -167,7 +167,7 @@ impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
     }
 
     fn vanishes_on_zero_knowledge_and_previous_rows(&self) -> &'a Evaluations<F, D<F>> {
-        &self.vanishes_on_zero_knowledge_and_previous_rows
+        self.vanishes_on_zero_knowledge_and_previous_rows
     }
 
     fn l0_1(&self) -> F {
@@ -1468,7 +1468,7 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
         evals: &Evaluations,
         env: &Environment,
     ) -> Result<F, ExprError<Column>> {
-        self.evaluate_(d, pt, evals, &env.get_constants())
+        self.evaluate_(d, pt, evals, env.get_constants())
     }
 
     /// Evaluate an expression as a field element against the constants.
