@@ -5,8 +5,8 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateResult, GateType},
         polynomials::keccak::{
-            collapse, compose, decompose, expand, padded_length, reset, shift,
-            witness::extend_keccak_witness, KECCAK_COLS, QUARTERS,
+            collapse, compose, decompose, expand, reset, shift, witness::extend_keccak_witness,
+            KECCAK_COLS, QUARTERS,
         },
         wires::Wire,
     },
@@ -22,8 +22,12 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
     FqSponge,
 };
-use num_bigint::BigUint;
+use num_bigint::{BigUint, RandBigInt};
 use o1_utils::{BigUintHelpers, FieldHelpers};
+use rand::rngs::StdRng;
+use rand_core::SeedableRng;
+
+use super::framework::TestRunner;
 
 type SpongeParams = PlonkSpongeConstantsKimchi;
 type PallasBaseSponge = DefaultFqSponge<PallasParameters, SpongeParams>;
@@ -118,6 +122,65 @@ fn print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
     print_matrix(&state_f);
     println!("State G:");
     print_matrix(&next[0..100]);
+}
+
+const RNG_SEED: [u8; 32] = [
+    0, 131, 43, 175, 229, 252, 206, 26, 67, 193, 86, 160, 1, 90, 131, 86, 168, 4, 95, 50, 48, 9,
+    192, 13, 250, 215, 172, 130, 24, 164, 162, 221,
+];
+
+// Sets up test for a given message and desired input bytelength
+fn test_keccak_n<G: KimchiCurve, EFqSponge, EFrSponge>(
+    n: usize,
+    rng: &mut StdRng,
+) -> CircuitGateResult<()>
+where
+    G::BaseField: PrimeField,
+    EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
+    EFrSponge: FrSponge<KECCAK_COLS, G::ScalarField>,
+{
+    let messages = vec![rng.gen_biguint_below(&BigUint::from(2u32).pow(1080)); n];
+
+    let mut gates = vec![];
+    let mut witness = array::from_fn(|_| vec![G::ScalarField::zero(); 0]);
+
+    for msg in messages {
+        let next_row =
+            CircuitGate::<G::ScalarField>::extend_keccak(&mut gates, msg.to_bytes_be().len());
+        // Adding dummy row to avoid out of bounds in squeeze constraints accessing Next row
+        gates.push(CircuitGate {
+            typ: GateType::Zero,
+            wires: Wire::for_row(next_row),
+            coeffs: vec![],
+        });
+        let hash_wit: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>;
+            KECCAK_COLS] = create_keccak_witness::<G>(msg);
+        for col in 0..KECCAK_COLS {
+            witness[col].extend(hash_wit[col].iter());
+        }
+    }
+
+    let runner: TestRunner<2344, G> = TestFramework::<KECCAK_COLS, G>::default()
+        .gates(gates.clone())
+        .setup();
+    let cs = runner.clone().prover_index().cs.clone();
+    // Perform witness verification that everything is ok before invalidation (quick checks)
+    for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
+        let result =
+            gate.verify_witness::<KECCAK_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        if result.is_err() {
+            return result;
+        }
+    }
+    assert_eq!(
+        runner
+            .clone()
+            .witness(witness.clone())
+            .prove_and_verify::<EFqSponge, EFrSponge>(),
+        Ok(())
+    );
+
+    Ok(())
 }
 
 // Sets up test for a given message and desired input bytelength
@@ -269,7 +332,6 @@ fn test_dummy() {
     assert_eq!(claim1, hash1);
 }
 
-/*
 #[test]
 // Tests a random block of 1080 bits
 fn test_random_block() {
@@ -284,9 +346,20 @@ fn test_random_block() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_blocks() {
-    let (_,claim_3blocks) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"), false);
+    let (_,claim_3blocks) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"), true);
     let hash_3blocks =
         BigUint::from_hex("7e369e1a4362148fca24c67c76f14dbe24b75c73e9b0efdb8c46056c8514287e");
     assert_eq!(claim_3blocks, hash_3blocks);
 }
-*/
+
+#[test]
+// Test hash of message zero with 1 byte
+fn test_1000_hashes() {
+    assert_eq!(
+        Ok(()),
+        test_keccak_n::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+            1000,
+            &mut StdRng::from_seed(RNG_SEED),
+        )
+    );
+}
