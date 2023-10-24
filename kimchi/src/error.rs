@@ -73,13 +73,13 @@ pub enum VerifyError {
     IncorrectRuntimeProof,
 
     #[error("the evaluation for {0:?} is missing")]
-    MissingEvaluation(crate::circuits::expr::Column),
+    MissingEvaluation(crate::circuits::berkeley_columns::Column),
 
     #[error("the evaluation for PublicInput is missing")]
     MissingPublicInputEvaluation,
 
     #[error("the commitment for {0:?} is missing")]
-    MissingCommitment(crate::circuits::expr::Column),
+    MissingCommitment(crate::circuits::berkeley_columns::Column),
 }
 
 /// Errors that can arise when preparing the setup
