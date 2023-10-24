@@ -61,25 +61,19 @@ fn cli() -> VmConfiguration {
 
     let cli = cli.get_matches();
 
-    let input_state_file = cli
-        .get_one::<String>("input")
-        .expect("Default ensures there is always a value");
+    let input_state_file = cli.get_one::<String>("input").unwrap();
 
-    let output_state_file = cli
-        .get_one::<String>("output")
-        .expect("Default ensures there is always a value");
+    let output_state_file = cli.get_one::<String>("output").unwrap();
 
-    let metadata_file = cli
-        .get_one::<String>("meta")
-        .expect("Default ensures there is always a value");
+    let metadata_file = cli.get_one::<String>("meta").unwrap();
 
-    let proof_at = cli.get_one::<StepFrequency>("proof-at").expect("");
-    let info_at = cli.get_one::<StepFrequency>("info-at").expect("");
-    let stop_at = cli.get_one::<StepFrequency>("stop-at").expect("");
+    let proof_at = cli.get_one::<StepFrequency>("proof-at").unwrap();
+    let info_at = cli.get_one::<StepFrequency>("info-at").unwrap();
+    let stop_at = cli.get_one::<StepFrequency>("stop-at").unwrap();
 
-    let proof_fmt = cli.get_one::<String>("proof-fmt").expect("");
-    let snapshot_fmt = cli.get_one::<String>("snapshot-fmt").expect("");
-    let pprof_cpu = cli.get_one::<bool>("pprof-cpu").expect("");
+    let proof_fmt = cli.get_one::<String>("proof-fmt").unwrap();
+    let snapshot_fmt = cli.get_one::<String>("snapshot-fmt").unwrap();
+    let pprof_cpu = cli.get_one::<bool>("pprof-cpu").unwrap();
 
     let host_spec = cli
         .get_many::<String>("host")
@@ -118,7 +112,7 @@ pub fn main() -> ExitCode {
 
     println!("configuration\n{:#?}", configuration);
 
-    let file = File::open(configuration.input_state_file).expect("file");
+    let file = File::open(configuration.input_state_file).expect("Error opening input state file ");
 
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
