@@ -322,13 +322,17 @@ fn test_bitwise_sparse_representation() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_dummy() {
-    let (_, claim1) = test_keccak::<Pallas, PallasBaseSponge, PallasScalarSponge>(
-        BigUint::from_bytes_be(&[0x00]),
-        true,
-    );
-    let hash1 =
-        BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
-    assert_eq!(claim1, hash1);
+    stacker::grow(30 * 1024 * 1024, || {
+        // guaranteed to have at least 30MB of stack
+
+        let (_, claim1) = test_keccak::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+            BigUint::from_bytes_be(&[0x00]),
+            true,
+        );
+        let hash1 =
+            BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
+        assert_eq!(claim1, hash1);
+    });
 }
 
 #[test]
@@ -345,20 +349,24 @@ fn test_random_block() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_blocks() {
-    let (_,claim_3blocks) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"), true);
-    let hash_3blocks =
-        BigUint::from_hex("7e369e1a4362148fca24c67c76f14dbe24b75c73e9b0efdb8c46056c8514287e");
-    assert_eq!(claim_3blocks, hash_3blocks);
+    stacker::grow(30 * 1024 * 1024, || {
+        let (_,claim_3blocks) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"), true);
+        let hash_3blocks =
+            BigUint::from_hex("7e369e1a4362148fca24c67c76f14dbe24b75c73e9b0efdb8c46056c8514287e");
+        assert_eq!(claim_3blocks, hash_3blocks);
+    });
 }
 
 #[test]
 // Test hash of message zero with 1 byte
 fn test_1000_hashes() {
-    assert_eq!(
-        Ok(()),
-        test_keccak_n::<Pallas, PallasBaseSponge, PallasScalarSponge>(
-            1000,
-            &mut StdRng::from_seed(RNG_SEED),
-        )
-    );
+    stacker::grow(30 * 1024 * 1024, || {
+        assert_eq!(
+            Ok(()),
+            test_keccak_n::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+                1000,
+                &mut StdRng::from_seed(RNG_SEED),
+            )
+        );
+    });
 }
