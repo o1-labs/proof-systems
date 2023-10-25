@@ -328,8 +328,6 @@ pub fn extend_rot<F: PrimeField>(
     rot: u32,
     side: RotMode,
 ) {
-    assert!(rot < 64, "Rotation value must be less than 64");
-    assert_ne!(rot, 0, "Rotation value must be non-zero");
     let rot = if side == RotMode::Right {
         64 - rot
     } else {
@@ -343,8 +341,8 @@ pub fn extend_rot<F: PrimeField>(
     // shifted      [------] * 2^rot
     // rot    = [------|000]
     //        +        [---] excess
-    let shifted = (word as u128 * 2u128.pow(rot) % 2u128.pow(64)) as u64;
-    let excess = word / 2u64.pow(64 - rot);
+    let shifted = (word as u128) * 2u128.pow(rot) % 2u128.pow(64);
+    let excess = (word as u128) / 2u128.pow(64 - rot);
     let rotated = shifted + excess;
     // Value for the added value for the bound
     // Right input of the "FFAdd" for the bound equation
