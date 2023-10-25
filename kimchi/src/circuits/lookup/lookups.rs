@@ -4,7 +4,7 @@ use crate::circuits::{
     lookup::index::LookupSelectors,
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-        SPARSE_TABLE_ID, XOR_TABLE_ID,
+        XOR_TABLE_ID,
     },
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -14,8 +14,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Mul, Neg};
 use strum_macros::EnumIter;
-
-use super::tables::{BITS16_TABLE_ID, RESET_TABLE_ID};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
