@@ -26,7 +26,6 @@ use crate::circuits::{
     constraints::FeatureFlags,
     expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
-    wires::COLUMNS,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
@@ -44,10 +43,8 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
 
     // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
-    powers_of_alpha.register(
-        ArgumentType::Gate(GateType::Zero),
-        VarbaseMul::<F>::CONSTRAINTS,
-    );
+    let max_exponents = VarbaseMul::<F>::CONSTRAINTS;
+    powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), max_exponents);
 
     let mut cache = expr::Cache::default();
 
@@ -236,7 +233,7 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-pub fn linearization_columns<F: FftField + SquareRootField>(
+pub fn linearization_columns<const W: usize, F: FftField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
@@ -271,12 +268,12 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     };
 
     // the witness polynomials
-    for i in 0..COLUMNS {
+    for i in 0..W {
         h.insert(Witness(i));
     }
 
     // the coefficient polynomials
-    for i in 0..COLUMNS {
+    for i in 0..W {
         h.insert(Coefficient(i));
     }
 
@@ -324,7 +321,7 @@ pub fn expr_linearization<const W: usize, F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
-    let evaluated_cols = linearization_columns::<F>(feature_flags);
+    let evaluated_cols = linearization_columns::<W, F>(feature_flags);
 
     let (expr, powers_of_alpha) = constraints_expr::<W, F>(feature_flags, generic);
 
