@@ -8,6 +8,7 @@ use crate::circuits::lookup::{
     constraints::LookupConfiguration,
     lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
+use crate::circuits::polynomials::keccak;
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
@@ -146,6 +147,40 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
             expr += Expr::IfFeature(
                 FeatureFlag::Rot,
                 Box::new(rot_expr()),
+                Box::new(Expr::zero()),
+            );
+        }
+    }
+
+    {
+        let mut keccak_round_expr = || {
+            keccak::circuitgates::KeccakRound::combined_constraints(&powers_of_alpha, &mut cache)
+        };
+        if let Some(feature_flags) = feature_flags {
+            if feature_flags.keccak_round {
+                expr += keccak_round_expr();
+            }
+        } else {
+            expr += Expr::IfFeature(
+                FeatureFlag::KeccakRound,
+                Box::new(keccak_round_expr()),
+                Box::new(Expr::zero()),
+            );
+        }
+    }
+
+    {
+        let mut keccak_sponge_expr = || {
+            keccak::circuitgates::KeccakSponge::combined_constraints(&powers_of_alpha, &mut cache)
+        };
+        if let Some(feature_flags) = feature_flags {
+            if feature_flags.keccak_sponge {
+                expr += keccak_sponge_expr();
+            }
+        } else {
+            expr += Expr::IfFeature(
+                FeatureFlag::KeccakSponge,
+                Box::new(keccak_sponge_expr()),
                 Box::new(Expr::zero()),
             );
         }
