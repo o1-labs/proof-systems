@@ -9,6 +9,7 @@ use crate::circuits::lookup::{
     lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
 use crate::circuits::polynomials::keccak;
+use crate::circuits::polynomials::keccak::circuitgates::KeccakRound;
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
@@ -45,7 +46,12 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
 
     // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
-    let max_exponents = VarbaseMul::<F>::CONSTRAINTS;
+    let mut max_exponents = VarbaseMul::<F>::CONSTRAINTS;
+    if let Some(feature_flags) = feature_flags {
+        if feature_flags.keccak_round {
+            max_exponents = KeccakRound::<F>::CONSTRAINTS;
+        }
+    }
     powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), max_exponents);
 
     let mut cache = expr::Cache::default();
