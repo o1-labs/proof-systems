@@ -328,6 +328,8 @@ pub fn extend_rot<F: PrimeField>(
     rot: u32,
     side: RotMode,
 ) {
+    assert!(rot <= 64, "Rotation value must be less or equal than 64");
+
     let rot = if side == RotMode::Right {
         64 - rot
     } else {
