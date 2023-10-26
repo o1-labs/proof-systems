@@ -56,7 +56,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     }
 
     fn create_keccak_absorb(new_row: usize, root: bool, pad: bool, pad_bytes: usize) -> Self {
-        let mut coeffs = vec![F::zero(); 336];
+        let mut coeffs = vec![F::zero(); SPONGE_COEFFS];
         coeffs[0] = F::one(); // absorb
         if root {
             coeffs[2] = F::one(); // root
@@ -66,10 +66,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             for i in 0..pad_bytes {
                 coeffs[140 - i] = F::one(); // flag for padding
                 if i == 0 {
-                    coeffs[335 - i] += F::from(0x80u8); // pad
+                    coeffs[SPONGE_COEFFS - 1 - i] += F::from(0x80u8); // pad
                 }
                 if i == pad_bytes - 1 {
-                    coeffs[335 - i] += F::one(); // pad
+                    coeffs[SPONGE_COEFFS - 1 - i] += F::one(); // pad
                 }
             }
         }
