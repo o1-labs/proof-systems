@@ -172,22 +172,20 @@ fn test_rot_random() {
     test_rot::<Pallas>(word, rot, RotMode::Right);
 }
 
-#[should_panic]
 #[test]
 // Test that a bad rotation fails as expected
 fn test_zero_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    create_rot_witness::<Vesta>(word, 0, RotMode::Left);
+    test_rot::<Pallas>(word, 0, RotMode::Left);
 }
 
-#[should_panic]
 #[test]
 // Test that a bad rotation fails as expected
 fn test_large_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    create_rot_witness::<Vesta>(word, 64, RotMode::Left);
+    test_rot::<Pallas>(word, 64, RotMode::Left);
 }
 
 #[test]
