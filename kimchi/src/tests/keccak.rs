@@ -118,12 +118,8 @@ where
     G::BaseField: PrimeField,
 {
     let bytelength = message.to_bytes_be().len();
-    let padded_len = {
-        let mut sized = message.to_bytes_be();
-        sized.resize(bytelength - sized.len(), 0);
-        pad(&sized).len()
-    };
-    let _index = create_test_constraint_system::<G>(padded_len);
+
+    let _index = create_test_constraint_system::<G>(bytelength);
     let witness = create_keccak_witness::<G>(message);
 
     for r in 1..=24 {
