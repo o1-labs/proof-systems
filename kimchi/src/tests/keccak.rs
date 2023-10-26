@@ -317,7 +317,7 @@ fn test_random_block() {
         assert_eq!(claim_random, hash_random);
     });
 }
-/*
+
 #[test]
 // Tests real data coming from Optimism ~0.5kB (usual length)
 fn test_real_data() {
@@ -368,4 +368,3 @@ fn test_1000_hashes() {
         );
     });
 }
-*/

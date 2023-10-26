@@ -15,13 +15,13 @@ use crate::{
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
 
-//~ | GateType       | [0...265) | [265...1065) |
+//~ | GateType       | [0...265) | [265...1040) |
 //~ | -------------- | --------- | ------------ |
 //~ | `KeccakRound0` | theta     | chi          |
 
-//~ | `KeccakRound1` | [0...100)  | [0...1000) |
+//~ | `KeccakRound1` | [0...100)  | [0...1025) |
 //~ | -------------- | ---------- | ---------- |
-//~ | Curr           |            | pirho
+//~ | Curr           |            | pirho      |
 //~ | Next           | iota       |            |
 
 #[macro_export]
@@ -62,13 +62,13 @@ macro_rules! from_shifts {
     };
 }
 
-//~ | Columns | [0...100) | [100...180) | [180...200) | [200...205) | [205...225)  | [225...245)  | [245...265)  | [265...665) | [665...1065) |
-//~ | ------- | --------- | ----------- | ----------- | ----------- | ------------ | ------------ | ------------ | ----------- | ------------ |
-//~ | Curr    | state_a   | shifts_c    | dense_c     | quotient_c  | remainder_c  | dense_rot_c  | expand_rot_c | shifts_b    | shifts_sum   |
+//~ | Columns | [0...100) | [100...180) | [180...200) | [200...220)  | [220...620) | [620...1020) |
+//~ | ------- | --------- | ----------- | ----------- | ------------ | ----------- | ------------ |
+//~ | Curr    | state_a   | shifts_c    | dense_c     | expand_rot_c | shifts_b    | shifts_sum   |
 //~
-//~ | Columns | [0...400) | [400...500) |  [500...600) |  [600...700) |  [700...800)  |  [800...900)  | [900...1000) |  [1000...1100) |
-//~ | ------- | --------- | ----------- | ------------ | ------------ | ------------- | ------------- | ------------ | -------------- |
-//~ | Next    | shifts_e  | _dense_e    | _quotient_e  | _remainder_e | _bound_e      | _dense_rot_e  | expand_rot_e | _state_f       |
+//~ | Columns | [0...5)    | [5...25)    | [25...45)    | [45...445) | [445...545) | [545...645)  | [645...745)  | [745...845)   | [845...945)  | [945...1045) |
+//~ | ------- | ---------- | ----------- | ------------ | ---------- | ----------- | ------------ | ------------ | ------------- | ------------ | ------------ |
+//~ | Next    | quotient_c | remainder_c | _dense_rot_c | shifts_e   | _dense_e    | _quotient_e  | _remainder_e | _dense_rot_e  | expand_rot_e | state_f      |
 
 #[derive(Default)]
 pub struct KeccakRound0<F>(PhantomData<F>);
@@ -78,7 +78,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRound0);
-    const CONSTRAINTS: u32 = 535;
+    const CONSTRAINTS: u32 = 525;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
@@ -92,17 +92,16 @@ where
         let state_a = grid!(100, env.witness_curr_chunk(0, 100));
         let shifts_c = grid!(80, env.witness_curr_chunk(100, 180));
         let dense_c = grid!(20, env.witness_curr_chunk(180, 200));
-        let quotient_c = grid!(5, env.witness_curr_chunk(200, 205));
-        let remainder_c = grid!(20, env.witness_curr_chunk(205, 225));
-        let dense_rot_c = grid!(20, env.witness_curr_chunk(225, 245));
-        let expand_rot_c = grid!(20, env.witness_curr_chunk(245, 265));
+        let quotient_c = grid!(5, env.witness_next_chunk(0, 5));
+        let remainder_c = grid!(20, env.witness_next_chunk(5, 25));
+        let expand_rot_c = grid!(20, env.witness_curr_chunk(200, 220));
         // PI-RHO
-        let shifts_e = grid!(400, env.witness_next_chunk(0, 400));
-        let expand_rot_e = grid!(100, env.witness_next_chunk(900, 1000));
+        let shifts_e = grid!(400, env.witness_next_chunk(45, 445));
+        let expand_rot_e = grid!(100, env.witness_next_chunk(845, 945));
         // CHI
-        let shifts_b = grid!(400, env.witness_curr_chunk(265, 665));
-        let shifts_sum = grid!(400, env.witness_curr_chunk(665, 1065));
-        let state_f = grid!(100, env.witness_next_chunk(1000, 1100));
+        let shifts_b = grid!(400, env.witness_curr_chunk(220, 620));
+        let shifts_sum = grid!(400, env.witness_curr_chunk(620, 1020));
+        let state_f = grid!(100, env.witness_next_chunk(945, 1045));
 
         // Define vectors containing witness expressions which are not in the layout for efficiency
         let mut state_c: Vec<Vec<T>> = vec![vec![T::zero(); QUARTERS]; DIM];
@@ -110,16 +109,13 @@ where
         let mut state_b: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
         let mut state_e: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
 
-        // STEP theta: 5 * ( 3 + 4 * (1 + 5 * 1) ) = 135 constraints
+        // STEP theta: 5 * ( 1 + 4 * (1 + 5 * 1) ) = 125 constraints
         for x in 0..DIM {
             let word_c = from_quarters!(dense_c, x);
             let rem_c = from_quarters!(remainder_c, x);
-            let rot_c = from_quarters!(dense_rot_c, x);
 
             constraints
                 .push(word_c * T::two_pow(1) - (quotient_c(x) * T::two_pow(64) + rem_c.clone()));
-            constraints.push(rot_c - (quotient_c(x) + rem_c));
-            constraints.push(boolean(&quotient_c(x)));
 
             for q in 0..QUARTERS {
                 state_c[x][q] = state_a(0, x, q)
@@ -168,9 +164,9 @@ where
     }
 }
 
-//~ | Columns | [0...100) | [0...400) | [400...500) | [500...600) | [600...700) | [700...800)  | [800...900) | [900...1000)  | [1000...1100) |
-//~ | ------- | --------- | --------- | ----------- | ----------- | ----------- | ------------ | ----------- | ------------- | ------------- |
-//~ | Curr    |           | _shifts_e | dense_e     | quotient_e  | remainder_e | bound_e      | dense_rot_e | _expand_rot_e | state_f       |
+//~ | Columns | [0...100) | [0...5)    | [5..25)     | [25...45)   | [45...445) | [445...545) | [545...645)  | [645...745)  | [745...845)   | [845...945)   | [945...1045) |
+//~ | ------- | --------- | ---------- | ----------- | ----------- | ---------- | ----------- | ------------ | ------------ | ------------- | ------------- | ------------ |
+//~ | Curr    |           | quotient_c | remainder_c | dense_rot_c | _shifts_e  | dense_e     | quotient_e   | remainder_e  | dense_rot_e   | _expand_rot_e | state_f      |
 //~ | Next    | state_g   |
 #[derive(Default)]
 pub struct KeccakRound1<F>(PhantomData<F>);
@@ -180,7 +176,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRound1);
-    const CONSTRAINTS: u32 = 179;
+    const CONSTRAINTS: u32 = 64;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
@@ -193,18 +189,30 @@ where
         let rc = [env.coeff(0), env.coeff(1), env.coeff(2), env.coeff(3)];
 
         // LOAD STATES FROM WITNESS LAYOUT
+        // THETA
+        let quotient_c = grid!(5, env.witness_curr_chunk(0, 5));
+        let remainder_c = grid!(20, env.witness_curr_chunk(5, 25));
+        let dense_rot_c = grid!(20, env.witness_curr_chunk(25, 45));
         // PI-RHO
-        let dense_e = grid!(100, env.witness_curr_chunk(400, 500));
-        let quotient_e = grid!(100, env.witness_curr_chunk(500, 600));
-        let remainder_e = grid!(100, env.witness_curr_chunk(600, 700));
-        let bound_e = grid!(100, env.witness_curr_chunk(700, 800));
-        let dense_rot_e = grid!(100, env.witness_curr_chunk(800, 900));
+        let dense_e = grid!(100, env.witness_curr_chunk(445, 545));
+        let quotient_e = grid!(100, env.witness_curr_chunk(545, 645));
+        let remainder_e = grid!(100, env.witness_curr_chunk(645, 745));
+        let dense_rot_e = grid!(100, env.witness_curr_chunk(745, 845));
         // CHI
-        let state_f = grid!(100, env.witness_curr_chunk(1000, 1100));
+        let state_f = grid!(100, env.witness_curr_chunk(945, 1045));
         // IOTA
         let state_g = grid!(100, env.witness_next_chunk(0, 100));
 
-        // STEP pirho: 5 * 5 * (3 + 4 * 1) = 175 constraints
+        // STEP theta: 5 * 2 = 10 constraints
+        for x in 0..DIM {
+            let rem_c = from_quarters!(remainder_c, x);
+            let rot_c = from_quarters!(dense_rot_c, x);
+
+            constraints.push(rot_c - (quotient_c(x) + rem_c));
+            constraints.push(boolean(&quotient_c(x)));
+        }
+
+        // STEP pirho: 5 * 5 * 2 = 50 constraints
         for (y, col) in OFF.iter().enumerate() {
             for (x, off) in col.iter().enumerate() {
                 let word_e = from_quarters!(dense_e, y, x);
@@ -217,7 +225,6 @@ where
                     word_e * T::two_pow(*off) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
                 );
                 constraints.push(rot_e - (quo_e.clone() + rem_e));
-                constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(*off)));
             }
         } // END pirho
 
