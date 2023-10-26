@@ -75,8 +75,8 @@ pub struct VerifierIndex<const W: usize, G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sigma_comm: [PolyComm<G>; PERMUTS],
     /// coefficient commitment array
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub coefficients_comm: Vec<PolyComm<G>>,
+    #[serde_as(as = "[_; W]")]
+    pub coefficients_comm: [PolyComm<G>; W],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub generic_comm: PolyComm<G>,
@@ -215,12 +215,12 @@ impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
                     &self.column_evaluations.permutation_coefficients8[i],
                 )
             }),
-            coefficients_comm: self
-                .column_evaluations
-                .coefficients8
-                .iter()
-                .map(|c| self.srs.commit_evaluations_non_hiding(domain, c))
-                .collect::<Vec<_>>(),
+            coefficients_comm: array::from_fn(|i| {
+                self.srs.commit_evaluations_non_hiding(
+                    domain,
+                    &self.column_evaluations.coefficients8[i],
+                )
+            }),
             generic_comm: mask_fixed(
                 self.srs.commit_evaluations_non_hiding(
                     domain,

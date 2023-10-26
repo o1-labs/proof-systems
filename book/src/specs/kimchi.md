@@ -1761,8 +1761,8 @@ pub struct VerifierIndex<const W: usize, G: KimchiCurve> {
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub sigma_comm: [PolyComm<G>; PERMUTS],
     /// coefficient commitment array
-    #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
-    pub coefficients_comm: Vec<PolyComm<G>>,
+    #[serde_as(as = "[_; W]")]
+    pub coefficients_comm: [PolyComm<G>; W],
     /// coefficient commitment array
     #[serde(bound = "PolyComm<G>: Serialize + DeserializeOwned")]
     pub generic_comm: PolyComm<G>,
