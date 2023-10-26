@@ -20,10 +20,11 @@ pub use self::{
     variables::{variable_map, variables, Variables},
 };
 
-/// Witness cell interface
-pub trait WitnessCell<const W: usize, F: Field, T> {
+/// Witness cell interface. By default, the witness cell is a single element of type F.
+pub trait WitnessCell<const W: usize, F: Field, T = F> {
     fn value(&self, witness: &mut [Vec<F>; W], variables: &Variables<T>, index: usize) -> F;
 
+    // Length is 1 by default (T is single F element) unless overridden
     fn length(&self) -> usize {
         1
     }
@@ -97,7 +98,7 @@ mod tests {
 
     #[test]
     fn zero_layout() {
-        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![vec![
+        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField>>>> = vec![vec![
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
@@ -140,7 +141,7 @@ mod tests {
 
     #[test]
     fn mixed_layout() {
-        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![
+        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField>>>> = vec![
             vec![
                 ConstantCell::create(PallasField::from(12u32)),
                 ConstantCell::create(PallasField::from(0xa5a3u32)),
