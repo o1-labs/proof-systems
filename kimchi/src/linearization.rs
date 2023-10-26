@@ -43,7 +43,7 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
 
     // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
-    let mut max_exponents = VarbaseMul::<F>::CONSTRAINTS;
+    let max_exponents = VarbaseMul::<F>::CONSTRAINTS;
     powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), max_exponents);
 
     let mut cache = expr::Cache::default();
