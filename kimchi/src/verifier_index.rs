@@ -293,15 +293,15 @@ impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
 
             keccak_round_comm: self
                 .column_evaluations
-                .keccak_round_selector4
+                .keccak_round_selector8
                 .as_ref()
-                .map(|eval4| self.srs.commit_evaluations_non_hiding(domain, eval4)),
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             keccak_sponge_comm: self
                 .column_evaluations
-                .keccak_sponge_selector4
+                .keccak_sponge_selector8
                 .as_ref()
-                .map(|eval4| self.srs.commit_evaluations_non_hiding(domain, eval4)),
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
             zkpm: {

@@ -1,5 +1,7 @@
 //! This module implements the linearization.
 
+use std::cmp::max;
+
 use crate::alphas::Alphas;
 use crate::circuits::argument::{Argument, ArgumentType};
 use crate::circuits::expr;
@@ -9,7 +11,7 @@ use crate::circuits::lookup::{
     lookups::{LookupFeatures, LookupInfo, LookupPatterns},
 };
 use crate::circuits::polynomials::keccak;
-use crate::circuits::polynomials::keccak::circuitgates::KeccakRound;
+use crate::circuits::polynomials::keccak::circuitgates::{KeccakRound, KeccakSponge};
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
@@ -47,8 +49,11 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
     // The gate type argument can just be the zero gate.
     let mut max_exponents = VarbaseMul::<F>::CONSTRAINTS;
     if let Some(feature_flags) = feature_flags {
-        if feature_flags.keccak_round {
-            max_exponents = KeccakRound::<F>::CONSTRAINTS;
+        if feature_flags.keccak {
+            max_exponents = max(
+                KeccakRound::<F>::CONSTRAINTS,
+                KeccakSponge::<F>::CONSTRAINTS,
+            );
         }
     }
     powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), max_exponents);
@@ -162,12 +167,12 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
             keccak::circuitgates::KeccakRound::combined_constraints(&powers_of_alpha, &mut cache)
         };
         if let Some(feature_flags) = feature_flags {
-            if feature_flags.keccak_round {
+            if feature_flags.keccak {
                 expr += keccak_round_expr();
             }
         } else {
             expr += Expr::IfFeature(
-                FeatureFlag::KeccakRound,
+                FeatureFlag::Keccak,
                 Box::new(keccak_round_expr()),
                 Box::new(Expr::zero()),
             );
@@ -179,12 +184,12 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
             keccak::circuitgates::KeccakSponge::combined_constraints(&powers_of_alpha, &mut cache)
         };
         if let Some(feature_flags) = feature_flags {
-            if feature_flags.keccak_sponge {
+            if feature_flags.keccak {
                 expr += keccak_sponge_expr();
             }
         } else {
             expr += Expr::IfFeature(
-                FeatureFlag::KeccakSponge,
+                FeatureFlag::Keccak,
                 Box::new(keccak_sponge_expr()),
                 Box::new(Expr::zero()),
             );
@@ -292,8 +297,7 @@ pub fn linearization_columns<const W: usize, F: FftField + SquareRootField>(
                 foreign_field_mul: true,
                 xor: true,
                 rot: true,
-                keccak_round: true,
-                keccak_sponge: true,
+                keccak: true,
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,
