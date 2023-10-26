@@ -45,10 +45,8 @@ pub struct FeatureFlags {
     pub xor: bool,
     /// ROT gate
     pub rot: bool,
-    /// Keccak round gate
-    pub keccak_round: bool,
-    /// Keccak sponge gate
-    pub keccak_sponge: bool,
+    /// Keccak gates
+    pub keccak: bool,
     /// Lookup features
     pub lookup_features: LookupFeatures,
 }
@@ -135,13 +133,13 @@ pub struct ColumnEvaluations<const W: usize, F: PrimeField> {
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub rot_selector8: Option<E<F, D<F>>>,
 
-    /// Keccak round gate selector over domain d4
+    /// Keccak round gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_round_selector4: Option<E<F, D<F>>>,
+    pub keccak_round_selector8: Option<E<F, D<F>>>,
 
-    /// Keccak sponge gate selector over domain d4
+    /// Keccak sponge gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_sponge_selector4: Option<E<F, D<F>>>,
+    pub keccak_sponge_selector8: Option<E<F, D<F>>>,
 }
 
 #[serde_as]
@@ -581,29 +579,29 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let keccak_round_selector4 = {
-            if !self.feature_flags.keccak_round {
+        let keccak_round_selector8 = {
+            if !self.feature_flags.keccak {
                 None
             } else {
                 Some(selector_polynomial(
                     GateType::KeccakRound,
                     &self.gates,
                     &self.domain,
-                    &self.domain.d4,
+                    &self.domain.d8,
                     self.disable_gates_checks,
                 ))
             }
         };
 
-        let keccak_sponge_selector4 = {
-            if !self.feature_flags.keccak_sponge {
+        let keccak_sponge_selector8 = {
+            if !self.feature_flags.keccak {
                 None
             } else {
                 Some(selector_polynomial(
                     GateType::KeccakSponge,
                     &self.gates,
                     &self.domain,
-                    &self.domain.d4,
+                    &self.domain.d8,
                     self.disable_gates_checks,
                 ))
             }
@@ -630,8 +628,8 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_mul_selector8,
             xor_selector8,
             rot_selector8,
-            keccak_round_selector4,
-            keccak_sponge_selector4,
+            keccak_round_selector8,
+            keccak_sponge_selector8,
         }
     }
 }
@@ -757,8 +755,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             foreign_field_mul: false,
             xor: false,
             rot: false,
-            keccak_round: false,
-            keccak_sponge: false,
+            keccak: false,
         };
 
         for gate in &gates {
@@ -769,8 +766,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
                 GateType::Rot64 => feature_flags.rot = true,
-                GateType::KeccakRound => feature_flags.keccak_round = true,
-                GateType::KeccakSponge => feature_flags.keccak_sponge = true,
+                GateType::KeccakRound | GateType::KeccakSponge => feature_flags.keccak = true,
                 _ => (),
             }
         }
