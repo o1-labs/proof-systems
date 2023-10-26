@@ -171,7 +171,7 @@ where
 fn layout<const W: usize, F: PrimeField>(
     curr_row: usize,
     bits: usize,
-) -> Vec<Vec<Box<dyn WitnessCell<W, F, F>>>> {
+) -> Vec<Vec<Box<dyn WitnessCell<F, F, W>>>> {
     let num_xor = num_xors(bits);
     let mut layout = (0..num_xor)
         .map(|i| xor_row(i, curr_row + i))
@@ -183,7 +183,7 @@ fn layout<const W: usize, F: PrimeField>(
 fn xor_row<const W: usize, F: PrimeField>(
     nybble: usize,
     curr_row: usize,
-) -> Vec<Box<dyn WitnessCell<W, F, F>>> {
+) -> Vec<Box<dyn WitnessCell<F, F, W>>> {
     let start = nybble * 16;
     vec![
         VariableBitsCell::create("in1", start, None),
@@ -204,7 +204,7 @@ fn xor_row<const W: usize, F: PrimeField>(
     ]
 }
 
-fn zero_row<const W: usize, F: PrimeField>() -> Vec<Box<dyn WitnessCell<W, F, F>>> {
+fn zero_row<const W: usize, F: PrimeField>() -> Vec<Box<dyn WitnessCell<F, F, W>>> {
     vec![
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),

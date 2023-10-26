@@ -266,7 +266,7 @@ where
 
 // ROTATION WITNESS COMPUTATION
 
-fn layout_rot64<F: PrimeField>(curr_row: usize) -> [Vec<Box<dyn WitnessCell<COLUMNS, F, F>>>; 3] {
+fn layout_rot64<F: PrimeField>(curr_row: usize) -> [Vec<Box<dyn WitnessCell<F>>>; 3] {
     [
         rot_row(),
         range_check_0_row("shifted", curr_row + 1),
@@ -274,7 +274,7 @@ fn layout_rot64<F: PrimeField>(curr_row: usize) -> [Vec<Box<dyn WitnessCell<COLU
     ]
 }
 
-fn rot_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<COLUMNS, F, F>>> {
+fn rot_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<F>>> {
     vec![
         VariableCell::create("word"),
         VariableCell::create("rotated"),
