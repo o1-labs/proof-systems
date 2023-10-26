@@ -704,11 +704,11 @@ where
                 index_evals.insert(GateType::Rot64, selector);
             }
 
-            if let Some(selector) = index.column_evaluations.keccak_round_selector4.as_ref() {
+            if let Some(selector) = index.column_evaluations.keccak_round_selector8.as_ref() {
                 index_evals.insert(GateType::KeccakRound, selector);
             }
 
-            if let Some(selector) = index.column_evaluations.keccak_sponge_selector4.as_ref() {
+            if let Some(selector) = index.column_evaluations.keccak_sponge_selector8.as_ref() {
                 index_evals.insert(GateType::KeccakSponge, selector);
             }
 
@@ -786,9 +786,9 @@ where
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
                 let keccak_round_enabled =
-                    index.column_evaluations.keccak_round_selector4.is_some();
+                    index.column_evaluations.keccak_round_selector8.is_some();
                 let keccak_sponge_enabled =
-                    index.column_evaluations.keccak_sponge_selector4.is_some();
+                    index.column_evaluations.keccak_sponge_selector8.is_some();
 
                 for gate in [
                     (
