@@ -295,7 +295,7 @@ fn test_dummy() {
     stacker::grow(20 * 1024 * 1024, || {
         let (_, claim1) = test_keccak::<Pallas, PallasBaseSponge, PallasScalarSponge>(
             BigUint::from_bytes_be(&[0x00]),
-            true,
+            false,
         );
         let hash1 =
             BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");

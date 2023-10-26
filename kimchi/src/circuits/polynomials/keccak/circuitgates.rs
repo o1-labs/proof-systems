@@ -127,10 +127,6 @@ where
 
                 state_d[x][q] =
                     shifts_c(0, (x + DIM - 1) % DIM, q) + expand_rot_c((x + 1) % DIM, q);
-
-                for y in 0..DIM {
-                    state_e[y][x][q] = state_a(y, x, q) + state_d[x][q].clone();
-                }
             }
         } // END theta
 
@@ -138,6 +134,7 @@ where
         for y in 0..DIM {
             for x in 0..DIM {
                 for q in 0..QUARTERS {
+                    state_e[y][x][q] = state_a(y, x, q) + state_d[x][q].clone();
                     state_b[(2 * x + 3 * y) % DIM][y][q] = expand_rot_e(y, x, q);
                     constraints.push(state_e[y][x][q].clone() - from_shifts!(shifts_e, y, x, q));
                 }
