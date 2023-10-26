@@ -65,7 +65,7 @@ where
     witness
 }
 
-fn print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
+fn _print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
     fn to_u64<F: Field>(elem: F) -> u64 {
         let mut bytes = FieldHelpers::<F>::to_bytes(&elem);
         bytes.reverse();
@@ -144,9 +144,7 @@ where
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
             gate.verify_witness::<G, KECCAK_COLS>(row, &witness, &cs, &witness[0][0..cs.public]);
-        if result.is_err() {
-            return result;
-        }
+        result?;
     }
     assert_eq!(
         runner
