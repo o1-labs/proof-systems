@@ -13,7 +13,9 @@ use crate::{
             endosclmul::EndosclMul,
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
-            generic, permutation,
+            generic,
+            keccak::circuitgates::{KeccakRound, KeccakSponge},
+            permutation,
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
             rot::Rot64,
@@ -702,6 +704,14 @@ where
                 index_evals.insert(GateType::Rot64, selector);
             }
 
+            if let Some(selector) = index.column_evaluations.keccak_round_selector4.as_ref() {
+                index_evals.insert(GateType::KeccakRound, selector);
+            }
+
+            if let Some(selector) = index.column_evaluations.keccak_sponge_selector4.as_ref() {
+                index_evals.insert(GateType::KeccakSponge, selector);
+            }
+
             let mds = &G::sponge_params().mds;
             Environment {
                 constants: Constants {
@@ -775,6 +785,10 @@ where
                     .is_some();
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
+                let keccak_round_enabled =
+                    index.column_evaluations.keccak_round_selector4.is_some();
+                let keccak_sponge_enabled =
+                    index.column_evaluations.keccak_sponge_selector4.is_some();
 
                 for gate in [
                     (
@@ -799,6 +813,10 @@ where
                     (&Xor16::default(), xor_enabled),
                     // Rot gate
                     (&Rot64::default(), rot_enabled),
+                    // Keccak round gate
+                    (&KeccakRound::default(), keccak_round_enabled),
+                    // Keccak sponge gate
+                    (&KeccakSponge::default(), keccak_sponge_enabled),
                 ]
                 .into_iter()
                 .filter_map(|(gate, is_enabled)| if is_enabled { Some(gate) } else { None })
