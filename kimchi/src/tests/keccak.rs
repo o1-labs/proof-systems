@@ -5,8 +5,8 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, GateType},
         polynomials::keccak::{
-            collapse, compose, decompose, expand, pad, reset, shift,
-            witness::extend_keccak_witness, KECCAK_COLS, QUARTERS,
+            collapse, compose, decompose, expand, reset, shift, witness::extend_keccak_witness,
+            KECCAK_COLS, QUARTERS,
         },
         wires::Wire,
     },
