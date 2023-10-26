@@ -134,9 +134,13 @@ pub struct ColumnEvaluations<F: PrimeField, const COLUMNS: usize = KIMCHI_COLS> 
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
     pub rot_selector8: Option<E<F, D<F>>>,
 
-    /// Keccak round gate selector over domain d8
+    /// KeccakRound0 gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub keccak_round_selector8: Option<E<F, D<F>>>,
+    pub keccak_round0_selector8: Option<E<F, D<F>>>,
+
+    /// KeccakRound1 gate selector over domain d8
+    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
+    pub keccak_round1_selector8: Option<E<F, D<F>>>,
 
     /// Keccak sponge gate selector over domain d8
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -602,12 +606,26 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             }
         };
 
-        let keccak_round_selector8 = {
+        let keccak_round0_selector8 = {
             if !self.feature_flags.keccak {
                 None
             } else {
                 Some(selector_polynomial(
-                    GateType::KeccakRound,
+                    GateType::KeccakRound0,
+                    &self.gates,
+                    &self.domain,
+                    &self.domain.d8,
+                    self.disable_gates_checks,
+                ))
+            }
+        };
+
+        let keccak_round1_selector8 = {
+            if !self.feature_flags.keccak {
+                None
+            } else {
+                Some(selector_polynomial(
+                    GateType::KeccakRound1,
                     &self.gates,
                     &self.domain,
                     &self.domain.d8,
@@ -651,7 +669,8 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
             foreign_field_mul_selector8,
             xor_selector8,
             rot_selector8,
-            keccak_round_selector8,
+            keccak_round0_selector8,
+            keccak_round1_selector8,
             keccak_sponge_selector8,
         }
     }
@@ -855,7 +874,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
                 GateType::Xor16 => feature_flags.xor = true,
                 GateType::Rot64 => feature_flags.rot = true,
-                GateType::KeccakRound | GateType::KeccakSponge => feature_flags.keccak = true,
+                GateType::KeccakRound0 | GateType::KeccakRound1 | GateType::KeccakSponge => {
+                    feature_flags.keccak = true
+                }
                 _ => (),
             }
         }

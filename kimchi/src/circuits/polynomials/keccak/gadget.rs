@@ -36,7 +36,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 extra_bytes,
             ));
             for round in 0..ROUNDS {
-                gates.push(Self::create_keccak_round(new_row + gates.len(), round));
+                let mut round_gates = Self::create_keccak_round(new_row + gates.len(), round);
+                gates.append(&mut round_gates);
             }
         }
         gates.push(Self::create_keccak_squeeze(new_row + gates.len()));
@@ -80,11 +81,18 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         }
     }
 
-    fn create_keccak_round(new_row: usize, round: usize) -> Self {
-        CircuitGate {
-            typ: GateType::KeccakRound,
-            wires: Wire::for_row(new_row),
-            coeffs: expand_word(RC[round]),
-        }
+    fn create_keccak_round(new_row: usize, round: usize) -> Vec<Self> {
+        vec![
+            CircuitGate {
+                typ: GateType::KeccakRound0,
+                wires: Wire::for_row(new_row),
+                coeffs: vec![],
+            },
+            CircuitGate {
+                typ: GateType::KeccakRound1,
+                wires: Wire::for_row(new_row + 1),
+                coeffs: expand_word(RC[round]),
+            },
+        ]
     }
 }

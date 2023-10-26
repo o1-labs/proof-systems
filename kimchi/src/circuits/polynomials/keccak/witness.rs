@@ -21,24 +21,30 @@ use super::{
 
 type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
 
-fn layout_round<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 1] {
-    [vec![
-        IndexCell::create("state_a", 0, 100),
-        IndexCell::create("shifts_c", 100, 180),
-        IndexCell::create("dense_c", 180, 200),
-        IndexCell::create("quotient_c", 200, 205),
-        IndexCell::create("remainder_c", 205, 225),
-        IndexCell::create("dense_rot_c", 225, 245),
-        IndexCell::create("expand_rot_c", 245, 265),
-        IndexCell::create("shifts_e", 265, 665),
-        IndexCell::create("dense_e", 665, 765),
-        IndexCell::create("quotient_e", 765, 865),
-        IndexCell::create("remainder_e", 865, 965),
-        IndexCell::create("dense_rot_e", 965, 1065),
-        IndexCell::create("expand_rot_e", 1065, 1165),
-        IndexCell::create("shifts_b", 1165, 1565),
-        IndexCell::create("shifts_sum", 1565, 1965),
-    ]]
+fn layout_round<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 2] {
+    [
+        vec![
+            IndexCell::create("state_a", 0, 100),
+            IndexCell::create("shifts_c", 100, 180),
+            IndexCell::create("dense_c", 180, 200),
+            IndexCell::create("quotient_c", 200, 205),
+            IndexCell::create("remainder_c", 205, 225),
+            IndexCell::create("dense_rot_c", 225, 245),
+            IndexCell::create("expand_rot_c", 245, 265),
+            IndexCell::create("shifts_b", 265, 665),
+            IndexCell::create("shifts_sum", 665, 1065),
+        ],
+        vec![
+            IndexCell::create("shifts_e", 0, 400),
+            IndexCell::create("dense_e", 400, 500),
+            IndexCell::create("quotient_e", 500, 600),
+            IndexCell::create("remainder_e", 600, 700),
+            IndexCell::create("bound_e", 700, 800),
+            IndexCell::create("dense_rot_e", 800, 900),
+            IndexCell::create("expand_rot_e", 900, 1000),
+            IndexCell::create("state_f", 1000, 1100),
+        ],
+    ]
 }
 
 fn layout_sponge<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 1] {
@@ -299,10 +305,10 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
     // The number of rows that need to be added to the witness correspond to
     // - Absorb phase:
     //      - 1 per block for the sponge row
-    //      - 24 for the rounds
+    //      - 2*24 for the rounds
     // - Squeeze phase:
     //      - 1 for the final sponge row
-    let rows: usize = chunks.len() * (ROUNDS + 1) + 1;
+    let rows: usize = chunks.len() * (ROUNDS * 2 + 1) + 1;
 
     let mut keccak_witness = array::from_fn(|_| vec![F::zero(); rows]);
 
@@ -347,7 +353,7 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
             let chi = Chi::create(&pirho.state_b);
 
             // Iota
-            let iota = Iota::create(chi.state_f, round);
+            let iota = Iota::create(chi.state_f.clone(), round);
 
             // Initialize the round row
             witness::init(
@@ -362,17 +368,18 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
                 "remainder_c" => field(&theta.remainder_c),
                 "dense_rot_c" => field(&theta.dense_rot_c),
                 "expand_rot_c" => field(&theta.expand_rot_c),
+                "shifts_b" => field(&chi.shifts_b),
+                "shifts_sum" => field(&chi.shifts_sum),
                 "shifts_e" => field(&pirho.shifts_e),
                 "dense_e" => field(&pirho.dense_e),
                 "quotient_e" => field(&pirho.quotient_e),
                 "remainder_e" => field(&pirho.remainder_e),
                 "dense_rot_e" => field(&pirho.dense_rot_e),
                 "expand_rot_e" => field(&pirho.expand_rot_e),
-                "shifts_b" => field(&chi.shifts_b),
-                "shifts_sum" => field(&chi.shifts_sum)
+                "state_f" => field(&chi.state_f)
                 ],
             );
-            row += 1;
+            row += 2;
             ini_state = iota.state_g;
         }
         // update state after rounds

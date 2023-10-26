@@ -131,9 +131,13 @@ pub struct VerifierIndex<
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
-    /// Keccak round commitments
+    /// KeccakRound0 commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub keccak_round_comm: Option<PolyComm<G>>,
+    pub keccak_round0_comm: Option<PolyComm<G>>,
+
+    /// KeccakRound1 commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_round1_comm: Option<PolyComm<G>>,
 
     /// Keccak sponge commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -304,9 +308,15 @@ where
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
-            keccak_round_comm: self
+            keccak_round0_comm: self
                 .column_evaluations
-                .keccak_round_selector8
+                .keccak_round0_selector8
+                .as_ref()
+                .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
+
+            keccak_round1_comm: self
+                .column_evaluations
+                .keccak_round1_selector8
                 .as_ref()
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
@@ -451,7 +461,8 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
             foreign_field_mul_comm,
             xor_comm,
             rot_comm,
-            keccak_round_comm,
+            keccak_round0_comm,
+            keccak_round1_comm,
             keccak_sponge_comm,
 
             // Lookup index; optional
@@ -507,8 +518,12 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
             fq_sponge.absorb_g(&rot_comm.unshifted);
         }
 
-        if let Some(keccak_round_comm) = keccak_round_comm {
-            fq_sponge.absorb_g(&keccak_round_comm.unshifted);
+        if let Some(keccak_round0_comm) = keccak_round0_comm {
+            fq_sponge.absorb_g(&keccak_round0_comm.unshifted);
+        }
+
+        if let Some(keccak_round1_comm) = keccak_round1_comm {
+            fq_sponge.absorb_g(&keccak_round1_comm.unshifted);
         }
 
         if let Some(keccak_sponge_comm) = keccak_sponge_comm {

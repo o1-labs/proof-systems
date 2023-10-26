@@ -14,7 +14,7 @@ use crate::{
             foreign_field_add::circuitgates::ForeignFieldAdd,
             foreign_field_mul::{self, circuitgates::ForeignFieldMul},
             generic,
-            keccak::circuitgates::{KeccakRound, KeccakSponge},
+            keccak::circuitgates::{KeccakRound0, KeccakRound1, KeccakSponge},
             permutation,
             poseidon::Poseidon,
             range_check::circuitgates::{RangeCheck0, RangeCheck1},
@@ -704,8 +704,11 @@ where
                 index_evals.insert(GateType::Rot64, selector);
             }
 
-            if let Some(selector) = index.column_evaluations.keccak_round_selector8.as_ref() {
-                index_evals.insert(GateType::KeccakRound, selector);
+            if let Some(selector) = index.column_evaluations.keccak_round0_selector8.as_ref() {
+                index_evals.insert(GateType::KeccakRound0, selector);
+            }
+            if let Some(selector) = index.column_evaluations.keccak_round1_selector8.as_ref() {
+                index_evals.insert(GateType::KeccakRound1, selector);
             }
 
             if let Some(selector) = index.column_evaluations.keccak_sponge_selector8.as_ref() {
@@ -785,8 +788,10 @@ where
                     .is_some();
                 let xor_enabled = index.column_evaluations.xor_selector8.is_some();
                 let rot_enabled = index.column_evaluations.rot_selector8.is_some();
-                let keccak_round_enabled =
-                    index.column_evaluations.keccak_round_selector8.is_some();
+                let keccak_round0_enabled =
+                    index.column_evaluations.keccak_round0_selector8.is_some();
+                let keccak_round1_enabled =
+                    index.column_evaluations.keccak_round1_selector8.is_some();
                 let keccak_sponge_enabled =
                     index.column_evaluations.keccak_sponge_selector8.is_some();
 
@@ -813,8 +818,9 @@ where
                     (&Xor16::default(), xor_enabled),
                     // Rot gate
                     (&Rot64::default(), rot_enabled),
-                    // Keccak round gate
-                    (&KeccakRound::default(), keccak_round_enabled),
+                    // Keccak round gates
+                    (&KeccakRound0::default(), keccak_round0_enabled),
+                    (&KeccakRound1::default(), keccak_round1_enabled),
                     // Keccak sponge gate
                     (&KeccakSponge::default(), keccak_sponge_enabled),
                 ]
@@ -1072,9 +1078,14 @@ where
                 .rot_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
-            keccak_round_selector: index
+            keccak_round0_selector: index
                 .column_evaluations
-                .keccak_round_selector8
+                .keccak_round0_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            keccak_round1_selector: index
+                .column_evaluations
+                .keccak_round1_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
             keccak_sponge_selector: index

@@ -93,7 +93,8 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
-                    KeccakRound => Some(self.verifier_index.keccak_round_comm.as_ref()?),
+                    KeccakRound0 => Some(self.verifier_index.keccak_round0_comm.as_ref()?),
+                    KeccakRound1 => Some(self.verifier_index.keccak_round1_comm.as_ref()?),
                     KeccakSponge => Some(self.verifier_index.keccak_sponge_comm.as_ref()?),
                 }
             }
@@ -519,9 +520,15 @@ where
                 )
                 .chain(
                     index
-                        .keccak_round_comm
+                        .keccak_round0_comm
                         .as_ref()
-                        .map(|_| Column::Index(GateType::KeccakRound)),
+                        .map(|_| Column::Index(GateType::KeccakRound0)),
+                )
+                .chain(
+                    index
+                        .keccak_round1_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::KeccakRound1)),
                 )
                 .chain(
                     index
@@ -657,7 +664,8 @@ where
         foreign_field_mul_selector,
         xor_selector,
         rot_selector,
-        keccak_round_selector,
+        keccak_round0_selector,
+        keccak_round1_selector,
         keccak_sponge_selector,
         lookup_aggregation,
         lookup_table,
@@ -747,8 +755,11 @@ where
     if let Some(rot_selector) = rot_selector {
         check_eval_len(rot_selector, "rot selector")?
     }
-    if let Some(keccak_round_selector) = keccak_round_selector {
-        check_eval_len(keccak_round_selector, "keccak round selector")?
+    if let Some(keccak_round0_selector) = keccak_round0_selector {
+        check_eval_len(keccak_round0_selector, "keccak round selector")?
+    }
+    if let Some(keccak_round1_selector) = keccak_round1_selector {
+        check_eval_len(keccak_round1_selector, "keccak round selector")?
     }
     if let Some(keccak_sponge_selector) = keccak_sponge_selector {
         check_eval_len(keccak_sponge_selector, "keccak sponge selector")?
@@ -1044,9 +1055,15 @@ where
     )
     .chain(
         verifier_index
-            .keccak_round_comm
+            .keccak_round0_comm
             .as_ref()
-            .map(|_| Column::Index(GateType::KeccakRound)),
+            .map(|_| Column::Index(GateType::KeccakRound0)),
+    )
+    .chain(
+        verifier_index
+            .keccak_round1_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::KeccakRound1)),
     )
     .chain(
         verifier_index

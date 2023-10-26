@@ -138,8 +138,11 @@ impl<F: Copy, const COLUMNS: usize> ColumnEvaluations<F>
             Index(GateType::Rot64) => self
                 .rot_selector
                 .ok_or(ExprError::MissingIndexEvaluation(col)),
-            Index(GateType::KeccakRound) => self
-                .keccak_round_selector
+            Index(GateType::KeccakRound0) => self
+                .keccak_round0_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            Index(GateType::KeccakRound1) => self
+                .keccak_round1_selector
                 .ok_or(ExprError::MissingIndexEvaluation(col)),
             Index(GateType::KeccakSponge) => self
                 .keccak_sponge_selector

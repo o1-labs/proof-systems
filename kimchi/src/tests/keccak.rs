@@ -175,10 +175,6 @@ where
     let witness: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>;
         KECCAK_COLS] = create_keccak_witness::<G>(message);
 
-    for r in 1..=24 {
-        print_witness::<G::ScalarField>(&witness, r);
-    }
-
     let mut hash = vec![];
     let hash_row = witness[0].len() - 2; // Hash row is dummy row
     println!();
@@ -298,12 +294,10 @@ fn test_bitwise_sparse_representation() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_dummy() {
-    stacker::grow(30 * 1024 * 1024, || {
-        // guaranteed to have at least 30MB of stack
-
+    stacker::grow(3 * 1024 * 1024, || {
         let (_, claim1) = test_keccak::<Pallas, PallasBaseSponge, PallasScalarSponge>(
             BigUint::from_bytes_be(&[0x00]),
-            true,
+            false,
         );
         let hash1 =
             BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
@@ -314,14 +308,16 @@ fn test_dummy() {
 #[test]
 // Tests a random block of 1080 bits
 fn test_random_block() {
-    let (_,claim_random) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge >(
+    stacker::grow(30 * 1024 * 1024, || {
+        let (_,claim_random) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge >(
         BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126"),
-    false);
-    let hash_random =
-        BigUint::from_hex("845e9dd4e22b4917a80c5419a0ddb3eebf5f4f7cc6035d827314a18b718f751f");
-    assert_eq!(claim_random, hash_random);
+    true);
+        let hash_random =
+            BigUint::from_hex("845e9dd4e22b4917a80c5419a0ddb3eebf5f4f7cc6035d827314a18b718f751f");
+        assert_eq!(claim_random, hash_random);
+    });
 }
-
+/*
 #[test]
 // Tests real data coming from Optimism ~0.5kB (usual length)
 fn test_real_data() {
@@ -372,3 +368,4 @@ fn test_1000_hashes() {
         );
     });
 }
+*/

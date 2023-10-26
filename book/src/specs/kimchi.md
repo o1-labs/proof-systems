@@ -1856,9 +1856,13 @@ pub struct VerifierIndex<
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
     pub rot_comm: Option<PolyComm<G>>,
 
-    /// Keccak round commitments
+    /// KeccakRound0 commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
-    pub keccak_round_comm: Option<PolyComm<G>>,
+    pub keccak_round0_comm: Option<PolyComm<G>>,
+
+    /// KeccakRound1 commitments
+    #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
+    pub keccak_round1_comm: Option<PolyComm<G>>,
 
     /// Keccak sponge commitments
     #[serde(bound = "Option<PolyComm<G>>: Serialize + DeserializeOwned")]
@@ -2029,8 +2033,10 @@ pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     pub xor_selector: Option<Evals>,
     /// evaluation of the Rot selector polynomial
     pub rot_selector: Option<Evals>,
-    /// evaluation of the KeccakRound selector polynomial
-    pub keccak_round_selector: Option<Evals>,
+    /// evaluation of the KeccakRound0 selector polynomial
+    pub keccak_round0_selector: Option<Evals>,
+    /// evaluation of the KeccakRound1 selector polynomial
+    pub keccak_round1_selector: Option<Evals>,
     /// evaluation of the KeccakRound selector polynomial
     pub keccak_sponge_selector: Option<Evals>,
 
