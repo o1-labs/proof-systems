@@ -441,6 +441,8 @@ pub enum FeatureFlag {
     ForeignFieldMul,
     Xor,
     Rot,
+    KeccakRound,
+    KeccakSponge,
     LookupTables,
     RuntimeLookupTables,
     LookupPattern(LookupPattern),
@@ -590,6 +592,8 @@ impl<C: Zero + One + Neg<Output = C> + PartialEq + Clone> Expr<C> {
                         ForeignFieldMul => features.foreign_field_mul,
                         Xor => features.xor,
                         Rot => features.rot,
+                        KeccakRound => features.keccak_round,
+                        KeccakSponge => features.keccak_sponge,
                         LookupTables => {
                             features.lookup_features.patterns != LookupPatterns::default()
                         }
