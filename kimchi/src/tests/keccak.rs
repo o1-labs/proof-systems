@@ -168,9 +168,7 @@ where
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
             gate.verify_witness::<KECCAK_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
-        if result.is_err() {
-            return result;
-        }
+        result?;
     }
     assert_eq!(
         runner
