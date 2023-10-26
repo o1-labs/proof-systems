@@ -78,7 +78,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRound0);
-    const CONSTRAINTS: u32 = 525;
+    const CONSTRAINTS: u32 = 425;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
@@ -109,7 +109,7 @@ where
         let mut state_b: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
         let mut state_e: Vec<Vec<Vec<T>>> = vec![vec![vec![T::zero(); QUARTERS]; DIM]; DIM];
 
-        // STEP theta: 5 * ( 1 + 4 * (1 + 5 * 1) ) = 125 constraints
+        // STEP theta: 5 * ( 1 + 4 * 1 ) = 25 constraints
         for x in 0..DIM {
             let word_c = from_quarters!(dense_c, x);
             let rem_c = from_quarters!(remainder_c, x);
