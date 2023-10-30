@@ -58,15 +58,15 @@ pub mod caml {
 
     pub fn create_caml_oracles<G, CamlF, EFqSponge, EFrSponge, CurveParams>(
         lgr_comm: Vec<PolyComm<G>>,
-        index: VerifierIndex<KIMCHI_COLS, G, OpeningProof<G>>,
-        proof: ProverProof<KIMCHI_COLS, G, OpeningProof<G>>,
+        index: VerifierIndex<G, OpeningProof<G>, KIMCHI_COLS>,
+        proof: ProverProof<G, OpeningProof<G>, KIMCHI_COLS>,
         public_input: &[G::ScalarField],
     ) -> Result<CamlOracles<CamlF>, VerifyError>
     where
         G: KimchiCurve,
         G::BaseField: PrimeField,
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<KIMCHI_COLS, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField, KIMCHI_COLS>,
         CamlF: From<G::ScalarField>,
     {
         let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(public_input.len()).collect();

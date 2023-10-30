@@ -587,7 +587,7 @@ pub mod caml {
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
 
-    impl<F, CamlF> From<ProofEvaluations<KIMCHI_COLS, PointEvaluations<Vec<F>>>>
+    impl<F, CamlF> From<ProofEvaluations<PointEvaluations<Vec<F>>, KIMCHI_COLS>>
         for (
             Option<PointEvaluations<Vec<CamlF>>>,
             CamlProofEvaluations<CamlF>,
@@ -596,7 +596,7 @@ pub mod caml {
         F: Clone,
         CamlF: From<F>,
     {
-        fn from(pe: ProofEvaluations<KIMCHI_COLS, PointEvaluations<Vec<F>>>) -> Self {
+        fn from(pe: ProofEvaluations<PointEvaluations<Vec<F>>, KIMCHI_COLS>) -> Self {
             let w = (
                 pe.w[0]
                     .clone()
@@ -798,7 +798,7 @@ pub mod caml {
         From<(
             Option<PointEvaluations<Vec<CamlF>>>,
             CamlProofEvaluations<CamlF>,
-        )> for ProofEvaluations<KIMCHI_COLS, PointEvaluations<Vec<F>>>
+        )> for ProofEvaluations<PointEvaluations<Vec<F>>, KIMCHI_COLS>
     where
         F: Clone,
         CamlF: Clone,
@@ -810,7 +810,7 @@ pub mod caml {
                 CamlProofEvaluations<CamlF>,
             ),
         ) -> Self {
-            let w = vec![
+            let w = [
                 cpe.w.0.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.1.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.2.map(&|x| x.into_iter().map(Into::into).collect()),
@@ -827,7 +827,7 @@ pub mod caml {
                 cpe.w.13.map(&|x| x.into_iter().map(Into::into).collect()),
                 cpe.w.14.map(&|x| x.into_iter().map(Into::into).collect()),
             ];
-            let coefficients = vec![
+            let coefficients = [
                 cpe.coefficients
                     .0
                     .map(&|x| x.into_iter().map(Into::into).collect()),

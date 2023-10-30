@@ -1647,12 +1647,12 @@ pub mod caml {
     // CamlProverCommitments<CamlG> <-> ProverCommitments<G>
     //
 
-    impl<G, CamlG> From<ProverCommitments<KIMCHI_COLS, G>> for CamlProverCommitments<CamlG>
+    impl<G, CamlG> From<ProverCommitments<G, KIMCHI_COLS>> for CamlProverCommitments<CamlG>
     where
         G: AffineCurve,
         CamlPolyComm<CamlG>: From<PolyComm<G>>,
     {
-        fn from(prover_comm: ProverCommitments<KIMCHI_COLS, G>) -> Self {
+        fn from(prover_comm: ProverCommitments<G, KIMCHI_COLS>) -> Self {
             Self {
                 w_comm: (
                     prover_comm.w_comm[0].clone().into(),
@@ -1678,14 +1678,14 @@ pub mod caml {
         }
     }
 
-    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<KIMCHI_COLS, G>
+    impl<G, CamlG> From<CamlProverCommitments<CamlG>> for ProverCommitments<G, KIMCHI_COLS>
     where
         G: AffineCurve,
         PolyComm<G>: From<CamlPolyComm<CamlG>>,
     {
         fn from(
             caml_prover_comm: CamlProverCommitments<CamlG>,
-        ) -> ProverCommitments<KIMCHI_COLS, G> {
+        ) -> ProverCommitments<G, KIMCHI_COLS> {
             let (
                 w_comm0,
                 w_comm1,
@@ -1734,7 +1734,7 @@ pub mod caml {
 
     impl<G, CamlG, CamlF>
         From<(
-            ProverProof<KIMCHI_COLS, G, OpeningProof<G>>,
+            ProverProof<G, OpeningProof<G>, KIMCHI_COLS>,
             Vec<G::ScalarField>,
         )> for CamlProofWithPublic<CamlG, CamlF>
     where
@@ -1744,7 +1744,7 @@ pub mod caml {
     {
         fn from(
             pp: (
-                ProverProof<KIMCHI_COLS, G, OpeningProof<G>>,
+                ProverProof<G, OpeningProof<G>, KIMCHI_COLS>,
                 Vec<G::ScalarField>,
             ),
         ) -> Self {
@@ -1765,7 +1765,7 @@ pub mod caml {
 
     impl<G, CamlG, CamlF> From<CamlProofWithPublic<CamlG, CamlF>>
         for (
-            ProverProof<KIMCHI_COLS, G, OpeningProof<G>>,
+            ProverProof<G, OpeningProof<G>, KIMCHI_COLS>,
             Vec<G::ScalarField>,
         )
     where
@@ -1776,7 +1776,7 @@ pub mod caml {
         fn from(
             caml_pp: CamlProofWithPublic<CamlG, CamlF>,
         ) -> (
-            ProverProof<KIMCHI_COLS, G, OpeningProof<G>>,
+            ProverProof<G, OpeningProof<G>, KIMCHI_COLS>,
             Vec<G::ScalarField>,
         ) {
             let CamlProofWithPublic {
