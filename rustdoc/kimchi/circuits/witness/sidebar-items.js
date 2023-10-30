@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["init","init_cell","init_row"],"macro":["variable_map","variables"],"struct":["ConstantCell","CopyBitsCell","CopyCell","CopyShiftCell","VariableBitsCell","VariableCell","Variables"],"trait":["WitnessCell"]};
+window.SIDEBAR_ITEMS = {"fn":["init","init_cell","init_row"],"macro":["variable_map","variables"],"struct":["ConstantCell","CopyBitsCell","CopyCell","CopyShiftCell","IndexCell","VariableBitsCell","VariableCell","Variables"],"trait":["WitnessCell"]};
