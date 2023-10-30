@@ -7,7 +7,7 @@ use crate::{
             runtime_tables::{RuntimeTable, RuntimeTableCfg},
             tables::LookupTable,
         },
-        wires::COLUMNS,
+        wires::KIMCHI_COLS,
     },
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
@@ -36,15 +36,15 @@ use std::{fmt::Write, time::Instant};
 #[derive(Default, Clone)]
 pub(crate) struct TestFramework<
     G: KimchiCurve,
-    const W: usize = COLUMNS,
+    const COLUMNS: usize = KIMCHI_COLS,
     OpeningProof: OpenProof<G> = DlogOpeningProof<G>,
 > where
     G::BaseField: PrimeField,
     OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof, W>: Clone,
+    VerifierIndex<G, OpeningProof, COLUMNS>: Clone,
 {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
-    witness: Option<[Vec<G::ScalarField>; W]>,
+    witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
     public_inputs: Vec<G::ScalarField>,
     lookup_tables: Vec<LookupTable<G::ScalarField>>,
     runtime_tables_setup: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
@@ -54,26 +54,27 @@ pub(crate) struct TestFramework<
     disable_gates_checks: bool,
     override_srs_size: Option<usize>,
 
-    prover_index: Option<ProverIndex<G, OpeningProof, W>>,
-    verifier_index: Option<VerifierIndex<G, OpeningProof, W>>,
+    prover_index: Option<ProverIndex<G, OpeningProof, COLUMNS>>,
+    verifier_index: Option<VerifierIndex<G, OpeningProof, COLUMNS>>,
 }
 
 #[derive(Clone)]
 pub(crate) struct TestRunner<
     G: KimchiCurve,
-    const W: usize = COLUMNS,
+    const COLUMNS: usize = KIMCHI_COLS,
     OpeningProof: OpenProof<G> = DlogOpeningProof<G>,
->(TestFramework<G, W, OpeningProof>)
+>(TestFramework<G, COLUMNS, OpeningProof>)
 where
     G::BaseField: PrimeField,
     OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof, W>: Clone;
+    VerifierIndex<G, OpeningProof, COLUMNS>: Clone;
 
-impl<G: KimchiCurve, const W: usize, OpeningProof: OpenProof<G>> TestFramework<G, W, OpeningProof>
+impl<G: KimchiCurve, const COLUMNS: usize, OpeningProof: OpenProof<G>>
+    TestFramework<G, COLUMNS, OpeningProof>
 where
     G::BaseField: PrimeField,
     OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof, W>: Clone,
+    VerifierIndex<G, OpeningProof, COLUMNS>: Clone,
 {
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
@@ -82,7 +83,7 @@ where
     }
 
     #[must_use]
-    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; W]) -> Self {
+    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; COLUMNS]) -> Self {
         self.witness = Some(witness);
         self
     }
@@ -131,7 +132,7 @@ where
     pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
-    ) -> TestRunner<G, W, OpeningProof> {
+    ) -> TestRunner<G, COLUMNS, OpeningProof> {
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
@@ -159,19 +160,19 @@ where
     }
 }
 
-impl<G: KimchiCurve, const W: usize> TestFramework<G, W>
+impl<G: KimchiCurve, const COLUMNS: usize> TestFramework<G, COLUMNS>
 where
     G::BaseField: PrimeField,
 {
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> TestRunner<G, W> {
+    pub(crate) fn setup(mut self) -> TestRunner<G, COLUMNS> {
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
-        let index = new_index_for_test_with_lookups::<G, W>(
+        let index = new_index_for_test_with_lookups::<G, COLUMNS>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -192,12 +193,13 @@ where
     }
 }
 
-impl<G: KimchiCurve, const W: usize, OpeningProof: OpenProof<G>> TestRunner<G, W, OpeningProof>
+impl<G: KimchiCurve, const COLUMNS: usize, OpeningProof: OpenProof<G>>
+    TestRunner<G, COLUMNS, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
     OpeningProof::SRS: Clone,
-    VerifierIndex<G, OpeningProof, W>: Clone,
+    VerifierIndex<G, OpeningProof, COLUMNS>: Clone,
 {
     #[must_use]
     pub(crate) fn runtime_tables(
@@ -215,12 +217,12 @@ where
     }
 
     #[must_use]
-    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; W]) -> Self {
+    pub(crate) fn witness(mut self, witness: [Vec<G::ScalarField>; COLUMNS]) -> Self {
         self.0.witness = Some(witness);
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof, W> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof, COLUMNS> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -229,7 +231,7 @@ where
     pub(crate) fn prove<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField, W>,
+        EFrSponge: FrSponge<G::ScalarField, COLUMNS>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -260,7 +262,7 @@ where
     pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<G::ScalarField, W>,
+        EFrSponge: FrSponge<G::ScalarField, COLUMNS>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -291,7 +293,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge, OpeningProof, W>(
+        verify::<G, EFqSponge, EFrSponge, OpeningProof, COLUMNS>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,
@@ -304,7 +306,7 @@ where
     }
 }
 
-pub fn print_witness<F>(cols: &[Vec<F>; COLUMNS], start_row: usize, end_row: usize)
+pub fn print_witness<F>(cols: &[Vec<F>; KIMCHI_COLS], start_row: usize, end_row: usize)
 where
     F: PrimeField,
 {

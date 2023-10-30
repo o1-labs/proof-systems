@@ -2,7 +2,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, CircuitGateResult, Connect, GateType},
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         polynomials::foreign_field_mul,
     },
     curve::KimchiCurve,
@@ -75,11 +75,11 @@ fn run_test<G: KimchiCurve, EFqSponge, EFrSponge>(
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
     invalidations: Vec<((usize, usize), G::ScalarField)>,
-) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
+) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; KIMCHI_COLS])
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField, COLUMNS>,
+    EFrSponge: FrSponge<G::ScalarField, KIMCHI_COLS>,
 {
     // Create foreign field multiplication gates
     let (mut next_row, mut gates) =
@@ -205,14 +205,14 @@ where
     } else {
         // If not full mode, just create constraint system (this is much faster)
         ConstraintSystem::create(gates.clone())
-            .build::<COLUMNS>()
+            .build::<KIMCHI_COLS>()
             .unwrap()
     };
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<G, COLUMNS>(row, &witness, &cs, &witness[0][0..cs.public]);
+            gate.verify_witness::<G, KIMCHI_COLS>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }
@@ -246,7 +246,7 @@ where
             // When targeting the plookup constraints the invalidated values would cause custom constraint
             // failures, so we want to suppress these witness verification checks when doing plookup tests.
             for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
-                let result = gate.verify_witness::<G, COLUMNS>(
+                let result = gate.verify_witness::<G, KIMCHI_COLS>(
                     row,
                     &witness,
                     &cs,
@@ -295,7 +295,7 @@ fn test_custom_constraints<G: KimchiCurve, EFqSponge, EFrSponge>(foreign_field_m
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField, COLUMNS>,
+    EFrSponge: FrSponge<G::ScalarField, KIMCHI_COLS>,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 

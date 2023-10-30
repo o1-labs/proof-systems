@@ -2,7 +2,7 @@ use kimchi::{
     circuits::{
         gate::CircuitGate,
         polynomials::{generic::GenericGateSpec, poseidon::generate_witness},
-        wires::{Wire, COLUMNS},
+        wires::{Wire, KIMCHI_COLS},
     },
     curve::KimchiCurve,
     prover_index::testing::new_index_for_test,
@@ -59,7 +59,7 @@ fn main() {
     };
 
     // create the index
-    let index = new_index_for_test::<Vesta, COLUMNS>(gates, public);
+    let index = new_index_for_test::<Vesta, KIMCHI_COLS>(gates, public);
 
     // create the witness
     let mut witness = Witness::new(row + 1).inner();

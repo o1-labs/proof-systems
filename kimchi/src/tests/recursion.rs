@@ -1,6 +1,6 @@
 use super::framework::TestFramework;
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::wires::COLUMNS;
+use crate::circuits::wires::KIMCHI_COLS;
 use crate::proof::RecursionChallenge;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -21,10 +21,10 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_recursion() {
-    let gates = create_circuit::<Fp, COLUMNS>(0, 0);
+    let gates = create_circuit::<Fp, KIMCHI_COLS>(0, 0);
 
     // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+    let mut witness: [Vec<Fp>; KIMCHI_COLS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &[]);
 
     // setup

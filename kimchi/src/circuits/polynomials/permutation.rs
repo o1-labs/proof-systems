@@ -198,8 +198,8 @@ impl<
         F: PrimeField,
         G: KimchiCurve<ScalarField = F>,
         OpeningProof: OpenProof<G>,
-        const W: usize,
-    > ProverIndex<G, OpeningProof, W>
+        const COLUMNS: usize,
+    > ProverIndex<G, OpeningProof, COLUMNS>
 {
     /// permutation quotient poly contribution computation
     ///
@@ -213,7 +213,7 @@ impl<
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
         &self,
-        lagrange: &WitnessOverDomains<F, W>,
+        lagrange: &WitnessOverDomains<F, COLUMNS>,
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
@@ -336,7 +336,7 @@ impl<
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &ProofEvaluations<PointEvaluations<F>, W>,
+        e: &ProofEvaluations<PointEvaluations<F>, COLUMNS>,
         zeta: F,
         beta: F,
         gamma: F,
@@ -365,8 +365,8 @@ impl<
 }
 
 impl<F: PrimeField> ConstraintSystem<F> {
-    pub fn perm_scalars<const W: usize>(
-        e: &ProofEvaluations<PointEvaluations<F>, W>,
+    pub fn perm_scalars<const COLUMNS: usize>(
+        e: &ProofEvaluations<PointEvaluations<F>, COLUMNS>,
         beta: F,
         gamma: F,
         mut alphas: impl Iterator<Item = F>,
@@ -410,8 +410,8 @@ impl<
         F: PrimeField,
         G: KimchiCurve<ScalarField = F>,
         OpeningProof: OpenProof<G>,
-        const W: usize,
-    > ProverIndex<G, OpeningProof, W>
+        const COLUMNS: usize,
+    > ProverIndex<G, OpeningProof, COLUMNS>
 {
     /// permutation aggregation polynomial computation
     ///
@@ -424,7 +424,7 @@ impl<
     /// Will panic if `first element` is not 1.
     pub fn perm_aggreg(
         &self,
-        witness: &[Vec<F>; W],
+        witness: &[Vec<F>; COLUMNS],
         beta: &F,
         gamma: &F,
         rng: &mut (impl RngCore + CryptoRng),

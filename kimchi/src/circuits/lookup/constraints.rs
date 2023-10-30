@@ -83,12 +83,12 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 ///
 /// Will panic if `value(s)` are missing from the `table`.
 #[allow(clippy::too_many_arguments)]
-pub fn sorted<F: PrimeField, const W: usize>(
+pub fn sorted<F: PrimeField, const COLUMNS: usize>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; W],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     table_id_combiner: F,
     lookup_info: &LookupInfo,
@@ -225,12 +225,12 @@ pub fn sorted<F: PrimeField, const W: usize>(
 ///
 /// Will panic if final evaluation is not 1.
 #[allow(clippy::too_many_arguments)]
-pub fn aggregation<R, F, const W: usize>(
+pub fn aggregation<R, F, const COLUMNS: usize>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; W],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: &F,
     table_id_combiner: &F,
     beta: F,
@@ -678,13 +678,13 @@ pub fn constraints<F: FftField>(
 ///
 /// Will panic if `d1` and `s` domain sizes do not match.
 #[allow(clippy::too_many_arguments)]
-pub fn verify<const W: usize, F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
+pub fn verify<const COLUMNS: usize, F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: TABLE,
     lookup_table_entries: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; W],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: &F,
     table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],

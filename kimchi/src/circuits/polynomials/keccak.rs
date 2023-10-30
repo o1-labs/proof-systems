@@ -5,7 +5,7 @@ use ark_ff::{PrimeField, SquareRootField};
 
 use crate::circuits::{
     gate::{CircuitGate, Connect},
-    polynomial::COLUMNS,
+    polynomial::KIMCHI_COLS,
     polynomials::{
         generic::GenericGateSpec,
         rot::{self, RotMode},
@@ -70,9 +70,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
 /// Create a Keccak rotation (whole table)
 /// Input: state (5x5) array of words to be rotated
-pub fn create_witness_keccak_rot<F: PrimeField>(state: [[u64; 5]; 5]) -> [Vec<F>; COLUMNS] {
+pub fn create_witness_keccak_rot<F: PrimeField>(state: [[u64; 5]; 5]) -> [Vec<F>; KIMCHI_COLS] {
     // First generic gate with all zeros to constrain that the two most significant limbs of shifted output are zeros
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero()]);
+    let mut witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero()]);
     for (x, row) in ROT_TAB.iter().enumerate() {
         for (y, &rot) in row.iter().enumerate() {
             if rot == 0 {

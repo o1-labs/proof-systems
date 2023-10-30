@@ -257,14 +257,14 @@ pub mod testing {
         /// # Errors
         ///
         /// Will give error if `self.typ` is not `GateType::Generic`.
-        pub fn verify_generic<const W: usize>(
+        pub fn verify_generic<const COLUMNS: usize>(
             &self,
             row: usize,
-            witness: &[Vec<F>; W],
+            witness: &[Vec<F>; COLUMNS],
             public: &[F],
         ) -> Result<(), String> {
             // assignments
-            let this: [F; W] = array::from_fn(|i| witness[i][row]);
+            let this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
 
             // constants
             let zero = F::zero();
@@ -311,16 +311,16 @@ pub mod testing {
             F: PrimeField,
             G: KimchiCurve<ScalarField = F>,
             OpeningProof: OpenProof<G>,
-            const W: usize,
-        > ProverIndex<G, OpeningProof, W>
+            const COLUMNS: usize,
+        > ProverIndex<G, OpeningProof, COLUMNS>
     {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
             &self,
-            witness: &[DensePolynomial<F>; W],
+            witness: &[DensePolynomial<F>; COLUMNS],
             public: &DensePolynomial<F>,
         ) -> bool {
-            let coefficientsm: [_; W] = array::from_fn(|i| {
+            let coefficientsm: [_; COLUMNS] = array::from_fn(|i| {
                 self.column_evaluations.coefficients8[i]
                     .clone()
                     .interpolate()
@@ -370,7 +370,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `gates_row` is None.
-    pub fn create_circuit<F: PrimeField, const W: usize>(
+    pub fn create_circuit<F: PrimeField, const COLUMNS: usize>(
         start_row: usize,
         public: usize,
     ) -> Vec<CircuitGate<F>> {
@@ -429,9 +429,9 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `witness_row` is None.
-    pub fn fill_in_witness<F: FftField, const W: usize>(
+    pub fn fill_in_witness<F: FftField, const COLUMNS: usize>(
         start_row: usize,
-        witness: &mut [Vec<F>; W],
+        witness: &mut [Vec<F>; COLUMNS],
         public: &[F],
     ) {
         // fill witness

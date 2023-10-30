@@ -4,7 +4,7 @@ use crate::circuits::{
     berkeley_columns::Column,
     gate::GateType,
     lookup::lookups::LookupPattern,
-    wires::{COLUMNS, PERMUTS},
+    wires::{KIMCHI_COLS, PERMUTS},
 };
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
@@ -42,7 +42,7 @@ pub struct PointEvaluations<Evals> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<Evals, const W: usize = COLUMNS> {
+pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     /// public input polynomials
     pub public: Option<Evals>,
     /// witness polynomials
@@ -121,7 +121,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverCommitments<G: AffineCurve, const W: usize = COLUMNS> {
+pub struct ProverCommitments<G: AffineCurve, const COLUMNS: usize = KIMCHI_COLS> {
     /// The commitments to the witness (execution trace)
     pub w_comm: Vec<PolyComm<G>>,
     /// The commitment to the permutation polynomial
@@ -136,9 +136,9 @@ pub struct ProverCommitments<G: AffineCurve, const W: usize = COLUMNS> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<G: AffineCurve, OpeningProof, const W: usize = COLUMNS> {
+pub struct ProverProof<G: AffineCurve, OpeningProof, const COLUMNS: usize = KIMCHI_COLS> {
     /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<G, W>,
+    pub commitments: ProverCommitments<G, COLUMNS>,
 
     /// batched commitment opening proof
     #[serde(bound(
@@ -148,7 +148,7 @@ pub struct ProverProof<G: AffineCurve, OpeningProof, const W: usize = COLUMNS> {
     pub proof: OpeningProof,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>, W>,
+    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>, COLUMNS>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -193,8 +193,8 @@ impl<Evals> PointEvaluations<Evals> {
     }
 }
 
-impl<Eval, const W: usize> ProofEvaluations<Eval, W> {
-    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<Eval2, W> {
+impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
+    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<Eval2, COLUMNS> {
         let ProofEvaluations {
             public,
             w,
@@ -253,7 +253,10 @@ impl<Eval, const W: usize> ProofEvaluations<Eval, W> {
         }
     }
 
-    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> ProofEvaluations<Eval2, W> {
+    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(
+        &self,
+        f: &FN,
+    ) -> ProofEvaluations<Eval2, COLUMNS> {
         let ProofEvaluations {
             public,
             w,
@@ -360,11 +363,11 @@ impl<G: AffineCurve> RecursionChallenge<G> {
     }
 }
 
-impl<F: Zero + Copy, const W: usize> ProofEvaluations<PointEvaluations<F>, W> {
+impl<F: Zero + Copy, const COLUMNS: usize> ProofEvaluations<PointEvaluations<F>, COLUMNS> {
     pub fn dummy_with_witness_evaluations(
-        curr: [F; W],
-        next: [F; W],
-    ) -> ProofEvaluations<PointEvaluations<F>, W> {
+        curr: [F; COLUMNS],
+        next: [F; COLUMNS],
+    ) -> ProofEvaluations<PointEvaluations<F>, COLUMNS> {
         let pt = |curr, next| PointEvaluations {
             zeta: curr,
             zeta_omega: next,
@@ -374,7 +377,7 @@ impl<F: Zero + Copy, const W: usize> ProofEvaluations<PointEvaluations<F>, W> {
             w: curr.iter().zip(next).map(|(c, n)| pt(*c, n)).collect(),
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
-            coefficients: vec![pt(F::zero(), F::zero()); W],
+            coefficients: vec![pt(F::zero(), F::zero()); COLUMNS],
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
             complete_add_selector: pt(F::zero(), F::zero()),
@@ -400,8 +403,11 @@ impl<F: Zero + Copy, const W: usize> ProofEvaluations<PointEvaluations<F>, W> {
     }
 }
 
-impl<F: FftField, const W: usize> ProofEvaluations<PointEvaluations<Vec<F>>, W> {
-    pub fn combine(&self, pt: &PointEvaluations<F>) -> ProofEvaluations<PointEvaluations<F>, W> {
+impl<F: FftField, const COLUMNS: usize> ProofEvaluations<PointEvaluations<Vec<F>>, COLUMNS> {
+    pub fn combine(
+        &self,
+        pt: &PointEvaluations<F>,
+    ) -> ProofEvaluations<PointEvaluations<F>, COLUMNS> {
         self.map_ref(&|evals| PointEvaluations {
             zeta: DensePolynomial::eval_polynomial(&evals.zeta, pt.zeta),
             zeta_omega: DensePolynomial::eval_polynomial(&evals.zeta_omega, pt.zeta_omega),
@@ -409,7 +415,7 @@ impl<F: FftField, const W: usize> ProofEvaluations<PointEvaluations<Vec<F>>, W> 
     }
 }
 
-impl<F, const W: usize> ProofEvaluations<F, W> {
+impl<F, const COLUMNS: usize> ProofEvaluations<F, COLUMNS> {
     pub fn get_column(&self, col: Column) -> Option<&F> {
         match col {
             Column::Witness(i) => Some(&self.w[i]),
@@ -455,7 +461,7 @@ impl<F, const W: usize> ProofEvaluations<F, W> {
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use super::*;
-    use crate::circuits::wires::COLUMNS;
+    use crate::circuits::wires::KIMCHI_COLS;
     use poly_commitment::commitment::caml::CamlPolyComm;
 
     //
@@ -579,7 +585,7 @@ pub mod caml {
     // ProofEvaluations<Vec<F>> <-> CamlProofEvaluations<CamlF>
     //
 
-    impl<F, CamlF> From<ProofEvaluations<COLUMNS, PointEvaluations<Vec<F>>>>
+    impl<F, CamlF> From<ProofEvaluations<KIMCHI_COLS, PointEvaluations<Vec<F>>>>
         for (
             Option<PointEvaluations<Vec<CamlF>>>,
             CamlProofEvaluations<CamlF>,
@@ -588,7 +594,7 @@ pub mod caml {
         F: Clone,
         CamlF: From<F>,
     {
-        fn from(pe: ProofEvaluations<COLUMNS, PointEvaluations<Vec<F>>>) -> Self {
+        fn from(pe: ProofEvaluations<KIMCHI_COLS, PointEvaluations<Vec<F>>>) -> Self {
             let w = (
                 pe.w[0]
                     .clone()
@@ -790,7 +796,7 @@ pub mod caml {
         From<(
             Option<PointEvaluations<Vec<CamlF>>>,
             CamlProofEvaluations<CamlF>,
-        )> for ProofEvaluations<COLUMNS, PointEvaluations<Vec<F>>>
+        )> for ProofEvaluations<KIMCHI_COLS, PointEvaluations<Vec<F>>>
     where
         F: Clone,
         CamlF: Clone,

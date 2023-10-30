@@ -13,7 +13,7 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         wires::Wire,
         witness::{self, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
@@ -216,7 +216,7 @@ where
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
-        let mut constraints = (7..COLUMNS)
+        let mut constraints = (7..KIMCHI_COLS)
             .map(|i| crumb(&env.witness_curr(i)))
             .collect::<Vec<T>>();
 
@@ -244,7 +244,7 @@ where
         let mut bound = T::zero();
 
         // Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
+        for i in (7..KIMCHI_COLS).rev() {
             bound += power_of_2.clone() * env.witness_curr(i);
             power_of_2 *= T::two_pow(2); // 2 bits
         }
@@ -297,7 +297,7 @@ fn rot_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<F>>> {
 }
 
 fn init_rot64<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     curr_row: usize,
     word: F,
     rotated: F,
@@ -323,7 +323,7 @@ fn init_rot64<F: PrimeField>(
 /// Warning:
 /// - don't forget to include a public input row with zero value
 pub fn extend_rot<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     word: u64,
     rot: u32,
     side: RotMode,
@@ -351,8 +351,8 @@ pub fn extend_rot<F: PrimeField>(
     let bound = 2u128.pow(64) - 2u128.pow(rot);
 
     let rot_row = witness[0].len();
-    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 3]);
-    for col in 0..COLUMNS {
+    let rot_witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero(); 3]);
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(rot_witness[col].iter());
     }
     init_rot64(

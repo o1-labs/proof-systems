@@ -3,7 +3,7 @@ use crate::{
         gate::CircuitGate,
         polynomials,
         polynomials::poseidon::ROUNDS_PER_ROW,
-        wires::{Wire, COLUMNS},
+        wires::{Wire, KIMCHI_COLS},
     },
     curve::KimchiCurve,
     tests::framework::TestFramework,
@@ -62,7 +62,7 @@ fn test_poseidon() {
     }
 
     // witness for Poseidon permutation custom constraints
-    let mut witness: [Vec<Fp>; COLUMNS] =
+    let mut witness: [Vec<Fp>; KIMCHI_COLS] =
         array::from_fn(|_| vec![Fp::zero(); POS_ROWS_PER_HASH * NUM_POS + 1 /* last output row */]);
 
     // creates a random input

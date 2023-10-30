@@ -1,6 +1,6 @@
 use crate::circuits::{
     gate::CircuitGate,
-    polynomial::COLUMNS,
+    polynomial::KIMCHI_COLS,
     polynomials::turshi::{testing::*, witness::*},
 };
 use mina_curves::pasta::Fp as F;
@@ -22,7 +22,7 @@ fn test_cairo_should_fail() {
     let inirow = 0;
     let (circuit, _) = CircuitGate::<F>::create_cairo_gadget(inirow, ninstr);
 
-    let mut witness = cairo_witness::<F, COLUMNS>(&prog);
+    let mut witness = cairo_witness::<F, KIMCHI_COLS>(&prog);
     // break a witness
     witness[0][0] += F::from(1u32);
     let res_ensure = ensure_cairo_gate(&circuit[0], 0, &witness);
@@ -68,7 +68,7 @@ fn test_cairo_gate() {
     mem.write(F::from(23u32), F::from(44u32)); //end of program
     let prog = CairoProgram::new(&mut mem, 5);
 
-    let witness = cairo_witness::<F, COLUMNS>(&prog);
+    let witness = cairo_witness::<F, KIMCHI_COLS>(&prog);
 
     // Create the Cairo circuit
     let ninstr = prog.trace().len();

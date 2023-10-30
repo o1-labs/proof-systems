@@ -2,7 +2,7 @@ use crate::{
     bench::BenchmarkCtx,
     circuits::{
         polynomials::generic::testing::{create_circuit, fill_in_witness},
-        wires::COLUMNS,
+        wires::KIMCHI_COLS,
     },
     proof::ProverProof,
     prover_index::testing::new_index_for_test,
@@ -51,10 +51,10 @@ mod tests {
     #[test]
     pub fn test_serialization() {
         let public = vec![Fp::from(3u8); 5];
-        let gates = create_circuit::<Fp, COLUMNS>(0, public.len());
+        let gates = create_circuit::<Fp, KIMCHI_COLS>(0, public.len());
 
         // create witness
-        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+        let mut witness: [Vec<Fp>; KIMCHI_COLS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
         fill_in_witness(0, &mut witness, &public);
 
         let index = new_index_for_test(gates, public.len());
@@ -85,7 +85,7 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>, COLUMNS>(
+        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>, KIMCHI_COLS>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

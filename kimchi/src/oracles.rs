@@ -37,7 +37,7 @@ where
 
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
-    use crate::circuits::wires::COLUMNS;
+    use crate::circuits::wires::KIMCHI_COLS;
     use ark_ff::PrimeField;
     use poly_commitment::{commitment::shift_scalar, evaluation_proof::OpeningProof};
 
@@ -58,15 +58,15 @@ pub mod caml {
 
     pub fn create_caml_oracles<G, CamlF, EFqSponge, EFrSponge, CurveParams>(
         lgr_comm: Vec<PolyComm<G>>,
-        index: VerifierIndex<COLUMNS, G, OpeningProof<G>>,
-        proof: ProverProof<COLUMNS, G, OpeningProof<G>>,
+        index: VerifierIndex<KIMCHI_COLS, G, OpeningProof<G>>,
+        proof: ProverProof<KIMCHI_COLS, G, OpeningProof<G>>,
         public_input: &[G::ScalarField],
     ) -> Result<CamlOracles<CamlF>, VerifyError>
     where
         G: KimchiCurve,
         G::BaseField: PrimeField,
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<COLUMNS, G::ScalarField>,
+        EFrSponge: FrSponge<KIMCHI_COLS, G::ScalarField>,
         CamlF: From<G::ScalarField>,
     {
         let lgr_comm: Vec<PolyComm<G>> = lgr_comm.into_iter().take(public_input.len()).collect();

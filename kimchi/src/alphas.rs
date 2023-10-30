@@ -242,7 +242,7 @@ mod tests {
     use std::{fs, path::Path};
 
     use super::*;
-    use crate::circuits::{gate::GateType, polynomial::COLUMNS};
+    use crate::circuits::{gate::GateType, polynomial::KIMCHI_COLS};
     use mina_curves::pasta::{Fp, Vesta};
 
     // testing [Builder]
@@ -322,9 +322,9 @@ mod tests {
     #[test]
     fn get_alphas_for_spec() {
         let gates = vec![CircuitGate::<Fp>::zero(Wire::for_row(0)); 2];
-        let index = new_index_for_test::<Vesta, COLUMNS>(gates, 0);
+        let index = new_index_for_test::<Vesta, KIMCHI_COLS>(gates, 0);
         let (_linearization, powers_of_alpha) =
-            expr_linearization::<Fp, COLUMNS>(Some(&index.cs.feature_flags), true);
+            expr_linearization::<Fp, KIMCHI_COLS>(Some(&index.cs.feature_flags), true);
         // make sure this is present in the specification
         let manifest_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap();
         let spec_path = Path::new(&manifest_dir)

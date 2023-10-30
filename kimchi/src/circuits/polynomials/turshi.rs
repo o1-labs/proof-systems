@@ -177,15 +177,15 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Panics
     ///
     /// Will panic if `constraint linearization` fails.
-    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>, const W: usize>(
+    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>, const COLUMNS: usize>(
         &self,
         row: usize,
-        witness: &[Vec<F>; W],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let curr: [F; W] = array::from_fn(|i| witness[i][row]);
-        let mut next: [F; W] = array::from_fn(|_| F::zero());
+        let curr: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
+        let mut next: [F; COLUMNS] = array::from_fn(|_| F::zero());
         if self.typ != GateType::Zero {
             next = array::from_fn(|i| witness[i][row + 1]);
         }
@@ -193,7 +193,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         // column polynomials
         let polys = {
             let mut h = std::collections::HashSet::new();
-            for i in 0..W {
+            for i in 0..COLUMNS {
                 h.insert(Column::Witness(i)); // column witness polynomials
             }
             // gate selector polynomials
@@ -209,8 +209,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         alphas.register(ArgumentType::Gate(self.typ), Instruction::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
-        let constraints =
-            circuit_gate_combined_constraints::<F, W>(self.typ, &alphas, &mut Cache::default());
+        let constraints = circuit_gate_combined_constraints::<F, COLUMNS>(
+            self.typ,
+            &alphas,
+            &mut Cache::default(),
+        );
 
         // Linearize
         let linearized = constraints.linearize(polys).unwrap();
@@ -256,7 +259,9 @@ pub mod witness {
     use super::*;
 
     /// Returns the witness of an execution of a Cairo program in `CircuitGate` format
-    pub fn cairo_witness<F: Field, const W: usize>(prog: &CairoProgram<F>) -> [Vec<F>; W] {
+    pub fn cairo_witness<F: Field, const COLUMNS: usize>(
+        prog: &CairoProgram<F>,
+    ) -> [Vec<F>; COLUMNS] {
         // 0: 1 row for final check CairoClaim gate
         // 4i+1: 1 row per instruction for CairoInstruction gate
         // 4i+2: 1 row per instruction for Flags argument
@@ -268,34 +273,34 @@ pub mod witness {
         let n = prog.trace().len();
         let rows = 4 * n - 1;
         let mut table: Vec<Vec<F>> = vec![vec![]];
-        table.resize(rows, vec![F::zero(); W]);
+        table.resize(rows, vec![F::zero(); COLUMNS]);
         for (i, inst) in prog.trace().iter().enumerate() {
             if i == 0 {
                 let claim_wit = claim_witness(prog);
                 table[i] = claim_wit;
             }
-            let ins_wit = instruction_witness::<F, W>(inst);
-            let flg_wit = flag_witness::<F, W>(inst);
+            let ins_wit = instruction_witness::<F, COLUMNS>(inst);
+            let flg_wit = flag_witness::<F, COLUMNS>(inst);
             table[4 * i + 1] = ins_wit;
             table[4 * i + 2] = flg_wit;
             if i != n - 1 {
                 // all but last instruction
-                let tra_wit = transition_witness::<F, W>(inst, &prog.trace()[i + 1]);
-                let aux_wit = auxiliary_witness::<F, W>(&prog.trace()[i + 1]);
+                let tra_wit = transition_witness::<F, COLUMNS>(inst, &prog.trace()[i + 1]);
+                let aux_wit = auxiliary_witness::<F, COLUMNS>(&prog.trace()[i + 1]);
                 table[4 * i + 3] = tra_wit;
                 table[4 * i + 4] = aux_wit;
             }
         }
 
-        let mut witness: Vec<Vec<F>> = vec![vec![]; W];
-        for col in 0..W {
+        let mut witness: Vec<Vec<F>> = vec![vec![]; COLUMNS];
+        for col in 0..COLUMNS {
             // initialize column with zeroes
             witness[col].resize(table.len(), F::zero());
             for (row, wit) in table.iter().enumerate() {
                 witness[col][row] = wit[col];
             }
         }
-        let witness: [Vec<F>; W] = array::from_fn(|i| witness[i].clone());
+        let witness: [Vec<F>; COLUMNS] = array::from_fn(|i| witness[i].clone());
         witness
     }
 
@@ -320,7 +325,7 @@ pub mod witness {
         ]
     }
 
-    fn instruction_witness<F: Field, const W: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
+    fn instruction_witness<F: Field, const COLUMNS: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
         vec![
             inst.pc(),
             inst.ap(),
@@ -340,7 +345,7 @@ pub mod witness {
         ]
     }
 
-    fn flag_witness<F: Field, const W: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
+    fn flag_witness<F: Field, const COLUMNS: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
         vec![
             inst.f_dst_fp(),
             inst.f_op0_fp(),
@@ -360,7 +365,7 @@ pub mod witness {
         ]
     }
 
-    fn transition_witness<F: Field, const W: usize>(
+    fn transition_witness<F: Field, const COLUMNS: usize>(
         curr: &CairoInstruction<F>,
         next: &CairoInstruction<F>,
     ) -> Vec<F> {
@@ -383,7 +388,7 @@ pub mod witness {
         ]
     }
 
-    fn auxiliary_witness<F: Field, const W: usize>(next: &CairoInstruction<F>) -> Vec<F> {
+    fn auxiliary_witness<F: Field, const COLUMNS: usize>(next: &CairoInstruction<F>) -> Vec<F> {
         vec![
             next.pc(),
             next.ap(),
@@ -412,30 +417,30 @@ pub mod testing {
     /// # Errors
     ///
     /// Will give error if `gate` is not `Cairo`-related gate or `zero` gate.
-    pub fn ensure_cairo_gate<F: PrimeField, const W: usize>(
+    pub fn ensure_cairo_gate<F: PrimeField, const COLUMNS: usize>(
         gate: &CircuitGate<F>,
         row: usize,
-        witness: &[Vec<F>; W],
+        witness: &[Vec<F>; COLUMNS],
         //_cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         // assignments
-        let this: [F; W] = array::from_fn(|i| witness[i][row]);
+        let this: [F; COLUMNS] = array::from_fn(|i| witness[i][row]);
 
         match gate.typ {
             GateType::CairoClaim => {
-                let next: [F; W] = array::from_fn(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_claim(&this, &next) // CircuitGate::ensure_transition(&this),
             }
             GateType::CairoInstruction => {
-                let next: [F; W] = array::from_fn(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_instruction(&this, &next)
             }
             GateType::CairoFlags => {
-                let next: [F; W] = array::from_fn(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_flags(&this, &next)
             }
             GateType::CairoTransition => {
-                let next: [F; W] = array::from_fn(|i| witness[i][row + 1]);
+                let next: [F; COLUMNS] = array::from_fn(|i| witness[i][row + 1]);
                 ensure_transition(&this, &next)
             }
             GateType::Zero => Ok(()),
@@ -741,7 +746,7 @@ fn two<F: Field, T: ExprOps<F>>() -> T {
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-pub fn circuit_gate_combined_constraints<F: PrimeField, const W: usize>(
+pub fn circuit_gate_combined_constraints<F: PrimeField, const COLUMNS: usize>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,

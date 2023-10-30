@@ -97,11 +97,11 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct Environment<'a, F: FftField, const W: usize = COLUMNS> {
+pub struct Environment<'a, F: FftField, const COLUMNS: usize = KIMCHI_COLS> {
     /// The witness column polynomials
-    pub witness: &'a [Evaluations<F, D<F>>; W],
+    pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
-    pub coefficient: &'a [Evaluations<F, D<F>>; W],
+    pub coefficient: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The polynomial that vanishes on the zero-knowledge rows and the row before.
     pub vanishes_on_zero_knowledge_and_previous_rows: &'a Evaluations<F, D<F>>,
     /// The permutation aggregation polynomial.
@@ -128,7 +128,9 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     fn l0_1(&self) -> F;
 }
 
-impl<'a, F: FftField, const W: usize> ColumnEnvironment<'a, F> for Environment<'a, F, W> {
+impl<'a, F: FftField, const COLUMNS: usize> ColumnEnvironment<'a, F>
+    for Environment<'a, F, COLUMNS>
+{
     type Column = berkeley_columns::Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
@@ -1458,7 +1460,7 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
     /// Evaluate an expression as a field element against an environment.
     pub fn evaluate<
         'a,
-        const W: usize,
+        const COLUMNS: usize,
         Evaluations: ColumnEvaluations<F, Column = Column>,
         Environment: ColumnEnvironment<'a, F, Column = Column>,
     >(
@@ -2890,7 +2892,7 @@ macro_rules! auto_clone_array {
 pub use auto_clone;
 pub use auto_clone_array;
 
-use super::wires::COLUMNS;
+use super::wires::KIMCHI_COLS;
 
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
@@ -2903,7 +2905,7 @@ pub mod test {
     use crate::{
         circuits::{
             constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
-            polynomial::COLUMNS, polynomials::generic::GenericGateSpec, wires::Wire,
+            polynomial::KIMCHI_COLS, polynomials::generic::GenericGateSpec, wires::Wire,
         },
         curve::KimchiCurve,
         prover_index::ProverIndex,
@@ -2966,7 +2968,7 @@ pub mod test {
             ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
         };
 
-        let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
+        let witness_cols: [_; KIMCHI_COLS] = array::from_fn(|_| DensePolynomial::zero());
         let permutation = DensePolynomial::zero();
         let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
 

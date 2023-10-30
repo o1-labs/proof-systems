@@ -6,7 +6,7 @@ use crate::{
         berkeley_columns::Column,
         constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
-        wires::COLUMNS,
+        wires::KIMCHI_COLS,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
@@ -23,7 +23,11 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 //~spec:startcode
-pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize = COLUMNS> {
+pub struct ProverIndex<
+    G: KimchiCurve,
+    OpeningProof: OpenProof<G>,
+    const COLUMNS: usize = KIMCHI_COLS,
+> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -44,12 +48,12 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usiz
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "ColumnEvaluations<G::ScalarField,W>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<G::ScalarField, W>,
+    #[serde(bound = "ColumnEvaluations<G::ScalarField, COLUMNS>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField, COLUMNS>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<G, OpeningProof, W>>,
+    pub verifier_index: Option<VerifierIndex<G, OpeningProof, COLUMNS>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -57,7 +61,8 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usiz
 }
 //~spec:endcode
 
-impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize> ProverIndex<G, OpeningProof, W>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
+    ProverIndex<G, OpeningProof, COLUMNS>
 where
     G::BaseField: PrimeField,
 {
@@ -72,7 +77,7 @@ where
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) =
-            expr_linearization::<G::ScalarField, W>(Some(&cs.feature_flags), true);
+            expr_linearization::<G::ScalarField, COLUMNS>(Some(&cs.feature_flags), true);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
@@ -98,7 +103,7 @@ where
         &mut self,
     ) -> G::BaseField
     where
-        VerifierIndex<G, OpeningProof, W>: Clone,
+        VerifierIndex<G, OpeningProof, COLUMNS>: Clone,
     {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
@@ -118,7 +123,7 @@ where
         &self,
     ) -> G::BaseField
     where
-        VerifierIndex<G, OpeningProof, W>: Clone,
+        VerifierIndex<G, OpeningProof, COLUMNS>: Clone,
     {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
@@ -151,7 +156,7 @@ pub mod testing {
     pub fn new_index_for_test_with_lookups_and_custom_srs<
         G: KimchiCurve,
         OpeningProof: OpenProof<G>,
-        const W: usize,
+        const COLUMNS: usize,
         F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS,
     >(
         gates: Vec<CircuitGate<G::ScalarField>>,
@@ -162,7 +167,7 @@ pub mod testing {
         disable_gates_checks: bool,
         override_srs_size: Option<usize>,
         mut get_srs: F,
-    ) -> ProverIndex<G, OpeningProof, W>
+    ) -> ProverIndex<G, OpeningProof, COLUMNS>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
@@ -175,7 +180,7 @@ pub mod testing {
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
             .max_poly_size(override_srs_size)
-            .build::<W>()
+            .build::<COLUMNS>()
             .unwrap();
 
         let srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
@@ -191,7 +196,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `constraint system` is not built with `gates` input.
-    pub fn new_index_for_test_with_lookups<G: KimchiCurve, const W: usize>(
+    pub fn new_index_for_test_with_lookups<G: KimchiCurve, const COLUMNS: usize>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
@@ -199,7 +204,7 @@ pub mod testing {
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
         override_srs_size: Option<usize>,
-    ) -> ProverIndex<G, OpeningProof<G>, W>
+    ) -> ProverIndex<G, OpeningProof<G>, COLUMNS>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
@@ -228,14 +233,14 @@ pub mod testing {
         )
     }
 
-    pub fn new_index_for_test<G: KimchiCurve, const W: usize>(
+    pub fn new_index_for_test<G: KimchiCurve, const COLUMNS: usize>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
-    ) -> ProverIndex<G, OpeningProof<G>, W>
+    ) -> ProverIndex<G, OpeningProof<G>, COLUMNS>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G, W>(gates, public, 0, vec![], None, false, None)
+        new_index_for_test_with_lookups::<G, COLUMNS>(gates, public, 0, vec![], None, false, None)
     }
 }
