@@ -78,6 +78,8 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
             foreign_field_mul_selector,
             xor_selector,
             rot_selector,
+            keccak_round_selector,
+            keccak_sponge_selector,
             lookup_aggregation,
             lookup_table,
             lookup_sorted,
@@ -87,6 +89,8 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
+            keccak_round_lookup_selector,
+            keccak_sponge_lookup_selector,
         } = e;
 
         let mut points = vec![
@@ -122,6 +126,12 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
         if let Some(rot_selector) = rot_selector.as_ref() {
             points.push(rot_selector)
         }
+        if let Some(keccak_round_selector) = keccak_round_selector.as_ref() {
+            points.push(keccak_round_selector)
+        }
+        if let Some(keccak_sponge_selector) = keccak_sponge_selector.as_ref() {
+            points.push(keccak_sponge_selector)
+        }
         if let Some(lookup_aggregation) = lookup_aggregation.as_ref() {
             points.push(lookup_aggregation)
         }
@@ -151,6 +161,12 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
         if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector.as_ref()
         {
             points.push(foreign_field_mul_lookup_selector)
+        }
+        if let Some(keccak_round_lookup_selector) = keccak_round_lookup_selector.as_ref() {
+            points.push(keccak_round_lookup_selector)
+        }
+        if let Some(keccak_sponge_lookup_selector) = keccak_sponge_lookup_selector.as_ref() {
+            points.push(keccak_sponge_lookup_selector)
         }
 
         points.into_iter().for_each(|p| {

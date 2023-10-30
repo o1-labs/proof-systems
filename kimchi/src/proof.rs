@@ -82,6 +82,10 @@ pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     pub xor_selector: Option<Evals>,
     /// evaluation of the Rot selector polynomial
     pub rot_selector: Option<Evals>,
+    /// evaluation of the KeccakRound selector polynomial
+    pub keccak_round_selector: Option<Evals>,
+    /// evaluation of the KeccakRound selector polynomial
+    pub keccak_sponge_selector: Option<Evals>,
 
     // lookup-related evaluations
     /// evaluation of lookup aggregation polynomial
@@ -104,6 +108,10 @@ pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     pub range_check_lookup_selector: Option<Evals>,
     /// evaluation of the ForeignFieldMul range check pattern selector polynomial
     pub foreign_field_mul_lookup_selector: Option<Evals>,
+    /// evaluation of the KeccakRound pattern selector polynomial
+    pub keccak_round_lookup_selector: Option<Evals>,
+    /// evaluation of the KeccakSponge pattern selector polynomial
+    pub keccak_sponge_lookup_selector: Option<Evals>,
 }
 
 /// Commitments linked to the lookup feature
@@ -215,6 +223,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             foreign_field_mul_selector,
             xor_selector,
             rot_selector,
+            keccak_round_selector,
+            keccak_sponge_selector,
             lookup_aggregation,
             lookup_table,
             lookup_sorted,
@@ -224,6 +234,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
+            keccak_round_lookup_selector,
+            keccak_sponge_lookup_selector,
         } = self;
         ProofEvaluations {
             public: public.map(f),
@@ -243,6 +255,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             foreign_field_mul_selector: foreign_field_mul_selector.map(f),
             xor_selector: xor_selector.map(f),
             rot_selector: rot_selector.map(f),
+            keccak_round_selector: keccak_round_selector.map(f),
+            keccak_sponge_selector: keccak_sponge_selector.map(f),
             lookup_aggregation: lookup_aggregation.map(f),
             lookup_table: lookup_table.map(f),
             lookup_sorted: lookup_sorted.map(|x| x.map(f)),
@@ -252,6 +266,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector: lookup_gate_lookup_selector.map(f),
             range_check_lookup_selector: range_check_lookup_selector.map(f),
             foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.map(f),
+            keccak_round_lookup_selector: keccak_round_lookup_selector.map(f),
+            keccak_sponge_lookup_selector: keccak_sponge_lookup_selector.map(f),
         }
     }
 
@@ -277,6 +293,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             foreign_field_mul_selector,
             xor_selector,
             rot_selector,
+            keccak_round_selector,
+            keccak_sponge_selector,
             lookup_aggregation,
             lookup_table,
             lookup_sorted,
@@ -286,6 +304,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
+            keccak_round_lookup_selector,
+            keccak_sponge_lookup_selector,
         } = self;
         ProofEvaluations {
             public: public.as_ref().map(f),
@@ -305,6 +325,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             foreign_field_mul_selector: foreign_field_mul_selector.as_ref().map(f),
             xor_selector: xor_selector.as_ref().map(f),
             rot_selector: rot_selector.as_ref().map(f),
+            keccak_round_selector: keccak_round_selector.as_ref().map(f),
+            keccak_sponge_selector: keccak_sponge_selector.as_ref().map(f),
             lookup_aggregation: lookup_aggregation.as_ref().map(f),
             lookup_table: lookup_table.as_ref().map(f),
             lookup_sorted: array::from_fn(|i| lookup_sorted[i].as_ref().map(f)),
@@ -314,6 +336,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector: lookup_gate_lookup_selector.as_ref().map(f),
             range_check_lookup_selector: range_check_lookup_selector.as_ref().map(f),
             foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.as_ref().map(f),
+            keccak_round_lookup_selector: keccak_round_lookup_selector.as_ref().map(f),
+            keccak_sponge_lookup_selector: keccak_sponge_lookup_selector.as_ref().map(f),
         }
     }
 }
@@ -392,6 +416,8 @@ impl<F: Zero + Copy, const COLUMNS: usize> ProofEvaluations<PointEvaluations<F>,
             foreign_field_mul_selector: None,
             xor_selector: None,
             rot_selector: None,
+            keccak_round_selector: None,
+            keccak_sponge_selector: None,
             lookup_aggregation: None,
             lookup_table: None,
             lookup_sorted: array::from_fn(|_| None),
@@ -401,6 +427,8 @@ impl<F: Zero + Copy, const COLUMNS: usize> ProofEvaluations<PointEvaluations<F>,
             lookup_gate_lookup_selector: None,
             range_check_lookup_selector: None,
             foreign_field_mul_lookup_selector: None,
+            keccak_round_lookup_selector: None,
+            keccak_sponge_lookup_selector: None,
         }
     }
 }
@@ -435,8 +463,12 @@ impl<F, const COLUMNS: usize> ProofEvaluations<F, COLUMNS> {
             Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
                 self.foreign_field_mul_lookup_selector.as_ref()
             }
-            Column::LookupKindIndex(LookupPattern::KeccakRound) => todo!(),
-            Column::LookupKindIndex(LookupPattern::KeccakSponge) => todo!(),
+            Column::LookupKindIndex(LookupPattern::KeccakRound) => {
+                self.keccak_round_lookup_selector.as_ref()
+            }
+            Column::LookupKindIndex(LookupPattern::KeccakSponge) => {
+                self.keccak_sponge_lookup_selector.as_ref()
+            }
             Column::LookupRuntimeSelector => self.runtime_lookup_table_selector.as_ref(),
             Column::LookupRuntimeTable => self.runtime_lookup_table.as_ref(),
             Column::Index(GateType::Generic) => Some(&self.generic_selector),
@@ -451,6 +483,8 @@ impl<F, const COLUMNS: usize> ProofEvaluations<F, COLUMNS> {
             Column::Index(GateType::ForeignFieldMul) => self.foreign_field_mul_selector.as_ref(),
             Column::Index(GateType::Xor16) => self.xor_selector.as_ref(),
             Column::Index(GateType::Rot64) => self.rot_selector.as_ref(),
+            Column::Index(GateType::KeccakRound) => self.keccak_round_selector.as_ref(),
+            Column::Index(GateType::KeccakSponge) => self.keccak_sponge_selector.as_ref(),
             Column::Index(_) => None,
             Column::Coefficient(i) => Some(&self.coefficients[i]),
             Column::Permutation(i) => Some(&self.s[i]),
