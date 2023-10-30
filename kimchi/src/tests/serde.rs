@@ -2,7 +2,7 @@ use crate::{
     bench::BenchmarkCtx,
     circuits::{
         polynomials::generic::testing::{create_circuit, fill_in_witness},
-        wires::COLUMNS,
+        wires::KIMCHI_COLS,
     },
     proof::ProverProof,
     prover_index::testing::new_index_for_test,
@@ -17,7 +17,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, srs::SRS};
 use std::array;
 use std::time::Instant;
 
@@ -41,7 +41,8 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<COLUMNS, Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
+        let de_pf: ProverProof<Vesta, OpeningProof<Vesta>> =
+            rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
         ctx.batch_verification(&vec![(de_pf, public_input)]);
@@ -50,10 +51,10 @@ mod tests {
     #[test]
     pub fn test_serialization() {
         let public = vec![Fp::from(3u8); 5];
-        let gates = create_circuit::<COLUMNS, Fp>(0, public.len());
+        let gates = create_circuit::<Fp, KIMCHI_COLS>(0, public.len());
 
         // create witness
-        let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+        let mut witness: [Vec<Fp>; KIMCHI_COLS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
         fill_in_witness(0, &mut witness, &public);
 
         let index = new_index_for_test(gates, public.len());
@@ -72,7 +73,7 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<COLUMNS, GroupAffine<VestaParameters>> =
+        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>, _> =
             serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
@@ -80,10 +81,11 @@ mod tests {
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
+        verifier_index_deserialize.srs = std::sync::Arc::new(srs);
 
         // verify the proof
         let start = Instant::now();
-        verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge>(
+        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>, KIMCHI_COLS>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

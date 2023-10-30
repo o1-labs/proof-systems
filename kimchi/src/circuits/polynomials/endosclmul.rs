@@ -12,7 +12,7 @@ use crate::{
             Cache,
         },
         gate::{CircuitGate, GateType},
-        wires::{GateWires, COLUMNS},
+        wires::{GateWires, KIMCHI_COLS},
     },
     curve::KimchiCurve,
     proof::{PointEvaluations, ProofEvaluations},
@@ -125,16 +125,16 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
-    pub fn verify_endomul<const W: usize, G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>, const COLUMNS: usize>(
         &self,
         row: usize,
-        witness: &[Vec<F>; W],
+        witness: &[Vec<F>; COLUMNS],
         cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMul, "incorrect gate type");
 
-        let this: [F; W] = std::array::from_fn(|i| witness[i][row]);
-        let next: [F; W] = std::array::from_fn(|i| witness[i][row + 1]);
+        let this: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row]);
+        let next: [F; COLUMNS] = std::array::from_fn(|i| witness[i][row + 1]);
 
         let pt = F::from(123456u64);
 
@@ -145,9 +145,10 @@ impl<F: PrimeField> CircuitGate<F> {
             joint_combiner: None,
             mds: &G::sponge_params().mds,
             endo_coefficient: cs.endo,
+            zk_rows: cs.zk_rows,
         };
 
-        let evals: ProofEvaluations<W, PointEvaluations<G::ScalarField>> =
+        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>, COLUMNS> =
             ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
         let constraints = EndosclMul::<F>::constraints(&mut Cache::default());
@@ -270,7 +271,7 @@ pub struct EndoMulResult<F> {
 ///
 /// Will panic if `bits` length does not match the requirement.
 pub fn gen_witness<F: Field + std::fmt::Display>(
-    w: &mut [Vec<F>; COLUMNS],
+    w: &mut [Vec<F>; KIMCHI_COLS],
     row0: usize,
     endo: F,
     base: (F, F),

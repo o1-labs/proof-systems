@@ -133,11 +133,11 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 /// Create a And for inputs as field elements starting at row 0
 /// Input: first input, second input, and desired byte length
 /// Panics if the input is too large for the chosen number of bytes
-pub fn create_and_witness<const W: usize, F: PrimeField>(
+pub fn create_and_witness<F: PrimeField, const COLUMNS: usize>(
     input1: F,
     input2: F,
     bytes: usize,
-) -> [Vec<F>; W] {
+) -> [Vec<F>; COLUMNS] {
     let input1_big = input1.to_biguint();
     let input2_big = input2.to_biguint();
     if bytes * 8 < input1_big.bitlen() || bytes * 8 < input2_big.bitlen() {
@@ -153,7 +153,7 @@ pub fn create_and_witness<const W: usize, F: PrimeField>(
     let sum = input1 + input2;
 
     let and_row = num_xors(bytes * 8) + 1;
-    let mut and_witness: [Vec<F>; W] = array::from_fn(|_| vec![F::zero(); and_row + 1]);
+    let mut and_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); and_row + 1]);
 
     init_xor(&mut and_witness, 0, bytes * 8, (input1, input2, xor));
     // Fill in double generic witness
@@ -170,14 +170,14 @@ pub fn create_and_witness<const W: usize, F: PrimeField>(
 /// Extends an AND witness to the whole witness
 /// Input: first input, second input, and desired byte length
 /// Panics if the input is too large for the chosen number of bytes
-pub fn extend_and_witness<const W: usize, F: PrimeField>(
-    witness: &mut [Vec<F>; W],
+pub fn extend_and_witness<F: PrimeField, const COLUMNS: usize>(
+    witness: &mut [Vec<F>; COLUMNS],
     input1: F,
     input2: F,
     bytes: usize,
 ) {
-    let and_witness = create_and_witness::<W, F>(input1, input2, bytes);
-    for col in 0..W {
+    let and_witness = create_and_witness::<F, COLUMNS>(input1, input2, bytes);
+    for col in 0..COLUMNS {
         witness[col].extend(and_witness[col].iter());
     }
 }

@@ -13,7 +13,7 @@ use crate::{
             self,
             tables::{GateLookupTable, LookupTable},
         },
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         wires::Wire,
         witness::{self, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
@@ -216,7 +216,7 @@ where
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         // Check that the last 8 columns are 2-bit crumbs
         // C1..C8: x * (x - 1) * (x - 2) * (x - 3) = 0
-        let mut constraints = (7..COLUMNS)
+        let mut constraints = (7..KIMCHI_COLS)
             .map(|i| crumb(&env.witness_curr(i)))
             .collect::<Vec<T>>();
 
@@ -244,7 +244,7 @@ where
         let mut bound = T::zero();
 
         // Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
+        for i in (7..KIMCHI_COLS).rev() {
             bound += power_of_2.clone() * env.witness_curr(i);
             power_of_2 *= T::two_pow(2); // 2 bits
         }
@@ -266,7 +266,7 @@ where
 
 // ROTATION WITNESS COMPUTATION
 
-fn layout_rot64<F: PrimeField>(curr_row: usize) -> [Vec<Box<dyn WitnessCell<COLUMNS, F, F>>>; 3] {
+fn layout_rot64<F: PrimeField>(curr_row: usize) -> [Vec<Box<dyn WitnessCell<F>>>; 3] {
     [
         rot_row(),
         range_check_0_row("shifted", curr_row + 1),
@@ -274,7 +274,7 @@ fn layout_rot64<F: PrimeField>(curr_row: usize) -> [Vec<Box<dyn WitnessCell<COLU
     ]
 }
 
-fn rot_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<COLUMNS, F, F>>> {
+fn rot_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<F>>> {
     vec![
         VariableCell::create("word"),
         VariableCell::create("rotated"),
@@ -297,7 +297,7 @@ fn rot_row<F: PrimeField>() -> Vec<Box<dyn WitnessCell<COLUMNS, F, F>>> {
 }
 
 fn init_rot64<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     curr_row: usize,
     word: F,
     rotated: F,
@@ -323,13 +323,13 @@ fn init_rot64<F: PrimeField>(
 /// Warning:
 /// - don't forget to include a public input row with zero value
 pub fn extend_rot<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     word: u64,
     rot: u32,
     side: RotMode,
 ) {
-    assert!(rot < 64, "Rotation value must be less than 64");
-    assert_ne!(rot, 0, "Rotation value must be non-zero");
+    assert!(rot <= 64, "Rotation value must be less or equal than 64");
+
     let rot = if side == RotMode::Right {
         64 - rot
     } else {
@@ -343,16 +343,16 @@ pub fn extend_rot<F: PrimeField>(
     // shifted      [------] * 2^rot
     // rot    = [------|000]
     //        +        [---] excess
-    let shifted = (word as u128 * 2u128.pow(rot) % 2u128.pow(64)) as u64;
-    let excess = word / 2u64.pow(64 - rot);
+    let shifted = (word as u128) * 2u128.pow(rot) % 2u128.pow(64);
+    let excess = (word as u128) / 2u128.pow(64 - rot);
     let rotated = shifted + excess;
     // Value for the added value for the bound
     // Right input of the "FFAdd" for the bound equation
     let bound = 2u128.pow(64) - 2u128.pow(rot);
 
     let rot_row = witness[0].len();
-    let rot_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 3]);
-    for col in 0..COLUMNS {
+    let rot_witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero(); 3]);
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(rot_witness[col].iter());
     }
     init_rot64(
