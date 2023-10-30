@@ -6,7 +6,7 @@ use crate::circuits::expr;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
     constraints::LookupConfiguration,
-    lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+    lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
@@ -23,8 +23,9 @@ use crate::circuits::polynomials::{
 };
 
 use crate::circuits::{
+    berkeley_columns::Column,
     constraints::FeatureFlags,
-    expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
+    expr::{ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
@@ -34,10 +35,10 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
+pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
+) -> (Expr<ConstantExpr<F>, Column>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
@@ -221,7 +222,7 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr::<W, F>(None, generic);
+            let (feature_flagged_expr, _) = constraints_expr::<F, COLUMNS>(None, generic);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -233,7 +234,7 @@ pub fn constraints_expr<const W: usize, F: PrimeField + SquareRootField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-pub fn linearization_columns<const W: usize, F: FftField + SquareRootField>(
+pub fn linearization_columns<F: FftField + SquareRootField, const COLUMNS: usize>(
     feature_flags: Option<&FeatureFlags>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
@@ -268,12 +269,12 @@ pub fn linearization_columns<const W: usize, F: FftField + SquareRootField>(
     };
 
     // the witness polynomials
-    for i in 0..W {
+    for i in 0..COLUMNS {
         h.insert(Witness(i));
     }
 
     // the coefficient polynomials
-    for i in 0..W {
+    for i in 0..COLUMNS {
         h.insert(Coefficient(i));
     }
 
@@ -306,6 +307,26 @@ pub fn linearization_columns<const W: usize, F: FftField + SquareRootField>(
     // the generic selector polynomial
     h.insert(Index(GateType::Generic));
 
+    h.insert(Index(GateType::CompleteAdd));
+    h.insert(Index(GateType::VarBaseMul));
+    h.insert(Index(GateType::EndoMul));
+    h.insert(Index(GateType::EndoMulScalar));
+
+    // optional columns
+    h.insert(Index(GateType::RangeCheck0));
+    h.insert(Index(GateType::RangeCheck1));
+    h.insert(Index(GateType::ForeignFieldAdd));
+    h.insert(Index(GateType::ForeignFieldMul));
+    h.insert(Index(GateType::Xor16));
+    h.insert(Index(GateType::Rot64));
+
+    // lookup selectors
+    h.insert(LookupRuntimeSelector);
+    h.insert(LookupKindIndex(LookupPattern::Xor));
+    h.insert(LookupKindIndex(LookupPattern::Lookup));
+    h.insert(LookupKindIndex(LookupPattern::RangeCheck));
+    h.insert(LookupKindIndex(LookupPattern::ForeignFieldMul));
+
     h
 }
 
@@ -317,18 +338,24 @@ pub fn linearization_columns<const W: usize, F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
-pub fn expr_linearization<const W: usize, F: PrimeField + SquareRootField>(
+#[allow(clippy::type_complexity)]
+pub fn expr_linearization<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
-    let evaluated_cols = linearization_columns::<W, F>(feature_flags);
+) -> (
+    Linearization<Vec<PolishToken<F, Column>>, Column>,
+    Alphas<F>,
+) {
+    let evaluated_cols = linearization_columns::<F, COLUMNS>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr::<W, F>(feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr::<F, COLUMNS>(feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish());
+
+    assert_eq!(linearization.index_terms.len(), 0);
 
     (linearization, powers_of_alpha)
 }

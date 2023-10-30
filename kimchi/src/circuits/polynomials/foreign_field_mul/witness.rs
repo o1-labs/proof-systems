@@ -3,7 +3,7 @@
 use crate::{
     auto_clone_array,
     circuits::{
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         polynomials::{foreign_field_add, range_check},
         witness::{self, ConstantCell, VariableBitsCell, VariableCell, Variables, WitnessCell},
     },
@@ -41,7 +41,7 @@ use super::circuitgates;
 //
 //     so that most significant limb, q2, is in W[2][0].
 //
-fn create_layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<COLUMNS, F, F>>>; 2] {
+fn create_layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<F>>>; 2] {
     [
         // ForeignFieldMul row
         vec![
@@ -147,7 +147,7 @@ pub fn create<F: PrimeField>(
     left_input: &BigUint,
     right_input: &BigUint,
     foreign_field_modulus: &BigUint,
-) -> ([Vec<F>; COLUMNS], ExternalChecks<F>) {
+) -> ([Vec<F>; KIMCHI_COLS], ExternalChecks<F>) {
     let mut witness = array::from_fn(|_| vec![F::zero(); 0]);
     let mut external_checks = ExternalChecks::<F>::default();
 
@@ -269,7 +269,7 @@ impl<F: PrimeField> ExternalChecks<F> {
     }
 
     /// Extend the witness with external multi range_checks
-    pub fn extend_witness_multi_range_checks(&mut self, witness: &mut [Vec<F>; COLUMNS]) {
+    pub fn extend_witness_multi_range_checks(&mut self, witness: &mut [Vec<F>; KIMCHI_COLS]) {
         for [v0, v1, v2] in self.multi_ranges.clone() {
             range_check::witness::extend_multi(witness, v0, v1, v2)
         }
@@ -277,7 +277,10 @@ impl<F: PrimeField> ExternalChecks<F> {
     }
 
     /// Extend the witness with external compact multi range_checks
-    pub fn extend_witness_compact_multi_range_checks(&mut self, witness: &mut [Vec<F>; COLUMNS]) {
+    pub fn extend_witness_compact_multi_range_checks(
+        &mut self,
+        witness: &mut [Vec<F>; KIMCHI_COLS],
+    ) {
         for [v01, v2] in self.compact_multi_ranges.clone() {
             range_check::witness::extend_multi_compact(witness, v01, v2)
         }
@@ -285,7 +288,7 @@ impl<F: PrimeField> ExternalChecks<F> {
     }
 
     /// Extend the witness with external compact multi range_checks
-    pub fn extend_witness_limb_checks(&mut self, witness: &mut [Vec<F>; COLUMNS]) {
+    pub fn extend_witness_limb_checks(&mut self, witness: &mut [Vec<F>; KIMCHI_COLS]) {
         for chunk in self.limb_ranges.clone().chunks(3) {
             // Pad with zeros if necessary
             let limbs = match chunk.len() {
@@ -302,7 +305,7 @@ impl<F: PrimeField> ExternalChecks<F> {
     /// Extend the witness with external bound addition as foreign field addition
     pub fn extend_witness_bound_addition(
         &mut self,
-        witness: &mut [Vec<F>; COLUMNS],
+        witness: &mut [Vec<F>; KIMCHI_COLS],
         foreign_field_modulus: &[F; 3],
     ) {
         for bound in self.bounds.clone() {
@@ -318,13 +321,13 @@ impl<F: PrimeField> ExternalChecks<F> {
     /// Extend the witness with external high bounds additions as double generic gates
     pub fn extend_witness_high_bounds_computation(
         &mut self,
-        witness: &mut [Vec<F>; COLUMNS],
+        witness: &mut [Vec<F>; KIMCHI_COLS],
         foreign_field_modulus: &BigUint,
     ) {
         let hi_limb = F::two_to_limb() - foreign_field_modulus.to_field_limbs::<F>()[2] - F::one();
         for chunk in self.high_bounds.clone().chunks(2) {
             // Extend the witness for the generic gate
-            for col in witness.iter_mut().take(COLUMNS) {
+            for col in witness.iter_mut().take(KIMCHI_COLS) {
                 col.extend(std::iter::repeat(F::zero()).take(1))
             }
             let last_row = witness[0].len() - 1;

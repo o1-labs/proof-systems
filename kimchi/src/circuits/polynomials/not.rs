@@ -3,7 +3,7 @@
 //! Note that this module does not include a `Not` gate type.
 use crate::circuits::{
     gate::{CircuitGate, Connect, GateType},
-    polynomial::COLUMNS,
+    polynomial::KIMCHI_COLS,
     wires::Wire,
 };
 use ark_ff::PrimeField;
@@ -183,14 +183,14 @@ impl<F: PrimeField> CircuitGate<F> {
 /// Warning:
 /// - don't forget to set a row of the witness with public input `2^bits -1` and wire it to the second input of the first `Xor16` gate
 pub fn extend_not_witness_checked_length<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     input: F,
     bits: Option<usize>,
 ) {
     let input = input.to_biguint();
     let output = BigUint::bitwise_not(&input, bits);
     let bits = max(input.bitlen(), bits.unwrap_or(0));
-    let mut not_witness: [Vec<F>; COLUMNS] =
+    let mut not_witness: [Vec<F>; KIMCHI_COLS] =
         array::from_fn(|_| vec![F::zero(); num_xors(bits) + 1]);
     init_xor(
         &mut not_witness,
@@ -203,7 +203,7 @@ pub fn extend_not_witness_checked_length<F: PrimeField>(
         ),
     );
 
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(not_witness[col].iter());
     }
 }
@@ -215,7 +215,7 @@ pub fn extend_not_witness_checked_length<F: PrimeField>(
 /// Warning: Set public input of bits in public generic gate
 /// Note: `witness[0][pub] = 2^bits - 1`
 pub fn extend_not_witness_unchecked_length<F: PrimeField>(
-    witness: &mut [Vec<F>; COLUMNS],
+    witness: &mut [Vec<F>; KIMCHI_COLS],
     inputs: &[F],
     bits: usize,
 ) -> Result<(), String> {
@@ -235,7 +235,7 @@ pub fn extend_not_witness_unchecked_length<F: PrimeField>(
     }
     let all_ones = F::from(2u8).pow([bits as u64]) - F::one();
     let rows = (inputs.len() as f64 / 2.0).ceil() as usize;
-    let mut not_witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); rows]);
+    let mut not_witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero(); rows]);
     for (i, input) in inputs.iter().enumerate().step_by(2) {
         let row = i / 2;
         // fill in first NOT
@@ -253,7 +253,7 @@ pub fn extend_not_witness_unchecked_length<F: PrimeField>(
             not_witness[5][row] = negated_input2;
         }
     }
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(not_witness[col].iter());
     }
     Ok(())

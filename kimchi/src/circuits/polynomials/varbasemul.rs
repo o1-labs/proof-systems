@@ -12,13 +12,16 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache, Column, Variable},
+    berkeley_columns::Column,
+    expr::{constraints::ExprOps, Cache, Variable as VariableGen},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::GateWires,
 };
 use ark_ff::{FftField, PrimeField};
 use std::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
+
+type Variable = VariableGen<Column>;
 
 //~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 //~
@@ -142,10 +145,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// TODO
-    pub fn verify_vbmul<const W: usize>(
+    pub fn verify_vbmul<const COLUMNS: usize>(
         &self,
         _row: usize,
-        _witness: &[Vec<F>; W],
+        _witness: &[Vec<F>; COLUMNS],
     ) -> Result<(), String> {
         // TODO: implement
         Ok(())
@@ -178,7 +181,7 @@ impl Point<Variable> {
     }
 }
 
-fn set<const W: usize, F>(w: &mut [Vec<F>; W], row0: usize, var: Variable, x: F) {
+fn set<F, const COLUMNS: usize>(w: &mut [Vec<F>; COLUMNS], row0: usize, var: Variable, x: F) {
     match var.col {
         Column::Witness(i) => w[i][row0 + var.row.shift()] = x,
         _ => panic!("Can only set witness columns"),
@@ -186,8 +189,8 @@ fn set<const W: usize, F>(w: &mut [Vec<F>; W], row0: usize, var: Variable, x: F)
 }
 
 #[allow(clippy::too_many_arguments)]
-fn single_bit_witness<const W: usize, F: FftField>(
-    w: &mut [Vec<F>; W],
+fn single_bit_witness<F: FftField, const COLUMNS: usize>(
+    w: &mut [Vec<F>; COLUMNS],
     row: usize,
     b: Variable,
     base: &Point<Variable>,
@@ -361,8 +364,8 @@ pub struct VarbaseMulResult<F> {
 /// # Panics
 ///
 /// Will panic if `bits chunk` length validation fails.
-pub fn witness<const W: usize, F: FftField + std::fmt::Display>(
-    w: &mut [Vec<F>; W],
+pub fn witness<F: FftField + std::fmt::Display, const COLUMNS: usize>(
+    w: &mut [Vec<F>; COLUMNS],
     row0: usize,
     base: (F, F),
     bits: &[bool],

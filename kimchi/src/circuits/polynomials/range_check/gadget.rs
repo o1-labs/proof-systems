@@ -149,7 +149,7 @@ pub fn circuit_gate_constraints<F: PrimeField>(
 }
 
 /// Get the combined constraints for all range check circuit gate types
-pub fn combined_constraints<const W: usize, F: PrimeField>(
+pub fn combined_constraints<F: PrimeField, const COLUMNS: usize>(
     alphas: &Alphas<F>,
     cache: &mut Cache,
 ) -> E<F> {

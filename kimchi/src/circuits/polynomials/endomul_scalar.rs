@@ -7,7 +7,7 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, GateType},
-        wires::COLUMNS,
+        wires::KIMCHI_COLS,
     },
     curve::KimchiCurve,
 };
@@ -21,10 +21,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMulScalar`, or there are errors in gate values.
-    pub fn verify_endomul_scalar<const W: usize, G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>, const COLUMNS: usize>(
         &self,
         row: usize,
-        witness: &[Vec<F>; W],
+        witness: &[Vec<F>; COLUMNS],
         _cs: &ConstraintSystem<F>,
     ) -> Result<(), String> {
         ensure_eq!(self.typ, GateType::EndoMulScalar, "incorrect gate type");
@@ -219,7 +219,7 @@ where
 ///
 /// Will panic if `num_bits` length is not multiple of `bits_per_row` length.
 pub fn gen_witness<F: PrimeField + std::fmt::Display>(
-    witness_cols: &mut [Vec<F>; COLUMNS],
+    witness_cols: &mut [Vec<F>; KIMCHI_COLS],
     scalar: F,
     endo_scalar: F,
     num_bits: usize,

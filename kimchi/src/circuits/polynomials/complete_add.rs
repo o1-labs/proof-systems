@@ -227,10 +227,10 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Panics
     ///
     /// Will panic if `multiplicative inverse` operation between gate values fails.
-    pub fn verify_complete_add<const W: usize>(
+    pub fn verify_complete_add<const COLUMNS: usize>(
         &self,
         row: usize,
-        witness: &[Vec<F>; W],
+        witness: &[Vec<F>; COLUMNS],
     ) -> Result<(), String> {
         let x1 = witness[0][row];
         let y1 = witness[1][row];

@@ -1,6 +1,7 @@
 use crate::{
     circuits::{
-        expr::{prologue::*, Column, ConstantExpr},
+        berkeley_columns::Column,
+        expr::{prologue::*, ConstantExpr, RowOffset},
         gate::{CircuitGate, CurrOrNext},
         lookup::lookups::{
             JointLookup, JointLookupSpec, JointLookupValue, LocalPosition, LookupInfo,
@@ -22,9 +23,6 @@ use super::runtime_tables;
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 7;
 
-/// The number of random values to append to columns for zero-knowledge.
-pub const ZK_ROWS: usize = 3;
-
 /// Pad with zeroes and then add 3 random elements in the last two
 /// rows for zero knowledge.
 ///
@@ -34,13 +32,15 @@ pub const ZK_ROWS: usize = 3;
 pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
     mut e: Vec<F>,
     d: D<F>,
+    zk_rows: usize,
     rng: &mut R,
 ) -> Evaluations<F, D<F>> {
     let n = d.size();
     let k = e.len();
-    assert!(k <= n - ZK_ROWS);
-    e.extend((0..((n - ZK_ROWS) - k)).map(|_| F::zero()));
-    e.extend((0..ZK_ROWS).map(|_| F::rand(rng)));
+    let last_non_zk_row = n - zk_rows;
+    assert!(k <= last_non_zk_row);
+    e.extend((k..last_non_zk_row).map(|_| F::zero()));
+    e.extend((0..zk_rows).map(|_| F::rand(rng)));
     Evaluations::<F, D<F>>::from_vec_and_domain(e, d)
 }
 
@@ -83,15 +83,16 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 ///
 /// Will panic if `value(s)` are missing from the `table`.
 #[allow(clippy::too_many_arguments)]
-pub fn sorted<const W: usize, F: PrimeField>(
+pub fn sorted<F: PrimeField, const COLUMNS: usize>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; W],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: F,
     table_id_combiner: F,
     lookup_info: &LookupInfo,
+    zk_rows: usize,
 ) -> Result<Vec<Vec<F>>, ProverError> {
     // We pad the lookups so that it is as if we lookup exactly
     // `max_lookups_per_row` in every row.
@@ -99,7 +100,7 @@ pub fn sorted<const W: usize, F: PrimeField>(
     let n = d1.size();
     let mut counts: HashMap<&F, usize> = HashMap::new();
 
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - zk_rows - 1;
     let by_row = lookup_info.by_row(gates);
     let max_lookups_per_row = lookup_info.max_per_row;
 
@@ -224,12 +225,12 @@ pub fn sorted<const W: usize, F: PrimeField>(
 ///
 /// Will panic if final evaluation is not 1.
 #[allow(clippy::too_many_arguments)]
-pub fn aggregation<const W: usize, R, F>(
+pub fn aggregation<R, F, const COLUMNS: usize>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; W],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: &F,
     table_id_combiner: &F,
     beta: F,
@@ -237,13 +238,14 @@ pub fn aggregation<const W: usize, R, F>(
     sorted: &[Evaluations<F, D<F>>],
     rng: &mut R,
     lookup_info: &LookupInfo,
+    zk_rows: usize,
 ) -> Result<Evaluations<F, D<F>>, ProverError>
 where
     R: Rng + ?Sized,
     F: PrimeField,
 {
     let n = d1.size();
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - zk_rows - 1;
     let beta1: F = F::one() + beta;
     let gammabeta1 = gamma * beta1;
     let mut lookup_aggreg = vec![F::one()];
@@ -315,11 +317,11 @@ where
             lookup_aggreg[i + 1] *= prev;
         });
 
-    let res = zk_patch(lookup_aggreg, d1, rng);
+    let res = zk_patch(lookup_aggreg, d1, zk_rows, rng);
 
     // check that the final evaluation is equal to 1
     if cfg!(debug_assertions) {
-        let final_val = res.evals[d1.size() - (ZK_ROWS + 1)];
+        let final_val = res.evals[d1.size() - (zk_rows + 1)];
         if final_val != F::one() {
             panic!("aggregation incorrect: {final_val}");
         }
@@ -598,14 +600,20 @@ pub fn constraints<F: FftField>(
     let aggreg_equation = E::cell(Column::LookupAggreg, Next) * denominator
         - E::cell(Column::LookupAggreg, Curr) * numerator;
 
-    let final_lookup_row: i32 = -(ZK_ROWS as i32) - 1;
+    let final_lookup_row = RowOffset {
+        zk_rows: true,
+        offset: -1,
+    };
 
     let mut res = vec![
-        // the accumulator except for the last 4 rows
+        // the accumulator except for the last zk_rows+1 rows
         // (contains the zk-rows and the last value of the accumulator)
-        E::VanishesOnLast4Rows * aggreg_equation,
+        E::VanishesOnZeroKnowledgeAndPreviousRows * aggreg_equation,
         // the initial value of the accumulator
-        E::UnnormalizedLagrangeBasis(0) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
+        E::UnnormalizedLagrangeBasis(RowOffset {
+            zk_rows: false,
+            offset: 0,
+        }) * (E::cell(Column::LookupAggreg, Curr) - E::one()),
         // Check that the final value of the accumulator is 1
         E::UnnormalizedLagrangeBasis(final_lookup_row)
             * (E::cell(Column::LookupAggreg, Curr) - E::one()),
@@ -619,7 +627,10 @@ pub fn constraints<F: FftField>(
                 final_lookup_row
             } else {
                 // Check compatibility of the first elements
-                0
+                RowOffset {
+                    zk_rows: false,
+                    offset: 0,
+                }
             };
             let mut expr = E::UnnormalizedLagrangeBasis(first_or_last)
                 * (column(Column::LookupSorted(i)) - column(Column::LookupSorted(i + 1)));
@@ -667,23 +678,24 @@ pub fn constraints<F: FftField>(
 ///
 /// Will panic if `d1` and `s` domain sizes do not match.
 #[allow(clippy::too_many_arguments)]
-pub fn verify<const W: usize, F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
+pub fn verify<const COLUMNS: usize, F: PrimeField, I: Iterator<Item = F>, TABLE: Fn() -> I>(
     dummy_lookup_value: F,
     lookup_table: TABLE,
     lookup_table_entries: usize,
     d1: D<F>,
     gates: &[CircuitGate<F>],
-    witness: &[Vec<F>; W],
+    witness: &[Vec<F>; COLUMNS],
     joint_combiner: &F,
     table_id_combiner: &F,
     sorted: &[Evaluations<F, D<F>>],
     lookup_info: &LookupInfo,
+    zk_rows: usize,
 ) {
     sorted
         .iter()
         .for_each(|s| assert_eq!(d1.size, s.domain().size));
     let n = d1.size();
-    let lookup_rows = n - ZK_ROWS - 1;
+    let lookup_rows = n - zk_rows - 1;
 
     // Check that the (desnakified) sorted table is
     // 1. Sorted

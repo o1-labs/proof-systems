@@ -46,7 +46,7 @@ fn varbase_mul_test() {
         ));
     }
 
-    let mut witness: [Vec<F>; COLUMNS] =
+    let mut witness: [Vec<F>; KIMCHI_COLS] =
         array::from_fn(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
@@ -89,7 +89,7 @@ fn varbase_mul_test() {
         start.elapsed()
     );
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
