@@ -435,7 +435,8 @@ impl<F, const COLUMNS: usize> ProofEvaluations<F, COLUMNS> {
             Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
                 self.foreign_field_mul_lookup_selector.as_ref()
             }
-            Column::LookupKindIndex(_) => None,
+            Column::LookupKindIndex(LookupPattern::KeccakRound) => todo!(),
+            Column::LookupKindIndex(LookupPattern::KeccakSponge) => todo!(),
             Column::LookupRuntimeSelector => self.runtime_lookup_table_selector.as_ref(),
             Column::LookupRuntimeTable => self.runtime_lookup_table.as_ref(),
             Column::Index(GateType::Generic) => Some(&self.generic_selector),
