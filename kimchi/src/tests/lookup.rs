@@ -8,7 +8,7 @@ use crate::circuits::{
     polynomial::COLUMNS,
     wires::Wire,
 };
-use ark_ff::Zero;
+use ark_ff::{UniformRand, Zero};
 use mina_curves::pasta::{Fp, Vesta, VestaParameters};
 use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
@@ -124,6 +124,71 @@ fn lookup_gate_proving_works_multiple_tables() {
 #[should_panic]
 fn lookup_gate_rejects_bad_lookups_multiple_tables() {
     setup_lookup_proof(false, 500, vec![100, 50, 50, 2, 2])
+}
+
+fn setup_successfull_runtime_table_test(
+    runtime_table_cfgs: Vec<RuntimeTableCfg<Fp>>,
+    runtime_tables: Vec<RuntimeTable<Fp>>,
+    lookups: Vec<i32>,
+) {
+    let mut rng = rand::thread_rng();
+    let nb_lookups = lookups.len();
+
+    // circuit
+    let mut gates = vec![];
+    for row in 0..nb_lookups {
+        gates.push(CircuitGate::new(
+            GateType::Lookup,
+            Wire::for_row(row),
+            vec![],
+        ));
+    }
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
+
+        // only the first 7 registers are used in the lookup gate
+        let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+        for (i, table_id) in lookups.into_iter().enumerate() {
+            lookup_cols[0][i] = Fp::from(table_id);
+            let rt = runtime_table_cfgs
+                .clone()
+                .into_iter()
+                .find(|rt_cfg| rt_cfg.id == table_id)
+                .unwrap();
+            let len_rt = rt.len();
+            let first_column = rt.first_column;
+            let data = runtime_tables
+                .clone()
+                .into_iter()
+                .find(|rt| rt.id == table_id)
+                .unwrap()
+                .data;
+
+            // create queries into our runtime lookup table.
+            // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
+            // the corresponding values
+            let lookup_cols = &mut lookup_cols[1..];
+            for chunk in lookup_cols.chunks_mut(2) {
+                let idx = rng.gen_range(0..len_rt);
+                chunk[0][i] = first_column[idx];
+                chunk[1][i] = data[idx];
+            }
+        }
+        cols
+    };
+
+    // run test
+    TestFramework::<COLUMNS, Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_setup(runtime_table_cfgs)
+        .setup()
+        .runtime_tables(runtime_tables)
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .unwrap();
 }
 
 #[test]
@@ -381,5 +446,130 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     );
 }
 
-// TODO: add a test with a runtime table with ID 0 (it should panic)
-// See https://github.com/MinaProtocol/mina/issues/13603
+#[test]
+fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
+    let mut rng = rand::thread_rng();
+
+    let first_column = [0, 1, 2, 3, 4];
+    let len = first_column.len();
+
+    let cfg = RuntimeTableCfg {
+        id: 1,
+        first_column: first_column.into_iter().map(Into::into).collect(),
+    };
+
+    /* We want to simulate this
+        table ID  | idx | v | v2
+           1      |  0  | 0 | 42
+           1      |  1  | 2 | 32
+           1      |  2  | 4 | 22
+           1      |  3  | 5 | 12
+           1      |  4  | 4 |  2
+    */
+
+    let data_v: Vec<Fp> = [0u32, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let data_v2: Vec<Fp> = [42, 32, 22, 12, 2].into_iter().map(Into::into).collect();
+    let runtime_tables: Vec<RuntimeTable<Fp>> = vec![
+        RuntimeTable {
+            id: 1,
+            data: data_v.clone(),
+        },
+        RuntimeTable {
+            id: 1,
+            data: data_v2,
+        },
+    ];
+
+    // circuit
+    let mut gates = vec![];
+    for row in 0..20 {
+        gates.push(CircuitGate::new(
+            GateType::Lookup,
+            Wire::for_row(row),
+            vec![],
+        ));
+    }
+
+    // witness
+    let witness = {
+        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
+
+        // only the first 7 registers are used in the lookup gate
+        let (lookup_cols, _rest) = cols.split_at_mut(7);
+
+        for row in 0..20 {
+            // the first register is the table id.
+            lookup_cols[0][row] = 1.into();
+
+            // create queries into our runtime lookup table.
+            // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and
+            // the corresponding values
+            let lookup_cols = &mut lookup_cols[1..];
+            for chunk in lookup_cols.chunks_mut(2) {
+                let idx = rng.gen_range(0..len);
+                chunk[0][row] = first_column[idx].into();
+                chunk[1][row] = data_v[idx];
+            }
+        }
+        cols
+    };
+
+    print_witness(&witness, 0, 20);
+
+    // run test
+    let err = TestFramework::<COLUMNS, Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .runtime_tables_setup(vec![cfg])
+        .setup()
+        .runtime_tables(runtime_tables)
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .unwrap_err();
+    assert_eq!(
+        err,
+        "the runtime tables provided did not match the index's configuration"
+    );
+}
+
+#[test]
+fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_values() {
+    let first_column = [0, 1, 2, 3, 4, 5];
+    let table_id = 0;
+
+    let cfg = RuntimeTableCfg {
+        id: table_id,
+        first_column: first_column.into_iter().map(Into::into).collect(),
+    };
+
+    let data: Vec<Fp> = [0u32, 1, 2, 3, 4, 5].into_iter().map(Into::into).collect();
+    let runtime_table = RuntimeTable { id: table_id, data };
+
+    let lookups: Vec<i32> = [0; 20].into();
+
+    setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+}
+
+#[test]
+fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values() {
+    let mut rng = rand::thread_rng();
+
+    let len = rng.gen_range(1usize..1000);
+    let first_column: Vec<i32> = (0..len as i32).collect();
+
+    let table_id = 0;
+
+    let cfg = RuntimeTableCfg {
+        id: table_id,
+        first_column: first_column.clone().into_iter().map(Into::into).collect(),
+    };
+
+    let data: Vec<Fp> = first_column
+        .into_iter()
+        .map(|_| UniformRand::rand(&mut rng))
+        .collect();
+    let runtime_table = RuntimeTable { id: table_id, data };
+
+    let lookups: Vec<i32> = [0; 20].into();
+
+    setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
+}

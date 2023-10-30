@@ -21,7 +21,10 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
-use poly_commitment::srs::{endos, SRS};
+use poly_commitment::{
+    evaluation_proof::OpeningProof,
+    srs::{endos, SRS},
+};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -411,7 +414,7 @@ fn test_xor_finalization() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<COLUMNS, Vesta>::create(cs, endo_q, srs)
+        ProverIndex::<COLUMNS, Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
     };
 
     for row in 0..witness[0].len() {

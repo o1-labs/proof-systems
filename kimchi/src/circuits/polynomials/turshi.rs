@@ -82,8 +82,9 @@ use crate::{
     alphas::Alphas,
     circuits::{
         argument::{Argument, ArgumentEnv, ArgumentType},
+        berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{self, constraints::ExprOps, Cache, Column, E},
+        expr::{self, constraints::ExprOps, Cache, E},
         gate::{CircuitGate, GateType},
         wires::{GateWires, Wire},
     },
@@ -226,6 +227,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             joint_combiner: None,
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            zk_rows: 3,
         };
 
         let pt = F::rand(rng);

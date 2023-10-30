@@ -86,3 +86,41 @@ fn test_generic_gate_pub_empty() {
         .prove_and_verify::<BaseSponge, ScalarSponge>()
         .unwrap();
 }
+
+#[cfg(feature = "bn254")]
+#[test]
+fn test_generic_gate_pairing() {
+    type Fp = ark_bn254::Fr;
+    type SpongeParams = PlonkSpongeConstantsKimchi;
+    type BaseSponge = DefaultFqSponge<ark_bn254::g1::Parameters, SpongeParams>;
+    type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
+
+    use ark_ff::UniformRand;
+
+    let public = vec![Fp::from(3u8); 5];
+    let gates = create_circuit(0, public.len());
+
+    let rng = &mut rand::rngs::OsRng;
+    let x = Fp::rand(rng);
+
+    // create witness
+    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+    fill_in_witness(0, &mut witness, &public);
+
+    // create and verify proof based on the witness
+    <TestFramework<
+        COLUMNS,
+        _,
+        poly_commitment::pairing_proof::PairingProof<ark_ec::bn::Bn<ark_bn254::Parameters>>,
+    > as Default>::default()
+    .gates(gates)
+    .witness(witness)
+    .public_inputs(public)
+    .setup_with_custom_srs(|d1, usize| {
+        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, usize);
+        srs.full_srs.add_lagrange_basis(d1);
+        srs
+    })
+    .prove_and_verify::<BaseSponge, ScalarSponge>()
+    .unwrap();
+}

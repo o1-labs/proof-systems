@@ -57,66 +57,69 @@ use ark_poly::{
 use ark_poly::{Polynomial, UVPolynomial};
 use blake2::{Blake2b512, Digest};
 use o1_utils::{ExtendedDensePolynomial, ExtendedEvaluations};
+use poly_commitment::OpenProof;
 use rand::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use std::array;
 
 /// Number of constraints produced by the argument.
 pub const CONSTRAINTS: u32 = 3;
-pub const ZK_ROWS: u64 = 3;
+
 /// Evaluates the polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_vanishes_on_last_4_rows<F: FftField>(domain: D<F>, x: F) -> F {
-    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3) * (x - w4)
+/// (x - w^{n - i}) * (x - w^{n - i + 1}) * ... * (x - w^{n - 1})
+pub fn eval_vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64, x: F) -> F {
+    if i == 0 {
+        return F::one();
+    }
+    let mut term = domain.group_gen.pow([domain.size - i]);
+    let mut acc = x - term;
+    for _ in 0..i - 1 {
+        term *= domain.group_gen;
+        acc *= x - term;
+    }
+    acc
 }
 
 /// The polynomial
-/// (x - w^{n - 4}) (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn vanishes_on_last_4_rows<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
+/// (x - w^{n - i}) * (x - w^{n - i + 1}) * ... * (x - w^{n - 1})
+pub fn vanishes_on_last_n_rows<F: FftField>(domain: D<F>, i: u64) -> DensePolynomial<F> {
+    let constant = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
+    if i == 0 {
+        return constant(F::one());
+    }
     let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
-    let c = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
-    let w4 = domain.group_gen.pow([domain.size - (ZK_ROWS + 1)]);
-    let w3 = domain.group_gen * w4;
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    &(&(&x - &c(w1)) * &(&x - &c(w2))) * &(&(&x - &c(w3)) * &(&x - &c(w4)))
+    let mut term = domain.group_gen.pow([domain.size - i]);
+    let mut acc = &x - &constant(term);
+    for _ in 0..i - 1 {
+        term *= domain.group_gen;
+        acc = &acc * &(&x - &constant(term));
+    }
+    acc
 }
 
 /// Returns the end of the circuit, which is used for introducing zero-knowledge in the permutation polynomial
-pub fn zk_w3<F: FftField>(domain: D<F>) -> F {
-    domain.group_gen.pow([domain.size - (ZK_ROWS)])
+pub fn zk_w<F: FftField>(domain: D<F>, zk_rows: u64) -> F {
+    domain.group_gen.pow([domain.size - zk_rows])
 }
 
 /// Evaluates the polynomial
-/// (x - w^{n - 3}) * (x - w^{n - 2}) * (x - w^{n - 1})
-pub fn eval_zk_polynomial<F: FftField>(domain: D<F>, x: F) -> F {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-    (x - w1) * (x - w2) * (x - w3)
+/// (x - w^{n - zk_rows}) * (x - w^{n - zk_rows + 1}) * (x - w^{n - 1})
+pub fn eval_permutation_vanishing_polynomial<F: FftField>(domain: D<F>, zk_rows: u64, x: F) -> F {
+    let term = domain.group_gen.pow([domain.size - zk_rows]);
+    (x - term) * (x - term * domain.group_gen) * (x - domain.group_gen.pow([domain.size - 1]))
 }
 
-/// Computes the zero-knowledge polynomial for blinding the permutation polynomial: `(x-w^{n-k})(x-w^{n-k-1})...(x-w^n)`.
-/// Currently, we use k = 3 for 2 blinding factors,
-/// see <https://www.plonk.cafe/t/noob-questions-plonk-paper/73>
-pub fn zk_polynomial<F: FftField>(domain: D<F>) -> DensePolynomial<F> {
-    let w3 = zk_w3(domain);
-    let w2 = domain.group_gen * w3;
-    let w1 = domain.group_gen * w2;
-
-    // (x-w3)(x-w2)(x-w1) =
-    // x^3 - x^2(w1+w2+w3) + x(w1w2+w1w3+w2w3) - w1w2w3
-    let w1w2 = w1 * w2;
-    DensePolynomial::from_coefficients_slice(&[
-        -w1w2 * w3,                   // 1
-        w1w2 + (w1 * w3) + (w3 * w2), // x
-        -w1 - w2 - w3,                // x^2
-        F::one(),                     // x^3
-    ])
+/// The polynomial
+/// (x - w^{n - zk_rows}) * (x - w^{n - zk_rows + 1}) * (x - w^{n - 1})
+pub fn permutation_vanishing_polynomial<F: FftField>(
+    domain: D<F>,
+    zk_rows: u64,
+) -> DensePolynomial<F> {
+    let constant = |a: F| DensePolynomial::from_coefficients_slice(&[a]);
+    let x = DensePolynomial::from_coefficients_slice(&[F::zero(), F::one()]);
+    let term = domain.group_gen.pow([domain.size - zk_rows]);
+    &(&(&x - &constant(term)) * &(&x - &constant(term * domain.group_gen)))
+        * &(&x - &constant(domain.group_gen.pow([domain.size - 1])))
 }
 
 /// Shifts represent the shifts required in the permutation argument of PLONK.
@@ -191,7 +194,13 @@ where
     }
 }
 
-impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<W, G> {
+impl<
+        const W: usize,
+        F: PrimeField,
+        G: KimchiCurve<ScalarField = F>,
+        OpeningProof: OpenProof<G>,
+    > ProverIndex<W, G, OpeningProof>
+{
     /// permutation quotient poly contribution computation
     ///
     /// # Errors
@@ -213,6 +222,8 @@ impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex
         let alpha0 = alphas.next().expect("missing power of alpha");
         let alpha1 = alphas.next().expect("missing power of alpha");
         let alpha2 = alphas.next().expect("missing power of alpha");
+
+        let zk_rows = self.cs.zk_rows as usize;
 
         // constant gamma in evaluation form (in domain d8)
         let gamma = &self.cs.precomputations().constant_1_d8.scale(gamma);
@@ -275,7 +286,8 @@ impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex
                 sigmas = &sigmas * &term;
             }
 
-            &(&shifts - &sigmas).scale(alpha0) * &self.cs.precomputations().zkpl
+            &(&shifts - &sigmas).scale(alpha0)
+                * &self.cs.precomputations().permutation_vanishing_polynomial_l
         };
 
         //~ and `bnd`:
@@ -301,9 +313,9 @@ impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex
                 return Err(ProverError::Permutation("first division rest"));
             }
 
-            // accumulator end := (z(x) - 1) / (x - sid[n-3])
+            // accumulator end := (z(x) - 1) / (x - sid[n-zk_rows])
             let denominator = DensePolynomial::from_coefficients_slice(&[
-                -self.cs.sid[self.cs.domain.d1.size() - 3],
+                -self.cs.sid[self.cs.domain.d1.size() - zk_rows],
                 F::one(),
             ]);
             let (bnd2, res) = DenseOrSparsePolynomial::divide_with_q_and_r(
@@ -335,7 +347,11 @@ impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex
         //~
         //~ $\text{scalar} \cdot \sigma_6(x)$
         //~
-        let zkpm_zeta = self.cs.precomputations().zkpm.evaluate(&zeta);
+        let zkpm_zeta = self
+            .cs
+            .precomputations()
+            .permutation_vanishing_polynomial_m
+            .evaluate(&zeta);
         let scalar = ConstraintSystem::<F>::perm_scalars(e, beta, gamma, alphas, zkpm_zeta);
         let evals8 = &self.column_evaluations.permutation_coefficients8[PERMUTS - 1].evals;
         const STRIDE: usize = 8;
@@ -390,7 +406,13 @@ impl<F: PrimeField> ConstraintSystem<F> {
     }
 }
 
-impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex<W, G> {
+impl<
+        const W: usize,
+        F: PrimeField,
+        G: KimchiCurve<ScalarField = F>,
+        OpeningProof: OpenProof<G>,
+    > ProverIndex<W, G, OpeningProof>
+{
     /// permutation aggregation polynomial computation
     ///
     /// # Errors
@@ -408,6 +430,8 @@ impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex
         rng: &mut (impl RngCore + CryptoRng),
     ) -> Result<DensePolynomial<F>, ProverError> {
         let n = self.cs.domain.d1.size();
+
+        let zk_rows = self.cs.zk_rows as usize;
 
         // only works if first element is 1
         assert_eq!(self.cs.domain.d1.elements().next(), Some(F::one()));
@@ -453,7 +477,7 @@ impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex
         //~ \end{align}
         //~ $$
         //~
-        for j in 0..n - 3 {
+        for j in 0..n - 1 {
             z[j + 1] = witness
                 .iter()
                 .zip(self.column_evaluations.permutation_coefficients8.iter())
@@ -461,27 +485,29 @@ impl<const W: usize, F: PrimeField, G: KimchiCurve<ScalarField = F>> ProverIndex
                 .fold(F::one(), |x, y| x * y);
         }
 
-        ark_ff::fields::batch_inversion::<F>(&mut z[1..=n - 3]);
+        ark_ff::fields::batch_inversion::<F>(&mut z[1..n]);
 
-        for j in 0..n - 3 {
-            let x = z[j];
-            z[j + 1] *= witness
-                .iter()
-                .zip(self.cs.shift.iter())
-                .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
-                .fold(x, |z, y| z * y);
+        //~ We randomize the evaluations at `n - zk_rows + 1` and `n - zk_rows + 2` in order to add
+        //~ zero-knowledge to the protocol.
+        //~
+        for j in 0..n - 1 {
+            if j != n - zk_rows && j != n - zk_rows + 1 {
+                let x = z[j];
+                z[j + 1] *= witness
+                    .iter()
+                    .zip(self.cs.shift.iter())
+                    .map(|(w, s)| w[j] + (self.cs.sid[j] * beta * s) + gamma)
+                    .fold(x, |z, y| z * y);
+            } else {
+                z[j + 1] = F::rand(rng);
+            }
         }
 
-        //~ If computed correctly, we should have $z(g^{n-3}) = 1$.
+        //~ For a valid witness, we then have have $z(g^{n-zk_rows}) = 1$.
         //~
-        if z[n - 3] != F::one() {
+        if z[n - zk_rows] != F::one() {
             return Err(ProverError::Permutation("final value"));
         };
-
-        //~ Finally, randomize the last `EVAL_POINTS` evaluations $z(g^{n-2})$ and $z(g^{n-1})$,
-        //~ in order to add zero-knowledge to the protocol.
-        z[n - 2] = F::rand(rng);
-        z[n - 1] = F::rand(rng);
 
         let res = Evaluations::<F, D<F>>::from_vec_and_domain(z, self.cs.domain.d1).interpolate();
         Ok(res)

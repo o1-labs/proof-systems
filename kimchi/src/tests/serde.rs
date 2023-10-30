@@ -17,7 +17,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
-use poly_commitment::{commitment::CommitmentCurve, srs::SRS};
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof, srs::SRS};
 use std::array;
 use std::time::Instant;
 
@@ -41,7 +41,8 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<COLUMNS, Vesta> = rmp_serde::from_slice(&ser_pf).unwrap();
+        let de_pf: ProverProof<COLUMNS, Vesta, OpeningProof<Vesta>> =
+            rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
         ctx.batch_verification(&vec![(de_pf, public_input)]);
@@ -72,18 +73,22 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<COLUMNS, GroupAffine<VestaParameters>> =
-            serde_json::from_str(&verifier_index_serialize).unwrap();
+        let mut verifier_index_deserialize: VerifierIndex<
+            COLUMNS,
+            GroupAffine<VestaParameters>,
+            _,
+        > = serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
         let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
         srs.add_lagrange_basis(verifier_index.domain);
         verifier_index_deserialize.powers_of_alpha = index.powers_of_alpha;
         verifier_index_deserialize.linearization = index.linearization;
+        verifier_index_deserialize.srs = std::sync::Arc::new(srs);
 
         // verify the proof
         let start = Instant::now();
-        verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge>(
+        verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

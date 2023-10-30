@@ -26,7 +26,10 @@ use mina_poseidon::{
     FqSponge,
 };
 use o1_utils::Two;
-use poly_commitment::srs::{endos, SRS};
+use poly_commitment::{
+    evaluation_proof::OpeningProof,
+    srs::{endos, SRS},
+};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 
 type PallasField = <Pallas as AffineCurve>::BaseField;
@@ -174,22 +177,20 @@ fn test_rot_random() {
     test_rot::<Pallas>(word, rot, RotMode::Right);
 }
 
-#[should_panic]
 #[test]
 // Test that a bad rotation fails as expected
 fn test_zero_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    create_rot_witness::<Vesta>(word, 0, RotMode::Left);
+    test_rot::<Pallas>(word, 0, RotMode::Left);
 }
 
-#[should_panic]
 #[test]
 // Test that a bad rotation fails as expected
 fn test_large_rot() {
     let rng = &mut StdRng::from_seed(RNG_SEED);
     let word = rng.gen_range(0..2u128.pow(64)) as u64;
-    create_rot_witness::<Vesta>(word, 64, RotMode::Left);
+    test_rot::<Pallas>(word, 64, RotMode::Left);
 }
 
 #[test]
@@ -376,7 +377,7 @@ fn test_rot_finalization() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<COLUMNS, Vesta>::create(cs, endo_q, srs)
+        ProverIndex::<COLUMNS, Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
     };
 
     for row in 0..witness[0].len() {

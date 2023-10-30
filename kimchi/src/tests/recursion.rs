@@ -11,7 +11,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::commitment::b_poly_coefficients;
+use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
 use rand::prelude::*;
 use std::array;
 
@@ -43,7 +43,7 @@ fn test_recursion() {
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.commit_non_hiding(&b, None)
+            index.srs.commit_non_hiding(&b, 1, None)
         };
         RecursionChallenge::new(chals, comm)
     };
