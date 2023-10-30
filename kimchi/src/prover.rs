@@ -985,22 +985,17 @@ where
                     &index.column_evaluations.permutation_coefficients8[i],
                 )
             }),
-            coefficients: index
-                .column_evaluations
-                .coefficients8
-                .iter()
-                .map(|c| chunked_evals_for_evaluations(c))
-                .collect(),
-            w: witness_poly
-                .iter()
-                .map(|w| {
-                    let chunked = w.to_chunked_polynomial(num_chunks, index.max_poly_size);
-                    PointEvaluations {
-                        zeta: chunked.evaluate_chunks(zeta),
-                        zeta_omega: chunked.evaluate_chunks(zeta_omega),
-                    }
-                })
-                .collect(),
+            coefficients: array::from_fn(|i| {
+                chunked_evals_for_evaluations(&index.column_evaluations.coefficients8[i])
+            }),
+            w: array::from_fn(|i| {
+                let chunked =
+                    witness_poly[i].to_chunked_polynomial(num_chunks, index.max_poly_size);
+                PointEvaluations {
+                    zeta: chunked.evaluate_chunks(zeta),
+                    zeta_omega: chunked.evaluate_chunks(zeta_omega),
+                }
+            }),
 
             z: {
                 let chunked = z_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);

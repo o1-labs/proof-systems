@@ -1975,14 +1975,16 @@ pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     /// public input polynomials
     pub public: Option<Evals>,
     /// witness polynomials
-    pub w: Vec<Evals>,
+    #[serde_as(as = "[_; COLUMNS]")]
+    pub w: [Evals; COLUMNS],
     /// permutation polynomial
     pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    pub coefficients: Vec<Evals>,
+    #[serde_as(as = "[_; COLUMNS]")]
+    pub coefficients: [Evals; COLUMNS],
     /// evaluation of the generic selector polynomial
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial

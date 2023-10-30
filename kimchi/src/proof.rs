@@ -46,14 +46,16 @@ pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     /// public input polynomials
     pub public: Option<Evals>,
     /// witness polynomials
-    pub w: Vec<Evals>,
+    #[serde_as(as = "[_; COLUMNS]")]
+    pub w: [Evals; COLUMNS],
     /// permutation polynomial
     pub z: Evals,
     /// permutation polynomials
     /// (PERMUTS-1 evaluations because the last permutation is only used in commitment form)
     pub s: [Evals; PERMUTS - 1],
     /// coefficient polynomials
-    pub coefficients: Vec<Evals>,
+    #[serde_as(as = "[_; COLUMNS]")]
+    pub coefficients: [Evals; COLUMNS],
     /// evaluation of the generic selector polynomial
     pub generic_selector: Evals,
     /// evaluation of the poseidon selector polynomial
@@ -225,10 +227,10 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
         } = self;
         ProofEvaluations {
             public: public.map(f),
-            w: w.into_iter().map(f).collect(),
+            w: w.map(f),
             z: f(z),
             s: s.map(f),
-            coefficients: coefficients.into_iter().map(f).collect(),
+            coefficients: coefficients.map(f),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
             complete_add_selector: f(complete_add_selector),
@@ -287,10 +289,10 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
         } = self;
         ProofEvaluations {
             public: public.as_ref().map(f),
-            w: w.iter().map(f).collect(),
+            w: array::from_fn(|i: usize| f(&w[i])),
             z: f(z),
             s: [f(s0), f(s1), f(s2), f(s3), f(s4), f(s5)],
-            coefficients: coefficients.iter().map(f).collect(),
+            coefficients: array::from_fn(|i: usize| f(&coefficients[i])),
             generic_selector: f(generic_selector),
             poseidon_selector: f(poseidon_selector),
             complete_add_selector: f(complete_add_selector),
@@ -374,10 +376,10 @@ impl<F: Zero + Copy, const COLUMNS: usize> ProofEvaluations<PointEvaluations<F>,
         };
         ProofEvaluations {
             public: Some(pt(F::zero(), F::zero())),
-            w: curr.iter().zip(next).map(|(c, n)| pt(*c, n)).collect(),
+            w: array::from_fn(|i| pt(curr[i], next[i])),
             z: pt(F::zero(), F::zero()),
             s: array::from_fn(|_| pt(F::zero(), F::zero())),
-            coefficients: vec![pt(F::zero(), F::zero()); COLUMNS],
+            coefficients: [pt(F::zero(), F::zero()); COLUMNS],
             generic_selector: pt(F::zero(), F::zero()),
             poseidon_selector: pt(F::zero(), F::zero()),
             complete_add_selector: pt(F::zero(), F::zero()),
