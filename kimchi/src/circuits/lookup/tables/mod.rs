@@ -7,7 +7,7 @@ pub mod range_check;
 pub mod xor;
 
 /// A table of values that can be used for a lookup, along with the ID for the table.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LookupTable<F> {
     id: i32,
     data: Vec<Vec<F>>,

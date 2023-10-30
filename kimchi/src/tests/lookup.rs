@@ -200,7 +200,7 @@ fn test_runtime_table() {
     let len = first_column.len();
 
     let mut runtime_tables_setup = vec![];
-    for table_id in 0..num {
+    for table_id in 1..num + 1 {
         let cfg = RuntimeTableCfg {
             id: table_id,
             first_column: first_column.into_iter().map(Into::into).collect(),
@@ -236,7 +236,7 @@ fn test_runtime_table() {
 
         for row in 0..20 {
             // the first register is the table id. We pick one random table.
-            lookup_cols[0][row] = (rng.gen_range(0..num) as u32).into();
+            lookup_cols[0][row] = (rng.gen_range(1..num + 1) as u32).into();
 
             // create queries into our runtime lookup table.
             // We will set [w1, w2], [w3, w4] and [w5, w6] to randon indexes and

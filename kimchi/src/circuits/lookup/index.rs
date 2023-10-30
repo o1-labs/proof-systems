@@ -29,9 +29,7 @@ pub enum LookupError {
         maximum_allowed: usize,
     },
     #[error("Cannot create a combined table since ids for sub-tables are colliding. The collision type is: {collision_type}")]
-    LookupTableIdCollision {
-        collision_type: String,
-    },
+    LookupTableIdCollision { collision_type: String },
 }
 
 /// Lookup selectors
@@ -200,7 +198,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
     /// Will give error if inputs validation do not match.
     pub fn create(
         gates: &[CircuitGate<F>],
-        lookup_tables: Vec<LookupTable<F>>,
+        fixed_lookup_tables: Vec<LookupTable<F>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<F>>>,
         domain: &EvaluationDomains<F>,
         zk_rows: usize,
@@ -217,41 +215,63 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 // product is 1, we cannot use those rows to store any values.
                 let max_num_entries = d1_size - zk_rows - 1;
 
-                //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
+                //~ 2. Get the lookup selectors and lookup tables that are specified implicitly
+                // by the lookup gates (TODO: how?)
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 
-                //~ 3. Concatenate runtime lookup tables with the ones used by gates
-                let mut lookup_tables: Vec<_> = gate_lookup_tables
-                    .into_iter()
-                    .chain(lookup_tables)
-                    .collect();
-
-                // Checks whether iterator collects any duplicates, and if yes, raises
+                // Checks whether an iterator contains any duplicates, and if yes, raises
                 // a corresponding LookupTableIdCollision error.
-                fn check_id_duplicates<'a, I:Iterator<Item = &'a i32>>(iter: I, msg: &str) -> Result<(),LookupError>  {
+                fn check_id_duplicates<'a, I: Iterator<Item = &'a i32>>(
+                    iter: I,
+                    msg: &str,
+                ) -> Result<(), LookupError> {
                     use itertools::Itertools;
                     match iter.duplicates().collect::<Vec<_>>() {
-                        dups if !dups.is_empty() => {
-                            Err(LookupError::LookupTableIdCollision {
-                                collision_type: format!("{}: {:?}", msg, dups).to_string()
-                            })
-                        },
-                        _ => {Ok(())}
+                        dups if !dups.is_empty() => Err(LookupError::LookupTableIdCollision {
+                            collision_type: format!("{}: {:?}", msg, dups).to_string(),
+                        }),
+                        _ => Ok(()),
                     }
                 }
 
-                let fixed_lookup_tables_ids: Vec<i32> = lookup_tables.iter().map(|lt| lt.id()).collect();
-                check_id_duplicates(fixed_lookup_tables_ids.iter(),"fixed lookup table duplicates")?;
+                // If there is a gate using a lookup table, this table must not be added
+                // explicitly to the constraint system.
+                let fixed_gate_joint_ids: Vec<i32> = fixed_lookup_tables
+                    .iter()
+                    .map(|lt| lt.id())
+                    .chain(gate_lookup_tables.iter().map(|lt| lt.id()))
+                    .collect();
+                check_id_duplicates(
+                    fixed_gate_joint_ids.iter(),
+                    "duplicates between fixed given and fixed from-gate tables",
+                )?;
+
+                //~ 3. Concatenate explicit runtime lookup tables with the ones (implicitly) used by gates.
+                let mut lookup_tables: Vec<LookupTable<_>> = fixed_lookup_tables
+                    .into_iter()
+                    .chain(gate_lookup_tables)
+                    .collect();
+
+                let fixed_lookup_tables_ids: Vec<i32> =
+                    lookup_tables.iter().map(|lt| lt.id()).collect();
+                check_id_duplicates(
+                    fixed_lookup_tables_ids.iter(),
+                    "fixed lookup table duplicates",
+                )?;
 
                 // if we are using runtime tables
                 let (runtime_table_offset, runtime_selector) =
                     if let Some(runtime_tables) = &runtime_tables {
-                        let runtime_tables_ids: Vec<i32> = runtime_tables.iter().map(|rt| rt.id).collect();
+                        let runtime_tables_ids: Vec<i32> =
+                            runtime_tables.iter().map(|rt| rt.id).collect();
                         check_id_duplicates(runtime_tables_ids.iter(), "runtime table duplicates")?;
-                        check_id_duplicates(runtime_tables_ids.iter().chain(fixed_lookup_tables_ids.iter()),
-                                         "duplicates between runtime and fixed tables")?;
-
+                        check_id_duplicates(
+                            runtime_tables_ids
+                                .iter()
+                                .chain(fixed_lookup_tables_ids.iter()),
+                            "duplicates between runtime and fixed tables",
+                        )?;
 
                         // save the offset of the end of the table
                         let mut runtime_table_offset = 0;
@@ -292,7 +312,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         for runtime_table in runtime_tables {
                             let (id, first_column) =
                                 (runtime_table.id, runtime_table.first_column.clone());
-
 
                             // important: we still need a placeholder column to make sure that
                             // if all other tables have a single column
@@ -413,7 +432,6 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                     lookup_table_polys.push(poly);
                     lookup_table8.push(eval);
                 }
-
 
                 // @volhovm: Do we need to enforce that there is at least one table
                 // with id 0?
