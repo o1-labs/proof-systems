@@ -5,9 +5,9 @@ use ark_ff::PrimeField;
 
 use super::KECCAK_COLS;
 
-type _Layout<const W: usize, F> = Vec<Box<dyn WitnessCell<W, F, Vec<F>>>>;
+type _Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
 
-fn _layout_round<F: PrimeField>() -> _Layout<KECCAK_COLS, F> {
+fn _layout_round<F: PrimeField>() -> _Layout<F, KECCAK_COLS> {
     vec![
         IndexCell::create("state_a", 0, 100),
         IndexCell::create("state_c", 100, 120),
@@ -34,7 +34,7 @@ fn _layout_round<F: PrimeField>() -> _Layout<KECCAK_COLS, F> {
     ]
 }
 
-fn _layout_sponge<F: PrimeField>() -> _Layout<KECCAK_COLS, F> {
+fn _layout_sponge<F: PrimeField>() -> _Layout<F, KECCAK_COLS> {
     vec![
         IndexCell::create("old_state", 0, 100),
         IndexCell::create("new_state", 100, 200),
