@@ -185,7 +185,7 @@ fn init_ffadd_row<F: PrimeField>(
     overflow: F,
     carry: F,
 ) {
-    let layout: [Vec<Box<dyn WitnessCell<COLUMNS, F, F>>>; 1] = [
+    let layout: [Vec<Box<dyn WitnessCell<F>>>; 1] = [
         // ForeignFieldAdd row
         vec![
             VariableCell::create("left_lo"),
@@ -221,7 +221,7 @@ fn init_bound_rows<F: PrimeField>(
     bound: &[F; 3],
     carry: &F,
 ) {
-    let layout: [Vec<Box<dyn WitnessCell<COLUMNS, F, F>>>; 2] = [
+    let layout: [Vec<Box<dyn WitnessCell<F>>>; 2] = [
         vec![
             // ForeignFieldAdd row
             VariableCell::create("result_lo"),

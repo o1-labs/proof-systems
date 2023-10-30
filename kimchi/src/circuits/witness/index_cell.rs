@@ -18,7 +18,7 @@ impl<'a> IndexCell<'a> {
     }
 }
 
-impl<'a, const W: usize, F: Field> WitnessCell<W, F, Vec<F>> for IndexCell<'a> {
+impl<'a, F: Field, const W: usize> WitnessCell<F, Vec<F>, W> for IndexCell<'a> {
     fn value(&self, _witness: &mut [Vec<F>; W], variables: &Variables<Vec<F>>, index: usize) -> F {
         assert!(index < self.length, "index out of bounds of `IndexCell`");
         variables[self.name][index]
