@@ -41,7 +41,7 @@ use super::circuitgates;
 //
 //     so that most significant limb, q2, is in W[2][0].
 //
-fn create_layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<COLUMNS, F, F>>>; 2] {
+fn create_layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<F>>>; 2] {
     [
         // ForeignFieldMul row
         vec![
