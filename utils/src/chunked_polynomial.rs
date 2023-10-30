@@ -64,6 +64,7 @@ mod tests {
         let one = Fp::one();
         let zeta = one + one;
         let zeta_n = zeta.square();
+        let num_chunks = 4;
         let res = (one + zeta)
             * (one + zeta_n + zeta_n * zeta.square() + zeta_n * zeta.square() * zeta.square());
 
@@ -71,7 +72,10 @@ mod tests {
         let coeffs = [one, one, one, one, one, one, one, one];
         let f = DensePolynomial::from_coefficients_slice(&coeffs);
 
-        let eval = f.to_chunked_polynomial(2).linearize(zeta_n).evaluate(&zeta);
+        let eval = f
+            .to_chunked_polynomial(num_chunks, 2)
+            .linearize(zeta_n)
+            .evaluate(&zeta);
 
         assert!(eval == res);
     }

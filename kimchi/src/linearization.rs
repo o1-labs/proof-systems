@@ -6,7 +6,7 @@ use crate::circuits::expr;
 use crate::circuits::lookup;
 use crate::circuits::lookup::{
     constraints::LookupConfiguration,
-    lookups::{LookupFeatures, LookupInfo, LookupPatterns},
+    lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
@@ -23,8 +23,9 @@ use crate::circuits::polynomials::{
 };
 
 use crate::circuits::{
+    berkeley_columns::Column,
     constraints::FeatureFlags,
-    expr::{Column, ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
+    expr::{ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
     wires::COLUMNS,
 };
@@ -38,7 +39,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 pub fn constraints_expr<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Expr<ConstantExpr<F>>, Alphas<F>) {
+) -> (Expr<ConstantExpr<F>, Column>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
 
@@ -305,6 +306,26 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
     // the generic selector polynomial
     h.insert(Index(GateType::Generic));
 
+    h.insert(Index(GateType::CompleteAdd));
+    h.insert(Index(GateType::VarBaseMul));
+    h.insert(Index(GateType::EndoMul));
+    h.insert(Index(GateType::EndoMulScalar));
+
+    // optional columns
+    h.insert(Index(GateType::RangeCheck0));
+    h.insert(Index(GateType::RangeCheck1));
+    h.insert(Index(GateType::ForeignFieldAdd));
+    h.insert(Index(GateType::ForeignFieldMul));
+    h.insert(Index(GateType::Xor16));
+    h.insert(Index(GateType::Rot64));
+
+    // lookup selectors
+    h.insert(LookupRuntimeSelector);
+    h.insert(LookupKindIndex(LookupPattern::Xor));
+    h.insert(LookupKindIndex(LookupPattern::Lookup));
+    h.insert(LookupKindIndex(LookupPattern::RangeCheck));
+    h.insert(LookupKindIndex(LookupPattern::ForeignFieldMul));
+
     h
 }
 
@@ -316,10 +337,14 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 /// # Panics
 ///
 /// Will panic if the `linearization` process fails.
+#[allow(clippy::type_complexity)]
 pub fn expr_linearization<F: PrimeField + SquareRootField>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
-) -> (Linearization<Vec<PolishToken<F>>>, Alphas<F>) {
+) -> (
+    Linearization<Vec<PolishToken<F, Column>>, Column>,
+    Alphas<F>,
+) {
     let evaluated_cols = linearization_columns::<F>(feature_flags);
 
     let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
@@ -328,6 +353,8 @@ pub fn expr_linearization<F: PrimeField + SquareRootField>(
         .linearize(evaluated_cols)
         .unwrap()
         .map(|e| e.to_polish());
+
+    assert_eq!(linearization.index_terms.len(), 0);
 
     (linearization, powers_of_alpha)
 }
