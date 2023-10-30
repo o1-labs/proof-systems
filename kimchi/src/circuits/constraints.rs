@@ -820,7 +820,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             &domain,
             zk_rows as usize,
         )
-        .map_err(|e| SetupError::ConstraintSystem(e.to_string()))?;
+        .map_err(SetupError::LookupCreation)?;
 
         let sid = shifts.map[0].clone();
 

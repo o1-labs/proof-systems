@@ -21,7 +21,7 @@ use std::iter;
 use thiserror::Error;
 
 /// Represents an error found when computing the lookup constraint system
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 pub enum LookupError {
     #[error("The combined lookup table is larger than allowed by the domain size. Observed: {length}, expected: {maximum_allowed}")]
     LookupTableTooLong {
@@ -465,5 +465,107 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 }))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::{LookupError, LookupTable, RuntimeTableCfg};
+    use crate::{
+        circuits::constraints::ConstraintSystem, circuits::gate::CircuitGate,
+        circuits::lookup::tables::xor, circuits::polynomials::range_check, error::SetupError,
+    };
+    use mina_curves::pasta::Fp;
+
+    #[test]
+    fn colliding_table_ids() {
+        let (_, gates) = CircuitGate::<Fp>::create_multi_range_check(0);
+        let collision_id: i32 = 5;
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![range_check::gadget::lookup_table()])
+            .build();
+
+        assert!(
+            matches!(
+                cs,
+                Err(SetupError::LookupCreation(
+                    LookupError::LookupTableIdCollision { .. }
+                ))
+            ),
+            "LookupConstraintSystem::create(...) must fail due to range table passed twice"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![xor::xor_table()])
+            .build();
+
+        assert!(
+            cs.is_ok(),
+            "LookupConstraintSystem::create(...) must succeed, no duplicates exist"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![
+                LookupTable::create(collision_id, vec![vec![From::from(0); 16]]).unwrap(),
+                LookupTable::create(collision_id, vec![vec![From::from(1); 16]]).unwrap(),
+            ])
+            .build();
+
+        assert!(
+            matches!(
+                cs,
+                Err(SetupError::LookupCreation(
+                    LookupError::LookupTableIdCollision { .. }
+                ))
+            ),
+            "LookupConstraintSystem::create(...) must fail, collision in fixed ids"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .runtime(Some(vec![
+                RuntimeTableCfg {
+                    id: collision_id,
+                    first_column: vec![From::from(0); 16],
+                },
+                RuntimeTableCfg {
+                    id: collision_id,
+                    first_column: vec![From::from(1); 16],
+                },
+            ]))
+            .build();
+
+        assert!(
+            matches!(
+                cs,
+                Err(SetupError::LookupCreation(
+                    LookupError::LookupTableIdCollision { .. }
+                ))
+            ),
+            "LookupConstraintSystem::create(...) must fail, collision in runtime ids"
+        );
+
+        let cs = ConstraintSystem::<Fp>::create(gates.clone())
+            .lookup(vec![LookupTable::create(
+                collision_id,
+                vec![vec![From::from(0); 16]],
+            )
+            .unwrap()])
+            .runtime(Some(vec![RuntimeTableCfg {
+                id: collision_id,
+                first_column: vec![From::from(1); 16],
+            }]))
+            .build();
+
+        assert!(
+            matches!(
+                cs,
+                Err(SetupError::LookupCreation(
+                    LookupError::LookupTableIdCollision { .. }
+                ))
+            ),
+            "LookupConstraintSystem::create(...) must fail, collision between runtime and lookup ids"
+        );
     }
 }
