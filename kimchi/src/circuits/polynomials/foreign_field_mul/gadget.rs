@@ -96,7 +96,7 @@ pub fn circuit_gates() -> [GateType; GATE_COUNT] {
 }
 
 /// Get combined constraints for a given foreign field multiplication circuit gate
-pub fn circuit_gate_constraints<const W: usize, F: PrimeField>(
+pub fn circuit_gate_constraints<F: PrimeField, const COLUMNS: usize>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,

@@ -30,7 +30,7 @@ use crate::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, CurrOrNext, GateType},
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         wires::{GateWires, Wire},
     },
     curve::KimchiCurve,
@@ -51,7 +51,7 @@ use CurrOrNext::{Curr, Next};
 pub const SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 
 /// Number of rows
-pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
+pub const ROUNDS_PER_ROW: usize = KIMCHI_COLS / SPONGE_WIDTH;
 
 /// Number of rounds
 pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstantsKimchi::PERM_ROUNDS_FULL;
@@ -137,11 +137,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
-    pub fn verify_poseidon<const W: usize, G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>, const COLUMNS: usize>(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
-        witness: &[Vec<F>; W],
+        witness: &[Vec<F>; COLUMNS],
     ) -> Result<(), String> {
         ensure_eq!(
             self.typ,
@@ -226,7 +226,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 pub fn generate_witness<F: Field>(
     row: usize,
     params: &'static ArithmeticSpongeParams<F>,
-    witness_cols: &mut [Vec<F>; COLUMNS],
+    witness_cols: &mut [Vec<F>; KIMCHI_COLS],
     input: [F; SPONGE_WIDTH],
 ) {
     // add the input into the witness

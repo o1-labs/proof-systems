@@ -4,7 +4,7 @@ use crate::{
     circuits::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, CircuitGateError, Connect, GateType},
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         polynomials::{generic::GenericGateSpec, xor},
         wires::Wire,
     },
@@ -21,7 +21,10 @@ use mina_poseidon::{
 };
 use num_bigint::BigUint;
 use o1_utils::{BigUintHelpers, BitwiseOps, FieldHelpers, RandomField};
-use poly_commitment::srs::{endos, SRS};
+use poly_commitment::{
+    evaluation_proof::OpeningProof,
+    srs::{endos, SRS},
+};
 use rand::{rngs::StdRng, SeedableRng};
 
 use super::framework::TestFramework;
@@ -50,7 +53,9 @@ where
     let mut gates = vec![];
     let _next_row = CircuitGate::<G::ScalarField>::extend_xor_gadget(&mut gates, bits);
 
-    ConstraintSystem::create(gates).build::<COLUMNS>().unwrap()
+    ConstraintSystem::create(gates)
+        .build::<KIMCHI_COLS>()
+        .unwrap()
 }
 
 // Returns the all ones BigUint of bits length
@@ -65,7 +70,7 @@ pub(crate) fn xor_nybble(word: BigUint, nybble: usize) -> BigUint {
 
 // Manually checks the XOR of each nybble in the witness
 pub(crate) fn check_xor<G: KimchiCurve>(
-    witness: &[Vec<G::ScalarField>; COLUMNS],
+    witness: &[Vec<G::ScalarField>; KIMCHI_COLS],
     bits: usize,
     input1: G::ScalarField,
     input2: G::ScalarField,
@@ -102,7 +107,7 @@ fn setup_xor<G: KimchiCurve>(
     bits: Option<usize>,
 ) -> (
     ConstraintSystem<G::ScalarField>,
-    [Vec<G::ScalarField>; COLUMNS],
+    [Vec<G::ScalarField>; KIMCHI_COLS],
 )
 where
     G::BaseField: PrimeField,
@@ -133,14 +138,14 @@ fn test_xor<G: KimchiCurve>(
     in1: Option<G::ScalarField>,
     in2: Option<G::ScalarField>,
     bits: Option<usize>,
-) -> [Vec<G::ScalarField>; COLUMNS]
+) -> [Vec<G::ScalarField>; KIMCHI_COLS]
 where
     G::BaseField: PrimeField,
 {
     let (cs, witness) = setup_xor::<G>(in1, in2, bits);
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<COLUMNS, G>(
+            cs.gates[row].verify_witness::<G, KIMCHI_COLS>(
                 row,
                 &witness,
                 &cs,
@@ -168,7 +173,7 @@ fn test_prove_and_verify_xor() {
     // Create witness and random inputs
     let witness = xor::create_xor_witness(input1, input2, bits);
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -243,26 +248,31 @@ fn test_xor128_random() {
 }
 
 fn verify_bad_xor_decomposition<G: KimchiCurve>(
-    witness: &mut [Vec<G::ScalarField>; COLUMNS],
+    witness: &mut [Vec<G::ScalarField>; KIMCHI_COLS],
     cs: ConstraintSystem<G::ScalarField>,
 ) where
     G::BaseField: PrimeField,
 {
     // modify by one each of the witness cells individually
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         // first three columns make fail the ith+1 constraint
         // for the rest, the first 4 make the 1st fail, the following 4 make the 2nd fail, the last 4 make the 3rd fail
         let bad = if col < 3 { col + 1 } else { (col - 3) / 4 + 1 };
         witness[col][0] += G::ScalarField::one();
         assert_eq!(
-            cs.gates[0].verify_witness::<COLUMNS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<G, KIMCHI_COLS>(
+                0,
+                witness,
+                &cs,
+                &witness[0][0..cs.public]
+            ),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][0] -= G::ScalarField::one();
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<COLUMNS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<G, KIMCHI_COLS>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -304,17 +314,17 @@ fn test_extend_xor() {
 
     let cs = ConstraintSystem::create(gates)
         .public(2)
-        .build::<COLUMNS>()
+        .build::<KIMCHI_COLS>()
         .unwrap();
 
-    let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
+    let mut witness: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); 2]);
     witness[0][0] = input1;
     witness[0][1] = input2;
-    xor::extend_xor_witness::<COLUMNS, Fp>(&mut witness, input1, input2, bits);
+    xor::extend_xor_witness::<Fp, KIMCHI_COLS>(&mut witness, input1, input2, bits);
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+            cs.gates[row].verify_witness::<Vesta, KIMCHI_COLS>(
                 row,
                 &witness,
                 &cs,
@@ -347,11 +357,11 @@ fn test_bad_xor() {
     // modify the output to be all zero
     witness[2][0] = PallasField::zero();
     for i in 1..=4 {
-        witness[COLUMNS - i][0] = PallasField::zero();
+        witness[KIMCHI_COLS - i][0] = PallasField::zero();
     }
 
     assert_eq!(
-        TestFramework::<COLUMNS, Vesta>::default()
+        TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)
             .setup()
@@ -388,7 +398,7 @@ fn test_xor_finalization() {
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); num_inputs]);
+        let mut cols: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); num_inputs]);
 
         // initialize the 2 inputs
         let input1 = 0xDC811727DAF22EC15927D6AA275F406Bu128.into();
@@ -396,7 +406,7 @@ fn test_xor_finalization() {
         cols[0][0] = input1;
         cols[0][1] = input2;
 
-        xor::extend_xor_witness::<COLUMNS, Fp>(&mut cols, input1, input2, 128);
+        xor::extend_xor_witness(&mut cols, input1, input2, 128);
         cols
     };
 
@@ -404,19 +414,19 @@ fn test_xor_finalization() {
         let cs = ConstraintSystem::create(gates.clone())
             .lookup(vec![xor::lookup_table()])
             .public(num_inputs)
-            .build::<COLUMNS>()
+            .build::<KIMCHI_COLS>()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<COLUMNS, Vesta>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
     };
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+            index.cs.gates[row].verify_witness::<Vesta, KIMCHI_COLS>(
                 row,
                 &witness,
                 &index.cs,
@@ -426,7 +436,7 @@ fn test_xor_finalization() {
         );
     }
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0], witness[0][1]])

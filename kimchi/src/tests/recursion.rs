@@ -1,6 +1,6 @@
 use super::framework::TestFramework;
 use crate::circuits::polynomials::generic::testing::{create_circuit, fill_in_witness};
-use crate::circuits::wires::COLUMNS;
+use crate::circuits::wires::KIMCHI_COLS;
 use crate::proof::RecursionChallenge;
 use ark_ff::{UniformRand, Zero};
 use ark_poly::univariate::DensePolynomial;
@@ -11,7 +11,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::commitment::b_poly_coefficients;
+use poly_commitment::{commitment::b_poly_coefficients, SRS as _};
 use rand::prelude::*;
 use std::array;
 
@@ -21,14 +21,14 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
 #[test]
 fn test_recursion() {
-    let gates = create_circuit::<COLUMNS, Fp>(0, 0);
+    let gates = create_circuit::<Fp, KIMCHI_COLS>(0, 0);
 
     // create witness
-    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
+    let mut witness: [Vec<Fp>; KIMCHI_COLS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
     fill_in_witness(0, &mut witness, &[]);
 
     // setup
-    let test_runner = TestFramework::<COLUMNS, Vesta>::default()
+    let test_runner = TestFramework::<Vesta>::default()
         .num_prev_challenges(1)
         .gates(gates)
         .witness(witness)
@@ -43,7 +43,7 @@ fn test_recursion() {
         let comm = {
             let coeffs = b_poly_coefficients(&chals);
             let b = DensePolynomial::from_coefficients_vec(coeffs);
-            index.srs.commit_non_hiding(&b, None)
+            index.srs.commit_non_hiding(&b, 1, None)
         };
         RecursionChallenge::new(chals, comm)
     };

@@ -3,16 +3,18 @@
 use crate::{
     alphas::Alphas,
     circuits::{
+        berkeley_columns::Column,
         constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
+        wires::KIMCHI_COLS,
     },
     curve::KimchiCurve,
     linearization::expr_linearization,
     verifier_index::VerifierIndex,
 };
-use ark_poly::EvaluationDomain;
+use ark_ff::PrimeField;
 use mina_poseidon::FqSponge;
-use poly_commitment::srs::SRS;
+use poly_commitment::{OpenProof, SRS as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
 use std::sync::Arc;
@@ -21,14 +23,18 @@ use std::sync::Arc;
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 //~spec:startcode
-pub struct ProverIndex<const W: usize, G: KimchiCurve> {
+pub struct ProverIndex<
+    G: KimchiCurve,
+    OpeningProof: OpenProof<G>,
+    const COLUMNS: usize = KIMCHI_COLS,
+> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField, Column>>, Column>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
@@ -36,17 +42,18 @@ pub struct ProverIndex<const W: usize, G: KimchiCurve> {
 
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: Arc<SRS<G>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
 
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "ColumnEvaluations<W, G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<W, G::ScalarField>,
+    #[serde(bound = "ColumnEvaluations<G::ScalarField, COLUMNS>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField, COLUMNS>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<W, G>>,
+    pub verifier_index: Option<VerifierIndex<G, OpeningProof, COLUMNS>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -54,29 +61,23 @@ pub struct ProverIndex<const W: usize, G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
+    ProverIndex<G, OpeningProof, COLUMNS>
+where
+    G::BaseField: PrimeField,
+{
     /// this function compiles the index from constraints
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `polynomial segment size` is bigger than `circuit`.
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
-        srs: Arc<SRS<G>>,
+        srs: Arc<OpeningProof::SRS>,
     ) -> Self {
-        let max_poly_size = srs.g.len();
-        if cs.public > 0 {
-            assert!(
-                max_poly_size >= cs.domain.d1.size(),
-                "polynomial segment size has to be not smaller than that of the circuit!"
-            );
-        }
+        let max_poly_size = srs.max_poly_size();
         cs.endo = endo_q;
 
         // pre-compute the linearization
         let (linearization, powers_of_alpha) =
-            expr_linearization::<W, G::ScalarField>(Some(&cs.feature_flags), true);
+            expr_linearization::<G::ScalarField, COLUMNS>(Some(&cs.feature_flags), true);
 
         let evaluated_column_coefficients = cs.evaluated_column_coefficients();
 
@@ -100,7 +101,10 @@ impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
     >(
         &mut self,
-    ) -> G::BaseField {
+    ) -> G::BaseField
+    where
+        VerifierIndex<G, OpeningProof, COLUMNS>: Clone,
+    {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
         }
@@ -117,7 +121,10 @@ impl<const W: usize, G: KimchiCurve> ProverIndex<W, G> {
     /// Retrieve or compute the digest for the corresponding verifier index.
     pub fn verifier_index_digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
-    ) -> G::BaseField {
+    ) -> G::BaseField
+    where
+        VerifierIndex<G, OpeningProof, COLUMNS>: Clone,
+    {
         if let Some(verifier_index_digest) = self.verifier_index_digest {
             return verifier_index_digest;
         }
@@ -142,21 +149,25 @@ pub mod testing {
         precomputed_srs,
     };
     use ark_ff::{PrimeField, SquareRootField};
-    use poly_commitment::srs::endos;
+    use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
+    use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
 
-    /// Create new index for lookups.
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `constraint system` is not built with `gates` input.
-    pub fn new_index_for_test_with_lookups<const W: usize, G: KimchiCurve>(
+    #[allow(clippy::too_many_arguments)]
+    pub fn new_index_for_test_with_lookups_and_custom_srs<
+        G: KimchiCurve,
+        OpeningProof: OpenProof<G>,
+        const COLUMNS: usize,
+        F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS,
+    >(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
         prev_challenges: usize,
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
-    ) -> ProverIndex<W, G>
+        override_srs_size: Option<usize>,
+        mut get_srs: F,
+    ) -> ProverIndex<G, OpeningProof, COLUMNS>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
@@ -168,32 +179,68 @@ pub mod testing {
             .public(public)
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
-            .build::<W>()
+            .max_poly_size(override_srs_size)
+            .build::<COLUMNS>()
             .unwrap();
 
-        let mut srs = if cs.domain.d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
-            // TODO: we should trim it if it's smaller
-            precomputed_srs::get_srs()
-        } else {
-            // TODO: we should resume the SRS generation starting from the serialized one
-            SRS::<G>::create(cs.domain.d1.size())
-        };
-
-        srs.add_lagrange_basis(cs.domain.d1);
+        let srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
+        let srs = get_srs(cs.domain.d1, srs_size);
         let srs = Arc::new(srs);
 
-        let (endo_q, _endo_r) = endos::<G::OtherCurve>();
-        ProverIndex::<W, G>::create(cs, endo_q, srs)
+        let &endo_q = G::other_curve_endo();
+        ProverIndex::create(cs, endo_q, srs)
     }
 
-    pub fn new_index_for_test<const W: usize, G: KimchiCurve>(
+    /// Create new index for lookups.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if `constraint system` is not built with `gates` input.
+    pub fn new_index_for_test_with_lookups<G: KimchiCurve, const COLUMNS: usize>(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
-    ) -> ProverIndex<W, G>
+        prev_challenges: usize,
+        lookup_tables: Vec<LookupTable<G::ScalarField>>,
+        runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
+        disable_gates_checks: bool,
+        override_srs_size: Option<usize>,
+    ) -> ProverIndex<G, OpeningProof<G>, COLUMNS>
     where
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<W, G>(gates, public, 0, vec![], None, false)
+        new_index_for_test_with_lookups_and_custom_srs(
+            gates,
+            public,
+            prev_challenges,
+            lookup_tables,
+            runtime_tables,
+            disable_gates_checks,
+            override_srs_size,
+            |d1: D<G::ScalarField>, size: usize| {
+                let log2_size = size.ilog2();
+                let mut srs = if log2_size <= precomputed_srs::SERIALIZED_SRS_SIZE {
+                    // TODO: we should trim it if it's smaller
+                    precomputed_srs::get_srs()
+                } else {
+                    // TODO: we should resume the SRS generation starting from the serialized one
+                    SRS::<G>::create(size)
+                };
+
+                srs.add_lagrange_basis(d1);
+                srs
+            },
+        )
+    }
+
+    pub fn new_index_for_test<G: KimchiCurve, const COLUMNS: usize>(
+        gates: Vec<CircuitGate<G::ScalarField>>,
+        public: usize,
+    ) -> ProverIndex<G, OpeningProof<G>, COLUMNS>
+    where
+        G::BaseField: PrimeField,
+        G::ScalarField: PrimeField + SquareRootField,
+    {
+        new_index_for_test_with_lookups::<G, COLUMNS>(gates, public, 0, vec![], None, false, None)
     }
 }

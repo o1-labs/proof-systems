@@ -4,7 +4,7 @@ use crate::circuits::polynomials::generic::GenericGateSpec;
 use crate::circuits::{
     constraints::ConstraintSystem,
     gate::{CircuitGate, CircuitGateError, Connect, GateType},
-    polynomial::COLUMNS,
+    polynomial::KIMCHI_COLS,
     polynomials::{
         foreign_field_add::witness::{self, FFOps},
         range_check::{self, witness::extend_multi},
@@ -27,7 +27,10 @@ use o1_utils::{
     foreign_field::{BigUintForeignFieldHelpers, ForeignElement, HI, LO, MI, TWO_TO_LIMB},
     FieldHelpers, Two,
 };
-use poly_commitment::srs::{endos, SRS};
+use poly_commitment::{
+    evaluation_proof::OpeningProof,
+    srs::{endos, SRS},
+};
 use rand::{rngs::StdRng, Rng, SeedableRng};
 use std::array;
 use std::sync::Arc;
@@ -263,11 +266,11 @@ fn short_witness<F: PrimeField>(
     inputs: &Vec<BigUint>,
     opcodes: &[FFOps],
     modulus: BigUint,
-) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = array::from_fn(|_| vec![F::zero(); 1]);
+) -> [Vec<F>; KIMCHI_COLS] {
+    let mut witness: [Vec<F>; KIMCHI_COLS] = array::from_fn(|_| vec![F::zero(); 1]);
     witness[0][0] = F::one();
     let add_witness = witness::create_chain::<F>(inputs, opcodes, modulus);
-    for col in 0..COLUMNS {
+    for col in 0..KIMCHI_COLS {
         witness[col].extend(add_witness[col].iter());
     }
     witness
@@ -281,8 +284,8 @@ fn long_witness<F: PrimeField>(
     inputs: &Vec<BigUint>,
     opcodes: &[FFOps],
     modulus: BigUint,
-) -> [Vec<F>; COLUMNS] {
-    let mut witness: [Vec<F>; COLUMNS] = short_witness(inputs, opcodes, modulus);
+) -> [Vec<F>; KIMCHI_COLS] {
+    let mut witness: [Vec<F>; KIMCHI_COLS] = short_witness(inputs, opcodes, modulus);
 
     let num = inputs.len() - 1; // number of chained additions
 
@@ -313,7 +316,7 @@ fn create_test_constraint_system_ffadd(
     opcodes: &[FFOps],
     foreign_field_modulus: BigUint,
     full: bool,
-) -> ProverIndex<COLUMNS, Vesta> {
+) -> ProverIndex<Vesta, OpeningProof<Vesta>> {
     let (_next_row, gates) = if full {
         full_circuit(opcodes, &foreign_field_modulus)
     } else {
@@ -322,14 +325,14 @@ fn create_test_constraint_system_ffadd(
 
     let cs = ConstraintSystem::create(gates)
         .public(1)
-        .build::<COLUMNS>()
+        .build::<KIMCHI_COLS>()
         .unwrap();
     let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
     srs.add_lagrange_basis(cs.domain.d1);
     let srs = Arc::new(srs);
 
     let (endo_q, _endo_r) = endos::<Pallas>();
-    ProverIndex::<COLUMNS, Vesta>::create(cs, endo_q, srs)
+    ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
 }
 
 // helper to reduce lines of code in repetitive test structure
@@ -338,7 +341,10 @@ fn test_ffadd(
     inputs: Vec<BigUint>,
     opcodes: &[FFOps],
     full: bool,
-) -> ([Vec<PallasField>; COLUMNS], ProverIndex<COLUMNS, Vesta>) {
+) -> (
+    [Vec<PallasField>; KIMCHI_COLS],
+    ProverIndex<Vesta, OpeningProof<Vesta>>,
+) {
     let index = create_test_constraint_system_ffadd(opcodes, foreign_field_modulus.clone(), full);
 
     let witness = if full {
@@ -351,7 +357,7 @@ fn test_ffadd(
 
     for row in 0..all_rows {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+            index.cs.gates[row].verify_witness::<Vesta, KIMCHI_COLS>(
                 row,
                 &witness,
                 &index.cs,
@@ -365,7 +371,10 @@ fn test_ffadd(
 }
 
 // checks that the result cells of the witness are computed as expected
-fn check_result(witness: [Vec<PallasField>; COLUMNS], result: Vec<ForeignElement<PallasField, 3>>) {
+fn check_result(
+    witness: [Vec<PallasField>; KIMCHI_COLS],
+    result: Vec<ForeignElement<PallasField, 3>>,
+) {
     for (i, res) in result.iter().enumerate() {
         assert_eq!(witness[0][i + 2], res[LO]);
         assert_eq!(witness[1][i + 2], res[MI]);
@@ -374,12 +383,12 @@ fn check_result(witness: [Vec<PallasField>; COLUMNS], result: Vec<ForeignElement
 }
 
 // checks the result of the overflow bit for one addition
-fn check_ovf(witness: [Vec<PallasField>; COLUMNS], ovf: PallasField) {
+fn check_ovf(witness: [Vec<PallasField>; KIMCHI_COLS], ovf: PallasField) {
     assert_eq!(witness[6][1], ovf);
 }
 
 // checks the result of the carry bits for one addition
-fn check_carry(witness: [Vec<PallasField>; COLUMNS], carry: PallasField) {
+fn check_carry(witness: [Vec<PallasField>; KIMCHI_COLS], carry: PallasField) {
     assert_eq!(witness[7][1], carry);
 }
 
@@ -755,7 +764,7 @@ fn test_wrong_sum() {
     witness[0][12] = all_ones_limb;
 
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -779,7 +788,7 @@ fn test_wrong_dif() {
     witness[0][12] = PallasField::zero();
 
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -1066,7 +1075,7 @@ fn test_bad_bound() {
     // Modify overflow to check first the copy constraint and then the ovf constraint
     witness[6][2] = -PallasField::one();
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, KIMCHI_COLS>(
             2,
             &witness,
             &index.cs,
@@ -1080,7 +1089,7 @@ fn test_bad_bound() {
     );
     witness[0][0] = -PallasField::one();
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, KIMCHI_COLS>(
             2,
             &witness,
             &index.cs,
@@ -1091,7 +1100,7 @@ fn test_bad_bound() {
     witness[6][2] = PallasField::one();
     witness[0][0] = PallasField::one();
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, KIMCHI_COLS>(
             2,
             &witness,
             &index.cs,
@@ -1120,7 +1129,7 @@ fn test_random_bad_input() {
     // First modify left input only to cause an invalid copy constraint
     witness[0][1] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -1135,7 +1144,7 @@ fn test_random_bad_input() {
     // then modify the value in the range check to cause an invalid FFAdd constraint
     witness[0][4] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -1164,7 +1173,7 @@ fn test_random_bad_parameters() {
     // Modify bot carry
     witness[7][1] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -1176,7 +1185,7 @@ fn test_random_bad_parameters() {
     // Modify overflow
     witness[6][1] += PallasField::one();
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -1188,7 +1197,7 @@ fn test_random_bad_parameters() {
     // Modify sign
     index.cs.gates[1].coeffs[3] = PallasField::zero() - index.cs.gates[1].coeffs[3];
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -1199,7 +1208,7 @@ fn test_random_bad_parameters() {
     index.cs.gates[1].coeffs[3] = PallasField::zero() - index.cs.gates[1].coeffs[3];
     // Check back to normal
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, KIMCHI_COLS>(
             1,
             &witness,
             &index.cs,
@@ -1266,7 +1275,7 @@ fn prove_and_verify(operation_count: usize) {
     // Create witness
     let witness = short_witness(&inputs, &operations, foreign_field_modulus);
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(vec![PallasField::one()])
@@ -1297,7 +1306,7 @@ fn extend_gate_bound_rc(gates: &mut Vec<CircuitGate<PallasField>>) -> usize {
 }
 
 // Extends a witness with the final bound range check
-fn extend_witness_bound_rc(witness: &mut [Vec<PallasField>; COLUMNS]) {
+fn extend_witness_bound_rc(witness: &mut [Vec<PallasField>; KIMCHI_COLS]) {
     let bound_row = witness[0].len() - 1;
     let bound_lo = witness[0][bound_row];
     let bound_mi = witness[1][bound_row];
@@ -1326,7 +1335,7 @@ fn test_ffadd_no_rc() {
 
     let cs = ConstraintSystem::create(gates)
         .public(1)
-        .build::<COLUMNS>()
+        .build::<KIMCHI_COLS>()
         .unwrap();
 
     // Create inputs
@@ -1341,7 +1350,7 @@ fn test_ffadd_no_rc() {
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+            cs.gates[row].verify_witness::<Vesta, KIMCHI_COLS>(
                 row,
                 &witness,
                 &cs,
@@ -1385,7 +1394,7 @@ fn test_pallas_on_pallas() {
 // Boilerplate for tests
 fn run_test<G: KimchiCurve>(
     foreign_field_modulus: &BigUint,
-) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; COLUMNS])
+) -> (CircuitGateResult<()>, [Vec<G::ScalarField>; KIMCHI_COLS])
 where
     G::BaseField: PrimeField,
     G: KimchiCurve,
@@ -1409,13 +1418,13 @@ where
 
     let cs = ConstraintSystem::create(gates.clone())
         .public(1)
-        .build::<COLUMNS>()
+        .build::<KIMCHI_COLS>()
         .unwrap();
 
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<COLUMNS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+            gate.verify_witness::<G, KIMCHI_COLS>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, witness);
         }
@@ -1472,14 +1481,14 @@ fn test_ffadd_finalization() {
     // witness
     let witness = {
         // create row for the public value 1
-        let mut witness: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); 1]);
+        let mut witness: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); 1]);
         witness[0][0] = Fp::one();
         // create inputs to the addition
         let left = modulus.clone() - BigUint::one();
         let right = modulus.clone() - BigUint::one();
         // create a chain of 1 addition
         let add_witness = witness::create_chain::<Fp>(&vec![left, right], operation, modulus);
-        for col in 0..COLUMNS {
+        for col in 0..KIMCHI_COLS {
             witness[col].extend(add_witness[col].iter());
         }
         // extend range checks for all of left, right, output, and bound
@@ -1498,19 +1507,19 @@ fn test_ffadd_finalization() {
         let cs = ConstraintSystem::create(gates.clone())
             .lookup(vec![range_check::gadget::lookup_table()])
             .public(num_public_inputs)
-            .build::<COLUMNS>()
+            .build::<KIMCHI_COLS>()
             .unwrap();
         let mut srs = SRS::<Vesta>::create(cs.domain.d1.size());
         srs.add_lagrange_basis(cs.domain.d1);
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<COLUMNS, Vesta>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
     };
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            index.cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+            index.cs.gates[row].verify_witness::<Vesta, KIMCHI_COLS>(
                 row,
                 &witness,
                 &index.cs,
@@ -1520,7 +1529,7 @@ fn test_ffadd_finalization() {
         );
     }
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness.clone())
         .public_inputs(vec![witness[0][0]])

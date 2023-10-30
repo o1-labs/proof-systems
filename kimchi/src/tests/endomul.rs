@@ -49,7 +49,7 @@ fn endomul_test() {
 
     let (endo_q, endo_r) = endos::<Other>();
 
-    let mut witness: [Vec<F>; COLUMNS] =
+    let mut witness: [Vec<F>; KIMCHI_COLS] =
         array::from_fn(|_| vec![F::zero(); rows_per_scalar * num_scalars]);
 
     let rng = &mut StdRng::from_seed([0; 32]);
@@ -110,7 +110,7 @@ fn endomul_test() {
         assert_eq!(x.into_repr(), res.n.into_repr());
     }
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()
