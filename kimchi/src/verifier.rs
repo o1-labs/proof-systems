@@ -668,8 +668,8 @@ where
         lookup_gate_lookup_selector,
         range_check_lookup_selector,
         foreign_field_mul_lookup_selector,
-        keccak_round_lookup_selector,
-        keccak_sponge_lookup_selector,
+        //keccak_round_lookup_selector,
+        //keccak_sponge_lookup_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>, str: &'static str| -> Result<()> {
@@ -777,6 +777,7 @@ where
             "foreign field mul lookup selector",
         )?
     }
+    /*
     if let Some(keccak_round_lookup_selector) = keccak_round_lookup_selector {
         check_eval_len(keccak_round_lookup_selector, "keccak round lookup selector")?
     }
@@ -785,7 +786,7 @@ where
             keccak_sponge_lookup_selector,
             "keccak sponge lookup selector",
         )?
-    }
+    }*/
 
     Ok(())
 }

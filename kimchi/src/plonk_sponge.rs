@@ -89,8 +89,8 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
-            keccak_round_lookup_selector,
-            keccak_sponge_lookup_selector,
+            //keccak_round_lookup_selector,
+            //keccak_sponge_lookup_selector,
         } = e;
 
         let mut points = vec![
@@ -162,12 +162,14 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
         {
             points.push(foreign_field_mul_lookup_selector)
         }
+        /*
         if let Some(keccak_round_lookup_selector) = keccak_round_lookup_selector.as_ref() {
             points.push(keccak_round_lookup_selector)
         }
         if let Some(keccak_sponge_lookup_selector) = keccak_sponge_lookup_selector.as_ref() {
             points.push(keccak_sponge_lookup_selector)
         }
+        */
 
         points.into_iter().for_each(|p| {
             self.sponge.absorb(&p.zeta);

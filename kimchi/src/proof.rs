@@ -108,10 +108,12 @@ pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     pub range_check_lookup_selector: Option<Evals>,
     /// evaluation of the ForeignFieldMul range check pattern selector polynomial
     pub foreign_field_mul_lookup_selector: Option<Evals>,
+    /*
     /// evaluation of the KeccakRound pattern selector polynomial
     pub keccak_round_lookup_selector: Option<Evals>,
     /// evaluation of the KeccakSponge pattern selector polynomial
     pub keccak_sponge_lookup_selector: Option<Evals>,
+    */
 }
 
 /// Commitments linked to the lookup feature
@@ -234,8 +236,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
-            keccak_round_lookup_selector,
-            keccak_sponge_lookup_selector,
+            //keccak_round_lookup_selector,
+            //keccak_sponge_lookup_selector,
         } = self;
         ProofEvaluations {
             public: public.map(f),
@@ -266,8 +268,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector: lookup_gate_lookup_selector.map(f),
             range_check_lookup_selector: range_check_lookup_selector.map(f),
             foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.map(f),
-            keccak_round_lookup_selector: keccak_round_lookup_selector.map(f),
-            keccak_sponge_lookup_selector: keccak_sponge_lookup_selector.map(f),
+            //keccak_round_lookup_selector: keccak_round_lookup_selector.map(f),
+            //keccak_sponge_lookup_selector: keccak_sponge_lookup_selector.map(f),
         }
     }
 
@@ -304,8 +306,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector,
             range_check_lookup_selector,
             foreign_field_mul_lookup_selector,
-            keccak_round_lookup_selector,
-            keccak_sponge_lookup_selector,
+            //keccak_round_lookup_selector,
+            //keccak_sponge_lookup_selector,
         } = self;
         ProofEvaluations {
             public: public.as_ref().map(f),
@@ -336,8 +338,8 @@ impl<Eval, const COLUMNS: usize> ProofEvaluations<Eval, COLUMNS> {
             lookup_gate_lookup_selector: lookup_gate_lookup_selector.as_ref().map(f),
             range_check_lookup_selector: range_check_lookup_selector.as_ref().map(f),
             foreign_field_mul_lookup_selector: foreign_field_mul_lookup_selector.as_ref().map(f),
-            keccak_round_lookup_selector: keccak_round_lookup_selector.as_ref().map(f),
-            keccak_sponge_lookup_selector: keccak_sponge_lookup_selector.as_ref().map(f),
+            //keccak_round_lookup_selector: keccak_round_lookup_selector.as_ref().map(f),
+            //keccak_sponge_lookup_selector: keccak_sponge_lookup_selector.as_ref().map(f),
         }
     }
 }
@@ -427,8 +429,8 @@ impl<F: Zero + Copy, const COLUMNS: usize> ProofEvaluations<PointEvaluations<F>,
             lookup_gate_lookup_selector: None,
             range_check_lookup_selector: None,
             foreign_field_mul_lookup_selector: None,
-            keccak_round_lookup_selector: None,
-            keccak_sponge_lookup_selector: None,
+            //keccak_round_lookup_selector: None,
+            //keccak_sponge_lookup_selector: None,
         }
     }
 }
@@ -463,12 +465,13 @@ impl<F, const COLUMNS: usize> ProofEvaluations<F, COLUMNS> {
             Column::LookupKindIndex(LookupPattern::ForeignFieldMul) => {
                 self.foreign_field_mul_lookup_selector.as_ref()
             }
+            /*
             Column::LookupKindIndex(LookupPattern::KeccakRound) => {
                 self.keccak_round_lookup_selector.as_ref()
             }
             Column::LookupKindIndex(LookupPattern::KeccakSponge) => {
                 self.keccak_sponge_lookup_selector.as_ref()
-            }
+            }*/
             Column::LookupRuntimeSelector => self.runtime_lookup_table_selector.as_ref(),
             Column::LookupRuntimeTable => self.runtime_lookup_table.as_ref(),
             Column::Index(GateType::Generic) => Some(&self.generic_selector),
