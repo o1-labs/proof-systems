@@ -5,7 +5,7 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
-use crate::proof::{LookupEvaluations, PointEvaluations, ProofEvaluations};
+use crate::proof::{PointEvaluations, ProofEvaluations};
 
 pub trait FrSponge<Fr: Field> {
     /// Creates a new Fr-Sponge.
@@ -60,31 +60,96 @@ impl<Fr: PrimeField> FrSponge<Fr> for DefaultFrSponge<Fr, SC> {
         self.last_squeezed = vec![];
 
         let ProofEvaluations {
+            public: _, // Must be absorbed first manually for now, to handle Mina annoyances
             w,
             z,
             s,
             coefficients,
-            lookup,
             generic_selector,
             poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            endomul_scalar_selector,
+            range_check0_selector,
+            range_check1_selector,
+            foreign_field_add_selector,
+            foreign_field_mul_selector,
+            xor_selector,
+            rot_selector,
+            lookup_aggregation,
+            lookup_table,
+            lookup_sorted,
+            runtime_lookup_table,
+            runtime_lookup_table_selector,
+            xor_lookup_selector,
+            lookup_gate_lookup_selector,
+            range_check_lookup_selector,
+            foreign_field_mul_lookup_selector,
         } = e;
 
-        let mut points = vec![z, generic_selector, poseidon_selector];
+        let mut points = vec![
+            z,
+            generic_selector,
+            poseidon_selector,
+            complete_add_selector,
+            mul_selector,
+            emul_selector,
+            endomul_scalar_selector,
+        ];
         w.iter().for_each(|w_i| points.push(w_i));
         coefficients.iter().for_each(|c_i| points.push(c_i));
         s.iter().for_each(|s_i| points.push(s_i));
 
-        if let Some(l) = lookup.as_ref() {
-            let LookupEvaluations {
-                sorted,
-                aggreg,
-                table,
-                runtime,
-            } = l;
-            points.push(aggreg);
-            points.push(table);
-            sorted.iter().for_each(|s| points.push(s));
-            runtime.iter().for_each(|x| points.push(x));
+        // Optional gates
+
+        if let Some(range_check0_selector) = range_check0_selector.as_ref() {
+            points.push(range_check0_selector)
+        }
+        if let Some(range_check1_selector) = range_check1_selector.as_ref() {
+            points.push(range_check1_selector)
+        }
+        if let Some(foreign_field_add_selector) = foreign_field_add_selector.as_ref() {
+            points.push(foreign_field_add_selector)
+        }
+        if let Some(foreign_field_mul_selector) = foreign_field_mul_selector.as_ref() {
+            points.push(foreign_field_mul_selector)
+        }
+        if let Some(xor_selector) = xor_selector.as_ref() {
+            points.push(xor_selector)
+        }
+        if let Some(rot_selector) = rot_selector.as_ref() {
+            points.push(rot_selector)
+        }
+        if let Some(lookup_aggregation) = lookup_aggregation.as_ref() {
+            points.push(lookup_aggregation)
+        }
+        if let Some(lookup_table) = lookup_table.as_ref() {
+            points.push(lookup_table)
+        }
+        for lookup_sorted in lookup_sorted {
+            if let Some(lookup_sorted) = lookup_sorted.as_ref() {
+                points.push(lookup_sorted)
+            }
+        }
+        if let Some(runtime_lookup_table) = runtime_lookup_table.as_ref() {
+            points.push(runtime_lookup_table)
+        }
+        if let Some(runtime_lookup_table_selector) = runtime_lookup_table_selector.as_ref() {
+            points.push(runtime_lookup_table_selector)
+        }
+        if let Some(xor_lookup_selector) = xor_lookup_selector.as_ref() {
+            points.push(xor_lookup_selector)
+        }
+        if let Some(lookup_gate_lookup_selector) = lookup_gate_lookup_selector.as_ref() {
+            points.push(lookup_gate_lookup_selector)
+        }
+        if let Some(range_check_lookup_selector) = range_check_lookup_selector.as_ref() {
+            points.push(range_check_lookup_selector)
+        }
+        if let Some(foreign_field_mul_lookup_selector) = foreign_field_mul_lookup_selector.as_ref()
+        {
+            points.push(foreign_field_mul_lookup_selector)
         }
 
         points.into_iter().for_each(|p| {
