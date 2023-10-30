@@ -1120,7 +1120,7 @@ where
                         .map(chunked_evals_for_selector)
                 },
             ),
-            keccak_round_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+            /*keccak_round_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
                 |lcs| {
                     lcs.lookup_selectors
                         .keccak_round
@@ -1135,7 +1135,7 @@ where
                         .as_ref()
                         .map(chunked_evals_for_selector)
                 },
-            ),
+            ),*/
         };
 
         let zeta_to_srs_len = zeta.pow([index.max_poly_size as u64]);

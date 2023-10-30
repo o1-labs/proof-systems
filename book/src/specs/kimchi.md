@@ -2055,10 +2055,12 @@ pub struct ProofEvaluations<Evals, const COLUMNS: usize = KIMCHI_COLS> {
     pub range_check_lookup_selector: Option<Evals>,
     /// evaluation of the ForeignFieldMul range check pattern selector polynomial
     pub foreign_field_mul_lookup_selector: Option<Evals>,
+    /*
     /// evaluation of the KeccakRound pattern selector polynomial
     pub keccak_round_lookup_selector: Option<Evals>,
     /// evaluation of the KeccakSponge pattern selector polynomial
     pub keccak_sponge_lookup_selector: Option<Evals>,
+    */
 }
 
 /// Commitments linked to the lookup feature
