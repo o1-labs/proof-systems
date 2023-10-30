@@ -1,2 +1,0 @@
-# API of Snarky
-
