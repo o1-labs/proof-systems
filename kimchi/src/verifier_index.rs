@@ -8,7 +8,7 @@ use crate::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
         polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
-        wires::PERMUTS,
+        wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
     prover_index::ProverIndex,
@@ -56,7 +56,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> {
+pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize = COLUMNS> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -152,7 +152,7 @@ pub struct VerifierIndex<const W: usize, G: KimchiCurve, OpeningProof: OpenProof
 }
 //~spec:endcode
 
-impl<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> ProverIndex<W, G, OpeningProof>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize> ProverIndex<G, OpeningProof, W>
 where
     G::BaseField: PrimeField,
 {
@@ -161,9 +161,9 @@ where
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    pub fn verifier_index(&self) -> VerifierIndex<W, G, OpeningProof>
+    pub fn verifier_index(&self) -> VerifierIndex<G, OpeningProof, W>
     where
-        VerifierIndex<W, G, OpeningProof>: Clone,
+        VerifierIndex<G, OpeningProof, W>: Clone,
     {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
@@ -315,7 +315,7 @@ where
     }
 }
 
-impl<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<W, G, OpeningProof> {
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize> VerifierIndex<G, OpeningProof, W> {
     /// Gets srs from [`VerifierIndex`] lazily
     pub fn srs(&self) -> &Arc<OpeningProof::SRS>
     where

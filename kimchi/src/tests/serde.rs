@@ -41,7 +41,7 @@ mod tests {
         println!("proof size: {} bytes", ser_pf.len());
 
         // deserialize the proof
-        let de_pf: ProverProof<COLUMNS, Vesta, OpeningProof<Vesta>> =
+        let de_pf: ProverProof<Vesta, OpeningProof<Vesta>> =
             rmp_serde::from_slice(&ser_pf).unwrap();
 
         // verify the deserialized proof (must accept the proof)
@@ -51,7 +51,7 @@ mod tests {
     #[test]
     pub fn test_serialization() {
         let public = vec![Fp::from(3u8); 5];
-        let gates = create_circuit::<COLUMNS, Fp>(0, public.len());
+        let gates = create_circuit::<Fp, COLUMNS>(0, public.len());
 
         // create witness
         let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); gates.len()]);
@@ -73,11 +73,8 @@ mod tests {
                 .unwrap();
 
         // deserialize the verifier index
-        let mut verifier_index_deserialize: VerifierIndex<
-            COLUMNS,
-            GroupAffine<VestaParameters>,
-            _,
-        > = serde_json::from_str(&verifier_index_serialize).unwrap();
+        let mut verifier_index_deserialize: VerifierIndex<GroupAffine<VestaParameters>, _> =
+            serde_json::from_str(&verifier_index_serialize).unwrap();
 
         // add srs with lagrange bases
         let mut srs = SRS::<GroupAffine<VestaParameters>>::create(verifier_index.max_poly_size);
@@ -88,7 +85,7 @@ mod tests {
 
         // verify the proof
         let start = Instant::now();
-        verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+        verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>, COLUMNS>(
             &group_map,
             &verifier_index_deserialize,
             &proof,

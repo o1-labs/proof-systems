@@ -219,7 +219,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
 
                 //~ 2. Get the lookup selectors and lookup tables (TODO: how?)
                 let (lookup_selectors, gate_lookup_tables) =
-                    lookup_info.selector_polynomials_and_tables::<W, F>(domain, gates);
+                    lookup_info.selector_polynomials_and_tables::<F, W>(domain, gates);
 
                 //~ 3. Concatenate runtime lookup tables with the ones used by gates
                 let mut lookup_tables: Vec<_> = gate_lookup_tables

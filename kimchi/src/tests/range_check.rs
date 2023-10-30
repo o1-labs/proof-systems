@@ -57,7 +57,7 @@ const RNG_SEED: [u8; 32] = [
 fn create_test_prover_index(
     public_size: usize,
     compact: bool,
-) -> ProverIndex<COLUMNS, Vesta, OpeningProof<Vesta>> {
+) -> ProverIndex<Vesta, OpeningProof<Vesta>> {
     let (_next_row, gates) = if compact {
         CircuitGate::<Fp>::create_compact_multi_range_check(0)
     } else {
@@ -82,7 +82,7 @@ fn verify_range_check0_zero_valid_witness() {
 
     // gates[0] is RangeCheck0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -93,7 +93,7 @@ fn verify_range_check0_zero_valid_witness() {
 
     // gates[1] is RangeCheck0
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -110,7 +110,7 @@ fn verify_range_check0_one_invalid_witness() {
 
     // gates[0] is RangeCheck0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -121,7 +121,7 @@ fn verify_range_check0_one_invalid_witness() {
 
     // gates[1] is RangeCheck0
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -146,7 +146,7 @@ fn verify_range_check0_valid_witness() {
 
     // gates[0] is RangeCheck0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -157,7 +157,7 @@ fn verify_range_check0_valid_witness() {
 
     // gates[1] is RangeCheck0
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -177,7 +177,7 @@ fn verify_range_check0_valid_witness() {
 
     // gates[0] is RangeCheck0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -188,7 +188,7 @@ fn verify_range_check0_valid_witness() {
 
     // gates[1] is RangeCheck0
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -216,7 +216,7 @@ fn verify_range_check0_invalid_witness() {
 
     // gates[0] is RangeCheck0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -234,7 +234,7 @@ fn verify_range_check0_invalid_witness() {
 
     // gates[1] is RangeCheck0
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -261,7 +261,7 @@ fn verify_range_check0_invalid_witness() {
 
     // gates[0] is RangeCheck0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -275,7 +275,7 @@ fn verify_range_check0_invalid_witness() {
 
     // gates[1] is RangeCheck0
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -297,7 +297,7 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // gates[0] is RangeCheck0 and contains v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -314,7 +314,7 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // gates[0] is RangeCheck0 and contains v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -331,7 +331,7 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // gates[0] is RangeCheck0 and contains v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -348,7 +348,7 @@ fn verify_range_check0_valid_v0_in_range() {
 
     // gates[0] is RangeCheck0 and contains v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -370,7 +370,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // gates[1] is RangeCheck0 and contains v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -387,7 +387,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // gates[1] is RangeCheck0 and contains v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -404,7 +404,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // gates[1] is RangeCheck0 and contains v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -421,7 +421,7 @@ fn verify_range_check0_valid_v1_in_range() {
 
     // gates[1] is RangeCheck0 and contains v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -443,7 +443,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
 
     // gates[0] is RangeCheck0 and contains v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -460,7 +460,7 @@ fn verify_range_check0_invalid_v0_not_in_range() {
 
     // gates[0] is RangeCheck0 and contains v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -482,7 +482,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
 
     // gates[1] is RangeCheck0 and contains v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -499,7 +499,7 @@ fn verify_range_check0_invalid_v1_not_in_range() {
 
     // gates[1] is RangeCheck0 and contains v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -524,7 +524,7 @@ fn verify_range_check0_test_copy_constraints() {
 
             // Positive test case (gates[row] is a RangeCheck0 circuit gate)
             assert_eq!(
-                index.cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+                index.cs.gates[row].verify_witness::<Vesta, COLUMNS>(
                     row,
                     &witness,
                     &index.cs,
@@ -537,7 +537,7 @@ fn verify_range_check0_test_copy_constraints() {
             assert_ne!(witness[col][row], PallasField::zero());
             witness[col][row] = PallasField::zero();
             assert_eq!(
-                index.cs.gates[row].verify_witness::<COLUMNS, Vesta>(
+                index.cs.gates[row].verify_witness::<Vesta, COLUMNS>(
                     row,
                     &witness,
                     &index.cs,
@@ -569,7 +569,7 @@ fn verify_range_check0_v0_test_lookups() {
     // Positive test
     // gates[0] is RangeCheck0 and constrains some of v0
     assert_eq!(
-        index.cs.gates[0].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[0].verify_witness::<Vesta, COLUMNS>(
             0,
             &witness,
             &index.cs,
@@ -578,7 +578,7 @@ fn verify_range_check0_v0_test_lookups() {
         Ok(())
     );
 
-    let test_runner = TestFramework::<COLUMNS, Vesta>::default()
+    let test_runner = TestFramework::<Vesta>::default()
         .gates(index.cs.gates)
         .setup();
 
@@ -622,7 +622,7 @@ fn verify_range_check0_v1_test_lookups() {
     // Positive test
     // gates[1] is RangeCheck0 and constrains some of v1
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -631,7 +631,7 @@ fn verify_range_check0_v1_test_lookups() {
         Ok(())
     );
 
-    let test_runner = TestFramework::<COLUMNS, Vesta>::default()
+    let test_runner = TestFramework::<Vesta>::default()
         .gates(index.cs.gates)
         .setup();
 
@@ -669,7 +669,7 @@ fn verify_range_check1_zero_valid_witness() {
 
     // gates[2] is RangeCheck1
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -686,7 +686,7 @@ fn verify_range_check1_one_invalid_witness() {
 
     // gates[2] is RangeCheck1
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -711,7 +711,7 @@ fn verify_range_check1_valid_witness() {
 
     // gates[2] is RangeCheck1
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -731,7 +731,7 @@ fn verify_range_check1_valid_witness() {
 
     // gates[2] is RangeCheck1
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -759,7 +759,7 @@ fn verify_range_check1_invalid_witness() {
 
     // gates[2] is RangeCheck1
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -782,7 +782,7 @@ fn verify_range_check1_invalid_witness() {
 
     // gates[2] is RangeCheck1
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -804,7 +804,7 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // gates[2] is RangeCheck1 and constrains v2
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -821,7 +821,7 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // gates[2] is RangeCheck1 and constrains v2
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -838,7 +838,7 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // gates[2] is RangeCheck1 and constrains v2
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -855,7 +855,7 @@ fn verify_range_check1_valid_v2_in_range() {
 
     // gates[2] is RangeCheck1 and constrains v2
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -877,7 +877,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
 
     // gates[2] is RangeCheck1 and constrains v2
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -894,7 +894,7 @@ fn verify_range_check1_invalid_v2_not_in_range() {
 
     // gates[2] is RangeCheck1 and constrains v2
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -919,7 +919,7 @@ fn verify_range_check1_test_copy_constraints() {
 
             // Positive test case (gates[2] is a RangeCheck1 circuit gate)
             assert_eq!(
-                index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+                index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
                     2,
                     &witness,
                     &index.cs,
@@ -934,7 +934,7 @@ fn verify_range_check1_test_copy_constraints() {
 
             // RangeCheck1's current row doesn't have any copy constraints
             assert_eq!(
-                index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+                index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
                     2,
                     &witness,
                     &index.cs,
@@ -945,7 +945,7 @@ fn verify_range_check1_test_copy_constraints() {
 
             // RangeCheck1's next row has copy constraints, but it's a Zero gate
             assert_eq!(
-                index.cs.gates[3].verify_witness::<COLUMNS, Vesta>(
+                index.cs.gates[3].verify_witness::<Vesta, COLUMNS>(
                     3,
                     &witness,
                     &index.cs,
@@ -976,7 +976,7 @@ fn verify_range_check1_test_curr_row_lookups() {
     // Positive test
     // gates[2] is RangeCheck1 and constrains v2
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -985,7 +985,7 @@ fn verify_range_check1_test_curr_row_lookups() {
         Ok(())
     );
 
-    let test_runner = TestFramework::<COLUMNS, Vesta>::default()
+    let test_runner = TestFramework::<Vesta>::default()
         .gates(index.cs.gates)
         .setup();
 
@@ -1025,7 +1025,7 @@ fn verify_range_check1_test_next_row_lookups() {
     // Positive test case (gates[2] is RangeCheck1 and constrains
     // both v0's and v1's lookups that are deferred to 4th row)
     assert_eq!(
-        index.cs.gates[2].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[2].verify_witness::<Vesta, COLUMNS>(
             2,
             &witness,
             &index.cs,
@@ -1034,7 +1034,7 @@ fn verify_range_check1_test_next_row_lookups() {
         Ok(())
     );
 
-    let test_runner = TestFramework::<COLUMNS, Vesta>::default()
+    let test_runner = TestFramework::<Vesta>::default()
         .gates(index.cs.gates)
         .setup();
 
@@ -1096,7 +1096,7 @@ fn verify_64_bit_range_check() {
         let srs = Arc::new(srs);
 
         let (endo_q, _endo_r) = endos::<Pallas>();
-        ProverIndex::<COLUMNS, Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
+        ProverIndex::<Vesta, OpeningProof<Vesta>>::create(cs, endo_q, srs)
     };
 
     // Witness layout (positive test case)
@@ -1113,7 +1113,7 @@ fn verify_64_bit_range_check() {
 
     // Positive test case
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -1136,7 +1136,7 @@ fn verify_64_bit_range_check() {
 
     // Negative test case
     assert_eq!(
-        index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+        index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
             1,
             &witness,
             &index.cs,
@@ -1168,7 +1168,7 @@ fn compact_multi_range_check() {
 
         // Positive test
         assert_eq!(
-            index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+            index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
                 1,
                 &witness,
                 &index.cs,
@@ -1182,7 +1182,7 @@ fn compact_multi_range_check() {
 
         // Negative test
         assert_eq!(
-            index.cs.gates[1].verify_witness::<COLUMNS, Vesta>(
+            index.cs.gates[1].verify_witness::<Vesta, COLUMNS>(
                 1,
                 &witness,
                 &index.cs,
@@ -1222,7 +1222,7 @@ fn verify_range_check_valid_proof1() {
     let verifier_index = prover_index.verifier_index();
 
     // Verify proof
-    let res = verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+    let res = verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>, COLUMNS>(
         &group_map,
         &verifier_index,
         &proof,
@@ -1245,7 +1245,7 @@ fn verify_compact_multi_range_check_proof() {
 
     let (_next_row, gates) = CircuitGate::<Fp>::create_compact_multi_range_check(0);
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

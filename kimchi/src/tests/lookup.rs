@@ -95,7 +95,7 @@ fn setup_lookup_proof(use_values_from_table: bool, num_lookups: usize, table_siz
         ]
     };
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .lookup_tables(lookup_tables)
@@ -181,7 +181,7 @@ fn setup_successfull_runtime_table_test(
     };
 
     // run test
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_table_cfgs)
@@ -254,7 +254,7 @@ fn test_runtime_table() {
     print_witness(&witness, 0, 20);
 
     // run test
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(runtime_tables_setup)
@@ -310,7 +310,7 @@ fn test_negative_test_runtime_table_value_not_in_table() {
     };
 
     // run prover only as the error should be raised while creating the proof.
-    let err = TestFramework::<COLUMNS, Vesta>::default()
+    let err = TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -372,7 +372,7 @@ fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnes
     };
 
     // We only run the prover. No need to verify.
-    let err = TestFramework::<COLUMNS, Vesta>::default()
+    let err = TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -432,7 +432,7 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
     };
 
     // We only run the prover. No need to verify.
-    let err = TestFramework::<COLUMNS, Vesta>::default()
+    let err = TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])
@@ -517,7 +517,7 @@ fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
     print_witness(&witness, 0, 20);
 
     // run test
-    let err = TestFramework::<COLUMNS, Vesta>::default()
+    let err = TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .runtime_tables_setup(vec![cfg])

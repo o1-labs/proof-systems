@@ -1,7 +1,10 @@
 //! This module implements the data structures of a proof.
 
 use crate::circuits::{
-    berkeley_columns::Column, gate::GateType, lookup::lookups::LookupPattern, wires::PERMUTS,
+    berkeley_columns::Column,
+    gate::GateType,
+    lookup::lookups::LookupPattern,
+    wires::{COLUMNS, PERMUTS},
 };
 use ark_ec::AffineCurve;
 use ark_ff::{FftField, One, Zero};
@@ -39,7 +42,7 @@ pub struct PointEvaluations<Evals> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<const W: usize, Evals> {
+pub struct ProofEvaluations<Evals, const W: usize = COLUMNS> {
     /// public input polynomials
     pub public: Option<Evals>,
     /// witness polynomials
@@ -118,7 +121,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverCommitments<const W: usize, G: AffineCurve> {
+pub struct ProverCommitments<G: AffineCurve, const W: usize = COLUMNS> {
     /// The commitments to the witness (execution trace)
     pub w_comm: Vec<PolyComm<G>>,
     /// The commitment to the permutation polynomial
@@ -133,9 +136,9 @@ pub struct ProverCommitments<const W: usize, G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<const W: usize, G: AffineCurve, OpeningProof> {
+pub struct ProverProof<G: AffineCurve, OpeningProof, const W: usize = COLUMNS> {
     /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<W, G>,
+    pub commitments: ProverCommitments<G, W>,
 
     /// batched commitment opening proof
     #[serde(bound(
@@ -145,7 +148,7 @@ pub struct ProverProof<const W: usize, G: AffineCurve, OpeningProof> {
     pub proof: OpeningProof,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ProofEvaluations<W, PointEvaluations<Vec<G::ScalarField>>>,
+    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>, W>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
@@ -190,8 +193,8 @@ impl<Evals> PointEvaluations<Evals> {
     }
 }
 
-impl<const W: usize, Eval> ProofEvaluations<W, Eval> {
-    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<W, Eval2> {
+impl<Eval, const W: usize> ProofEvaluations<Eval, W> {
+    pub fn map<Eval2, FN: Fn(Eval) -> Eval2>(self, f: &FN) -> ProofEvaluations<Eval2, W> {
         let ProofEvaluations {
             public,
             w,
@@ -250,7 +253,7 @@ impl<const W: usize, Eval> ProofEvaluations<W, Eval> {
         }
     }
 
-    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> ProofEvaluations<W, Eval2> {
+    pub fn map_ref<Eval2, FN: Fn(&Eval) -> Eval2>(&self, f: &FN) -> ProofEvaluations<Eval2, W> {
         let ProofEvaluations {
             public,
             w,
@@ -357,11 +360,11 @@ impl<G: AffineCurve> RecursionChallenge<G> {
     }
 }
 
-impl<const W: usize, F: Zero + Copy> ProofEvaluations<W, PointEvaluations<F>> {
+impl<F: Zero + Copy, const W: usize> ProofEvaluations<PointEvaluations<F>, W> {
     pub fn dummy_with_witness_evaluations(
         curr: [F; W],
         next: [F; W],
-    ) -> ProofEvaluations<W, PointEvaluations<F>> {
+    ) -> ProofEvaluations<PointEvaluations<F>, W> {
         let pt = |curr, next| PointEvaluations {
             zeta: curr,
             zeta_omega: next,
@@ -397,8 +400,8 @@ impl<const W: usize, F: Zero + Copy> ProofEvaluations<W, PointEvaluations<F>> {
     }
 }
 
-impl<const W: usize, F: FftField> ProofEvaluations<W, PointEvaluations<Vec<F>>> {
-    pub fn combine(&self, pt: &PointEvaluations<F>) -> ProofEvaluations<W, PointEvaluations<F>> {
+impl<F: FftField, const W: usize> ProofEvaluations<PointEvaluations<Vec<F>>, W> {
+    pub fn combine(&self, pt: &PointEvaluations<F>) -> ProofEvaluations<PointEvaluations<F>, W> {
         self.map_ref(&|evals| PointEvaluations {
             zeta: DensePolynomial::eval_polynomial(&evals.zeta, pt.zeta),
             zeta_omega: DensePolynomial::eval_polynomial(&evals.zeta_omega, pt.zeta_omega),
@@ -406,7 +409,7 @@ impl<const W: usize, F: FftField> ProofEvaluations<W, PointEvaluations<Vec<F>>> 
     }
 }
 
-impl<const W: usize, F> ProofEvaluations<W, F> {
+impl<F, const W: usize> ProofEvaluations<F, W> {
     pub fn get_column(&self, col: Column) -> Option<&F> {
         match col {
             Column::Witness(i) => Some(&self.w[i]),

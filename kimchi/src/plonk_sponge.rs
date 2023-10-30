@@ -5,9 +5,10 @@ use mina_poseidon::{
     poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge},
 };
 
+use crate::circuits::wires::COLUMNS;
 use crate::proof::{PointEvaluations, ProofEvaluations};
 
-pub trait FrSponge<const W: usize, Fr: Field> {
+pub trait FrSponge<Fr: Field, const W: usize = COLUMNS> {
     /// Creates a new Fr-Sponge.
     fn new(p: &'static ArithmeticSpongeParams<Fr>) -> Self;
 
@@ -25,10 +26,10 @@ pub trait FrSponge<const W: usize, Fr: Field> {
 
     /// Absorbs the given evaluations into the sponge.
     // TODO: IMO this function should be inlined in prover/verifier
-    fn absorb_evaluations(&mut self, e: &ProofEvaluations<W, PointEvaluations<Vec<Fr>>>);
+    fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>, W>);
 }
 
-impl<const W: usize, Fr: PrimeField> FrSponge<W, Fr> for DefaultFrSponge<Fr, SC> {
+impl<Fr: PrimeField, const W: usize> FrSponge<Fr, W> for DefaultFrSponge<Fr, SC> {
     fn new(params: &'static ArithmeticSpongeParams<Fr>) -> DefaultFrSponge<Fr, SC> {
         DefaultFrSponge {
             sponge: ArithmeticSponge::new(params),
@@ -56,7 +57,7 @@ impl<const W: usize, Fr: PrimeField> FrSponge<W, Fr> for DefaultFrSponge<Fr, SC>
     }
 
     // We absorb all evaluations of the same polynomial at the same time
-    fn absorb_evaluations(&mut self, e: &ProofEvaluations<W, PointEvaluations<Vec<Fr>>>) {
+    fn absorb_evaluations(&mut self, e: &ProofEvaluations<PointEvaluations<Vec<Fr>>, W>) {
         self.last_squeezed = vec![];
 
         let ProofEvaluations {

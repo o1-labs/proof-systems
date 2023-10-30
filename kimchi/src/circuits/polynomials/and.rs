@@ -133,7 +133,7 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 /// Create a And for inputs as field elements starting at row 0
 /// Input: first input, second input, and desired byte length
 /// Panics if the input is too large for the chosen number of bytes
-pub fn create_and_witness<const W: usize, F: PrimeField>(
+pub fn create_and_witness<F: PrimeField, const W: usize>(
     input1: F,
     input2: F,
     bytes: usize,
@@ -170,13 +170,13 @@ pub fn create_and_witness<const W: usize, F: PrimeField>(
 /// Extends an AND witness to the whole witness
 /// Input: first input, second input, and desired byte length
 /// Panics if the input is too large for the chosen number of bytes
-pub fn extend_and_witness<const W: usize, F: PrimeField>(
+pub fn extend_and_witness<F: PrimeField, const W: usize>(
     witness: &mut [Vec<F>; W],
     input1: F,
     input2: F,
     bytes: usize,
 ) {
-    let and_witness = create_and_witness::<W, F>(input1, input2, bytes);
+    let and_witness = create_and_witness::<F, W>(input1, input2, bytes);
     for col in 0..W {
         witness[col].extend(and_witness[col].iter());
     }

@@ -8,7 +8,7 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain 
 
 /// Evaluations of the wires and permutation
 #[derive(Clone)]
-pub struct WitnessEvals<const W: usize, F: FftField> {
+pub struct WitnessEvals<F: FftField, const W: usize = COLUMNS> {
     /// wire evaluations
     pub w: [Evaluations<F, D<F>>; W],
     /// permutation evaluations
@@ -16,19 +16,19 @@ pub struct WitnessEvals<const W: usize, F: FftField> {
 }
 
 #[derive(Clone)]
-pub struct WitnessShifts<const W: usize, F: FftField> {
+pub struct WitnessShifts<F: FftField, const W: usize> {
     /// this wire evaluations
-    pub this: WitnessEvals<W, F>,
+    pub this: WitnessEvals<F, W>,
     /// next wire evaluations
-    pub next: WitnessEvals<W, F>,
+    pub next: WitnessEvals<F, W>,
 }
 
 #[derive(Clone)]
-pub struct WitnessOverDomains<const W: usize, F: FftField> {
+pub struct WitnessOverDomains<F: FftField, const W: usize> {
     /// evaluations over domain d4
-    pub d4: WitnessShifts<W, F>,
+    pub d4: WitnessShifts<F, W>,
     /// evaluations over domain d8
-    pub d8: WitnessShifts<W, F>,
+    pub d8: WitnessShifts<F, W>,
 }
 
 // PLOOKUP

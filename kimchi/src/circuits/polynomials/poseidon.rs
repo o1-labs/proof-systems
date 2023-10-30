@@ -137,7 +137,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
-    pub fn verify_poseidon<const W: usize, G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>, const W: usize>(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness

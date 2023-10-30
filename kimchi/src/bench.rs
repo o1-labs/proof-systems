@@ -28,8 +28,8 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub struct BenchmarkCtx {
     num_gates: usize,
     group_map: BWParameters<VestaParameters>,
-    index: ProverIndex<COLUMNS, Vesta, OpeningProof<Vesta>>,
-    verifier_index: VerifierIndex<COLUMNS, Vesta, OpeningProof<Vesta>>,
+    index: ProverIndex<Vesta, OpeningProof<Vesta>>,
+    verifier_index: VerifierIndex<Vesta, OpeningProof<Vesta>>,
 }
 
 impl BenchmarkCtx {
@@ -77,7 +77,7 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> (ProverProof<COLUMNS, Vesta, OpeningProof<Vesta>>, Vec<Fp>) {
+    pub fn create_proof(&self) -> (ProverProof<Vesta, OpeningProof<Vesta>, COLUMNS>, Vec<Fp>) {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
@@ -99,7 +99,7 @@ impl BenchmarkCtx {
     #[allow(clippy::type_complexity)]
     pub fn batch_verification(
         &self,
-        batch: &[(ProverProof<COLUMNS, Vesta, OpeningProof<Vesta>>, Vec<Fp>)],
+        batch: &[(ProverProof<Vesta, OpeningProof<Vesta>, COLUMNS>, Vec<Fp>)],
     ) {
         // verify the proof
         let batch: Vec<_> = batch
@@ -110,7 +110,7 @@ impl BenchmarkCtx {
                 public_input: public,
             })
             .collect();
-        batch_verify::<COLUMNS, Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+        batch_verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>, COLUMNS>(
             &self.group_map,
             &batch,
         )

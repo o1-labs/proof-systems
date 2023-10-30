@@ -83,7 +83,7 @@ pub fn zk_patch<R: Rng + ?Sized, F: FftField>(
 ///
 /// Will panic if `value(s)` are missing from the `table`.
 #[allow(clippy::too_many_arguments)]
-pub fn sorted<const W: usize, F: PrimeField>(
+pub fn sorted<F: PrimeField, const W: usize>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,
@@ -225,7 +225,7 @@ pub fn sorted<const W: usize, F: PrimeField>(
 ///
 /// Will panic if final evaluation is not 1.
 #[allow(clippy::too_many_arguments)]
-pub fn aggregation<const W: usize, R, F>(
+pub fn aggregation<R, F, const W: usize>(
     dummy_lookup_value: F,
     joint_lookup_table_d8: &Evaluations<F, D<F>>,
     d1: D<F>,

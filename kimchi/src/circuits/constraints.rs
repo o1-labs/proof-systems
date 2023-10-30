@@ -53,7 +53,7 @@ pub struct FeatureFlags {
 /// The polynomials representing evaluated columns, in coefficient form.
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct EvaluatedColumnCoefficients<const W: usize, F: PrimeField> {
+pub struct EvaluatedColumnCoefficients<F: PrimeField, const W: usize = COLUMNS> {
     /// permutation coefficients
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub permutation_coefficients: [DP<F>; PERMUTS],
@@ -75,7 +75,7 @@ pub struct EvaluatedColumnCoefficients<const W: usize, F: PrimeField> {
 /// The evaluations are expanded to the domain size required for their constraints.
 #[serde_as]
 #[derive(Clone, Serialize, Deserialize, Debug)]
-pub struct ColumnEvaluations<const W: usize, F: PrimeField> {
+pub struct ColumnEvaluations<F: PrimeField, const W: usize = COLUMNS> {
     /// permutation coefficients over domain d8
     #[serde_as(as = "[o1_utils::serialization::SerdeAs; PERMUTS]")]
     pub permutation_coefficients8: [E<F, D<F>>; PERMUTS],
@@ -270,11 +270,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
 }
 
 impl<
-        const W: usize,
         F: PrimeField + SquareRootField,
         G: KimchiCurve<ScalarField = F>,
         OpeningProof: OpenProof<G>,
-    > ProverIndex<W, G, OpeningProof>
+        const W: usize,
+    > ProverIndex<G, OpeningProof, W>
 {
     /// This function verifies the consistency of the wire
     /// assignments (witness) against the constraints
@@ -319,7 +319,7 @@ impl<
             }
 
             // check the gate's satisfiability
-            gate.verify::<W, G, OpeningProof>(row, &witness, self, public)
+            gate.verify::<G, OpeningProof, W>(row, &witness, self, public)
                 .map_err(|err| GateError::Custom { row, err })?;
         }
 
@@ -330,7 +330,7 @@ impl<
 
 impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
     /// evaluate witness polynomials over domains
-    pub fn evaluate<const W: usize>(&self, w: &[DP<F>; W], z: &DP<F>) -> WitnessOverDomains<W, F> {
+    pub fn evaluate<const W: usize>(&self, w: &[DP<F>; W], z: &DP<F>) -> WitnessOverDomains<F, W> {
         // compute shifted witness polynomials
         let w8: [E<F, D<F>>; W] =
             array::from_fn(|i| w[i].evaluate_over_domain_by_ref(self.domain.d8));
@@ -370,7 +370,7 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 
     pub(crate) fn evaluated_column_coefficients<const W: usize>(
         &self,
-    ) -> EvaluatedColumnCoefficients<W, F> {
+    ) -> EvaluatedColumnCoefficients<F, W> {
         // compute permutation polynomials
         let shifts = Shifts::new(&self.domain.d1);
 
@@ -452,8 +452,8 @@ impl<F: PrimeField + SquareRootField> ConstraintSystem<F> {
 
     pub(crate) fn column_evaluations<const W: usize>(
         &self,
-        evaluated_column_coefficients: &EvaluatedColumnCoefficients<W, F>,
-    ) -> ColumnEvaluations<W, F> {
+        evaluated_column_coefficients: &EvaluatedColumnCoefficients<F, W>,
+    ) -> ColumnEvaluations<F, W> {
         let permutation_coefficients8 = array::from_fn(|i| {
             evaluated_column_coefficients.permutation_coefficients[i]
                 .evaluate_over_domain_by_ref(self.domain.d8)

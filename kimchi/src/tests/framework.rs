@@ -35,13 +35,13 @@ use std::{fmt::Write, time::Instant};
 
 #[derive(Default, Clone)]
 pub(crate) struct TestFramework<
-    const W: usize,
     G: KimchiCurve,
+    const W: usize = COLUMNS,
     OpeningProof: OpenProof<G> = DlogOpeningProof<G>,
 > where
     G::BaseField: PrimeField,
     OpeningProof::SRS: Clone,
-    VerifierIndex<W, G, OpeningProof>: Clone,
+    VerifierIndex<G, OpeningProof, W>: Clone,
 {
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; W]>,
@@ -54,26 +54,26 @@ pub(crate) struct TestFramework<
     disable_gates_checks: bool,
     override_srs_size: Option<usize>,
 
-    prover_index: Option<ProverIndex<W, G, OpeningProof>>,
-    verifier_index: Option<VerifierIndex<W, G, OpeningProof>>,
+    prover_index: Option<ProverIndex<G, OpeningProof, W>>,
+    verifier_index: Option<VerifierIndex<G, OpeningProof, W>>,
 }
 
 #[derive(Clone)]
 pub(crate) struct TestRunner<
-    const W: usize,
     G: KimchiCurve,
+    const W: usize = COLUMNS,
     OpeningProof: OpenProof<G> = DlogOpeningProof<G>,
->(TestFramework<W, G, OpeningProof>)
+>(TestFramework<G, W, OpeningProof>)
 where
     G::BaseField: PrimeField,
     OpeningProof::SRS: Clone,
-    VerifierIndex<W, G, OpeningProof>: Clone;
+    VerifierIndex<G, OpeningProof, W>: Clone;
 
-impl<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> TestFramework<W, G, OpeningProof>
+impl<G: KimchiCurve, const W: usize, OpeningProof: OpenProof<G>> TestFramework<G, W, OpeningProof>
 where
     G::BaseField: PrimeField,
     OpeningProof::SRS: Clone,
-    VerifierIndex<W, G, OpeningProof>: Clone,
+    VerifierIndex<G, OpeningProof, W>: Clone,
 {
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
@@ -131,7 +131,7 @@ where
     pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
         mut self,
         get_srs: F,
-    ) -> TestRunner<W, G, OpeningProof> {
+    ) -> TestRunner<G, W, OpeningProof> {
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
@@ -159,19 +159,19 @@ where
     }
 }
 
-impl<const W: usize, G: KimchiCurve> TestFramework<W, G>
+impl<G: KimchiCurve, const W: usize> TestFramework<G, W>
 where
     G::BaseField: PrimeField,
 {
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> TestRunner<W, G> {
+    pub(crate) fn setup(mut self) -> TestRunner<G, W> {
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
         let runtime_tables_setup = self.runtime_tables_setup.take();
 
-        let index = new_index_for_test_with_lookups::<W, G>(
+        let index = new_index_for_test_with_lookups::<G, W>(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
@@ -192,12 +192,12 @@ where
     }
 }
 
-impl<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> TestRunner<W, G, OpeningProof>
+impl<G: KimchiCurve, const W: usize, OpeningProof: OpenProof<G>> TestRunner<G, W, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
     OpeningProof::SRS: Clone,
-    VerifierIndex<W, G, OpeningProof>: Clone,
+    VerifierIndex<G, OpeningProof, W>: Clone,
 {
     #[must_use]
     pub(crate) fn runtime_tables(
@@ -220,7 +220,7 @@ where
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<W, G, OpeningProof> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof, W> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -229,7 +229,7 @@ where
     pub(crate) fn prove<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<W, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField, W>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -260,7 +260,7 @@ where
     pub(crate) fn prove_and_verify<EFqSponge, EFrSponge>(self) -> Result<(), String>
     where
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<W, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField, W>,
     {
         let prover = self.0.prover_index.unwrap();
         let witness = self.0.witness.unwrap();
@@ -291,7 +291,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<W, G, EFqSponge, EFrSponge, OpeningProof>(
+        verify::<G, EFqSponge, EFrSponge, OpeningProof, W>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

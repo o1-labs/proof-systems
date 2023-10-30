@@ -76,7 +76,7 @@ fn test_generic_gate_with_srs_override(
     }
 
     // create and verify proof based on the witness
-    let framework = TestFramework::<COLUMNS, Vesta>::default()
+    let framework = TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .public_inputs(public);

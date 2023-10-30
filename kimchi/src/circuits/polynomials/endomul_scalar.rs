@@ -21,7 +21,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMulScalar`, or there are errors in gate values.
-    pub fn verify_endomul_scalar<const W: usize, G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul_scalar<G: KimchiCurve<ScalarField = F>, const W: usize>(
         &self,
         row: usize,
         witness: &[Vec<F>; W],

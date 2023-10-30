@@ -308,11 +308,11 @@ pub mod testing {
     }
 
     impl<
-            const W: usize,
             F: PrimeField,
             G: KimchiCurve<ScalarField = F>,
             OpeningProof: OpenProof<G>,
-        > ProverIndex<W, G, OpeningProof>
+            const W: usize,
+        > ProverIndex<G, OpeningProof, W>
     {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
@@ -370,7 +370,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `gates_row` is None.
-    pub fn create_circuit<const W: usize, F: PrimeField>(
+    pub fn create_circuit<F: PrimeField, const W: usize>(
         start_row: usize,
         public: usize,
     ) -> Vec<CircuitGate<F>> {
@@ -429,7 +429,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `witness_row` is None.
-    pub fn fill_in_witness<const W: usize, F: FftField>(
+    pub fn fill_in_witness<F: FftField, const W: usize>(
         start_row: usize,
         witness: &mut [Vec<F>; W],
         public: &[F],

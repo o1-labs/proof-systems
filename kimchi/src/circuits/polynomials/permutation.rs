@@ -195,11 +195,11 @@ where
 }
 
 impl<
-        const W: usize,
         F: PrimeField,
         G: KimchiCurve<ScalarField = F>,
         OpeningProof: OpenProof<G>,
-    > ProverIndex<W, G, OpeningProof>
+        const W: usize,
+    > ProverIndex<G, OpeningProof, W>
 {
     /// permutation quotient poly contribution computation
     ///
@@ -213,7 +213,7 @@ impl<
     #[allow(clippy::type_complexity)]
     pub fn perm_quot(
         &self,
-        lagrange: &WitnessOverDomains<W, F>,
+        lagrange: &WitnessOverDomains<F, W>,
         beta: F,
         gamma: F,
         z: &DensePolynomial<F>,
@@ -336,7 +336,7 @@ impl<
     /// permutation linearization poly contribution computation
     pub fn perm_lnrz(
         &self,
-        e: &ProofEvaluations<W, PointEvaluations<F>>,
+        e: &ProofEvaluations<PointEvaluations<F>, W>,
         zeta: F,
         beta: F,
         gamma: F,
@@ -366,7 +366,7 @@ impl<
 
 impl<F: PrimeField> ConstraintSystem<F> {
     pub fn perm_scalars<const W: usize>(
-        e: &ProofEvaluations<W, PointEvaluations<F>>,
+        e: &ProofEvaluations<PointEvaluations<F>, W>,
         beta: F,
         gamma: F,
         mut alphas: impl Iterator<Item = F>,
@@ -407,11 +407,11 @@ impl<F: PrimeField> ConstraintSystem<F> {
 }
 
 impl<
-        const W: usize,
         F: PrimeField,
         G: KimchiCurve<ScalarField = F>,
         OpeningProof: OpenProof<G>,
-    > ProverIndex<W, G, OpeningProof>
+        const W: usize,
+    > ProverIndex<G, OpeningProof, W>
 {
     /// permutation aggregation polynomial computation
     ///

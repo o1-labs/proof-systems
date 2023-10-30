@@ -145,7 +145,7 @@ fn ec_test() {
         witness[14].push(F::zero());
     }
 
-    TestFramework::<COLUMNS, Vesta>::default()
+    TestFramework::<Vesta>::default()
         .gates(gates)
         .witness(witness)
         .setup()

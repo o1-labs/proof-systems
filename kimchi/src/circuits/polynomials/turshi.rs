@@ -177,7 +177,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Panics
     ///
     /// Will panic if `constraint linearization` fails.
-    pub fn verify_cairo_gate<const W: usize, G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>, const W: usize>(
         &self,
         row: usize,
         witness: &[Vec<F>; W],
@@ -210,7 +210,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 
         // Get constraints for this circuit gate
         let constraints =
-            circuit_gate_combined_constraints::<W, F>(self.typ, &alphas, &mut Cache::default());
+            circuit_gate_combined_constraints::<F, W>(self.typ, &alphas, &mut Cache::default());
 
         // Linearize
         let linearized = constraints.linearize(polys).unwrap();
@@ -256,7 +256,7 @@ pub mod witness {
     use super::*;
 
     /// Returns the witness of an execution of a Cairo program in `CircuitGate` format
-    pub fn cairo_witness<const W: usize, F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; W] {
+    pub fn cairo_witness<F: Field, const W: usize>(prog: &CairoProgram<F>) -> [Vec<F>; W] {
         // 0: 1 row for final check CairoClaim gate
         // 4i+1: 1 row per instruction for CairoInstruction gate
         // 4i+2: 1 row per instruction for Flags argument
@@ -274,14 +274,14 @@ pub mod witness {
                 let claim_wit = claim_witness(prog);
                 table[i] = claim_wit;
             }
-            let ins_wit = instruction_witness::<W, F>(inst);
-            let flg_wit = flag_witness::<W, F>(inst);
+            let ins_wit = instruction_witness::<F, W>(inst);
+            let flg_wit = flag_witness::<F, W>(inst);
             table[4 * i + 1] = ins_wit;
             table[4 * i + 2] = flg_wit;
             if i != n - 1 {
                 // all but last instruction
-                let tra_wit = transition_witness::<W, F>(inst, &prog.trace()[i + 1]);
-                let aux_wit = auxiliary_witness::<W, F>(&prog.trace()[i + 1]);
+                let tra_wit = transition_witness::<F, W>(inst, &prog.trace()[i + 1]);
+                let aux_wit = auxiliary_witness::<F, W>(&prog.trace()[i + 1]);
                 table[4 * i + 3] = tra_wit;
                 table[4 * i + 4] = aux_wit;
             }
@@ -320,7 +320,7 @@ pub mod witness {
         ]
     }
 
-    fn instruction_witness<const W: usize, F: Field>(inst: &CairoInstruction<F>) -> Vec<F> {
+    fn instruction_witness<F: Field, const W: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
         vec![
             inst.pc(),
             inst.ap(),
@@ -340,7 +340,7 @@ pub mod witness {
         ]
     }
 
-    fn flag_witness<const W: usize, F: Field>(inst: &CairoInstruction<F>) -> Vec<F> {
+    fn flag_witness<F: Field, const W: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
         vec![
             inst.f_dst_fp(),
             inst.f_op0_fp(),
@@ -360,7 +360,7 @@ pub mod witness {
         ]
     }
 
-    fn transition_witness<const W: usize, F: Field>(
+    fn transition_witness<F: Field, const W: usize>(
         curr: &CairoInstruction<F>,
         next: &CairoInstruction<F>,
     ) -> Vec<F> {
@@ -383,7 +383,7 @@ pub mod witness {
         ]
     }
 
-    fn auxiliary_witness<const W: usize, F: Field>(next: &CairoInstruction<F>) -> Vec<F> {
+    fn auxiliary_witness<F: Field, const W: usize>(next: &CairoInstruction<F>) -> Vec<F> {
         vec![
             next.pc(),
             next.ap(),
@@ -412,7 +412,7 @@ pub mod testing {
     /// # Errors
     ///
     /// Will give error if `gate` is not `Cairo`-related gate or `zero` gate.
-    pub fn ensure_cairo_gate<const W: usize, F: PrimeField>(
+    pub fn ensure_cairo_gate<F: PrimeField, const W: usize>(
         gate: &CircuitGate<F>,
         row: usize,
         witness: &[Vec<F>; W],
@@ -741,7 +741,7 @@ fn two<F: Field, T: ExprOps<F>>() -> T {
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-pub fn circuit_gate_combined_constraints<const W: usize, F: PrimeField>(
+pub fn circuit_gate_combined_constraints<F: PrimeField, const W: usize>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,

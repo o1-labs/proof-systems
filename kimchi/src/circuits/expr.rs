@@ -97,7 +97,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct Environment<'a, const W: usize, F: FftField> {
+pub struct Environment<'a, F: FftField, const W: usize = COLUMNS> {
     /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; W],
     /// The coefficient column polynomials
@@ -128,7 +128,7 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     fn l0_1(&self) -> F;
 }
 
-impl<'a, const W: usize, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, W, F> {
+impl<'a, F: FftField, const W: usize> ColumnEnvironment<'a, F> for Environment<'a, F, W> {
     type Column = berkeley_columns::Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
@@ -2890,6 +2890,8 @@ macro_rules! auto_clone_array {
 pub use auto_clone;
 pub use auto_clone_array;
 
+use super::wires::COLUMNS;
+
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
     pub use super::{coeff, constant, index, witness, witness_curr, witness_next, FeatureFlag, E};
@@ -2961,11 +2963,7 @@ pub mod test {
             let srs = Arc::new(srs);
 
             let (endo_q, _endo_r) = endos::<Pallas>();
-            ProverIndex::<COLUMNS, Vesta, OpeningProof<Vesta>>::create(
-                constraint_system,
-                endo_q,
-                srs,
-            )
+            ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
         };
 
         let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());

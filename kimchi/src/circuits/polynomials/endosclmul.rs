@@ -125,7 +125,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
-    pub fn verify_endomul<const W: usize, G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>, const W: usize>(
         &self,
         row: usize,
         witness: &[Vec<F>; W],
@@ -148,7 +148,7 @@ impl<F: PrimeField> CircuitGate<F> {
             zk_rows: cs.zk_rows,
         };
 
-        let evals: ProofEvaluations<W, PointEvaluations<G::ScalarField>> =
+        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>, W> =
             ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
         let constraints = EndosclMul::<F>::constraints(&mut Cache::default());

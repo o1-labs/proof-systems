@@ -1703,7 +1703,7 @@ Both the prover and the verifier index, besides the common parts described above
 These pre-computations are optimizations, in the context of normal proofs, but they are necessary for recursion.
 
 ```rs
-pub struct ProverIndex<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> {
+pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize=COLUMNS> {
     /// constraints system polynomials
     #[serde(bound = "ConstraintSystem<G::ScalarField>: Serialize + DeserializeOwned")]
     pub cs: ConstraintSystem<G::ScalarField>,
@@ -1724,12 +1724,12 @@ pub struct ProverIndex<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G
     /// maximal size of polynomial section
     pub max_poly_size: usize,
 
-    #[serde(bound = "ColumnEvaluations<W, G::ScalarField>: Serialize + DeserializeOwned")]
-    pub column_evaluations: ColumnEvaluations<W, G::ScalarField>,
+    #[serde(bound = "ColumnEvaluations<G::ScalarField,W>: Serialize + DeserializeOwned")]
+    pub column_evaluations: ColumnEvaluations<G::ScalarField, W>,
 
     /// The verifier index corresponding to this prover index
     #[serde(skip)]
-    pub verifier_index: Option<VerifierIndex<W, G, OpeningProof>>,
+    pub verifier_index: Option<VerifierIndex<G, OpeningProof, W>>,
 
     /// The verifier index digest corresponding to this prover index
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
@@ -1767,7 +1767,7 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> {
+pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize = COLUMNS> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
@@ -1963,7 +1963,7 @@ pub struct PointEvaluations<Evals> {
 /// - **Non chunked evaluations** `Field` is instantiated with a field, so they are single-sized#[serde_as]
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ProofEvaluations<const W: usize, Evals> {
+pub struct ProofEvaluations<Evals, const W: usize> {
     /// public input polynomials
     pub public: Option<Evals>,
     /// witness polynomials
@@ -2042,7 +2042,7 @@ pub struct LookupCommitments<G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverCommitments<const W: usize, G: AffineCurve> {
+pub struct ProverCommitments<G: AffineCurve, const W: usize = COLUMNS> {
     /// The commitments to the witness (execution trace)
     pub w_comm: Vec<PolyComm<G>>,
     /// The commitment to the permutation polynomial
@@ -2057,9 +2057,9 @@ pub struct ProverCommitments<const W: usize, G: AffineCurve> {
 #[serde_as]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(bound = "G: ark_serialize::CanonicalDeserialize + ark_serialize::CanonicalSerialize")]
-pub struct ProverProof<const W: usize, G: AffineCurve, OpeningProof> {
+pub struct ProverProof<G: AffineCurve, OpeningProof, const W: usize = COLUMNS> {
     /// All the polynomial commitments required in the proof
-    pub commitments: ProverCommitments<W, G>,
+    pub commitments: ProverCommitments<G, W>,
 
     /// batched commitment opening proof
     #[serde(bound(
@@ -2069,7 +2069,7 @@ pub struct ProverProof<const W: usize, G: AffineCurve, OpeningProof> {
     pub proof: OpeningProof,
 
     /// Two evaluations over a number of committed polynomials
-    pub evals: ProofEvaluations<W, PointEvaluations<Vec<G::ScalarField>>>,
+    pub evals: ProofEvaluations<PointEvaluations<Vec<G::ScalarField>>, W>,
 
     /// Required evaluation for [Maller's optimization](https://o1-labs.github.io/mina-book/crypto/plonk/maller_15.html#the-evaluation-of-l)
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]

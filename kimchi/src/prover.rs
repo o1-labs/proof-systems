@@ -122,7 +122,7 @@ where
     runtime_second_col_d8: Option<Evaluations<F, D<F>>>,
 }
 
-impl<const W: usize, G: KimchiCurve, OpeningProof: OpenProof<G>> ProverProof<W, G, OpeningProof>
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const W: usize> ProverProof<G, OpeningProof, W>
 where
     G::BaseField: PrimeField,
 {
@@ -133,15 +133,15 @@ where
     /// Will give error if `create_recursive` process fails.
     pub fn create<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<W, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField, W>,
     >(
         groupmap: &G::Map,
         witness: [Vec<G::ScalarField>; W],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<W, G, OpeningProof>,
+        index: &ProverIndex<G, OpeningProof, W>,
     ) -> Result<Self>
     where
-        VerifierIndex<W, G, OpeningProof>: Clone,
+        VerifierIndex<G, OpeningProof, W>: Clone,
     {
         Self::create_recursive::<EFqSponge, EFrSponge>(
             groupmap,
@@ -164,17 +164,17 @@ where
     /// Will panic if `lookup_context.joint_lookup_table_d8` is None.
     pub fn create_recursive<
         EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-        EFrSponge: FrSponge<W, G::ScalarField>,
+        EFrSponge: FrSponge<G::ScalarField, W>,
     >(
         group_map: &G::Map,
         mut witness: [Vec<G::ScalarField>; W],
         runtime_tables: &[RuntimeTable<G::ScalarField>],
-        index: &ProverIndex<W, G, OpeningProof>,
+        index: &ProverIndex<G, OpeningProof, W>,
         prev_challenges: Vec<RecursionChallenge<G>>,
         blinders: Option<[Option<PolyComm<G::ScalarField>>; W]>,
     ) -> Result<Self>
     where
-        VerifierIndex<W, G, OpeningProof>: Clone,
+        VerifierIndex<G, OpeningProof, W>: Clone,
     {
         internal_tracing::checkpoint!(internal_traces; create_recursive);
         let d1_size = index.cs.domain.d1.size();
@@ -567,7 +567,7 @@ where
             //~~ * Compute the lookup aggregation polynomial.
             let joint_lookup_table_d8 = lookup_context.joint_lookup_table_d8.as_ref().unwrap();
 
-            let aggreg = lookup::constraints::aggregation::<W, _, G::ScalarField>(
+            let aggreg = lookup::constraints::aggregation::<_, G::ScalarField, W>(
                 lookup_context.dummy_lookup_value.unwrap(),
                 joint_lookup_table_d8,
                 index.cs.domain.d1,
@@ -971,7 +971,7 @@ where
             };
 
         internal_tracing::checkpoint!(internal_traces; chunk_eval_zeta_omega_poly);
-        let chunked_evals = ProofEvaluations::<W, PointEvaluations<Vec<G::ScalarField>>> {
+        let chunked_evals = ProofEvaluations::<PointEvaluations<Vec<G::ScalarField>>, W> {
             public: {
                 let chunked = public_poly.to_chunked_polynomial(num_chunks, index.max_poly_size);
                 Some(PointEvaluations {

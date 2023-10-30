@@ -95,7 +95,7 @@ impl expr::Variable<Column> {
     }
 }
 
-impl<const W: usize, F: Copy> ColumnEvaluations<F> for ProofEvaluations<W, PointEvaluations<F>> {
+impl<F: Copy, const W: usize> ColumnEvaluations<F> for ProofEvaluations<PointEvaluations<F>, W> {
     type Column = Column;
     fn evaluate(&self, col: Self::Column) -> Result<PointEvaluations<F>, ExprError<Self::Column>> {
         use Column::*;

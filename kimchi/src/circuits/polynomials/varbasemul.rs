@@ -181,7 +181,7 @@ impl Point<Variable> {
     }
 }
 
-fn set<const W: usize, F>(w: &mut [Vec<F>; W], row0: usize, var: Variable, x: F) {
+fn set<F, const W: usize>(w: &mut [Vec<F>; W], row0: usize, var: Variable, x: F) {
     match var.col {
         Column::Witness(i) => w[i][row0 + var.row.shift()] = x,
         _ => panic!("Can only set witness columns"),
@@ -189,7 +189,7 @@ fn set<const W: usize, F>(w: &mut [Vec<F>; W], row0: usize, var: Variable, x: F)
 }
 
 #[allow(clippy::too_many_arguments)]
-fn single_bit_witness<const W: usize, F: FftField>(
+fn single_bit_witness<F: FftField, const W: usize>(
     w: &mut [Vec<F>; W],
     row: usize,
     b: Variable,
@@ -364,7 +364,7 @@ pub struct VarbaseMulResult<F> {
 /// # Panics
 ///
 /// Will panic if `bits chunk` length validation fails.
-pub fn witness<const W: usize, F: FftField + std::fmt::Display>(
+pub fn witness<F: FftField + std::fmt::Display, const W: usize>(
     w: &mut [Vec<F>; W],
     row0: usize,
     base: (F, F),

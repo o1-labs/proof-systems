@@ -194,7 +194,7 @@ enum V {
   while it is being written.
 */
 #[derive(Clone)]
-enum Circuit<const W: usize, F>
+enum Circuit<F>
 where
     F: PrimeField,
 {
@@ -225,7 +225,7 @@ where
        A gate is finalized once [finalize_and_get_gates](SnarkyConstraintSystem::finalize_and_get_gates) is called.
        The finalized tag contains the digest of the circuit.
     */
-    gates: Circuit<COLUMNS, Field>,
+    gates: Circuit<Field>,
     /** The row to use the next time we add a constraint. */
     next_row: usize,
     /** The size of the public input (which fills the first rows of our constraint system. */

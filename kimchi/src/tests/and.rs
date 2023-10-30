@@ -107,7 +107,7 @@ where
 
     for row in 0..witness[0].len() {
         assert_eq!(
-            cs.gates[row].verify_witness::<COLUMNS, G>(
+            cs.gates[row].verify_witness::<G, COLUMNS>(
                 row,
                 &witness,
                 &cs,
@@ -125,7 +125,7 @@ fn prove_and_verify<G: KimchiCurve, EFqSponge, EFrSponge>(bytes: usize)
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<COLUMNS, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField, COLUMNS>,
 {
     let rng = &mut StdRng::from_seed(RNG_SEED);
 
@@ -140,7 +140,7 @@ where
     // Create witness
     let witness = and::create_and_witness(input1, input2, bytes);
 
-    TestFramework::<COLUMNS, G>::default()
+    TestFramework::<G>::default()
         .gates(gates)
         .witness(witness)
         .setup()
@@ -251,7 +251,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
         // Update copy constraints of generic gate
         if col < 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<COLUMNS, G>(
+                cs.gates[0].verify_witness::<G, COLUMNS>(
                     0,
                     witness,
                     &cs,
@@ -267,7 +267,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
         }
         if col == 2 {
             assert_eq!(
-                cs.gates[0].verify_witness::<COLUMNS, G>(
+                cs.gates[0].verify_witness::<G, COLUMNS>(
                     0,
                     witness,
                     &cs,
@@ -285,7 +285,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
             witness[4][and_row] += G::ScalarField::one();
         }
         assert_eq!(
-            cs.gates[0].verify_witness::<COLUMNS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+            cs.gates[0].verify_witness::<G, COLUMNS>(0, witness, &cs, &witness[0][0..cs.public]),
             Err(CircuitGateError::Constraint(GateType::Xor16, bad))
         );
         witness[col][xor_row] -= G::ScalarField::one();
@@ -298,7 +298,7 @@ fn verify_bad_and_decomposition<G: KimchiCurve>(
     }
     // undo changes
     assert_eq!(
-        cs.gates[0].verify_witness::<COLUMNS, G>(0, witness, &cs, &witness[0][0..cs.public]),
+        cs.gates[0].verify_witness::<G, COLUMNS>(0, witness, &cs, &witness[0][0..cs.public]),
         Ok(())
     );
 }
@@ -333,7 +333,7 @@ fn test_bad_and() {
     witness[4][2] = PallasField::zero();
 
     assert_eq!(
-        TestFramework::<COLUMNS, Vesta>::default()
+        TestFramework::<Vesta>::default()
             .gates(gates)
             .witness(witness)
             .setup()

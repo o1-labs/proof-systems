@@ -168,7 +168,7 @@ where
 }
 
 // Witness layout
-fn layout<const W: usize, F: PrimeField>(
+fn layout<F: PrimeField, const W: usize>(
     curr_row: usize,
     bits: usize,
 ) -> Vec<Vec<Box<dyn WitnessCell<F, F, W>>>> {
@@ -180,7 +180,7 @@ fn layout<const W: usize, F: PrimeField>(
     layout
 }
 
-fn xor_row<const W: usize, F: PrimeField>(
+fn xor_row<F: PrimeField, const W: usize>(
     nybble: usize,
     curr_row: usize,
 ) -> Vec<Box<dyn WitnessCell<F, F, W>>> {
@@ -204,7 +204,7 @@ fn xor_row<const W: usize, F: PrimeField>(
     ]
 }
 
-fn zero_row<const W: usize, F: PrimeField>() -> Vec<Box<dyn WitnessCell<F, F, W>>> {
+fn zero_row<F: PrimeField, const W: usize>() -> Vec<Box<dyn WitnessCell<F, F, W>>> {
     vec![
         ConstantCell::create(F::zero()),
         ConstantCell::create(F::zero()),
@@ -224,7 +224,7 @@ fn zero_row<const W: usize, F: PrimeField>() -> Vec<Box<dyn WitnessCell<F, F, W>
     ]
 }
 
-pub(crate) fn init_xor<const W: usize, F: PrimeField>(
+pub(crate) fn init_xor<F: PrimeField, const W: usize>(
     witness: &mut [Vec<F>; W],
     curr_row: usize,
     bits: usize,
@@ -242,13 +242,13 @@ pub(crate) fn init_xor<const W: usize, F: PrimeField>(
 
 /// Extends the Xor rows to the full witness
 /// Panics if the words are larger than the desired bits
-pub fn extend_xor_witness<const W: usize, F: PrimeField>(
+pub fn extend_xor_witness<F: PrimeField, const W: usize>(
     witness: &mut [Vec<F>; W],
     input1: F,
     input2: F,
     bits: usize,
 ) {
-    let xor_witness = create_xor_witness::<W, F>(input1, input2, bits);
+    let xor_witness = create_xor_witness::<F, W>(input1, input2, bits);
     for col in 0..W {
         witness[col].extend(xor_witness[col].iter());
     }
@@ -257,7 +257,7 @@ pub fn extend_xor_witness<const W: usize, F: PrimeField>(
 /// Create a Xor for up to the native length starting at row 0
 /// Input: first input and second input, bits length, current row
 /// Panics if the desired bits is smaller than the inputs length
-pub fn create_xor_witness<const W: usize, F: PrimeField>(
+pub fn create_xor_witness<F: PrimeField, const W: usize>(
     input1: F,
     input2: F,
     bits: usize,
