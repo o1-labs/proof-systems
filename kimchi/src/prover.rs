@@ -1072,6 +1072,16 @@ where
                 .rot_selector8
                 .as_ref()
                 .map(chunked_evals_for_selector),
+            keccak_round_selector: index
+                .column_evaluations
+                .keccak_round_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
+            keccak_sponge_selector: index
+                .column_evaluations
+                .keccak_sponge_selector8
+                .as_ref()
+                .map(chunked_evals_for_selector),
 
             runtime_lookup_table_selector: index.cs.lookup_constraint_system.as_ref().and_then(
                 |lcs| {
@@ -1106,6 +1116,22 @@ where
                 |lcs| {
                     lcs.lookup_selectors
                         .ffmul
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            keccak_round_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .keccak_round
+                        .as_ref()
+                        .map(chunked_evals_for_selector)
+                },
+            ),
+            keccak_sponge_lookup_selector: index.cs.lookup_constraint_system.as_ref().and_then(
+                |lcs| {
+                    lcs.lookup_selectors
+                        .keccak_sponge
                         .as_ref()
                         .map(chunked_evals_for_selector)
                 },
