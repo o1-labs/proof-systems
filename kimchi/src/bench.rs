@@ -7,7 +7,7 @@ use mina_poseidon::{
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
 use o1_utils::math;
-use poly_commitment::commitment::CommitmentCurve;
+use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProof};
 
 use crate::{
     circuits::{
@@ -28,8 +28,8 @@ type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 pub struct BenchmarkCtx {
     num_gates: usize,
     group_map: BWParameters<VestaParameters>,
-    index: ProverIndex<Vesta>,
-    verifier_index: VerifierIndex<Vesta>,
+    index: ProverIndex<Vesta, OpeningProof<Vesta>>,
+    verifier_index: VerifierIndex<Vesta, OpeningProof<Vesta>>,
 }
 
 impl BenchmarkCtx {
@@ -77,7 +77,7 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(&self) -> (ProverProof<Vesta>, Vec<Fp>) {
+    pub fn create_proof(&self) -> (ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>) {
         // create witness
         let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
@@ -96,7 +96,8 @@ impl BenchmarkCtx {
         )
     }
 
-    pub fn batch_verification(&self, batch: &[(ProverProof<Vesta>, Vec<Fp>)]) {
+    #[allow(clippy::type_complexity)]
+    pub fn batch_verification(&self, batch: &[(ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>)]) {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()
@@ -106,7 +107,11 @@ impl BenchmarkCtx {
                 public_input: public,
             })
             .collect();
-        batch_verify::<Vesta, BaseSponge, ScalarSponge>(&self.group_map, &batch).unwrap();
+        batch_verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+            &self.group_map,
+            &batch,
+        )
+        .unwrap();
     }
 }
 

@@ -35,7 +35,7 @@ where
     pub fn has_zero_entry(&self) -> bool {
         // reminder: a table is written as a list of columns,
         // not as a list of row entries.
-        for row in 0..self.data[0].len() {
+        for row in 0..self.len() {
             for col in &self.data {
                 if !col[row].is_zero() {
                     continue;
@@ -45,6 +45,13 @@ where
         }
 
         false
+    }
+
+    /// Returns the number of columns, i.e. the width of the table.
+    /// It is less error prone to introduce this method than using the public
+    /// field data.
+    pub fn width(&self) -> usize {
+        self.data.len()
     }
 
     /// Returns the length of the table.
