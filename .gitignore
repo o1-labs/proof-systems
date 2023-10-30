@@ -26,3 +26,5 @@ _build
 *.html
 # If symlink created for kimchi-visu
 tools/srs
+
+.ignore
