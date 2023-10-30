@@ -9,6 +9,7 @@ let
       darwin.apple_sdk.frameworks.CoreServices
       libiconv
     ]);
+
   buildInputs = with pkgs;
     [
       pkg-config
@@ -17,14 +18,15 @@ let
       rustc
       rustfmt
     ] ++ lib.optionals stdenv.isDarwin darwin_packages;
+
 in
 {
   proof-systems =
     pkgs.rustPlatform.buildRustPackage
       {
+        inherit buildInputs;
         pname = "proof-systems";
         version = "1.0.0";
-        buildInputs = buildInputs;
         cargoLock = {
           lockFile = ./Cargo.lock;
         };
@@ -32,6 +34,6 @@ in
       };
 
   devshell = pkgs.mkShell {
-    buildInputs = buildInputs;
+    inherit buildInputs;
   };
 }
