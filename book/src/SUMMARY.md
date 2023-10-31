@@ -53,10 +53,18 @@
 # Kimchi
 
 - [Overview](./kimchi/overview.md)
-  - [Arguments](./kimchi/arguments.md)
-    - [Custom gates](./kimchi/gates.md)
-    - [Permutation](./kimchi/permut.md)
-    - [Lookup](./kimchi/lookup.md)
+- [Arguments](./kimchi/arguments.md)
+- [Zero-Column Approach to Zero-Knowledge](./kimchi/zkpm.md)
+- [Final Check](./kimchi/final_check.md)
+- [Maller's Optimization for Kimchi](./kimchi/maller_15.md)
+- [Permutation](./kimchi/permut.md)
+- [Lookup Tables](./kimchi/lookup.md)
+  - [Extended Lookup Tables](./kimchi/extended-lookup-tables.md)
+- [Custom Gates](./kimchi/gates.md)
+  - [Foreign Field Addition](./kimchi/foreign_field_add.md)
+  - [Foreign Field Multiplication](./kimchi/foreign_field_mul.md)
+  - [Keccak](./rfcs/keccak.md)
+
 
 # Pickles & Inductive Proof Systems
 
@@ -65,17 +73,8 @@
 - [Deferred Computation](./pickles/deferred.md)
 - [Passthough & Me-Only](./pickles/passthrough.md)
 
-# RFCs
 
-- [RFC 0: Alternative zero-knowledge](./plonk/zkpm.md)
-- [RFC 1: Final check](./plonk/final_check.md)
-- [RFC 2: Maller's optimization for kimchi](./plonk/maller_15.md)
-- [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
-- [RFC 4: Extended lookup tables](./rfcs/extended-lookup-tables.md)
-- [RFC 5: Foreign Field Addition](./rfcs/foreign_field_add.md)
-- [RFC 6: Keccak](./rfcs/keccak.md)
-  
-# Specifications
+# Technical Specifications
 
 - [Poseidon hash](./specs/poseidon.md)
 - [Polynomial commitment](./specs/poly-commitment.md)
