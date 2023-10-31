@@ -6,6 +6,7 @@ use crate::{
     },
 };
 use ark_ff::Field;
+use log::info;
 use std::array;
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
@@ -229,23 +230,36 @@ impl<Fp: Field> Env<Fp> {
         println!("instruction: {:?}", self.decode_instruction());
 
         self.pp_info(config.info_at);
+
         // TODO
         self.halt = true;
     }
 
-    fn at(& self, at: StepFrequency) -> bool {
-        let m:u64 = self.instruction_counter as u64;
+    fn at(&self, at: StepFrequency) -> bool {
+        let m: u64 = self.instruction_counter as u64;
         match at {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
-            StepFrequency::Exactly(n) => n == m ,
+            StepFrequency::Exactly(n) => n == m,
             StepFrequency::Every(n) => m % n == 0,
         }
     }
 
-    fn pp_info(& self, at: StepFrequency) {
+    fn pp_info(&self, at: StepFrequency) {
         if self.at(at) {
             println!("Info");
+            let elapsed = 1.0;
+            let step = self.instruction_counter;
+            let pc = self.instruction_pointer;
+            let insn = 0xffffff;
+            let ips = 0.0 / elapsed;
+            let pages = self.memory.len();
+            let mem = 0;
+            let name = "unsupported";
+            info!(
+                "processing step {} pc {} insn {} ips {} page {} mem {} name {}",
+                step, pc, insn, ips, pages, mem, name
+            );
         }
     }
 }

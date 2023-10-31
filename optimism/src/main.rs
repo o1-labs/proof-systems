@@ -115,7 +115,8 @@ pub fn main() -> ExitCode {
 
     println!("configuration\n{:#?}", configuration);
 
-    let file = File::open(&configuration.input_state_file).expect("Error opening input state file ");
+    let file =
+        File::open(&configuration.input_state_file).expect("Error opening input state file ");
 
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
