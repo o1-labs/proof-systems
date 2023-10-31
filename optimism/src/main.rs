@@ -115,17 +115,17 @@ pub fn main() -> ExitCode {
 
     println!("configuration\n{:#?}", configuration);
 
-    let file = File::open(configuration.input_state_file).expect("Error opening input state file ");
+    let file = File::open(&configuration.input_state_file).expect("Error opening input state file ");
 
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
     let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
 
-    if let Some(host_program) = configuration.host {
+    if let Some(host_program) = &configuration.host {
         println!("Launching host program {}", host_program.name);
 
-        let _child = std::process::Command::new(host_program.name)
-            .args(host_program.arguments)
+        let _child = std::process::Command::new(&host_program.name)
+            .args(&host_program.arguments)
             .spawn()
             .expect("Could not spawn host process");
     };
@@ -135,7 +135,7 @@ pub fn main() -> ExitCode {
     let mut env = witness::Env::<ark_bn254::Fq>::create(page_size, state);
 
     while !env.halt {
-        env.step();
+        env.step(configuration.clone());
     }
 
     // TODO: Logic

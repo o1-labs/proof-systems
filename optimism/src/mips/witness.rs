@@ -1,5 +1,5 @@
 use crate::{
-    cannon::State,
+    cannon::{State, StepFrequency, VmConfiguration},
     mips::{
         interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
         registers::Registers,
@@ -227,7 +227,25 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self) {
         println!("instruction: {:?}", self.decode_instruction());
+
+        self.pp_info(config.info_at);
         // TODO
         self.halt = true;
+    }
+
+    fn at(& self, at: StepFrequency) -> bool {
+        let m:u64 = self.instruction_counter as u64;
+        match at {
+            StepFrequency::Never => false,
+            StepFrequency::Always => true,
+            StepFrequency::Exactly(n) => n == m ,
+            StepFrequency::Every(n) => m % n == 0,
+        }
+    }
+
+    fn pp_info(& self, at: StepFrequency) {
+        if self.at(at) {
+            println!("Info");
+        }
     }
 }
