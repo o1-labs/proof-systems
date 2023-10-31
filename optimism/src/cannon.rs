@@ -135,3 +135,18 @@ pub struct VmConfiguration {
     pub pprof_cpu: bool,
     pub host: Option<HostProgram>,
 }
+
+#[derive(Debug, Clone)]
+pub struct Start {
+    pub time: std::time::Instant,
+    pub step: usize,
+}
+
+impl Start {
+    pub fn create(step: usize) -> Start {
+        Start {
+            time: std::time::Instant::now(),
+            step,
+        }
+    }
+}

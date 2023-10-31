@@ -1,6 +1,6 @@
 use clap::{arg, value_parser, Arg, ArgAction, Command};
 use kimchi_optimism::{
-    cannon::{State, VmConfiguration},
+    cannon::{self, Start, State, VmConfiguration},
     mips::witness,
 };
 use std::{fs::File, io::BufReader, process::ExitCode};
@@ -113,8 +113,6 @@ fn cli() -> VmConfiguration {
 pub fn main() -> ExitCode {
     let configuration = cli();
 
-    println!("configuration\n{:#?}", configuration);
-
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
 
@@ -131,12 +129,13 @@ pub fn main() -> ExitCode {
             .expect("Could not spawn host process");
     };
 
-    let page_size = 1 << 12;
+    // Initialize some data used for statistical computations
+    let start = Start::create(state.step as usize);
 
-    let mut env = witness::Env::<ark_bn254::Fq>::create(page_size, state);
+    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE, state);
 
     while !env.halt {
-        env.step(configuration.clone());
+        env.step(configuration.clone(), &start);
     }
 
     // TODO: Logic

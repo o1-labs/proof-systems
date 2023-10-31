@@ -1,5 +1,5 @@
 use crate::{
-    cannon::{State, StepFrequency, VmConfiguration},
+    cannon::{Start, State, StepFrequency, VmConfiguration, PAGE_SIZE},
     mips::{
         interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
         registers::Registers,
@@ -226,10 +226,16 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self, config: VmConfiguration, start: &Start) {
         println!("instruction: {:?}", self.decode_instruction());
 
-        self.pp_info(config.info_at);
+        self.pp_info(config.info_at, start);
+
+        // Force stops at given iteration
+        if self.at(config.stop_at) {
+            self.halt = true;
+            return;
+        }
 
         // TODO
         self.halt = true;
@@ -245,19 +251,48 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
-    fn pp_info(&self, at: StepFrequency) {
+    const UNIT: usize = 1024; // a "unit" of memory is 1024 bytes
+    const PREFIXES: &str = "KMGTPE"; // prefixes for memory quantities KiB, MiB, GiB, ...
+
+    fn memory_usage(&self) -> String {
+        let total = self.memory.len() * PAGE_SIZE;
+
+        if total < Self::UNIT {
+            format!("{total} B")
+        } else {
+            // Compute the index in the prefixes string above
+            let mut idx = 0;
+            let mut d = Self::UNIT;
+            let mut n = total / Self::UNIT;
+
+            while n >= Self::UNIT {
+                d *= Self::UNIT;
+                idx += 1;
+                n /= Self::UNIT;
+            }
+
+            let value = total as f64 / d as f64;
+            let prefix = Self::PREFIXES.chars().nth(idx).unwrap();
+
+            format!("{:.1} {}iB", value, prefix)
+        }
+    }
+
+    fn pp_info(&self, at: StepFrequency, start: &Start) {
         if self.at(at) {
             println!("Info");
-            let elapsed = 1.0;
+            let elapsed = start.time.elapsed();
             let step = self.instruction_counter;
             let pc = self.instruction_pointer;
             let insn = 0xffffff;
-            let ips = 0.0 / elapsed;
+            let how_many_steps = step - start.step;
+            // Approximate instruction per seconds
+            let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
             let pages = self.memory.len();
-            let mem = 0;
-            let name = "unsupported";
+            let mem = self.memory_usage();
+            let name = "unsupported"; // TODO: implement symbol lookups
             info!(
-                "processing step {} pc {} insn {} ips {} page {} mem {} name {}",
+                "processing step {} pc {:#10x} insn {:#10x} ips {:.2} page {} mem {} name {}",
                 step, pc, insn, ips, pages, mem, name
             );
         }
