@@ -116,13 +116,13 @@ impl ToString for State {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct HostProgram {
     pub name: String,
     pub arguments: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VmConfiguration {
     pub input_state_file: String,
     pub output_state_file: String,
