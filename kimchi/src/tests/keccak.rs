@@ -113,7 +113,7 @@ fn test_keccak_n<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<KECCAK_COLS, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField, KECCAK_COLS>,
 {
     let messages = vec![rng.gen_biguint_below(&BigUint::from(2u32).pow(1080)); n];
 
@@ -136,14 +136,14 @@ where
         }
     }
 
-    let runner: TestRunner<KECCAK_COLS, G> = TestFramework::<KECCAK_COLS, G>::default()
+    let runner: TestRunner<G, KECCAK_COLS> = TestFramework::<G, KECCAK_COLS>::default()
         .gates(gates.clone())
         .setup();
     let cs = runner.clone().prover_index().cs.clone();
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<KECCAK_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+            gate.verify_witness::<G, KECCAK_COLS>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return result;
         }
@@ -167,7 +167,7 @@ fn test_keccak<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<KECCAK_COLS, G::ScalarField>,
+    EFrSponge: FrSponge<G::ScalarField, KECCAK_COLS>,
 {
     let bytelength = message.to_bytes_be().len();
 
@@ -194,7 +194,7 @@ where
     let runner = if full {
         // Create prover index with test framework
         Some(
-            TestFramework::<KECCAK_COLS, G>::default()
+            TestFramework::<G, KECCAK_COLS>::default()
                 .gates(gates.clone())
                 .setup(),
         )
@@ -211,7 +211,7 @@ where
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<KECCAK_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+            gate.verify_witness::<G, KECCAK_COLS>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, hash);
         }

@@ -156,7 +156,7 @@ impl<F: Copy, const COLUMNS: usize> ColumnEvaluations<F>
                 .runtime_lookup_table_selector
                 .ok_or(ExprError::MissingIndexEvaluation(col)),
             Index(_) => Err(ExprError::MissingIndexEvaluation(col)),
-            LookupKindIndex(_) => Err(ExprError::MissingIndexEvaluation(col)),
+            //LookupKindIndex(_) => Err(ExprError::MissingIndexEvaluation(col)),
         }
     }
 }

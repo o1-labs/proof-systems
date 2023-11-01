@@ -19,9 +19,9 @@ use super::{
     RATE,
 };
 
-type Layout<const W: usize, F> = Vec<Box<dyn WitnessCell<W, F, Vec<F>>>>;
+type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
 
-fn layout_round<F: PrimeField>() -> [Layout<KECCAK_COLS, F>; 1] {
+fn layout_round<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 1] {
     [vec![
         IndexCell::create("state_a", 0, 100),
         IndexCell::create("shifts_c", 100, 180),
@@ -41,7 +41,7 @@ fn layout_round<F: PrimeField>() -> [Layout<KECCAK_COLS, F>; 1] {
     ]]
 }
 
-fn layout_sponge<F: PrimeField>() -> [Layout<KECCAK_COLS, F>; 1] {
+fn layout_sponge<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 1] {
     [vec![
         IndexCell::create("old_state", 0, 100),
         IndexCell::create("new_state", 100, 200),
