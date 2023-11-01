@@ -570,7 +570,8 @@ where
                                 .chain(self.evals.foreign_field_mul_lookup_selector.as_ref().map(
                                     |_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul),
                                 ))
-                            /* .chain(
+                            /*
+                            .chain(
                                 self.evals.keccak_round_lookup_selector.as_ref().map(|_| {
                                     Column::LookupKindIndex(LookupPattern::KeccakRound)
                                 }),
@@ -579,7 +580,8 @@ where
                                 self.evals.keccak_sponge_lookup_selector.as_ref().map(|_| {
                                     Column::LookupKindIndex(LookupPattern::KeccakSponge)
                                 }),
-                            )*/
+                            )
+                            */
                         })
                         .into_iter()
                         .flatten(),
