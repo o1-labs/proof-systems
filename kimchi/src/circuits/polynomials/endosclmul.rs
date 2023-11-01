@@ -12,7 +12,7 @@ use crate::{
             Cache,
         },
         gate::{CircuitGate, GateType},
-        wires::{GateWires, COLUMNS},
+        wires::{GateWires, KIMCHI_COLS},
     },
     curve::KimchiCurve,
     proof::{PointEvaluations, ProofEvaluations},
@@ -125,7 +125,7 @@ impl<F: PrimeField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `GateType::EndoMul`, or `constraint evaluation` fails.
-    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_endomul<G: KimchiCurve<ScalarField = F>, const COLUMNS: usize>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -148,10 +148,10 @@ impl<F: PrimeField> CircuitGate<F> {
             zk_rows: cs.zk_rows,
         };
 
-        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>> =
+        let evals: ProofEvaluations<PointEvaluations<G::ScalarField>, COLUMNS> =
             ProofEvaluations::dummy_with_witness_evaluations(this, next);
 
-        let constraints = EndosclMul::constraints(&mut Cache::default());
+        let constraints = EndosclMul::<F>::constraints(&mut Cache::default());
         for (i, c) in constraints.iter().enumerate() {
             match c.evaluate_(cs.domain.d1, pt, &evals, &constants) {
                 Ok(x) => {
@@ -186,7 +186,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::EndoMul);
     const CONSTRAINTS: u32 = 11;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let b1 = env.witness_curr(11);
         let b2 = env.witness_curr(12);
         let b3 = env.witness_curr(13);
@@ -271,7 +274,7 @@ pub struct EndoMulResult<F> {
 ///
 /// Will panic if `bits` length does not match the requirement.
 pub fn gen_witness<F: Field + std::fmt::Display>(
-    w: &mut [Vec<F>; COLUMNS],
+    w: &mut [Vec<F>; KIMCHI_COLS],
     row0: usize,
     endo: F,
     base: (F, F),

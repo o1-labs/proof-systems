@@ -1,6 +1,6 @@
 //! This module implements Plonk prover polynomials primitive.
 
-pub use super::wires::COLUMNS;
+pub use super::wires::KIMCHI_COLS;
 use ark_ff::FftField;
 use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain as D};
 
@@ -8,7 +8,7 @@ use ark_poly::{univariate::DensePolynomial, Evaluations, Radix2EvaluationDomain 
 
 /// Evaluations of the wires and permutation
 #[derive(Clone)]
-pub struct WitnessEvals<F: FftField> {
+pub struct WitnessEvals<F: FftField, const COLUMNS: usize = KIMCHI_COLS> {
     /// wire evaluations
     pub w: [Evaluations<F, D<F>>; COLUMNS],
     /// permutation evaluations
@@ -16,19 +16,19 @@ pub struct WitnessEvals<F: FftField> {
 }
 
 #[derive(Clone)]
-pub struct WitnessShifts<F: FftField> {
+pub struct WitnessShifts<F: FftField, const COLUMNS: usize> {
     /// this wire evaluations
-    pub this: WitnessEvals<F>,
+    pub this: WitnessEvals<F, COLUMNS>,
     /// next wire evaluations
-    pub next: WitnessEvals<F>,
+    pub next: WitnessEvals<F, COLUMNS>,
 }
 
 #[derive(Clone)]
-pub struct WitnessOverDomains<F: FftField> {
+pub struct WitnessOverDomains<F: FftField, const COLUMNS: usize> {
     /// evaluations over domain d4
-    pub d4: WitnessShifts<F>,
+    pub d4: WitnessShifts<F, COLUMNS>,
     /// evaluations over domain d8
-    pub d8: WitnessShifts<F>,
+    pub d8: WitnessShifts<F, COLUMNS>,
 }
 
 // PLOOKUP

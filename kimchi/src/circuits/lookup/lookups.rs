@@ -216,7 +216,7 @@ impl LookupInfo {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials_and_tables<F: PrimeField>(
+    pub fn selector_polynomials_and_tables<F: PrimeField, const COLUMNS: usize>(
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],

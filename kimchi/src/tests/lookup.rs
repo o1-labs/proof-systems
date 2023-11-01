@@ -5,7 +5,7 @@ use crate::circuits::{
         runtime_tables::{RuntimeTable, RuntimeTableCfg},
         tables::LookupTable,
     },
-    polynomial::COLUMNS,
+    polynomial::KIMCHI_COLS,
     wires::Wire,
 };
 use ark_ff::{UniformRand, Zero};
@@ -146,7 +146,7 @@ fn setup_successfull_runtime_table_test(
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
+        let mut cols: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);
@@ -229,7 +229,7 @@ fn test_runtime_table() {
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
+        let mut cols: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);
@@ -290,7 +290,7 @@ fn test_negative_test_runtime_table_value_not_in_table() {
 
     // witness. The whole witness is going to be wrong.
     let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
+        let mut cols: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);
@@ -352,7 +352,7 @@ fn test_negative_test_runtime_table_prover_with_undefined_id_in_index_and_witnes
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
+        let mut cols: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);
@@ -412,7 +412,7 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
+        let mut cols: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); nb_gates]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);
@@ -492,7 +492,7 @@ fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
 
     // witness
     let witness = {
-        let mut cols: [_; COLUMNS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
+        let mut cols: [_; KIMCHI_COLS] = array::from_fn(|_col| vec![Fp::zero(); gates.len()]);
 
         // only the first 7 registers are used in the lookup gate
         let (lookup_cols, _rest) = cols.split_at_mut(7);

@@ -86,7 +86,7 @@ use crate::{
         constraints::ConstraintSystem,
         expr::{self, constraints::ExprOps, Cache, E},
         gate::{CircuitGate, GateType},
-        wires::{GateWires, Wire, COLUMNS},
+        wires::{GateWires, Wire},
     },
     curve::KimchiCurve,
     proof::ProofEvaluations,
@@ -177,7 +177,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Panics
     ///
     /// Will panic if `constraint linearization` fails.
-    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_cairo_gate<G: KimchiCurve<ScalarField = F>, const COLUMNS: usize>(
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -209,8 +209,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         alphas.register(ArgumentType::Gate(self.typ), Instruction::<F>::CONSTRAINTS);
 
         // Get constraints for this circuit gate
-        let constraints =
-            circuit_gate_combined_constraints(self.typ, &alphas, &mut Cache::default());
+        let constraints = circuit_gate_combined_constraints::<F, COLUMNS>(
+            self.typ,
+            &alphas,
+            &mut Cache::default(),
+        );
 
         // Linearize
         let linearized = constraints.linearize(polys).unwrap();
@@ -256,7 +259,9 @@ pub mod witness {
     use super::*;
 
     /// Returns the witness of an execution of a Cairo program in `CircuitGate` format
-    pub fn cairo_witness<F: Field>(prog: &CairoProgram<F>) -> [Vec<F>; COLUMNS] {
+    pub fn cairo_witness<F: Field, const COLUMNS: usize>(
+        prog: &CairoProgram<F>,
+    ) -> [Vec<F>; COLUMNS] {
         // 0: 1 row for final check CairoClaim gate
         // 4i+1: 1 row per instruction for CairoInstruction gate
         // 4i+2: 1 row per instruction for Flags argument
@@ -267,27 +272,27 @@ pub mod witness {
         // 4n-2: 1 row for Auxiliary argument (no constraints)
         let n = prog.trace().len();
         let rows = 4 * n - 1;
-        let mut table: Vec<[F; COLUMNS]> = Vec::new();
-        table.resize(rows, [F::zero(); COLUMNS]);
+        let mut table: Vec<Vec<F>> = vec![vec![]];
+        table.resize(rows, vec![F::zero(); COLUMNS]);
         for (i, inst) in prog.trace().iter().enumerate() {
             if i == 0 {
                 let claim_wit = claim_witness(prog);
                 table[i] = claim_wit;
             }
-            let ins_wit = instruction_witness(inst);
-            let flg_wit = flag_witness(inst);
+            let ins_wit = instruction_witness::<F, COLUMNS>(inst);
+            let flg_wit = flag_witness::<F, COLUMNS>(inst);
             table[4 * i + 1] = ins_wit;
             table[4 * i + 2] = flg_wit;
             if i != n - 1 {
                 // all but last instruction
-                let tra_wit = transition_witness(inst, &prog.trace()[i + 1]);
-                let aux_wit = auxiliary_witness(&prog.trace()[i + 1]);
+                let tra_wit = transition_witness::<F, COLUMNS>(inst, &prog.trace()[i + 1]);
+                let aux_wit = auxiliary_witness::<F, COLUMNS>(&prog.trace()[i + 1]);
                 table[4 * i + 3] = tra_wit;
                 table[4 * i + 4] = aux_wit;
             }
         }
 
-        let mut witness: [Vec<F>; COLUMNS] = Default::default();
+        let mut witness: Vec<Vec<F>> = vec![vec![]; COLUMNS];
         for col in 0..COLUMNS {
             // initialize column with zeroes
             witness[col].resize(table.len(), F::zero());
@@ -295,12 +300,13 @@ pub mod witness {
                 witness[col][row] = wit[col];
             }
         }
+        let witness: [Vec<F>; COLUMNS] = array::from_fn(|i| witness[i].clone());
         witness
     }
 
-    fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> [F; COLUMNS] {
+    fn claim_witness<F: Field>(prog: &CairoProgram<F>) -> Vec<F> {
         let last = prog.trace().len() - 1;
-        [
+        vec![
             prog.ini().pc(),         // initial pc from public input
             prog.ini().ap(),         // initial ap from public input
             prog.fin().pc(),         // final pc from public input
@@ -319,8 +325,8 @@ pub mod witness {
         ]
     }
 
-    fn instruction_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
-        [
+    fn instruction_witness<F: Field, const COLUMNS: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
+        vec![
             inst.pc(),
             inst.ap(),
             inst.fp(),
@@ -339,8 +345,8 @@ pub mod witness {
         ]
     }
 
-    fn flag_witness<F: Field>(inst: &CairoInstruction<F>) -> [F; COLUMNS] {
-        [
+    fn flag_witness<F: Field, const COLUMNS: usize>(inst: &CairoInstruction<F>) -> Vec<F> {
+        vec![
             inst.f_dst_fp(),
             inst.f_op0_fp(),
             inst.f_op1_val(),
@@ -359,11 +365,11 @@ pub mod witness {
         ]
     }
 
-    fn transition_witness<F: Field>(
+    fn transition_witness<F: Field, const COLUMNS: usize>(
         curr: &CairoInstruction<F>,
         next: &CairoInstruction<F>,
-    ) -> [F; COLUMNS] {
-        [
+    ) -> Vec<F> {
+        vec![
             curr.pc(),
             curr.ap(),
             curr.fp(),
@@ -382,8 +388,8 @@ pub mod witness {
         ]
     }
 
-    fn auxiliary_witness<F: Field>(next: &CairoInstruction<F>) -> [F; COLUMNS] {
-        [
+    fn auxiliary_witness<F: Field, const COLUMNS: usize>(next: &CairoInstruction<F>) -> Vec<F> {
+        vec![
             next.pc(),
             next.ap(),
             next.fp(),
@@ -411,7 +417,7 @@ pub mod testing {
     /// # Errors
     ///
     /// Will give error if `gate` is not `Cairo`-related gate or `zero` gate.
-    pub fn ensure_cairo_gate<F: PrimeField>(
+    pub fn ensure_cairo_gate<F: PrimeField, const COLUMNS: usize>(
         gate: &CircuitGate<F>,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
@@ -740,7 +746,7 @@ fn two<F: Field, T: ExprOps<F>>() -> T {
 /// # Panics
 ///
 /// Will panic if the `typ` is not `Cairo`-related gate type or `zero` gate type.
-pub fn circuit_gate_combined_constraints<F: PrimeField>(
+pub fn circuit_gate_combined_constraints<F: PrimeField, const COLUMNS: usize>(
     typ: GateType,
     alphas: &Alphas<F>,
     cache: &mut Cache,
@@ -766,7 +772,10 @@ where
 
     /// Generates the constraints for the Cairo initial claim and first memory checks
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let pc_ini = env.witness_curr(0); // copy from public input
         let ap_ini = env.witness_curr(1); // copy from public input
         let pc_fin = env.witness_curr(2); // copy from public input
@@ -803,7 +812,10 @@ where
 
     /// Generates the constraints for the Cairo instruction
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         // load all variables of the witness corresponding to Cairoinstruction gates
         let pc = env.witness_curr(0);
         let ap = env.witness_curr(1);
@@ -949,7 +961,10 @@ where
 
     /// Generates the constraints for the Cairo flags
     ///     Accesses Curr and Next rows
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // Load current row
         let f_pc_abs = env.witness_curr(7);
         let f_pc_rel = env.witness_curr(8);
@@ -1016,7 +1031,10 @@ where
 
     /// Generates the constraints for the Cairo transition
     ///     Accesses Curr and Next rows (Next only first 3 entries)
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // load computed updated registers
         let pcup = env.witness_curr(7);
         let apup = env.witness_curr(8);

@@ -88,7 +88,10 @@ where
     const CONSTRAINTS: u32 = 754;
 
     // Constraints for one round of the Keccak permutation function
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let mut constraints = vec![];
 
         // DEFINE ROUND CONSTANT
@@ -225,7 +228,10 @@ where
     const CONSTRAINTS: u32 = 568;
 
     // Constraints for one round of the Keccak permutation function
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         let mut constraints = vec![];
 
         // LOAD WITNESS

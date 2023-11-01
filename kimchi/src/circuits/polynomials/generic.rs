@@ -37,7 +37,6 @@ use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
     expr::{constraints::ExprOps, Cache},
     gate::{CircuitGate, GateType},
-    polynomial::COLUMNS,
     wires::GateWires,
 };
 use crate::{curve::KimchiCurve, prover_index::ProverIndex};
@@ -75,7 +74,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Generic);
     const CONSTRAINTS: u32 = 2;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // First generic gate
         let left_coeff1 = env.coeff(0);
         let right_coeff1 = env.coeff(1);
@@ -258,7 +260,7 @@ pub mod testing {
         /// # Errors
         ///
         /// Will give error if `self.typ` is not `GateType::Generic`.
-        pub fn verify_generic(
+        pub fn verify_generic<const COLUMNS: usize>(
             &self,
             row: usize,
             witness: &[Vec<F>; COLUMNS],
@@ -308,8 +310,12 @@ pub mod testing {
         }
     }
 
-    impl<F: PrimeField, G: KimchiCurve<ScalarField = F>, OpeningProof: OpenProof<G>>
-        ProverIndex<G, OpeningProof>
+    impl<
+            F: PrimeField,
+            G: KimchiCurve<ScalarField = F>,
+            OpeningProof: OpenProof<G>,
+            const COLUMNS: usize,
+        > ProverIndex<G, OpeningProof, COLUMNS>
     {
         /// Function to verify the generic polynomials with a witness.
         pub fn verify_generic(
@@ -367,7 +373,10 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `gates_row` is None.
-    pub fn create_circuit<F: PrimeField>(start_row: usize, public: usize) -> Vec<CircuitGate<F>> {
+    pub fn create_circuit<F: PrimeField, const COLUMNS: usize>(
+        start_row: usize,
+        public: usize,
+    ) -> Vec<CircuitGate<F>> {
         // create constraint system with a single generic gate
         let mut gates = vec![];
 
@@ -423,7 +432,7 @@ pub mod testing {
     /// # Panics
     ///
     /// Will panic if `witness_row` is None.
-    pub fn fill_in_witness<F: FftField>(
+    pub fn fill_in_witness<F: FftField, const COLUMNS: usize>(
         start_row: usize,
         witness: &mut [Vec<F>; COLUMNS],
         public: &[F],

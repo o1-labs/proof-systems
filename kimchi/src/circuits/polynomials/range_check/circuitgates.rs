@@ -123,7 +123,7 @@ use crate::circuits::{
         Cache,
     },
     gate::GateType,
-    polynomial::COLUMNS,
+    polynomial::KIMCHI_COLS,
 };
 use ark_ff::PrimeField;
 
@@ -178,7 +178,10 @@ where
     //   * Operates on Curr row
     //   * Range constrain all limbs except vp0 and vp1 (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the limb stored in column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // 1) Apply range constraints on the limbs
         //    * Columns 1-2 are 12-bit copy constraints
         //        * They are copied 3 rows ahead (to the final row) and are constrained by lookups
@@ -187,7 +190,7 @@ where
         //          a single 64-bit range check
         //    * Columns 3-6 are 12-bit plookup range constraints (these are specified in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
-        let mut constraints = (7..COLUMNS)
+        let mut constraints = (7..KIMCHI_COLS)
             .map(|i| crumb(&env.witness_curr(i)))
             .collect::<Vec<T>>();
 
@@ -205,7 +208,7 @@ where
         let mut sum_of_limbs = T::zero();
 
         // Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
+        for i in (7..KIMCHI_COLS).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
             power_of_2 *= T::from(4u64); // 2 bits
         }
@@ -279,7 +282,10 @@ where
     //   * Operates on Curr and Next row
     //   * Range constrain all limbs (barring plookup constraints, which are done elsewhere)
     //   * Constrain that combining all limbs equals the value v2 stored in row Curr, column 0
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        _cache: &mut Cache,
+    ) -> Vec<T> {
         // 1) Apply range constraints on limbs for Curr row
         //    * Column 2 is a 2-bit crumb
         let mut constraints = vec![crumb(&env.witness_curr(2))];
@@ -288,7 +294,7 @@ where
         //      in the lookup gate)
         //    * Columns 7-14 are 2-bit crumb range constraints
         constraints.append(
-            &mut (7..COLUMNS)
+            &mut (7..KIMCHI_COLS)
                 .map(|i| crumb(&env.witness_curr(i)))
                 .collect::<Vec<T>>(),
         );
@@ -304,7 +310,7 @@ where
         //      are specified in the lookup gate)
         //    * Columns 7-14 are more 2-bit crumbs
         constraints.append(
-            &mut (7..COLUMNS)
+            &mut (7..KIMCHI_COLS)
                 .map(|i| crumb(&env.witness_next(i)))
                 .collect::<Vec<T>>(),
         );
@@ -325,7 +331,7 @@ where
         let mut sum_of_limbs = T::zero();
 
         // Next row: Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
+        for i in (7..KIMCHI_COLS).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_next(i);
             power_of_2 *= 4u64.into(); // 2 bits
         }
@@ -337,7 +343,7 @@ where
         }
 
         // Curr row:  Sum 2-bit limbs
-        for i in (7..COLUMNS).rev() {
+        for i in (7..KIMCHI_COLS).rev() {
             sum_of_limbs += power_of_2.clone() * env.witness_curr(i);
             power_of_2 *= 4u64.into(); // 2 bits
         }

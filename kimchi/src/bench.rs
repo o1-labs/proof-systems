@@ -13,7 +13,7 @@ use crate::{
     circuits::{
         gate::CircuitGate,
         polynomials::generic::GenericGateSpec,
-        wires::{Wire, COLUMNS},
+        wires::{Wire, KIMCHI_COLS},
     },
     proof::ProverProof,
     prover_index::{testing::new_index_for_test, ProverIndex},
@@ -79,7 +79,7 @@ impl BenchmarkCtx {
     /// Produces a proof
     pub fn create_proof(&self) -> (ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>) {
         // create witness
-        let witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
+        let witness: [Vec<Fp>; KIMCHI_COLS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
         let public_input = witness[0][0..self.index.cs.public].to_vec();
 
@@ -107,7 +107,7 @@ impl BenchmarkCtx {
                 public_input: public,
             })
             .collect();
-        batch_verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>>(
+        batch_verify::<Vesta, BaseSponge, ScalarSponge, OpeningProof<Vesta>, KIMCHI_COLS>(
             &self.group_map,
             &batch,
         )

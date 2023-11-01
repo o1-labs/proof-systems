@@ -2,7 +2,7 @@
 
 use crate::circuits::gate::{CircuitGate, GateType};
 use crate::circuits::polynomials::poseidon::{ROUNDS_PER_HASH, SPONGE_WIDTH};
-use crate::circuits::wires::{Wire, COLUMNS, PERMUTS};
+use crate::circuits::wires::{Wire, KIMCHI_COLS, PERMUTS};
 use ark_ff::PrimeField;
 use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
@@ -289,7 +289,7 @@ impl<Field: PrimeField> SnarkyConstraintSystem<Field> {
         let mut internal_values = HashMap::new();
         let public_input_size = self.public_input_size.unwrap();
         let num_rows = public_input_size + self.next_row;
-        let mut res = vec![vec![Field::zero(); num_rows]; COLUMNS];
+        let mut res = vec![vec![Field::zero(); num_rows]; KIMCHI_COLS];
         for i in 0..public_input_size {
             res[0][i] = external_values(i + 1);
         }

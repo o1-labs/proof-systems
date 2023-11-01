@@ -30,7 +30,7 @@ use crate::{
         argument::{Argument, ArgumentEnv, ArgumentType},
         expr::{constraints::ExprOps, Cache},
         gate::{CircuitGate, CurrOrNext, GateType},
-        polynomial::COLUMNS,
+        polynomial::KIMCHI_COLS,
         wires::{GateWires, Wire},
     },
     curve::KimchiCurve,
@@ -51,7 +51,7 @@ use CurrOrNext::{Curr, Next};
 pub const SPONGE_WIDTH: usize = PlonkSpongeConstantsKimchi::SPONGE_WIDTH;
 
 /// Number of rows
-pub const ROUNDS_PER_ROW: usize = COLUMNS / SPONGE_WIDTH;
+pub const ROUNDS_PER_ROW: usize = KIMCHI_COLS / SPONGE_WIDTH;
 
 /// Number of rounds
 pub const ROUNDS_PER_HASH: usize = PlonkSpongeConstantsKimchi::PERM_ROUNDS_FULL;
@@ -137,7 +137,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// # Errors
     ///
     /// Will give error if `self.typ` is not `Poseidon` gate, or `state` does not match after `permutation`.
-    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>>(
+    pub fn verify_poseidon<G: KimchiCurve<ScalarField = F>, const COLUMNS: usize>(
         &self,
         row: usize,
         // TODO(mimoo): we should just pass two rows instead of the whole witness
@@ -226,7 +226,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
 pub fn generate_witness<F: Field>(
     row: usize,
     params: &'static ArithmeticSpongeParams<F>,
-    witness_cols: &mut [Vec<F>; COLUMNS],
+    witness_cols: &mut [Vec<F>; KIMCHI_COLS],
     input: [F; SPONGE_WIDTH],
 ) {
     // add the input into the witness
@@ -330,8 +330,6 @@ const ROUND_EQUATIONS: [RoundEquation; ROUNDS_PER_ROW] = [
 #[derive(Default)]
 pub struct Poseidon<F>(PhantomData<F>);
 
-impl<F> Poseidon<F> where F: Field {}
-
 impl<F> Argument<F> for Poseidon<F>
 where
     F: PrimeField,
@@ -339,7 +337,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let mut res = vec![];
 
         let mut idx = 0;

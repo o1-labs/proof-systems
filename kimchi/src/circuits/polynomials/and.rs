@@ -12,7 +12,6 @@ use crate::circuits::{
         self,
         tables::{GateLookupTable, LookupTable},
     },
-    polynomial::COLUMNS,
     wires::Wire,
 };
 use ark_ff::{PrimeField, SquareRootField};
@@ -134,7 +133,11 @@ pub fn lookup_table<F: PrimeField>() -> LookupTable<F> {
 /// Create a And for inputs as field elements starting at row 0
 /// Input: first input, second input, and desired byte length
 /// Panics if the input is too large for the chosen number of bytes
-pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> [Vec<F>; COLUMNS] {
+pub fn create_and_witness<F: PrimeField, const COLUMNS: usize>(
+    input1: F,
+    input2: F,
+    bytes: usize,
+) -> [Vec<F>; COLUMNS] {
     let input1_big = input1.to_biguint();
     let input2_big = input2.to_biguint();
     if bytes * 8 < input1_big.bitlen() || bytes * 8 < input2_big.bitlen() {
@@ -167,13 +170,13 @@ pub fn create_and_witness<F: PrimeField>(input1: F, input2: F, bytes: usize) -> 
 /// Extends an AND witness to the whole witness
 /// Input: first input, second input, and desired byte length
 /// Panics if the input is too large for the chosen number of bytes
-pub fn extend_and_witness<F: PrimeField>(
+pub fn extend_and_witness<F: PrimeField, const COLUMNS: usize>(
     witness: &mut [Vec<F>; COLUMNS],
     input1: F,
     input2: F,
     bytes: usize,
 ) {
-    let and_witness = create_and_witness(input1, input2, bytes);
+    let and_witness = create_and_witness::<F, COLUMNS>(input1, input2, bytes);
     for col in 0..COLUMNS {
         witness[col].extend(and_witness[col].iter());
     }

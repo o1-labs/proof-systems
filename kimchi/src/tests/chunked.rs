@@ -2,7 +2,7 @@ use super::framework::TestFramework;
 use crate::circuits::polynomials::generic::GenericGateSpec;
 use crate::circuits::{
     gate::CircuitGate,
-    wires::{Wire, COLUMNS},
+    wires::{Wire, KIMCHI_COLS},
 };
 use ark_ff::{UniformRand, Zero};
 use itertools::iterate;
@@ -26,7 +26,7 @@ fn test_generic_gate_with_srs_override(
 
     let mut gates_row = iterate(0, |&i| i + 1);
     let mut gates = Vec::with_capacity(circuit_size);
-    let mut witness: [Vec<Fp>; COLUMNS] = array::from_fn(|_| vec![Fp::zero(); circuit_size]);
+    let mut witness: [Vec<Fp>; KIMCHI_COLS] = array::from_fn(|_| vec![Fp::zero(); circuit_size]);
 
     let rng = &mut rand::rngs::OsRng;
 

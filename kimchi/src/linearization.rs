@@ -27,7 +27,6 @@ use crate::circuits::{
     constraints::FeatureFlags,
     expr::{ConstantExpr, Expr, FeatureFlag, Linearization, PolishToken},
     gate::GateType,
-    wires::COLUMNS,
 };
 use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 
@@ -36,7 +35,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 /// # Panics
 ///
 /// Will panic if `generic_gate` is not associate with `alpha^0`.
-pub fn constraints_expr<F: PrimeField + SquareRootField>(
+pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (Expr<ConstantExpr<F>, Column>, Alphas<F>) {
@@ -45,10 +44,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
     // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
-    powers_of_alpha.register(
-        ArgumentType::Gate(GateType::Zero),
-        VarbaseMul::<F>::CONSTRAINTS,
-    );
+    let max_exponents = VarbaseMul::<F>::CONSTRAINTS;
+    powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), max_exponents);
 
     let mut cache = expr::Cache::default();
 
@@ -225,7 +222,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr(None, generic);
+            let (feature_flagged_expr, _) = constraints_expr::<F, COLUMNS>(None, generic);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -237,7 +234,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField>(
 
 /// Adds the polynomials that are evaluated as part of the proof
 /// for the linearization to work.
-pub fn linearization_columns<F: FftField + SquareRootField>(
+pub fn linearization_columns<F: FftField + SquareRootField, const COLUMNS: usize>(
     feature_flags: Option<&FeatureFlags>,
 ) -> std::collections::HashSet<Column> {
     let mut h = std::collections::HashSet::new();
@@ -342,16 +339,16 @@ pub fn linearization_columns<F: FftField + SquareRootField>(
 ///
 /// Will panic if the `linearization` process fails.
 #[allow(clippy::type_complexity)]
-pub fn expr_linearization<F: PrimeField + SquareRootField>(
+pub fn expr_linearization<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
 ) -> (
     Linearization<Vec<PolishToken<F, Column>>, Column>,
     Alphas<F>,
 ) {
-    let evaluated_cols = linearization_columns::<F>(feature_flags);
+    let evaluated_cols = linearization_columns::<F, COLUMNS>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr(feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr::<F, COLUMNS>(feature_flags, generic);
 
     let linearization = expr
         .linearize(evaluated_cols)

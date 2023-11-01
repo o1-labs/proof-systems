@@ -9,7 +9,6 @@ use crate::{
             lookups::{LookupPattern, LookupPatterns},
         },
         polynomials::permutation::eval_vanishes_on_last_n_rows,
-        wires::COLUMNS,
     },
     proof::PointEvaluations,
 };
@@ -98,7 +97,7 @@ pub struct LookupEnvironment<'a, F: FftField> {
 /// required to evaluate an expression as a polynomial.
 ///
 /// All are evaluations.
-pub struct Environment<'a, F: FftField> {
+pub struct Environment<'a, F: FftField, const COLUMNS: usize = KIMCHI_COLS> {
     /// The witness column polynomials
     pub witness: &'a [Evaluations<F, D<F>>; COLUMNS],
     /// The coefficient column polynomials
@@ -129,7 +128,9 @@ pub trait ColumnEnvironment<'a, F: FftField> {
     fn l0_1(&self) -> F;
 }
 
-impl<'a, F: FftField> ColumnEnvironment<'a, F> for Environment<'a, F> {
+impl<'a, F: FftField, const COLUMNS: usize> ColumnEnvironment<'a, F>
+    for Environment<'a, F, COLUMNS>
+{
     type Column = berkeley_columns::Column;
 
     fn get_column(&self, col: &Self::Column) -> Option<&'a Evaluations<F, D<F>>> {
@@ -1459,6 +1460,7 @@ impl<F: FftField, Column: PartialEq + Copy + GenericColumn> Expr<ConstantExpr<F>
     /// Evaluate an expression as a field element against an environment.
     pub fn evaluate<
         'a,
+        const COLUMNS: usize,
         Evaluations: ColumnEvaluations<F, Column = Column>,
         Environment: ColumnEnvironment<'a, F, Column = Column>,
     >(
@@ -2658,13 +2660,20 @@ pub mod constraints {
         fn literal(x: F) -> Self;
 
         // Witness variable
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self;
+        fn witness<const COLUMNS: usize>(
+            row: CurrOrNext,
+            col: usize,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self;
 
         /// Coefficient
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
+        fn coeff<const COLUMNS: usize>(col: usize, env: Option<&ArgumentData<F, COLUMNS>>) -> Self;
 
         /// Create a constant
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self;
+        fn constant<const COLUMNS: usize>(
+            expr: ConstantExpr<F>,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self;
 
         /// Cache item
         fn cache(&self, cache: &mut Cache) -> Self;
@@ -2724,15 +2733,22 @@ pub mod constraints {
             Expr::Constant(ConstantExpr::Literal(x))
         }
 
-        fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        fn witness<const COLUMNS: usize>(
+            row: CurrOrNext,
+            col: usize,
+            _: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             witness(col, row)
         }
 
-        fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        fn coeff<const COLUMNS: usize>(col: usize, _: Option<&ArgumentData<F, COLUMNS>>) -> Self {
             coeff(col)
         }
 
-        fn constant(expr: ConstantExpr<F>, _: Option<&ArgumentData<F>>) -> Self {
+        fn constant<const COLUMNS: usize>(
+            expr: ConstantExpr<F>,
+            _: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             Expr::Constant(expr)
         }
 
@@ -2782,21 +2798,28 @@ pub mod constraints {
             x
         }
 
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
+        fn witness<const COLUMNS: usize>(
+            row: CurrOrNext,
+            col: usize,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             match env {
                 Some(data) => data.witness[(row, col)],
                 None => panic!("Missing witness"),
             }
         }
 
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
+        fn coeff<const COLUMNS: usize>(col: usize, env: Option<&ArgumentData<F, COLUMNS>>) -> Self {
             match env {
                 Some(data) => data.coeffs[col],
                 None => panic!("Missing coefficients"),
             }
         }
 
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
+        fn constant<const COLUMNS: usize>(
+            expr: ConstantExpr<F>,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             match env {
                 Some(data) => expr.value(&data.constants),
                 None => panic!("Missing constants"),
@@ -2890,6 +2913,8 @@ macro_rules! auto_clone_array {
 pub use auto_clone;
 pub use auto_clone_array;
 
+use super::wires::KIMCHI_COLS;
+
 /// You can import this module like `use kimchi::circuits::expr::prologue::*` to obtain a number of handy aliases and helpers
 pub mod prologue {
     pub use super::{coeff, constant, index, witness, witness_curr, witness_next, FeatureFlag, E};
@@ -2901,7 +2926,7 @@ pub mod test {
     use crate::{
         circuits::{
             constraints::ConstraintSystem, expr::constraints::ExprOps, gate::CircuitGate,
-            polynomials::generic::GenericGateSpec, wires::Wire,
+            polynomial::KIMCHI_COLS, polynomials::generic::GenericGateSpec, wires::Wire,
         },
         curve::KimchiCurve,
         prover_index::ProverIndex,
@@ -2964,7 +2989,7 @@ pub mod test {
             ProverIndex::<Vesta, OpeningProof<Vesta>>::create(constraint_system, endo_q, srs)
         };
 
-        let witness_cols: [_; COLUMNS] = array::from_fn(|_| DensePolynomial::zero());
+        let witness_cols: [_; KIMCHI_COLS] = array::from_fn(|_| DensePolynomial::zero());
         let permutation = DensePolynomial::zero();
         let domain_evals = index.cs.evaluate(&witness_cols, &permutation);
 
