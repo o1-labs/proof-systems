@@ -998,8 +998,6 @@ pub mod caml {
                 foreign_field_mul_lookup_selector: cpe
                     .foreign_field_mul_lookup_selector
                     .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
-                keccak_round_lookup_selector: None,
-                keccak_sponge_lookup_selector: None,
             }
         }
     }
