@@ -20,10 +20,13 @@ pub use self::{
     variables::{variable_map, variables, Variables},
 };
 
-/// Witness cell interface
-pub trait WitnessCell<const N: usize, F: Field, T> {
-    fn value(&self, witness: &mut [Vec<F>; N], variables: &Variables<T>, index: usize) -> F;
+use super::polynomial::COLUMNS;
 
+/// Witness cell interface. By default, the witness cell is a single element of type F.
+pub trait WitnessCell<F: Field, T = F, const W: usize = COLUMNS> {
+    fn value(&self, witness: &mut [Vec<F>; W], variables: &Variables<T>, index: usize) -> F;
+
+    // Length is 1 by default (T is single F element) unless overridden
     fn length(&self) -> usize {
         1
     }
@@ -40,25 +43,25 @@ pub trait WitnessCell<const N: usize, F: Field, T> {
 /// - layout: the partial layout to initialize from
 /// - variables: the hashmap of variables to get the values from
 #[allow(clippy::too_many_arguments)]
-pub fn init_cell<const N: usize, F: PrimeField, T>(
-    witness: &mut [Vec<F>; N],
+pub fn init_cell<F: PrimeField, T, const W: usize>(
+    witness: &mut [Vec<F>; W],
     offset: usize,
     row: usize,
     col: usize,
     cell: usize,
     index: usize,
-    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    layout: &[Vec<Box<dyn WitnessCell<F, T, W>>>],
     variables: &Variables<T>,
 ) {
     witness[col][row + offset] = layout[row][cell].value(witness, variables, index);
 }
 
 /// Initialize a witness row based on layout and computed variables
-pub fn init_row<const N: usize, F: PrimeField, T>(
-    witness: &mut [Vec<F>; N],
+pub fn init_row<F: PrimeField, T, const W: usize>(
+    witness: &mut [Vec<F>; W],
     offset: usize,
     row: usize,
-    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    layout: &[Vec<Box<dyn WitnessCell<F, T, W>>>],
     variables: &Variables<T>,
 ) {
     let mut col = 0;
@@ -72,10 +75,10 @@ pub fn init_row<const N: usize, F: PrimeField, T>(
 }
 
 /// Initialize a witness based on layout and computed variables
-pub fn init<const N: usize, F: PrimeField, T>(
-    witness: &mut [Vec<F>; N],
+pub fn init<F: PrimeField, T, const W: usize>(
+    witness: &mut [Vec<F>; W],
     offset: usize,
-    layout: &[Vec<Box<dyn WitnessCell<N, F, T>>>],
+    layout: &[Vec<Box<dyn WitnessCell<F, T, W>>>],
     variables: &Variables<T>,
 ) {
     for row in 0..layout.len() {
@@ -97,7 +100,7 @@ mod tests {
 
     #[test]
     fn zero_layout() {
-        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![vec![
+        let layout: Vec<Vec<Box<dyn WitnessCell<PallasField>>>> = vec![vec![
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
             ConstantCell::create(PallasField::zero()),
@@ -140,7 +143,7 @@ mod tests {
 
     #[test]
     fn mixed_layout() {
-        let layout: Vec<Vec<Box<dyn WitnessCell<COLUMNS, PallasField, PallasField>>>> = vec![
+        let layout: Vec<Vec<Box<dyn WitnessCell<PallasField>>>> = vec![
             vec![
                 ConstantCell::create(PallasField::from(12u32)),
                 ConstantCell::create(PallasField::from(0xa5a3u32)),
