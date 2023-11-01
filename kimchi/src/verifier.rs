@@ -519,6 +519,18 @@ where
                 )
                 .chain(
                     index
+                        .keccak_round_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::KeccakRound)),
+                )
+                .chain(
+                    index
+                        .keccak_sponge_comm
+                        .as_ref()
+                        .map(|_| Column::Index(GateType::KeccakSponge)),
+                )
+                .chain(
+                    index
                         .lookup_index
                         .as_ref()
                         .map(|li| {
@@ -558,6 +570,16 @@ where
                                 .chain(self.evals.foreign_field_mul_lookup_selector.as_ref().map(
                                     |_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul),
                                 ))
+                                .chain(
+                                    self.evals.keccak_round_lookup_selector.as_ref().map(|_| {
+                                        Column::LookupKindIndex(LookupPattern::KeccakRound)
+                                    }),
+                                )
+                                .chain(
+                                    self.evals.keccak_sponge_lookup_selector.as_ref().map(|_| {
+                                        Column::LookupKindIndex(LookupPattern::KeccakSponge)
+                                    }),
+                                )
                         })
                         .into_iter()
                         .flatten(),
@@ -1140,6 +1162,18 @@ where
                     .ffmul
                     .as_ref()
                     .map(|_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .keccak_round
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::KeccakRound)),
+            )
+            .chain(
+                li.lookup_selectors
+                    .keccak_sponge
+                    .as_ref()
+                    .map(|_| Column::LookupKindIndex(LookupPattern::KeccakSponge)),
             )
         })
         .into_iter()

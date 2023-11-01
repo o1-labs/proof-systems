@@ -453,10 +453,10 @@ impl<F, const COLUMNS: usize> ProofEvaluations<F, COLUMNS> {
             Column::LookupSorted(i) => self.lookup_sorted[i].as_ref(),
             Column::LookupAggreg => self.lookup_aggregation.as_ref(),
             Column::LookupTable => self.lookup_table.as_ref(),
-            Column::LookupKindIndex(LookupPattern::Xor) => self.xor_lookup_selector.as_ref(),
             Column::LookupKindIndex(LookupPattern::Lookup) => {
                 self.lookup_gate_lookup_selector.as_ref()
             }
+            Column::LookupKindIndex(LookupPattern::Xor) => self.xor_lookup_selector.as_ref(),
             Column::LookupKindIndex(LookupPattern::RangeCheck) => {
                 self.range_check_lookup_selector.as_ref()
             }

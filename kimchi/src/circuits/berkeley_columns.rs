@@ -152,8 +152,12 @@ impl<F: Copy, const COLUMNS: usize> ColumnEvaluations<F>
             LookupKindIndex(LookupPattern::ForeignFieldMul) => self
                 .foreign_field_mul_lookup_selector
                 .ok_or(ExprError::MissingIndexEvaluation(col)),
-            LookupKindIndex(LookupPattern::KeccakRound) => todo!(),
-            LookupKindIndex(LookupPattern::KeccakSponge) => todo!(),
+            LookupKindIndex(LookupPattern::KeccakRound) => self
+                .keccak_round_lookup_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
+            LookupKindIndex(LookupPattern::KeccakSponge) => self
+                .keccak_sponge_lookup_selector
+                .ok_or(ExprError::MissingIndexEvaluation(col)),
             LookupRuntimeSelector => self
                 .runtime_lookup_table_selector
                 .ok_or(ExprError::MissingIndexEvaluation(col)),
