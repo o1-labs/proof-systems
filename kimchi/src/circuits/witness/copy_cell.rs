@@ -15,8 +15,8 @@ impl CopyCell {
     }
 }
 
-impl<const N: usize, F: Field> WitnessCell<N, F, F> for CopyCell {
-    fn value(&self, witness: &mut [Vec<F>; N], _variables: &Variables<F>, _index: usize) -> F {
+impl<F: Field, const W: usize> WitnessCell<F, F, W> for CopyCell {
+    fn value(&self, witness: &mut [Vec<F>; W], _variables: &Variables<F>, _index: usize) -> F {
         witness[self.col][self.row]
     }
 }

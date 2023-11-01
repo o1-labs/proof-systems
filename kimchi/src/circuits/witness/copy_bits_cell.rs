@@ -23,8 +23,8 @@ impl CopyBitsCell {
     }
 }
 
-impl<const N: usize, F: Field> WitnessCell<N, F, F> for CopyBitsCell {
-    fn value(&self, witness: &mut [Vec<F>; N], _variables: &Variables<F>, _index: usize) -> F {
+impl<F: Field, const W: usize> WitnessCell<F, F, W> for CopyBitsCell {
+    fn value(&self, witness: &mut [Vec<F>; W], _variables: &Variables<F>, _index: usize) -> F {
         F::from_bits(&witness[self.col][self.row].to_bits()[self.start..self.end])
             .expect("failed to deserialize field bits for copy bits cell")
     }

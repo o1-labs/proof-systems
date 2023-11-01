@@ -7,6 +7,8 @@ use ark_ff::{PrimeField, SquareRootField};
 
 use super::{expand_word, padded_length, RATE, RC, ROUNDS};
 
+const SPONGE_COEFFS: usize = 336;
+
 impl<F: PrimeField + SquareRootField> CircuitGate<F> {
     /// Extends a Keccak circuit to hash one message
     /// Note:
@@ -45,12 +47,16 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         CircuitGate {
             typ: GateType::KeccakSponge,
             wires: Wire::for_row(new_row),
-            coeffs: vec![F::zero(), F::one()],
+            coeffs: {
+                let mut c = vec![F::zero(); SPONGE_COEFFS];
+                c[1] = F::one();
+                c
+            },
         }
     }
 
     fn create_keccak_absorb(new_row: usize, root: bool, pad: bool, pad_bytes: usize) -> Self {
-        let mut coeffs = vec![F::zero(); 336];
+        let mut coeffs = vec![F::zero(); SPONGE_COEFFS];
         coeffs[0] = F::one(); // absorb
         if root {
             coeffs[2] = F::one(); // root
@@ -60,10 +66,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             for i in 0..pad_bytes {
                 coeffs[140 - i] = F::one(); // flag for padding
                 if i == 0 {
-                    coeffs[335 - i] += F::from(0x80u8); // pad
+                    coeffs[SPONGE_COEFFS - 1 - i] += F::from(0x80u8); // pad
                 }
                 if i == pad_bytes - 1 {
-                    coeffs[335 - i] += F::one(); // pad
+                    coeffs[SPONGE_COEFFS - 1 - i] += F::one(); // pad
                 }
             }
         }
