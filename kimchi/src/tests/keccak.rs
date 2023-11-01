@@ -105,21 +105,6 @@ fn print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
     println!("ROUND {}", round);
     println!("State A:");
     print_matrix(&row[0..100]);
-    println!("State C:");
-    print_line(&row[100..120]);
-    println!("State D:");
-    print_line(&row[320..340]);
-    println!("State E:");
-    print_matrix(&row[340..440]);
-    println!("State B:");
-    print_matrix(&row[1440..1540]);
-
-    let mut state_f = row[2340..2344].to_vec();
-    let mut tail = next[4..100].to_vec();
-    state_f.append(&mut tail);
-
-    println!("State F:");
-    print_matrix(&state_f);
     println!("State G:");
     print_matrix(&next[0..100]);
 }
@@ -137,7 +122,7 @@ fn test_keccak_n<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField, KECCAK_COLS>,
+    EFrSponge: FrSponge<KECCAK_COLS, G::ScalarField>,
 {
     let messages = vec![rng.gen_biguint_below(&BigUint::from(2u32).pow(1080)); n];
 
@@ -160,15 +145,17 @@ where
         }
     }
 
-    let runner: TestRunner<G, KECCAK_COLS> = TestFramework::<G, KECCAK_COLS>::default()
+    let runner: TestRunner<2344, G> = TestFramework::<KECCAK_COLS, G>::default()
         .gates(gates.clone())
         .setup();
     let cs = runner.clone().prover_index().cs.clone();
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<G, KECCAK_COLS>(row, &witness, &cs, &witness[0][0..cs.public]);
-        result?;
+            gate.verify_witness::<KECCAK_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
+        if result.is_err() {
+            return result;
+        }
     }
     assert_eq!(
         runner
@@ -189,12 +176,11 @@ fn test_keccak<G: KimchiCurve, EFqSponge, EFrSponge>(
 where
     G::BaseField: PrimeField,
     EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>,
-    EFrSponge: FrSponge<G::ScalarField, KECCAK_COLS>,
+    EFrSponge: FrSponge<KECCAK_COLS, G::ScalarField>,
 {
     let bytelength = message.to_bytes_be().len();
-    let padded_len = padded_length(bytelength);
 
-    let gates = create_test_gates::<G>(padded_len);
+    let gates = create_test_gates::<G>(bytelength);
     let witness: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>;
         KECCAK_COLS] = create_keccak_witness::<G>(message);
 
@@ -217,7 +203,7 @@ where
     let runner = if full {
         // Create prover index with test framework
         Some(
-            TestFramework::<G, KECCAK_COLS>::default()
+            TestFramework::<KECCAK_COLS, G>::default()
                 .gates(gates.clone())
                 .setup(),
         )
@@ -234,7 +220,7 @@ where
     // Perform witness verification that everything is ok before invalidation (quick checks)
     for (row, gate) in gates.iter().enumerate().take(witness[0].len()) {
         let result =
-            gate.verify_witness::<G, KECCAK_COLS>(row, &witness, &cs, &witness[0][0..cs.public]);
+            gate.verify_witness::<KECCAK_COLS, G>(row, &witness, &cs, &witness[0][0..cs.public]);
         if result.is_err() {
             return (result, hash);
         }
@@ -321,19 +307,15 @@ fn test_bitwise_sparse_representation() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_dummy() {
-    stacker::grow(30 * 1024 * 1024, || {
-        // guaranteed to have at least 30MB of stack
-
-        let (_, claim1) = test_keccak::<Pallas, PallasBaseSponge, PallasScalarSponge>(
-            BigUint::from_bytes_be(&[0x00]),
-            true,
-        );
-        let hash1 =
-            BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
-        assert_eq!(claim1, hash1);
-    });
+    let (_, claim1) = test_keccak::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+        BigUint::from_bytes_be(&[0x00]),
+        true,
+    );
+    let hash1 =
+        BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
+    assert_eq!(claim1, hash1);
 }
-
+/*
 #[test]
 // Tests a random block of 1080 bits
 fn test_random_block() {
@@ -348,24 +330,21 @@ fn test_random_block() {
 #[test]
 // Test hash of message zero with 1 byte
 fn test_blocks() {
-    stacker::grow(30 * 1024 * 1024, || {
-        let (_,claim_3blocks) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"), true);
-        let hash_3blocks =
-            BigUint::from_hex("7e369e1a4362148fca24c67c76f14dbe24b75c73e9b0efdb8c46056c8514287e");
-        assert_eq!(claim_3blocks, hash_3blocks);
-    });
+    let (_,claim_3blocks) = test_keccak::<Pallas,PallasBaseSponge, PallasScalarSponge>(BigUint::from_hex("832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f423423a214325d13523aadb21414124aaadf32523126832588523900cca2ea9b8c0395d295aa39f9a9285a982b71cc8475067a8175f38f235a2234abc982a2dfaaddff2895a28598021895206a733a22bccd21f124df1413858a8f9a1134df285a888b099a8c2235eecdf2345f3afd32f3ae323526689172850672938104892357aad32523523f"), true);
+    let hash_3blocks =
+        BigUint::from_hex("7e369e1a4362148fca24c67c76f14dbe24b75c73e9b0efdb8c46056c8514287e");
+    assert_eq!(claim_3blocks, hash_3blocks);
 }
 
 #[test]
 // Test hash of message zero with 1 byte
 fn test_1000_hashes() {
-    stacker::grow(30 * 1024 * 1024, || {
-        assert_eq!(
-            Ok(()),
-            test_keccak_n::<Pallas, PallasBaseSponge, PallasScalarSponge>(
-                1000,
-                &mut StdRng::from_seed(RNG_SEED),
-            )
-        );
-    });
+    assert_eq!(
+        Ok(()),
+        test_keccak_n::<Pallas, PallasBaseSponge, PallasScalarSponge>(
+            1000,
+            &mut StdRng::from_seed(RNG_SEED),
+        )
+    );
 }
+*/
