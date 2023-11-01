@@ -53,6 +53,36 @@ fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
     array::from_fn(|_| Fp::zero())
 }
 
+const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
+const PREFIXES: &str = "KMGTPEZY"; // prefixes for memory quantities KiB, MiB, GiB, ...
+
+// Create a human-readable string representation of the memory size
+fn memory_size(total: usize) -> String {
+    if total < KUNIT {
+        format!("{total} B")
+    } else {
+        // Compute the index in the prefixes string above
+        let mut idx = 0;
+        let mut d = KUNIT;
+        let mut n = total / KUNIT;
+
+        while n >= KUNIT {
+            d *= KUNIT;
+            idx += 1;
+            n /= KUNIT;
+        }
+
+        let value = total as f64 / d as f64;
+
+        let prefix =
+            // Famous last words: 1023 yottabytes ought to be enough for anybody
+            // Corollary: unwrap() below shouldn't fail
+                PREFIXES.chars().nth(idx).unwrap();
+
+        format!("{:.1} {}iB", value, prefix)
+    }
+}
+
 impl<Fp: Field> Env<Fp> {
     pub fn create(page_size: usize, state: State) -> Self {
         let initial_instruction_pointer = state.pc;
@@ -232,7 +262,7 @@ impl<Fp: Field> Env<Fp> {
         self.pp_info(config.info_at, start);
 
         // Force stops at given iteration
-        if self.at(config.stop_at) {
+        if self.should_trigger_at(config.stop_at) {
             self.halt = true;
             return;
         }
@@ -241,7 +271,7 @@ impl<Fp: Field> Env<Fp> {
         self.halt = true;
     }
 
-    fn at(&self, at: StepFrequency) -> bool {
+    fn should_trigger_at(&self, at: StepFrequency) -> bool {
         let m: u64 = self.instruction_counter as u64;
         match at {
             StepFrequency::Never => false,
@@ -251,36 +281,14 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
-    const UNIT: usize = 1024; // a "unit" of memory is 1024 bytes
-    const PREFIXES: &str = "KMGTPE"; // prefixes for memory quantities KiB, MiB, GiB, ...
-
+    // Compute memory usage
     fn memory_usage(&self) -> String {
         let total = self.memory.len() * PAGE_SIZE;
-
-        if total < Self::UNIT {
-            format!("{total} B")
-        } else {
-            // Compute the index in the prefixes string above
-            let mut idx = 0;
-            let mut d = Self::UNIT;
-            let mut n = total / Self::UNIT;
-
-            while n >= Self::UNIT {
-                d *= Self::UNIT;
-                idx += 1;
-                n /= Self::UNIT;
-            }
-
-            let value = total as f64 / d as f64;
-            let prefix = Self::PREFIXES.chars().nth(idx).unwrap();
-
-            format!("{:.1} {}iB", value, prefix)
-        }
+        memory_size(total)
     }
 
     fn pp_info(&self, at: StepFrequency, start: &Start) {
-        if self.at(at) {
-            println!("Info");
+        if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             let step = self.instruction_counter;
             let pc = self.instruction_pointer;
@@ -290,7 +298,8 @@ impl<Fp: Field> Env<Fp> {
             let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
             let pages = self.memory.len();
             let mem = self.memory_usage();
-            let name = "unsupported"; // TODO: implement symbol lookups
+            let name = "symbols are not supported yet"; // TODO: implement symbol lookups
+
             info!(
                 "processing step {} pc {:#10x} insn {:#10x} ips {:.2} page {} mem {} name {}",
                 step, pc, insn, ips, pages, mem, name
