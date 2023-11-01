@@ -77,12 +77,7 @@ impl BenchmarkCtx {
     }
 
     /// Produces a proof
-    pub fn create_proof(
-        &self,
-    ) -> (
-        ProverProof<Vesta, OpeningProof<Vesta>, KIMCHI_COLS>,
-        Vec<Fp>,
-    ) {
+    pub fn create_proof(&self) -> (ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>) {
         // create witness
         let witness: [Vec<Fp>; KIMCHI_COLS] = array::from_fn(|_| vec![1u32.into(); self.num_gates]);
 
@@ -102,13 +97,7 @@ impl BenchmarkCtx {
     }
 
     #[allow(clippy::type_complexity)]
-    pub fn batch_verification(
-        &self,
-        batch: &[(
-            ProverProof<Vesta, OpeningProof<Vesta>, KIMCHI_COLS>,
-            Vec<Fp>,
-        )],
-    ) {
+    pub fn batch_verification(&self, batch: &[(ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>)]) {
         // verify the proof
         let batch: Vec<_> = batch
             .iter()

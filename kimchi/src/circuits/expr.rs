@@ -2660,13 +2660,20 @@ pub mod constraints {
         fn literal(x: F) -> Self;
 
         // Witness variable
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self;
+        fn witness<const COLUMNS: usize>(
+            row: CurrOrNext,
+            col: usize,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self;
 
         /// Coefficient
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self;
+        fn coeff<const COLUMNS: usize>(col: usize, env: Option<&ArgumentData<F, COLUMNS>>) -> Self;
 
         /// Create a constant
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self;
+        fn constant<const COLUMNS: usize>(
+            expr: ConstantExpr<F>,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self;
 
         /// Cache item
         fn cache(&self, cache: &mut Cache) -> Self;
@@ -2726,15 +2733,22 @@ pub mod constraints {
             Expr::Constant(ConstantExpr::Literal(x))
         }
 
-        fn witness(row: CurrOrNext, col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        fn witness<const COLUMNS: usize>(
+            row: CurrOrNext,
+            col: usize,
+            _: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             witness(col, row)
         }
 
-        fn coeff(col: usize, _: Option<&ArgumentData<F>>) -> Self {
+        fn coeff<const COLUMNS: usize>(col: usize, _: Option<&ArgumentData<F, COLUMNS>>) -> Self {
             coeff(col)
         }
 
-        fn constant(expr: ConstantExpr<F>, _: Option<&ArgumentData<F>>) -> Self {
+        fn constant<const COLUMNS: usize>(
+            expr: ConstantExpr<F>,
+            _: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             Expr::Constant(expr)
         }
 
@@ -2784,21 +2798,28 @@ pub mod constraints {
             x
         }
 
-        fn witness(row: CurrOrNext, col: usize, env: Option<&ArgumentData<F>>) -> Self {
+        fn witness<const COLUMNS: usize>(
+            row: CurrOrNext,
+            col: usize,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             match env {
                 Some(data) => data.witness[(row, col)],
                 None => panic!("Missing witness"),
             }
         }
 
-        fn coeff(col: usize, env: Option<&ArgumentData<F>>) -> Self {
+        fn coeff<const COLUMNS: usize>(col: usize, env: Option<&ArgumentData<F, COLUMNS>>) -> Self {
             match env {
                 Some(data) => data.coeffs[col],
                 None => panic!("Missing coefficients"),
             }
         }
 
-        fn constant(expr: ConstantExpr<F>, env: Option<&ArgumentData<F>>) -> Self {
+        fn constant<const COLUMNS: usize>(
+            expr: ConstantExpr<F>,
+            env: Option<&ArgumentData<F, COLUMNS>>,
+        ) -> Self {
             match env {
                 Some(data) => expr.value(&data.constants),
                 None => panic!("Missing constants"),

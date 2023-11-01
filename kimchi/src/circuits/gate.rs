@@ -264,7 +264,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             zk_rows: cs.zk_rows,
         };
         // Create the argument environment for the constraints over field elements
-        let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
+        let env =
+            ArgumentEnv::<F, F, COLUMNS>::create(argument_witness, self.coeffs.clone(), constants);
 
         // Check the wiring (i.e. copy constraints) for this gate
         // Note: Gates can operated on row Curr or Curr and Next.
@@ -299,7 +300,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
                 // TODO: implement the verification for the generic gate
                 vec![]
             }
-            GateType::Poseidon => poseidon::Poseidon::constraint_checks(&env, &mut cache),
+            GateType::Poseidon => {
+                poseidon::Poseidon::constraint_checks::<F, COLUMNS>(&env, &mut cache)
+            }
             GateType::CompleteAdd => complete_add::CompleteAdd::constraint_checks(&env, &mut cache),
             GateType::VarBaseMul => varbasemul::VarbaseMul::constraint_checks(&env, &mut cache),
             GateType::EndoMul => endosclmul::EndosclMul::constraint_checks(&env, &mut cache),
@@ -358,7 +361,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
         &self,
         row: usize,
         witness: &[Vec<F>; COLUMNS],
-    ) -> CircuitGateResult<ArgumentWitness<F>> {
+    ) -> CircuitGateResult<ArgumentWitness<F, COLUMNS>> {
         // Get the part of the witness relevant to this gate
         let witness_curr: [F; COLUMNS] = (0..witness.len())
             .map(|col| witness[col][row])
@@ -375,9 +378,9 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             [F::zero(); COLUMNS]
         };
 
-        Ok(ArgumentWitness::<F> {
-            curr: witness_curr.to_vec(),
-            next: witness_next.to_vec(),
+        Ok(ArgumentWitness::<F, COLUMNS> {
+            curr: witness_curr,
+            next: witness_next,
         })
     }
 }
