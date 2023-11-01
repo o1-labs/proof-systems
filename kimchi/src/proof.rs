@@ -961,6 +961,8 @@ pub mod caml {
                 rot_selector: cpe
                     .rot_selector
                     .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
+                keccak_round_selector: None,
+                keccak_sponge_selector: None,
                 lookup_aggregation: cpe
                     .lookup_aggregation
                     .map(|x| x.map(&|x| x.into_iter().map(Into::into).collect())),
@@ -993,6 +995,8 @@ pub mod caml {
                 foreign_field_mul_lookup_selector: cpe
                     .foreign_field_mul_lookup_selector
                     .map(|x| x.map(&|x| x.iter().map(|x| x.clone().into()).collect())),
+                keccak_round_lookup_selector: None,
+                keccak_sponge_lookup_selector: None,
             }
         }
     }
