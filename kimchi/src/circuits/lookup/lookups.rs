@@ -4,7 +4,7 @@ use crate::circuits::{
     lookup::index::LookupSelectors,
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-        XOR_TABLE_ID,
+        SPARSE_TABLE_ID, XOR_TABLE_ID,
     },
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -14,6 +14,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Mul, Neg};
 use strum_macros::EnumIter;
+
+use super::tables::{BITS16_TABLE_ID, RESET_TABLE_ID};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -42,7 +44,6 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
-#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupPatterns {
     pub xor: bool,
     pub lookup: bool,
@@ -148,7 +149,6 @@ impl LookupPatterns {
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
-#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupFeatures {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     pub patterns: LookupPatterns,
@@ -174,7 +174,6 @@ impl LookupFeatures {
 
 /// Describes the desired lookup configuration.
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
-#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupInfo {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
@@ -214,7 +213,7 @@ impl LookupInfo {
 
     /// Each entry in `kinds` has a corresponding selector polynomial that controls whether that
     /// lookup kind should be enforced at a given row. This computes those selector polynomials.
-    pub fn selector_polynomials_and_tables<F: PrimeField, const COLUMNS: usize>(
+    pub fn selector_polynomials_and_tables<const W: usize, F: PrimeField>(
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
@@ -415,7 +414,7 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            //LookupPattern::KeccakRound => 1760,
+            //LookupPattern::KeccakRound => 1720,
             //LookupPattern::KeccakSponge => 800,
             LookupPattern::Xor | LookupPattern::RangeCheck | LookupPattern::ForeignFieldMul => 4,
             LookupPattern::Lookup => 3,
@@ -523,23 +522,23 @@ impl LookupPattern {
                   // Theta
                   for i in 0..20 {
                       // 2-column lookups
-                      let shift0_c = curr_row(120 + i);
-                      let dense_c = curr_row(200 + i);
+                      let shift0_c = curr_row(100 + i);
+                      let dense_c = curr_row(180 + i);
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(RESET_TABLE_ID),
                           entry: vec![l(dense_c), l(shift0_c)],
                       });
-                      let dense_rot_c = curr_row(280 + i);
-                      let expand_rot_c = curr_row(300 + i);
+                      let dense_rot_c = curr_row(225 + i);
+                      let expand_rot_c = curr_row(245 + i);
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(RESET_TABLE_ID),
                           entry: vec![l(dense_rot_c), l(expand_rot_c)],
                       });
 
                       // Second column lookups
-                      let shift1_c = curr_row(140 + i);
-                      let shift2_c = curr_row(160 + i);
-                      let shift3_c = curr_row(180 + i);
+                      let shift1_c = curr_row(120 + i);
+                      let shift2_c = curr_row(140 + i);
+                      let shift3_c = curr_row(160 + i);
 
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
@@ -555,43 +554,34 @@ impl LookupPattern {
                       });
 
                       // First column lookups
-                      let quotient_c = curr_row(220 + i);
-                      let remainder_c = curr_row(240 + i);
-                      let bound_c = curr_row(260 + i);
+                      let remainder_c = curr_row(205 + i);
 
-                      lookups.push(JointLookup {
-                          table_id: LookupTableID::Constant(BITS16_TABLE_ID),
-                          entry: vec![l(quotient_c)],
-                      });
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                           entry: vec![l(remainder_c)],
                       });
-                      lookups.push(JointLookup {
-                          table_id: LookupTableID::Constant(BITS16_TABLE_ID),
-                          entry: vec![l(bound_c)],
-                      });
+
                   }
                   // PiRho
                   for i in 0..100 {
                       // 2-column lookups
-                      let shift0_e = curr_row(440 + i);
-                      let dense_e = curr_row(840 + i);
+                      let shift0_e = curr_row(265 + i);
+                      let dense_e = curr_row(665 + i);
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(RESET_TABLE_ID),
                           entry: vec![l(dense_e), l(shift0_e)],
                       });
-                      let dense_rot_e = curr_row(1240 + i);
-                      let expand_rot_e = curr_row(1340 + i);
+                      let dense_rot_e = curr_row(1065 + i);
+                      let expand_rot_e = curr_row(1165 + i);
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
                           entry: vec![l(dense_rot_e), l(expand_rot_e)],
                       });
 
                       // Second column lookups
-                      let shift1_e = curr_row(540 + i);
-                      let shift2_e = curr_row(640 + i);
-                      let shift3_e = curr_row(740 + i);
+                      let shift1_e = curr_row(365 + i);
+                      let shift2_e = curr_row(465 + i);
+                      let shift3_e = curr_row(565 + i);
 
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
@@ -607,9 +597,9 @@ impl LookupPattern {
                       });
 
                       // First column lookups
-                      let quotient_e = curr_row(940 + i);
-                      let remainder_e = curr_row(1040 + i);
-                      let bound_e = curr_row(1140 + i);
+                      let quotient_e = curr_row(765 + i);
+                      let remainder_e = curr_row(865 + i);
+                      let bound_e = curr_row(965 + i);
 
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(BITS16_TABLE_ID),
@@ -627,8 +617,8 @@ impl LookupPattern {
                   // Chi
                   for i in 0..400 {
                       // Second column lookups
-                      let shift_b: LocalPosition = curr_row(1540 + i);
-                      let shift_sum = curr_row(1940 + i);
+                      let shift_b: LocalPosition = curr_row(1265 + i);
+                      let shift_sum = curr_row(1665 + i);
 
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
@@ -765,64 +755,5 @@ fn lookup_pattern_constants_correct() {
         // NB: We include pat in the assertions so that the test will print out which pattern failed
         assert_eq!((pat, pat.max_lookups_per_row()), (pat, lookups.len()));
         assert_eq!((pat, pat.max_joint_size()), (pat, max_joint_size as u32));
-    }
-}
-
-#[cfg(feature = "wasm_types")]
-pub mod wasm {
-    use super::*;
-
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    impl LookupPatterns {
-        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
-        pub fn new(
-            xor: bool,
-            lookup: bool,
-            range_check: bool,
-            foreign_field_mul: bool,
-            keccak_round: bool,
-            keccak_sponge: bool,
-        ) -> LookupPatterns {
-            LookupPatterns {
-                xor,
-                lookup,
-                range_check,
-                foreign_field_mul,
-                keccak_round,
-                keccak_sponge,
-            }
-        }
-    }
-
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    impl LookupFeatures {
-        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
-        pub fn new(
-            patterns: LookupPatterns,
-            joint_lookup_used: bool,
-            uses_runtime_tables: bool,
-        ) -> LookupFeatures {
-            LookupFeatures {
-                patterns,
-                joint_lookup_used,
-                uses_runtime_tables,
-            }
-        }
-    }
-
-    #[wasm_bindgen::prelude::wasm_bindgen]
-    impl LookupInfo {
-        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
-        pub fn new(
-            max_per_row: usize,
-            max_joint_size: u32,
-            features: LookupFeatures,
-        ) -> LookupInfo {
-            LookupInfo {
-                max_per_row,
-                max_joint_size,
-                features,
-            }
-        }
     }
 }
