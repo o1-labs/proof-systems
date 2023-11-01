@@ -331,10 +331,10 @@ impl<Fp: Field> Env<Fp> {
             let pages = self.memory.len();
 
             let mem = self.memory_usage();
-            let name = "symbols are not supported yet"; // TODO: implement symbol lookups
+            let name = "N/A"; // TODO: implement symbol lookups
 
             info!(
-                "processing step {} pc {:#10x} insn {:#10x} ips {:.2} page {} mem {} name {}",
+                "processing step {} pc {:#010x} insn {:#010x} ips {:.2} page {} mem {} name {}",
                 step, pc, insn, ips, pages, mem, name
             );
         }
