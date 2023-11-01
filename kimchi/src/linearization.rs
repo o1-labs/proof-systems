@@ -375,8 +375,8 @@ pub fn linearization_columns<F: FftField + SquareRootField, const COLUMNS: usize
     h.insert(LookupKindIndex(LookupPattern::Lookup));
     h.insert(LookupKindIndex(LookupPattern::RangeCheck));
     h.insert(LookupKindIndex(LookupPattern::ForeignFieldMul));
-    h.insert(LookupKindIndex(LookupPattern::KeccakRound));
-    h.insert(LookupKindIndex(LookupPattern::KeccakSponge));
+    //h.insert(LookupKindIndex(LookupPattern::KeccakRound));
+    //h.insert(LookupKindIndex(LookupPattern::KeccakSponge));
 
     h
 }

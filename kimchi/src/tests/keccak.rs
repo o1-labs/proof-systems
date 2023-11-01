@@ -192,9 +192,8 @@ where
     EFrSponge: FrSponge<G::ScalarField, KECCAK_COLS>,
 {
     let bytelength = message.to_bytes_be().len();
-    let padded_len = padded_length(bytelength);
 
-    let gates = create_test_gates::<G>(padded_len);
+    let gates = create_test_gates::<G>(bytelength);
     let witness: [Vec<<<G as AffineCurve>::Projective as ProjectiveCurve>::ScalarField>;
         KECCAK_COLS] = create_keccak_witness::<G>(message);
 

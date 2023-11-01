@@ -780,16 +780,12 @@ pub mod wasm {
             lookup: bool,
             range_check: bool,
             foreign_field_mul: bool,
-            keccak_round: bool,
-            keccak_sponge: bool,
         ) -> LookupPatterns {
             LookupPatterns {
                 xor,
                 lookup,
                 range_check,
                 foreign_field_mul,
-                keccak_round,
-                keccak_sponge,
             }
         }
     }
