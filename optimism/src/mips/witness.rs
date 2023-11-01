@@ -1,5 +1,8 @@
 use crate::{
-    cannon::{Start, State, StepFrequency, VmConfiguration, PAGE_SIZE},
+    cannon::{
+        Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
+        PAGE_SIZE,
+    },
     mips::{
         interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
         registers::Registers,
@@ -292,16 +295,41 @@ impl<Fp: Field> Env<Fp> {
         memory_size(total)
     }
 
-    fn pp_info(&self, at: StepFrequency, start: &Start) {
+    fn page_address(&self) -> (u32, usize) {
+        let address = self.instruction_pointer;
+        let page = (address >> PAGE_ADDRESS_SIZE) as u32;
+        let page_address = (address & (PAGE_ADDRESS_MASK as u32)) as usize;
+        (page, page_address)
+    }
+
+    fn get_opcode(&mut self) -> Option<u32> {
+        let (page_id, page_address) = self.page_address();
+        for (page_index, memory) in self.memory.iter_mut() {
+            if page_id == *page_index {
+                let memory_slice: [u8; 4] = memory[page_address..page_address + 4]
+                    .try_into()
+                    .expect("Couldn't read 4 bytes at given address");
+                return Some(u32::from_be_bytes(memory_slice));
+            }
+        }
+        None
+    }
+
+    fn pp_info(&mut self, at: StepFrequency, start: &Start) {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             let step = self.instruction_counter;
             let pc = self.instruction_pointer;
-            let insn = 0xffffff;
-            let how_many_steps = step - start.step;
+
+            // Get the 32-bits opcode
+            let insn = self.get_opcode().unwrap();
+
             // Approximate instruction per seconds
+            let how_many_steps = step - start.step;
             let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
+
             let pages = self.memory.len();
+
             let mem = self.memory_usage();
             let name = "symbols are not supported yet"; // TODO: implement symbol lookups
 

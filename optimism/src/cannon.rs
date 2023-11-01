@@ -6,7 +6,9 @@ use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::io::Read;
 
-pub const PAGE_SIZE: usize = 4096;
+pub const PAGE_ADDRESS_SIZE: usize = 12;
+pub const PAGE_SIZE: usize = 1 << PAGE_ADDRESS_SIZE;
+pub const PAGE_ADDRESS_MASK: usize = PAGE_SIZE - 1;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
