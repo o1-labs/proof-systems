@@ -176,7 +176,10 @@ impl<T> Point<T> {
 }
 
 impl Point<Variable> {
-    pub fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Point<T> {
+    pub fn new_from_env<F: PrimeField, T: ExprOps<F>, const COLUMNS: usize>(
+        &self,
+        env: &ArgumentEnv<F, T, COLUMNS>,
+    ) -> Point<T> {
         Point::create(self.x.new_from_env(env), self.y.new_from_env(env))
     }
 }
@@ -287,7 +290,7 @@ trait FromWitness<F, T>
 where
     F: PrimeField,
 {
-    fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T;
+    fn new_from_env<const COLUMNS: usize>(&self, env: &ArgumentEnv<F, T, COLUMNS>) -> T;
 }
 
 impl<F, T> FromWitness<F, T> for Variable
@@ -295,7 +298,7 @@ where
     F: PrimeField,
     T: ExprOps<F>,
 {
-    fn new_from_env(&self, env: &ArgumentEnv<F, T>) -> T {
+    fn new_from_env<const COLUMNS: usize>(&self, env: &ArgumentEnv<F, T, COLUMNS>) -> T {
         let column_to_index = |_| match self.col {
             Column::Witness(i) => i,
             _ => panic!("Can't get index from witness columns"),
@@ -331,7 +334,10 @@ impl Layout<Variable> {
         }
     }
 
-    fn new_from_env<F: PrimeField, T: ExprOps<F>>(&self, env: &ArgumentEnv<F, T>) -> Layout<T> {
+    fn new_from_env<F: PrimeField, T: ExprOps<F>, const COLUMNS: usize>(
+        &self,
+        env: &ArgumentEnv<F, T, COLUMNS>,
+    ) -> Layout<T> {
         Layout {
             accs: self.accs.map(|point| point.new_from_env(env)),
             bits: self.bits.map(|var| var.new_from_env(env)),
@@ -414,7 +420,10 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::VarBaseMul);
     const CONSTRAINTS: u32 = 21;
 
-    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
+        env: &ArgumentEnv<F, T, COLUMNS>,
+        cache: &mut Cache,
+    ) -> Vec<T> {
         let Layout {
             base,
             accs,
@@ -422,7 +431,7 @@ where
             ss,
             n_prev,
             n_next,
-        } = Layout::create().new_from_env::<F, T>(env);
+        } = Layout::create().new_from_env::<F, T, COLUMNS>(env);
 
         // n'
         // = 2^5 * n + 2^4 b0 + 2^3 b1 + 2^2 b2 + 2^1 b3 + b4
