@@ -569,19 +569,17 @@ where
                                 )
                                 .chain(self.evals.foreign_field_mul_lookup_selector.as_ref().map(
                                     |_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul),
-                                ))
-                            /*
-                            .chain(
-                                self.evals.keccak_round_lookup_selector.as_ref().map(|_| {
-                                    Column::LookupKindIndex(LookupPattern::KeccakRound)
-                                }),
-                            )
-                            .chain(
-                                self.evals.keccak_sponge_lookup_selector.as_ref().map(|_| {
-                                    Column::LookupKindIndex(LookupPattern::KeccakSponge)
-                                }),
-                            )
-                            */
+                                )) /*
+                                   .chain(
+                                       self.evals.keccak_round_lookup_selector.as_ref().map(|_| {
+                                           Column::LookupKindIndex(LookupPattern::KeccakRound)
+                                       }),
+                                   )
+                                   .chain(
+                                       self.evals.keccak_sponge_lookup_selector.as_ref().map(|_| {
+                                           Column::LookupKindIndex(LookupPattern::KeccakSponge)
+                                       }),
+                                   )*/
                         })
                         .into_iter()
                         .flatten(),
@@ -1165,19 +1163,19 @@ where
                     .ffmul
                     .as_ref()
                     .map(|_| Column::LookupKindIndex(LookupPattern::ForeignFieldMul)),
-            )
-            /* .chain(
-                li.lookup_selectors
-                    .keccak_round
-                    .as_ref()
-                    .map(|_| Column::LookupKindIndex(LookupPattern::KeccakRound)),
-            )
-            .chain(
-                li.lookup_selectors
-                    .keccak_sponge
-                    .as_ref()
-                    .map(|_| Column::LookupKindIndex(LookupPattern::KeccakSponge)),
-            )*/
+            ) /*
+              .chain(
+                  li.lookup_selectors
+                      .keccak_round
+                      .as_ref()
+                      .map(|_| Column::LookupKindIndex(LookupPattern::KeccakRound)),
+              )
+              .chain(
+                  li.lookup_selectors
+                      .keccak_sponge
+                      .as_ref()
+                      .map(|_| Column::LookupKindIndex(LookupPattern::KeccakSponge)),
+              )*/
         })
         .into_iter()
         .flatten()
