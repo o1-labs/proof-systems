@@ -54,7 +54,7 @@ macro_rules! from_shifts {
 }
 
 //~
-//~ | `KeccakRound` | [0...265) | [265...1265) | [1265...2065) |
+//~ | `KeccakRound` | [0...265) | [265...1165) | [1165...1965) |
 //~ | ------------- | --------- | ------------ | ------------- |
 //~ | Curr          | theta     | pirho        | chi           |
 //~
@@ -68,11 +68,11 @@ macro_rules! from_shifts {
 //~ | -------- | --------- | ----------- | ----------- | ----------- | ------------ | ------------ | ------------ |
 //~ | theta    | state_a   | shifts_c    | dense_c     | quotient_c  | remainder_c  | dense_rot_c  | expand_rot_c |
 //~
-//~ | Columns  | [265...665) | [665...765) | [765...865)  | [865...965) | [965...1065)  | [1065...1165) | [1165...1265) |
-//~ | -------- | ----------- | ----------- | ------------ | ----------- | ------------- | ------------- | ------------- |
-//~ | pirho    | shifts_e    | dense_e     | quotient_e   | remainder_e | bound_e       | dense_rot_e   | expand_rot_e  |
+//~ | Columns  | [265...665) | [665...765) | [765...865)  | [865...965) | [965...1065) | [1065...1165) |
+//~ | -------- | ----------- | ----------- | ------------ | ----------- | ------------ | ------------- |
+//~ | pirho    | shifts_e    | dense_e     | quotient_e   | remainder_e | dense_rot_e  | expand_rot_e  |
 //~
-//~ | Columns  | [1265...1665) | [1665...2065) |
+//~ | Columns  | [1165...1565) | [1565...1965) |
 //~ | -------- | ------------- | ------------- |
 //~ | chi      | shifts_b      | shifts_sum    |
 //~
@@ -88,7 +88,7 @@ where
     F: PrimeField,
 {
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakRound);
-    const CONSTRAINTS: u32 = 414;
+    const CONSTRAINTS: u32 = 389;
 
     // Constraints for one round of the Keccak permutation function
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
@@ -111,12 +111,11 @@ where
         let dense_e = grid!(100, env.witness_curr_chunk(665, 765));
         let quotient_e = grid!(100, env.witness_curr_chunk(765, 865));
         let remainder_e = grid!(100, env.witness_curr_chunk(865, 965));
-        let bound_e = grid!(100, env.witness_curr_chunk(965, 1065));
-        let dense_rot_e = grid!(100, env.witness_curr_chunk(1065, 1165));
-        let expand_rot_e = grid!(100, env.witness_curr_chunk(1165, 1265));
+        let dense_rot_e = grid!(100, env.witness_curr_chunk(965, 1065));
+        let expand_rot_e = grid!(100, env.witness_curr_chunk(1065, 1165));
         // CHI
-        let shifts_b = grid!(400, env.witness_curr_chunk(1265, 1665));
-        let shifts_sum = grid!(400, env.witness_curr_chunk(1665, 2065));
+        let shifts_b = grid!(400, env.witness_curr_chunk(1165, 1565));
+        let shifts_sum = grid!(400, env.witness_curr_chunk(1565, 1965));
         // IOTA
         let state_g = grid!(100, env.witness_next_chunk(0, 100));
 
@@ -155,20 +154,18 @@ where
             }
         } // END theta
 
-        // STEP pirho: 5 * 5 * (3 + 4 * 1) = 175 constraints
+        // STEP pirho: 5 * 5 * (2 + 4 * 1) = 150 constraints
         for (y, col) in OFF.iter().enumerate() {
             for (x, off) in col.iter().enumerate() {
                 let word_e = from_quarters!(dense_e, y, x);
                 let quo_e = from_quarters!(quotient_e, y, x);
                 let rem_e = from_quarters!(remainder_e, y, x);
-                let bnd_e = from_quarters!(bound_e, y, x);
                 let rot_e = from_quarters!(dense_rot_e, y, x);
 
                 constraints.push(
                     word_e * T::two_pow(*off) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
                 );
                 constraints.push(rot_e - (quo_e.clone() + rem_e));
-                constraints.push(bnd_e - (quo_e + T::two_pow(64) - T::two_pow(*off)));
 
                 for q in 0..QUARTERS {
                     constraints.push(state_e[y][x][q].clone() - from_shifts!(shifts_e, y, x, q));

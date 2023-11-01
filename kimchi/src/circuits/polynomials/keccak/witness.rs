@@ -34,11 +34,10 @@ fn layout_round<F: PrimeField>() -> [Layout<KECCAK_COLS, F>; 1] {
         IndexCell::create("dense_e", 665, 765),
         IndexCell::create("quotient_e", 765, 865),
         IndexCell::create("remainder_e", 865, 965),
-        IndexCell::create("bound_e", 965, 1065),
-        IndexCell::create("dense_rot_e", 1065, 1165),
-        IndexCell::create("expand_rot_e", 1165, 1265),
-        IndexCell::create("shifts_b", 1265, 1665),
-        IndexCell::create("shifts_sum", 1665, 2065),
+        IndexCell::create("dense_rot_e", 965, 1065),
+        IndexCell::create("expand_rot_e", 1065, 1165),
+        IndexCell::create("shifts_b", 1165, 1565),
+        IndexCell::create("shifts_sum", 1565, 1965),
     ]]
 }
 
@@ -61,41 +60,24 @@ fn field<F: PrimeField>(input: &[u64]) -> Vec<F> {
 struct Rotation {
     quotient: Vec<u64>,
     remainder: Vec<u64>,
-    bound: Vec<u64>,
     dense_rot: Vec<u64>,
     expand_rot: Vec<u64>,
 }
 
 impl Rotation {
-    // Returns rotation of 0 bits
-    fn none(dense: &[u64]) -> Self {
-        Self {
-            quotient: vec![0; QUARTERS],
-            remainder: dense.to_vec(),
-            bound: vec![0xFFFF; QUARTERS],
-            dense_rot: dense.to_vec(),
-            expand_rot: dense.iter().map(|x| expand(*x)).collect(),
-        }
-    }
-
     // On input the dense quarters of a word, rotate the word offset bits to the left
     fn new(dense: &[u64], offset: u32) -> Self {
-        if offset == 0 {
-            return Self::none(dense);
-        }
         let word = compose(dense);
-        let rem = (word as u128 * 2u128.pow(offset) % 2u128.pow(64)) as u64;
-        let quo = word / 2u64.pow(64 - offset);
-        let bnd = (quo as u128) + 2u128.pow(64) - 2u128.pow(offset);
+        let rem = word as u128 * 2u128.pow(offset) % 2u128.pow(64);
+        let quo = (word as u128) / 2u128.pow(64 - offset);
         let rot = rem + quo;
-        assert!(rot == word.rotate_left(offset));
+        assert!(rot as u64 == word.rotate_left(offset));
 
         Self {
-            quotient: decompose(quo),
-            remainder: decompose(rem),
-            bound: decompose(bnd as u64),
-            dense_rot: decompose(rot),
-            expand_rot: decompose(rot).iter().map(|x| expand(*x)).collect(),
+            quotient: decompose(quo as u64),
+            remainder: decompose(rem as u64),
+            dense_rot: decompose(rot as u64),
+            expand_rot: decompose(rot as u64).iter().map(|x| expand(*x)).collect(),
         }
     }
 
@@ -104,21 +86,18 @@ impl Rotation {
         assert!(words.len() == QUARTERS * offsets.len());
         let mut quotient = vec![];
         let mut remainder = vec![];
-        let mut bound = vec![];
         let mut dense_rot = vec![];
         let mut expand_rot = vec![];
         for (word, offset) in words.chunks(QUARTERS).zip(offsets.iter()) {
             let mut rot = Self::new(word, *offset);
             quotient.append(&mut rot.quotient);
             remainder.append(&mut rot.remainder);
-            bound.append(&mut rot.bound);
             dense_rot.append(&mut rot.dense_rot);
             expand_rot.append(&mut rot.expand_rot);
         }
         Self {
             quotient,
             remainder,
-            bound,
             dense_rot,
             expand_rot,
         }
@@ -210,7 +189,6 @@ struct PiRho {
     dense_e: Vec<u64>,
     quotient_e: Vec<u64>,
     remainder_e: Vec<u64>,
-    bound_e: Vec<u64>,
     dense_rot_e: Vec<u64>,
     expand_rot_e: Vec<u64>,
     state_b: Vec<u64>,
@@ -244,7 +222,6 @@ impl PiRho {
             dense_e,
             quotient_e: rotation_e.quotient,
             remainder_e: rotation_e.remainder,
-            bound_e: rotation_e.bound,
             dense_rot_e: rotation_e.dense_rot,
             expand_rot_e: rotation_e.expand_rot,
             state_b,
@@ -389,7 +366,6 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
                 "dense_e" => field(&pirho.dense_e),
                 "quotient_e" => field(&pirho.quotient_e),
                 "remainder_e" => field(&pirho.remainder_e),
-                "bound_e" => field(&pirho.bound_e),
                 "dense_rot_e" => field(&pirho.dense_rot_e),
                 "expand_rot_e" => field(&pirho.expand_rot_e),
                 "shifts_b" => field(&chi.shifts_b),

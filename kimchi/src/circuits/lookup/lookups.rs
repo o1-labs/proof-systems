@@ -4,7 +4,7 @@ use crate::circuits::{
     lookup::index::LookupSelectors,
     lookup::tables::{
         combine_table_entry, get_table, GateLookupTable, LookupTable, RANGE_CHECK_TABLE_ID,
-        SPARSE_TABLE_ID, XOR_TABLE_ID,
+        XOR_TABLE_ID,
     },
 };
 use ark_ff::{Field, One, PrimeField, Zero};
@@ -14,8 +14,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::ops::{Mul, Neg};
 use strum_macros::EnumIter;
-
-use super::tables::{BITS16_TABLE_ID, RESET_TABLE_ID};
 
 type Evaluations<Field> = E<Field, D<Field>>;
 
@@ -414,7 +412,7 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            //LookupPattern::KeccakRound => 1720,
+            //LookupPattern::KeccakRound => 1620,
             //LookupPattern::KeccakSponge => 800,
             LookupPattern::Xor | LookupPattern::RangeCheck | LookupPattern::ForeignFieldMul => 4,
             LookupPattern::Lookup => 3,
@@ -571,8 +569,8 @@ impl LookupPattern {
                           table_id: LookupTableID::Constant(RESET_TABLE_ID),
                           entry: vec![l(dense_e), l(shift0_e)],
                       });
-                      let dense_rot_e = curr_row(1065 + i);
-                      let expand_rot_e = curr_row(1165 + i);
+                      let dense_rot_e = curr_row(965 + i);
+                      let expand_rot_e = curr_row(1065 + i);
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
                           entry: vec![l(dense_rot_e), l(expand_rot_e)],
@@ -599,7 +597,6 @@ impl LookupPattern {
                       // First column lookups
                       let quotient_e = curr_row(765 + i);
                       let remainder_e = curr_row(865 + i);
-                      let bound_e = curr_row(965 + i);
 
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(BITS16_TABLE_ID),
@@ -609,16 +606,12 @@ impl LookupPattern {
                           table_id: LookupTableID::Constant(BITS16_TABLE_ID),
                           entry: vec![l(remainder_e)],
                       });
-                      lookups.push(JointLookup {
-                          table_id: LookupTableID::Constant(BITS16_TABLE_ID),
-                          entry: vec![l(bound_e)],
-                      });
                   }
                   // Chi
                   for i in 0..400 {
                       // Second column lookups
-                      let shift_b: LocalPosition = curr_row(1265 + i);
-                      let shift_sum = curr_row(1665 + i);
+                      let shift_b: LocalPosition = curr_row(1165 + i);
+                      let shift_sum = curr_row(1565 + i);
 
                       lookups.push(JointLookup {
                           table_id: LookupTableID::Constant(SPARSE_TABLE_ID),
