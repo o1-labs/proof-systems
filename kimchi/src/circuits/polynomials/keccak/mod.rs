@@ -15,6 +15,9 @@ use ark_ff::PrimeField;
 
 #[macro_export]
 macro_rules! grid {
+    (5, $v:expr) => {{
+        |x: usize| $v[x].clone()
+    }};
     (20, $v:expr) => {{
         |x: usize, q: usize| $v[q + QUARTERS * x].clone()
     }};

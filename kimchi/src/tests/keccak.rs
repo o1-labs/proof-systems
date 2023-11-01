@@ -71,15 +71,6 @@ fn print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
         bytes.reverse();
         bytes.iter().fold(0, |acc: u64, x| (acc << 8) + *x as u64)
     }
-    fn print_line(state: &[u64]) {
-        print!("         ");
-        for x in 0..5 {
-            let quarters = &state[4 * x..4 * (x + 1)];
-            let word = compose(&collapse(&reset(&shift(quarters))));
-            print!("{:016x} ", word);
-        }
-        println!();
-    }
     fn print_matrix(state: &[u64]) {
         for x in 0..5 {
             print!("         ");
@@ -315,7 +306,7 @@ fn test_dummy() {
         BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
     assert_eq!(claim1, hash1);
 }
-/*
+
 #[test]
 // Tests a random block of 1080 bits
 fn test_random_block() {
@@ -347,4 +338,3 @@ fn test_1000_hashes() {
         )
     );
 }
-*/
