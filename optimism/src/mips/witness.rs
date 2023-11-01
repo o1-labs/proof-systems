@@ -141,7 +141,7 @@ impl<Fp: Field> Env<Fp> {
         const PAGE_ADDRESS_SIZE: u32 = 12;
         const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
         const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
-        let page = (addr >> PAGE_ADDRESS_SIZE) as u32;
+        let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         for (page_index, memory) in self.memory.iter() {
             if *page_index == page {
@@ -297,14 +297,14 @@ impl<Fp: Field> Env<Fp> {
 
     fn page_address(&self) -> (u32, usize) {
         let address = self.instruction_pointer;
-        let page = (address >> PAGE_ADDRESS_SIZE) as u32;
+        let page = address >> PAGE_ADDRESS_SIZE;
         let page_address = (address & (PAGE_ADDRESS_MASK as u32)) as usize;
         (page, page_address)
     }
 
     fn get_opcode(&mut self) -> Option<u32> {
         let (page_id, page_address) = self.page_address();
-        for (page_index, memory) in self.memory.iter_mut() {
+        for (page_index, memory) in self.memory.iter() {
             if page_id == *page_index {
                 let memory_slice: [u8; 4] = memory[page_address..page_address + 4]
                     .try_into()
