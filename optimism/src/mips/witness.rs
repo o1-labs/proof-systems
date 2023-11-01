@@ -54,7 +54,7 @@ fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
 }
 
 const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
-const PREFIXES: &str = "KMGTPEZY"; // prefixes for memory quantities KiB, MiB, GiB, ...
+const PREFIXES: &str = "KMGTPE"; // prefixes for memory quantities KiB, MiB, GiB, ...
 
 // Create a human-readable string representation of the memory size
 fn memory_size(total: usize) -> String {
@@ -75,9 +75,14 @@ fn memory_size(total: usize) -> String {
         let value = total as f64 / d as f64;
 
         let prefix =
-            // Famous last words: 1023 yottabytes ought to be enough for anybody
-            // Corollary: unwrap() below shouldn't fail
-                PREFIXES.chars().nth(idx).unwrap();
+        ////////////////////////////////////////////////////////////////////////////
+        // Famous last words: 1023 exabytes ought to be enough for anybody        //
+        //                                                                        //
+        // Corollary: unwrap() below shouldn't fail                               //
+        //                                                                        //
+        // The maximum representation for usize corresponds to 16 exabytes anyway //
+        ////////////////////////////////////////////////////////////////////////////
+            PREFIXES.chars().nth(idx).unwrap();
 
         format!("{:.1} {}iB", value, prefix)
     }
@@ -305,5 +310,20 @@ impl<Fp: Field> Env<Fp> {
                 step, pc, insn, ips, pages, mem, name
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_memory_size() {
+        assert_eq!(memory_size(1023_usize), "1023 B");
+        assert_eq!(memory_size(1024_usize), "1.0 KiB");
+        assert_eq!(memory_size(1024 * 1024_usize), "1.0 MiB");
+        assert_eq!(memory_size(2100 * 1024 * 1024_usize), "2.1 GiB");
+        assert_eq!(memory_size(std::usize::MAX), "16.0 EiB");
     }
 }
