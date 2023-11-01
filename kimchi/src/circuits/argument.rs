@@ -13,7 +13,6 @@ use serde::{Deserialize, Serialize};
 use super::{
     expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
     gate::{CurrOrNext, GateType},
-    wires::KIMCHI_COLS,
 };
 use CurrOrNext::{Curr, Next};
 
@@ -37,8 +36,8 @@ pub enum ArgumentType {
 /// created with ArgumentData and F = Field or F = PrimeField, then the constraints
 /// are built as expressions of real field elements and can be evaluated directly on
 /// the witness without using the prover.
-pub struct ArgumentEnv<F: 'static, T, const COLUMNS: usize = KIMCHI_COLS> {
-    data: Option<ArgumentData<F, COLUMNS>>,
+pub struct ArgumentEnv<F: 'static, T> {
+    data: Option<ArgumentData<F>>,
     phantom_data: PhantomData<T>,
 }
 
@@ -52,14 +51,10 @@ impl<F, T> Default for ArgumentEnv<F, T> {
     }
 }
 
-impl<F: Field, T: ExprOps<F>, const COLUMNS: usize> ArgumentEnv<F, T, COLUMNS> {
+impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
     /// Initialize the environment for creating constraints of real field elements that can be
     /// evaluated directly over the witness without the prover/verifier
-    pub fn create(
-        witness: ArgumentWitness<F, COLUMNS>,
-        coeffs: Vec<F>,
-        constants: Constants<F>,
-    ) -> Self {
+    pub fn create(witness: ArgumentWitness<F>, coeffs: Vec<F>, constants: Constants<F>) -> Self {
         ArgumentEnv {
             data: Some(ArgumentData {
                 witness,
@@ -134,9 +129,9 @@ impl<F: Field, T: ExprOps<F>, const COLUMNS: usize> ArgumentEnv<F, T, COLUMNS> {
 }
 
 /// Argument environment data for constraints of field elements
-pub struct ArgumentData<F: 'static, const COLUMNS: usize = KIMCHI_COLS> {
+pub struct ArgumentData<F: 'static> {
     /// Witness rows
-    pub witness: ArgumentWitness<F, COLUMNS>,
+    pub witness: ArgumentWitness<F>,
     /// Gate coefficients
     pub coeffs: Vec<F>,
     /// Constants
@@ -144,14 +139,14 @@ pub struct ArgumentData<F: 'static, const COLUMNS: usize = KIMCHI_COLS> {
 }
 
 /// Witness data for a argument
-pub struct ArgumentWitness<T, const COLUMNS: usize = KIMCHI_COLS> {
+pub struct ArgumentWitness<T> {
     /// Witness for current row
-    pub curr: [T; COLUMNS],
+    pub curr: Vec<T>,
     /// Witness for next row
-    pub next: [T; COLUMNS],
+    pub next: Vec<T>,
 }
 
-impl<T, const COLUMNS: usize> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T, COLUMNS> {
+impl<T> std::ops::Index<(CurrOrNext, usize)> for ArgumentWitness<T> {
     type Output = T;
 
     fn index(&self, idx: (CurrOrNext, usize)) -> &T {
@@ -173,10 +168,7 @@ pub trait Argument<F: PrimeField> {
     const CONSTRAINTS: u32;
 
     /// Constraints for this argument
-    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
-        env: &ArgumentEnv<F, T, COLUMNS>,
-        cache: &mut Cache,
-    ) -> Vec<T>;
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T>;
 
     /// Returns the set of constraints required to prove this argument.
     fn constraints(cache: &mut Cache) -> Vec<E<F>> {

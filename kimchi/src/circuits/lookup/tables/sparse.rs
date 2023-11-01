@@ -5,6 +5,10 @@ use ark_ff::Field;
 //~ This is a 1-column table containing the sparse representation of all 16-bit preimages.
 
 /// Returns the sparse lookup table
+///
+/// # Panics
+///
+/// Will panic if `data` is invalid.
 pub fn sparse_table<F: Field>() -> LookupTable<F> {
     let mut data = vec![vec![]; 1];
 

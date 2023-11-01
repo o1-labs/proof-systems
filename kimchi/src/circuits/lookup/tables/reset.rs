@@ -8,6 +8,10 @@ use super::RESET_TABLE_ID;
 //~ The first column contains the 16-bit values, and the second column contains their expansion to 64-bit values.
 
 /// Returns the sparse lookup table
+///
+/// # Panics
+///
+/// Will panic if `data` is invalid.
 pub fn reset_table<F: Field>() -> LookupTable<F> {
     let mut data = vec![vec![]; 2];
 

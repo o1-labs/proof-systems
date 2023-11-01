@@ -337,10 +337,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::Poseidon);
     const CONSTRAINTS: u32 = 15;
 
-    fn constraint_checks<T: ExprOps<F>, const COLUMNS: usize>(
-        env: &ArgumentEnv<F, T, COLUMNS>,
-        cache: &mut Cache,
-    ) -> Vec<T> {
+    fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, cache: &mut Cache) -> Vec<T> {
         let mut res = vec![];
 
         let mut idx = 0;
