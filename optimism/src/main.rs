@@ -132,6 +132,9 @@ pub fn main() -> ExitCode {
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
+        .init();
+
     let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE, state);
 
     while !env.halt {
