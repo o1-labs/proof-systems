@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "optimism-utils"
+version = "1.0.0"
+description = "utils to play with optimism"
+authors = ["O1 Labs <opensource@o1labs.org>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.9"
+fire = "*"
+
+[tool.poetry.dev-dependencies]
+black = "*"
+pytest = "*"
+mypy = "*"
+python-lsp-server = {extras = ["all"], version = "^1.5.0"}
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[flake8]
+max-line-length = 120
