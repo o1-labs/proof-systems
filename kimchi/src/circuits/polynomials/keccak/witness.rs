@@ -19,36 +19,30 @@ use super::{
     RATE,
 };
 
-type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
+type Layout<const W: usize, F> = Vec<Box<dyn WitnessCell<W, F, Vec<F>>>>;
 
-fn layout_round<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 1] {
+fn layout_round<F: PrimeField>() -> [Layout<KECCAK_COLS, F>; 1] {
     [vec![
         IndexCell::create("state_a", 0, 100),
-        IndexCell::create("state_c", 100, 120),
-        IndexCell::create("shifts_c", 120, 200),
-        IndexCell::create("dense_c", 200, 220),
-        IndexCell::create("quotient_c", 220, 240),
-        IndexCell::create("remainder_c", 240, 260),
-        IndexCell::create("bound_c", 260, 280),
-        IndexCell::create("dense_rot_c", 280, 300),
-        IndexCell::create("expand_rot_c", 300, 320),
-        IndexCell::create("state_d", 320, 340),
-        IndexCell::create("state_e", 340, 440),
-        IndexCell::create("shifts_e", 440, 840),
-        IndexCell::create("dense_e", 840, 940),
-        IndexCell::create("quotient_e", 940, 1040),
-        IndexCell::create("remainder_e", 1040, 1140),
-        IndexCell::create("bound_e", 1140, 1240),
-        IndexCell::create("dense_rot_e", 1240, 1340),
-        IndexCell::create("expand_rot_e", 1340, 1440),
-        IndexCell::create("state_b", 1440, 1540),
-        IndexCell::create("shifts_b", 1540, 1940),
-        IndexCell::create("shifts_sum", 1940, 2340),
-        IndexCell::create("f00", 2340, 2344),
+        IndexCell::create("shifts_c", 100, 180),
+        IndexCell::create("dense_c", 180, 200),
+        IndexCell::create("quotient_c", 200, 205),
+        IndexCell::create("remainder_c", 205, 225),
+        IndexCell::create("dense_rot_c", 225, 245),
+        IndexCell::create("expand_rot_c", 245, 265),
+        IndexCell::create("shifts_e", 265, 665),
+        IndexCell::create("dense_e", 665, 765),
+        IndexCell::create("quotient_e", 765, 865),
+        IndexCell::create("remainder_e", 865, 965),
+        IndexCell::create("bound_e", 965, 1065),
+        IndexCell::create("dense_rot_e", 1065, 1165),
+        IndexCell::create("expand_rot_e", 1165, 1265),
+        IndexCell::create("shifts_b", 1265, 1665),
+        IndexCell::create("shifts_sum", 1665, 2065),
     ]]
 }
 
-fn layout_sponge<F: PrimeField>() -> [Layout<F, KECCAK_COLS>; 1] {
+fn layout_sponge<F: PrimeField>() -> [Layout<KECCAK_COLS, F>; 1] {
     [vec![
         IndexCell::create("old_state", 0, 100),
         IndexCell::create("new_state", 100, 200),
@@ -132,15 +126,12 @@ impl Rotation {
 }
 
 struct Theta {
-    state_c: Vec<u64>,
     shifts_c: Vec<u64>,
     dense_c: Vec<u64>,
     quotient_c: Vec<u64>,
     remainder_c: Vec<u64>,
-    bound_c: Vec<u64>,
     dense_rot_c: Vec<u64>,
     expand_rot_c: Vec<u64>,
-    state_d: Vec<u64>,
     state_e: Vec<u64>,
 }
 
@@ -152,16 +143,20 @@ impl Theta {
         let rotation_c = Rotation::many(&dense_c, &[1; DIM]);
         let state_d = Self::compute_state_d(&shifts_c, &rotation_c.expand_rot);
         let state_e = Self::compute_state_e(state_a, &state_d);
+        let quotient_c = vec![
+            rotation_c.quotient[0],
+            rotation_c.quotient[4],
+            rotation_c.quotient[8],
+            rotation_c.quotient[12],
+            rotation_c.quotient[16],
+        ];
         Self {
-            state_c,
             shifts_c,
             dense_c,
-            quotient_c: rotation_c.quotient,
+            quotient_c,
             remainder_c: rotation_c.remainder,
-            bound_c: rotation_c.bound,
             dense_rot_c: rotation_c.dense_rot,
             expand_rot_c: rotation_c.expand_rot,
-            state_d,
             state_e,
         }
     }
@@ -373,12 +368,6 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
 
             // Chi
             let chi = Chi::create(&pirho.state_b);
-            let f00 = chi
-                .state_f
-                .clone()
-                .into_iter()
-                .take(QUARTERS)
-                .collect::<Vec<u64>>();
 
             // Iota
             let iota = Iota::create(chi.state_f, round);
@@ -390,16 +379,12 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
                 &layout_round(),
                 &variable_map![
                 "state_a" => field(&ini_state),
-                "state_c" => field(&theta.state_c),
                 "shifts_c" => field(&theta.shifts_c),
                 "dense_c" => field(&theta.dense_c),
                 "quotient_c" => field(&theta.quotient_c),
                 "remainder_c" => field(&theta.remainder_c),
-                "bound_c" => field(&theta.bound_c),
                 "dense_rot_c" => field(&theta.dense_rot_c),
                 "expand_rot_c" => field(&theta.expand_rot_c),
-                "state_d" => field(&theta.state_d),
-                "state_e" => field(&theta.state_e),
                 "shifts_e" => field(&pirho.shifts_e),
                 "dense_e" => field(&pirho.dense_e),
                 "quotient_e" => field(&pirho.quotient_e),
@@ -407,10 +392,8 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
                 "bound_e" => field(&pirho.bound_e),
                 "dense_rot_e" => field(&pirho.dense_rot_e),
                 "expand_rot_e" => field(&pirho.expand_rot_e),
-                "state_b" => field(&pirho.state_b),
                 "shifts_b" => field(&chi.shifts_b),
-                "shifts_sum" => field(&chi.shifts_sum),
-                "f00" => field(&f00)
+                "shifts_sum" => field(&chi.shifts_sum)
                 ],
             );
             row += 1;
