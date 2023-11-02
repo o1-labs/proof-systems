@@ -204,7 +204,7 @@ impl LookupInfo {
         &self,
         domain: &EvaluationDomains<F>,
         gates: &[CircuitGate<F>],
-    ) -> (LookupSelectors<Evaluations<F>>, HashSet<LookupTable<F>>) {
+    ) -> (LookupSelectors<Evaluations<F>>, Vec<LookupTable<F>>) {
         let n = domain.d1.size();
 
         let mut selector_values = LookupSelectors::default();
@@ -246,7 +246,7 @@ impl LookupInfo {
                 .interpolate()
                 .evaluate_over_domain(domain.d8)
         });
-        let res_tables: HashSet<_> = gate_tables.into_iter().map(get_table).collect();
+        let res_tables: Vec<_> = gate_tables.into_iter().map(get_table).collect();
         (selector_values8, res_tables)
     }
 
