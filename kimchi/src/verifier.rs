@@ -635,6 +635,8 @@ where
         foreign_field_mul_selector,
         xor_selector,
         rot_selector,
+        keccak_round_selector,
+        keccak_sponge_selector,
         lookup_aggregation,
         lookup_table,
         lookup_sorted,
@@ -644,6 +646,8 @@ where
         lookup_gate_lookup_selector,
         range_check_lookup_selector,
         foreign_field_mul_lookup_selector,
+        keccak_round_lookup_selector,
+        keccak_sponge_lookup_selector,
     } = &proof.evals;
 
     let check_eval_len = |eval: &PointEvaluations<Vec<_>>, str: &'static str| -> Result<()> {
@@ -721,6 +725,12 @@ where
     if let Some(rot_selector) = rot_selector {
         check_eval_len(rot_selector, "rot selector")?
     }
+    if let Some(keccak_round_selector) = keccak_round_selector {
+        check_eval_len(keccak_round_selector, "keccak round selector")?
+    }
+    if let Some(keccak_sponge_selector) = keccak_sponge_selector {
+        check_eval_len(keccak_sponge_selector, "keccak sponge selector")?
+    }
 
     // Lookup selectors
 
@@ -743,6 +753,15 @@ where
         check_eval_len(
             foreign_field_mul_lookup_selector,
             "foreign field mul lookup selector",
+        )?
+    }
+    if let Some(keccak_round_lookup_selector) = keccak_round_lookup_selector {
+        check_eval_len(keccak_round_lookup_selector, "keccak round lookup selector")?
+    }
+    if let Some(keccak_sponge_lookup_selector) = keccak_sponge_lookup_selector {
+        check_eval_len(
+            keccak_sponge_lookup_selector,
+            "keccak sponge lookup selector",
         )?
     }
 
