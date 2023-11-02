@@ -49,21 +49,20 @@
 - [Non-interaction with Fiat-Shamir](./plonk/fiat_shamir.md)
 - [Plookup](./plonk/plookup.md)
 - [Maller's Optimization](./plonk/maller.md)
+- [Zero-Column Approach to Zero-Knowledge](./plonk/zkpm.md)
 
 # Kimchi
 
 - [Overview](./kimchi/overview.md)
 - [Arguments](./kimchi/arguments.md)
-- [Zero-Column Approach to Zero-Knowledge](./kimchi/zkpm.md)
 - [Final Check](./kimchi/final_check.md)
 - [Maller's Optimization for Kimchi](./kimchi/maller_15.md)
-- [Permutation](./kimchi/permut.md)
 - [Lookup Tables](./kimchi/lookup.md)
   - [Extended Lookup Tables](./kimchi/extended-lookup-tables.md)
 - [Custom Gates](./kimchi/gates.md)
   - [Foreign Field Addition](./kimchi/foreign_field_add.md)
   - [Foreign Field Multiplication](./kimchi/foreign_field_mul.md)
-  - [Keccak](./rfcs/keccak.md)
+  - [Keccak](./kimchi/keccak.md)
 
 
 # Pickles & Inductive Proof Systems
@@ -71,7 +70,6 @@
 - [Overview](./fundamentals/zkbook_ips.md)
 - [Accumulation](./pickles/accumulation.md)
 - [Deferred Computation](./pickles/deferred.md)
-- [Passthough & Me-Only](./pickles/passthrough.md)
 
 # Technical Specifications
 
