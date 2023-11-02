@@ -15,11 +15,11 @@ use crate::{
 use ark_ff::PrimeField;
 use std::marker::PhantomData;
 
-//~ | GateType       | [0...265) | [265...1040) |
+//~ | GateType       | [0...265) | [265...1020) |
 //~ | -------------- | --------- | ------------ |
 //~ | `KeccakRound0` | theta     | chi          |
 
-//~ | `KeccakRound1` | [0...100)  | [0...1025) |
+//~ | `KeccakRound1` | [0...100)  | [0...1045) |
 //~ | -------------- | ---------- | ---------- |
 //~ | Curr           |            | pirho      |
 //~ | Next           | iota       |            |
@@ -219,7 +219,6 @@ where
                 let quo_e = from_quarters!(quotient_e, y, x);
                 let rem_e = from_quarters!(remainder_e, y, x);
                 let rot_e = from_quarters!(dense_rot_e, y, x);
-                let bnd_e = from_quarters!(bound_e, y, x);
 
                 constraints.push(
                     word_e * T::two_pow(*off) - (quo_e.clone() * T::two_pow(64) + rem_e.clone()),
