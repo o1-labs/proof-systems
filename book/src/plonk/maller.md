@@ -1,4 +1,4 @@
-# Maller optimization to reduce proof size
+# Maller's Optimization to Reduce Proof Size
 
 In the PLONK paper, they make use of an optimization from Mary Maller in order to reduce the proof size.
 
@@ -19,7 +19,7 @@ Let's see the protocol where _Prover_ wants to prove to _Verifier_ that
 
 $$\forall x \in \mathbb{F}, \; h_1(x)h_2(x) - h_3(x) = 0$$
 
-given commitments of $h_1, h_2, h_3$, 
+given commitments of $h_1, h_2, h_3$,
 
 ![maller 1](../img/maller_1.png)
 
@@ -37,7 +37,7 @@ Note right of Verifier: verifies that \n h1(s)h2(s) - h3(s) = 0
 ```
 -->
 
-A shorter proof exists. Essentially, if the verifier already has the opening `h1(s)`, they can reduce the problem to showing that 
+A shorter proof exists. Essentially, if the verifier already has the opening `h1(s)`, they can reduce the problem to showing that
 
 $$ \forall x \in \mathbb{F}, \; L(x) = h_1(s)h_2(x) - h_3(x) = 0$$
 
