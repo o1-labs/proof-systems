@@ -366,6 +366,8 @@ pub fn linearization_columns<F: FftField + SquareRootField, const COLUMNS: usize
     h.insert(Index(GateType::ForeignFieldMul));
     h.insert(Index(GateType::Xor16));
     h.insert(Index(GateType::Rot64));
+    h.insert(Index(GateType::KeccakRound));
+    h.insert(Index(GateType::KeccakSponge));
 
     // lookup selectors
     h.insert(LookupRuntimeSelector);
@@ -373,6 +375,8 @@ pub fn linearization_columns<F: FftField + SquareRootField, const COLUMNS: usize
     h.insert(LookupKindIndex(LookupPattern::Lookup));
     h.insert(LookupKindIndex(LookupPattern::RangeCheck));
     h.insert(LookupKindIndex(LookupPattern::ForeignFieldMul));
+    h.insert(LookupKindIndex(LookupPattern::KeccakRound));
+    h.insert(LookupKindIndex(LookupPattern::KeccakSponge));
 
     h
 }
