@@ -252,14 +252,16 @@ pub fn linearization_columns<F: FftField + SquareRootField, const COLUMNS: usize
                 foreign_field_mul: true,
                 xor: true,
                 rot: true,
+                keccak_round: true,
+                keccak_sponge: true,
                 lookup_features: LookupFeatures {
                     patterns: LookupPatterns {
                         xor: true,
                         lookup: true,
                         range_check: true,
                         foreign_field_mul: true,
-                        keccak_round: false,
-                        keccak_sponge: false,
+                        keccak_round: true,
+                        keccak_sponge: true,
                     },
                     joint_lookup_used: true,
                     uses_runtime_tables: true,
