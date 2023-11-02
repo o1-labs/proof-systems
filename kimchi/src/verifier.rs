@@ -1042,6 +1042,18 @@ where
             .as_ref()
             .map(|_| Column::Index(GateType::Rot64)),
     )
+    .chain(
+        verifier_index
+            .keccak_round_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::KeccakRound)),
+    )
+    .chain(
+        verifier_index
+            .keccak_sponge_comm
+            .as_ref()
+            .map(|_| Column::Index(GateType::KeccakSponge)),
+    )
     //~~ * lookup commitments
     //~
     .chain(
