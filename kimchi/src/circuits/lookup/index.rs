@@ -216,7 +216,7 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 let max_num_entries = d1_size - zk_rows - 1;
 
                 //~ 2. Get the lookup selectors and lookup tables that are specified implicitly
-                // by the lookup gates (TODO: how?)
+                // by the lookup gates.
                 let (lookup_selectors, gate_lookup_tables) =
                     lookup_info.selector_polynomials_and_tables(domain, gates);
 

@@ -16,6 +16,8 @@ pub struct LookupTable<F> {
 /// Represents inconsistency errors during table construction and composition.
 #[derive(Debug, Error)]
 pub enum LookupTableError {
+    #[error("Table must be nonempty")]
+    InputTableDataEmpty,
     #[error("One of the lookup tables has columns of different lengths")]
     InconsistentTableLength,
     #[error("The table with id 0 must have an entry of all zeros")]
@@ -28,9 +30,14 @@ where
 {
     pub fn create(id: i32, data: Vec<Vec<F>>) -> Result<Self, LookupTableError> {
         let res = LookupTable { id, data };
-        let table_len = res.len();
+
+        // Empty tables are not allowed
+        if res.data.is_empty() {
+            return Err(LookupTableError::InputTableDataEmpty);
+        }
 
         // All columns in the table must have same length
+        let table_len = res.len();
         for col in res.data.iter() {
             if col.len() != table_len {
                 return Err(LookupTableError::InconsistentTableLength);
@@ -282,7 +289,13 @@ mod tests {
     }
 
     #[test]
-    fn test_inconsistent_lengths() {
+    fn test_invalid_data_inputs() {
+        let table: Result<LookupTable<Fp>, _> = LookupTable::create(0, vec![]);
+        assert!(
+            matches!(table, Err(LookupTableError::InputTableDataEmpty)),
+            "LookupTable::create(...) must fail when empty table creation is attempted"
+        );
+
         let lookup_r: u64 = 32;
         // Two columns of different lengths
         let lookup_table_values_1: Vec<_> = (0..2 * lookup_r).map(From::from).collect();
