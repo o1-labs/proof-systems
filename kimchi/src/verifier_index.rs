@@ -6,11 +6,10 @@ use crate::{
     circuits::{
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
-        polynomials::permutation::{zk_polynomial, zk_w3},
+        polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
-    error::VerifierIndexError,
     prover_index::ProverIndex,
 };
 use ark_ff::{One, PrimeField};
@@ -19,7 +18,7 @@ use mina_poseidon::FqSponge;
 use once_cell::sync::OnceCell;
 use poly_commitment::{
     commitment::{CommitmentCurve, PolyComm},
-    srs::SRS,
+    OpenProof, SRS as _,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_with::serde_as;
@@ -56,15 +55,18 @@ pub struct LookupVerifierIndex<G: CommitmentCurve> {
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct VerifierIndex<G: KimchiCurve> {
+pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     /// evaluation domain
     #[serde_as(as = "o1_utils::serialization::SerdeAs")]
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
+    /// the number of randomized rows to achieve zero knowledge
+    pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
-    pub srs: OnceCell<Arc<SRS<G>>>,
+    #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
+    pub srs: Arc<OpeningProof::SRS>,
     /// number of public inputs
     pub public: usize,
     /// number of previous evaluation challenges, for recursive proving
@@ -129,7 +131,7 @@ pub struct VerifierIndex<G: KimchiCurve> {
     pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
+    pub permutation_vanishing_polynomial_m: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
@@ -149,13 +151,19 @@ pub struct VerifierIndex<G: KimchiCurve> {
 }
 //~spec:endcode
 
-impl<G: KimchiCurve> ProverIndex<G> {
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> ProverIndex<G, OpeningProof>
+where
+    G::BaseField: PrimeField,
+{
     /// Produces the [`VerifierIndex`] from the prover's [`ProverIndex`].
     ///
     /// # Panics
     ///
     /// Will panic if `srs` cannot be in `cell`.
-    pub fn verifier_index(&self) -> VerifierIndex<G> {
+    pub fn verifier_index(&self) -> VerifierIndex<G, OpeningProof>
+    where
+        VerifierIndex<G, OpeningProof>: Clone,
+    {
         if let Some(verifier_index) = &self.verifier_index {
             return verifier_index.clone();
         }
@@ -200,14 +208,11 @@ impl<G: KimchiCurve> ProverIndex<G> {
         VerifierIndex {
             domain,
             max_poly_size: self.max_poly_size,
+            zk_rows: self.cs.zk_rows,
             powers_of_alpha: self.powers_of_alpha.clone(),
             public: self.cs.public,
             prev_challenges: self.cs.prev_challenges,
-            srs: {
-                let cell = OnceCell::new();
-                cell.set(Arc::clone(&self.srs)).unwrap();
-                cell
-            },
+            srs: Arc::clone(&self.srs),
 
             sigma_comm: array::from_fn(|i| {
                 self.srs.commit_evaluations_non_hiding(
@@ -286,14 +291,20 @@ impl<G: KimchiCurve> ProverIndex<G> {
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
-            zkpm: {
+            permutation_vanishing_polynomial_m: {
                 let cell = OnceCell::new();
-                cell.set(self.cs.precomputations().zkpm.clone()).unwrap();
+                cell.set(
+                    self.cs
+                        .precomputations()
+                        .permutation_vanishing_polynomial_m
+                        .clone(),
+                )
+                .unwrap();
                 cell
             },
             w: {
                 let cell = OnceCell::new();
-                cell.set(zk_w3(self.cs.domain.d1)).unwrap();
+                cell.set(zk_w(self.cs.domain.d1, self.cs.zk_rows)).unwrap();
                 cell
             },
             endo: self.cs.endo,
@@ -303,27 +314,24 @@ impl<G: KimchiCurve> ProverIndex<G> {
     }
 }
 
-impl<G: KimchiCurve> VerifierIndex<G> {
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> {
     /// Gets srs from [`VerifierIndex`] lazily
-    pub fn srs(&self) -> &Arc<SRS<G>>
+    pub fn srs(&self) -> &Arc<OpeningProof::SRS>
     where
         G::BaseField: PrimeField,
     {
-        self.srs.get_or_init(|| {
-            let mut srs = SRS::<G>::create(self.max_poly_size);
-            srs.add_lagrange_basis(self.domain);
-            Arc::new(srs)
-        })
+        &self.srs
     }
 
-    /// Gets zkpm from [`VerifierIndex`] lazily
-    pub fn zkpm(&self) -> &DensePolynomial<G::ScalarField> {
-        self.zkpm.get_or_init(|| zk_polynomial(self.domain))
+    /// Gets permutation_vanishing_polynomial_m from [`VerifierIndex`] lazily
+    pub fn permutation_vanishing_polynomial_m(&self) -> &DensePolynomial<G::ScalarField> {
+        self.permutation_vanishing_polynomial_m
+            .get_or_init(|| vanishes_on_last_n_rows(self.domain, self.zk_rows))
     }
 
     /// Gets w from [`VerifierIndex`] lazily
     pub fn w(&self) -> &G::ScalarField {
-        self.w.get_or_init(|| zk_w3(self.domain))
+        self.w.get_or_init(|| zk_w(self.domain, self.zk_rows))
     }
 
     /// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS and an optional offset in the file.
@@ -332,12 +340,15 @@ impl<G: KimchiCurve> VerifierIndex<G> {
     ///
     /// Will give error if it fails to deserialize from file or unable to set `srs` in `verifier_index`.
     pub fn from_file(
-        srs: Option<Arc<SRS<G>>>,
+        srs: Arc<OpeningProof::SRS>,
         path: &Path,
         offset: Option<u64>,
         // TODO: we shouldn't have to pass these
         endo: G::ScalarField,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, String>
+    where
+        OpeningProof::SRS: Default,
+    {
         // open file
         let file = File::open(path).map_err(|e| e.to_string())?;
 
@@ -352,13 +363,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             .map_err(|e| e.to_string())?;
 
         // fill in the rest
-        if let Some(srs) = srs {
-            verifier_index
-                .srs
-                .set(srs)
-                .map_err(|_| VerifierIndexError::SRSHasBeenSet.to_string())?;
-        };
-
+        verifier_index.srs = srs;
         verifier_index.endo = endo;
 
         Ok(verifier_index)
@@ -391,11 +396,12 @@ impl<G: KimchiCurve> VerifierIndex<G> {
     pub fn digest<EFqSponge: Clone + FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
     ) -> G::BaseField {
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
         // We fully expand this to make the compiler check that we aren't missing any commitments
         let VerifierIndex {
             domain: _,
             max_poly_size: _,
+            zk_rows: _,
             srs: _,
             public: _,
             prev_challenges: _,
@@ -422,7 +428,7 @@ impl<G: KimchiCurve> VerifierIndex<G> {
             lookup_index,
 
             shift: _,
-            zkpm: _,
+            permutation_vanishing_polynomial_m: _,
             w: _,
             endo: _,
 
