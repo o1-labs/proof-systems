@@ -90,7 +90,7 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
         chunk
     }
 
-    /// Witness cells in current row in an interval [from, to)
+    /// Witness cells in next row in an interval [from, to)
     pub fn witness_next_chunk(&self, from: usize, to: usize) -> Vec<T> {
         let mut chunk = Vec::with_capacity(to - from);
         for i in from..to {
