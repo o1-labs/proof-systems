@@ -1,6 +1,7 @@
 // Data structure and stuff for compatibility with Cannon
 
 use base64::{engine::general_purpose, Engine as _};
+
 use libflate::zlib::Decoder;
 use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
@@ -150,5 +151,28 @@ impl Start {
             time: std::time::Instant::now(),
             step,
         }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Symbol {
+    pub name: String,
+    pub start: u32,
+    pub size: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Meta {
+    symbols: Vec<Symbol>,
+}
+
+impl Meta {
+    pub fn find_address_symbol(&self, address: u32) -> Option<String> {
+        for e in self.symbols.iter() {
+            if address >= e.start && address <= (e.start + e.size as u32) {
+                return Some(e.name.to_string());
+            }
+        }
+        None
     }
 }
