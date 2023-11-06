@@ -154,29 +154,26 @@ impl Meta {
     pub fn find_address_symbol(&self, address: u32) -> Option<String> {
         use std::cmp::Ordering;
 
-        let res = self.symbols.binary_search_by(
-            |Symbol {
-                 start,
-                 size,
-                 name: _,
-             }| {
-                if address < *start {
-                    Ordering::Greater
-                } else {
-                    let end = *start + *size as u32;
-                    if address >= end {
-                        Ordering::Less
+        self.symbols
+            .binary_search_by(
+                |Symbol {
+                     start,
+                     size,
+                     name: _,
+                 }| {
+                    if address < *start {
+                        Ordering::Greater
                     } else {
-                        Ordering::Equal
+                        let end = *start + *size as u32;
+                        if address >= end {
+                            Ordering::Less
+                        } else {
+                            Ordering::Equal
+                        }
                     }
-                }
-            },
-        );
-
-        match res {
-            Ok(idx) => Some(self.symbols[idx].name.to_string()),
-            Err(_) => None,
-        }
+                },
+            )
+            .map_or_else(|_| None, |idx| Some(self.symbols[idx].name.to_string()))
     }
 }
 
