@@ -147,7 +147,20 @@ pub struct Symbol {
 
 #[derive(Debug, PartialEq, Clone, Deserialize)]
 pub struct Meta {
+    #[serde(deserialize_with = "filtered_ordered")]
     pub symbols: Vec<Symbol>, // Needs to be in ascending order w.r.t start address
+}
+
+// Make sure that deserialized data are ordered in ascending order and that we
+// have removed 0-size symbols
+fn filtered_ordered<'de, D>(deserializer: D) -> Result<Vec<Symbol>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let v: Vec<Symbol> = Deserialize::deserialize(deserializer)?;
+    let mut filtered: Vec<Symbol> = v.into_iter().filter(|e| e.size != 0).collect();
+    filtered.sort_by(|a, b| a.start.cmp(&b.start));
+    Ok(filtered)
 }
 
 impl Meta {
@@ -195,6 +208,8 @@ mod tests {
     }
 
     // This sample is a subset taken from a Cannon-generated "meta.json" file
+    // Interestingly, it contains 0-size symbols - there are removed by
+    // deserialization.
     const META_SAMPLE: &str = r#"{
   "symbols": [
     {
