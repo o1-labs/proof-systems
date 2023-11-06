@@ -147,7 +147,7 @@ pub struct Symbol {
 
 #[derive(Debug, PartialEq, Clone, Deserialize)]
 pub struct Meta {
-    symbols: Vec<Symbol>,
+    symbols: Vec<Symbol>, // Needs to be in ascending order w.r.t start address
 }
 
 impl Meta {
