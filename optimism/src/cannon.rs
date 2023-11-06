@@ -152,12 +152,31 @@ pub struct Meta {
 
 impl Meta {
     pub fn find_address_symbol(&self, address: u32) -> Option<String> {
-        for e in self.symbols.iter() {
-            if address >= e.start && address <= (e.start + e.size as u32) {
-                return Some(e.name.to_string());
-            }
+        use std::cmp::Ordering;
+
+        let res = self.symbols.binary_search_by(
+            |Symbol {
+                 start,
+                 size,
+                 name: _,
+             }| {
+                if address < *start {
+                    Ordering::Greater
+                } else {
+                    let end = *start + *size as u32;
+                    if address >= end {
+                        Ordering::Less
+                    } else {
+                        Ordering::Equal
+                    }
+                }
+            },
+        );
+
+        match res {
+            Ok(idx) => Some(self.symbols[idx].name.to_string()),
+            Err(_) => None,
         }
-        None
     }
 }
 
@@ -195,6 +214,26 @@ mod tests {
       "name": "runtime.text",
       "start": 69632,
       "size": 0
+    },  
+    {
+      "name": "runtime/internal/atomic.(*Uint8).Load",
+      "start": 71504,
+      "size": 28
+    },
+    {
+      "name": "runtime/internal/atomic.(*Uint8).Store",
+      "start": 71532,
+      "size": 28
+    },
+    {
+      "name": "runtime/internal/atomic.(*Uint8).And",
+      "start": 71560,
+      "size": 88
+    },
+    {
+      "name": "runtime/internal/atomic.(*Uint8).Or",
+      "start": 71648,
+      "size": 72
     }]}"#;
 
     fn deserialize_meta_sample() -> Meta {
@@ -233,7 +272,12 @@ mod tests {
                 },
             ],
         };
-        assert_eq!(read, expected);
+
+        // just test the 3 first symbols
+        let read_test = Meta {
+            symbols: read.symbols[0..3].to_vec(),
+        };
+        assert_eq!(read_test, expected);
     }
 
     #[test]
@@ -242,6 +286,10 @@ mod tests {
 
         assert_eq!(
             meta.find_address_symbol(69633),
+            Some("internal/cpu.processOptions".to_string())
+        );
+        assert_eq!(
+            meta.find_address_symbol(69632),
             Some("internal/cpu.processOptions".to_string())
         );
         assert_eq!(meta.find_address_symbol(42), None);
