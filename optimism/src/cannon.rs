@@ -86,22 +86,6 @@ pub fn step_frequency_parser(s: &str) -> std::result::Result<StepFrequency, Stri
     }
 }
 
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn sp_parser() {
-        use StepFrequency::*;
-        assert_eq!(step_frequency_parser("never"), Ok(Never));
-        assert_eq!(step_frequency_parser("always"), Ok(Always));
-        assert_eq!(step_frequency_parser("=123"), Ok(Exactly(123)));
-        assert_eq!(step_frequency_parser("%123"), Ok(Every(123)));
-        assert!(step_frequency_parser("@123").is_err());
-    }
-}
-
 impl ToString for State {
     // A very debatable and incomplete, but serviceable, `to_string` implementation.
     fn to_string(&self) -> String {
@@ -154,14 +138,14 @@ impl Start {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub struct Symbol {
     pub name: String,
     pub start: u32,
     pub size: usize,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, PartialEq, Clone, Deserialize)]
 pub struct Meta {
     symbols: Vec<Symbol>,
 }
@@ -174,5 +158,77 @@ impl Meta {
             }
         }
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use std::fs::File;
+    use std::io::{BufReader, Write};
+
+    #[test]
+    fn sp_parser() {
+        use StepFrequency::*;
+        assert_eq!(step_frequency_parser("never"), Ok(Never));
+        assert_eq!(step_frequency_parser("always"), Ok(Always));
+        assert_eq!(step_frequency_parser("=123"), Ok(Exactly(123)));
+        assert_eq!(step_frequency_parser("%123"), Ok(Every(123)));
+        assert!(step_frequency_parser("@123").is_err());
+    }
+
+    // This sample is a subset taken from a Cannon-generated "meta.json" file
+    const META_SAMPLE: &str = r#"{
+  "symbols": [
+    {
+      "name": "go.go",
+      "start": 0,
+      "size": 0
+    },
+    {
+      "name": "internal/cpu.processOptions",
+      "start": 69632,
+      "size": 1872
+    },
+    {
+      "name": "runtime.text",
+      "start": 69632,
+      "size": 0
+    }]}"#;
+
+    #[test]
+    fn test_meta_deserialize_from_file() {
+        let path = "meta_test.json";
+        let mut output =
+            File::create(path).unwrap_or_else(|_| panic!("Could not create file {path}"));
+        write!(output, "{}", META_SAMPLE)
+            .unwrap_or_else(|_| panic!("Could not write to file {path}"));
+
+        let input = File::open(path).unwrap_or_else(|_| panic!("Could not open file {path}"));
+        let buffered = BufReader::new(input);
+        let read: Meta = serde_json::from_reader(buffered)
+            .unwrap_or_else(|_| panic!("Failed to deserialize metadata from file {path}"));
+
+        let expected = Meta {
+            symbols: vec![
+                Symbol {
+                    name: "go.go".to_string(),
+                    start: 0_u32,
+                    size: 0,
+                },
+                Symbol {
+                    name: "internal/cpu.processOptions".to_string(),
+                    start: 69632,
+                    size: 1872,
+                },
+                Symbol {
+                    name: "runtime.text".to_string(),
+                    start: 69632,
+                    size: 0,
+                },
+            ],
+        };
+        assert_eq!(read, expected);
     }
 }
