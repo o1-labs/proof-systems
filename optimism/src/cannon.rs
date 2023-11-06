@@ -197,6 +197,10 @@ mod tests {
       "size": 0
     }]}"#;
 
+    fn deserialize_meta_sample() -> Meta {
+        serde_json::from_str::<Meta>(META_SAMPLE).unwrap()
+    }
+
     #[test]
     fn test_meta_deserialize_from_file() {
         let path = "meta_test.json";
@@ -230,5 +234,16 @@ mod tests {
             ],
         };
         assert_eq!(read, expected);
+    }
+
+    #[test]
+    fn test_find_address_symbol() {
+        let meta = deserialize_meta_sample();
+
+        assert_eq!(
+            meta.find_address_symbol(69633),
+            Some("internal/cpu.processOptions".to_string())
+        );
+        assert_eq!(meta.find_address_symbol(42), None);
     }
 }
