@@ -1,3 +1,4 @@
+#![feature(int_log)]
 #![doc = include_str!("../README.md")]
 
 #[macro_use]
