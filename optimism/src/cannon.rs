@@ -268,28 +268,34 @@ mod tests {
         let expected = Meta {
             symbols: vec![
                 Symbol {
-                    name: "go.go".to_string(),
-                    start: 0_u32,
-                    size: 0,
-                },
-                Symbol {
                     name: "internal/cpu.processOptions".to_string(),
                     start: 69632,
                     size: 1872,
                 },
                 Symbol {
-                    name: "runtime.text".to_string(),
-                    start: 69632,
-                    size: 0,
+                    name: "runtime/internal/atomic.(*Uint8).Load".to_string(),
+                    start: 71504,
+                    size: 28,
+                },
+                Symbol {
+                    name: "runtime/internal/atomic.(*Uint8).Store".to_string(),
+                    start: 71532,
+                    size: 28,
+                },
+                Symbol {
+                    name: "runtime/internal/atomic.(*Uint8).And".to_string(),
+                    start: 71560,
+                    size: 88,
+                },
+                Symbol {
+                    name: "runtime/internal/atomic.(*Uint8).Or".to_string(),
+                    start: 71648,
+                    size: 72,
                 },
             ],
         };
 
-        // just test the 3 first symbols
-        let read_test = Meta {
-            symbols: read.symbols[0..3].to_vec(),
-        };
-        assert_eq!(read_test, expected);
+        assert_eq!(read, expected);
     }
 
     #[test]
