@@ -52,24 +52,65 @@ pub struct State {
     pub last_hint: Option<Vec<u8>>,
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct ParsePreimageKeyError(String);
+
+#[derive(Debug, PartialEq)]
+pub struct PreimageKey([u8; 32]);
+
+use std::str::FromStr;
+
+impl FromStr for PreimageKey {
+    type Err = ParsePreimageKeyError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts = s.split('x').collect::<Vec<&str>>();
+        let hex_value: &str = if parts.len() == 1 {
+            parts[0]
+        } else {
+            if parts.len() != 2 {
+                return Err(ParsePreimageKeyError(
+                    format!("Badly structured value to convert {s}").to_string(),
+                ));
+            };
+            parts[1]
+        };
+        // We only handle a hexadecimal representations of exactly 32 bytes (no auto-padding)
+        if hex_value.len() == 64 {
+            hex::decode(hex_value).map_or_else(
+                |_| {
+                    Err(ParsePreimageKeyError(
+                        format!("Could not hex decode {hex_value}").to_string(),
+                    ))
+                },
+                |h| {
+                    h.clone().try_into().map_or_else(
+                        |_| {
+                            Err(ParsePreimageKeyError(
+                                format!("Could not cast vector {:#?} into 32 bytes array", h)
+                                    .to_string(),
+                            ))
+                        },
+                        |res| Ok(PreimageKey(res)),
+                    )
+                },
+            )
+        } else {
+            Err(ParsePreimageKeyError(
+                format!("{hex_value} is not 32-bytes long").to_string(),
+            ))
+        }
+    }
+}
+
 fn to_preimage_key<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
 where
     D: Deserializer<'de>,
 {
     let s: String = Deserialize::deserialize(deserializer)?;
-    let parts = s.split("x").collect::<Vec<&str>>();
-    let hex_value: &str = if parts.len() == 1 {
-        parts[0]
-    } else {
-        assert!(parts.len() == 2);
-        parts[1]
-    };
-    assert!(hex_value.len() == 64); // check this is an hexadecimal representation of 32 bytes
-    let h = hex::decode(hex_value).unwrap_or_else(|_| panic!("Could not hex decode {hex_value}"));
-    let res: [u8; 32] = h
-        .try_into()
-        .unwrap_or_else(|_| panic!("Could not cast vector into 32 bytes array"));
-    Ok(res)
+    let p = PreimageKey::from_str(s.as_str())
+        .unwrap_or_else(|_| panic!("Parsing {s} as preimage key failed"));
+    Ok(p.0)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -331,5 +372,25 @@ mod tests {
             Some("internal/cpu.processOptions".to_string())
         );
         assert_eq!(meta.find_address_symbol(42), None);
+    }
+
+    #[test]
+    fn test_parse_preimagekey() {
+        assert_eq!(
+            PreimageKey::from_str(
+                "0x0000000000000000000000000000000000000000000000000000000000000000"
+            ),
+            Ok(PreimageKey([0; 32]))
+        );
+        assert_eq!(
+            PreimageKey::from_str(
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+            ),
+            Ok(PreimageKey([
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1
+            ]))
+        );
+        assert!(PreimageKey::from_str("0x01").is_err());
     }
 }
