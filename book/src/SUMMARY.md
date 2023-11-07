@@ -12,7 +12,7 @@
   - [Multiplying Polynomials](./fundamentals/zkbook_multiplying_polynomials.md)
   - [Fast Fourier Transform](./fundamentals/zkbook_fft.md)
 
-# Cryptographic tools
+# Cryptographic Tools
 
 - [Commitments](./fundamentals/zkbook_commitment.md)
 - [Polynomial Commitments](./plonk/polynomial_commitments.md)
@@ -27,26 +27,20 @@
     - [Half Gate](./fundamentals/zkbook_2pc/halfgate.md)
     - [Full Description](./fundamentals/zkbook_2pc/fulldesc.md)
     - [Fixed-Key-AES Hashes](./fundamentals/zkbook_2pc/fkaes.md)
-
   - [Oblivious Transfer](./fundamentals/zkbook_2pc/ot.md)
     - [Base OT](./fundamentals/zkbook_2pc/baseot.md)
     - [OT Extension](./fundamentals/zkbook_2pc/ote.md)
-
   - [Full Protocol](./fundamentals/zkbook_2pc/2pc.md)
-
-# Proof systems
-
-- [Overview](./fundamentals/proof_systems.md)
-- [zk-SNARKs](./fundamentals/zkbook_plonk.md)
-- [Custom constraints](./fundamentals/custom_constraints.md)
+- [Proof Systems](./fundamentals/proof_systems.md)
+  - [zk-SNARKs](./fundamentals/zkbook_plonk.md)
 
 # Background on PLONK
 
 - [Overview](./plonk/overview.md)
-- [Glossary](./plonk/glossary.md)
+  - [Glossary](./plonk/glossary.md)
 - [Domain](./plonk/domain.md)
 - [Lagrange Basis in Multiplicative Subgroups](./plonk/lagrange.md)
-- [Non-interaction with Fiat-Shamir](./plonk/fiat_shamir.md)
+- [Non-Interactivity via Fiat-Shamir](./plonk/fiat_shamir.md)
 - [Plookup](./plonk/plookup.md)
 - [Maller's Optimization](./plonk/maller.md)
 - [Zero-Column Approach to Zero-Knowledge](./plonk/zkpm.md)
@@ -59,6 +53,7 @@
 - [Maller's Optimization for Kimchi](./kimchi/maller_15.md)
 - [Lookup Tables](./kimchi/lookup.md)
   - [Extended Lookup Tables](./kimchi/extended-lookup-tables.md)
+- [Custom Constraints](./kimchi/custom_constraints.md)
 - [Custom Gates](./kimchi/gates.md)
   - [Foreign Field Addition](./kimchi/foreign_field_add.md)
   - [Foreign Field Multiplication](./kimchi/foreign_field_mul.md)
