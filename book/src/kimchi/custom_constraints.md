@@ -20,7 +20,7 @@ Then, given such a circuit, PLONK lets you produce proofs for the statement
 
 ## Specifying a constraint
 
-Mathematically speaking, a constraint is a multivariate polynomial over the variables $v_{\mathsf{Curr},0}, \dots, v_{\mathsf{Curr}, W+A-1}, v_{\mathsf{Next}, 0}, \dots, v_{\mathsf{Next}, W+A-1}$. In other words, there is one variable corresponding to the value of each column in the "current row" and one variable correspond to the value of each column in the "next row".
+Mathematically speaking, a constraint is a multivariate polynomial over the variables $c_{\mathsf{Curr},i}, \dots, v_{\mathsf{Curr}, W+A-1}, v_{\mathsf{Next}, 0}, \dots, v_{\mathsf{Next}, W+A-1}$. In other words, there is one variable corresponding to the value of each column in the "current row" and one variable correspond to the value of each column in the "next row".
 
 In Rust, $v_{r, i}$ is written `E::cell(Column::Witness(i), r)`. So, for example, the variable $v_{\mathsf{Next}, 3}$ is written
 `E::cell(Column::Witness(3), CurrOrNext::Next)`.
