@@ -35,8 +35,8 @@ where
 #[derive(Serialize, Deserialize, Debug)]
 pub struct State {
     pub memory: Vec<Page>,
-    #[serde(rename = "preimageKey")]
-    pub preimage_key: String,
+    #[serde(rename = "preimageKey", deserialize_with = "to_preimage_key")]
+    pub preimage_key: [u8; 32],
     #[serde(rename = "preimageOffset")]
     pub preimage_offset: u32,
     pub pc: u32,
@@ -50,6 +50,26 @@ pub struct State {
     pub step: u64,
     pub registers: [u32; 32],
     pub last_hint: Option<Vec<u8>>,
+}
+
+fn to_preimage_key<'de, D>(deserializer: D) -> Result<[u8; 32], D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: String = Deserialize::deserialize(deserializer)?;
+    let parts = s.split("x").collect::<Vec<&str>>();
+    let hex_value: &str = if parts.len() == 1 {
+        parts[0]
+    } else {
+        assert!(parts.len() == 2);
+        parts[1]
+    };
+    assert!(hex_value.len() == 64); // check this is an hexadecimal representation of 32 bytes
+    let h = hex::decode(hex_value).unwrap_or_else(|_| panic!("Could not hex decode {hex_value}"));
+    let res: [u8; 32] = h
+        .try_into()
+        .unwrap_or_else(|_| panic!("Could not cast vector into 32 bytes array"));
+    Ok(res)
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -90,7 +110,7 @@ impl ToString for State {
     // A very debatable and incomplete, but serviceable, `to_string` implementation.
     fn to_string(&self) -> String {
         format!(
-            "memory_size (length): {}\nfirst page size: {}\npreimage key: {}\npreimage offset:{}\npc: {}\nlo: {}\nhi: {}\nregisters:{:#?} ",
+            "memory_size (length): {}\nfirst page size: {}\npreimage key: {:#?}\npreimage offset:{}\npc: {}\nlo: {}\nhi: {}\nregisters:{:#?} ",
             self.memory.len(),
             self.memory[0].data.len(),
             self.preimage_key,
