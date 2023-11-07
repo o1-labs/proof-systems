@@ -1,6 +1,6 @@
 use clap::{arg, value_parser, Arg, ArgAction, Command};
 use kimchi_optimism::{
-    cannon::{self, Start, State, VmConfiguration},
+    cannon::{self, Meta, Start, State, VmConfiguration},
     mips::witness,
 };
 use std::{fs::File, io::BufReader, process::ExitCode};
@@ -120,6 +120,20 @@ pub fn main() -> ExitCode {
     // Read the JSON contents of the file as an instance of `State`.
     let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
 
+    let meta_file = File::open(&configuration.metadata_file).unwrap_or_else(|_| {
+        panic!(
+            "Could not open metadata file {}",
+            &configuration.metadata_file
+        )
+    });
+
+    let meta: Meta = serde_json::from_reader(BufReader::new(meta_file)).unwrap_or_else(|_| {
+        panic!(
+            "Error deserializing metadata file {}",
+            &configuration.metadata_file
+        )
+    });
+
     if let Some(host_program) = &configuration.host {
         println!("Launching host program {}", host_program.name);
 
@@ -137,7 +151,7 @@ pub fn main() -> ExitCode {
     let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE, state);
 
     while !env.halt {
-        env.step(configuration.clone(), &start);
+        env.step(configuration.clone(), &meta, &start);
     }
 
     // TODO: Logic

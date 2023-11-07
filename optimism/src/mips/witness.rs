@@ -1,6 +1,6 @@
 use crate::{
     cannon::{
-        Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
+        Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
     mips::{
@@ -264,10 +264,10 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
-    pub fn step(&mut self, config: VmConfiguration, start: &Start) {
+    pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
         println!("instruction: {:?}", self.decode_instruction());
 
-        self.pp_info(config.info_at, start);
+        self.pp_info(config.info_at, metadata, start);
 
         // Force stops at given iteration
         if self.should_trigger_at(config.stop_at) {
@@ -315,7 +315,7 @@ impl<Fp: Field> Env<Fp> {
         None
     }
 
-    fn pp_info(&mut self, at: StepFrequency, start: &Start) {
+    fn pp_info(&mut self, at: StepFrequency, meta: &Meta, start: &Start) {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             let step = self.instruction_counter;
@@ -331,7 +331,9 @@ impl<Fp: Field> Env<Fp> {
             let pages = self.memory.len();
 
             let mem = self.memory_usage();
-            let name = "N/A"; // TODO: implement symbol lookups
+            let name = meta
+                .find_address_symbol(pc)
+                .unwrap_or_else(|| "n/a".to_string());
 
             info!(
                 "processing step {} pc {:#010x} insn {:#010x} ips {:.2} page {} mem {} name {}",
