@@ -10,6 +10,7 @@ members = [
     "poseidon/export_test_vectors",
     "poly-commitment",
     "signer",
+    "vinegar",
     "tools/kimchi-visu",
     "utils",
     "internal-tracing",

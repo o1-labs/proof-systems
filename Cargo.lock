@@ -2649,6 +2649,50 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
+name = "vinegar"
+version = "0.0.1"
+dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff",
+ "ark-poly",
+ "ark-serialize",
+ "blake2",
+ "colored",
+ "groupmap",
+ "hex",
+ "internal-tracing",
+ "itertools",
+ "kimchi",
+ "mina-curves",
+ "mina-poseidon",
+ "num-bigint",
+ "num-derive",
+ "num-integer",
+ "num-traits",
+ "o1-utils",
+ "ocaml",
+ "ocaml-gen",
+ "once_cell",
+ "poly-commitment",
+ "proptest",
+ "proptest-derive",
+ "rand",
+ "rand_core",
+ "rayon",
+ "rmp-serde",
+ "secp256k1",
+ "serde",
+ "serde_json",
+ "serde_with",
+ "strum",
+ "strum_macros",
+ "thiserror",
+ "turshi",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "wait-timeout"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
