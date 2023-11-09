@@ -1,0 +1,28 @@
+<mxfile host="Electron" modified="2023-11-09T14:35:09.791Z" agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/21.1.2 Chrome/106.0.5249.199 Electron/21.4.3 Safari/537.36" etag="6FGklldOV5u5c2w-RGWg" version="21.1.2" type="device">
+  <diagram name="Page-1" id="jt6pdz1mvKQ4YR085iyc">
+    <mxGraphModel dx="924" dy="680" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="1" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="1vVqgqgyp8pKWViCEyBv-1" value="Step 1" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="320" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="1vVqgqgyp8pKWViCEyBv-2" value="Step 2" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="410" y="320" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="1vVqgqgyp8pKWViCEyBv-3" value="Wrap 1" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="520" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="1vVqgqgyp8pKWViCEyBv-4" value="Wrap 2" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="570" y="520" width="80" height="80" as="geometry" />
+        </mxCell>
+        <mxCell id="1vVqgqgyp8pKWViCEyBv-5" value="An output of each kimchi proof is:&lt;br&gt;- Commitments \(\{C_i\} = \mathsf{Com}(P_i(X))\)&lt;br&gt;&amp;nbsp; - To certain polynomials \(\{P_i(X)\}\) created inside the proof&lt;br&gt;- Evaluation point \(x\) (Fiat-Shamir hash)&lt;br&gt;- Polynomial evaluations \(\{s_i = P_i(x)\}\)" style="text;html=1;align=left;verticalAlign=middle;resizable=0;points=[];autosize=1;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="70" width="350" height="90" as="geometry" />
+        </mxCell>
+        <mxCell id="1vVqgqgyp8pKWViCEyBv-6" value="The structure of an IPA commitment is \((U,\vec v)\), where \(U\) is a single group element that needs to be verified linearly, and \(\vec v = (L,R,c,C&#39;,w&#39;)\) is a tuple of elements that are not propagated, but they altogether can be verified in a logarithmic time.&lt;br&gt;&lt;br&gt;To verify that \((U,\vec v)\) proves \(\mathsf{Open}(C,x,s)\) that is \(C(x) = s\), one need to run:&lt;br&gt;1. \(\mathsf{PC.SuccinctV}(\vec v,C,x,s) = (h(X),U)\) where \(U\) is as given and \(h(X)\) is a linear-sized polynomial that can be evaluated in log-time. The check is log time.&lt;br&gt;2. \(U = \mathsf{Pedersen.Commit}(h(X))\). The check is linear time." style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="414" y="60" width="380" height="180" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

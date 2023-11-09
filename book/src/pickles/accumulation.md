@@ -145,7 +145,7 @@ The communication complexity will be solved by a well-known folding argument, ho
 
 First a reduction from PCS to an inner product relation.
 
-## Reduction: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$
+## Reduction 1: $\relation_{\mathsf{PCS},d} \to \relation_{\mathsf{IPA},\ell}$
 
 Formally the relation of the inner product argument is:
 
@@ -194,7 +194,7 @@ $$
 this also works, however we (in Kimchi) simply hash to the curve to sample $H$.
 
 
-## Reduction: $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},\ell/2}$
+## Reduction 2 (Incremental Step): $\relation_{\mathsf{IPA},\ell} \to \relation_{\mathsf{IPA},\ell/2}$
 
 **Note:** The folding argument described below is the particular variant implemented in Kimchi, although some of the variable names are different.
 
@@ -486,7 +486,7 @@ This would require half as much communication as the naive proof. A modest impro
 
 However, we can iteratively apply this transformation until we reach an instance of constant size:
 
-## Reduction: $\relIPA{\ell} \to \ldots \to \relIPA{1}$
+## Reduction 2 (Full): $\relIPA{\ell} \to \ldots \to \relIPA{1}$
 
 That the process above can simply be applied again to the new $(C', \vec{G}', H, \vec{\openx}', v) \in \relation_{\mathsf{IPA}, \ell/2}$ instance as well.
 By doing so $k = \log_2(\ell)$ times the total communication is brought down to $2 k$ $\GG$-elements
@@ -498,21 +498,22 @@ we let
 $\vec{G}^{(i)}$, $\vec{f}^{(i)}$, $\vec{\openx}^{(i)}$
 be the
 $\vec{G}'$, $\vec{f}'$, $\vec{\openx}'$ vectors respectively after $i$ recursive applications, with $\vec{G}^{(0)}$, $\vec{f}^{(0)}$, $\vec{\openx}^{(0)}$ being the original instance.
+We will drop the vector arrow for $\vec{G}^{(k)}$ (similarly, for $f,x$), since the last step vector has size $1$, so we refer to this single value instead.
 We denote by $\chalfold_i$ the challenge of the $i$'th application.
 
-## Reduction: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$
+## Reduction 3: $\relation_{\mathsf{IPA},1} \to \relation_{\mathsf{Acc},\overset{\rightarrow}{G} }$
 
 While the proof for $\relIPA{\ell}$ above has $O(\log(\ell))$-size, the verifiers time-complexity is $O(\ell)$:
 
-- Computing $\vec{G}^{(k)}$ from $\vec{G}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
-- Computing $\vec{\openx}^{(k)}$ from $\vec{\openx}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
+- Computing $G^{(k)}$ from $\vec{G}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
+- Computing $\openx^{(k)}$ from $\vec{\openx}^{(0)}$ using $\vec{\chalfold}$ takes $O(\ell)$.
 
 The rest of the verifiers computation is only $O(\log(\ell))$, namely computing:
 
 - Sampling all the challenges $\chalfold \sample \FF$.
 - Computing $C^{(i)} \gets [\chalfold_i^{-1}] \cdot L^{(i)} + C^{(i-1)} + [\chalfold_i] \cdot R^{(i)}$ for every $i$
 
-However, upon inspection, the naive claim that computing $\vec{\openx}^{(k)}$ takes $O(\ell)$ turns out not to be true:
+However, upon inspection, the more pessimistic claim that computing $\vec{\openx}^{(k)}$ takes $O(\ell)$ turns out to be false:
 
 **Claim:**
 Define
@@ -521,23 +522,31 @@ $
 $,
 then
 $
-\vec{\openx}^{(k)} = \hpoly(\openx)
-$ for all $\openx$.
+\openx^{(k)} = \hpoly(\openx)
+$ for all $\openx$. Therefore, $\openx^{(k)}$ can be evaluated in $O(k) = O(\log \ell)$.
 
 **Proof:**
 This can be verified by looking at the expansion of $\hpoly(X)$.
-In slightly more detail:
-an equivalent claim is that $\openx^{(k)} = \sum_{i=1}^{\ell} h_i \cdot \openx^{i-1}$
-where $\hpoly(X) = \sum_{i=1}^\ell h_i \cdot X^{i-1}$.
-Let $\vec{b}$ be the bit-decomposition of the index $i$ and observe that:
+Define $\{h_i\}_{i=0}^l$ to be the coefficients of $\hpoly(X)$, that is $\hpoly(X) = \sum_{i=1}^\ell h_i \cdot X^{i-1}$.
+Then the claim is equivalent to $\openx^{(k)} = \sum_{i=1}^{\ell} h_i \cdot \openx^{i-1}$.
+Let $\vec{b}(i,j)$ denote the $j$th bit in the bit-decomposition of the index $i$ and observe that:
 $$
-h_i = \sum_{b_j} b_j \cdot \chalfold_{k-i}, \text{ where } i = \sum_{j} b_j \cdot 2^j
+h_i = \prod_{j=1}^k \vec \chalfold_{k-j}^{b(i,j)} \text{\qquad where\qquad } \sum_{j} \vec b(i,j) \cdot 2^j = i
 $$
-Which is simply a special case of the binomial theorem for the product:
-$$(1 + \chalfold_1) \cdot (1 + \chalfold_2) \cdots (1 + \chalfold_k)$$
+Now, compare this with how a $k$th element of $x^{(i)}$ is constructed:
+$$
+\begin{align*}
+x^{(1)}_k &= x^{(0)}_k + \alpha_1 \cdot x^{(0)}_{n/2+k}\\
+x^{(2)}_k &= x^{(1)}_k + \alpha_2 \cdot x^{(2)}_{n/4+k}\\
+&= x^{(0)}_k + \alpha_1 \cdot x^{(0)}_{n/2+k} + \alpha_2 \cdot (x^{(0)}_{n/4+k} + \alpha_1 \cdot x^{(0)}_{n/2 + n/4 +k})\\
+&= \sum_{i=0}^3 x^{(0)}_{i \cdot \frac{n}{4} + k} \cdot \big( \prod_{j=0}^1 \alpha_j^{b(i,j)} \big) 
+\end{align*}
+$$
+Recalling that $x^{(0)}_k = x^k$, it is easy to see that this generalizes exactly to the expression for $h_i$ that we derived later, which concludes that evaluation through $h(X)$ is correct.
 
-Looking at $\hpoly$ it can clearly can be evaluated in $O(k = \log \ell)$ time,
-computing $\vec{\openx}^{(k)}$ therefore takes just $O(\log \ell)$ time!
+Finally, regarding evaluation complexity, it is clear that $\hpoly$ can be evaluated in $O(k = \log \ell)$ time as a product of $k$ factors. 
+This concludes the proof.
+
 
 #### The "Halo Trick"
 
@@ -613,7 +622,7 @@ $(\statement = (\accCom, \vec{\accChal}), \witness = \epsilon) \in \relAcc$
 
 **Note:** The above can be optimized, in particular there is no need for the prover to send $\accCom$.
 
-## Reduction: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$
+## Reduction 4: $\relation_{\mathsf{Acc}, \overset{\rightarrow}{G}} \to \relation_{\mathsf{PCS}, d}$
 
 Tying the final knot in the diagram.
 
