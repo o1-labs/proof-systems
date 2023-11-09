@@ -572,6 +572,17 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
             if let Some(ffmul) = ffmul {
                 fq_sponge.absorb_g(&ffmul.unshifted);
             }
+            /*
+            if let Some(keccak_round0) = keccak_round0 {
+                fq_sponge.absorb_g(&keccak_round0.unshifted);
+            }
+            if let Some(keccak_round1) = keccak_round1 {
+                fq_sponge.absorb_g(&keccak_round1.unshifted);
+            }
+            if let Some(keccak_sponge) = keccak_sponge {
+                fq_sponge.absorb_g(&keccak_sponge.unshifted);
+            }
+            */
         }
         fq_sponge.digest_fq()
     }

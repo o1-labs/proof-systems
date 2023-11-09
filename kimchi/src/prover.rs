@@ -1418,6 +1418,33 @@ where
                 non_hiding(num_chunks),
             ));
         }
+        if let Some(keccak_round0_selector8) =
+            index.column_evaluations.keccak_round0_selector8.as_ref()
+        {
+            polynomials.push((
+                evaluations_form(keccak_round0_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+        if let Some(keccak_round1_selector8) =
+            index.column_evaluations.keccak_round1_selector8.as_ref()
+        {
+            polynomials.push((
+                evaluations_form(keccak_round1_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
+        if let Some(keccak_sponge_selector8) =
+            index.column_evaluations.keccak_sponge_selector8.as_ref()
+        {
+            polynomials.push((
+                evaluations_form(keccak_sponge_selector8),
+                None,
+                non_hiding(num_chunks),
+            ));
+        }
 
         //~~ * optionally, the runtime table
         //~ 1. if using lookup:
@@ -1504,6 +1531,22 @@ where
                     non_hiding(1),
                 ))
             }
+            /*
+            if let Some(keccak_round_lookup_selector) = lcs.lookup_selectors.keccak_round.as_ref() {
+                polynomials.push((
+                    evaluations_form(keccak_round_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }
+            if let Some(keccak_sponge_lookup_selector) = lcs.lookup_selectors.keccak_sponge.as_ref()
+            {
+                polynomials.push((
+                    evaluations_form(keccak_sponge_lookup_selector),
+                    None,
+                    non_hiding(1),
+                ))
+            }*/
         }
 
         //~ 1. Create an aggregated evaluation proof for all of these polynomials at $\zeta$ and $\zeta\omega$ using $u$ and $v$.

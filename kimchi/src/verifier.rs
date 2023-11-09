@@ -1195,9 +1195,15 @@ where
             ) /*
               .chain(
                   li.lookup_selectors
-                      .keccak_round
+                      .keccak_round0
                       .as_ref()
-                      .map(|_| Column::LookupKindIndex(LookupPattern::KeccakRound)),
+                      .map(|_| Column::LookupKindIndex(LookupPattern::KeccakRound0)),
+              )
+              .chain(
+                  li.lookup_selectors
+                      .keccak_round1
+                      .as_ref()
+                      .map(|_| Column::LookupKindIndex(LookupPattern::KeccakRound1)),
               )
               .chain(
                   li.lookup_selectors

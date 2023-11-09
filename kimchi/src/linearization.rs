@@ -10,17 +10,15 @@ use crate::circuits::lookup::{
     constraints::LookupConfiguration,
     lookups::{LookupFeatures, LookupInfo, LookupPattern, LookupPatterns},
 };
-use crate::circuits::polynomials::keccak;
-use crate::circuits::polynomials::keccak::circuitgates::{
-    KeccakRound0, KeccakRound1, KeccakSponge,
-};
 use crate::circuits::polynomials::{
     complete_add::CompleteAdd,
     endomul_scalar::EndomulScalar,
     endosclmul::EndosclMul,
     foreign_field_add::circuitgates::ForeignFieldAdd,
     foreign_field_mul::circuitgates::ForeignFieldMul,
-    generic, permutation,
+    generic,
+    keccak::circuitgates::{KeccakRound0, KeccakRound1, KeccakSponge},
+    permutation,
     poseidon::Poseidon,
     range_check::circuitgates::{RangeCheck0, RangeCheck1},
     rot,
@@ -169,9 +167,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     }
 
     {
-        let mut keccak_round0_expr = || {
-            keccak::circuitgates::KeccakRound0::combined_constraints(&powers_of_alpha, &mut cache)
-        };
+        let mut keccak_round0_expr =
+            || KeccakRound0::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.keccak {
                 expr += keccak_round0_expr();
@@ -186,9 +183,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     }
 
     {
-        let mut keccak_round1_expr = || {
-            keccak::circuitgates::KeccakRound1::combined_constraints(&powers_of_alpha, &mut cache)
-        };
+        let mut keccak_round1_expr =
+            || KeccakRound1::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.keccak {
                 expr += keccak_round1_expr();
@@ -203,9 +199,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     }
 
     {
-        let mut keccak_sponge_expr = || {
-            keccak::circuitgates::KeccakSponge::combined_constraints(&powers_of_alpha, &mut cache)
-        };
+        let mut keccak_sponge_expr =
+            || KeccakSponge::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.keccak {
                 expr += keccak_sponge_expr();
