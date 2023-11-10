@@ -1,4 +1,4 @@
-\sample:{\overset{?}{\ \gets \ }}
+\sample:{\stackrel{{\tiny \$}}{\ \gets\ }}
 \GG:{\mathbb{G}}
 \FF:{\mathbb{F}}
 \language:{\mathcal{L}}
