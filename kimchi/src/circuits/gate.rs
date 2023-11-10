@@ -109,7 +109,8 @@ pub enum GateType {
     // Gates for Keccak
     Xor16,
     Rot64,
-    KeccakRound,
+    KeccakRound0,
+    KeccakRound1,
     KeccakSponge,
 }
 
@@ -233,7 +234,10 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Rot64 => self
                 .verify_witness::<G, COLUMNS>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
-            KeccakRound => self
+            KeccakRound0 => self
+                .verify_witness::<G, COLUMNS>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            KeccakRound1 => self
                 .verify_witness::<G, COLUMNS>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
             KeccakSponge => self
@@ -335,8 +339,11 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
-            GateType::KeccakRound => {
-                keccak::circuitgates::KeccakRound::constraint_checks(&env, &mut cache)
+            GateType::KeccakRound0 => {
+                keccak::circuitgates::KeccakRound0::constraint_checks(&env, &mut cache)
+            }
+            GateType::KeccakRound1 => {
+                keccak::circuitgates::KeccakRound1::constraint_checks(&env, &mut cache)
             }
             GateType::KeccakSponge => {
                 keccak::circuitgates::KeccakSponge::constraint_checks(&env, &mut cache)

@@ -17,7 +17,7 @@ use crate::circuits::polynomials::{
     foreign_field_add::circuitgates::ForeignFieldAdd,
     foreign_field_mul::circuitgates::ForeignFieldMul,
     generic,
-    keccak::circuitgates::{KeccakRound, KeccakSponge},
+    keccak::circuitgates::{KeccakRound0, KeccakRound1, KeccakSponge},
     permutation,
     poseidon::Poseidon,
     range_check::circuitgates::{RangeCheck0, RangeCheck1},
@@ -52,7 +52,10 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     if let Some(feature_flags) = feature_flags {
         if feature_flags.keccak {
             max_exponents = max(
-                KeccakRound::<F>::CONSTRAINTS,
+                max(
+                    KeccakRound0::<F>::CONSTRAINTS,
+                    KeccakRound1::<F>::CONSTRAINTS,
+                ),
                 KeccakSponge::<F>::CONSTRAINTS,
             );
         }
@@ -164,16 +167,32 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     }
 
     {
-        let mut keccak_round_expr =
-            || KeccakRound::combined_constraints(&powers_of_alpha, &mut cache);
+        let mut keccak_round0_expr =
+            || KeccakRound0::combined_constraints(&powers_of_alpha, &mut cache);
         if let Some(feature_flags) = feature_flags {
             if feature_flags.keccak {
-                expr += keccak_round_expr();
+                expr += keccak_round0_expr();
             }
         } else {
             expr += Expr::IfFeature(
                 FeatureFlag::Keccak,
-                Box::new(keccak_round_expr()),
+                Box::new(keccak_round0_expr()),
+                Box::new(Expr::zero()),
+            );
+        }
+    }
+
+    {
+        let mut keccak_round1_expr =
+            || KeccakRound1::combined_constraints(&powers_of_alpha, &mut cache);
+        if let Some(feature_flags) = feature_flags {
+            if feature_flags.keccak {
+                expr += keccak_round1_expr();
+            }
+        } else {
+            expr += Expr::IfFeature(
+                FeatureFlag::Keccak,
+                Box::new(keccak_round1_expr()),
                 Box::new(Expr::zero()),
             );
         }
@@ -364,7 +383,8 @@ pub fn linearization_columns<F: FftField + SquareRootField, const COLUMNS: usize
     h.insert(Index(GateType::ForeignFieldMul));
     h.insert(Index(GateType::Xor16));
     h.insert(Index(GateType::Rot64));
-    h.insert(Index(GateType::KeccakRound));
+    h.insert(Index(GateType::KeccakRound0));
+    h.insert(Index(GateType::KeccakRound1));
     h.insert(Index(GateType::KeccakSponge));
 
     // lookup selectors

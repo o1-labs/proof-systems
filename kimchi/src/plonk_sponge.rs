@@ -78,7 +78,8 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
             foreign_field_mul_selector,
             xor_selector,
             rot_selector,
-            keccak_round_selector,
+            keccak_round0_selector,
+            keccak_round1_selector,
             keccak_sponge_selector,
             lookup_aggregation,
             lookup_table,
@@ -126,8 +127,11 @@ impl<Fr: PrimeField, const COLUMNS: usize> FrSponge<Fr, COLUMNS> for DefaultFrSp
         if let Some(rot_selector) = rot_selector.as_ref() {
             points.push(rot_selector)
         }
-        if let Some(keccak_round_selector) = keccak_round_selector.as_ref() {
-            points.push(keccak_round_selector)
+        if let Some(keccak_round0_selector) = keccak_round0_selector.as_ref() {
+            points.push(keccak_round0_selector)
+        }
+        if let Some(keccak_round1_selector) = keccak_round1_selector.as_ref() {
+            points.push(keccak_round1_selector)
         }
         if let Some(keccak_sponge_selector) = keccak_sponge_selector.as_ref() {
             points.push(keccak_sponge_selector)
