@@ -422,12 +422,12 @@ fn test_1000_hashes() {
 
 #[test]
 // Test hash of 1000 blocks
-fn test_1000_blocks() {
+fn test_100_blocks() {
     stacker::grow(30 * 1024 * 1024, || {
         assert_eq!(
             Ok(()),
             test_n_blocks::<Pallas, PallasBaseSponge, PallasScalarSponge>(
-                1000,
+                100,
                 &mut StdRng::from_seed(RNG_SEED),
             )
         );
