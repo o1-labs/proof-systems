@@ -539,22 +539,22 @@ $$
 x^{(1)}_k &= x^{(0)}_k + \alpha_1 \cdot x^{(0)}_{n/2+k}\\
 x^{(2)}_k &= x^{(1)}_k + \alpha_2 \cdot x^{(2)}_{n/4+k}\\
 &= x^{(0)}_k + \alpha_1 \cdot x^{(0)}_{n/2+k} + \alpha_2 \cdot (x^{(0)}_{n/4+k} + \alpha_1 \cdot x^{(0)}_{n/2 + n/4 +k})\\
-&= \sum_{i=0}^3 x^{(0)}_{i \cdot \frac{n}{4} + k} \cdot \big( \prod_{j=0}^1 \alpha_j^{b(i,j)} \big) 
+&= \sum_{i=0}^3 x^{(0)}_{i \cdot \frac{n}{4} + k} \cdot \big( \prod_{j=0}^1 \alpha_j^{b(i,j)} \big)
 \end{align*}
 $$
 Recalling that $x^{(0)}_k = x^k$, it is easy to see that this generalizes exactly to the expression for $h_i$ that we derived later, which concludes that evaluation through $h(X)$ is correct.
 
-Finally, regarding evaluation complexity, it is clear that $\hpoly$ can be evaluated in $O(k = \log \ell)$ time as a product of $k$ factors. 
+Finally, regarding evaluation complexity, it is clear that $\hpoly$ can be evaluated in $O(k = \log \ell)$ time as a product of $k$ factors.
 This concludes the proof.
 
 
 #### The "Halo Trick"
 
 The "Halo trick" resides in observing that this is also the case for $\vec{G}^{(k)}$:
-since it is folded the same way as $\vec{\openx}$. It is not hard to convince one-self (using the same type of argument as above) that:
+since it is folded the same way as $\vec{\openx}^{(k)}$. It is not hard to convince one-self (using the same type of argument as above) that:
 
 $$
-\vec{G}^{(k)} = \langle \vec{h}, \vec{G} \rangle
+G^{(k)} = \langle \vec{h}, \vec{G} \rangle
 $$
 
 Where $\vec{h}$ is the coefficients of $h(X)$ (like $\vec{f}$ is the coefficients of $f(X)$), i.e. $h(X) = \sum_{i = 1}^{\ell} h_i X^{i-1}$
@@ -646,6 +646,13 @@ y &= \sum_i \ \chalfold^{i-1} \cdot h^{(i)}(u) \in \FF \\
 C &= \sum_i \ [\chalfold^{i-1}] \cdot U^{(i)} \in \GG
 \end{align}
 $$
+Alternatively:
+$$
+\begin{align}
+y &= \sum_i \ u^{i-1} \cdot h^{(i)}(\chaleval) \in \FF \\
+C &= \sum_i \ [u^{i-1}] \cdot U^{(i)} \in \GG
+\end{align}
+$$
 
 And outputs the following claim:
 
@@ -665,7 +672,9 @@ Taking a union bound over all $n$ terms leads to soundness error $\frac{n \ell}{
 
 The reduction above requires $n$ $\GG$ operations and $O(n \log \ell)$ $\FF$ operations.
 
-**Addition of Polynomial Relations:** additional polynomial commitments (i.e. from PlonK) can be added to the randomized sums $(C, y)$ above and opened at $\chaleval$ as well: in which case the prover proves the claimed openings at $\chaleval$ before sampling the challenge $u$.
+## Support for Arbitrary Polynomial Relations
+
+Additional polynomial commitments (i.e. from PlonK) can be added to the randomized sums $(C, y)$ above and opened at $\chaleval$ as well: in which case the prover proves the claimed openings at $\chaleval$ before sampling the challenge $u$.
 This is done in Kimchi/Pickles: the $\chaleval$ and $u$ above is the same as in the Kimchi code.
 The combined $y$ (including both the $h(\cdot)$ evaluations and polynomial commitment openings at $\chaleval$ and $\chaleval \omega$) is called `combined_inner_product` in Kimchi.
 
@@ -682,7 +691,8 @@ Cycle of reductions with the added polynomial relations from PlonK.
 This $\relation_{\mathsf{PCS},\ell}$ instance reduced back into a single $\relAcc$ instance,
 which is included with the proof.
 
-**Multiple Accumulators (the case of PCD):**
+## Multiple Accumulators (PCD Case)
+
 From the section above it may seem like there is always going to be a single $\relAcc$ instance,
 this is indeed the case if the proof only verifies a <u>single</u> proof, "Incremental Verifiable Computation" (IVC) in the literature.
 If the proof verifies <u>multiple</u> proofs, "Proof-Carrying Data" (PCD), then there will be multiple accumulators:
@@ -718,7 +728,7 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
 1. PlonK verifier on $\pi$ outputs polynomial relations (in Purple in Fig. 4).
 1. Checking $\relation_{\mathsf{Acc}, \vec{G}}$ and polynomial relations (from PlonK) to $\relation_{\mathsf{PCS},d}$ (the dotted arrows):
     1. Sample $\chaleval \sample \mathcal{C}$ (evaluation point) using the Poseidon sponge.
-    1. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`ProofEvaluations`).
+    1. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`PointEvaluations`).
     1. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge) using the Poseidon sponge.
     1. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge) using the Poseidon sponge.
     1. Compute $C \in \GG$ with $\chalu$ from:
