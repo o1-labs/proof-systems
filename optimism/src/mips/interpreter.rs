@@ -27,7 +27,7 @@ pub enum RTypeInstruction {
     JumpAndLinkRegister,          // jalr
     SyscallMmap,                  // syscall (Mmap)
     SyscallExitGroup,             // syscall (ExitGroup)
-    SyscallReadPrimage,           // syscall (Read 5)
+    SyscallReadPreimage,          // syscall (Read 5)
     SyscallReadOther,             // syscall (Read ?)
     SyscallWriteHint,             // syscall (Write 4)
     SyscallWritePreimage,         // syscall (Write 6)
