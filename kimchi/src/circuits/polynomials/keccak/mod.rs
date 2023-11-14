@@ -196,21 +196,21 @@ mod tests {
 
         let word_a: u64 = 0x70d324ac9215fd8e;
         let dense_a = decompose(word_a);
-        let real_dense_a = [0xfd8e, 0x9215, 0x24ac, 0x70d3];
+        let expected_dense_a = [0xfd8e, 0x9215, 0x24ac, 0x70d3];
         for i in 0..QUARTERS {
-            assert_eq!(dense_a[i], real_dense_a[i]);
+            assert_eq!(dense_a[i], expected_dense_a[i]);
         }
         assert_eq!(word_a, compose(&dense_a));
 
         let sparse_a = dense_a.iter().map(|x| expand(*x)).collect::<Vec<u64>>();
-        let real_sparse_a: Vec<u64> = vec![
+        let expected_sparse_a: Vec<u64> = vec![
             0x1111110110001110,
             0x1001001000010101,
             0x10010010101100,
             0x111000011010011,
         ];
         for i in 0..QUARTERS {
-            assert_eq!(sparse_a[i], real_sparse_a[i]);
+            assert_eq!(sparse_a[i], expected_sparse_a[i]);
         }
 
         let word_b: u64 = 0x11c76438a7f9e94d;
