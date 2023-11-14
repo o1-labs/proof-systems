@@ -6,9 +6,9 @@ pub mod witness;
 pub const DIM: usize = 5;
 pub const QUARTERS: usize = 4;
 pub const ROUNDS: usize = 24;
-pub const RATE: usize = 136;
-pub const KECCAK_COLS: usize = 2344;
+pub const RATE: usize = 1088 / 8;
 pub const CAPACITY: usize = 512 / 8;
+pub const KECCAK_COLS: usize = 2344;
 
 use crate::circuits::expr::constraints::ExprOps;
 use ark_ff::PrimeField;
@@ -75,6 +75,11 @@ pub(crate) const RC: [u64; 24] = [
     0x8000000080008008,
 ];
 
+// Composes a vector of 4 dense quarters into the dense full u64 word
+pub(crate) fn compose(quarters: &[u64]) -> u64 {
+    quarters[0] + (1 << 16) * quarters[1] + (1 << 32) * quarters[2] + (1 << 48) * quarters[3]
+}
+
 // Takes a dense u64 word and decomposes it into a vector of 4 dense quarters
 pub(crate) fn decompose(word: u64) -> Vec<u64> {
     vec![
@@ -96,6 +101,82 @@ pub(crate) fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
         .iter()
         .map(|q| T::literal(F::from(expand(*q))))
         .collect::<Vec<T>>()
+}
+
+/// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
+pub(crate) fn pad(message: &[u8]) -> Vec<u8> {
+    let mut padded = message.to_vec();
+    padded.push(0x01);
+    while padded.len() % 136 != 0 {
+        padded.push(0x00);
+    }
+    let last = padded.len() - 1;
+    padded[last] += 0x80;
+    padded
+}
+
+/// From each quarter in sparse representation, it computes its 4 resets.
+/// The resulting vector contains 4 times as many elements as the input.
+/// The output is placed in the vector as [reset0, reset1, reset2, reset3]
+pub(crate) fn shift(state: &[u64]) -> Vec<u64> {
+    let mut shifts = vec![vec![]; 4];
+    let aux = expand(0xFFFF);
+    for term in state {
+        shifts[0].push(aux & term); // shift0 = reset0
+        shifts[1].push(((aux << 1) & term) / 2); // shift1 = reset1/2
+        shifts[2].push(((aux << 2) & term) / 4); // shift2 = reset2/4
+        shifts[3].push(((aux << 3) & term) / 8); // shift3 = reset3/8
+    }
+    shifts.iter().flatten().copied().collect()
+}
+
+/// From a vector of shifts, resets the underlying value returning only shift0
+pub(crate) fn reset(shifts: &[u64]) -> Vec<u64> {
+    shifts
+        .iter()
+        .copied()
+        .take(shifts.len() / 4)
+        .collect::<Vec<u64>>()
+}
+
+/// From a reset0 state, obtain the corresponding 16-bit dense terms
+pub(crate) fn collapse(state: &[u64]) -> Vec<u64> {
+    let mut dense = vec![];
+    for reset in state {
+        dense.push(u64::from_str_radix(&format!("{:x}", reset), 2).unwrap());
+    }
+    dense
+}
+
+/// Outputs the state into dense quarters of 16-bits each in little endian order
+pub(crate) fn quarters(state: &[u8]) -> Vec<u64> {
+    let mut quarters = vec![];
+    for pair in state.chunks(2) {
+        quarters.push(u16::from_le_bytes([pair[0], pair[1]]) as u64);
+    }
+    quarters
+}
+
+/// On input a vector of 16-bit dense quarters, outputs a vector of 8-bit bytes in the right order for Keccak
+pub(crate) fn bytestring(dense: &[u64]) -> Vec<u64> {
+    dense
+        .iter()
+        .map(|x| vec![x % 256, x / 256])
+        .collect::<Vec<Vec<u64>>>()
+        .iter()
+        .flatten()
+        .copied()
+        .collect()
+}
+
+/// On input a 200-byte vector, generates a vector of 100 expanded quarters representing the 1600-bit state
+pub(crate) fn expand_state(state: &[u8]) -> Vec<u64> {
+    let mut expanded = vec![];
+    for pair in state.chunks(2) {
+        let quarter = u16::from_le_bytes([pair[0], pair[1]]);
+        expanded.push(expand(quarter as u64));
+    }
+    expanded
 }
 
 /// On input a length, returns the smallest multiple of RATE that is greater than the bytelength
