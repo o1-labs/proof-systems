@@ -131,10 +131,7 @@ pub(crate) fn shift(state: &[u64]) -> Vec<u64> {
 /// From a vector of shifts, resets the underlying value returning only shift0
 /// Note that shifts is always a vector whose length is a multiple of 4.
 pub(crate) fn reset(shifts: &[u64]) -> Vec<u64> {
-    shifts[0..shifts.len() / QUARTERS]
-        .iter()
-        .map(|&x| x)
-        .collect::<Vec<u64>>()
+    shifts[0..shifts.len() / QUARTERS].to_vec()
 }
 
 /// From a canonical expanded state, obtain the corresponding 16-bit dense terms
