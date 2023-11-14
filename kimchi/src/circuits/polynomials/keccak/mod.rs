@@ -139,11 +139,10 @@ pub(crate) fn reset(shifts: &[u64]) -> Vec<u64> {
 
 /// From a canonical expanded state, obtain the corresponding 16-bit dense terms
 pub(crate) fn collapse(state: &[u64]) -> Vec<u64> {
-    let mut dense = vec![];
-    for reset in state {
-        dense.push(u64::from_str_radix(&format!("{:x}", reset), 2).unwrap());
-    }
-    dense
+    state
+        .iter()
+        .map(|&reset| u64::from_str_radix(&format!("{:x}", reset), 2).unwrap())
+        .collect::<Vec<u64>>()
 }
 
 /// Outputs the state into dense quarters of 16-bits each in little endian order
