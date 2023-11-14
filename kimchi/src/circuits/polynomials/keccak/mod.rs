@@ -140,6 +140,7 @@ pub(crate) fn shift(state: &[u64]) -> Vec<u64> {
 }
 
 /// From a vector of shifts, resets the underlying value returning only shift0
+/// Note that shifts is always a vector whose length is a multiple of 4.
 pub(crate) fn reset(shifts: &[u64]) -> Vec<u64> {
     shifts
         .iter()
