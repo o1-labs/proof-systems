@@ -25,7 +25,7 @@ use thiserror::Error;
 use super::{
     argument::ArgumentWitness,
     expr,
-    polynomials::{rot, xor},
+    polynomials::{keccak, rot, xor},
 };
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
@@ -113,6 +113,8 @@ pub enum GateType {
     // Gates for Keccak
     Xor16,
     Rot64,
+    KeccakRound,
+    KeccakSponge,
 }
 
 /// Gate error
@@ -230,6 +232,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Rot64 => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
+            KeccakRound => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            KeccakSponge => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -323,6 +331,8 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
+            GateType::KeccakRound => keccak::KeccakRound::constraint_checks(&env, &mut cache),
+            GateType::KeccakSponge => keccak::KeccakSponge::constraint_checks(&env, &mut cache),
         };
 
         // Check for failed constraints

@@ -81,9 +81,36 @@ impl<F: Field, T: ExprOps<F>> ArgumentEnv<F, T> {
         T::witness(Next, col, self.data.as_ref())
     }
 
+    /// Witness cells in current row in an interval [from, to)
+    pub fn witness_curr_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.witness_curr(i));
+        }
+        chunk
+    }
+
+    /// Witness cells in next row in an interval [from, to)
+    pub fn witness_next_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.witness_next(i));
+        }
+        chunk
+    }
+
     /// Coefficient value at index idx
     pub fn coeff(&self, idx: usize) -> T {
         T::coeff(idx, self.data.as_ref())
+    }
+
+    /// Chunk of consecutive coefficients in an interval [from, to)
+    pub fn coeff_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.coeff(i));
+        }
+        chunk
     }
 
     /// Constant value (see [ConstantExpr] for supported constants)
