@@ -15,8 +15,8 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 
 use super::{
-    bytestring, collapse, expand, pad, reset, shift, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF,
-    QUARTERS, RATE_IN_BYTES,
+    bytestring, collapse, expand, pad, reset, shift, sparse, CAPACITY_IN_BYTES, DIM, KECCAK_COLS,
+    OFF, QUARTERS, RATE_IN_BYTES,
 };
 
 type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
@@ -302,10 +302,7 @@ struct Iota {
 
 impl Iota {
     fn create(state_f: Vec<u64>, round: usize) -> Self {
-        let rc = decompose(RC[round])
-            .iter()
-            .map(|x| expand(*x))
-            .collect::<Vec<u64>>();
+        let rc = sparse(RC[round]);
         let mut state_g = state_f.clone();
         for (i, c) in rc.iter().enumerate() {
             state_g[i] = state_f[i] + *c;
