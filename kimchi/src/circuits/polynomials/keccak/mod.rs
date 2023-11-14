@@ -75,12 +75,13 @@ pub(crate) const RC: [u64; 24] = [
     0x8000000080008008,
 ];
 
-// Composes a vector of 4 dense quarters into the dense full u64 word
+/// Composes a vector of 4 dense quarters into the dense full u64 word
 pub(crate) fn compose(quarters: &[u64]) -> u64 {
     quarters[0] + (1 << 16) * quarters[1] + (1 << 32) * quarters[2] + (1 << 48) * quarters[3]
 }
 
-// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters
+/// Takes a dense u64 word and decomposes it into a vector of 4 dense quarters.
+/// The first element of the vector corresponds to the 16 least significant bits.
 pub(crate) fn decompose(word: u64) -> Vec<u64> {
     vec![
         word % (1 << 16),
