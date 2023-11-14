@@ -644,8 +644,8 @@
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, turshi, varbasemul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, keccak,
+            poseidon, range_check, rot, turshi, varbasemul, xor,
         },
         wires::<span class="kw-2">*</span>,
     },
@@ -661,11 +661,7 @@
 <span class="kw">use </span>std::io::{<span class="prelude-ty">Result </span><span class="kw">as </span>IoResult, Write};
 <span class="kw">use </span>thiserror::Error;
 
-<span class="kw">use super</span>::{
-    argument::ArgumentWitness,
-    expr,
-    polynomials::{keccak, rot, xor},
-};
+<span class="kw">use super</span>::{argument::ArgumentWitness, expr};
 
 <span class="doccomment">/// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -970,8 +966,12 @@
             }
             GateType::Xor16 =&gt; xor::Xor16::constraint_checks(<span class="kw-2">&amp;</span>env, <span class="kw-2">&amp;mut </span>cache),
             GateType::Rot64 =&gt; rot::Rot64::constraint_checks(<span class="kw-2">&amp;</span>env, <span class="kw-2">&amp;mut </span>cache),
-            GateType::KeccakRound =&gt; keccak::KeccakRound::constraint_checks(<span class="kw-2">&amp;</span>env, <span class="kw-2">&amp;mut </span>cache),
-            GateType::KeccakSponge =&gt; keccak::KeccakSponge::constraint_checks(<span class="kw-2">&amp;</span>env, <span class="kw-2">&amp;mut </span>cache),
+            GateType::KeccakRound =&gt; {
+                keccak::circuitgates::KeccakRound::constraint_checks(<span class="kw-2">&amp;</span>env, <span class="kw-2">&amp;mut </span>cache)
+            }
+            GateType::KeccakSponge =&gt; {
+                keccak::circuitgates::KeccakSponge::constraint_checks(<span class="kw-2">&amp;</span>env, <span class="kw-2">&amp;mut </span>cache)
+            }
         };
 
         <span class="comment">// Check for failed constraints
