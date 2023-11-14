@@ -47,9 +47,13 @@
 
         {
           packages = rec { default = proof-systems; };
+
           devShell = proof-systems.overrideAttrs (oa: { name = "proof-systems-shell"; buildInputs = oa.buildInputs ++ [ pkgs.cowsay ]; }
           );
+
           devShells.default = self.devShell.${system};
+          devShells.ps = proof-systems.overrideAttrs (oa: { name = "proof-systems-shell"; buildInputs = oa.buildInputs ++ [ pkgs.cowsay ]; }
+          );
         });
 
 }
