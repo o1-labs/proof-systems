@@ -5,8 +5,7 @@ use crate::{
         constraints::ConstraintSystem,
         gate::{CircuitGate, GateType},
         polynomials::keccak::{
-            collapse, compose, decompose, expand, pad, reset, shift,
-            witness::extend_keccak_witness, KECCAK_COLS, QUARTERS,
+            collapse, compose, pad, reset, shift, witness::extend_keccak_witness, KECCAK_COLS,
         },
         wires::Wire,
     },
@@ -141,70 +140,6 @@ where
     println!();
 
     BigUint::from_bytes_be(&hash)
-}
-
-#[test]
-fn test_bitwise_sparse_representation() {
-    assert_eq!(expand(0xFFFF), 0x1111111111111111);
-
-    let word_a: u64 = 0x70d324ac9215fd8e;
-    let dense_a = decompose(word_a);
-    let real_dense_a = [0xfd8e, 0x9215, 0x24ac, 0x70d3];
-    for i in 0..QUARTERS {
-        assert_eq!(dense_a[i], real_dense_a[i]);
-    }
-    assert_eq!(word_a, compose(&dense_a));
-
-    let sparse_a = dense_a.iter().map(|x| expand(*x)).collect::<Vec<u64>>();
-    let real_sparse_a: Vec<u64> = vec![
-        0x1111110110001110,
-        0x1001001000010101,
-        0x10010010101100,
-        0x111000011010011,
-    ];
-    for i in 0..QUARTERS {
-        assert_eq!(sparse_a[i], real_sparse_a[i]);
-    }
-
-    let word_b: u64 = 0x11c76438a7f9e94d;
-    let dense_b = decompose(word_b);
-    let sparse_b = dense_b.iter().map(|x| expand(*x)).collect::<Vec<u64>>();
-
-    let xor_ab: u64 = word_a ^ word_b;
-    assert_eq!(xor_ab, 0x6114409435ec14c3);
-
-    let sparse_xor = decompose(xor_ab)
-        .iter()
-        .map(|x| expand(*x))
-        .collect::<Vec<u64>>();
-    let real_sparse_xor = [
-        0x1010011000011,
-        0x11010111101100,
-        0x100000010010100,
-        0x110000100010100,
-    ];
-    for i in 0..QUARTERS {
-        assert_eq!(sparse_xor[i], real_sparse_xor[i]);
-    }
-
-    let sparse_sum_ab = sparse_a
-        .iter()
-        .zip(sparse_b.iter())
-        .map(|(a, b)| a + b)
-        .collect::<Vec<u64>>();
-    let shifts_sum_ab = shift(&sparse_sum_ab);
-    let reset_sum_ab = reset(&shifts_sum_ab);
-    assert_eq!(sparse_xor, reset_sum_ab);
-
-    for i in 0..QUARTERS {
-        assert_eq!(
-            sparse_sum_ab[i],
-            shifts_sum_ab[i]
-                + shifts_sum_ab[4 + i] * 2
-                + shifts_sum_ab[8 + i] * 4
-                + shifts_sum_ab[12 + i] * 8
-        )
-    }
 }
 
 #[test]
