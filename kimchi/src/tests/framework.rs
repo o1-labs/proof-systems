@@ -12,21 +12,34 @@ use crate::{
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::{ProverProof, RecursionChallenge},
-    prover_index::{testing::new_index_for_test_with_lookups, ProverIndex},
+    prover_index::{
+        testing::{
+            new_index_for_test_with_lookups, new_index_for_test_with_lookups_and_custom_srs,
+        },
+        ProverIndex,
+    },
     verifier::verify,
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
+use ark_poly::Radix2EvaluationDomain as D;
 use groupmap::GroupMap;
 use mina_poseidon::sponge::FqSponge;
 use num_bigint::BigUint;
-use poly_commitment::commitment::CommitmentCurve;
-use std::{fmt::Write, mem, time::Instant};
+use poly_commitment::{
+    commitment::CommitmentCurve, evaluation_proof::OpeningProof as DlogOpeningProof, OpenProof,
+};
+use std::{fmt::Write, time::Instant};
 
 // aliases
 
 #[derive(Default, Clone)]
-pub(crate) struct TestFramework<G: KimchiCurve> {
+pub(crate) struct TestFramework<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>
+where
+    G::BaseField: PrimeField,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone,
+{
     gates: Option<Vec<CircuitGate<G::ScalarField>>>,
     witness: Option<[Vec<G::ScalarField>; COLUMNS]>,
     public_inputs: Vec<G::ScalarField>,
@@ -36,18 +49,26 @@ pub(crate) struct TestFramework<G: KimchiCurve> {
     recursion: Vec<RecursionChallenge<G>>,
     num_prev_challenges: usize,
     disable_gates_checks: bool,
+    override_srs_size: Option<usize>,
 
-    prover_index: Option<ProverIndex<G>>,
-    verifier_index: Option<VerifierIndex<G>>,
+    prover_index: Option<ProverIndex<G, OpeningProof>>,
+    verifier_index: Option<VerifierIndex<G, OpeningProof>>,
 }
 
 #[derive(Clone)]
-pub(crate) struct TestRunner<G: KimchiCurve>(TestFramework<G>);
-
-impl<G: KimchiCurve> TestFramework<G>
+pub(crate) struct TestRunner<G: KimchiCurve, OpeningProof: OpenProof<G> = DlogOpeningProof<G>>(
+    TestFramework<G, OpeningProof>,
+)
 where
     G::BaseField: PrimeField,
-    G::ScalarField: PrimeField,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone;
+
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestFramework<G, OpeningProof>
+where
+    G::BaseField: PrimeField,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone,
 {
     #[must_use]
     pub(crate) fn gates(mut self, gates: Vec<CircuitGate<G::ScalarField>>) -> Self {
@@ -94,21 +115,32 @@ where
         self
     }
 
+    #[must_use]
+    pub(crate) fn override_srs_size(mut self, size: usize) -> Self {
+        self.override_srs_size = Some(size);
+        self
+    }
+
     /// creates the indexes
     #[must_use]
-    pub(crate) fn setup(mut self) -> TestRunner<G> {
+    pub(crate) fn setup_with_custom_srs<F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS>(
+        mut self,
+        get_srs: F,
+    ) -> TestRunner<G, OpeningProof> {
         let start = Instant::now();
 
         let lookup_tables = std::mem::take(&mut self.lookup_tables);
-        let runtime_tables_setup = mem::replace(&mut self.runtime_tables_setup, None);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
 
-        let index = new_index_for_test_with_lookups::<G>(
+        let index = new_index_for_test_with_lookups_and_custom_srs(
             self.gates.take().unwrap(),
             self.public_inputs.len(),
             self.num_prev_challenges,
             lookup_tables,
             runtime_tables_setup,
             self.disable_gates_checks,
+            self.override_srs_size,
+            get_srs,
         );
         println!(
             "- time to create prover index: {:?}s",
@@ -122,10 +154,45 @@ where
     }
 }
 
-impl<G: KimchiCurve> TestRunner<G>
+impl<G: KimchiCurve> TestFramework<G>
+where
+    G::BaseField: PrimeField,
+{
+    /// creates the indexes
+    #[must_use]
+    pub(crate) fn setup(mut self) -> TestRunner<G> {
+        let start = Instant::now();
+
+        let lookup_tables = std::mem::take(&mut self.lookup_tables);
+        let runtime_tables_setup = self.runtime_tables_setup.take();
+
+        let index = new_index_for_test_with_lookups::<G>(
+            self.gates.take().unwrap(),
+            self.public_inputs.len(),
+            self.num_prev_challenges,
+            lookup_tables,
+            runtime_tables_setup,
+            self.disable_gates_checks,
+            self.override_srs_size,
+        );
+        println!(
+            "- time to create prover index: {:?}s",
+            start.elapsed().as_secs()
+        );
+
+        self.verifier_index = Some(index.verifier_index());
+        self.prover_index = Some(index);
+
+        TestRunner(self)
+    }
+}
+
+impl<G: KimchiCurve, OpeningProof: OpenProof<G>> TestRunner<G, OpeningProof>
 where
     G::ScalarField: PrimeField + Clone,
     G::BaseField: PrimeField + Clone,
+    OpeningProof::SRS: Clone,
+    VerifierIndex<G, OpeningProof>: Clone,
 {
     #[must_use]
     pub(crate) fn runtime_tables(
@@ -148,7 +215,7 @@ where
         self
     }
 
-    pub(crate) fn prover_index(&self) -> &ProverIndex<G> {
+    pub(crate) fn prover_index(&self) -> &ProverIndex<G, OpeningProof> {
         self.0.prover_index.as_ref().unwrap()
     }
 
@@ -219,7 +286,7 @@ where
 
         // verify the proof (propagate any errors)
         let start = Instant::now();
-        verify::<G, EFqSponge, EFrSponge>(
+        verify::<G, EFqSponge, EFrSponge, OpeningProof>(
             &group_map,
             &self.0.verifier_index.unwrap(),
             &proof,

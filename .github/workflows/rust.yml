@@ -2,8 +2,6 @@ name: CI
 
 on:
   push:
-    branches:
-      - master
   pull_request:
 
 env:
@@ -18,17 +16,17 @@ jobs:
   run_checks:
     strategy:
       matrix:
-        rust_toolchain_version: [1.67, 1.68, 1.69]
+        rust_toolchain_version: ["1.71", "1.72"]
         # FIXME: currently not available for 5.0.0.
         # It might be related to boxroot dependency, and we would need to bump
         # up the ocaml-rs dependency
-        ocaml_version: [4.14]
+        ocaml_version: ["4.14"]
 
     runs-on: ubuntu-latest
     name: Run some basic checks and tests
     steps:
       - name: Checkout PR
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4.1.1
 
       # as action-rs does not seem to be maintained anymore, building from
       # scratch the environment using rustup

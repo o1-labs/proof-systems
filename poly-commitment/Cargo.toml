@@ -37,6 +37,7 @@ ocaml-gen = { version = "0.1.5", optional = true }
 [dev-dependencies]
 colored = "2.0.0"
 rand_chacha = { version = "0.3.0" }
+ark-bn254 = { version = "0.3.0" }
 
 [features]
 ocaml_types = [ "ocaml", "ocaml-gen" ]
