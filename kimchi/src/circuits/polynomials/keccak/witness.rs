@@ -15,8 +15,8 @@ use ark_ff::PrimeField;
 use num_bigint::BigUint;
 
 use super::{
-    bytestring, collapse, expand, pad, reset, shift, CAPACITY, DIM, KECCAK_COLS, OFF, QUARTERS,
-    RATE,
+    bytestring, collapse, expand, pad, reset, shift, CAPACITY_IN_BYTES, DIM, KECCAK_COLS, OFF,
+    QUARTERS, RATE_IN_BYTES,
 };
 
 type Layout<F, const COLUMNS: usize> = Vec<Box<dyn WitnessCell<F, Vec<F>, COLUMNS>>>;
@@ -322,7 +322,7 @@ impl Iota {
 /// constraints can access the next row in the squeeze
 pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS], message: BigUint) {
     let padded = pad(&message.to_bytes_be());
-    let chunks = padded.chunks(RATE);
+    let chunks = padded.chunks(RATE_IN_BYTES);
 
     // The number of rows that need to be added to the witness correspond to
     // - Absorb phase:
@@ -340,7 +340,7 @@ pub fn extend_keccak_witness<F: PrimeField>(witness: &mut [Vec<F>; KECCAK_COLS],
     for chunk in chunks {
         let mut block = chunk.to_vec();
         // Pad the block until reaching 200 bytes
-        block.append(&mut vec![0; CAPACITY]);
+        block.append(&mut vec![0; CAPACITY_IN_BYTES]);
         let dense = quarters(&block);
         let new_state = expand_state(&block);
         auto_clone!(new_state);
