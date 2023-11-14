@@ -1228,6 +1228,8 @@
 <a href="#1228" id="1228">1228</a>
 <a href="#1229" id="1229">1229</a>
 <a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements zk-proof batch verifier functionality.
 
 </span><span class="kw">use crate</span>::{
@@ -1316,6 +1318,8 @@
                     ForeignFieldMul =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.foreign_field_mul_comm.as_ref()<span class="question-mark">?</span>),
                     Xor16 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.xor_comm.as_ref()<span class="question-mark">?</span>),
                     Rot64 =&gt; <span class="prelude-val">Some</span>(<span class="self">self</span>.verifier_index.rot_comm.as_ref()<span class="question-mark">?</span>),
+                    KeccakRound =&gt; <span class="macro">todo!</span>(),
+                    KeccakSponge =&gt; <span class="macro">todo!</span>(),
                 }
             }
         }

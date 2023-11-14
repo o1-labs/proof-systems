@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["and","complete_add","endomul_scalar","endosclmul","foreign_field_add","foreign_field_mul","generic","not","permutation","poseidon","range_check","rot","turshi","varbasemul","xor"]};
+window.SIDEBAR_ITEMS = {"mod":["and","complete_add","endomul_scalar","endosclmul","foreign_field_add","foreign_field_mul","generic","keccak","not","permutation","poseidon","range_check","rot","turshi","varbasemul","xor"]};
