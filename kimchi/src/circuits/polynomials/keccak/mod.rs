@@ -119,7 +119,7 @@ pub(crate) fn pad(message: &[u8]) -> Vec<u8> {
 /// The resulting vector contains 4 times as many elements as the input.
 /// The output is placed in the vector as [reset0, reset1, reset2, reset3]
 pub(crate) fn shift(state: &[u64]) -> Vec<u64> {
-    let mut shifts = vec![vec![]; 4];
+    let mut shifts = vec![vec![]; QUARTERS];
     let aux = expand(0xFFFF);
     for term in state {
         shifts[0].push(aux & term); // shift0 = reset0
@@ -135,7 +135,7 @@ pub(crate) fn reset(shifts: &[u64]) -> Vec<u64> {
     shifts
         .iter()
         .copied()
-        .take(shifts.len() / 4)
+        .take(shifts.len() / QUARTERS)
         .collect::<Vec<u64>>()
 }
 
