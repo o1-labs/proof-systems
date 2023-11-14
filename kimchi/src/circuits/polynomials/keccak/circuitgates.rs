@@ -224,7 +224,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
     const CONSTRAINTS: u32 = 568;
 
-    // Constraints for one round of the Keccak permutation function
+    // Constraints for the Keccak sponge
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
