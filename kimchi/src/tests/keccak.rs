@@ -50,30 +50,30 @@ where
     witness
 }
 
-fn print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
+fn eprint_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
     fn to_u64<F: Field>(elem: F) -> u64 {
         let mut bytes = FieldHelpers::<F>::to_bytes(&elem);
         bytes.reverse();
         bytes.iter().fold(0, |acc: u64, x| (acc << 8) + *x as u64)
     }
-    fn print_line(state: &[u64]) {
-        print!("         ");
+    fn eprint_line(state: &[u64]) {
+        eprint!("         ");
         for x in 0..5 {
             let quarters = &state[4 * x..4 * (x + 1)];
             let word = compose(&collapse(&reset(&shift(quarters))));
-            print!("{:016x} ", word);
+            eprint!("{:016x} ", word);
         }
-        println!();
+        eprintln!();
     }
-    fn print_matrix(state: &[u64]) {
+    fn eprint_matrix(state: &[u64]) {
         for x in 0..5 {
-            print!("         ");
+            eprint!("         ");
             for y in 0..5 {
                 let quarters = &state[4 * (5 * y + x)..4 * (5 * y + x) + 4];
                 let word = compose(&collapse(&reset(&shift(quarters))));
-                print!("{:016x} ", word);
+                eprint!("{:016x} ", word);
             }
-            println!();
+            eprintln!();
         }
     }
 
@@ -86,27 +86,27 @@ fn print_witness<F: Field>(witness: &[Vec<F>; KECCAK_COLS], round: usize) {
         .map(|x| to_u64::<F>(x[round + 1]))
         .collect::<Vec<u64>>();
 
-    println!("----------------------------------------");
-    println!("ROUND {}", round);
-    println!("State A:");
-    print_matrix(&row[0..100]);
-    println!("State C:");
-    print_line(&row[100..120]);
-    println!("State D:");
-    print_line(&row[320..340]);
-    println!("State E:");
-    print_matrix(&row[340..440]);
-    println!("State B:");
-    print_matrix(&row[1440..1540]);
+    eprintln!("----------------------------------------");
+    eprintln!("ROUND {}", round);
+    eprintln!("State A:");
+    eprint_matrix(&row[0..100]);
+    eprintln!("State C:");
+    eprint_line(&row[100..120]);
+    eprintln!("State D:");
+    eprint_line(&row[320..340]);
+    eprintln!("State E:");
+    eprint_matrix(&row[340..440]);
+    eprintln!("State B:");
+    eprint_matrix(&row[1440..1540]);
 
     let mut state_f = row[2340..2344].to_vec();
     let mut tail = next[4..100].to_vec();
     state_f.append(&mut tail);
 
-    println!("State F:");
-    print_matrix(&state_f);
-    println!("State G:");
-    print_matrix(&next[0..100]);
+    eprintln!("State F:");
+    eprint_matrix(&state_f);
+    eprintln!("State G:");
+    eprint_matrix(&next[0..100]);
 }
 
 // Sets up test for a given message and desired input bytelength
@@ -124,20 +124,20 @@ where
     let witness = create_keccak_witness::<G>(message);
 
     for r in 1..=24 {
-        print_witness::<G::ScalarField>(&witness, r);
+        eprint_witness::<G::ScalarField>(&witness, r);
     }
 
     let mut hash = vec![];
     let hash_row = witness[0].len() - 2; // Hash row is dummy row
-    println!();
-    println!("----------------------------------------");
-    print!("Hash: ");
+    eprintln!();
+    eprintln!("----------------------------------------");
+    eprint!("Hash: ");
     for b in 0..32 {
         hash.push(FieldHelpers::to_bytes(&witness[200 + b][hash_row])[0]);
-        print!("{:02x}", hash[b]);
+        eprint!("{:02x}", hash[b]);
     }
-    println!();
-    println!();
+    eprintln!();
+    eprintln!();
 
     BigUint::from_bytes_be(&hash)
 }
