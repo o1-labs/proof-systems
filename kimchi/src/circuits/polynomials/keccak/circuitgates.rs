@@ -1,4 +1,13 @@
 //! Keccak gadget
+//! -------------
+//! The Keccak gadget is a circuit that implements the Keccak hash function
+//! for 64-bit words, output length of 256 bits and bit rate of 1088 bits.
+//!
+//! It is composed of 1 absorb sponge gate, followed by 24 rounds of permutation per block
+//! and 1 final squeeze sponge gate that outputs the 256-bit hash.
+//!
+//! NOTE: The constraints used in this gadget assume a field size of at least 65 bits to be sound.
+//!
 use super::{DIM, OFF, QUARTERS};
 use crate::{
     auto_clone, auto_clone_array,
@@ -50,7 +59,6 @@ macro_rules! from_shifts {
     };
 }
 
-//~
 //~ | `KeccakRound` | [0...440) | [440...1540) | [1540...2344) |
 //~ | ------------- | --------- | ------------ | ------------- |
 //~ | Curr          | theta     | pirho        | chi           |
@@ -58,7 +66,6 @@ macro_rules! from_shifts {
 //~ | `KeccakRound` | [0...100) |
 //~ | ------------- | --------- |
 //~ | Next          | iota      |
-//~
 //~ -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
 //~
 //~ | Columns  | [0...100) | [100...120) | [120...200) | [200...220) | [220...240) | [240...260)  | [260...280) | [280...300)  | [300...320)  | [320...340) | [340...440) |
@@ -224,7 +231,7 @@ where
     const ARGUMENT_TYPE: ArgumentType = ArgumentType::Gate(GateType::KeccakSponge);
     const CONSTRAINTS: u32 = 568;
 
-    // Constraints for one round of the Keccak permutation function
+    // Constraints for the Keccak sponge
     fn constraint_checks<T: ExprOps<F>>(env: &ArgumentEnv<F, T>, _cache: &mut Cache) -> Vec<T> {
         let mut constraints = vec![];
 
