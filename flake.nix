@@ -13,7 +13,7 @@
 
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          proof-systems =
+          proof_systems =
             let
               # Mac OS specific dependencies
               darwin_packages = with pkgs;
@@ -36,7 +36,7 @@
             in
             pkgs.rustPlatform.buildRustPackage {
               inherit buildInputs;
-              pname = "proof-systems";
+              pname = "proof_systems";
               version = "0.1.0";
               cargoLock = {
                 lockFile = ./Cargo.lock;
@@ -46,14 +46,18 @@
         in
 
         {
-          packages = rec { default = proof-systems; };
+          packages = rec { default = proof_systems; };
 
-          devShell = proof-systems.overrideAttrs (oa: { name = "proof-systems-shell"; buildInputs = oa.buildInputs ++ [ pkgs.cowsay ]; }
-          );
-
-          devShells.default = self.devShell.${system};
-          devShells.ps = proof-systems.overrideAttrs (oa: { name = "proof-systems-shell"; buildInputs = oa.buildInputs ++ [ pkgs.cowsay ]; }
-          );
+          devShells = {
+            default = pkgs.mkShell
+              {
+                buildInputs = proof_systems.buildInputs ++ [ pkgs.cowsay ];
+                shellHook = ''
+                  cowsay -e "ki" "kimchi!"
+                  echo ""
+                '';
+              };
+          };
         });
-
 }
+
