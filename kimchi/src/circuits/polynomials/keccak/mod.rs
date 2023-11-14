@@ -126,26 +126,26 @@ pub(crate) fn sparse(word: u64) -> Vec<u64> {
 
 /// From each quarter in sparse representation, it computes its 4 resets.
 /// The resulting vector contains 4 times as many elements as the input.
-/// The output is placed in the vector as [reset0, reset1, reset2, reset3]
+/// The output is placed in the vector as [shift0, shift1, shift2, shift3]
 pub(crate) fn shift(state: &[u64]) -> Vec<u64> {
-    let mut shifts = vec![vec![]; QUARTERS];
+    let n = state.len();
+    let mut shifts = vec![0; QUARTERS * n];
     let aux = expand(0xFFFF);
-    for term in state {
-        shifts[0].push(aux & term); // shift0 = reset0
-        shifts[1].push(((aux << 1) & term) / 2); // shift1 = reset1/2
-        shifts[2].push(((aux << 2) & term) / 4); // shift2 = reset2/4
-        shifts[3].push(((aux << 3) & term) / 8); // shift3 = reset3/8
+    for (i, term) in state.iter().enumerate() {
+        shifts[i] = aux & term; // shift0 = reset0
+        shifts[n + i] = ((aux << 1) & term) / 2; // shift1 = reset1/2
+        shifts[2 * n + i] = ((aux << 2) & term) / 4; // shift2 = reset2/4
+        shifts[3 * n + i] = ((aux << 3) & term) / 8; // shift3 = reset3/8
     }
-    shifts.iter().flatten().copied().collect()
+    shifts
 }
 
 /// From a vector of shifts, resets the underlying value returning only shift0
 /// Note that shifts is always a vector whose length is a multiple of 4.
 pub(crate) fn reset(shifts: &[u64]) -> Vec<u64> {
-    shifts
+    shifts[0..shifts.len() / QUARTERS]
         .iter()
-        .copied()
-        .take(shifts.len() / QUARTERS)
+        .map(|&x| x)
         .collect::<Vec<u64>>()
 }
 
