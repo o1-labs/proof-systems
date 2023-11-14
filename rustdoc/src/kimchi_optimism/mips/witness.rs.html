@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `optimism/src/mips/witness.rs`."><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Bold-a2c9cd1067f8b328.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_optimism" data-themes="" data-resource-suffix="" data-rustdoc-version="1.75.0-nightly (9d83ac217 2023-10-31)" data-channel="nightly" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-9dd44ab47b99a0fb.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `optimism/src/mips/witness.rs`."><title>witness.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-9ee3a5e31a2afa3e.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="kimchi_optimism" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0-nightly (ba7c7a301 2023-11-13)" data-channel="nightly" data-search-js="search-8fbf244ebcf71464.js" data-settings-js="settings-74424d7eec62a23e.js" ><script src="../../../static.files/storage-fec3eaa3851e447d.js"></script><script defer src="../../../static.files/src-script-3280b574d94e47b4.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-f06f02fd918e3bb3.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-5d8b3c7633ad77ba.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" title="help" tabindex="-1"><a href="../../../help.html">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -97,7 +97,147 @@
 <a href="#97" id="97">97</a>
 <a href="#98" id="98">98</a>
 <a href="#99" id="99">99</a>
-</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{cannon::State, mips::registers::Registers};
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
+<a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
+<a href="#147" id="147">147</a>
+<a href="#148" id="148">148</a>
+<a href="#149" id="149">149</a>
+<a href="#150" id="150">150</a>
+<a href="#151" id="151">151</a>
+<a href="#152" id="152">152</a>
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    cannon::State,
+    mips::{
+        interpreter::{<span class="self">self</span>, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
+        registers::Registers,
+    },
+};
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>std::array;
 
@@ -191,7 +331,135 @@
         }
     }
 
+    <span class="kw">pub fn </span>get_memory_direct(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: u32) -&gt; u8 {
+        <span class="kw">const </span>PAGE_ADDRESS_SIZE: u32 = <span class="number">12</span>;
+        <span class="kw">const </span>PAGE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
+        <span class="kw">const </span>PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - <span class="number">1</span>;
+        <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
+        <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
+        <span class="kw">for </span>(page_index, memory) <span class="kw">in </span><span class="self">self</span>.memory.iter() {
+            <span class="kw">if </span><span class="kw-2">*</span>page_index == page {
+                <span class="kw">return </span>memory[page_address];
+            }
+        }
+        <span class="macro">panic!</span>(<span class="string">&quot;Could not access address&quot;</span>)
+    }
+
+    <span class="kw">pub fn </span>decode_instruction(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Instruction {
+        <span class="kw">let </span>instruction = ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer) <span class="kw">as </span>u32) &lt;&lt; <span class="number">24</span>)
+            | ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer + <span class="number">1</span>) <span class="kw">as </span>u32) &lt;&lt; <span class="number">16</span>)
+            | ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer + <span class="number">2</span>) <span class="kw">as </span>u32) &lt;&lt; <span class="number">8</span>)
+            | (<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer + <span class="number">3</span>) <span class="kw">as </span>u32);
+        <span class="kw">match </span>instruction &gt;&gt; <span class="number">26 </span>{
+            <span class="number">0x00 </span>=&gt; <span class="kw">match </span>instruction &amp; <span class="number">0x3F </span>{
+                <span class="number">0x00 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogical),
+                <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightLogical),
+                <span class="number">0x03 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightArithmetic),
+                <span class="number">0x04 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogicalVariable),
+                <span class="number">0x06 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightLogicalVariable),
+                <span class="number">0x07 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightArithmeticVariable),
+                <span class="number">0x08 </span>=&gt; Instruction::RType(RTypeInstruction::JumpRegister),
+                <span class="number">0x09 </span>=&gt; Instruction::RType(RTypeInstruction::JumpAndLinkRegister),
+                <span class="number">0x0a </span>=&gt; Instruction::RType(RTypeInstruction::MoveZero),
+                <span class="number">0x0b </span>=&gt; Instruction::RType(RTypeInstruction::MoveNonZero),
+                <span class="number">0x0c </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">2</span>] {
+                    <span class="number">4090 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallMmap),
+                    <span class="number">4045 </span>=&gt; {
+                        <span class="comment">// sysBrk
+                        </span>Instruction::RType(RTypeInstruction::SyscallOther)
+                    }
+                    <span class="number">4120 </span>=&gt; {
+                        <span class="comment">// sysClone
+                        </span>Instruction::RType(RTypeInstruction::SyscallOther)
+                    }
+                    <span class="number">4246 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallExitGroup),
+                    <span class="number">4003 </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">4</span>] {
+                        interpreter::FD_PREIMAGE_READ =&gt; {
+                            Instruction::RType(RTypeInstruction::SyscallReadPreimage)
+                        }
+                        <span class="kw">_ </span>=&gt; Instruction::RType(RTypeInstruction::SyscallReadOther),
+                    },
+                    <span class="number">4004 </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">4</span>] {
+                        interpreter::FD_PREIMAGE_WRITE =&gt; {
+                            Instruction::RType(RTypeInstruction::SyscallWritePreimage)
+                        }
+                        interpreter::FD_HINT_WRITE =&gt; {
+                            Instruction::RType(RTypeInstruction::SyscallWriteHint)
+                        }
+                        <span class="kw">_ </span>=&gt; Instruction::RType(RTypeInstruction::SyscallWriteOther),
+                    },
+                    <span class="number">4055 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallFcntl),
+                    <span class="kw">_ </span>=&gt; {
+                        <span class="comment">// NB: This has well-defined behavior. Don&#39;t panic!
+                        </span>Instruction::RType(RTypeInstruction::SyscallOther)
+                    }
+                },
+                <span class="number">0x0f </span>=&gt; Instruction::RType(RTypeInstruction::Sync),
+                <span class="number">0x10 </span>=&gt; Instruction::RType(RTypeInstruction::MoveFromHi),
+                <span class="number">0x11 </span>=&gt; Instruction::RType(RTypeInstruction::MoveToHi),
+                <span class="number">0x12 </span>=&gt; Instruction::RType(RTypeInstruction::MoveFromLo),
+                <span class="number">0x13 </span>=&gt; Instruction::RType(RTypeInstruction::MoveToLo),
+                <span class="number">0x18 </span>=&gt; Instruction::RType(RTypeInstruction::Multiply),
+                <span class="number">0x19 </span>=&gt; Instruction::RType(RTypeInstruction::MultiplyUnsigned),
+                <span class="number">0x1a </span>=&gt; Instruction::RType(RTypeInstruction::Div),
+                <span class="number">0x1b </span>=&gt; Instruction::RType(RTypeInstruction::DivUnsigned),
+                <span class="number">0x20 </span>=&gt; Instruction::RType(RTypeInstruction::Add),
+                <span class="number">0x21 </span>=&gt; Instruction::RType(RTypeInstruction::AddUnsigned),
+                <span class="number">0x22 </span>=&gt; Instruction::RType(RTypeInstruction::Sub),
+                <span class="number">0x23 </span>=&gt; Instruction::RType(RTypeInstruction::SubUnsigned),
+                <span class="number">0x24 </span>=&gt; Instruction::RType(RTypeInstruction::And),
+                <span class="number">0x25 </span>=&gt; Instruction::RType(RTypeInstruction::Or),
+                <span class="number">0x26 </span>=&gt; Instruction::RType(RTypeInstruction::Xor),
+                <span class="number">0x2a </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThan),
+                <span class="number">0x2b </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
+                <span class="kw">_ </span>=&gt; {
+                    <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
+                }
+            },
+            <span class="number">0x02 </span>=&gt; Instruction::JType(JTypeInstruction::Jump),
+            <span class="number">0x03 </span>=&gt; Instruction::JType(JTypeInstruction::JumpAndLink),
+            <span class="number">0x08 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediate),
+            <span class="number">0x09 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediateUnsigned),
+            <span class="number">0x0A </span>=&gt; Instruction::IType(ITypeInstruction::SetLessThanImmediate),
+            <span class="number">0x0B </span>=&gt; Instruction::IType(ITypeInstruction::SetLessThanImmediateUnsigned),
+            <span class="number">0x0C </span>=&gt; Instruction::IType(ITypeInstruction::AndImmediate),
+            <span class="number">0x0D </span>=&gt; Instruction::IType(ITypeInstruction::OrImmediate),
+            <span class="number">0x0E </span>=&gt; Instruction::IType(ITypeInstruction::XorImmediate),
+            <span class="number">0x0F </span>=&gt; Instruction::IType(ITypeInstruction::LoadUpperImmediate),
+            <span class="number">0x1C </span>=&gt; <span class="kw">match </span>instruction &amp; <span class="number">0x3F </span>{
+                <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::MultiplyToRegister),
+                <span class="number">0x20 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingZeros),
+                <span class="number">0x21 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingOnes),
+                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction),
+            },
+            <span class="number">0x20 </span>=&gt; Instruction::IType(ITypeInstruction::Load8),
+            <span class="number">0x21 </span>=&gt; Instruction::IType(ITypeInstruction::Load16),
+            <span class="number">0x22 </span>=&gt; Instruction::IType(ITypeInstruction::LoadWordLeft),
+            <span class="number">0x23 </span>=&gt; Instruction::IType(ITypeInstruction::Load32),
+            <span class="number">0x24 </span>=&gt; Instruction::IType(ITypeInstruction::Load8Unsigned),
+            <span class="number">0x25 </span>=&gt; Instruction::IType(ITypeInstruction::Load16Unsigned),
+            <span class="number">0x26 </span>=&gt; Instruction::IType(ITypeInstruction::LoadWordRight),
+            <span class="number">0x28 </span>=&gt; Instruction::IType(ITypeInstruction::Store8),
+            <span class="number">0x29 </span>=&gt; Instruction::IType(ITypeInstruction::Store16),
+            <span class="number">0x2a </span>=&gt; Instruction::IType(ITypeInstruction::StoreWordLeft),
+            <span class="number">0x2b </span>=&gt; Instruction::IType(ITypeInstruction::Store32),
+            <span class="number">0x2e </span>=&gt; Instruction::IType(ITypeInstruction::StoreWordRight),
+            <span class="number">0x30 </span>=&gt; {
+                <span class="comment">// Note: This is ll (LoadLinked), but we&#39;re only simulating a single processor.
+                </span>Instruction::IType(ITypeInstruction::Load32)
+            }
+            <span class="number">0x38 </span>=&gt; {
+                <span class="comment">// Note: This is sc (StoreConditional), but we&#39;re only simulating a single processor.
+                </span>Instruction::IType(ITypeInstruction::Store32)
+            }
+            <span class="kw">_ </span>=&gt; {
+                <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
+            }
+        }
+    }
+
     <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="macro">println!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, <span class="self">self</span>.decode_instruction());
         <span class="comment">// TODO
         </span><span class="self">self</span>.halt = <span class="bool-val">true</span>;
     }
