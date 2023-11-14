@@ -104,18 +104,6 @@ pub(crate) fn expand_word<F: PrimeField, T: ExprOps<F>>(word: u64) -> Vec<T> {
         .collect::<Vec<T>>()
 }
 
-/// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
-pub(crate) fn pad(message: &[u8]) -> Vec<u8> {
-    let mut padded = message.to_vec();
-    padded.push(0x01);
-    while padded.len() % 136 != 0 {
-        padded.push(0x00);
-    }
-    let last = padded.len() - 1;
-    padded[last] += 0x80;
-    padded
-}
-
 /// Returns the expansion of the 4 dense decomposed quarters of a word
 pub(crate) fn sparse(word: u64) -> Vec<u64> {
     decompose(word)
@@ -194,6 +182,20 @@ pub(crate) fn expand_state(state: &[u8]) -> Vec<u64> {
 /// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
 pub(crate) fn padded_length(bytelength: usize) -> usize {
     (bytelength / RATE_IN_BYTES + 1) * RATE_IN_BYTES
+}
+
+/// Pads the message with the 10*1 rule until reaching a length that is a multiple of the rate
+pub(crate) fn pad(message: &[u8]) -> Vec<u8> {
+    let msg_len = message.len();
+    let pad_len = padded_length(msg_len);
+    let mut padded = vec![0; pad_len];
+    for (i, byte) in message.iter().enumerate() {
+        padded[i] = *byte;
+    }
+    padded[msg_len] = 0x01;
+    padded[pad_len - 1] += 0x80;
+
+    padded
 }
 
 #[cfg(test)]
@@ -385,5 +387,20 @@ mod tests {
         assert_eq!(padded_length(RATE_IN_BYTES), 2 * RATE_IN_BYTES);
         assert_eq!(padded_length(RATE_IN_BYTES * 2 - 1), 2 * RATE_IN_BYTES);
         assert_eq!(padded_length(RATE_IN_BYTES * 2), 3 * RATE_IN_BYTES);
+    }
+
+    #[test]
+    // Checks that the padding is correctly computed
+    fn test_pad() {
+        let message = vec![0xFF; RATE_IN_BYTES - 1];
+        let padded = pad(&message);
+        assert_eq!(padded.len(), RATE_IN_BYTES);
+        assert_eq!(padded[padded.len() - 1], 0x81);
+
+        let message = vec![0x01; RATE_IN_BYTES];
+        let padded = pad(&message);
+        assert_eq!(padded.len(), 2 * RATE_IN_BYTES);
+        assert_eq!(padded[message.len()], 0x01);
+        assert_eq!(padded[padded.len() - 1], 0x80);
     }
 }
