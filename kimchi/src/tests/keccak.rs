@@ -154,8 +154,8 @@ fn test_random_block() {
 }
 
 #[test]
-// Test hash of message zero with 1 byte
-fn test_dummy() {
+// Test hash of message zero with 1 byte input length
+fn test_zero() {
     let expected1 = test_keccak::<Pallas>(BigUint::from_bytes_be(&[0x00]));
     let hash1 =
         BigUint::from_hex("bc36789e7a1e281436464229828f817d6612f7b477d66591ff96a9e064bcc98a");
