@@ -38,7 +38,7 @@ where
 #[cfg(feature = "ocaml_types")]
 pub mod caml {
     use ark_ff::PrimeField;
-    use poly_commitment::commitment::shift_scalar;
+    use poly_commitment::{commitment::shift_scalar, evaluation_proof::OpeningProof};
 
     use crate::{
         circuits::scalars::caml::CamlRandomOracles, curve::KimchiCurve, error::VerifyError,
@@ -57,8 +57,8 @@ pub mod caml {
 
     pub fn create_caml_oracles<G, CamlF, EFqSponge, EFrSponge, CurveParams>(
         lgr_comm: Vec<PolyComm<G>>,
-        index: VerifierIndex<G>,
-        proof: ProverProof<G>,
+        index: VerifierIndex<G, OpeningProof<G>>,
+        proof: ProverProof<G, OpeningProof<G>>,
         public_input: &[G::ScalarField],
     ) -> Result<CamlOracles<CamlF>, VerifyError>
     where
@@ -76,7 +76,7 @@ pub mod caml {
         let p_comm = PolyComm::<G>::multi_scalar_mul(&lgr_comm_refs, &negated_public);
 
         let oracles_result =
-            proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm, public_input)?;
+            proof.oracles::<EFqSponge, EFrSponge>(&index, &p_comm, Some(public_input))?;
 
         let (mut sponge, combined_inner_product, public_evals, digest, oracles) = (
             oracles_result.fq_sponge,
