@@ -102,7 +102,7 @@ impl<Fp: Field> Env<Fp> {
         const PAGE_ADDRESS_SIZE: u32 = 12;
         const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
         const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
-        let page = (addr >> PAGE_ADDRESS_SIZE) as u32;
+        let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         for (page_index, memory) in self.memory.iter() {
             if *page_index == page {
@@ -142,7 +142,7 @@ impl<Fp: Field> Env<Fp> {
                     4246 => Instruction::RType(RTypeInstruction::SyscallExitGroup),
                     4003 => match self.registers.general_purpose[4] {
                         interpreter::FD_PREIMAGE_READ => {
-                            Instruction::RType(RTypeInstruction::SyscallReadPrimage)
+                            Instruction::RType(RTypeInstruction::SyscallReadPreimage)
                         }
                         _ => Instruction::RType(RTypeInstruction::SyscallReadOther),
                     },
