@@ -189,7 +189,9 @@ pub(crate) fn expand_state(state: &[u8]) -> Vec<u64> {
     expanded
 }
 
-/// On input a length, returns the smallest multiple of RATE that is greater than the bytelength
+/// On input a length, returns the smallest multiple of RATE_IN_BYTES that is greater than the bytelength.
+/// That means that if the input has a length that is a multiple of the RATE_IN_BYTES, then
+/// it needs to add one whole block of RATE_IN_BYTES bytes just for padding purposes.
 pub(crate) fn padded_length(bytelength: usize) -> usize {
     (bytelength / RATE_IN_BYTES + 1) * RATE_IN_BYTES
 }
@@ -371,5 +373,17 @@ mod tests {
         let sparse_not = expand(all_ones) - expanded;
 
         assert_eq!(not, collapse(&[sparse_not])[0]);
+    }
+
+    #[test]
+    // Checks that the padding length is correctly computed
+    fn test_pad_length() {
+        assert_eq!(padded_length(0), RATE_IN_BYTES);
+        assert_eq!(padded_length(1), RATE_IN_BYTES);
+        assert_eq!(padded_length(RATE_IN_BYTES - 1), RATE_IN_BYTES);
+        // If input is already a multiple of RATE bytes, it needs to add a whole new block just for padding
+        assert_eq!(padded_length(RATE_IN_BYTES), 2 * RATE_IN_BYTES);
+        assert_eq!(padded_length(RATE_IN_BYTES * 2 - 1), 2 * RATE_IN_BYTES);
+        assert_eq!(padded_length(RATE_IN_BYTES * 2), 3 * RATE_IN_BYTES);
     }
 }
