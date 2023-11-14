@@ -1,11 +1,15 @@
 use crate::{
-    cannon::State,
+    cannon::{
+        Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
+        PAGE_SIZE,
+    },
     mips::{
         interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
         registers::Registers,
     },
 };
 use ark_ff::Field;
+use log::info;
 use std::array;
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
@@ -50,6 +54,41 @@ pub struct Env<Fp> {
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
     array::from_fn(|_| Fp::zero())
+}
+
+const KUNIT: usize = 1024; // a kunit of memory is 1024 things (bytes, kilobytes, ...)
+const PREFIXES: &str = "KMGTPE"; // prefixes for memory quantities KiB, MiB, GiB, ...
+
+// Create a human-readable string representation of the memory size
+fn memory_size(total: usize) -> String {
+    if total < KUNIT {
+        format!("{total} B")
+    } else {
+        // Compute the index in the prefixes string above
+        let mut idx = 0;
+        let mut d = KUNIT;
+        let mut n = total / KUNIT;
+
+        while n >= KUNIT {
+            d *= KUNIT;
+            idx += 1;
+            n /= KUNIT;
+        }
+
+        let value = total as f64 / d as f64;
+
+        let prefix =
+        ////////////////////////////////////////////////////////////////////////////
+        // Famous last words: 1023 exabytes ought to be enough for anybody        //
+        //                                                                        //
+        // Corollary: unwrap() below shouldn't fail                               //
+        //                                                                        //
+        // The maximum representation for usize corresponds to 16 exabytes anyway //
+        ////////////////////////////////////////////////////////////////////////////
+            PREFIXES.chars().nth(idx).unwrap();
+
+        format!("{:.1} {}iB", value, prefix)
+    }
 }
 
 impl<Fp: Field> Env<Fp> {
@@ -225,9 +264,96 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
         println!("instruction: {:?}", self.decode_instruction());
+
+        self.pp_info(config.info_at, metadata, start);
+
+        // Force stops at given iteration
+        if self.should_trigger_at(config.stop_at) {
+            self.halt = true;
+            return;
+        }
+
         // TODO
         self.halt = true;
+    }
+
+    fn should_trigger_at(&self, at: StepFrequency) -> bool {
+        let m: u64 = self.instruction_counter as u64;
+        match at {
+            StepFrequency::Never => false,
+            StepFrequency::Always => true,
+            StepFrequency::Exactly(n) => n == m,
+            StepFrequency::Every(n) => m % n == 0,
+        }
+    }
+
+    // Compute memory usage
+    fn memory_usage(&self) -> String {
+        let total = self.memory.len() * PAGE_SIZE;
+        memory_size(total)
+    }
+
+    fn page_address(&self) -> (u32, usize) {
+        let address = self.instruction_pointer;
+        let page = address >> PAGE_ADDRESS_SIZE;
+        let page_address = (address & (PAGE_ADDRESS_MASK as u32)) as usize;
+        (page, page_address)
+    }
+
+    fn get_opcode(&mut self) -> Option<u32> {
+        let (page_id, page_address) = self.page_address();
+        for (page_index, memory) in self.memory.iter() {
+            if page_id == *page_index {
+                let memory_slice: [u8; 4] = memory[page_address..page_address + 4]
+                    .try_into()
+                    .expect("Couldn't read 4 bytes at given address");
+                return Some(u32::from_be_bytes(memory_slice));
+            }
+        }
+        None
+    }
+
+    fn pp_info(&mut self, at: StepFrequency, meta: &Meta, start: &Start) {
+        if self.should_trigger_at(at) {
+            let elapsed = start.time.elapsed();
+            let step = self.instruction_counter;
+            let pc = self.instruction_pointer;
+
+            // Get the 32-bits opcode
+            let insn = self.get_opcode().unwrap();
+
+            // Approximate instruction per seconds
+            let how_many_steps = step - start.step;
+            let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
+
+            let pages = self.memory.len();
+
+            let mem = self.memory_usage();
+            let name = meta
+                .find_address_symbol(pc)
+                .unwrap_or_else(|| "n/a".to_string());
+
+            info!(
+                "processing step {} pc {:#010x} insn {:#010x} ips {:.2} page {} mem {} name {}",
+                step, pc, insn, ips, pages, mem, name
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_memory_size() {
+        assert_eq!(memory_size(1023_usize), "1023 B");
+        assert_eq!(memory_size(1024_usize), "1.0 KiB");
+        assert_eq!(memory_size(1024 * 1024_usize), "1.0 MiB");
+        assert_eq!(memory_size(2100 * 1024 * 1024_usize), "2.1 GiB");
+        assert_eq!(memory_size(std::usize::MAX), "16.0 EiB");
     }
 }
