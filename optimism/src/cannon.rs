@@ -41,7 +41,7 @@ pub struct State {
     pub preimage_offset: u32,
     pub pc: u32,
     #[serde(rename = "nextPC")]
-    next_pc: u32, //
+    pub next_pc: u32,
     pub lo: u32,
     pub hi: u32,
     pub heap: u32,
