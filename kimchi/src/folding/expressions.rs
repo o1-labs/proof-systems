@@ -123,7 +123,6 @@ impl<C> Default for IntegratedFoldingExpr<C> {
         }
     }
 }
-// fn extract_terms<C: Clone, F>(exp: FoldingExp<C>) -> Vec<Term<C>>
 pub fn extract_terms<C: Clone, F>(exp: FoldingExp<C>, terms: &mut Vec<Term<C>>, f: &F)
 where
     F: Fn(Term<C>) -> Term<C>,

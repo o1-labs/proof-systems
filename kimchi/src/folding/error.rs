@@ -4,10 +4,25 @@ use crate::folding::expressions::{Degree, FoldingColumn};
 use crate::folding::EvalLeaf;
 use ark_ff::Field;
 
+#[derive(Clone, Copy)]
+pub enum Side {
+    Left,
+    Right,
+}
+impl std::ops::Not for Side {
+    type Output = Self;
+
+    fn not(self) -> Self::Output {
+        match self {
+            Side::Left => Side::Right,
+            Side::Right => Side::Left,
+        }
+    }
+}
 pub(crate) fn eval_exp_error<'a, F: Field, E: FoldingEnv<F>>(
     exp: &FoldingExp<F>,
     env: &'a E,
-    side: bool,
+    side: Side,
 ) -> EvalLeaf<'a, F> {
     let degree = exp.degree();
     use EvalLeaf::*;
@@ -80,7 +95,7 @@ pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
     let t_0 = EvalLeaf::Result(env.zero_vec());
     let t_0 = exp.degree_0.iter().fold(t_0, |t_0, (exp, sign)| {
         //could be true or false, doesn't matter for constant terms
-        let e = eval_exp_error(exp, env, true);
+        let e = eval_exp_error(exp, env, Side::Left);
         if *sign {
             add(t_0, e)
         } else {
@@ -95,8 +110,8 @@ pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
         .degree_0
         .iter()
         .fold((t_1l, t_1r), |(t_1l, t_1r), (exp, sign)| {
-            let el = eval_exp_error(exp, env, true);
-            let er = eval_exp_error(exp, env, false);
+            let el = eval_exp_error(exp, env, Side::Left);
+            let er = eval_exp_error(exp, env, Side::Right);
             if *sign {
                 (add(t_1l, el), add(t_1r, er))
             } else {
@@ -110,7 +125,7 @@ pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
     let t_2 = EvalLeaf::Result(env.zero_vec());
     let t_2 = exp.degree_0.iter().fold(t_2, |t_2, (exp, sign)| {
         //true or false matter in some way, but not at the top level call
-        let e = eval_exp_error(exp, env, true);
+        let e = eval_exp_error(exp, env, Side::Left);
         if *sign {
             add(t_2, e)
         } else {

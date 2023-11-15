@@ -1,4 +1,5 @@
 use super::{CommitmentCurve, One, PolyComm};
+
 pub trait InstanceTrait<G: CommitmentCurve>: Sized {
     ///should return a linear combination
     fn combine(a: Self, b: Self, challenge: G::ScalarField) -> Self;
@@ -32,19 +33,10 @@ pub struct RelaxedInstance<G: CommitmentCurve, I: InstanceTrait<G>> {
     pub u: G::ScalarField,
     error_commitment: PolyComm<G>,
 }
-trait Relaxable<G: CommitmentCurve>: InstanceTrait<G> + Sized {
-    fn relax(
-        self,
-        zero_poly: &[G::ScalarField],
-        zero_commit: PolyComm<G>,
-    ) -> RelaxedInstance<G, Self>;
-}
-
 pub struct RelaxedWitness<G: CommitmentCurve, W: WitnessTrait<G>> {
     pub witness: W,
     pub error_vec: Vec<G::ScalarField>,
 }
-
 pub trait RelaxableInstance<G: CommitmentCurve, I: InstanceTrait<G>> {
     fn relax(self, zero_commitment: PolyComm<G>) -> RelaxedInstance<G, I>;
 }
@@ -97,11 +89,6 @@ where
             RelaxableWitness::relax(witness, zero_poly),
         )
     }
-}
-
-trait Pair2<G: CommitmentCurve> {
-    type Instance: InstanceTrait<G>;
-    type Witness: WitnessTrait<G>;
 }
 
 impl<G: CommitmentCurve, I: InstanceTrait<G>> RelaxedInstance<G, I> {

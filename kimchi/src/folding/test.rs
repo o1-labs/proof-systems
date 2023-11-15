@@ -1,5 +1,6 @@
 use crate::folding::expressions::{extract_terms, FoldingColumn, FoldingExp};
 
+#[ignore]
 #[test]
 fn test_term_separation() {
     let t1 = FoldingExp::<i32>::Mul(

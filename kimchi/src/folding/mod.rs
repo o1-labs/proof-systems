@@ -1,4 +1,4 @@
-use self::error::compute_error;
+use self::error::{compute_error, Side};
 use crate::circuits::{
     expr::{CacheId, Expr, FeatureFlag},
     gate::GateType,
@@ -19,8 +19,8 @@ mod instance_witness;
 mod test;
 
 pub(crate) trait FoldingEnv<F> {
-    fn witness(&self, i: usize, side: bool) -> &Vec<F>;
-    fn witness_ext(&self, i: usize, side: bool) -> &Vec<F>;
+    fn witness(&self, i: usize, side: Side) -> &Vec<F>;
+    fn witness_ext(&self, i: usize, side: Side) -> &Vec<F>;
     fn index(&self, i: &GateType) -> &Vec<F>;
     fn coefficient(&self, i: usize) -> &Vec<F>;
     fn shift(&self) -> &Vec<F>;
@@ -109,17 +109,17 @@ where
     I: InstanceTrait<G>,
     W: WitnessTrait<G>,
 {
-    fn witness(&self, i: usize, side: bool) -> &Vec<G::ScalarField> {
+    fn witness(&self, i: usize, side: Side) -> &Vec<G::ScalarField> {
         match side {
-            true => self.a.1.witness.witness(i),
-            false => self.b.1.witness.witness(i),
+            Side::Left => self.a.1.witness.witness_ext(i),
+            Side::Right => self.b.1.witness.witness_ext(i),
         }
     }
 
-    fn witness_ext(&self, i: usize, side: bool) -> &Vec<G::ScalarField> {
+    fn witness_ext(&self, i: usize, side: Side) -> &Vec<G::ScalarField> {
         match side {
-            true => self.a.1.witness.witness_ext(i),
-            false => self.b.1.witness.witness_ext(i),
+            Side::Left => self.a.1.witness.witness_ext(i),
+            Side::Right => self.b.1.witness.witness_ext(i),
         }
     }
 
@@ -154,7 +154,6 @@ pub trait Sponge<G: CommitmentCurve> {
 
 pub struct FoldingScheme<G: CommitmentCurve, S: Sponge<G>, C: SRS<G>> {
     _sponge: PhantomData<S>,
-    // original_exp: Expr<ConstantExpr<G::ScalarField>>,
     expression: IntegratedFoldingExpr<G::ScalarField>,
     index: HashMap<GateType, Vec<G::ScalarField>>,
     coefficients: Vec<Vec<G::ScalarField>>,
@@ -232,6 +231,7 @@ impl<G: CommitmentCurve, S: Sponge<G>, C: SRS<G>> FoldingScheme<G, S, C> {
         } = env;
         let instance =
             RelaxedInstance::combine(ins1, ins2, challenge).add_error(&error_commitment, challenge);
+        //subtrac instead
         let witness = RelaxedWitness::combine(wit1, wit2, challenge).add_error(error, challenge);
         (instance, witness, error_commitment)
     }
