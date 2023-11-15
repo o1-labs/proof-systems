@@ -42,6 +42,7 @@ use ark_ff::{FftField, PrimeField, SquareRootField, Zero};
 pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     feature_flags: Option<&FeatureFlags>,
     generic: bool,
+    needs_more_exponents: bool,
 ) -> (Expr<ConstantExpr<F>, Column>, Alphas<F>) {
     // register powers of alpha so that we don't reuse them across mutually inclusive constraints
     let mut powers_of_alpha = Alphas::<F>::default();
@@ -49,13 +50,17 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     // Set up powers of alpha. Only the max number of constraints matters.
     // The gate type argument can just be the zero gate.
     let mut max_exponents = VarbaseMul::<F>::CONSTRAINTS;
+    let more_exponents = max(
+        KeccakRound::<F>::CONSTRAINTS,
+        KeccakSponge::<F>::CONSTRAINTS,
+    );
+
     if let Some(feature_flags) = feature_flags {
         if feature_flags.keccak {
-            max_exponents = max(
-                KeccakRound::<F>::CONSTRAINTS,
-                KeccakSponge::<F>::CONSTRAINTS,
-            );
+            max_exponents = more_exponents
         }
+    } else if needs_more_exponents {
+        max_exponents = more_exponents
     }
     powers_of_alpha.register(ArgumentType::Gate(GateType::Zero), max_exponents);
 
@@ -170,7 +175,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
             if feature_flags.keccak {
                 expr += keccak_round_expr();
             }
-        } else {
+        } else if needs_more_exponents {
             expr += Expr::IfFeature(
                 FeatureFlag::Keccak,
                 Box::new(keccak_round_expr()),
@@ -186,7 +191,7 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
             if feature_flags.keccak {
                 expr += keccak_sponge_expr();
             }
-        } else {
+        } else if needs_more_exponents {
             expr += Expr::IfFeature(
                 FeatureFlag::Keccak,
                 Box::new(keccak_sponge_expr()),
@@ -266,7 +271,8 @@ pub fn constraints_expr<F: PrimeField + SquareRootField, const COLUMNS: usize>(
     // flags.
     if cfg!(feature = "check_feature_flags") {
         if let Some(feature_flags) = feature_flags {
-            let (feature_flagged_expr, _) = constraints_expr::<F, COLUMNS>(None, generic);
+            let (feature_flagged_expr, _) =
+                constraints_expr::<F, COLUMNS>(None, generic, feature_flags.keccak);
             let feature_flagged_expr = feature_flagged_expr.apply_feature_flags(feature_flags);
             assert_eq!(expr, feature_flagged_expr);
         }
@@ -397,7 +403,7 @@ pub fn expr_linearization<F: PrimeField + SquareRootField, const COLUMNS: usize>
 ) {
     let evaluated_cols = linearization_columns::<F, COLUMNS>(feature_flags);
 
-    let (expr, powers_of_alpha) = constraints_expr::<F, COLUMNS>(feature_flags, generic);
+    let (expr, powers_of_alpha) = constraints_expr::<F, COLUMNS>(feature_flags, generic, false);
 
     let linearization = expr
         .linearize(evaluated_cols)
