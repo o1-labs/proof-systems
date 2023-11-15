@@ -1562,6 +1562,7 @@ dependencies = [
  "ark-algebra-test-templates",
  "ark-ec 0.4.2",
  "ark-ff 0.4.2",
+ "ark-serialize 0.4.2",
  "ark-std 0.4.0",
  "ark-test-curves",
  "rand",
