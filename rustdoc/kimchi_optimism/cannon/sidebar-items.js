@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["PAGE_SIZE"],"enum":["StepFrequency"],"fn":["step_frequency_parser"],"struct":["HostProgram","Page","State","VmConfiguration"]};
+window.SIDEBAR_ITEMS = {"constant":["PAGE_ADDRESS_MASK","PAGE_ADDRESS_SIZE","PAGE_SIZE"],"enum":["StepFrequency"],"fn":["step_frequency_parser"],"struct":["HostProgram","Meta","Page","Start","State","Symbol","VmConfiguration"]};

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"constant":["CAPACITY","DIM","KECCAK_COLS","QUARTERS","RATE","ROUNDS"],"mod":["circuitgates","gadget"]};
+window.SIDEBAR_ITEMS = {"constant":["CAPACITY_IN_BYTES","DIM","KECCAK_COLS","QUARTERS","RATE_IN_BYTES","ROUNDS"],"mod":["circuitgates","gadget","witness"]};
