@@ -46,6 +46,7 @@ pub struct Env<Fp> {
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<usize>,
     pub instruction_pointer: u32,
+    pub next_instruction_pointer: u32,
     pub scratch_state_idx: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
@@ -94,6 +95,7 @@ fn memory_size(total: usize) -> String {
 impl<Fp: Field> Env<Fp> {
     pub fn create(page_size: usize, state: State) -> Self {
         let initial_instruction_pointer = state.pc;
+        let next_instruction_pointer = state.next_pc;
 
         let syscall_env = SyscallEnv::create(&state);
 
@@ -130,6 +132,7 @@ impl<Fp: Field> Env<Fp> {
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             instruction_pointer: initial_instruction_pointer,
+            next_instruction_pointer,
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
