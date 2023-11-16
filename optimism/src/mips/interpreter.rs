@@ -769,9 +769,9 @@ impl IntoEnumIterator for InstructionSelector {
     }
 }
 
-pub fn all_instruction_selectors() -> impl Iterator<Item = Column> {
-    InstructionSelector::iter().map(Column::InstructionSelector)
-}
+// pub fn all_instruction_selectors() -> impl Iterator<Item = Column> {
+//     Instruction::iter().map(Column::Instruction)
+// }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
 pub enum InstructionPart {
