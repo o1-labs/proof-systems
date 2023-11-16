@@ -82,6 +82,7 @@ pub enum ITypeInstruction {
     OrImmediate,                  // ori
     XorImmediate,                 // xori
     LoadUpperImmediate,           // lui
+    LoadImmediate,                // li
     Load8,                        // lb
     Load16,                       // lh
     Load32,                       // lw
