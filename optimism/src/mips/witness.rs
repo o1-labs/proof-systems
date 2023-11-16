@@ -12,6 +12,8 @@ use ark_ff::Field;
 use log::info;
 use std::array;
 
+use super::SCRATCH_SIZE;
+
 #[derive(Clone)]
 pub struct SyscallEnv {
     pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
