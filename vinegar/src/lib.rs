@@ -48,6 +48,115 @@ use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProo
 // - a challenge_polynomial_commitment (coordinates in K) corresponding to P's own inner-product argument
 // - a set of IPA challenges (thought of as F-elements) corresponding to P's own inner-product argument
 
+pub struct ScalarChallenge {}
+pub struct BulletproofChallenges {}
+pub struct BranchData {}
+pub struct Challenge {}
+pub struct Fp {}
+pub struct Fq {}
+pub struct G1 {}
+pub struct Features {}
+pub struct Digest {}
+pub struct UnfinalizedProofs {}
+pub struct PlonkVerificationKeyEvals {}
+
+/// Challenges from the PLONK IOP. These, plus the evaluations that
+/// are already in the proof, are all that's needed to derive all the
+/// values in the [In_circuit] version below.
+///
+/// See src/lib/pickles/plonk_checks/plonk_checks.ml for the
+/// computation of the [In_circuit] value from the [Minimal] value.
+pub struct StepScalarsMinimal {
+    alpha: ScalarChallenge,
+    beta: Challenge,
+    gamma: Challenge,
+    zeta: ScalarChallenge,
+}
+
+/// All scalar values deferred by a verifier circuit. The values in
+/// [vbmul], [complete_add], [endomul], [endomul_scalar], and [perm]
+/// are all scalars which will have been used to scale selector
+/// polynomials during the computation of the linearized polynomial
+/// commitment.
+///
+/// Then, we expose them so the next guy (who can do scalar
+/// arithmetic) can check that they were computed correctly from the
+/// evaluations in the proof and the challenges.
+pub struct StepScalarsInCircuit {
+    step_scalars_min: StepScalarsMinimal,
+    // TODO: zeta_to_srs_length is kind of unnecessary.
+    // Try to get rid of it when you can.
+    zeta_to_srs_length: Fp,
+    zeta_to_domain_size: Fp,
+    perm: Fp,
+}
+
+/// Challenges from the PLONK IOP. These, plus the evaluations that
+/// are already in the proof, are all that's needed to derive all the
+/// values in the [In_circuit] version below.
+///
+/// See src/lib/pickles/plonk_checks/plonk_checks.ml for the
+/// computation of the [In_circuit] value from the [Minimal] value.
+pub struct WrapScalarsMinimal {
+    alpha: ScalarChallenge,
+    beta: Challenge,
+    gamma: Challenge,
+    zeta: ScalarChallenge,
+    joint_combiner: Option<ScalarChallenge>,
+    feature_flags: Features,
+}
+
+/// All scalar values deferred by a verifier circuit. We expose them
+/// so the next guy (who can do scalar arithmetic) can check that they
+/// were computed correctly from the evaluations in the proof and the
+/// challenges.
+pub struct WrapScalarsInCircuit {
+    wrap_scalars_min: WrapScalarsMinimal,
+    zeta_to_srs_length: Fp,
+    zeta_to_domain_size: Fp,
+    /// scalar used on one of the permutation polynomial commitments
+    perm: Fp,
+}
+
+/// All the deferred values needed, comprising values from the PLONK IOP verification,
+/// values from the inner-product argument, and [which_branch] which is needed to know
+/// the proper domain to use.
+pub struct WrapDeferredValues<WrapScalars> {
+    /// Could be either WrapScalarsMinimal or WrapScalarsInCircuit
+    plonk: WrapScalars,
+    /// combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
+    combined_inner_product: Fp,
+    /// b = challenge_poly plonk.zeta + r * challenge_poly (domain_generrator * plonk.zeta)
+    ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
+    b: Fp,
+    /// The challenge used for combining polynomials
+    xi: ScalarChallenge,
+    /// The challenges from the inner-product argument that was partially verified.
+    bulletproof_challenges: BulletproofChallenges,
+    /// Data specific to which step branch of the proof-system was verified
+    branch_data: BranchData,
+}
+
+/// All the scalar-field values needed to finalize the verification of a proof
+/// by checking that the correct values were used in the "group operations" part of the
+/// verifier.
+///
+/// Consists of some evaluations of PLONK polynomials (columns, permutation aggregation, etc.)
+/// and the remainder are things related to the inner product argument.
+pub struct StepDeferredValues<StepScalars> {
+    /// Could be either StepScalarsMinimal or StepScalarsIncircuit
+    plonk: StepScalars,
+    /// combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
+    combined_inner_product: Fq,
+    /// b = challenge_poly plonk.zeta + r * challenge_poly (domain_generrator * plonk.zeta)
+    ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
+    b: Fq,
+    /// The challenge used for combining polynomials
+    xi: ScalarChallenge,
+    /// The challenges from the inner-product argument that was partially verified.
+    bulletproof_challenges: BulletproofChallenges,
+}
+
 /// Represents a proof (along with its accumulation state) which wraps a
 /// "step" proof S on the other curve.
 ///
@@ -77,43 +186,6 @@ pub struct StepWitness {
     prev_challenges: (),
 }
 
-/// All the deferred values needed, comprising values from the PLONK IOP verification,
-/// values from the inner-product argument, and [which_branch] which is needed to know
-/// the proper domain to use.
-pub struct WrapDeferredValues {
-    plonk: WrapScalars,
-    /// combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
-    combined_inner_product: (),
-    /// b = challenge_poly plonk.zeta + r * challenge_poly (domain_generrator * plonk.zeta)
-    ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
-    b: (),
-    /// The challenge used for combining polynomials
-    xi: (),
-    /// The challenges from the inner-product argument that was partially verified.
-    bulletproof_challenges: (),
-    /// Data specific to which step branch of the proof-system was verified
-    branch_data: (),
-}
-
-/// All the scalar-field values needed to finalize the verification of a proof
-/// by checking that the correct values were used in the "group operations" part of the
-/// verifier.
-///
-/// Consists of some evaluations of PLONK polynomials (columns, permutation aggregation, etc.)
-/// and the remainder are things related to the inner product argument.
-pub struct StepDeferredValues {
-    plonk: StepScalars,
-    /// combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
-    combined_inner_product: (),
-    /// b = challenge_poly plonk.zeta + r * challenge_poly (domain_generrator * plonk.zeta)
-    ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
-    b: (),
-    /// The challenge used for combining polynomials
-    xi: (),
-    /// The challenges from the inner-product argument that was partially verified.
-    bulletproof_challenges: (),
-}
-
 /// The component of the proof accumulation state that is only
 /// computed on by the "stepping" proof system, and that can be
 /// handled opaquely by any "wrap" circuits.
@@ -126,66 +198,17 @@ pub struct MessagesForNextStepProof {
     /// this recursive proof system. It gets threaded through all the
     /// circuits so that the step circuits can verify proofs against
     /// it.
-    dlog_plonk_index: (),
-    challenge_polynomial_commitments: (),
-    old_bulletproof_challenges: (),
+    dlog_plonk_index: PlonkVerificationKeyEvals,
+    challenge_polynomial_commitments: ChallengePolynomialCommitments,
+    old_bulletproof_challenges: BulletproofChallenges,
 }
 
-/// This is the full statement for "wrap" proofs which contains
-///       - the application-level statement (app_state)
-///       - data needed to perform the final verification of the proof, which correspond
-///         to parts of incompletely verified proofs.
-pub struct WrapStatement {
-    proof_state: (),
-    messages_for_next_step_proof: MessagesForNextStepProof,
-}
-
-/// Challenges from the PLONK IOP. These, plus the evaluations that
-/// are already in the proof, are all that's needed to derive all the
-/// values in the [In_circuit] version below.
-///
-/// See src/lib/pickles/plonk_checks/plonk_checks.ml for the
-/// computation of the [In_circuit] value from the [Minimal] value.
-pub struct StepScalarsInCircuitMinimal {
-    alpha: (),
-    beta: (),
-    gamma: (),
-    zeta: (),
-}
-
-/// All scalar values deferred by a verifier circuit. The values in
-/// [vbmul], [complete_add], [endomul], [endomul_scalar], and [perm]
-/// are all scalars which will have been used to scale selector
-/// polynomials during the computation of the linearized polynomial
-/// commitment.
-///
-/// Then, we expose them so the next guy (who can do scalar
-/// arithmetic) can check that they were computed correctly from the
-/// evaluations in the proof and the challenges.
-pub struct StepScalarsInCircuit {
-    step_scalars_in_circuit_min: StepInCircuitMinimal,
-    // TODO: zeta_to_srs_length is kind of unnecessary.
-    // Try to get rid of it when you can.
-    zeta_to_srs_length: (),
-    zeta_to_domain_size: (),
-    perm: (),
-    feature_flags: (),
-    joint_combiner: (),
-}
-
-/// All scalar values deferred by a verifier circuit. We expose them
-/// so the next guy (who can do scalar arithmetic) can check that they
-/// were computed correctly from the evaluations in the proof and the
-/// challenges.
-pub struct WrapScalarsInCircuit {
-    alpha: (),
-    beta: (),
-    gamma: (),
-    zeta: (),
-    zeta_to_srs_length: (),
-    zeta_to_domain_size: (),
-    /// scalar used on one of the permutation polynomial commitments
-    perm: (),
+/// The component of the proof accumulation state that is only
+/// computed on by the "wrapping" proof system, and that can be
+/// handled opaquely by any "step" circuits. *)
+pub struct MessagesForNextWrapProof {
+    challenge_polynomial_commitments: G1,
+    old_bulletproof_challenges: BulletproofChallenges,
 }
 
 /// For each proof that a /step/ circuit verifies, we do not verify the whole proof.
@@ -200,32 +223,49 @@ pub struct WrapScalarsInCircuit {
 /// to be fully verified eventually.
 ///
 /// This is that data.
-pub struct PerProof {
+pub struct PerProof<StepScalars> {
     /// Scalar values related to the proof
-    deferred_values: StepDeferredValues,
+    deferred_values: StepDeferredValues<StepScalars>,
     /// We allow circuits in pickles proof systems to decide if it's
     /// OK that a proof did not recursively verify. In that case, when
     /// we expose the unfinalized bits, we need to communicate that
     /// it's OK if those bits do not "finalize". That's what this
     /// boolean is for.
     should_finalize: bool,
-    sponge_digest_before_evaluations: (),
+    sponge_digest_before_evaluations: Digest,
 }
 
-pub struct ProofState {
+pub struct WrapProofState<WrapScalars> {
+    deferred_values: WrapDeferredValues<WrapScalars>,
+    sponge_digest_before_evaluations: Digest,
+    /// Parts of the statement not needed by the other circuit. Represented as a hash inside the
+    /// circuit which is then "unhashed"
+    messages_for_next_wrap_proof: MessagesForNextStepProof,
+}
+
+pub struct StepProofState {
     /// A vector of the "per-proof" structures defined above, one for each proof
     /// that the step-circuit partially verifies.
-    unfinalized_proofs: (),
+    unfinalized_proofs: UnfinalizedProofs,
     /// The component of the proof accumulation state that is only computed on by the
     /// "stepping" proof system, and that can be handled opaquely by any "wrap" circuits.
     messages_for_next_step_proof: MessagesForNextStepProof,
 }
 
-pub struct Statement {
-    proof_state: ProofState,
+/// This is the full statement for "wrap" proofs which contains
+///       - the application-level statement (app_state)
+///       - data needed to perform the final verification of the proof, which correspond
+///         to parts of incompletely verified proofs.
+pub struct WrapStatement<WrapScalars> {
+    proof_state: WrapProofState<WrapScalars>,
+    messages_for_next_step_proof: MessagesForNextStepProof,
+}
+
+pub struct StepStatement {
+    proof_state: StepProofState,
     /// The component of the proof accumulation state that is only computed on by the
     /// "wrapping" proof system, and that can be handled opaquely by any "step" circuits.
-    messages_for_next_wrap_proof: (),
+    messages_for_next_wrap_proof: MessagesForNextWrapProof,
 }
 
 /// This is data that can be computed in linear time from the proof + statement.
@@ -235,6 +275,82 @@ pub struct BulletproofAdvice<Fq> {
     b: Fq,
     /// sum_i r^i sum_j xi^j f_j(pt_i)
     combined_inner_product: Fq,
+}
+
+/// This type models an "inductive rule". It includes
+///  - the list of previous statements which this one assumes
+///  - the snarky main function
+///
+///  The types parameters are:
+///  - ['prev_vars] the tuple-list of public input circuit types to the previous
+///    proofs.
+///    - For example, [Boolean.var * (Boolean.var * unit)] represents 2 previous
+///      proofs whose public inputs are booleans
+///  - ['prev_values] the tuple-list of public input non-circuit types to the
+///    previous proofs.
+///    - For example, [bool * (bool * unit)] represents 2 previous proofs whose
+///      public inputs are booleans.
+///  - ['widths] is a tuple list of the maximum number of previous proofs each
+///    previous proof itself had.
+///    - For example, [Nat.z Nat.s * (Nat.z * unit)] represents 2 previous
+///      proofs where the first has at most 1 previous proof and the second had
+///      zero previous proofs.
+///  - ['heights] is a tuple list of the number of inductive rules in each of
+///    the previous proofs
+///    - For example, [Nat.z Nat.s Nat.s * (Nat.z Nat.s * unit)] represents 2
+///      previous proofs where the first had 2 inductive rules and the second
+///      had 1.
+///  - ['a_var] is the in-circuit type of the [main] function's public input.
+///  - ['a_value] is the out-of-circuit type of the [main] function's public
+///    input.
+///  - ['ret_var] is the in-circuit type of the [main] function's public output.
+///  - ['ret_value] is the out-of-circuit type of the [main] function's public
+///    output.
+///  - ['auxiliary_var] is the in-circuit type of the [main] function's
+///    auxiliary data, to be returned to the prover but not exposed in the
+///    public input.
+///  - ['auxiliary_value] is the out-of-circuit type of the [main] function's
+///    auxiliary data, to be returned to the prover but not exposed in the
+///    public input.
+pub struct InductiveRule {
+    identifier: String,
+    //   prevs : ('prev_vars, 'prev_values, 'widths, 'heights) H4.T(Tag).t,
+    prevs: (),
+    //   main :
+    //        'a_var main_input
+    //     -> ('prev_vars, 'widths, 'ret_var, 'auxiliary_var) main_return,
+    main: (),
+    feature_flags: Features,
+}
+
+pub struct TypesMapBasic {}
+
+pub struct TypesMapCompiledBasic {
+    public_input: (),
+    wrap_domain: (),
+    step_domains: (),
+    feature_flags: Features,
+    zk_rows: usize,
+}
+
+pub struct TypesMapCompiled {
+    branches: (),
+    max_proofs_verified: (),
+    /// for each branch in this rule, how many predecessor proofs does it have?
+    proofs_verifieds: (),
+    wrap_key: (),
+    wrap_vk: (),
+    basic: TypesMapCompiledBasic,
+}
+
+// exactly as compiled, but without wrap_vk
+pub struct ForStep {
+    branches: (),
+    max_proofs_verified: (),
+    /// for each branch in this rule, how many predecessor proofs does it have?
+    proofs_verifieds: (),
+    wrap_key: (),
+    basic: TypesMapCompiledBasic,
 }
 
 pub fn prover() {}
