@@ -183,6 +183,9 @@ pub struct RTypeInstructionSelectors<T> {
     pub jump_register: T,
     pub jump_and_link_register: T,
     pub syscall: T,
+    pub move_zero: T,
+    pub move_non_zero: T,
+    pub sync: T,
     pub move_from_hi: T,
     pub move_to_hi: T,
     pub move_from_lo: T,
@@ -201,6 +204,9 @@ pub struct RTypeInstructionSelectors<T> {
     pub nor: T,
     pub set_less_than: T,
     pub set_less_than_unsigned: T,
+    pub multiply_to_register: T,
+    pub count_leading_ones: T,
+    pub count_leading_zeros: T,
 }
 
 impl<A> Index<RTypeInstruction> for RTypeInstructionSelectors<A> {
@@ -216,7 +222,21 @@ impl<A> Index<RTypeInstruction> for RTypeInstructionSelectors<A> {
             RTypeInstruction::ShiftRightArithmeticVariable => &self.shift_right_arithmetic_variable,
             RTypeInstruction::JumpRegister => &self.jump_register,
             RTypeInstruction::JumpAndLinkRegister => &self.jump_and_link_register,
-            RTypeInstruction::Syscall => &self.syscall,
+            // FIXME: Am I understanding correctly that we need to map the
+            // actual MIPS instruction? Maybe not. It is used in the proof with
+            // InstructionSelectors
+            RTypeInstruction::SyscallMmap => &self.syscall,
+            RTypeInstruction::SyscallExitGroup => &self.syscall,
+            RTypeInstruction::SyscallReadPreimage => &self.syscall,
+            RTypeInstruction::SyscallReadOther => &self.syscall,
+            RTypeInstruction::SyscallWriteHint => &self.syscall,
+            RTypeInstruction::SyscallWritePreimage => &self.syscall,
+            RTypeInstruction::SyscallWriteOther => &self.syscall,
+            RTypeInstruction::SyscallFcntl => &self.syscall,
+            RTypeInstruction::SyscallOther => &self.syscall,
+            RTypeInstruction::MoveZero => &self.move_zero,
+            RTypeInstruction::MoveNonZero => &self.move_non_zero,
+            RTypeInstruction::Sync => &self.sync,
             RTypeInstruction::MoveFromHi => &self.move_from_hi,
             RTypeInstruction::MoveToHi => &self.move_to_hi,
             RTypeInstruction::MoveFromLo => &self.move_from_lo,
@@ -235,6 +255,9 @@ impl<A> Index<RTypeInstruction> for RTypeInstructionSelectors<A> {
             RTypeInstruction::Nor => &self.nor,
             RTypeInstruction::SetLessThan => &self.set_less_than,
             RTypeInstruction::SetLessThanUnsigned => &self.set_less_than_unsigned,
+            RTypeInstruction::MultiplyToRegister => &self.multiply_to_register,
+            RTypeInstruction::CountLeadingOnes => &self.count_leading_ones,
+            RTypeInstruction::CountLeadingZeros => &self.count_leading_zeros,
         }
     }
 }
@@ -253,6 +276,17 @@ impl<A> IndexMut<RTypeInstruction> for RTypeInstructionSelectors<A> {
             RTypeInstruction::JumpRegister => &mut self.jump_register,
             RTypeInstruction::JumpAndLinkRegister => &mut self.jump_and_link_register,
             RTypeInstruction::SyscallMmap => &mut self.syscall,
+            RTypeInstruction::SyscallExitGroup => &mut self.syscall,
+            RTypeInstruction::SyscallReadPreimage => &mut self.syscall,
+            RTypeInstruction::SyscallReadOther => &mut self.syscall,
+            RTypeInstruction::SyscallWriteHint => &mut self.syscall,
+            RTypeInstruction::SyscallWritePreimage => &mut self.syscall,
+            RTypeInstruction::SyscallWriteOther => &mut self.syscall,
+            RTypeInstruction::SyscallFcntl => &mut self.syscall,
+            RTypeInstruction::SyscallOther => &mut self.syscall,
+            RTypeInstruction::MoveZero => &mut self.move_zero,
+            RTypeInstruction::MoveNonZero => &mut self.move_non_zero,
+            RTypeInstruction::Sync => &mut self.sync,
             RTypeInstruction::MoveFromHi => &mut self.move_from_hi,
             RTypeInstruction::MoveToHi => &mut self.move_to_hi,
             RTypeInstruction::MoveFromLo => &mut self.move_from_lo,
@@ -271,7 +305,9 @@ impl<A> IndexMut<RTypeInstruction> for RTypeInstructionSelectors<A> {
             RTypeInstruction::Nor => &mut self.nor,
             RTypeInstruction::SetLessThan => &mut self.set_less_than,
             RTypeInstruction::SetLessThanUnsigned => &mut self.set_less_than_unsigned,
-            _ => /* TODO */ panic!("Not implemented")
+            RTypeInstruction::MultiplyToRegister => &mut self.multiply_to_register,
+            RTypeInstruction::CountLeadingOnes => &mut self.count_leading_ones,
+            RTypeInstruction::CountLeadingZeros => &mut self.count_leading_zeros,
         }
     }
 }
@@ -288,6 +324,9 @@ impl<A> RTypeInstructionSelectors<A> {
             jump_register: &self.jump_register,
             jump_and_link_register: &self.jump_and_link_register,
             syscall: &self.syscall,
+            move_zero: &self.move_zero,
+            move_non_zero: &self.move_non_zero,
+            sync: &self.sync,
             move_from_hi: &self.move_from_hi,
             move_to_hi: &self.move_to_hi,
             move_from_lo: &self.move_from_lo,
@@ -306,6 +345,9 @@ impl<A> RTypeInstructionSelectors<A> {
             nor: &self.nor,
             set_less_than: &self.set_less_than,
             set_less_than_unsigned: &self.set_less_than_unsigned,
+            multiply_to_register: &self.multiply_to_register,
+            count_leading_ones: &self.count_leading_ones,
+            count_leading_zeros: &self.count_leading_zeros,
         }
     }
 
@@ -320,6 +362,9 @@ impl<A> RTypeInstructionSelectors<A> {
             jump_register: &mut self.jump_register,
             jump_and_link_register: &mut self.jump_and_link_register,
             syscall: &mut self.syscall,
+            move_zero: &mut self.move_zero,
+            move_non_zero: &mut self.move_non_zero,
+            sync: &mut self.sync,
             move_from_hi: &mut self.move_from_hi,
             move_to_hi: &mut self.move_to_hi,
             move_from_lo: &mut self.move_from_lo,
@@ -338,6 +383,9 @@ impl<A> RTypeInstructionSelectors<A> {
             nor: &mut self.nor,
             set_less_than: &mut self.set_less_than,
             set_less_than_unsigned: &mut self.set_less_than_unsigned,
+            multiply_to_register: &mut self.multiply_to_register,
+            count_leading_ones: &mut self.count_leading_ones,
+            count_leading_zeros: &mut self.count_leading_zeros,
         }
     }
 
@@ -352,6 +400,9 @@ impl<A> RTypeInstructionSelectors<A> {
             jump_register,
             jump_and_link_register,
             syscall,
+            move_zero,
+            move_non_zero,
+            sync,
             move_from_hi,
             move_to_hi,
             move_from_lo,
@@ -370,6 +421,9 @@ impl<A> RTypeInstructionSelectors<A> {
             nor,
             set_less_than,
             set_less_than_unsigned,
+            multiply_to_register,
+            count_leading_ones,
+            count_leading_zeros,
         } = self;
         RTypeInstructionSelectors {
             shift_left_logical: f(shift_left_logical),
@@ -381,6 +435,9 @@ impl<A> RTypeInstructionSelectors<A> {
             jump_register: f(jump_register),
             jump_and_link_register: f(jump_and_link_register),
             syscall: f(syscall),
+            move_zero: f(move_zero),
+            move_non_zero: f(move_non_zero),
+            sync: f(sync),
             move_from_hi: f(move_from_hi),
             move_to_hi: f(move_to_hi),
             move_from_lo: f(move_from_lo),
@@ -399,6 +456,9 @@ impl<A> RTypeInstructionSelectors<A> {
             nor: f(nor),
             set_less_than: f(set_less_than),
             set_less_than_unsigned: f(set_less_than_unsigned),
+            multiply_to_register: f(multiply_to_register),
+            count_leading_ones: f(count_leading_ones),
+            count_leading_zeros: f(count_leading_zeros),
         }
     }
 
@@ -413,6 +473,9 @@ impl<A> RTypeInstructionSelectors<A> {
             jump_register,
             jump_and_link_register,
             syscall,
+            move_zero,
+            move_non_zero,
+            sync,
             move_from_hi,
             move_to_hi,
             move_from_lo,
@@ -431,6 +494,9 @@ impl<A> RTypeInstructionSelectors<A> {
             nor,
             set_less_than,
             set_less_than_unsigned,
+            multiply_to_register,
+            count_leading_ones,
+            count_leading_zeros,
         } = self;
         vec![
             shift_left_logical,
@@ -442,6 +508,9 @@ impl<A> RTypeInstructionSelectors<A> {
             jump_register,
             jump_and_link_register,
             syscall,
+            move_zero,
+            move_non_zero,
+            sync,
             move_from_hi,
             move_to_hi,
             move_from_lo,
@@ -460,6 +529,9 @@ impl<A> RTypeInstructionSelectors<A> {
             nor,
             set_less_than,
             set_less_than_unsigned,
+            multiply_to_register,
+            count_leading_ones,
+            count_leading_zeros,
         ]
         .into_iter()
     }
