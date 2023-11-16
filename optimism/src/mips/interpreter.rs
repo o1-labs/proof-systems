@@ -99,6 +99,7 @@ pub enum ITypeInstruction {
 }
 
 
+// InstructionSelectors
 #[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
 pub struct InstructionSelectors<T> {
     pub r_type: RTypeInstructionSelectors<T>,
@@ -106,24 +107,24 @@ pub struct InstructionSelectors<T> {
     pub i_type: ITypeInstructionSelectors<T>,
 }
 
-impl<A> Index<InstructionSelector> for InstructionSelectors<A> {
+impl<A> Index<Instruction> for InstructionSelectors<A> {
     type Output = A;
 
-    fn index(&self, idx: InstructionSelector) -> &Self::Output {
+    fn index(&self, idx: Instruction) -> &Self::Output {
         match idx {
-            InstructionSelector::RType(instr) => &self.r_type[instr],
-            InstructionSelector::JType(instr) => &self.j_type[instr],
-            InstructionSelector::IType(instr) => &self.i_type[instr],
+            Instruction::RType(instr) => &self.r_type[instr],
+            Instruction::JType(instr) => &self.j_type[instr],
+            Instruction::IType(instr) => &self.i_type[instr],
         }
     }
 }
 
-impl<A> IndexMut<InstructionSelector> for InstructionSelectors<A> {
-    fn index_mut(&mut self, idx: InstructionSelector) -> &mut Self::Output {
+impl<A> IndexMut<Instruction> for InstructionSelectors<A> {
+    fn index_mut(&mut self, idx: Instruction) -> &mut Self::Output {
         match idx {
-            InstructionSelector::RType(instr) => &mut self.r_type[instr],
-            InstructionSelector::JType(instr) => &mut self.j_type[instr],
-            InstructionSelector::IType(instr) => &mut self.i_type[instr],
+            Instruction::RType(instr) => &mut self.r_type[instr],
+            Instruction::JType(instr) => &mut self.j_type[instr],
+            Instruction::IType(instr) => &mut self.i_type[instr],
         }
     }
 }
@@ -270,7 +271,7 @@ impl<A> IndexMut<RTypeInstruction> for RTypeInstructionSelectors<A> {
             RTypeInstruction::Nor => &mut self.nor,
             RTypeInstruction::SetLessThan => &mut self.set_less_than,
             RTypeInstruction::SetLessThanUnsigned => &mut self.set_less_than_unsigned,
-            _ => /* TODO */ assert!(false)
+            _ => /* TODO */ panic!("Not implemented")
         }
     }
 }
@@ -765,15 +766,15 @@ impl<A> ITypeInstructionSelectors<A> {
     }
 }
 
-impl IntoEnumIterator for InstructionSelector {
+impl IntoEnumIterator for Instruction {
     // The underlying type is inexpressible, due to the function types :|
     type Iterator = Box<dyn Iterator<Item = Self>>;
     fn iter() -> Self::Iterator {
         Box::new(
             RTypeInstruction::iter()
-                .map(&InstructionSelector::RType)
-                .chain(JTypeInstruction::iter().map(&InstructionSelector::JType))
-                .chain(ITypeInstruction::iter().map(&InstructionSelector::IType)),
+                .map(&Instruction::RType)
+                .chain(JTypeInstruction::iter().map(&Instruction::JType))
+                .chain(ITypeInstruction::iter().map(&Instruction::IType)),
         )
     }
 }
