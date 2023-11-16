@@ -1,4 +1,4 @@
-use crate::circuits::{
+use kimchi::circuits::{
     domains::EvaluationDomains,
     expr::{self, ColumnEnvironment, Constants, Domain, GenericColumn},
 };
@@ -8,13 +8,7 @@ use core::ops::{Index, IndexMut};
 use serde::{Deserialize, Serialize};
 use strum::IntoEnumIterator;
 use strum_macros::{EnumCount, EnumIter};
-
-pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
-pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
-pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
-pub const NUM_LOOKUP_TERMS: usize =
-    NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 25;
+use crate::mips::interpreter::{RTypeInstruction, JTypeInstruction, ITypeInstruction};
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Column {
@@ -40,74 +34,6 @@ impl GenericColumn for Column {
         // TODO: Optimize
         Domain::D8
     }
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum InstructionSelector {
-    RType(RTypeInstruction),
-    JType(JTypeInstruction),
-    IType(ITypeInstruction),
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum RTypeInstruction {
-    ShiftLeftLogical,             // sll
-    ShiftRightLogical,            // srl
-    ShiftRightArithmetic,         // sra
-    ShiftLeftLogicalVariable,     // sllv
-    ShiftRightLogicalVariable,    // srlv
-    ShiftRightArithmeticVariable, // srav
-    JumpRegister,                 // jr
-    JumpAndLinkRegister,          // jalr
-    Syscall,                      // syscall
-    MoveFromHi,                   // mfhi
-    MoveToHi,                     // mthi
-    MoveFromLo,                   // mflo
-    MoveToLo,                     // mtlo
-    Multiply,                     // mult
-    MultiplyUnsigned,             // multu
-    Div,                          // div
-    DivUnsigned,                  // divu
-    Add,                          // add
-    AddUnsigned,                  // addu
-    Sub,                          // sub
-    SubUnsigned,                  // subu
-    And,                          // and
-    Or,                           // or
-    Xor,                          // xor
-    Nor,                          // nor
-    SetLessThan,                  // slt
-    SetLessThanUnsigned,          // sltu
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum JTypeInstruction {
-    Jump,        // j
-    JumpAndLink, // jal
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum ITypeInstruction {
-    BranchEq,                     // beq
-    BranchNeq,                    // bne
-    BranchLeqZero,                // blez
-    BranchGtZero,                 // bgtz
-    AddImmediate,                 // addi
-    AddImmediateUnsigned,         // addiu
-    SetLessThanImmediate,         // slti
-    SetLessThanImmediateUnsigned, // sltiu
-    AndImmediate,                 // andi
-    OrImmediate,                  // ori
-    XorImmediate,                 // xori
-    LoadImmediate,                // lui
-    Load8,                        // lb
-    Load16,                       // lh
-    Load32,                       // lw
-    Load8Unsigned,                // lbu
-    Load16Unsigned,               // lhu
-    Store8,                       // sb
-    Store16,                      // sh
-    Store32,                      // sw
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -468,7 +394,7 @@ impl<A> IndexMut<RTypeInstruction> for RTypeInstructionSelectors<A> {
             }
             RTypeInstruction::JumpRegister => &mut self.jump_register,
             RTypeInstruction::JumpAndLinkRegister => &mut self.jump_and_link_register,
-            RTypeInstruction::Syscall => &mut self.syscall,
+            RTypeInstruction::SyscallMmap => &mut self.syscall,
             RTypeInstruction::MoveFromHi => &mut self.move_from_hi,
             RTypeInstruction::MoveToHi => &mut self.move_to_hi,
             RTypeInstruction::MoveFromLo => &mut self.move_from_lo,
@@ -487,6 +413,7 @@ impl<A> IndexMut<RTypeInstruction> for RTypeInstructionSelectors<A> {
             RTypeInstruction::Nor => &mut self.nor,
             RTypeInstruction::SetLessThan => &mut self.set_less_than,
             RTypeInstruction::SetLessThanUnsigned => &mut self.set_less_than_unsigned,
+            _ => /* TODO */ assert!(false)
         }
     }
 }
