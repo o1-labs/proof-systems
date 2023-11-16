@@ -58,6 +58,7 @@ pub enum ExprError<Column> {
 }
 
 /// The collection of constants required to evaluate an `Expr`.
+#[derive(Clone)]
 pub struct Constants<F: 'static> {
     /// The challenge alpha from the PLONK IOP.
     pub alpha: F,
