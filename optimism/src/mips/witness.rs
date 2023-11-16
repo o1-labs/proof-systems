@@ -154,16 +154,12 @@ impl<Fp: Field> Env<Fp> {
         panic!("Could not access address")
     }
 
-    fn decode_instruction_op(encoded_instr: u32) -> u32 {
-        encoded_instr >> 26
-    }
-
     pub fn decode_instruction(&self) -> Instruction {
         let instruction = ((self.get_memory_direct(self.instruction_pointer) as u32) << 24)
             | ((self.get_memory_direct(self.instruction_pointer + 1) as u32) << 16)
             | ((self.get_memory_direct(self.instruction_pointer + 2) as u32) << 8)
             | (self.get_memory_direct(self.instruction_pointer + 3) as u32);
-        match self.decode_instruction_op(instruction) {
+        match instruction >> 26 {
             0x00 => match instruction & 0x3F {
                 0x00 => Instruction::RType(RTypeInstruction::ShiftLeftLogical),
                 0x02 => Instruction::RType(RTypeInstruction::ShiftRightLogical),
