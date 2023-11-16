@@ -1,7 +1,8 @@
-use strum_macros::{EnumCount, EnumIter};
-use std::ops::{Index, IndexMut};
 use serde::{Deserialize, Serialize};
+use std::iter::IntoIterator;
+use std::ops::{Index, IndexMut};
 use strum::IntoEnumIterator;
+use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
 pub const FD_STDOUT: u32 = 1;
@@ -38,9 +39,9 @@ pub enum RTypeInstruction {
     SyscallWriteOther,            // syscall (Write ?)
     SyscallFcntl,                 // syscall (Fcntl)
     SyscallOther,                 // syscall (Brk, Clone, ?)
-    MoveZero,                     // movz - FIXME: pseudo?
-    MoveNonZero,                  // movn - FIXME: pseudo?
-    Sync,                         // sync - FIXME: pseudo?
+    MoveZero,                     // movz - FIXME: documented as "MIPS32 removed in Release 6"
+    MoveNonZero,                  // movn - FIXME: documented as "MIPS32 removed in Release 6"
+    Sync,                         // sync
     MoveFromHi,                   // mfhi
     MoveToHi,                     // mthi
     MoveFromLo,                   // mflo
@@ -59,9 +60,9 @@ pub enum RTypeInstruction {
     Nor,                          // nor
     SetLessThan,                  // slt
     SetLessThanUnsigned,          // sltu
-    MultiplyToRegister,           // mul - FIXME: pseudo?
-    CountLeadingOnes,             // clo - FIXME: pseudo?
-    CountLeadingZeros,            // clz - FIXME: pseudo?
+    MultiplyToRegister,           // mul
+    CountLeadingOnes,             // clo
+    CountLeadingZeros,            // clz
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
@@ -98,7 +99,6 @@ pub enum ITypeInstruction {
     StoreWordLeft,                // swl
     StoreWordRight,               // swr
 }
-
 
 // InstructionSelectors
 #[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
@@ -154,22 +154,31 @@ impl<A> InstructionSelectors<A> {
             i_type,
         } = self;
         InstructionSelectors {
-            r_type: r_type.map(|x| f(x)),
-            j_type: j_type.map(|x| f(x)),
-            i_type: i_type.map(|x| f(x)),
+            r_type: r_type.map(&mut f),
+            j_type: j_type.map(&mut f),
+            i_type: i_type.map(&mut f),
         }
     }
+}
 
-    pub fn into_iter(self) -> impl Iterator<Item = A> {
+impl<A> IntoIterator for InstructionSelectors<A> {
+    type Item = A;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
         let InstructionSelectors {
             r_type,
             j_type,
             i_type,
         } = self;
-        r_type
-            .into_iter()
-            .chain(j_type.into_iter())
-            .chain(i_type.into_iter())
+        // Could be more efficient than copying. However, it is relatively
+        // small. It is negligeable.
+        let mut r_type: Vec<A> = r_type.into_iter().collect();
+        let j_type: Vec<A> = j_type.into_iter().collect();
+        let i_type: Vec<A> = i_type.into_iter().collect();
+        r_type.extend(j_type);
+        r_type.extend(i_type);
+        r_type.into_iter()
     }
 }
 
@@ -462,8 +471,13 @@ impl<A> RTypeInstructionSelectors<A> {
             count_leading_zeros: f(count_leading_zeros),
         }
     }
+}
 
-    pub fn into_iter(self) -> impl Iterator<Item = A> {
+impl<A> IntoIterator for RTypeInstructionSelectors<A> {
+    type Item = A;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
         let RTypeInstructionSelectors {
             shift_left_logical,
             shift_right_logical,
@@ -589,8 +603,13 @@ impl<A> JTypeInstructionSelectors<A> {
             jump_and_link: f(jump_and_link),
         }
     }
+}
 
-    pub fn into_iter(self) -> impl Iterator<Item = A> {
+impl<A> IntoIterator for JTypeInstructionSelectors<A> {
+    type Item = A;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
         let JTypeInstructionSelectors {
             jump,
             jump_and_link,
@@ -815,8 +834,13 @@ impl<A> ITypeInstructionSelectors<A> {
             store_word_right: f(store_word_right),
         }
     }
+}
 
-    pub fn into_iter(self) -> impl Iterator<Item = A> {
+impl<A> IntoIterator for ITypeInstructionSelectors<A> {
+    type Item = A;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
         let ITypeInstructionSelectors {
             branch_eq,
             branch_neq,
@@ -887,10 +911,6 @@ impl IntoEnumIterator for Instruction {
         )
     }
 }
-
-// pub fn all_instruction_selectors() -> impl Iterator<Item = Column> {
-//     Instruction::iter().map(Column::Instruction)
-// }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
 pub enum InstructionPart {
@@ -981,8 +1001,13 @@ impl<A> InstructionParts<A> {
             funct: f(funct),
         }
     }
+}
 
-    pub fn into_iter(self) -> impl Iterator<Item = A> {
+impl<A> IntoIterator for InstructionParts<A> {
+    type Item = A;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
         let InstructionParts {
             op_code,
             rs,

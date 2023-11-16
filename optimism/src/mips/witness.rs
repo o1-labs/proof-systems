@@ -23,7 +23,7 @@ pub const SCRATCH_SIZE: usize = 25;
 pub struct SyscallEnv {
     pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
     pub preimage_offset: u32,
-    pub preimage_key: Vec<u8>,
+    pub preimage_key: [u8; 32],
     pub last_hint: Option<Vec<u8>>,
 }
 
@@ -31,7 +31,7 @@ impl SyscallEnv {
     pub fn create(state: &State) -> Self {
         SyscallEnv {
             heap: state.heap,
-            preimage_key: state.preimage_key.as_bytes().to_vec(), // Might not be correct
+            preimage_key: state.preimage_key,
             preimage_offset: state.preimage_offset,
             last_hint: state.last_hint.clone(),
         }
