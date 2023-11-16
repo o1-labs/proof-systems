@@ -11,6 +11,7 @@ pub const FD_HINT_WRITE: u32 = 4;
 pub const FD_PREIMAGE_READ: u32 = 5;
 pub const FD_PREIMAGE_WRITE: u32 = 6;
 
+// https://inst.eecs.berkeley.edu/~cs61c/resources/MIPS_help.html
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Instruction {
     RType(RTypeInstruction),
@@ -37,9 +38,9 @@ pub enum RTypeInstruction {
     SyscallWriteOther,            // syscall (Write ?)
     SyscallFcntl,                 // syscall (Fcntl)
     SyscallOther,                 // syscall (Brk, Clone, ?)
-    MoveZero,                     // movz
-    MoveNonZero,                  // movn
-    Sync,                         // sync
+    MoveZero,                     // movz - FIXME: pseudo?
+    MoveNonZero,                  // movn - FIXME: pseudo?
+    Sync,                         // sync - FIXME: pseudo?
     MoveFromHi,                   // mfhi
     MoveToHi,                     // mthi
     MoveFromLo,                   // mflo
@@ -58,9 +59,9 @@ pub enum RTypeInstruction {
     Nor,                          // nor
     SetLessThan,                  // slt
     SetLessThanUnsigned,          // sltu
-    MultiplyToRegister,           // mul
-    CountLeadingOnes,             // clo
-    CountLeadingZeros,            // clz
+    MultiplyToRegister,           // mul - FIXME: pseudo?
+    CountLeadingOnes,             // clo - FIXME: pseudo?
+    CountLeadingZeros,            // clz - FIXME: pseudo?
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
