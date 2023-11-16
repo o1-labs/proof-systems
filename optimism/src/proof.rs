@@ -1,9 +1,11 @@
-use crate::circuits::expr::{ColumnEvaluations, ExprError};
+use kimchi::circuits::expr::{ColumnEvaluations, ExprError};
 use crate::mips::columns::{
-    Column, FixedColumns, InstructionParts, InstructionSelectors, LookupCounters, NUM_LOOKUP_TERMS,
-    SCRATCH_SIZE,
+    Column, FixedColumns, LookupCounters
 };
-use crate::proof::PointEvaluations;
+use crate::mips::interpreter::{InstructionParts, InstructionSelectors};
+use crate::mips::{SCRATCH_SIZE, NUM_LOOKUP_TERMS};
+
+use kimchi::proof::PointEvaluations;
 use ark_ec::AffineCurve;
 use poly_commitment::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use serde::{Deserialize, Serialize};
@@ -140,7 +142,7 @@ impl<G: AffineCurve> Proof<G> {
             ft_eval1,
             t_comm,
             commitments,
-            evaluations: evaluations.map(&f),
+            evaluations: evaluations.map(f),
         }
     }
 }
@@ -160,7 +162,7 @@ impl<G: AffineCurve> SerializableProof<G> {
             ft_eval1,
             t_comm,
             commitments,
-            evaluations: evaluations.map(&f),
+            evaluations: evaluations.map(f),
         }
     }
 }

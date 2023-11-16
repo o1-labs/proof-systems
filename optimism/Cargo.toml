@@ -26,6 +26,9 @@ serde = "1.0.130"
 serde_with = "1.10.0"
 ark-poly = { version = "0.3.0", features = [ "parallel" ] }
 ark-ff = { version = "0.3.0", features = [ "parallel" ] }
+ark-ec = { version = "0.3.0", features = [ "parallel" ] }
+ark-serialize = "0.3.0"
+o1-utils = { path = "../utils", version = "0.1.0" }
 clap = "4.4.6"
 hex = "0.4.3"
 regex = "1.10.2"

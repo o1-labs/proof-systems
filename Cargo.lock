@@ -1312,8 +1312,10 @@ name = "kimchi_optimism"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
+ "ark-ec",
  "ark-ff",
  "ark-poly",
+ "ark-serialize",
  "base64",
  "clap 4.4.6",
  "elf",
@@ -1325,6 +1327,7 @@ dependencies = [
  "log",
  "mina-curves",
  "mina-poseidon",
+ "o1-utils",
  "poly-commitment",
  "regex",
  "rmp-serde",
