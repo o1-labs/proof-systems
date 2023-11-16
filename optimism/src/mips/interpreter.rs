@@ -1,6 +1,7 @@
 use strum_macros::{EnumCount, EnumIter};
 use std::ops::{Index, IndexMut};
 use serde::{Deserialize, Serialize};
+use strum::IntoEnumIterator;
 
 pub const FD_STDIN: u32 = 0;
 pub const FD_STDOUT: u32 = 1;
