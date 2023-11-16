@@ -5,7 +5,11 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
+        lookup::{
+            index::LookupConstraintSystem,
+            lookups::LookupFeatures,
+            tables::{GateLookupTables, LookupTable},
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::Shifts,
         wires::*,
@@ -706,10 +710,17 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             }
             // And we add the built-in tables, depending on the features.
             let LookupFeatures { patterns, .. } = &lookup_features;
+            let mut gate_lookup_tables = GateLookupTables {
+                xor: false,
+                range_check: false,
+            };
             for pattern in patterns.into_iter() {
                 if let Some(gate_table) = pattern.table() {
-                    lookup_domain_size += gate_table.table_size();
+                    gate_lookup_tables[gate_table] = true
                 }
+            }
+            for gate_table in gate_lookup_tables.into_iter() {
+                lookup_domain_size += gate_table.table_size();
             }
             lookup_domain_size
         };
