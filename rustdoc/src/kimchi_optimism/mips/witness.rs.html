@@ -382,7 +382,7 @@
 </span><span class="kw">pub struct </span>SyscallEnv {
     <span class="kw">pub </span>heap: u32, <span class="comment">// Heap pointer (actually unused in Cannon as of [2023-10-18])
     </span><span class="kw">pub </span>preimage_offset: u32,
-    <span class="kw">pub </span>preimage_key: Vec&lt;u8&gt;,
+    <span class="kw">pub </span>preimage_key: [u8; <span class="number">32</span>],
     <span class="kw">pub </span>last_hint: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
 }
 
@@ -390,8 +390,8 @@
     <span class="kw">pub fn </span>create(state: <span class="kw-2">&amp;</span>State) -&gt; <span class="self">Self </span>{
         SyscallEnv {
             heap: state.heap,
-            preimage_key: state.preimage_key.as_bytes().to_vec(), <span class="comment">// Might not be correct
-            </span>preimage_offset: state.preimage_offset,
+            preimage_key: state.preimage_key,
+            preimage_offset: state.preimage_offset,
             last_hint: state.last_hint.clone(),
         }
     }

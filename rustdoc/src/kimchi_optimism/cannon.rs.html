@@ -313,6 +313,87 @@
 <a href="#313" id="313">313</a>
 <a href="#314" id="314">314</a>
 <a href="#315" id="315">315</a>
+<a href="#316" id="316">316</a>
+<a href="#317" id="317">317</a>
+<a href="#318" id="318">318</a>
+<a href="#319" id="319">319</a>
+<a href="#320" id="320">320</a>
+<a href="#321" id="321">321</a>
+<a href="#322" id="322">322</a>
+<a href="#323" id="323">323</a>
+<a href="#324" id="324">324</a>
+<a href="#325" id="325">325</a>
+<a href="#326" id="326">326</a>
+<a href="#327" id="327">327</a>
+<a href="#328" id="328">328</a>
+<a href="#329" id="329">329</a>
+<a href="#330" id="330">330</a>
+<a href="#331" id="331">331</a>
+<a href="#332" id="332">332</a>
+<a href="#333" id="333">333</a>
+<a href="#334" id="334">334</a>
+<a href="#335" id="335">335</a>
+<a href="#336" id="336">336</a>
+<a href="#337" id="337">337</a>
+<a href="#338" id="338">338</a>
+<a href="#339" id="339">339</a>
+<a href="#340" id="340">340</a>
+<a href="#341" id="341">341</a>
+<a href="#342" id="342">342</a>
+<a href="#343" id="343">343</a>
+<a href="#344" id="344">344</a>
+<a href="#345" id="345">345</a>
+<a href="#346" id="346">346</a>
+<a href="#347" id="347">347</a>
+<a href="#348" id="348">348</a>
+<a href="#349" id="349">349</a>
+<a href="#350" id="350">350</a>
+<a href="#351" id="351">351</a>
+<a href="#352" id="352">352</a>
+<a href="#353" id="353">353</a>
+<a href="#354" id="354">354</a>
+<a href="#355" id="355">355</a>
+<a href="#356" id="356">356</a>
+<a href="#357" id="357">357</a>
+<a href="#358" id="358">358</a>
+<a href="#359" id="359">359</a>
+<a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
+<a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
 </pre></div><pre class="rust"><code><span class="comment">// Data structure and stuff for compatibility with Cannon
 
 </span><span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
@@ -350,8 +431,8 @@
 </span><span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>State {
     <span class="kw">pub </span>memory: Vec&lt;Page&gt;,
-    <span class="attr">#[serde(rename = <span class="string">&quot;preimageKey&quot;</span>)]
-    </span><span class="kw">pub </span>preimage_key: String,
+    <span class="attr">#[serde(rename = <span class="string">&quot;preimageKey&quot;</span>, deserialize_with = <span class="string">&quot;to_preimage_key&quot;</span>)]
+    </span><span class="kw">pub </span>preimage_key: [u8; <span class="number">32</span>],
     <span class="attr">#[serde(rename = <span class="string">&quot;preimageOffset&quot;</span>)]
     </span><span class="kw">pub </span>preimage_offset: u32,
     <span class="kw">pub </span>pc: u32,
@@ -365,6 +446,67 @@
     <span class="kw">pub </span>step: u64,
     <span class="kw">pub </span>registers: [u32; <span class="number">32</span>],
     <span class="kw">pub </span>last_hint: <span class="prelude-ty">Option</span>&lt;Vec&lt;u8&gt;&gt;,
+}
+
+<span class="attr">#[derive(Debug, PartialEq, Eq)]
+</span><span class="kw">pub struct </span>ParsePreimageKeyError(String);
+
+<span class="attr">#[derive(Debug, PartialEq)]
+</span><span class="kw">pub struct </span>PreimageKey([u8; <span class="number">32</span>]);
+
+<span class="kw">use </span>std::str::FromStr;
+
+<span class="kw">impl </span>FromStr <span class="kw">for </span>PreimageKey {
+    <span class="kw">type </span><span class="prelude-val">Err </span>= ParsePreimageKeyError;
+
+    <span class="kw">fn </span>from_str(s: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Err&gt; {
+        <span class="kw">let </span>parts = s.split(<span class="string">&#39;x&#39;</span>).collect::&lt;Vec&lt;<span class="kw-2">&amp;</span>str&gt;&gt;();
+        <span class="kw">let </span>hex_value: <span class="kw-2">&amp;</span>str = <span class="kw">if </span>parts.len() == <span class="number">1 </span>{
+            parts[<span class="number">0</span>]
+        } <span class="kw">else </span>{
+            <span class="kw">if </span>parts.len() != <span class="number">2 </span>{
+                <span class="kw">return </span><span class="prelude-val">Err</span>(ParsePreimageKeyError(
+                    <span class="macro">format!</span>(<span class="string">&quot;Badly structured value to convert {s}&quot;</span>).to_string(),
+                ));
+            };
+            parts[<span class="number">1</span>]
+        };
+        <span class="comment">// We only handle a hexadecimal representations of exactly 32 bytes (no auto-padding)
+        </span><span class="kw">if </span>hex_value.len() == <span class="number">64 </span>{
+            hex::decode(hex_value).map_or_else(
+                |<span class="kw">_</span>| {
+                    <span class="prelude-val">Err</span>(ParsePreimageKeyError(
+                        <span class="macro">format!</span>(<span class="string">&quot;Could not hex decode {hex_value}&quot;</span>).to_string(),
+                    ))
+                },
+                |h| {
+                    h.clone().try_into().map_or_else(
+                        |<span class="kw">_</span>| {
+                            <span class="prelude-val">Err</span>(ParsePreimageKeyError(
+                                <span class="macro">format!</span>(<span class="string">&quot;Could not cast vector {:#?} into 32 bytes array&quot;</span>, h)
+                                    .to_string(),
+                            ))
+                        },
+                        |res| <span class="prelude-val">Ok</span>(PreimageKey(res)),
+                    )
+                },
+            )
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Err</span>(ParsePreimageKeyError(
+                <span class="macro">format!</span>(<span class="string">&quot;{hex_value} is not 32-bytes long&quot;</span>).to_string(),
+            ))
+        }
+    }
+}
+
+<span class="kw">fn </span>to_preimage_key&lt;<span class="lifetime">&#39;de</span>, D&gt;(deserializer: D) -&gt; <span class="prelude-ty">Result</span>&lt;[u8; <span class="number">32</span>], D::Error&gt;
+<span class="kw">where
+    </span>D: Deserializer&lt;<span class="lifetime">&#39;de</span>&gt;,
+{
+    <span class="kw">let </span>s: String = Deserialize::deserialize(deserializer)<span class="question-mark">?</span>;
+    <span class="kw">let </span>p = PreimageKey::from_str(s.as_str())
+        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Parsing {s} as preimage key failed&quot;</span>));
+    <span class="prelude-val">Ok</span>(p.<span class="number">0</span>)
 }
 
 <span class="attr">#[derive(Clone, Debug, PartialEq)]
@@ -405,7 +547,7 @@
     <span class="comment">// A very debatable and incomplete, but serviceable, `to_string` implementation.
     </span><span class="kw">fn </span>to_string(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
         <span class="macro">format!</span>(
-            <span class="string">&quot;memory_size (length): {}\nfirst page size: {}\npreimage key: {}\npreimage offset:{}\npc: {}\nlo: {}\nhi: {}\nregisters:{:#?} &quot;</span>,
+            <span class="string">&quot;memory_size (length): {}\nfirst page size: {}\npreimage key: {:#?}\npreimage offset:{}\npc: {}\nlo: {}\nhi: {}\nregisters:{:#?} &quot;</span>,
             <span class="self">self</span>.memory.len(),
             <span class="self">self</span>.memory[<span class="number">0</span>].data.len(),
             <span class="self">self</span>.preimage_key,
@@ -626,6 +768,26 @@
             <span class="prelude-val">Some</span>(<span class="string">&quot;internal/cpu.processOptions&quot;</span>.to_string())
         );
         <span class="macro">assert_eq!</span>(meta.find_address_symbol(<span class="number">42</span>), <span class="prelude-val">None</span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_parse_preimagekey() {
+        <span class="macro">assert_eq!</span>(
+            PreimageKey::from_str(
+                <span class="string">&quot;0x0000000000000000000000000000000000000000000000000000000000000000&quot;
+            </span>),
+            <span class="prelude-val">Ok</span>(PreimageKey([<span class="number">0</span>; <span class="number">32</span>]))
+        );
+        <span class="macro">assert_eq!</span>(
+            PreimageKey::from_str(
+                <span class="string">&quot;0x0000000000000000000000000000000000000000000000000000000000000001&quot;
+            </span>),
+            <span class="prelude-val">Ok</span>(PreimageKey([
+                <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>,
+                <span class="number">0</span>, <span class="number">0</span>, <span class="number">0</span>, <span class="number">1
+            </span>]))
+        );
+        <span class="macro">assert!</span>(PreimageKey::from_str(<span class="string">&quot;0x01&quot;</span>).is_err());
     }
 }
 </code></pre></div></section></main></body></html>
