@@ -618,9 +618,13 @@ pub struct ITypeInstructionSelectors<T> {
     pub load_32: T,
     pub load_8_unsigned: T,
     pub load_16_unsigned: T,
+    pub load_word_left: T,
+    pub load_word_right: T,
     pub store_8: T,
     pub store_16: T,
     pub store_32: T,
+    pub store_word_left: T,
+    pub store_word_right: T,
 }
 
 impl<A> Index<ITypeInstruction> for ITypeInstructionSelectors<A> {
@@ -648,9 +652,13 @@ impl<A> Index<ITypeInstruction> for ITypeInstructionSelectors<A> {
             ITypeInstruction::Load32 => &self.load_32,
             ITypeInstruction::Load8Unsigned => &self.load_8_unsigned,
             ITypeInstruction::Load16Unsigned => &self.load_16_unsigned,
+            ITypeInstruction::LoadWordLeft => &self.load_word_left,
+            ITypeInstruction::LoadWordRight => &self.load_word_right,
             ITypeInstruction::Store8 => &self.store_8,
             ITypeInstruction::Store16 => &self.store_16,
             ITypeInstruction::Store32 => &self.store_32,
+            ITypeInstruction::StoreWordLeft => &self.load_word_left,
+            ITypeInstruction::StoreWordRight => &self.load_word_right,
         }
     }
 }
@@ -678,9 +686,13 @@ impl<A> IndexMut<ITypeInstruction> for ITypeInstructionSelectors<A> {
             ITypeInstruction::Load32 => &mut self.load_32,
             ITypeInstruction::Load8Unsigned => &mut self.load_8_unsigned,
             ITypeInstruction::Load16Unsigned => &mut self.load_16_unsigned,
+            ITypeInstruction::LoadWordLeft => &mut self.load_word_left,
+            ITypeInstruction::LoadWordRight => &mut self.load_word_right,
             ITypeInstruction::Store8 => &mut self.store_8,
             ITypeInstruction::Store16 => &mut self.store_16,
             ITypeInstruction::Store32 => &mut self.store_32,
+            ITypeInstruction::StoreWordLeft => &mut self.store_word_left,
+            ITypeInstruction::StoreWordRight => &mut self.store_word_right,
         }
     }
 }
@@ -706,9 +718,13 @@ impl<A> ITypeInstructionSelectors<A> {
             load_32: &self.load_32,
             load_8_unsigned: &self.load_8_unsigned,
             load_16_unsigned: &self.load_16_unsigned,
+            load_word_left: &self.load_word_left,
+            load_word_right: &self.load_word_right,
             store_8: &self.store_8,
             store_16: &self.store_16,
             store_32: &self.store_32,
+            store_word_left: &self.store_word_left,
+            store_word_right: &self.store_word_right,
         }
     }
 
@@ -732,9 +748,13 @@ impl<A> ITypeInstructionSelectors<A> {
             load_32: &mut self.load_32,
             load_8_unsigned: &mut self.load_8_unsigned,
             load_16_unsigned: &mut self.load_16_unsigned,
+            load_word_left: &mut self.load_word_left,
+            load_word_right: &mut self.load_word_right,
             store_8: &mut self.store_8,
             store_16: &mut self.store_16,
             store_32: &mut self.store_32,
+            store_word_left: &mut self.store_word_left,
+            store_word_right: &mut self.store_word_right,
         }
     }
 
@@ -758,9 +778,13 @@ impl<A> ITypeInstructionSelectors<A> {
             load_32,
             load_8_unsigned,
             load_16_unsigned,
+            load_word_left,
+            load_word_right,
             store_8,
             store_16,
             store_32,
+            store_word_left,
+            store_word_right,
         } = self;
         ITypeInstructionSelectors {
             branch_eq: f(branch_eq),
@@ -781,9 +805,13 @@ impl<A> ITypeInstructionSelectors<A> {
             load_32: f(load_32),
             load_8_unsigned: f(load_8_unsigned),
             load_16_unsigned: f(load_16_unsigned),
+            load_word_left: f(load_word_left),
+            load_word_right: f(load_word_right),
             store_8: f(store_8),
             store_16: f(store_16),
             store_32: f(store_32),
+            store_word_left: f(store_word_left),
+            store_word_right: f(store_word_right),
         }
     }
 
@@ -807,9 +835,13 @@ impl<A> ITypeInstructionSelectors<A> {
             load_32,
             load_8_unsigned,
             load_16_unsigned,
+            load_word_left,
+            load_word_right,
             store_8,
             store_16,
             store_32,
+            store_word_left,
+            store_word_right,
         } = self;
         vec![
             branch_eq,
@@ -830,9 +862,13 @@ impl<A> ITypeInstructionSelectors<A> {
             load_32,
             load_8_unsigned,
             load_16_unsigned,
+            load_word_left,
+            load_word_right,
             store_8,
             store_16,
             store_32,
+            store_word_left,
+            store_word_right,
         ]
         .into_iter()
     }
