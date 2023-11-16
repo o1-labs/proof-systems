@@ -12,13 +12,6 @@ use ark_ff::Field;
 use log::info;
 use std::array;
 
-pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
-pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
-pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
-pub const NUM_LOOKUP_TERMS: usize =
-    NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 25;
-
 #[derive(Clone)]
 pub struct SyscallEnv {
     pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
