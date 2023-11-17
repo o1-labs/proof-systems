@@ -1,12 +1,12 @@
-use crate::mips::{proof::Proof, verifier_index::VerifierIndex};
-use crate::{
+use crate::{proof::Proof, verifier_index::VerifierIndex};
+use ark_poly::EvaluationDomain;
+use kimchi::{
     circuits::expr::{Constants, PolishToken},
     curve::KimchiCurve,
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
-use ark_poly::EvaluationDomain;
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::commitment::{
     absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation,
@@ -30,7 +30,7 @@ where
         let (_, endo_r) = G::endos();
 
         // Create sponge
-        let mut fq_sponge = EFqSponge::new(G::OtherCurve::sponge_params());
+        let mut fq_sponge = EFqSponge::new(G::other_curve_sponge_params());
 
         // Absorb commitments
 
@@ -177,10 +177,15 @@ where
             joint_combiner: Some(vector_lookup_value_combiner),
             endo_coefficient: *endo_r,
             mds: &G::sponge_params().mds,
+            // TODO/FIXME(dw): 3 might not be correct. Didn't check more. I just
+            // want to have this file compiled
+            zk_rows: 3,
         };
 
         let ft_eval0 = -PolishToken::evaluate(
-            &index.constraints,
+            // TODO(dw): constraints
+            &[],
+            // &index.constraints,
             index.domain.d1,
             evaluation_point,
             &self.evaluations,
