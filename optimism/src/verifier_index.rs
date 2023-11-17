@@ -1,7 +1,7 @@
-use crate::circuits::{domains::EvaluationDomains, expr::PolishToken};
-use crate::curve::KimchiCurve;
-use crate::mips::{
-    columns::{Column, FixedColumns},
+use kimchi::circuits::domains::EvaluationDomains;
+use kimchi::curve::KimchiCurve;
+use crate::{
+    mips::columns::FixedColumns,
     prover_index::ProverIndex,
 };
 use poly_commitment::commitment::PolyComm;
@@ -11,7 +11,8 @@ use std::sync::Arc;
 pub struct VerifierIndex<G: KimchiCurve> {
     pub srs: Arc<SRS<G>>,
     pub domain: EvaluationDomains<G::ScalarField>,
-    pub constraints: Vec<PolishToken<G::ScalarField, Column>>,
+    // TODO
+    // pub constraints: Vec<PolishToken<G::ScalarField, Column>>,
     pub fixed_columns: FixedColumns<PolyComm<G>>,
 }
 
@@ -20,7 +21,8 @@ impl<G: KimchiCurve> ProverIndex<G> {
         VerifierIndex {
             srs: self.srs.clone(),
             domain: self.domain,
-            constraints: self.constraints.to_polish(),
+            // TODO
+            // constraints: self.constraints.to_polish(),
             fixed_columns: self.fixed_columns_commitments.clone(),
         }
     }
