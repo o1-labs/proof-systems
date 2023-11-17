@@ -1,14 +1,11 @@
+use crate::mips::columns::FixedColumns;
+use ark_poly::{EvaluationDomain, Evaluations, Radix2EvaluationDomain as D};
 use kimchi::circuits::{
     domains::EvaluationDomains,
     expr::l0_1,
     // polynomials::permutation::vanishes_on_last_row,
 };
 use kimchi::curve::KimchiCurve;
-use crate::mips::{
-    columns::FixedColumns,
-    // constraints,
-};
-use ark_poly::{Evaluations, Radix2EvaluationDomain as D, EvaluationDomain};
 use poly_commitment::{commitment::PolyComm, srs::SRS, SRS as _};
 use std::sync::Arc;
 

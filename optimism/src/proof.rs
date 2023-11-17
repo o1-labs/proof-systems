@@ -1,12 +1,10 @@
-use kimchi::circuits::expr::{ColumnEvaluations, ExprError};
-use crate::mips::columns::{
-    Column, FixedColumns, LookupCounters
-};
+use crate::mips::columns::{Column, FixedColumns, LookupCounters};
 use crate::mips::interpreter::{InstructionParts, InstructionSelectors};
-use crate::mips::{SCRATCH_SIZE, NUM_LOOKUP_TERMS};
+use crate::mips::{NUM_LOOKUP_TERMS, SCRATCH_SIZE};
+use kimchi::circuits::expr::{ColumnEvaluations, ExprError};
 
-use kimchi::proof::PointEvaluations;
 use ark_ec::AffineCurve;
+use kimchi::proof::PointEvaluations;
 use poly_commitment::{commitment::PolyComm, evaluation_proof::OpeningProof};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
