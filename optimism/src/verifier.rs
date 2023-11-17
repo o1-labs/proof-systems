@@ -1,4 +1,5 @@
 use crate::{proof::Proof, verifier_index::VerifierIndex};
+use ark_ff::{Field, One, PrimeField, Zero};
 use ark_poly::EvaluationDomain;
 use kimchi::{
     circuits::expr::{Constants, PolishToken},
@@ -6,7 +7,6 @@ use kimchi::{
     plonk_sponge::FrSponge,
     proof::PointEvaluations,
 };
-use ark_ff::{Field, One, PrimeField, Zero};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
 use poly_commitment::commitment::{
     absorb_commitment, combined_inner_product, BatchEvaluationProof, Evaluation,
