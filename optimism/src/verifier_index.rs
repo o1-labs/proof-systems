@@ -1,9 +1,6 @@
+use crate::{mips::columns::FixedColumns, prover_index::ProverIndex};
 use kimchi::circuits::domains::EvaluationDomains;
 use kimchi::curve::KimchiCurve;
-use crate::{
-    mips::columns::FixedColumns,
-    prover_index::ProverIndex,
-};
 use poly_commitment::commitment::PolyComm;
 use poly_commitment::srs::SRS;
 use std::sync::Arc;
