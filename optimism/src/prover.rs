@@ -1,10 +1,13 @@
-use crate::mips::{
-    columns::{ColumnsEnv, NUM_LOOKUP_TERMS},
-    proof::{Proof, ProofCommitments, ProofEvaluations},
+use crate::{proof::{
+    Proof, ProofCommitments, ProofEvaluations},
     prover_index::ProverIndex,
+};
+use crate::mips::{
+    NUM_LOOKUP_TERMS,
+    columns::ColumnsEnv,
     witness::{Lookup, Witness},
 };
-use crate::{
+use kimchi::{
     circuits::expr::Constants, curve::KimchiCurve,
     lagrange_basis_evaluations::LagrangeBasisEvaluations, plonk_sponge::FrSponge,
     proof::PointEvaluations,

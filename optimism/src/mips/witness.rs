@@ -3,6 +3,7 @@ use crate::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
+    lookup::Lookup,
     mips::{
         interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
         registers::Registers,
@@ -12,7 +13,10 @@ use ark_ff::Field;
 use log::info;
 use std::array;
 
-use super::SCRATCH_SIZE;
+use super::{
+    interpreter::InstructionParts, NUM_DECODING_LOOKUP_TERMS, NUM_INSTRUCTION_LOOKUP_TERMS,
+    SCRATCH_SIZE,
+};
 
 #[derive(Clone)]
 pub struct SyscallEnv {
@@ -35,17 +39,28 @@ impl SyscallEnv {
 
 #[derive(Clone)]
 pub struct Env<Fp> {
+    // PC
     pub instruction_counter: usize,
+    // Memory
     pub memory: Vec<(u32, Vec<u8>)>,
     pub memory_write_index: Vec<(u32, Vec<usize>)>,
+    // Registers
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<usize>,
+    // IP
     pub instruction_pointer: u32,
     pub next_instruction_pointer: u32,
+    // Scratch state
     pub scratch_state_idx: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
+    // TODO
+    // pub instruction_parts: InstructionParts<u32>,
+
+    // Lookups
+    // pub lookup_terms: [Vec<Lookup<Fp>>; NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS],
+    // pub lookup_terms_idx: usize,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -118,16 +133,21 @@ impl<Fp: Field> Env<Fp> {
         };
 
         Env {
+            // PC
             instruction_counter: state.step as usize,
+            // memory
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
                 .iter()
                 .map(|offset| (*offset, vec![0usize; page_size]))
                 .collect(),
+            // registers
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
+            // IP
             instruction_pointer: initial_instruction_pointer,
             next_instruction_pointer,
+            // Scratch state
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
             halt: state.exited,

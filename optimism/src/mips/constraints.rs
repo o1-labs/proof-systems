@@ -1,19 +1,24 @@
-use crate::circuits::{
+use crate::mips::{
+    NUM_DECODING_LOOKUP_TERMS, NUM_GLOBAL_LOOKUP_TERMS, NUM_INSTRUCTION_LOOKUP_TERMS,
+    NUM_LOOKUP_TERMS,
+};
+use kimchi::circuits::{
     expr::{self, ConstantExpr, Expr},
     gate::CurrOrNext,
 };
+
+use crate::lookup::{GlobalLookupEnvironment, Lookup};
+
+use crate::mips::interpreter;
+
 use crate::mips::{
-    columns::{
-        Column, FixedColumn, ITypeInstruction, InstructionPart, InstructionSelector,
-        JTypeInstruction, LookupCounter, RTypeInstruction, NUM_DECODING_LOOKUP_TERMS,
-        NUM_GLOBAL_LOOKUP_TERMS, NUM_INSTRUCTION_LOOKUP_TERMS, NUM_LOOKUP_TERMS,
+    columns::{Column, FixedColumn, LookupCounter},
+    interpreter::{InstructionEnvironment,
+                  ITypeInstruction, Instruction,
+                  InstructionPart, JTypeInstruction, RTypeInstruction
     },
-    instructions::{
-        self,
-        decoding::{encode_rtype, encode_selector},
-        InstructionEnvironment,
-    },
-    witness::{self, GlobalLookupEnvironment, Lookup},
+    interpreter::{encode_rtype, encode_selector},
+    witness,
 };
 use ark_ff::{Field, One, PrimeField, Zero};
 use std::array;
@@ -354,8 +359,9 @@ impl<Fp: Field> InstructionEnvironment for InstructionEnv<Fp> {
         Column::ScratchState(scratch_idx)
     }
 
-    fn decode(_instruction: &Self::Variable) -> Option<InstructionSelector> {
-        None
+    fn decode(_instruction: &Self::Variable) -> Instruction {
+        // TODO(dw): FIXME
+        Instruction::RType(RTypeInstruction::Add)
     }
 
     fn assert_(&mut self, value: &Self::Variable) {
@@ -378,7 +384,7 @@ impl<Fp: Field> InstructionEnvironment for InstructionEnv<Fp> {
 
 pub fn single_instr<F: Field>() -> Vec<Expr<ConstantExpr<F>, Column>> {
     let mut instruction_constraints = vec![];
-    for (i, instr) in InstructionSelector::iter().enumerate() {
+    for (i, instr) in Instruction::iter().enumerate() {
         if i % (1 << 6) != 0b000000 {
             continue;
         }
@@ -389,7 +395,7 @@ pub fn single_instr<F: Field>() -> Vec<Expr<ConstantExpr<F>, Column>> {
             lookup_terms_idx: 0,
             lookup_terms: array::from_fn(|_| vec![]),
         };
-        instructions::run_instruction(instr, &mut env);
+        interpreter::run_instruction(instr, &mut env);
         for j in 0..NUM_INSTRUCTION_LOOKUP_TERMS {
             // NOTE FOR MORNING
             //
@@ -440,15 +446,15 @@ pub fn constraints<F: Field + PrimeField>(
     // Check that selectors are boolean
     {
         for rtype in RTypeInstruction::iter() {
-            let cell = Column::InstructionSelector(InstructionSelector::RType(rtype));
+            let cell = Column::InstructionSelector(Instruction::RType(rtype));
             constraints.push(boolean(curr_cell(cell)));
         }
         for jtype in JTypeInstruction::iter() {
-            let cell = Column::InstructionSelector(InstructionSelector::JType(jtype));
+            let cell = Column::InstructionSelector(Instruction::JType(jtype));
             constraints.push(boolean(curr_cell(cell)));
         }
         for itype in ITypeInstruction::iter() {
-            let cell = Column::InstructionSelector(InstructionSelector::IType(itype));
+            let cell = Column::InstructionSelector(Instruction::IType(itype));
             constraints.push(boolean(curr_cell(cell)));
         }
     };
@@ -456,18 +462,14 @@ pub fn constraints<F: Field + PrimeField>(
     // Cache some sums
     let r_type_selectors_sum = {
         RTypeInstruction::iter()
-            .map(|rtype| {
-                curr_cell(Column::InstructionSelector(InstructionSelector::RType(
-                    rtype,
-                )))
-            })
+            .map(|rtype| curr_cell(Column::InstructionSelector(Instruction::RType(rtype))))
             .reduce(|x, y| x + y)
             .unwrap()
             .cache(&mut cache)
     };
     let non_rtype_selectors_sum = {
-        ((JTypeInstruction::iter().map(InstructionSelector::JType))
-            .chain(ITypeInstruction::iter().map(InstructionSelector::IType)))
+        ((JTypeInstruction::iter().map(Instruction::JType))
+            .chain(ITypeInstruction::iter().map(Instruction::IType)))
         .map(Column::InstructionSelector)
         .map(curr_cell::<F>)
         .reduce(|x, y| x + y)
@@ -489,9 +491,9 @@ pub fn constraints<F: Field + PrimeField>(
     // **TODO**: Allow this to fail, propagate the exception
     {
         // NB: Plus one so that opcode 0 has a distinguishable effect
-        let expected_opcode_plus_one = ((RTypeInstruction::iter().map(InstructionSelector::RType))
-            .chain(JTypeInstruction::iter().map(InstructionSelector::JType))
-            .chain(ITypeInstruction::iter().map(InstructionSelector::IType)))
+        let expected_opcode_plus_one = ((RTypeInstruction::iter().map(Instruction::RType))
+            .chain(JTypeInstruction::iter().map(Instruction::JType))
+            .chain(ITypeInstruction::iter().map(Instruction::IType)))
         .map(|selector| {
             let (opcode, _) = encode_selector(selector);
             let opcode = E::from((opcode + 1) as u64);
@@ -501,7 +503,7 @@ pub fn constraints<F: Field + PrimeField>(
         .unwrap();
 
         constraints.push(
-            E::VanishesOnLastRow
+            E::VanishesOnZeroKnowledgeAndPreviousRows
                 * (expected_opcode_plus_one
                     - curr_cell(Column::InstructionPart(InstructionPart::OpCode))
                     - E::one()),
@@ -516,16 +518,13 @@ pub fn constraints<F: Field + PrimeField>(
             .map(|selector| {
                 let (_, funct) = encode_rtype(selector);
                 let funct = E::from((funct + 1) as u64);
-                funct
-                    * curr_cell(Column::InstructionSelector(InstructionSelector::RType(
-                        selector,
-                    )))
+                funct * curr_cell(Column::InstructionSelector(Instruction::RType(selector)))
             })
             .reduce(|x, y| x + y)
             .unwrap();
 
         constraints.push(
-            E::VanishesOnLastRow
+            E::VanishesOnZeroKnowledgeAndPreviousRows
                 * r_type_selectors_sum
                 * (expected_opcode_plus_one
                     - curr_cell(Column::InstructionPart(InstructionPart::Funct))
@@ -563,7 +562,7 @@ pub fn constraints<F: Field + PrimeField>(
 
     // Decode the instruction
     {
-        let _ = instructions::decode_instruction(&mut env);
+        let _ = InstructionEnv::decode_instruction(&mut env);
         constraints.extend(env.constraints);
         for i in 0..NUM_DECODING_LOOKUP_TERMS {
             if i % (1 << 0) != 0b1000 {
@@ -592,8 +591,8 @@ pub fn constraints<F: Field + PrimeField>(
     // Instruction constraints
     {
         let mut instruction_constraints = vec![];
-        for (_i, instr) in InstructionSelector::iter().enumerate() {
-            if instr != InstructionSelector::IType(ITypeInstruction::BranchNeq) {
+        for (_i, instr) in Instruction::iter().enumerate() {
+            if instr != Instruction::IType(ITypeInstruction::BranchNeq) {
                 // i % (1 << 6) != 0b110000 {
                 continue;
             }
@@ -605,7 +604,7 @@ pub fn constraints<F: Field + PrimeField>(
                 lookup_terms: array::from_fn(|_| vec![]),
             };
             //println!("instr: {:?}", instr);
-            instructions::run_instruction(instr, &mut env);
+            interpreter::run_instruction(instr, &mut env);
             for j in 0..NUM_INSTRUCTION_LOOKUP_TERMS {
                 //continue;
                 /*if j % (1 << 0) != 0b1000 {
