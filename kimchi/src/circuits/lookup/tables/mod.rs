@@ -1,9 +1,108 @@
-use ark_ff::{FftField, One, Zero};
+use ark_ff::{Field, One, Zero};
 use poly_commitment::PolyComm;
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 pub mod range_check;
 pub mod xor;
+
+/// A table of values that can be used for a lookup, along with the ID for the table.
+#[derive(Debug, Clone)]
+pub struct LookupTable<F> {
+    id: i32,
+    data: Vec<Vec<F>>,
+}
+
+/// Represents inconsistency errors during table construction and composition.
+#[derive(Debug, Error)]
+pub enum LookupTableError {
+    #[error("Table must be nonempty")]
+    InputTableDataEmpty,
+    #[error("One of the lookup tables has columns of different lengths")]
+    InconsistentTableLength,
+    #[error("The table with id 0 must have an entry of all zeros")]
+    TableIDZeroMustHaveZeroEntry,
+}
+
+impl<F> LookupTable<F>
+where
+    F: Field,
+{
+    pub fn create(id: i32, data: Vec<Vec<F>>) -> Result<Self, LookupTableError> {
+        let res = LookupTable { id, data };
+
+        // Empty tables are not allowed
+        if res.data.is_empty() {
+            return Err(LookupTableError::InputTableDataEmpty);
+        }
+
+        // All columns in the table must have same length
+        let table_len = res.len();
+        for col in res.data.iter() {
+            if col.len() != table_len {
+                return Err(LookupTableError::InconsistentTableLength);
+            }
+        }
+
+        // If a table has ID 0, then it must have a zero entry.
+        // This is for the dummy lookups to work.
+        if id == 0 && !res.has_zero_entry() {
+            return Err(LookupTableError::TableIDZeroMustHaveZeroEntry);
+        }
+
+        Ok(res)
+    }
+
+    /// Return true if the table has an entry (row) containing all zeros.
+    fn has_zero_entry(&self) -> bool {
+        // reminder: a table is written as a list of columns,
+        // not as a list of row entries.
+        for row in 0..self.len() {
+            let mut row_zero = true;
+            for col in &self.data {
+                if !col[row].is_zero() {
+                    row_zero = false;
+                    break;
+                }
+            }
+            if row_zero {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    /// Returns the number of columns, i.e. the width of the table.
+    /// It is less error prone to introduce this method than using the public
+    /// field data.
+    pub fn width(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Returns the length (height) of the table.
+    pub fn len(&self) -> usize {
+        if self.is_empty() {
+            panic!("LookupTable#len() is called on an empty table")
+        }
+        self.data[0].len()
+    }
+
+    /// Returns `true` if the lookup table is empty, `false` otherwise.
+    pub fn is_empty(&self) -> bool {
+        self.data.is_empty()
+    }
+
+    /// Returns table id.
+    pub fn id(&self) -> i32 {
+        self.id
+    }
+
+    /// Returns table data.
+    pub fn data(&self) -> &Vec<Vec<F>> {
+        &self.data
+    }
+}
 
 //~ spec:startcode
 /// The table ID associated with the XOR lookup table.
@@ -67,53 +166,8 @@ impl IntoIterator for GateLookupTables {
     }
 }
 
-/// A table of values that can be used for a lookup, along with the ID for the table.
-#[derive(Debug, Clone)]
-pub struct LookupTable<F> {
-    pub id: i32,
-    pub data: Vec<Vec<F>>,
-}
-
-impl<F> LookupTable<F>
-where
-    F: FftField,
-{
-    /// Return true if the table has an entry containing all zeros.
-    pub fn has_zero_entry(&self) -> bool {
-        // reminder: a table is written as a list of columns,
-        // not as a list of row entries.
-        for row in 0..self.len() {
-            for col in &self.data {
-                if !col[row].is_zero() {
-                    continue;
-                }
-                return true;
-            }
-        }
-
-        false
-    }
-
-    /// Returns the number of columns, i.e. the width of the table.
-    /// It is less error prone to introduce this method than using the public
-    /// field data.
-    pub fn width(&self) -> usize {
-        self.data.len()
-    }
-
-    /// Returns the length of the table.
-    pub fn len(&self) -> usize {
-        self.data[0].len()
-    }
-
-    /// Returns `true` if the lookup table is empty, `false` otherwise.
-    pub fn is_empty(&self) -> bool {
-        self.data.is_empty()
-    }
-}
-
 /// Returns the lookup table associated to a [`GateLookupTable`].
-pub fn get_table<F: FftField>(table_name: GateLookupTable) -> LookupTable<F> {
+pub fn get_table<F: Field>(table_name: GateLookupTable) -> LookupTable<F> {
     match table_name {
         GateLookupTable::Xor => xor::xor_table(),
         GateLookupTable::RangeCheck => range_check::range_check_table(),
@@ -155,6 +209,7 @@ where
     F: Zero + One + Clone,
     I: DoubleEndedIterator<Item = &'a F>,
 {
+    // TODO: unnecessary cloning if binops between F and &F are supported
     v.rev()
         .fold(F::zero(), |acc, x| joint_combiner.clone() * acc + x.clone())
         + table_id_combiner.clone() * table_id.clone()
@@ -253,5 +308,52 @@ pub mod caml {
                     .collect(),
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use mina_curves::pasta::Fp;
+
+    #[test]
+    fn test_zero_table_zero_row() {
+        let lookup_r: u64 = 32;
+        // Table column that /does not/ contain zeros
+        let lookup_table_values_1: Vec<_> = (1..lookup_r + 1).map(From::from).collect();
+        // Another table column that /does/ contain zeros.
+        let lookup_table_values_2: Vec<_> = (0..lookup_r).map(From::from).collect();
+
+        // Jointly two columns /do not/ have a full zero now.
+        let table: Result<LookupTable<Fp>, _> =
+            LookupTable::create(0, vec![lookup_table_values_1, lookup_table_values_2]);
+
+        assert!(
+            matches!(table, Err(LookupTableError::TableIDZeroMustHaveZeroEntry)),
+            "LookupTable::create(...) must fail when zero table has no zero rows"
+        );
+    }
+
+    #[test]
+    fn test_invalid_data_inputs() {
+        let table: Result<LookupTable<Fp>, _> = LookupTable::create(0, vec![]);
+        assert!(
+            matches!(table, Err(LookupTableError::InputTableDataEmpty)),
+            "LookupTable::create(...) must fail when empty table creation is attempted"
+        );
+
+        let lookup_r: u64 = 32;
+        // Two columns of different lengths
+        let lookup_table_values_1: Vec<_> = (0..2 * lookup_r).map(From::from).collect();
+        let lookup_table_values_2: Vec<_> = (0..lookup_r).map(From::from).collect();
+
+        let table: Result<LookupTable<Fp>, _> =
+            LookupTable::create(0, vec![lookup_table_values_1, lookup_table_values_2]);
+
+        assert!(
+            matches!(table, Err(LookupTableError::InconsistentTableLength)),
+            "LookupTable::create(...) must fail when columns are not of the same length"
+        );
     }
 }
