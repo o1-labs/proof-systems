@@ -11,7 +11,7 @@ env:
   CARGO_INCREMENTAL: 1
   # https://nexte.st/book/pre-built-binaries.html#using-nextest-in-github-actions
   CARGO_TERM_COLOR: always
-  RUST_MIN_STACK: 30*1024*1024
+  RUST_MIN_STACK: 31457280
 
 jobs:
   run_checks:
