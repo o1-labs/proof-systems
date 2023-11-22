@@ -394,3 +394,8 @@ mod tests {
         assert!(PreimageKey::from_str("0x01").is_err());
     }
 }
+
+pub const HINT_CLIENT_READ_FD: i32 = 3;
+pub const HINT_CLIENT_WRITE_FD: i32 = 4;
+pub const PREIMAGE_CLIENT_READ_FD: i32 = 5;
+pub const PREIMAGE_CLIENT_WRITE_FD: i32 = 6;
