@@ -4,7 +4,9 @@ use crate::cannon::{
 };
 use command_fds::{CommandFdExt, FdMapping};
 use os_pipe::{PipeReader, PipeWriter};
+use std::io::{Read, Write};
 use std::os::fd::AsRawFd;
+
 use std::process::{Child, Command};
 pub struct PreImageOracle {
     pub cmd: Command,
@@ -13,8 +15,8 @@ pub struct PreImageOracle {
 }
 
 pub struct ReadWrite<R, W> {
-    reader: R,
-    writer: W,
+    pub reader: R,
+    pub writer: W,
 }
 
 pub struct RW(pub ReadWrite<PipeReader, PipeWriter>);
@@ -30,7 +32,7 @@ impl PreImageOracle {
     pub fn create(hp_opt: &Option<HostProgram>) -> PreImageOracle {
         let host_program = hp_opt.as_ref().expect("No host program given");
 
-        let mut cmd = Command::new(host_program.name.to_string());
+        let mut cmd = Command::new(&host_program.name);
         cmd.args(&host_program.arguments);
 
         let p_client = RW::create().expect("");
@@ -84,4 +86,26 @@ impl PreImageOracle {
             .spawn()
             .expect("Could not spawn pre-image oracle process")
     }
+
+    pub fn get_preimage(&mut self, key: [u8; 32]) -> Vec<u8> {
+        let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
+
+        let mut msg_key = vec![2_u8]; // Assumes Keccak Key
+        msg_key.extend_from_slice(&key[1..31]);
+        let _ = writer.write(&msg_key);
+
+        let mut buf = [0_u8; 8];
+        let _ = reader.read_exact(&mut buf);
+
+        let length: u64 = u64::from_be_bytes(buf);
+
+        let mut handle = reader.take(length);
+
+        let mut v = vec![0_u8; length as usize];
+
+        let _ = handle.read(&mut v);
+        v
+    }
+
+    pub fn hint(&mut self, _hint: Vec<u8>) {}
 }
