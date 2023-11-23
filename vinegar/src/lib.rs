@@ -58,13 +58,19 @@ type Fq = mina_curves::pasta::Fq;
 pub const MAX_PROOFS_VERIFIED: usize = 2;
 pub const TICK_ROUNDS_N: usize = 16;
 
+/// Seems to be just a single field element. The only place in step.ml
+/// that constructs `sponge_digest_before_evaluations` is using
+/// `digest_before_evaluations` function, which resolves to a
+/// corresponding oracle call returning a field scalar. See
+/// `CamlOracles` and `OraclesResult`.
+pub struct Digest<F>(pub F);
+
 pub struct ScalarChallenge {}
-pub struct ChallengePolynomialCommitments {}
-pub struct BranchData {}
 pub struct Challenge {}
+
+pub struct BranchData {}
 pub struct AppState {} // should be two?
 pub struct Features {}
-pub struct Digest {}
 pub struct UnfinalizedProofs {}
 pub struct PlonkVerificationKeyEvals {}
 
@@ -85,6 +91,9 @@ pub struct BulletproofAdvice<F> {
     /// sum_i r^i sum_j xi^j f_j(pt_i)
     combined_inner_product: F,
 }
+
+// OpeningProof::sg computed from bulletproof challenges?
+pub struct ChallengePolynomialCommitments {}
 
 //pub struct KimchiOracles {
 //    type nonrec 'f oracles =
@@ -280,12 +289,12 @@ pub struct PerProof<StepScalars> {
     /// it's OK if those bits do not "finalize". That's what this
     /// boolean is for.
     should_finalize: bool,
-    sponge_digest_before_evaluations: Digest,
+    sponge_digest_before_evaluations: Digest<Fq>,
 }
 
 pub struct WrapProofState<WrapScalars> {
     deferred_values: WrapDeferredValues<WrapScalars>,
-    sponge_digest_before_evaluations: Digest,
+    sponge_digest_before_evaluations: Digest<Fp>,
     /// Parts of the statement not needed by the other circuit. Represented as a hash inside the
     /// circuit which is then "unhashed"
     messages_for_next_wrap_proof: MessagesForNextStepProof,
