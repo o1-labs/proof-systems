@@ -87,6 +87,11 @@ impl PreImageOracle {
             .expect("Could not spawn pre-image oracle process")
     }
 
+    // The preimage protocol goes as follows
+    // 1. Ask for data through a key
+    // 2. Get the answers as a
+    //   a. a 64-bit integer indicating the length of the actual data
+    //   b. the preimage data, with a size of <length> bits
     pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
@@ -97,13 +102,14 @@ impl PreImageOracle {
         let mut buf = [0_u8; 8];
         let _ = reader.read_exact(&mut buf);
 
-        let length: u64 = u64::from_be_bytes(buf);
-
+        let length = u64::from_be_bytes(buf);
         let mut handle = reader.take(length);
-
         let mut v = vec![0_u8; length as usize];
-
         let _ = handle.read(&mut v);
+
+        // We should have read exactly <length> bytes
+        assert_eq!(v.len(), length as usize);
+
         Preimage::create(v)
     }
 
