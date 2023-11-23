@@ -91,6 +91,7 @@ pub mod caml {
         let opening_prechallenges = proof
             .proof
             .prechallenges(&mut sponge)
+            .0
             .into_iter()
             .map(|x| x.0.into())
             .collect();

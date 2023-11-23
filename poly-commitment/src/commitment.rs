@@ -322,17 +322,18 @@ pub fn squeeze_prechallenge<Fq: Field, G, Fr: SquareRootField, EFqSponge: FqSpon
     ScalarChallenge(sponge.challenge())
 }
 
-pub fn squeeze_challenge<
-    Fq: Field,
-    G,
-    Fr: PrimeField + SquareRootField,
-    EFqSponge: FqSponge<Fq, G, Fr>,
->(
-    endo_r: &Fr,
-    sponge: &mut EFqSponge,
-) -> Fr {
-    squeeze_prechallenge(sponge).to_field(endo_r)
-}
+// @volhovm: TODO obsolete, remove fully?
+//pub fn squeeze_challenge<
+//    Fq: Field,
+//    G,
+//    Fr: PrimeField + SquareRootField,
+//    EFqSponge: FqSponge<Fq, G, Fr>,
+//>(
+//    endo_r: &Fr,
+//    sponge: &mut EFqSponge,
+//) -> Fr {
+//    squeeze_prechallenge(sponge).to_field(endo_r)
+//}
 
 pub fn absorb_commitment<
     Fq: Field,

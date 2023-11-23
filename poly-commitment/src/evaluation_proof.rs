@@ -488,40 +488,47 @@ impl<
     }
 }
 
+/// Raw scalar commitment challenges for recombining IPA rounds.
+pub struct PreChallenges<F>(pub Vec<ScalarChallenge<F>>);
+
+/// Commitment round challenges (endo mapped) and their inverses.
 pub struct Challenges<F> {
     pub chal: Vec<F>,
     pub chal_inv: Vec<F>,
 }
 
 impl<G: AffineCurve> OpeningProof<G> {
+    /// Computes a log-sized vector of scalar challenges for
+    /// recombining elements inside the IPA.
     pub fn prechallenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         sponge: &mut EFqSponge,
-    ) -> Vec<ScalarChallenge<G::ScalarField>> {
+    ) -> PreChallenges<G::ScalarField> {
         let _t = sponge.challenge_fq();
-        self.lr
-            .iter()
-            .map(|(l, r)| {
-                sponge.absorb_g(&[*l]);
-                sponge.absorb_g(&[*r]);
-                squeeze_prechallenge(sponge)
-            })
-            .collect()
+        PreChallenges(
+            self.lr
+                .iter()
+                .map(|(l, r)| {
+                    sponge.absorb_g(&[*l]);
+                    sponge.absorb_g(&[*r]);
+                    squeeze_prechallenge(sponge)
+                })
+                .collect(),
+        )
     }
 
+    /// Same as `prechallenges`, but maps scalar challenges using the
+    /// provided endomorphism, and computes their inverses.
     pub fn challenges<EFqSponge: FqSponge<G::BaseField, G, G::ScalarField>>(
         &self,
         endo_r: &G::ScalarField,
         sponge: &mut EFqSponge,
     ) -> Challenges<G::ScalarField> {
         let chal: Vec<_> = self
-            .lr
+            .prechallenges(sponge)
+            .0
             .iter()
-            .map(|(l, r)| {
-                sponge.absorb_g(&[*l]);
-                sponge.absorb_g(&[*r]);
-                squeeze_challenge(endo_r, sponge)
-            })
+            .map(|x| x.to_field(endo_r))
             .collect();
 
         let chal_inv = {

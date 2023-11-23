@@ -49,7 +49,15 @@ use poly_commitment::{commitment::CommitmentCurve, evaluation_proof::OpeningProo
 // - a set of IPA challenges (thought of as F-elements) corresponding to P's own inner-product argument
 
 pub struct ScalarChallenge {}
+//
+// prechals = OpeningProof::prechallenges(proof, &mut sponge)
+// mapped to a right domain:
+//        let prechals =
+//          Vector.of_list_and_length_exn
+//            (Array.map prechals ~f:Bulletproof_challenge.unpack |> Array.to_list)
+//            Tock.Rounds.n
 pub struct BulletproofChallenges {}
+pub struct ChallengePolynomialCommitments {}
 pub struct BranchData {}
 pub struct Challenge {}
 pub struct Fp {}
@@ -59,6 +67,14 @@ pub struct Features {}
 pub struct Digest {}
 pub struct UnfinalizedProofs {}
 pub struct PlonkVerificationKeyEvals {}
+
+//pub struct KimchiOracles {
+//    type nonrec 'f oracles =
+//  { o : 'f random_oracles
+//  ; p_eval : 'f * 'f
+//  ; opening_prechallenges : 'f array
+//  ; digest_before_evaluations : 'f
+//  }
 
 /// Challenges from the PLONK IOP. These, plus the evaluations that
 /// are already in the proof, are all that's needed to derive all the
