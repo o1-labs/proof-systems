@@ -399,3 +399,15 @@ pub const HINT_CLIENT_READ_FD: i32 = 3;
 pub const HINT_CLIENT_WRITE_FD: i32 = 4;
 pub const PREIMAGE_CLIENT_READ_FD: i32 = 5;
 pub const PREIMAGE_CLIENT_WRITE_FD: i32 = 6;
+
+pub struct Preimage(Vec<u8>);
+
+impl Preimage {
+    pub fn create(v: Vec<u8>) -> Self {
+        Preimage(v)
+    }
+
+    pub fn get(self) -> Vec<u8> {
+        self.0
+    }
+}

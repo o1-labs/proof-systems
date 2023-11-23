@@ -1,5 +1,5 @@
 use crate::cannon::{
-    HostProgram, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD, PREIMAGE_CLIENT_READ_FD,
+    HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD, PREIMAGE_CLIENT_READ_FD,
     PREIMAGE_CLIENT_WRITE_FD,
 };
 use command_fds::{CommandFdExt, FdMapping};
@@ -87,7 +87,7 @@ impl PreImageOracle {
             .expect("Could not spawn pre-image oracle process")
     }
 
-    pub fn get_preimage(&mut self, key: [u8; 32]) -> Vec<u8> {
+    pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
         let mut msg_key = vec![2_u8]; // Assumes Keccak Key
@@ -104,7 +104,7 @@ impl PreImageOracle {
         let mut v = vec![0_u8; length as usize];
 
         let _ = handle.read(&mut v);
-        v
+        Preimage::create(v)
     }
 
     pub fn hint(&mut self, _hint: Vec<u8>) {}
