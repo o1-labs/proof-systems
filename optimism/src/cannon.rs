@@ -411,3 +411,15 @@ impl Preimage {
         self.0
     }
 }
+
+pub struct Hint(Vec<u8>);
+
+impl Hint {
+    pub fn create(v: Vec<u8>) -> Self {
+        Hint(v)
+    }
+
+    pub fn get(self) -> Vec<u8> {
+        self.0
+    }
+}
