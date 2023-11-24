@@ -89,7 +89,10 @@ impl PreImageOracle {
 
     // The preimage protocol goes as follows
     // 1. Ask for data through a key
-    // 2. Get the answers as a
+    // 2. Get the answers in the following format
+    //      +------------+--------------------+
+    //      | length <8> | pre-image <length> |
+    //      +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
     pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
@@ -104,16 +107,26 @@ impl PreImageOracle {
 
         let length = u64::from_be_bytes(buf);
         let mut handle = reader.take(length);
-        let mut v = vec![0_u8; length as usize];
-        let _ = handle.read(&mut v);
+        let mut preimage = vec![0_u8; length as usize];
+        let _ = handle.read(&mut preimage);
 
         // We should have read exactly <length> bytes
-        assert_eq!(v.len(), length as usize);
+        assert_eq!(preimage.len(), length as usize);
 
-        Preimage::create(v)
+        Preimage::create(preimage)
     }
 
+    // The hint protocol goes as follows:
+    // 1. Write a hint request with the following byte-stream format
+    //       +------------+---------------+
+    //       | length <8> | hint <length> |
+    //       +----------------------------+
+    //
+    // 2. Get back a single ack byte informing the the hint has been processed.
     pub fn hint(&mut self, hint: Hint) {
+        let RW(ReadWrite { reader, writer }) = &mut self.hint_writer;
+
+        // Write hint request
         let mut hint_bytes = hint.get();
         let hint_length = hint_bytes.len();
 
@@ -121,11 +134,9 @@ impl PreImageOracle {
         msg.append(&mut u64::to_be_bytes(hint_length as u64).to_vec());
         msg.append(&mut hint_bytes);
 
-        let RW(ReadWrite { reader, writer }) = &mut self.hint_writer;
-
         let _ = writer.write(&msg);
 
-        // read single byte response
+        // Read single byte acknowledgment response
         let mut buf = [0_u8];
         let _ = reader.read_exact(&mut buf);
     }
