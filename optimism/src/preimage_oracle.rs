@@ -1,6 +1,6 @@
 use crate::cannon::{
-    HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD, PREIMAGE_CLIENT_READ_FD,
-    PREIMAGE_CLIENT_WRITE_FD,
+    Hint, HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD,
+    PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
 };
 use command_fds::{CommandFdExt, FdMapping};
 use os_pipe::{PipeReader, PipeWriter};
@@ -113,5 +113,20 @@ impl PreImageOracle {
         Preimage::create(v)
     }
 
-    pub fn hint(&mut self, _hint: Vec<u8>) {}
+    pub fn hint(&mut self, hint: Hint) {
+        let mut hint_bytes = hint.get();
+        let hint_length = hint_bytes.len();
+
+        let mut msg: Vec<u8> = vec![];
+        msg.append(&mut u64::to_be_bytes(hint_length as u64).to_vec());
+        msg.append(&mut hint_bytes);
+
+        let RW(ReadWrite { reader, writer }) = &mut self.hint_writer;
+
+        let _ = writer.write(&msg);
+
+        // read single byte response
+        let mut buf = [0_u8];
+        let _ = reader.read_exact(&mut buf);
+    }
 }
