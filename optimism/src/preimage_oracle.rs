@@ -35,10 +35,10 @@ impl PreImageOracle {
         let mut cmd = Command::new(&host_program.name);
         cmd.args(&host_program.arguments);
 
-        let p_client = RW::create().expect("");
-        let p_oracle = RW::create().expect("");
-        let h_client = RW::create().expect("");
-        let h_oracle = RW::create().expect("");
+        let p_client = RW::create().expect("Could not create preimage client channel");
+        let p_oracle = RW::create().expect("Could not create preimage oracle channel");
+        let h_client = RW::create().expect("Could not create hint client channel");
+        let h_oracle = RW::create().expect("Could not create hint oracle channel");
 
         // file descriptors 0, 1, 2 respectively correspond to the inherited stdin,
         // stdout, stderr.
