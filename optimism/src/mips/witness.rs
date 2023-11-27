@@ -7,6 +7,7 @@ use crate::{
         interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
         registers::Registers,
     },
+    preimage_oracle::PreImageOracle,
 };
 use ark_ff::Field;
 use log::info;
@@ -38,7 +39,6 @@ impl SyscallEnv {
     }
 }
 
-#[derive(Clone)]
 pub struct Env<Fp> {
     pub instruction_counter: usize,
     pub memory: Vec<(u32, Vec<u8>)>,
@@ -51,6 +51,7 @@ pub struct Env<Fp> {
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
     pub syscall_env: SyscallEnv,
+    pub preimage_oracle: PreImageOracle,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -93,7 +94,7 @@ fn memory_size(total: usize) -> String {
 }
 
 impl<Fp: Field> Env<Fp> {
-    pub fn create(page_size: usize, state: State) -> Self {
+    pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
         let initial_instruction_pointer = state.pc;
         let next_instruction_pointer = state.next_pc;
 
@@ -137,6 +138,7 @@ impl<Fp: Field> Env<Fp> {
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
+            preimage_oracle,
         }
     }
 

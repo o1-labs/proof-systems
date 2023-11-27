@@ -2,6 +2,7 @@ use clap::{arg, value_parser, Arg, ArgAction, Command};
 use kimchi_optimism::{
     cannon::{self, Meta, Start, State, VmConfiguration},
     mips::witness,
+    preimage_oracle::PreImageOracle,
 };
 use std::{fs::File, io::BufReader, process::ExitCode};
 
@@ -134,21 +135,15 @@ pub fn main() -> ExitCode {
         )
     });
 
-    if let Some(host_program) = &configuration.host {
-        println!("Launching host program {}", host_program.name);
-
-        let _child = std::process::Command::new(&host_program.name)
-            .args(&host_program.arguments)
-            .spawn()
-            .expect("Could not spawn host process");
-    };
+    let mut po = PreImageOracle::create(&configuration.host);
+    let _child = po.start();
 
     // Initialize some data used for statistical computations
     let start = Start::create(state.step as usize);
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE, state);
+    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE, state, po);
 
     while !env.halt {
         env.step(configuration.clone(), &meta, &start);
