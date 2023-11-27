@@ -394,6 +394,35 @@
 <a href="#394" id="394">394</a>
 <a href="#395" id="395">395</a>
 <a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
 </pre></div><pre class="rust"><code><span class="comment">// Data structure and stuff for compatibility with Cannon
 
 </span><span class="kw">use </span>base64::{engine::general_purpose, Engine <span class="kw">as _</span>};
@@ -789,5 +818,34 @@
         );
         <span class="macro">assert!</span>(PreimageKey::from_str(<span class="string">&quot;0x01&quot;</span>).is_err());
     }
+}
+
+<span class="kw">pub const </span>HINT_CLIENT_READ_FD: i32 = <span class="number">3</span>;
+<span class="kw">pub const </span>HINT_CLIENT_WRITE_FD: i32 = <span class="number">4</span>;
+<span class="kw">pub const </span>PREIMAGE_CLIENT_READ_FD: i32 = <span class="number">5</span>;
+<span class="kw">pub const </span>PREIMAGE_CLIENT_WRITE_FD: i32 = <span class="number">6</span>;
+
+<span class="kw">pub struct </span>Preimage(Vec&lt;u8&gt;);
+
+<span class="kw">impl </span>Preimage {
+    <span class="kw">pub fn </span>create(v: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        Preimage(v)
+    }
+
+    <span class="kw">pub fn </span>get(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
+}
+
+<span class="kw">pub struct </span>Hint(Vec&lt;u8&gt;);
+
+<span class="kw">impl </span>Hint {
+    <span class="kw">pub fn </span>create(v: Vec&lt;u8&gt;) -&gt; <span class="self">Self </span>{
+        Hint(v)
+    }
+
+    <span class="kw">pub fn </span>get(<span class="self">self</span>) -&gt; Vec&lt;u8&gt; {
+        <span class="self">self</span>.<span class="number">0
+    </span>}
 }
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["cannon","mips"]};
+window.SIDEBAR_ITEMS = {"mod":["cannon","mips","preimage_oracle"]};

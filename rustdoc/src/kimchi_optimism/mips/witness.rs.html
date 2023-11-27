@@ -360,6 +360,8 @@
 <a href="#360" id="360">360</a>
 <a href="#361" id="361">361</a>
 <a href="#362" id="362">362</a>
+<a href="#363" id="363">363</a>
+<a href="#364" id="364">364</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -369,6 +371,7 @@
         interpreter::{<span class="self">self</span>, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
         registers::Registers,
     },
+    preimage_oracle::PreImageOracle,
 };
 <span class="kw">use </span>ark_ff::Field;
 <span class="kw">use </span>log::info;
@@ -400,8 +403,7 @@
     }
 }
 
-<span class="attr">#[derive(Clone)]
-</span><span class="kw">pub struct </span>Env&lt;Fp&gt; {
+<span class="kw">pub struct </span>Env&lt;Fp&gt; {
     <span class="kw">pub </span>instruction_counter: usize,
     <span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
     <span class="kw">pub </span>memory_write_index: Vec&lt;(u32, Vec&lt;usize&gt;)&gt;,
@@ -413,6 +415,7 @@
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
     <span class="kw">pub </span>halt: bool,
     <span class="kw">pub </span>syscall_env: SyscallEnv,
+    <span class="kw">pub </span>preimage_oracle: PreImageOracle,
 }
 
 <span class="kw">fn </span>fresh_scratch_state&lt;Fp: Field, <span class="kw">const </span>N: usize&gt;() -&gt; [Fp; N] {
@@ -455,7 +458,7 @@
 }
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; Env&lt;Fp&gt; {
-    <span class="kw">pub fn </span>create(page_size: usize, state: State) -&gt; <span class="self">Self </span>{
+    <span class="kw">pub fn </span>create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -&gt; <span class="self">Self </span>{
         <span class="kw">let </span>initial_instruction_pointer = state.pc;
         <span class="kw">let </span>next_instruction_pointer = state.next_pc;
 
@@ -499,6 +502,7 @@
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
             syscall_env,
+            preimage_oracle,
         }
     }
 
