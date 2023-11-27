@@ -86,6 +86,7 @@ pub trait SRS<G: CommitmentCurve> {
 }
 
 #[allow(type_alias_bounds)]
+/// Vector of polynomials with optional degree bound and commitment randomness.
 type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
     DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
     Option<usize>,
