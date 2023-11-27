@@ -4,6 +4,7 @@ use ark_ff::PrimeField;
 use kimchi::{
     circuits::{
         argument::Argument,
+        constraints::FeatureFlags,
         expr,
         polynomials::{
             complete_add::CompleteAdd, endomul_scalar::EndomulScalar, endosclmul::EndosclMul,
@@ -63,14 +64,16 @@ pub const TICK_ROUNDS_N: usize = 16;
 /// `digest_before_evaluations` function, which resolves to a
 /// corresponding oracle call returning a field scalar. See
 /// `CamlOracles` and `OraclesResult`.
-pub struct Digest<F>(pub F);
+// it's the last evaluation
+pub struct Digest<F>(pub F); // G::ScalarField
 
 pub struct ScalarChallenge {}
 pub struct Challenge {}
 
 pub struct BranchData {}
 pub struct AppState {} // should be two?
-pub struct Features {}
+
+// TODO
 pub struct UnfinalizedProofs {}
 pub struct PlonkVerificationKeyEvals {}
 
@@ -93,7 +96,9 @@ pub struct BulletproofAdvice<F> {
 }
 
 // OpeningProof::sg computed from bulletproof challenges?
-pub struct ChallengePolynomialCommitments {}
+pub struct ChallengePolynomialCommitments<G> {
+    comm_base: G,
+}
 
 //pub struct KimchiOracles {
 //    type nonrec 'f oracles =
@@ -129,7 +134,9 @@ pub struct StepScalarsInCircuit {
     step_scalars_min: StepScalarsMinimal,
     // TODO: zeta_to_srs_length is kind of unnecessary.
     // Try to get rid of it when you can.
+    ///   zeta ^ (|srs|)
     zeta_to_srs_length: Fp,
+    ///   zeta ^ (subgroup size/domain)
     zeta_to_domain_size: Fp,
     perm: Fp,
 }
@@ -145,8 +152,9 @@ pub struct WrapScalarsMinimal {
     beta: Challenge,
     gamma: Challenge,
     zeta: ScalarChallenge,
+    // Most likely just used for lookup tables, so can be removed?
     joint_combiner: Option<ScalarChallenge>,
-    feature_flags: Features,
+    feature_flags: FeatureFlags,
 }
 
 /// All scalar values deferred by a verifier circuit. We expose them
@@ -167,9 +175,11 @@ pub struct WrapScalarsInCircuit {
 pub struct WrapDeferredValues<WrapScalars> {
     /// Could be either WrapScalarsMinimal or WrapScalarsInCircuit
     plonk: WrapScalars,
-    /// combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
+    /// Linearization of the evaluation result for the combination of input polynomials
+    ///   combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
     combined_inner_product: Fp,
-    /// b = challenge_poly plonk.zeta + r * challenge_poly (domain_generrator * plonk.zeta)
+    /// Combined evaluation on two points:
+    ///   b = challenge_poly * plonk.zeta + r * challenge_poly * (domain_generrator * plonk.zeta)
     ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
     b: Fp,
     /// The challenge used for combining polynomials
@@ -194,6 +204,7 @@ pub struct StepDeferredValues<StepScalars> {
     /// b = challenge_poly plonk.zeta + r * challenge_poly (domain_generrator * plonk.zeta)
     ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
     b: Fq,
+    // Might be polyscale from commitment.rs
     /// The challenge used for combining polynomials
     xi: ScalarChallenge,
     /// The challenges from the inner-product argument that was partially verified.
@@ -256,7 +267,7 @@ pub struct MessagesForNextStepProof {
     /// circuits so that the step circuits can verify proofs against
     /// it.
     dlog_plonk_index: PlonkVerificationKeyEvals,
-    challenge_polynomial_commitments: ChallengePolynomialCommitments,
+    challenge_polynomial_commitments: ChallengePolynomialCommitments<G1>,
     old_bulletproof_challenges: BulletproofChallenges<Fq>,
 }
 
@@ -368,7 +379,7 @@ pub struct InductiveRule {
     //        'a_var main_input
     //     -> ('prev_vars, 'widths, 'ret_var, 'auxiliary_var) main_return,
     main: (),
-    feature_flags: Features,
+    feature_flags: FeatureFlags,
 }
 
 pub struct TypesMapBasic {}
@@ -377,7 +388,7 @@ pub struct TypesMapCompiledBasic {
     public_input: (),
     wrap_domain: (),
     step_domains: (),
-    feature_flags: Features,
+    feature_flags: FeatureFlags,
     zk_rows: usize,
 }
 
