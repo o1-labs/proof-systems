@@ -36,8 +36,10 @@ impl Key {
 
 pub struct PreImageOracle {
     pub cmd: Command,
-    pub oracle_client: RW,
-    pub hint_writer: RW,
+    pub preimage_write: RW,
+    pub preimage_read: RW,
+    pub hint_write: RW,
+    pub hint_read: RW,
 }
 
 pub struct ReadWrite<R, W> {
@@ -61,47 +63,41 @@ impl PreImageOracle {
         let mut cmd = Command::new(&host_program.name);
         cmd.args(&host_program.arguments);
 
-        let p_client = RW::create().expect("Could not create preimage client channel");
-        let p_oracle = RW::create().expect("Could not create preimage oracle channel");
-        let h_client = RW::create().expect("Could not create hint client channel");
-        let h_oracle = RW::create().expect("Could not create hint oracle channel");
+        let preimage_write = RW::create().expect("Could not create preimage write channel");
+        let preimage_read = RW::create().expect("Could not create preimage read channel");
 
-        let RW(ReadWrite {
-            reader: h_reader,
-            writer: h_writer,
-        }) = h_oracle;
-        let RW(ReadWrite {
-            reader: p_reader,
-            writer: p_writer,
-        }) = p_oracle;
+        let hint_write = RW::create().expect("Could not create hint write channel");
+        let hint_read = RW::create().expect("Could not create hint read channel");
 
         // file descriptors 0, 1, 2 respectively correspond to the inherited stdin,
         // stdout, stderr.
         // We need to map 3, 4, 5, 6 in the child process
         cmd.fd_mappings(vec![
             FdMapping {
-                parent_fd: h_reader.as_raw_fd(),
-                child_fd: HINT_CLIENT_READ_FD,
-            },
-            FdMapping {
-                parent_fd: h_writer.as_raw_fd(),
+                parent_fd: hint_read.0.writer.as_raw_fd(),
                 child_fd: HINT_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: p_reader.as_raw_fd(),
-                child_fd: PREIMAGE_CLIENT_READ_FD,
+                parent_fd: hint_write.0.reader.as_raw_fd(),
+                child_fd: HINT_CLIENT_READ_FD,
             },
             FdMapping {
-                parent_fd: p_writer.as_raw_fd(),
+                parent_fd: preimage_read.0.writer.as_raw_fd(),
                 child_fd: PREIMAGE_CLIENT_WRITE_FD,
+            },
+            FdMapping {
+                parent_fd: preimage_write.0.reader.as_raw_fd(),
+                child_fd: PREIMAGE_CLIENT_READ_FD,
             },
         ])
         .unwrap_or_else(|_| panic!("Could not map file descriptors to server process"));
 
         PreImageOracle {
             cmd,
-            oracle_client: p_client,
-            hint_writer: h_client,
+            preimage_read,
+            preimage_write,
+            hint_read,
+            hint_write,
         }
     }
 
@@ -121,20 +117,27 @@ impl PreImageOracle {
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
     pub fn get_preimage(&mut self, key: Key) -> Preimage {
-        let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
+        let RW(ReadWrite {
+            reader: _,
+            writer: preimage_writer,
+        }) = &mut self.preimage_write;
+        let RW(ReadWrite {
+            reader: preimage_reader,
+            writer: _,
+        }) = &mut self.preimage_read;
 
         let key_contents = key.contents();
         let key_type = key.typ();
 
         let mut msg_key = vec![key_type];
         msg_key.extend_from_slice(&key_contents[1..31]);
-        let _ = writer.write(&msg_key);
+        let _ = preimage_writer.write(&msg_key);
 
         let mut buf = [0_u8; 8];
-        let _ = reader.read_exact(&mut buf);
+        let _ = preimage_reader.read_exact(&mut buf);
 
         let length = u64::from_be_bytes(buf);
-        let mut handle = reader.take(length);
+        let mut handle = preimage_reader.take(length);
         let mut preimage = vec![0_u8; length as usize];
         let _ = handle.read(&mut preimage);
 
@@ -152,7 +155,14 @@ impl PreImageOracle {
     //
     // 2. Get back a single ack byte informing the the hint has been processed.
     pub fn hint(&mut self, hint: Hint) {
-        let RW(ReadWrite { reader, writer }) = &mut self.hint_writer;
+        let RW(ReadWrite {
+            reader: _,
+            writer: hint_writer,
+        }) = &mut self.hint_write;
+        let RW(ReadWrite {
+            reader: hint_reader,
+            writer: _,
+        }) = &mut self.hint_read;
 
         // Write hint request
         let mut hint_bytes = hint.get();
@@ -162,11 +172,11 @@ impl PreImageOracle {
         msg.append(&mut u64::to_be_bytes(hint_length as u64).to_vec());
         msg.append(&mut hint_bytes);
 
-        let _ = writer.write(&msg);
+        let _ = hint_writer.write(&msg);
 
         // Read single byte acknowledgment response
         let mut buf = [0_u8];
-        let _ = reader.read_exact(&mut buf);
+        let _ = hint_reader.read_exact(&mut buf);
     }
 }
 
