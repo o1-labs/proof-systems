@@ -6,8 +6,34 @@ use command_fds::{CommandFdExt, FdMapping};
 use os_pipe::{PipeReader, PipeWriter};
 use std::io::{Read, Write};
 use std::os::fd::AsRawFd;
-
 use std::process::{Child, Command};
+
+pub enum Key {
+    Keccak([u8; 32]),
+    Local([u8; 32]),
+    Global([u8; 32]),
+}
+
+impl Key {
+    pub fn contents(&self) -> [u8; 32] {
+        use Key::*;
+        match self {
+            Keccak(v) => *v,
+            Local(v) => *v,
+            Global(v) => *v,
+        }
+    }
+
+    pub fn typ(&self) -> u8 {
+        use Key::*;
+        match self {
+            Keccak(_) => 2_u8,
+            Local(_) => 1_u8,
+            Global(_) => 3_u8,
+        }
+    }
+}
+
 pub struct PreImageOracle {
     pub cmd: Command,
     pub oracle_client: RW,
@@ -40,9 +66,6 @@ impl PreImageOracle {
         let h_client = RW::create().expect("Could not create hint client channel");
         let h_oracle = RW::create().expect("Could not create hint oracle channel");
 
-        // file descriptors 0, 1, 2 respectively correspond to the inherited stdin,
-        // stdout, stderr.
-        // We need to map 3, 4, 5, 6 in the child process
         let RW(ReadWrite {
             reader: h_reader,
             writer: h_writer,
@@ -52,7 +75,9 @@ impl PreImageOracle {
             writer: p_writer,
         }) = p_oracle;
 
-        // Use constant defined
+        // file descriptors 0, 1, 2 respectively correspond to the inherited stdin,
+        // stdout, stderr.
+        // We need to map 3, 4, 5, 6 in the child process
         cmd.fd_mappings(vec![
             FdMapping {
                 parent_fd: h_reader.as_raw_fd(),
@@ -95,11 +120,14 @@ impl PreImageOracle {
     //      +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
-    pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
+    pub fn get_preimage(&mut self, key: Key) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
-        let mut msg_key = vec![2_u8]; // Assumes Keccak Key
-        msg_key.extend_from_slice(&key[1..31]);
+        let key_contents = key.contents();
+        let key_type = key.typ();
+
+        let mut msg_key = vec![key_type];
+        msg_key.extend_from_slice(&key_contents[1..31]);
         let _ = writer.write(&msg_key);
 
         let mut buf = [0_u8; 8];
@@ -140,4 +168,12 @@ impl PreImageOracle {
         let mut buf = [0_u8];
         let _ = reader.read_exact(&mut buf);
     }
+}
+
+#[cfg(test)]
+mod tests {
+
+    // TODO
+    #[test]
+    fn test_preimage_get() {}
 }
