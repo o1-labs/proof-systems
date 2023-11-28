@@ -729,8 +729,8 @@ Let $\mathcal{C} \subseteq \FF$ be the challenge space (128-bit GLV decomposed c
 1. Checking $\relation_{\mathsf{Acc}, \vec{G}}$ and polynomial relations (from PlonK) to $\relation_{\mathsf{PCS},d}$ (the dotted arrows):
     1. Sample $\chaleval \sample \mathcal{C}$ (evaluation point) using the Poseidon sponge.
     1. Read claimed evaluations at $\chaleval$ and $\omega \chaleval$ (`PointEvaluations`).
-    1. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge) using the Poseidon sponge.
-    1. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge) using the Poseidon sponge.
+    1. Sample $\chalu \sample \mathcal{C}$ (commitment combination challenge, `polyscale`) using the Poseidon sponge.
+    1. Sample $\chalv \sample \mathcal{C}$ (evaluation combination challenge, `evalscale`) using the Poseidon sponge.
     1. Compute $C \in \GG$ with $\chalu$ from:
         - $\accCom^{(1)}, \ldots, \accCom^{(n)}$ (`RecursionChallenge.comm` $\in \GG$)
         - Polynomial commitments from PlonK (`ProverCommitments`)

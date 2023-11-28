@@ -440,11 +440,19 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
     G::of_coordinates(x, y)
 }
 
-/// Computes the linearization of the evaluations of a (potentially split) polynomial.
-/// Each given `poly` is associated to a matrix where the rows represent the number of evaluated points,
-/// and the columns represent potential segments (if a polynomial was split in several parts).
-/// Note that if one of the polynomial comes specified with a degree bound,
-/// the evaluation for the last segment is potentially shifted to meet the proof.
+/// Computes the linearization of the evaluations of a (potentially
+/// split) polynomial.
+///
+/// Each polynomial in `polys` is represented by a matrix where the
+/// rows correspond to evaluated points, and the columns represent
+/// potential segments (if a polynomial was split in several parts).
+///
+/// Elements in `evaluation_points` are several discrete points on which
+/// we evaluate polynomials, e.g. [zeta,zeta*w]. See `PointEvaluations`.
+///
+/// Note that if one of the polynomial comes specified with a degree
+/// bound, the evaluation for the last segment is potentially shifted
+/// to meet the proof.
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<F: PrimeField>(
     evaluation_points: &[F],
@@ -454,37 +462,52 @@ pub fn combined_inner_product<F: PrimeField>(
     polys: &[(Vec<Vec<F>>, Option<usize>)],
     srs_length: usize,
 ) -> F {
+    // final combined evaluation result
     let mut res = F::zero();
+    // polyscale^i
     let mut xi_i = F::one();
 
     for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
-        // transpose the evaluations
-        let evals = (0..evals_tr[0].len())
+        // Transpose the evaluations.
+        // evals[i] = {evals_tr[j][i]}_j now corresponds to a column in evals_tr,
+        // representing a segment.
+        let evals: Vec<Vec<F>> = (0..evals_tr[0].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
-            .collect::<Vec<_>>();
+            .collect();
 
-        // iterating over the polynomial segments
+        // Iterating over the polynomial segments.
+        // Each segment gets its own polyscale^i, each segment element j is multiplied by evalscale^j.
+        // Given that xi_i = polyscale^i0 at this point, after this loop we have:
+        //    res += \sum_i polyscale^{i0+i} ( \sum_j evals_tr[j][i] * evalscale^j )
         for eval in &evals {
+            // p_i(evalscale)
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
-
             res += &(xi_i * term);
             xi_i *= polyscale;
         }
 
+        // Unused, obsolete. Shifted should be removed.
+        // Given that xi_i = polyscale^i1 at this point,
+        // res += polyscale^i1 ( \sum_j elm_j^{N - m} f(elm_j) * evalscale^j )
         if let Some(m) = shifted {
-            // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
+            // Either (1) a zero vector or (2) a copy of last segment in evals.
             let last_evals = if *m >= evals.len() * srs_length {
                 vec![F::zero(); evaluation_points.len()]
             } else {
+                // FIXME @volhovm: How do we ensure this length is equal to
+                // evaluation_points.len()?
+                // Isn't this counted already in evals?
                 evals[evals.len() - 1].clone()
             };
+            let n_minus_m = (srs_length - (*m) % srs_length) as u64;
             let shifted_evals: Vec<_> = evaluation_points
                 .iter()
                 .zip(&last_evals)
-                .map(|(elm, f_elm)| elm.pow([(srs_length - (*m) % srs_length) as u64]) * f_elm)
+                .map(|(elm, f_elm)| elm.pow([n_minus_m]) * f_elm)
                 .collect();
 
-            res += &(xi_i * DensePolynomial::<F>::eval_polynomial(&shifted_evals, *evalscale));
+            let term = DensePolynomial::<F>::eval_polynomial(&shifted_evals, *evalscale);
+            res += &(xi_i * term);
             xi_i *= polyscale;
         }
     }
@@ -533,6 +556,7 @@ pub fn combine_commitments<G: CommitmentCurve>(
     polyscale: G::ScalarField,
     rand_base: G::ScalarField,
 ) {
+    // polyscale^i
     let mut xi_i = G::ScalarField::one();
 
     for Evaluation {

@@ -2316,9 +2316,9 @@ We run the following algorithm:
 	* poseidon selector
 	* the 15 register/witness
 	* 6 sigmas evaluations (the last one is not evaluated)
-1. Sample $v'$ with the Fr-Sponge.
+1. Sample the "polyscale" $v'$ with the Fr-Sponge.
 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
-1. Sample $u'$ with the Fr-Sponge.
+1. Sample the "evalscale" $u'$ with the Fr-Sponge.
 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
 1. Create a list of all polynomials that have an evaluation proof.
 1. Compute the evaluation of $ft(\zeta)$.
