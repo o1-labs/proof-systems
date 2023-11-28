@@ -36,18 +36,19 @@ pub trait SRS<G: CommitmentCurve> {
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
 
-    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
+    /// Same as [SRS::mask] except that you can pass the blinders manually.
     fn mask_custom(
         &self,
         com: PolyComm<G>,
         blinders: &PolyComm<G::ScalarField>,
     ) -> Result<BlindedCommitment<G>, CommitmentError>;
 
-    /// Same as [SRS::mask] except that you can pass the blinders manually.
+    /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
     fn mask(
         &self,
         comm: PolyComm<G>,
@@ -66,6 +67,7 @@ pub trait SRS<G: CommitmentCurve> {
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
     ) -> PolyComm<G>;
 
@@ -83,21 +85,25 @@ pub trait SRS<G: CommitmentCurve> {
     ) -> BlindedCommitment<G>;
 }
 
+#[allow(type_alias_bounds)]
+type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
+    DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
+    Option<usize>,
+    PolyComm<G::ScalarField>,
+)];
+
 pub trait OpenProof<G: CommitmentCurve>: Sized {
     type SRS: SRS<G>;
 
+    #[allow(clippy::too_many_arguments)]
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
-        plnms: &[(
-            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
-            Option<usize>,
-            PolyComm<<G as AffineCurve>::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
+        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
         elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
         polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
         evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
-        sponge: EFqSponge,                       // sponge
+        sponge: EFqSponge,                 // sponge
         rng: &mut RNG,
     ) -> Self
     where

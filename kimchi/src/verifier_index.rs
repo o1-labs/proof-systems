@@ -4,9 +4,10 @@
 use crate::{
     alphas::Alphas,
     circuits::{
+        berkeley_columns::Column,
         expr::{Linearization, PolishToken},
         lookup::{index::LookupSelectors, lookups::LookupInfo},
-        polynomials::permutation::{zk_polynomial, zk_w3},
+        polynomials::permutation::{vanishes_on_last_n_rows, zk_w},
         wires::{COLUMNS, PERMUTS},
     },
     curve::KimchiCurve,
@@ -61,6 +62,8 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub domain: D<G::ScalarField>,
     /// maximal size of polynomial section
     pub max_poly_size: usize,
+    /// the number of randomized rows to achieve zero knowledge
+    pub zk_rows: u64,
     /// polynomial commitment keys
     #[serde(skip)]
     #[serde(bound(deserialize = "OpeningProof::SRS: Default"))]
@@ -129,7 +132,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub shift: [G::ScalarField; PERMUTS],
     /// zero-knowledge polynomial
     #[serde(skip)]
-    pub zkpm: OnceCell<DensePolynomial<G::ScalarField>>,
+    pub permutation_vanishing_polynomial_m: OnceCell<DensePolynomial<G::ScalarField>>,
     // TODO(mimoo): isn't this redundant with domain.d1.group_gen ?
     /// domain offset for zero-knowledge
     #[serde(skip)]
@@ -142,7 +145,7 @@ pub struct VerifierIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
     pub lookup_index: Option<LookupVerifierIndex<G>>,
 
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField, Column>>, Column>,
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
     pub powers_of_alpha: Alphas<G::ScalarField>,
@@ -182,7 +185,7 @@ where
                 .as_ref()
                 .map(|cs| LookupVerifierIndex {
                     joint_lookup_used: cs.configuration.lookup_info.features.joint_lookup_used,
-                    lookup_info: cs.configuration.lookup_info.clone(),
+                    lookup_info: cs.configuration.lookup_info,
                     lookup_selectors: cs
                         .lookup_selectors
                         .as_ref()
@@ -206,6 +209,7 @@ where
         VerifierIndex {
             domain,
             max_poly_size: self.max_poly_size,
+            zk_rows: self.cs.zk_rows,
             powers_of_alpha: self.powers_of_alpha.clone(),
             public: self.cs.public,
             prev_challenges: self.cs.prev_challenges,
@@ -235,21 +239,23 @@ where
                 &self.column_evaluations.poseidon_selector8,
             )),
 
-            complete_add_comm: self.srs.commit_evaluations_non_hiding(
+            complete_add_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.complete_add_selector4,
+            )),
+            mul_comm: mask_fixed(
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
             ),
-            mul_comm: self
-                .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.mul_selector8),
-            emul_comm: self
-                .srs
-                .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
+            emul_comm: mask_fixed(
+                self.srs
+                    .commit_evaluations_non_hiding(domain, &self.column_evaluations.emul_selector8),
+            ),
 
-            endomul_scalar_comm: self.srs.commit_evaluations_non_hiding(
+            endomul_scalar_comm: mask_fixed(self.srs.commit_evaluations_non_hiding(
                 domain,
                 &self.column_evaluations.endomul_scalar_selector8,
-            ),
+            )),
 
             range_check0_comm: self
                 .column_evaluations
@@ -286,14 +292,20 @@ where
                 .map(|eval8| self.srs.commit_evaluations_non_hiding(domain, eval8)),
 
             shift: self.cs.shift,
-            zkpm: {
+            permutation_vanishing_polynomial_m: {
                 let cell = OnceCell::new();
-                cell.set(self.cs.precomputations().zkpm.clone()).unwrap();
+                cell.set(
+                    self.cs
+                        .precomputations()
+                        .permutation_vanishing_polynomial_m
+                        .clone(),
+                )
+                .unwrap();
                 cell
             },
             w: {
                 let cell = OnceCell::new();
-                cell.set(zk_w3(self.cs.domain.d1)).unwrap();
+                cell.set(zk_w(self.cs.domain.d1, self.cs.zk_rows)).unwrap();
                 cell
             },
             endo: self.cs.endo,
@@ -312,14 +324,15 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         &self.srs
     }
 
-    /// Gets zkpm from [`VerifierIndex`] lazily
-    pub fn zkpm(&self) -> &DensePolynomial<G::ScalarField> {
-        self.zkpm.get_or_init(|| zk_polynomial(self.domain))
+    /// Gets permutation_vanishing_polynomial_m from [`VerifierIndex`] lazily
+    pub fn permutation_vanishing_polynomial_m(&self) -> &DensePolynomial<G::ScalarField> {
+        self.permutation_vanishing_polynomial_m
+            .get_or_init(|| vanishes_on_last_n_rows(self.domain, self.zk_rows))
     }
 
     /// Gets w from [`VerifierIndex`] lazily
     pub fn w(&self) -> &G::ScalarField {
-        self.w.get_or_init(|| zk_w3(self.domain))
+        self.w.get_or_init(|| zk_w(self.domain, self.zk_rows))
     }
 
     /// Deserializes a [`VerifierIndex`] from a file, given a pointer to an SRS and an optional offset in the file.
@@ -389,6 +402,7 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
         let VerifierIndex {
             domain: _,
             max_poly_size: _,
+            zk_rows: _,
             srs: _,
             public: _,
             prev_challenges: _,
@@ -415,7 +429,7 @@ impl<G: KimchiCurve, OpeningProof: OpenProof<G>> VerifierIndex<G, OpeningProof> 
             lookup_index,
 
             shift: _,
-            zkpm: _,
+            permutation_vanishing_polynomial_m: _,
             w: _,
             endo: _,
 

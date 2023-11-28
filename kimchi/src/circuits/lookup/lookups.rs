@@ -42,6 +42,7 @@ fn max_lookups_per_row(kinds: LookupPatterns) -> usize {
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupPatterns {
     pub xor: bool,
     pub lookup: bool,
@@ -133,6 +134,7 @@ impl LookupPatterns {
     feature = "ocaml_types",
     derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
 )]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupFeatures {
     /// A single lookup constraint is a vector of lookup constraints to be applied at a row.
     pub patterns: LookupPatterns,
@@ -157,7 +159,8 @@ impl LookupFeatures {
 }
 
 /// Describes the desired lookup configuration.
-#[derive(Clone, Serialize, Deserialize, Debug)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 pub struct LookupInfo {
     /// The maximum length of an element of `kinds`. This can be computed from `kinds`.
     pub max_per_row: usize,
@@ -392,9 +395,8 @@ impl LookupPattern {
     /// Returns the maximum number of lookups per row that are used by the pattern.
     pub fn max_lookups_per_row(&self) -> usize {
         match self {
-            LookupPattern::Xor | LookupPattern::RangeCheck => 4,
+            LookupPattern::Xor | LookupPattern::RangeCheck | LookupPattern::ForeignFieldMul => 4,
             LookupPattern::Lookup => 3,
-            LookupPattern::ForeignFieldMul => 2,
         }
     }
 
@@ -476,25 +478,20 @@ impl LookupPattern {
                     .collect()
             }
             LookupPattern::ForeignFieldMul => {
-                vec![
-                    //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
-                    //   - - - - - - - L - - -  -  -  -  -
-                    //    * Constrain w(7) to 12-bits
-                    //    * Constrain 2^9 * w(7) to 12-bits
-                    //    => w(7) is 3-bits
-                    JointLookup {
-                        table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
-                        entry: vec![SingleLookup {
-                            value: vec![(F::one(), curr_row(7))],
-                        }],
-                    },
-                    JointLookup {
-                        table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
-                        entry: vec![SingleLookup {
-                            value: vec![(F::from(2u64).pow([9u64]), curr_row(7))],
-                        }],
-                    },
-                ]
+                (7..=10)
+                    .map(|col| {
+                        // curr and next (in next carry0 is in w(7))
+                        //   0 1 2 3 4 5 6 7 8 9 10 11 12 13 14
+                        //   - - - - - - - L L L L  -  -  -  -
+                        //    * Constrain w(7), w(8), w(9), w(10) to 12-bits
+                        JointLookup {
+                            table_id: LookupTableID::Constant(RANGE_CHECK_TABLE_ID),
+                            entry: vec![SingleLookup {
+                                value: vec![(F::one(), curr_row(col))],
+                            }],
+                        }
+                    })
+                    .collect()
             }
         }
     }
@@ -518,7 +515,7 @@ impl LookupPattern {
             (RangeCheck0, Curr) | (RangeCheck1, Curr | Next) | (Rot64, Curr) => {
                 Some(LookupPattern::RangeCheck)
             }
-            (ForeignFieldMul, Curr) => Some(LookupPattern::ForeignFieldMul),
+            (ForeignFieldMul, Curr | Next) => Some(LookupPattern::ForeignFieldMul),
             (Xor16, Curr) => Some(LookupPattern::Xor),
             _ => None,
         }
@@ -551,5 +548,60 @@ fn lookup_pattern_constants_correct() {
         // NB: We include pat in the assertions so that the test will print out which pattern failed
         assert_eq!((pat, pat.max_lookups_per_row()), (pat, lookups.len()));
         assert_eq!((pat, pat.max_joint_size()), (pat, max_joint_size as u32));
+    }
+}
+
+#[cfg(feature = "wasm_types")]
+pub mod wasm {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupPatterns {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            xor: bool,
+            lookup: bool,
+            range_check: bool,
+            foreign_field_mul: bool,
+        ) -> LookupPatterns {
+            LookupPatterns {
+                xor,
+                lookup,
+                range_check,
+                foreign_field_mul,
+            }
+        }
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupFeatures {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            patterns: LookupPatterns,
+            joint_lookup_used: bool,
+            uses_runtime_tables: bool,
+        ) -> LookupFeatures {
+            LookupFeatures {
+                patterns,
+                joint_lookup_used,
+                uses_runtime_tables,
+            }
+        }
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupInfo {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            max_per_row: usize,
+            max_joint_size: u32,
+            features: LookupFeatures,
+        ) -> LookupInfo {
+            LookupInfo {
+                max_per_row,
+                max_joint_size,
+                features,
+            }
+        }
     }
 }

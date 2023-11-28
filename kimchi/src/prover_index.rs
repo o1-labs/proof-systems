@@ -3,6 +3,7 @@
 use crate::{
     alphas::Alphas,
     circuits::{
+        berkeley_columns::Column,
         constraints::{ColumnEvaluations, ConstraintSystem},
         expr::{Linearization, PolishToken},
     },
@@ -11,7 +12,6 @@ use crate::{
     verifier_index::VerifierIndex,
 };
 use ark_ff::PrimeField;
-use ark_poly::EvaluationDomain;
 use mina_poseidon::FqSponge;
 use poly_commitment::{OpenProof, SRS as _};
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -29,7 +29,7 @@ pub struct ProverIndex<G: KimchiCurve, OpeningProof: OpenProof<G>> {
 
     /// The symbolic linearization of our circuit, which can compile to concrete types once certain values are learned in the protocol.
     #[serde(skip)]
-    pub linearization: Linearization<Vec<PolishToken<G::ScalarField>>>,
+    pub linearization: Linearization<Vec<PolishToken<G::ScalarField, Column>>, Column>,
 
     /// The mapping between powers of alpha and constraints
     #[serde(skip)]
@@ -61,22 +61,12 @@ where
     G::BaseField: PrimeField,
 {
     /// this function compiles the index from constraints
-    ///
-    /// # Panics
-    ///
-    /// Will panic if `polynomial segment size` is bigger than `circuit`.
     pub fn create(
         mut cs: ConstraintSystem<G::ScalarField>,
         endo_q: G::ScalarField,
         srs: Arc<OpeningProof::SRS>,
     ) -> Self {
         let max_poly_size = srs.max_poly_size();
-        if cs.public > 0 {
-            assert!(
-                max_poly_size >= cs.domain.d1.size(),
-                "polynomial segment size has to be not smaller than that of the circuit!"
-            );
-        }
         cs.endo = endo_q;
 
         // pre-compute the linearization
@@ -155,10 +145,11 @@ pub mod testing {
     use ark_poly::{EvaluationDomain, Radix2EvaluationDomain as D};
     use poly_commitment::{evaluation_proof::OpeningProof, srs::SRS, OpenProof};
 
+    #[allow(clippy::too_many_arguments)]
     pub fn new_index_for_test_with_lookups_and_custom_srs<
         G: KimchiCurve,
         OpeningProof: OpenProof<G>,
-        F: FnMut(D<G::ScalarField>) -> OpeningProof::SRS,
+        F: FnMut(D<G::ScalarField>, usize) -> OpeningProof::SRS,
     >(
         gates: Vec<CircuitGate<G::ScalarField>>,
         public: usize,
@@ -166,6 +157,7 @@ pub mod testing {
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
+        override_srs_size: Option<usize>,
         mut get_srs: F,
     ) -> ProverIndex<G, OpeningProof>
     where
@@ -179,10 +171,12 @@ pub mod testing {
             .public(public)
             .prev_challenges(prev_challenges)
             .disable_gates_checks(disable_gates_checks)
+            .max_poly_size(override_srs_size)
             .build()
             .unwrap();
 
-        let srs = get_srs(cs.domain.d1);
+        let srs_size = override_srs_size.unwrap_or_else(|| cs.domain.d1.size());
+        let srs = get_srs(cs.domain.d1, srs_size);
         let srs = Arc::new(srs);
 
         let &endo_q = G::other_curve_endo();
@@ -201,6 +195,7 @@ pub mod testing {
         lookup_tables: Vec<LookupTable<G::ScalarField>>,
         runtime_tables: Option<Vec<RuntimeTableCfg<G::ScalarField>>>,
         disable_gates_checks: bool,
+        override_srs_size: Option<usize>,
     ) -> ProverIndex<G, OpeningProof<G>>
     where
         G::BaseField: PrimeField,
@@ -213,13 +208,15 @@ pub mod testing {
             lookup_tables,
             runtime_tables,
             disable_gates_checks,
-            |d1: D<G::ScalarField>| {
-                let mut srs = if d1.log_size_of_group <= precomputed_srs::SERIALIZED_SRS_SIZE {
+            override_srs_size,
+            |d1: D<G::ScalarField>, size: usize| {
+                let log2_size = size.ilog2();
+                let mut srs = if log2_size <= precomputed_srs::SERIALIZED_SRS_SIZE {
                     // TODO: we should trim it if it's smaller
                     precomputed_srs::get_srs()
                 } else {
                     // TODO: we should resume the SRS generation starting from the serialized one
-                    SRS::<G>::create(d1.size())
+                    SRS::<G>::create(size)
                 };
 
                 srs.add_lagrange_basis(d1);
@@ -236,6 +233,6 @@ pub mod testing {
         G::BaseField: PrimeField,
         G::ScalarField: PrimeField + SquareRootField,
     {
-        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false)
+        new_index_for_test_with_lookups::<G>(gates, public, 0, vec![], None, false, None)
     }
 }

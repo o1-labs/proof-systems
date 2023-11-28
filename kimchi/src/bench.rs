@@ -96,6 +96,7 @@ impl BenchmarkCtx {
         )
     }
 
+    #[allow(clippy::type_complexity)]
     pub fn batch_verification(&self, batch: &[(ProverProof<Vesta, OpeningProof<Vesta>>, Vec<Fp>)]) {
         // verify the proof
         let batch: Vec<_> = batch

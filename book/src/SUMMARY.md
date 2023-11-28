@@ -58,17 +58,6 @@
     - [Permutation](./kimchi/permut.md)
     - [Lookup](./kimchi/lookup.md)
 
-# Snarky
-
-- [Overview](./snarky/overview.md)
-- [API](./snarky/api.md)
-- [snarky wrapper](./snarky/snarky-wrapper.md)
-- [Kimchi backend](./snarky/kimchi-backend.md)
-- [Vars](./snarky/vars.md)
-- [Booleans](./snarky/booleans.md)
-- [Circuit generation](./snarky/circuit-generation.md)
-- [Witness generation](./snarky/witness-generation.md)
-
 # Pickles & Inductive Proof Systems
 
 - [Overview](./fundamentals/zkbook_ips.md)
@@ -84,8 +73,7 @@
 - [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
 - [RFC 4: Extended lookup tables](./rfcs/extended-lookup-tables.md)
 - [RFC 5: Foreign Field Addition](./rfcs/foreign_field_add.md)
-- [RFC 6: Foreign Field Multiplication](./rfcs/foreign_field_mul.md)
-- [RFC 7: Keccak](./rfcs/keccak.md)
+- [RFC 6: Keccak](./rfcs/keccak.md)
   
 # Specifications
 

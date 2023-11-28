@@ -1,11 +1,11 @@
-use crate::srs::SRS;
 use crate::{commitment::*, srs::endos};
+use crate::{srs::SRS, PolynomialsToCombine, SRS as _};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, ProjectiveCurve};
 use ark_ff::{FftField, Field, One, PrimeField, UniformRand, Zero};
 use ark_poly::{univariate::DensePolynomial, UVPolynomial};
 use ark_poly::{EvaluationDomain, Evaluations};
 use mina_poseidon::{sponge::ScalarChallenge, FqSponge};
-use o1_utils::math;
+use o1_utils::{math, ExtendedDensePolynomial};
 use rand_core::{CryptoRng, RngCore};
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -73,12 +73,8 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
 
 /// Combine the polynomials using `polyscale`, creating a single unified polynomial to open.
 pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
-    plnms: &[(
-        DensePolynomialOrEvaluations<G::ScalarField, D>,
-        Option<usize>,
-        PolyComm<G::ScalarField>,
-    )], // vector of polynomial with optional degree bound and commitment randomness
-    polyscale: G::ScalarField, // scaling factor for polynoms
+    plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
+    polyscale: G::ScalarField,         // scaling factor for polynoms
     srs_length: usize,
 ) -> (DensePolynomial<G::ScalarField>, G::ScalarField) {
     let mut plnm = ScaledChunkedPolynomial::<G::ScalarField, &[G::ScalarField]>::default();
@@ -118,9 +114,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     .for_each(|(i, x)| {
                         *x += scale * evals[i * stride];
                     });
-                assert_eq!(omegas.unshifted.len(), 1);
-                omega += &(omegas.unshifted[0] * scale);
-                scale *= &polyscale;
+                for j in 0..omegas.unshifted.len() {
+                    omega += &(omegas.unshifted[j] * scale);
+                    scale *= &polyscale;
+                }
+                // We assume here that we have no shifted segment.
+                // TODO: Remove shifted
             }
 
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
@@ -132,8 +131,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     assert!(omegas.shifted.is_none());
                 }
                 for j in 0..omegas.unshifted.len() {
-                    let segment =
-                        &p_i.coeffs[offset..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
+                    let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
+                        ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     // always mixing in the unshifted segments
                     plnm.add_unshifted(scale, segment);
 
@@ -158,8 +157,12 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     let mut plnm = plnm.to_dense_polynomial();
     if !plnm_evals_part.is_empty() {
         let n = plnm_evals_part.len();
-        plnm +=
-            &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap()).interpolate();
+        let max_poly_size = srs_length;
+        let num_chunks = n / max_poly_size;
+        plnm += &Evaluations::from_vec_and_domain(plnm_evals_part, D::new(n).unwrap())
+            .interpolate()
+            .to_chunked_polynomial(num_chunks, max_poly_size)
+            .linearize(polyscale);
     }
 
     (plnm, omega)
@@ -351,6 +354,55 @@ impl<G: CommitmentCurve> SRS<G> {
             z2,
             sg: g0,
         }
+    }
+
+    /// This function is a debugging helper.
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::type_complexity)]
+    #[allow(clippy::many_single_char_names)]
+    pub fn prover_polynomials_to_verifier_evaluations<D: EvaluationDomain<G::ScalarField>>(
+        &self,
+        plnms: &[(
+            DensePolynomialOrEvaluations<G::ScalarField, D>,
+            Option<usize>,
+            PolyComm<G::ScalarField>,
+        )], // vector of polynomial with optional degree bound and commitment randomness
+        elm: &[G::ScalarField], // vector of evaluation points
+    ) -> Vec<Evaluation<G>>
+    where
+        G::BaseField: PrimeField,
+    {
+        plnms
+            .iter()
+            .enumerate()
+            .map(|(i, (poly_or_evals, degree_bound, blinders))| {
+                let poly = match poly_or_evals {
+                    DensePolynomialOrEvaluations::DensePolynomial(poly) => (*poly).clone(),
+                    DensePolynomialOrEvaluations::Evaluations(evals, _) => {
+                        (*evals).clone().interpolate()
+                    }
+                };
+                let chunked_polynomial =
+                    poly.to_chunked_polynomial(blinders.unshifted.len(), self.g.len());
+                let chunked_commitment =
+                    { self.commit_non_hiding(&poly, blinders.unshifted.len(), None) };
+                let masked_commitment = match self.mask_custom(chunked_commitment, blinders) {
+                    Ok(comm) => comm,
+                    Err(err) => panic!("Error at index {i}: {err}"),
+                };
+                let chunked_evals = elm
+                    .iter()
+                    .map(|elm| chunked_polynomial.evaluate_chunks(*elm))
+                    .collect();
+                Evaluation {
+                    commitment: masked_commitment.commitment,
+
+                    evaluations: chunked_evals,
+
+                    degree_bound: *degree_bound,
+                }
+            })
+            .collect()
     }
 }
 

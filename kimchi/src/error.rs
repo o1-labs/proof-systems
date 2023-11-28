@@ -10,6 +10,11 @@ pub enum ProverError {
     #[error("the circuit is too large")]
     NoRoomForZkInWitness,
 
+    #[error(
+        "there are not enough random rows to achieve zero-knowledge (expected: {0}, got: {1})"
+    )]
+    NotZeroKnowledge(usize, usize),
+
     #[error("the witness columns are not all the same size")]
     WitnessCsInconsistent,
 
@@ -19,11 +24,8 @@ pub enum ProverError {
     #[error("the permutation was not constructed correctly: {0}")]
     Permutation(&'static str),
 
-    #[error("the lookup failed to find a match in the table")]
-    ValueNotInTable,
-
-    #[error("SRS size is smaller than the domain size required by the circuit")]
-    SRSTooSmall,
+    #[error("the lookup failed to find a match in the table: row={0}")]
+    ValueNotInTable(usize),
 
     #[error("the runtime tables provided did not match the index's configuration")]
     RuntimeTablesInconsistent,
@@ -35,8 +37,8 @@ pub enum ProverError {
 /// Errors that can arise when verifying a proof
 #[derive(Error, Debug, Clone, Copy)]
 pub enum VerifyError {
-    #[error("the commitment to {0} is of an unexpected size")]
-    IncorrectCommitmentLength(&'static str),
+    #[error("the commitment to {0} is of an unexpected size (expected {1}, got {2})")]
+    IncorrectCommitmentLength(&'static str, usize, usize),
 
     #[error("the public input is of an unexpected size (expected {0})")]
     IncorrectPubicInputLength(usize),
@@ -44,8 +46,10 @@ pub enum VerifyError {
     #[error("the previous challenges have an unexpected length (expected {0}, got {1})")]
     IncorrectPrevChallengesLength(usize, usize),
 
-    #[error("proof malformed: an evaluation was of the incorrect size (all evaluations are expected to be of length 1)")]
-    IncorrectEvaluationsLength,
+    #[error(
+        "proof malformed: an evaluation for {2} was of the incorrect size (expected {0}, got {1})"
+    )]
+    IncorrectEvaluationsLength(usize, usize, &'static str),
 
     #[error("the opening proof failed to verify")]
     OpenProof,
@@ -69,10 +73,23 @@ pub enum VerifyError {
     IncorrectRuntimeProof,
 
     #[error("the evaluation for {0:?} is missing")]
-    MissingEvaluation(crate::circuits::expr::Column),
+    MissingEvaluation(crate::circuits::berkeley_columns::Column),
+
+    #[error("the evaluation for PublicInput is missing")]
+    MissingPublicInputEvaluation,
 
     #[error("the commitment for {0:?} is missing")]
-    MissingCommitment(crate::circuits::expr::Column),
+    MissingCommitment(crate::circuits::berkeley_columns::Column),
+}
+
+/// Errors that can arise when preparing the setup
+#[derive(Error, Debug, Clone)]
+pub enum DomainCreationError {
+    #[error("could not compute the size of domain for {0}")]
+    DomainSizeFailed(usize),
+
+    #[error("construction of domain {0} for size {1} failed")]
+    DomainConstructionFailed(String, usize),
 }
 
 /// Errors that can arise when preparing the setup
@@ -82,7 +99,7 @@ pub enum SetupError {
     ConstraintSystem(String),
 
     #[error("the domain could not be constructed: {0}")]
-    DomainCreation(&'static str),
+    DomainCreation(DomainCreationError),
 }
 
 /// Errors that can arise when creating a verifier index

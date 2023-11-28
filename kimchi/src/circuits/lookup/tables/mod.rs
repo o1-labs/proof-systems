@@ -35,7 +35,7 @@ where
     pub fn has_zero_entry(&self) -> bool {
         // reminder: a table is written as a list of columns,
         // not as a list of row entries.
-        for row in 0..self.data[0].len() {
+        for row in 0..self.len() {
             for col in &self.data {
                 if !col[row].is_zero() {
                     continue;
@@ -45,6 +45,13 @@ where
         }
 
         false
+    }
+
+    /// Returns the number of columns, i.e. the width of the table.
+    /// It is less error prone to introduce this method than using the public
+    /// field data.
+    pub fn width(&self) -> usize {
+        self.data.len()
     }
 
     /// Returns the length of the table.
@@ -147,4 +154,57 @@ where
     }
 
     PolyComm::multi_scalar_mul(&commitments, &scalars)
+}
+
+#[cfg(feature = "ocaml_types")]
+pub mod caml {
+    use ark_ff::PrimeField;
+    use ocaml;
+    use ocaml_gen;
+
+    use super::LookupTable;
+
+    //
+    // CamlLookupTable<CamlF>
+    //
+
+    #[derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
+    pub struct CamlLookupTable<CamlF> {
+        pub id: i32,
+        pub data: Vec<Vec<CamlF>>,
+    }
+
+    impl<F, CamlF> From<CamlLookupTable<CamlF>> for LookupTable<F>
+    where
+        F: PrimeField,
+        CamlF: Into<F>,
+    {
+        fn from(caml_lt: CamlLookupTable<CamlF>) -> Self {
+            Self {
+                id: caml_lt.id,
+                data: caml_lt
+                    .data
+                    .into_iter()
+                    .map(|t| t.into_iter().map(Into::into).collect())
+                    .collect(),
+            }
+        }
+    }
+
+    impl<F, CamlF> From<LookupTable<F>> for CamlLookupTable<CamlF>
+    where
+        F: PrimeField,
+        CamlF: From<F>,
+    {
+        fn from(lt: LookupTable<F>) -> Self {
+            Self {
+                id: lt.id,
+                data: lt
+                    .data
+                    .into_iter()
+                    .map(|t| t.into_iter().map(Into::into).collect())
+                    .collect(),
+            }
+        }
+    }
 }

@@ -5,8 +5,8 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, turshi, varbasemul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, keccak,
+            poseidon, range_check, rot, turshi, varbasemul, xor,
         },
         wires::*,
     },
@@ -22,11 +22,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{
-    argument::ArgumentWitness,
-    expr,
-    polynomials::{rot, xor},
-};
+use super::{argument::ArgumentWitness, expr};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -85,34 +81,36 @@ impl CurrOrNext {
 pub enum GateType {
     #[default]
     /// Zero gate
-    Zero = 0,
+    Zero,
     /// Generic arithmetic gate
-    Generic = 1,
+    Generic,
     /// Poseidon permutation gate
-    Poseidon = 2,
+    Poseidon,
     /// Complete EC addition in Affine form
-    CompleteAdd = 3,
+    CompleteAdd,
     /// EC variable base scalar multiplication
-    VarBaseMul = 4,
+    VarBaseMul,
     /// EC variable base scalar multiplication with group endomorphim optimization
-    EndoMul = 5,
+    EndoMul,
     /// Gate for computing the scalar corresponding to an endoscaling
-    EndoMulScalar = 6,
+    EndoMulScalar,
     // Lookup
-    Lookup = 11,
+    Lookup,
     /// Cairo
-    CairoClaim = 12,
-    CairoInstruction = 13,
-    CairoFlags = 14,
-    CairoTransition = 15,
+    CairoClaim,
+    CairoInstruction,
+    CairoFlags,
+    CairoTransition,
     /// Range check
-    RangeCheck0 = 16,
-    RangeCheck1 = 17,
-    ForeignFieldAdd = 18,
-    ForeignFieldMul = 19,
+    RangeCheck0,
+    RangeCheck1,
+    ForeignFieldAdd,
+    ForeignFieldMul,
     // Gates for Keccak
-    Xor16 = 20,
-    Rot64 = 21,
+    Xor16,
+    Rot64,
+    KeccakRound,
+    KeccakSponge,
 }
 
 /// Gate error
@@ -230,6 +228,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Rot64 => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
+            KeccakRound => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            KeccakSponge => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -252,6 +256,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             joint_combiner: Some(F::one()),
             endo_coefficient: cs.endo,
             mds: &G::sponge_params().mds,
+            zk_rows: cs.zk_rows,
         };
         // Create the argument environment for the constraints over field elements
         let env = ArgumentEnv::<F, F>::create(argument_witness, self.coeffs.clone(), constants);
@@ -322,6 +327,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
+            GateType::KeccakRound => {
+                keccak::circuitgates::KeccakRound::constraint_checks(&env, &mut cache)
+            }
+            GateType::KeccakSponge => {
+                keccak::circuitgates::KeccakSponge::constraint_checks(&env, &mut cache)
+            }
         };
 
         // Check for failed constraints

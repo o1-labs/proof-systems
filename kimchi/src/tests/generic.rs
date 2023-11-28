@@ -96,7 +96,6 @@ fn test_generic_gate_pairing() {
     type ScalarSponge = DefaultFrSponge<Fp, SpongeParams>;
 
     use ark_ff::UniformRand;
-    use ark_poly::EvaluationDomain;
 
     let public = vec![Fp::from(3u8); 5];
     let gates = create_circuit(0, public.len());
@@ -116,8 +115,8 @@ fn test_generic_gate_pairing() {
     .gates(gates)
     .witness(witness)
     .public_inputs(public)
-    .setup_with_custom_srs(|d1| {
-        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, d1.size());
+    .setup_with_custom_srs(|d1, usize| {
+        let mut srs = poly_commitment::pairing_proof::PairingSRS::create(x, usize);
         srs.full_srs.add_lagrange_basis(d1);
         srs
     })

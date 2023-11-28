@@ -1,7 +1,7 @@
 use crate::commitment::*;
 use crate::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
 use crate::srs::SRS;
-use crate::{CommitmentError, SRS as SRSTrait};
+use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
 use ark_ff::{PrimeField, Zero};
 use ark_poly::{
@@ -37,8 +37,8 @@ impl<Pair: PairingEngine> Default for PairingProof<Pair> {
 impl<Pair: PairingEngine> Clone for PairingProof<Pair> {
     fn clone(&self) -> Self {
         Self {
-            quotient: self.quotient.clone(),
-            blinding: self.blinding.clone(),
+            quotient: self.quotient,
+            blinding: self.blinding,
         }
     }
 }
@@ -163,10 +163,11 @@ impl<
     fn commit(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        self.full_srs.commit(plnm, max, rng)
+        self.full_srs.commit(plnm, num_chunks, max, rng)
     }
 
     fn mask_custom(
@@ -188,9 +189,10 @@ impl<
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
+        num_chunks: usize,
         max: Option<usize>,
     ) -> PolyComm<G> {
-        self.full_srs.commit_non_hiding(plnm, max)
+        self.full_srs.commit_non_hiding(plnm, num_chunks, max)
     }
 
     fn commit_evaluations_non_hiding(
@@ -259,13 +261,9 @@ impl<
 {
     pub fn create<D: EvaluationDomain<G::ScalarField>>(
         srs: &PairingSRS<Pair>,
-        plnms: &[(
-            DensePolynomialOrEvaluations<G::ScalarField, D>,
-            Option<usize>,
-            PolyComm<G::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[G::ScalarField],    // vector of evaluation points
-        polyscale: G::ScalarField, // scaling factor for polynoms
+        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with optional degree bound and commitment randomness
+        elm: &[G::ScalarField],            // vector of evaluation points
+        polyscale: G::ScalarField,         // scaling factor for polynoms
     ) -> Option<Self> {
         let (p, blinding_factor) = combine_polys::<G, D>(plnms, polyscale, srs.full_srs.g.len());
         let evals: Vec<_> = elm.iter().map(|pt| p.evaluate(pt)).collect();
@@ -275,7 +273,7 @@ impl<
             let divisor_polynomial = divisor_polynomial(elm);
             let numerator_polynomial = &p - &eval_polynomial;
             let (quotient, remainder) = DenseOrSparsePolynomial::divide_with_q_and_r(
-                &numerator_polynomial.clone().into(),
+                &numerator_polynomial.into(),
                 &divisor_polynomial.into(),
             )?;
             if !remainder.is_zero() {
@@ -286,7 +284,7 @@ impl<
 
         let quotient = srs
             .full_srs
-            .commit_non_hiding(&quotient_poly, None)
+            .commit_non_hiding(&quotient_poly, 1, None)
             .unshifted[0];
 
         Some(PairingProof {
@@ -319,11 +317,11 @@ impl<
         let blinding_commitment = srs.full_srs.h.mul(self.blinding);
         let divisor_commitment = srs
             .verifier_srs
-            .commit_non_hiding(&divisor_polynomial(elm), None)
+            .commit_non_hiding(&divisor_polynomial(elm), 1, None)
             .unshifted[0];
         let eval_commitment = srs
             .full_srs
-            .commit_non_hiding(&eval_polynomial(elm, &evals), None)
+            .commit_non_hiding(&eval_polynomial(elm, &evals), 1, None)
             .unshifted[0]
             .into_projective();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
@@ -382,7 +380,7 @@ mod tests {
 
         let comms: Vec<_> = polynomials
             .iter()
-            .map(|p| srs.full_srs.commit(p, None, rng))
+            .map(|p| srs.full_srs.commit(p, 1, None, rng))
             .collect();
 
         let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _, _)> =
@@ -399,7 +397,7 @@ mod tests {
 
         let evaluations: Vec<_> = polynomials
             .iter()
-            .zip(comms.into_iter())
+            .zip(comms)
             .map(|(p, commitment)| {
                 let evaluations = evaluation_points
                     .iter()
