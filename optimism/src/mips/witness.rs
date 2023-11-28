@@ -292,7 +292,6 @@ impl<Fp: Field> Env<Fp> {
     pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
         let instruction = self.decode_instruction();
         println!("instruction: {:?}", instruction);
-        interpreter::interpret_instruction(self, instruction);
 
         self.pp_info(config.info_at, metadata, start);
 
@@ -301,6 +300,8 @@ impl<Fp: Field> Env<Fp> {
             self.halt = true;
             return;
         }
+
+        interpreter::interpret_instruction(self, instruction);
     }
 
     fn should_trigger_at(&self, at: StepFrequency) -> bool {
