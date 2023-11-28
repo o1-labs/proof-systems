@@ -94,7 +94,13 @@ pub enum ITypeInstruction {
     StoreWordRight,               // swr
 }
 
-pub trait InterpreterEnv {}
+pub trait InterpreterEnv {
+    type Variable: Clone + std::ops::Add<Self::Variable, Output = Self::Variable>;
+
+    fn constant(x: u32) -> Self::Variable;
+
+    fn set_halted(&mut self, flag: Self::Variable);
+}
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
     match instr {
@@ -104,7 +110,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
     }
 }
 
-pub fn interpret_rtype<Env: InterpreterEnv>(_env: &mut Env, instr: RTypeInstruction) {
+pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
     match instr {
         RTypeInstruction::ShiftLeftLogical => (),
         RTypeInstruction::ShiftRightLogical => (),
@@ -147,17 +153,21 @@ pub fn interpret_rtype<Env: InterpreterEnv>(_env: &mut Env, instr: RTypeInstruct
         RTypeInstruction::MultiplyToRegister => (),
         RTypeInstruction::CountLeadingOnes => (),
         RTypeInstruction::CountLeadingZeros => (),
-    }
+    };
+    // TODO: Don't halt.
+    env.set_halted(Env::constant(1));
 }
 
-pub fn interpret_jtype<Env: InterpreterEnv>(_env: &mut Env, instr: JTypeInstruction) {
+pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
     match instr {
         JTypeInstruction::Jump => (),
         JTypeInstruction::JumpAndLink => (),
-    }
+    };
+    // TODO: Don't halt.
+    env.set_halted(Env::constant(1));
 }
 
-pub fn interpret_itype<Env: InterpreterEnv>(_env: &mut Env, instr: ITypeInstruction) {
+pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
     match instr {
         ITypeInstruction::BranchEq => (),
         ITypeInstruction::BranchNeq => (),
@@ -183,5 +193,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(_env: &mut Env, instr: ITypeInstruct
         ITypeInstruction::Store32 => (),
         ITypeInstruction::StoreWordLeft => (),
         ITypeInstruction::StoreWordRight => (),
-    }
+    };
+    // TODO: Don't halt.
+    env.set_halted(Env::constant(1));
 }

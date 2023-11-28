@@ -95,7 +95,23 @@ fn memory_size(total: usize) -> String {
     }
 }
 
-impl<Fp: Field> InterpreterEnv for Env<Fp> {}
+impl<Fp: Field> InterpreterEnv for Env<Fp> {
+    type Variable = u32;
+
+    fn constant(x: u32) -> Self::Variable {
+        x
+    }
+
+    fn set_halted(&mut self, flag: Self::Variable) {
+        if flag == 0 {
+            self.halt = false
+        } else if flag == 1 {
+            self.halt = true
+        } else {
+            panic!("Bad value for flag in set_halted: {}", flag);
+        }
+    }
+}
 
 impl<Fp: Field> Env<Fp> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
@@ -285,9 +301,6 @@ impl<Fp: Field> Env<Fp> {
             self.halt = true;
             return;
         }
-
-        // TODO
-        self.halt = true;
     }
 
     fn should_trigger_at(&self, at: StepFrequency) -> bool {
