@@ -4,7 +4,9 @@ use crate::{
         PAGE_SIZE,
     },
     mips::{
-        interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
+        interpreter::{
+            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
+        },
         registers::Registers,
     },
     preimage_oracle::PreImageOracle,
@@ -92,6 +94,8 @@ fn memory_size(total: usize) -> String {
         format!("{:.1} {}iB", value, prefix)
     }
 }
+
+impl<Fp: Field> InterpreterEnv for Env<Fp> {}
 
 impl<Fp: Field> Env<Fp> {
     pub fn create(page_size: usize, state: State, preimage_oracle: PreImageOracle) -> Self {
@@ -270,7 +274,9 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
-        println!("instruction: {:?}", self.decode_instruction());
+        let instruction = self.decode_instruction();
+        println!("instruction: {:?}", instruction);
+        interpreter::interpret_instruction(self, instruction);
 
         self.pp_info(config.info_at, metadata, start);
 
