@@ -356,13 +356,13 @@ where
         fr_sponge.absorb_multiple(&public_evals[1]);
         fr_sponge.absorb_evaluations(&self.evals);
 
-        //~ 1. Sample $v'$ with the Fr-Sponge.
+        //~ 1. Sample the "polyscale" $v'$ with the Fr-Sponge.
         let v_chal = fr_sponge.challenge();
 
         //~ 1. Derive $v$ from $v'$ using the endomorphism (TODO: specify).
         let v = v_chal.to_field(endo_r);
 
-        //~ 1. Sample $u'$ with the Fr-Sponge.
+        //~ 1. Sample the "evalscale" $u'$ with the Fr-Sponge.
         let u_chal = fr_sponge.challenge();
 
         //~ 1. Derive $u$ from $u'$ using the endomorphism (TODO: specify).
