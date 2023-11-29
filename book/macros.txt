@@ -64,5 +64,5 @@
 \counter:{\mathsf{counter}}
 \prg:{\small \mathsf{PRG}}
 
-\plonk:\textsf{Plonk}
+\plonk:\mathcal{PlonK}
 \plookup:\textsf{Plookup}
