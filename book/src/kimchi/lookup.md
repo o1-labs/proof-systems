@@ -116,7 +116,7 @@ where $\color{green}{\mathsf{query}}$ is constructed so that a dummy query ($0 \
 
 $$
 \begin{align}
-\mathsf{query} := &\ \mathsf{selector} \cdot (\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i)) + \\
+\mathsf{query} := &\ \mathsf{selector} \cdot (\gamma + j^0 \cdot 1 \cdot w_0(g^i) + j \cdot 1 \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i)) + \\
 &\ (1- \mathsf{selector}) \cdot (\gamma + 0 + j \cdot 0 + j^2 \cdot 0)
 \end{align}
 $$
