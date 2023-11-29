@@ -9,7 +9,7 @@ pub fn bench_proof_creation(c: &mut Criterion) {
         let ctx = BenchmarkCtx::new(size);
 
         group.bench_function(
-            format!("proof creation ({} gates)", ctx.num_gates),
+            format!("proof creation (SRS size 2^{{{}}}, {} gates)", ctx.srs_size(), ctx.num_gates),
             |b| b.iter(|| black_box(ctx.create_proof())),
         );
     }
@@ -24,7 +24,7 @@ pub fn bench_proof_verification(c: &mut Criterion) {
         let proof_and_public = ctx.create_proof();
 
         group.bench_function(
-            format!("proof verification ({} gates)", ctx.num_gates),
+            format!("proof verification (SRS size 2^{{{}}}, {} gates)", ctx.srs_size(), ctx.num_gates),
             |b| b.iter(|| ctx.batch_verification(black_box(&vec![proof_and_public.clone()]))),
         );
     }
