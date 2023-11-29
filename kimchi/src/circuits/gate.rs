@@ -5,8 +5,8 @@ use crate::{
         argument::{Argument, ArgumentEnv},
         constraints::ConstraintSystem,
         polynomials::{
-            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul,
-            poseidon, range_check, turshi, varbasemul,
+            complete_add, endomul_scalar, endosclmul, foreign_field_add, foreign_field_mul, keccak,
+            poseidon, range_check, rot, turshi, varbasemul, xor,
         },
         wires::*,
     },
@@ -22,11 +22,7 @@ use serde_with::serde_as;
 use std::io::{Result as IoResult, Write};
 use thiserror::Error;
 
-use super::{
-    argument::ArgumentWitness,
-    expr,
-    polynomials::{rot, xor},
-};
+use super::{argument::ArgumentWitness, expr};
 
 /// A row accessible from a given row, corresponds to the fact that we open all polynomials
 /// at `zeta` **and** `omega * zeta`.
@@ -113,6 +109,8 @@ pub enum GateType {
     // Gates for Keccak
     Xor16,
     Rot64,
+    KeccakRound,
+    KeccakSponge,
 }
 
 /// Gate error
@@ -230,6 +228,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             Rot64 => self
                 .verify_witness::<G>(row, witness, &index.cs, public)
                 .map_err(|e| e.to_string()),
+            KeccakRound => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
+            KeccakSponge => self
+                .verify_witness::<G>(row, witness, &index.cs, public)
+                .map_err(|e| e.to_string()),
         }
     }
 
@@ -323,6 +327,12 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
             GateType::Xor16 => xor::Xor16::constraint_checks(&env, &mut cache),
             GateType::Rot64 => rot::Rot64::constraint_checks(&env, &mut cache),
+            GateType::KeccakRound => {
+                keccak::circuitgates::KeccakRound::constraint_checks(&env, &mut cache)
+            }
+            GateType::KeccakSponge => {
+                keccak::circuitgates::KeccakSponge::constraint_checks(&env, &mut cache)
+            }
         };
 
         // Check for failed constraints

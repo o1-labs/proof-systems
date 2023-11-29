@@ -3,8 +3,9 @@
 use crate::{
     circuits::{
         argument::ArgumentType,
+        berkeley_columns::Column,
         constraints::ConstraintSystem,
-        expr::{Column, Constants, PolishToken},
+        expr::{Constants, PolishToken},
         gate::GateType,
         lookup::{lookups::LookupPattern, tables::combine_table},
         polynomials::permutation,
@@ -85,6 +86,8 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>> Context<'a, G, OpeningProof
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
+                    KeccakRound => todo!(),
+                    KeccakSponge => todo!(),
                 }
             }
         }
