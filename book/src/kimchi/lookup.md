@@ -1,12 +1,12 @@
-# Plookup in Kimchi
+# $\plookup$ in Kimchi
 
-In 2020, [plookup](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate Plookup into $\plonk$.
+In 2020, [$\plookup$](https://eprint.iacr.org/2020/315.pdf) showed how to create lookup proofs. Proofs that some witness values are part of a [lookup table](https://en.wikipedia.org/wiki/Lookup_table). Two years later, an independent team published [plonkup](https://eprint.iacr.org/2022/086) showing how to integrate $\plookup$ into $\plonk$.
 
-This document specifies how we integrate plookup in kimchi. It assumes that the reader understands the basics behind plookup.
+This document specifies how we integrate $\plookup$ in kimchi. It assumes that the reader understands the basics behind $\plookup$.
 
 ## Overview
 
-We integrate plookup in kimchi with the following differences:
+We integrate $\plookup$ in kimchi with the following differences:
 
 * we snake-ify the sorted table instead of wrapping it around (see later)
 * we allow fixed-ahead-of-time linear combinations of columns of the queries we make
@@ -16,15 +16,15 @@ We integrate plookup in kimchi with the following differences:
 
 The following document explains the protocol in more detail
 
-### Recap on the grand product argument of plookup
+### Recap on the grand product argument of $\plookup$
 
-As per the Plookup paper, the prover will have to compute three vectors:
+As per the $\plookup$ paper, the prover will have to compute three vectors:
 
 * $f$, the (secret) **query vector**, containing the witness values that the prover wants to prove are part of the lookup table.
 * $t$, the (public) **lookup table**.
 * $s$, the (secret) concatenation of $f$ and $t$, sorted by $t$ (where elements are listed in the order they are listed in $t$).
 
-Essentially, plookup proves that all the elements in $f$ are indeed in the lookup table $t$ if and only if the following multisets are equal:
+Essentially, $\plookup$ proves that all the elements in $f$ are indeed in the lookup table $t$ if and only if the following multisets are equal:
 
 * $\{(1+\beta)f, \text{diff}(t)\}$
 * $\text{diff}(\text{sorted}(f, t))$
@@ -58,13 +58,13 @@ The equality between the multisets can be proved with the permutation argument o
     \mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(\gamma + (1+\beta) f_{i-1}) \cdot (\gamma + t_{i-1} + \beta t_i)}{(\gamma + s_{i-1} + \beta s_{i})(\gamma + s_{n+i-1} + \beta s_{n+i})}
     $$
 
-Note that the plookup paper uses a slightly different equation to make the proof work. It is possible that the proof would work with the above equation, but for simplicity let's just use the equation published in plookup:
+Note that the $\plookup$ paper uses a slightly different equation to make the proof work. It is possible that the proof would work with the above equation, but for simplicity let's just use the equation published in $\plookup$:
 
 $$
 \mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot (\gamma + f_{i-1}) \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
 $$
 
-> Note: in plookup $s$ is longer than $n$ ($|s| = |f| + |t|$), and thus it needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. This leads to the two terms in the denominator as shown above, so that the degree of $\gamma (1 + \beta)$ is equal in the nominator and denominator.
+> Note: in $\plookup$ $s$ is longer than $n$ ($|s| = |f| + |t|$), and thus it needs to be split into multiple vectors to enforce the constraint at every $i \in [[0;n]]$. This leads to the two terms in the denominator as shown above, so that the degree of $\gamma (1 + \beta)$ is equal in the nominator and denominator.
 
 ### Lookup tables
 
@@ -84,7 +84,7 @@ Note: the $(0, 0, 0)$ **entry** is at the very end on purpose (as it will be use
 
 ### Querying the table
 
-The plookup paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
+The $\plookup$ paper handles a vector of lookups $f$ which we do not have. So the first step is to create such a table from the witness columns (or registers). To do this, we define the following objects:
 
 * a **query** tells us what registers, in what order, and scaled by how much, are part of a query
 * a **query selector** tells us which rows are using the query. It is pretty much the same as a [gate selector]().
@@ -245,11 +245,11 @@ which is equivalent to checking that $h_1(g^{n-1}) = h_2(1)$.
 
 ## The sorted vector $s$ in kimchi
 
-Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the corresponding polynomial (in case of plookup approach, to $h_1(X),h_2(X)$). To do this in kimchi, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial.
+Since this vector is known only by the prover, and is evaluated as part of the protocol, zero-knowledge must be added to the corresponding polynomial (in case of $\plookup$ approach, to $h_1(X),h_2(X)$). To do this in kimchi, we use the same technique as with the other prover polynomials: we randomize the last evaluations (or rows, on the domain) of the polynomial.
 
 This means two things for the lookup grand product argument:
 
-1. We cannot use the wrap around trick to make sure that the list is split in two correctly (enforced by $L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$ which is equivalent to $h_1(g^{n-1}) = h_2(1)$ in the plookup paper)
+1. We cannot use the wrap around trick to make sure that the list is split in two correctly (enforced by $L_{n-1}(h_1(x) - h_2(g \cdot x)) = 0$ which is equivalent to $h_1(g^{n-1}) = h_2(1)$ in the $\plookup$ paper)
 2. We have even less space to store an entire query vector. Which is actually super correct, as the witness also has some zero-knowledge rows at the end that should not be part of the queries anyway.
 
 The first problem can be solved in two ways:
