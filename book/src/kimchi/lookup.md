@@ -57,7 +57,8 @@ $$
 
 ### Lookup tables
 
-Kimchi uses a single **lookup table** at the moment of this writing; the XOR table. The XOR table for values of 1 bit is the following:
+<!-- This sentence must be changed if we update ../../../kimchi/src/circuits/lookup/tables/mod.rs -->
+Kimchi uses different lookup tables, including RangeCheck and XOR. The XOR table for values of 1 bit is the following:
 
 
 | l   | r   | o   |
