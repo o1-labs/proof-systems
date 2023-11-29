@@ -105,7 +105,7 @@ The associated **query selector** tells us on which rows the query into the XOR 
 |   1   |       0        |
 
 
-Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time. Currently only the ChaCha gates make use of the lookups.
+Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time.
 
 With the selectors, the grand product argument for the lookup constraint has the following form:
 
@@ -126,7 +126,10 @@ $$
 
 Since we would like to allow multiple table lookups per row, we define multiple **queries**, where each query is associated with a **lookup selector**.
 
-At the moment of this writing, the `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
+Previously, ChaCha20 was implemented in Kimchi but has been removed as unneeded.
+You can still find the implementation
+[here](https://github.com/o1-labs/proof-systems/blob/601e0adb2a4ba325c9a76468b091ded2bc7b0f70/kimchi/src/circuits/polynomials/chacha.rs).
+The `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
 
 **Important**: to make constraints work, this means that each row must make $4$ queries. Potentially some or all of them are dummy queries.
 
