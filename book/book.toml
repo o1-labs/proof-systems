@@ -17,6 +17,8 @@ additional-js = ["mermaid.min.js", "mermaid-init.js"]
 [output.katex]
 [preprocessor.katex]
 macros = "macros.txt" # crypto related macros (as close to cryptocode as possible)
+throw-on-error = true
+error-color = "#cc0000"
 
 # for callouts
 [preprocessor.admonish]
