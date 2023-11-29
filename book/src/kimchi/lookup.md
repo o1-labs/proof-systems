@@ -10,7 +10,8 @@ We integrate plookup in kimchi with the following differences:
 
 * we snake-ify the sorted table instead of wrapping it around (see later)
 * we allow fixed-ahead-of-time linear combinations of columns of the queries we make
-* we only use a single table (XOR) at the moment of this writing
+<!-- This sentence must be changed if we update ../../../kimchi/src/circuits/lookup/tables/mod.rs -->
+* we implemented different tables, like RangeCheck and XOR.
 * we allow several lookups (or queries) to be performed within the same row
 * zero-knowledgeness is added in a specific way (see later)
 
