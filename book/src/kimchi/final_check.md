@@ -70,7 +70,7 @@ $$\begin{align}
     & (w[5](\zeta) + \beta \cdot \sigma[5](\zeta) + \gamma) \cdot \\
     & (w[6](\zeta) + \gamma)
     \end{align}$$
-    
+
 So at the end, when we have to check for the identity $f(\zeta) = Z_H(\zeta) t(\zeta)$ we'll actually have to check something like this (I colored the missing parts on the left hand side of the equation):
 
 $$
@@ -151,7 +151,7 @@ $$
 & = \color{darkred}{(1 - z(\zeta))[\frac{(\zeta^n - 1)}{n(\zeta - 1)} \alpha^{PERM1} + \frac{\omega^{n-k}(\zeta^n - 1)}{n(\zeta - \omega^{n-k})} \alpha^{PERM2}]}
 \end{align}
 $$
-    
+
 finally we extract some terms from the lagrange basis:
 
 $$
@@ -182,7 +182,7 @@ $$
 
 with $\alpha^{PERM0} = \alpha^{17}, \alpha^{PERM1} = \alpha^{18}, \alpha^{PERM2} = \alpha^{19}$
 
-Why do we do things this way? Most likely to reduce 
+Why do we do things this way? Most likely to reduce
 
 Also, about the code:
 
@@ -230,7 +230,7 @@ $$
 
 and `bnd` is:
 
-$$bnd(x) = 
+$$bnd(x) =
     a^{PERM1} \cdot \frac{z(x) - 1}{x - 1}
     +
     a^{PERM2} \cdot \frac{z(x) - 1}{x - sid[n-k]}
