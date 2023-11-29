@@ -65,3 +65,4 @@
 \prg:{\small \mathsf{PRG}}
 
 \plonk:\textsf{Plonk}
+\plookup:\textsf{Plookup}
