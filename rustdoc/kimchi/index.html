@@ -2,7 +2,7 @@
 <p>Kimchi is based on <a href="https://eprint.iacr.org/2019/953.pdf">plonk</a>, a zk-SNARK protocol.</p>
 <h3 id="benchmarks"><a href="#benchmarks">Benchmarks</a></h3>
 <p>To bench kimchi, we have two types of benchmark engines. </p>
-<p><a href="https://bheisler.github.io/criterion.rs/">Criterion</a> is used to benchmark time:</p>
+<p><a href="https://bheisler.github.io/criterion.rs/">Criterion</a> is used to benchmark time. If you have installed <a href="https://github.com/bheisler/cargo-criterion">cargo-criterion</a> and <a href="http://www.gnuplot.info">gnuplot</a>, you can run the benchmarks via</p>
 <div class="example-wrap"><pre class="language-console"><code>$ cargo criterion -p kimchi --bench proof_criterion
 </code></pre></div>
 <p>The result will appear in <code>target/criterion/single\ proof/report/index.html</code> and look like this:</p>

@@ -169,7 +169,7 @@
 <span class="kw">type </span>ScalarSponge = DefaultFrSponge&lt;Fp, SpongeParams&gt;;
 
 <span class="kw">pub struct </span>BenchmarkCtx {
-    num_gates: usize,
+    <span class="kw">pub </span>num_gates: usize,
     group_map: BWParameters&lt;VestaParameters&gt;,
     index: ProverIndex&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;,
     verifier_index: VerifierIndex&lt;Vesta, OpeningProof&lt;Vesta&gt;&gt;,

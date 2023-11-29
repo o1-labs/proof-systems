@@ -99,7 +99,7 @@
 
 <span class="doccomment">/// The path of the serialized SRS.
 </span><span class="kw">fn </span>get_srs_path&lt;G: KimchiCurve&gt;() -&gt; PathBuf {
-    <span class="kw">let </span>base_path = std::env::var(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>).expect(<span class="string">&quot;failed to get manifest path&quot;</span>);
+    <span class="kw">let </span>base_path = <span class="macro">env!</span>(<span class="string">&quot;CARGO_MANIFEST_DIR&quot;</span>);
     PathBuf::from(base_path)
         .join(<span class="string">&quot;../srs&quot;</span>)
         .join(<span class="macro">format!</span>(<span class="string">&quot;{}.srs&quot;</span>, G::NAME))
