@@ -200,7 +200,7 @@ The denominator thus becomes $\prod_{k=1}^{5} (\gamma (1+\beta) + s_{kn+i-1} + \
 
 There are two things that we haven't touched on:
 
-* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit (for now only one, the XOR lookup table, can be used in the circuit).
+* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit.
 * The vector $s$ representing the sorted multiset of both the queries and the lookup table. This is created by the prover and sent as commitment to the verifier.
 
 The first vector $t$ is quite straightforward to think about:
