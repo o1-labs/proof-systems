@@ -7,7 +7,7 @@ MDBOOK_KATEX_VERSION = 0.3.8
 MDBOOK_ADMONISH_VERSION = 1.14.0
 MDBOOK_LINKCHECK_VERSION = 0.7.7
 MDBOOK_MERMAID_VERSION = 0.12.6
-MDBOOK_TOC_VERSION = 0.11.2
+MDBOOK_TOC_VERSION = 0.14.1
 
 #
 # use `make deps` to install the dependencies required to serve or build the book
