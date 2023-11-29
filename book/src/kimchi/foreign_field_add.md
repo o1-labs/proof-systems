@@ -15,7 +15,7 @@ If $f < n$ then we can easily perform the above computation. But in this gate we
 - our foreign field will have 256-bit length
 - our native field has 255-bit length
 
-In other words, using 3 limbs of 88 bits each allows us to represent any foreign field element in the range $[0,2^{264})$ for foreign field addition, but only up to $2^{259}$ for foreign field multiplication. Thus, with the current configuration of our limbs, our foreign field must be smaller than $2^{259}$ (because $2^{264} \cdot 2^{255} > {2^{259}}^2 + 2^{259}$, more on this in the [FFmul RFC](../rfcs/ffmul.md).
+In other words, using 3 limbs of 88 bits each allows us to represent any foreign field element in the range $[0,2^{264})$ for foreign field addition, but only up to $2^{259}$ for foreign field multiplication. Thus, with the current configuration of our limbs, our foreign field must be smaller than $2^{259}$ (because $2^{264} \cdot 2^{255} > {2^{259}}^2 + 2^{259}$, more on this in the [FFmul RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 
 ### Splitting the addition
 
@@ -273,7 +273,7 @@ Otherwise, we would need range checks for each new input of the chain, but none 
 | 5n+7..5n+10     | `multi-range-check` for bound                         | $u$       |
 
 
-For more details see the Bound Addition section of the [Foreign Field Multiplication RFC](../rfcs/ffmul.md).
+For more details see the Bound Addition section of the [Foreign Field Multiplication RFC](https://github.com/o1-labs/rfcs/blob/main/0006-ffmul-revised.md).
 
 ### Layout
 

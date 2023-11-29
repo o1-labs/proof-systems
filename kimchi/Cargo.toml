@@ -36,6 +36,7 @@ once_cell = "1.10.0"
 hex = "0.4"
 strum = "0.24.0"
 strum_macros = "0.24.0"
+tiny-keccak = { version = "2.0.2", features = ["keccak"], optional = true }
 
 # TODO: audit this
 disjoint-set = "0.0.2"
@@ -83,5 +84,6 @@ default = []
 internal_tracing = [ "internal-tracing/enabled" ]
 ocaml_types = [ "ocaml", "ocaml-gen", "poly-commitment/ocaml_types", "mina-poseidon/ocaml_types", "internal-tracing/ocaml_types" ]
 bn254 = [ "ark-bn254" ]
+keccak-sponges = [ "tiny-keccak" ]
 wasm_types = [ "wasm-bindgen" ]
 check_feature_flags = []

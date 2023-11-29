@@ -68,6 +68,16 @@
 
 # Technical Specifications
 
+- [RFC 0: Alternative zero-knowledge](./plonk/zkpm.md)
+- [RFC 1: Final check](./plonk/final_check.md)
+- [RFC 2: Maller's optimization for kimchi](./plonk/maller_15.md)
+- [RFC 3: Plookup integration in kimchi](./rfcs/3-lookup.md)
+- [RFC 4: Extended lookup tables](./rfcs/extended-lookup-tables.md)
+- [RFC 5: Foreign Field Addition](./rfcs/foreign_field_add.md)
+- [RFC 6: Keccak](./rfcs/keccak.md)
+  
+# Specifications
+
 - [Poseidon hash](./specs/poseidon.md)
 - [Polynomial Commitment](./specs/poly-commitment.md)
 - [Pasta Curves](./specs/pasta.md)

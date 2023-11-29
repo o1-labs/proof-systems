@@ -1,7 +1,6 @@
 use ark_ff::Field;
 
 use super::{variables::Variables, WitnessCell};
-use crate::circuits::polynomial::COLUMNS;
 
 /// Witness cell copied from another witness cell
 pub struct CopyCell {
@@ -16,8 +15,8 @@ impl CopyCell {
     }
 }
 
-impl<F: Field> WitnessCell<F> for CopyCell {
-    fn value(&self, witness: &mut [Vec<F>; COLUMNS], _variables: &Variables<F>) -> F {
+impl<F: Field, const W: usize> WitnessCell<F, F, W> for CopyCell {
+    fn value(&self, witness: &mut [Vec<F>; W], _variables: &Variables<F>, _index: usize) -> F {
         witness[self.col][self.row]
     }
 }

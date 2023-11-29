@@ -2,7 +2,6 @@ use ark_ff::Field;
 use o1_utils::FieldHelpers;
 
 use super::{variables::Variables, WitnessCell};
-use crate::circuits::polynomial::COLUMNS;
 
 /// Witness cell copied from bits of another witness cell
 pub struct CopyBitsCell {
@@ -24,8 +23,8 @@ impl CopyBitsCell {
     }
 }
 
-impl<F: Field> WitnessCell<F> for CopyBitsCell {
-    fn value(&self, witness: &mut [Vec<F>; COLUMNS], _variables: &Variables<F>) -> F {
+impl<F: Field, const W: usize> WitnessCell<F, F, W> for CopyBitsCell {
+    fn value(&self, witness: &mut [Vec<F>; W], _variables: &Variables<F>, _index: usize) -> F {
         F::from_bits(&witness[self.col][self.row].to_bits()[self.start..self.end])
             .expect("failed to deserialize field bits for copy bits cell")
     }

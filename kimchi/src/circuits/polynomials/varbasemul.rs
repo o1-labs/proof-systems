@@ -12,13 +12,16 @@
 
 use crate::circuits::{
     argument::{Argument, ArgumentEnv, ArgumentType},
-    expr::{constraints::ExprOps, Cache, Column, Variable},
+    berkeley_columns::Column,
+    expr::{constraints::ExprOps, Cache, Variable as VariableGen},
     gate::{CircuitGate, CurrOrNext, GateType},
     wires::{GateWires, COLUMNS},
 };
 use ark_ff::{FftField, PrimeField};
 use std::marker::PhantomData;
 use CurrOrNext::{Curr, Next};
+
+type Variable = VariableGen<Column>;
 
 //~ We implement custom Plonk constraints for short Weierstrass curve variable base scalar multiplication.
 //~
