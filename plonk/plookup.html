@@ -177,9 +177,15 @@
                 <div id="content" class="content">
                     <main>
                         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
-<h1 id="plookup"><a class="header" href="#plookup">Plookup</a></h1>
-<p>Plookup allows us to check if witness values belong to a look up table. This is usualy useful for reducing the number of constraints needed for bit-wise operations. So in the rest of this document we’ll use the XOR table as an example.</p>
-<p><img src="../img/xor.png" alt="XOR table" /></p>
+<h1 id="plookup"><a class="header" href="#plookup"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord text"><span class="mord textsf">Plookup</span></span></span></span></span></a></h1>
+<p><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8889em;vertical-align:-0.1944em;"></span><span class="mord text"><span class="mord textsf">Plookup</span></span></span></span></span> allows us to check if witness values belong to a look up table. This is usualy useful for reducing the number of constraints needed for bit-wise operations. So in the rest of this document we’ll use the XOR table as an example.</p>
+<div class="table-wrapper"><table><thead><tr><th>A</th><th>B</th><th>Y</th></tr></thead><tbody>
+<tr><td>0</td><td>0</td><td>0</td></tr>
+<tr><td>0</td><td>1</td><td>1</td></tr>
+<tr><td>1</td><td>0</td><td>1</td></tr>
+<tr><td>1</td><td>1</td><td>0</td></tr>
+</tbody></table>
+</div>
 <p>First, let’s define some terms:</p>
 <ul>
 <li><strong>lookup table</strong>: a table of values that means something, like the XOR table above</li>

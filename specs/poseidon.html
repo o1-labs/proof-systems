@@ -193,27 +193,27 @@ It is based on the <a href="https://keccak.team/sponge_duplex.html#:~:text=A%20s
 </div>
 <h2 id="apis"><a class="header" href="#apis">APIs</a></h2>
 <p>We define a base sponge, and a scalar sponge. Both must be instantiated when verifying a proof (this is due to recursion-support baked in Kimchi).</p>
-<p>External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the <a href="./pickles.html">pickles specification</a>). 
+<p>External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the <a href="./pickles.html">pickles specification</a>).
 As such, the sponges they need to instantiate are most likely to be instantiated with:</p>
 <ul>
 <li>Poseidon-Fp for base sponge</li>
-<li>Poseidon-Fq for the scalar sponge </li>
+<li>Poseidon-Fq for the scalar sponge</li>
 </ul>
 <h3 id="base-sponge"><a class="header" href="#base-sponge">Base Sponge</a></h3>
 <ul>
 <li><code>new(params) -&gt; BaseSponge</code>. Creates a new base sponge.</li>
 <li><code>BaseSponge.absorb(field_element)</code>. Absorbs a field element by calling the underlying sponge <code>absorb</code> function.</li>
 <li><code>BaseSponge.absorb_point(point)</code>. Absorbs an elliptic curve point. If the point is the point at infinity, absorb two zeros. Otherwise, absorb the x and y coordinates with two calls to <code>absorb</code>.</li>
-<li><code>BaseSponge.absorb_scalar(field_element_of_scalar_field)</code>. Absorbs a scalar. 
+<li><code>BaseSponge.absorb_scalar(field_element_of_scalar_field)</code>. Absorbs a scalar.
 <ul>
 <li>If the scalar field is smaller than the base field (e.g. Fp is smaller than Fq), then the scalar is casted to a field element of the base field and absorbed via <code>absorb</code>.</li>
 <li>Otherwise, the value is split between its least significant bit and the rest. Then both values are casted to field elements of the base field and absorbed via <code>absorb</code> (the high bits first, then the low bit).</li>
 </ul>
 </li>
 <li><code>BaseSponge.digest() -&gt; field_element</code>. The <code>squeeze</code> function of the underlying sponge function is called and the first field element is returned.</li>
-<li><code>BaseSponge.digest_scalar() -&gt; field_element_of_scalar_field</code>. </li>
-<li><code>BaseSponge.challenge // TODO: specify</code>. </li>
-<li><code>BaseSponge.challenge_fq // TODO: specify</code>. </li>
+<li><code>BaseSponge.digest_scalar() -&gt; field_element_of_scalar_field</code>.</li>
+<li><code>BaseSponge.challenge // TODO: specify</code>.</li>
+<li><code>BaseSponge.challenge_fq // TODO: specify</code>.</li>
 </ul>
 <h3 id="scalar-sponge"><a class="header" href="#scalar-sponge">Scalar Sponge</a></h3>
 <ul>
@@ -239,7 +239,7 @@ def apply_mds(state):
     n[1] = state[0] * mds[1][0] + state[1] * mds[1][1] + state[2] * mds[1][2]
     n[2] = state[0] * mds[2][0] + state[1] * mds[2][1] + state[2] * mds[2][2]
     return n
-    
+
 # a round in the permutation
 def apply_round(round, state):
     # sbox
@@ -264,9 +264,9 @@ def permutation(state):
         state[1] += constant[1]
         state[2] += constant[2]
         round_offset = 1
-        
+
     for round in range(round_offset, ROUNDS + round_offset):
-        apply_round(round, state)    
+        apply_round(round, state)
 </code></pre>
 <h3 id="sponge"><a class="header" href="#sponge">Sponge</a></h3>
 <p>In pseudo-code:</p>
@@ -286,7 +286,7 @@ def absorb(sponge, field_element):
     elif sponge.offset == RATE:
         sponge.state = permutation(sponge.state)
         sponge.offset = 0
-    
+
     # absorb by adding to the state
     sponge.state[sponge.offset] += field_element
     sponge.offset += 1

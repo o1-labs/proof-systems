@@ -211,11 +211,13 @@
 <a href="#211" id="211">211</a>
 <a href="#212" id="212">212</a>
 <a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! An argument is simply a number of constraints,
 //! which we want to enforce on all points of the domain.
 //! Both the permutation and the plookup arguments fit this type.
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
+//! For more info, read book/src/kimchi/arguments.md
 
 </span><span class="kw">use </span>std::marker::PhantomData;
 
@@ -245,7 +247,7 @@
 
 <span class="doccomment">/// The argument environment is used to specify how the argument&#39;s constraints are
 /// represented when they are built.  If the environment is created without ArgumentData
-/// and with F = Expr&lt;F&gt;, then the constraints are built as Expr expressions (e.g. for
+/// and with `F = Expr&lt;F&gt;`, then the constraints are built as Expr expressions (e.g. for
 /// use with the prover/verifier).  On the other hand, if the environment is
 /// created with ArgumentData and F = Field or F = PrimeField, then the constraints
 /// are built as expressions of real field elements and can be evaluated directly on
