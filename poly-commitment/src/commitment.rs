@@ -40,8 +40,6 @@ use super::evaluation_proof::*;
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub unshifted: Vec<C>,
-    #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub shifted: Option<C>, // TODO REMOVE
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -54,8 +52,8 @@ where
 }
 
 impl<T> PolyComm<T> {
-    pub fn new(unshifted: Vec<T>, shifted: Option<T>) -> Self {
-        Self { unshifted, shifted }
+    pub fn new(unshifted: Vec<T>) -> Self {
+        Self { unshifted }
     }
 }
 
@@ -69,8 +67,7 @@ where
         B: CanonicalDeserialize + CanonicalSerialize,
     {
         let unshifted = self.unshifted.iter().map(|x| f(x.clone())).collect();
-        let shifted = self.shifted.as_ref().map(|x| f(x.clone()));
-        PolyComm { unshifted, shifted }
+        PolyComm { unshifted }
     }
 
     /// Returns the length of the unshifted commitment.
@@ -80,7 +77,7 @@ where
 
     /// Returns `true` if the commitment is empty.
     pub fn is_empty(&self) -> bool {
-        self.unshifted.is_empty() && self.shifted.is_none()
+        self.unshifted.is_empty()
     }
 }
 
@@ -99,12 +96,7 @@ impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
             .zip(other.unshifted.iter())
             .map(|(x, y)| (*x, *y))
             .collect();
-        let shifted = match (self.shifted, other.shifted) {
-            (Some(x), Some(y)) => Some((x, y)),
-            (None, None) => None,
-            (Some(_), None) | (None, Some(_)) => return None,
-        };
-        Some(PolyComm { unshifted, shifted })
+        Some(PolyComm { unshifted })
     }
 }
 
@@ -172,12 +164,7 @@ impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
             };
             unshifted.push(pt);
         }
-        let shifted = match (self.shifted, other.shifted) {
-            (None, _) => other.shifted,
-            (_, None) => self.shifted,
-            (Some(p1), Some(p2)) => Some(p1 + p2),
-        };
-        PolyComm { unshifted, shifted }
+        PolyComm { unshifted }
     }
 }
 
@@ -198,12 +185,7 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
             };
             unshifted.push(pt);
         }
-        let shifted = match (self.shifted, other.shifted) {
-            (None, _) => other.shifted,
-            (_, None) => self.shifted,
-            (Some(p1), Some(p2)) => Some(p1 + (-p2)),
-        };
-        PolyComm { unshifted, shifted }
+        PolyComm { unshifted }
     }
 }
 
@@ -215,7 +197,6 @@ impl<C: AffineCurve> PolyComm<C> {
                 .iter()
                 .map(|g| g.mul(c).into_affine())
                 .collect(),
-            shifted: self.shifted.map(|g| g.mul(c).into_affine()),
         }
     }
 
@@ -229,7 +210,7 @@ impl<C: AffineCurve> PolyComm<C> {
         assert_eq!(com.len(), elm.len());
 
         if com.is_empty() || elm.is_empty() {
-            return Self::new(vec![C::zero()], None);
+            return Self::new(vec![C::zero()]);
         }
 
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
@@ -249,21 +230,7 @@ impl<C: AffineCurve> PolyComm<C> {
             unshifted.push(chunk_msm.into_affine());
         }
 
-        let mut shifted_pairs = com
-            .iter()
-            .zip(all_scalars)
-            // get rid of commitments without a `shifted` part
-            .filter_map(|(c, s)| c.shifted.map(|c| (c, s)))
-            .peekable();
-
-        let shifted = if shifted_pairs.peek().is_none() {
-            None
-        } else {
-            let (points, scalars): (Vec<_>, Vec<_>) = shifted_pairs.unzip();
-            Some(VariableBaseMSM::multi_scalar_mul(&points, &scalars).into_affine())
-        };
-
-        Self::new(unshifted, shifted)
+        Self::new(unshifted)
     }
 }
 
@@ -344,9 +311,6 @@ pub fn absorb_commitment<
     commitment: &PolyComm<G>,
 ) {
     sponge.absorb_g(&commitment.unshifted);
-    if let Some(shifted) = commitment.shifted.as_ref() {
-        sponge.absorb_g(&[shifted.clone()]);
-    }
 }
 
 /// A useful trait extending AffineCurve for commitments.
@@ -443,8 +407,6 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 /// Computes the linearization of the evaluations of a (potentially split) polynomial.
 /// Each given `poly` is associated to a matrix where the rows represent the number of evaluated points,
 /// and the columns represent potential segments (if a polynomial was split in several parts).
-/// Note that if one of the polynomial comes specified with a degree bound,
-/// the evaluation for the last segment is potentially shifted to meet the proof.
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<F: PrimeField>(
     polyscale: &F,
@@ -530,18 +492,6 @@ pub fn combine_commitments<G: CommitmentCurve>(
             points.push(*comm_ch);
 
             xi_i *= polyscale;
-        }
-
-        if let Some(_m) = degree_bound {
-            if let Some(comm_ch) = commitment.shifted {
-                if !comm_ch.is_zero() {
-                    // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-                    scalars.push(rand_base * xi_i);
-                    points.push(comm_ch);
-
-                    xi_i *= polyscale;
-                }
-            }
         }
     }
 }
@@ -674,29 +624,7 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
             unshifted.push(G::zero());
         }
 
-        // committing only last chunk shifted to the right edge of SRS
-        let shifted = match max {
-            None => None,
-            Some(max) => {
-                let start = max - (max % basis_len);
-                if is_zero || start >= coeffs_len {
-                    // polynomial is small, nothing was shifted
-                    Some(G::zero())
-                } else if max % basis_len == 0 {
-                    // the number of chunks should tell the verifier everything they need to know
-                    None
-                } else {
-                    // we shift the last chunk to the right as proof of the degree bound
-                    let shifted = VariableBaseMSM::multi_scalar_mul(
-                        &self.g[basis_len - (max % basis_len)..],
-                        &coeffs[start..],
-                    );
-                    Some(shifted.into_affine())
-                }
-            }
-        };
-
-        PolyComm::<G> { unshifted, shifted }
+        PolyComm::<G> { unshifted }
     }
 
     fn commit_evaluations_non_hiding(
@@ -1138,7 +1066,6 @@ pub mod caml {
     #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlPolyComm<CamlG> {
         pub unshifted: Vec<CamlG>,
-        pub shifted: Option<CamlG>, // TODO REMOVE
     }
 
     // handy conversions
@@ -1151,7 +1078,6 @@ pub mod caml {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
                 unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
-                shifted: polycomm.shifted.map(Into::into),
             }
         }
     }
@@ -1164,7 +1090,6 @@ pub mod caml {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
             Self {
                 unshifted: polycomm.unshifted.iter().map(Into::into).collect(),
-                shifted: polycomm.shifted.as_ref().map(Into::into),
             }
         }
     }
@@ -1176,7 +1101,6 @@ pub mod caml {
         fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
                 unshifted: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
-                shifted: camlpolycomm.shifted.map(Into::into),
             }
         }
     }
@@ -1187,7 +1111,6 @@ pub mod caml {
     {
         fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
-                unshifted: camlpolycomm.unshifted.iter().map(Into::into).collect(),
                 shifted: camlpolycomm.shifted.as_ref().map(Into::into),
             }
         }

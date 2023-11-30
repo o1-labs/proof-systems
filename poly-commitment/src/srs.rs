@@ -199,32 +199,9 @@ impl<G: CommitmentCurve> SRS<G> {
             unshifted.push(lg)
         }
 
-        // If the srs size does not exactly divide the domain size
-        let shifted: Option<Vec<<G as AffineCurve>::Projective>> =
-            if n < srs_size || num_unshifteds * srs_size == n {
-                None
-            } else {
-                // Initialize the vector to zero
-                let mut lg: Vec<<G as AffineCurve>::Projective> =
-                    vec![<G as AffineCurve>::Projective::zero(); n];
-                // Overwrite the terms corresponding to the final chunk with the SRS curve points
-                // shifted to the right
-                let start_offset = (num_unshifteds - 1) * srs_size;
-                let num_terms = n - start_offset;
-                let srs_start_offset = srs_size - num_terms;
-                for j in 0..num_terms {
-                    lg[start_offset + j] = self.g[srs_start_offset + j].into_projective()
-                }
-                // Apply the IFFT
-                domain.ifft_in_place(&mut lg);
-                <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-                Some(lg)
-            };
-
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
                 unshifted: unshifted.iter().map(|v| v[i].into_affine()).collect(),
-                shifted: shifted.as_ref().map(|v| v[i].into_affine()),
             })
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);

@@ -14,7 +14,6 @@ use std::iter::Iterator;
 
 enum OptShiftedPolynomial<P> {
     Unshifted(P),
-    Shifted(P, usize),
 }
 
 // A formal sum of the form
@@ -32,11 +31,6 @@ impl<F, P> ScaledChunkedPolynomial<F, P> {
     fn add_unshifted(&mut self, scale: F, p: P) {
         self.0.push((scale, OptShiftedPolynomial::Unshifted(p)))
     }
-
-    fn add_shifted(&mut self, scale: F, shift: usize, p: P) {
-        self.0
-            .push((scale, OptShiftedPolynomial::Shifted(p, shift)))
-    }
 }
 
 impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
@@ -52,12 +46,6 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
                     OptShiftedPolynomial::Unshifted(segment) => {
                         let v = segment.par_iter().map(|x| scale * *x).collect();
                         DensePolynomial::from_coefficients_vec(v)
-                    }
-                    OptShiftedPolynomial::Shifted(segment, shift) => {
-                        let mut v: Vec<_> = segment.par_iter().map(|x| scale * *x).collect();
-                        let mut res = vec![F::zero(); *shift];
-                        res.append(&mut v);
-                        DensePolynomial::from_coefficients_vec(res)
                     }
                 }
             })
@@ -119,7 +107,6 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     scale *= &polyscale;
                 }
                 // We assume here that we have no shifted segment.
-                // TODO: Remove shifted
             }
 
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
@@ -127,8 +114,6 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                 // iterating over chunks of the polynomial
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
-                } else {
-                    assert!(omegas.shifted.is_none());
                 }
                 for j in 0..omegas.unshifted.len() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
@@ -139,16 +124,6 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     omega += &(omegas.unshifted[j] * scale);
                     scale *= &polyscale;
                     offset += srs_length;
-                    if let Some(m) = degree_bound {
-                        if offset >= *m {
-                            if offset > *m {
-                                // mixing in the shifted segment since degree is bounded
-                                plnm.add_shifted(scale, srs_length - m % srs_length, segment);
-                            }
-                            omega += &(omegas.shifted.unwrap() * scale);
-                            scale *= &polyscale;
-                        }
-                    }
                 }
             }
         }

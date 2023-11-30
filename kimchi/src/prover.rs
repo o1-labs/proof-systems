@@ -1154,7 +1154,6 @@ where
                 unshifted: vec![
                     blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
-                shifted: None,
             }
         };
 
@@ -1224,7 +1223,6 @@ where
         //~    First, include the previous challenges, in case we are in a recursive prover.
         let non_hiding = |d1_size: usize| PolyComm {
             unshifted: vec![G::ScalarField::zero(); d1_size],
-            shifted: None,
         };
 
         let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -1237,7 +1235,6 @@ where
 
         let fixed_hiding = |d1_size: usize| PolyComm {
             unshifted: vec![G::ScalarField::one(); d1_size],
-            shifted: None,
         };
 
         //~ 1. Then, include:
@@ -1395,10 +1392,7 @@ where
                     .map(|blinding| *joint_combiner * blinding)
                     .collect();
 
-                PolyComm {
-                    unshifted,
-                    shifted: None,
-                }
+                PolyComm { unshifted }
             } else {
                 non_hiding(num_chunks)
             };

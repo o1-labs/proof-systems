@@ -9,7 +9,6 @@ where
     C: CommitmentCurve,
 {
     /// Multiplies each commitment chunk of f with powers of zeta^n
-    /// Note that it ignores the shifted part.
     // TODO(mimoo): better name for this function
     pub fn chunk_commitment(&self, zeta_n: C::ScalarField) -> Self {
         let mut res = C::Projective::zero();
@@ -23,7 +22,6 @@ where
 
         PolyComm {
             unshifted: vec![res.into_affine()],
-            shifted: self.shifted,
         }
     }
 }
@@ -33,7 +31,6 @@ where
     F: Field,
 {
     /// Multiplies each blinding chunk of f with powers of zeta^n
-    /// Note that it ignores the shifted part.
     // TODO(mimoo): better name for this function
     pub fn chunk_blinding(&self, zeta_n: F) -> F {
         let mut res = F::zero();
