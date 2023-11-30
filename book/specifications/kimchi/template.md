@@ -215,7 +215,7 @@ Kimchi currently supports two lookup tables:
 
 ##### Runtime tables
 
-Another type of lookup tables have been suggested in the [Extended Lookup tables RFC](../rfcs/extended-lookup-tables.md).
+Another type of lookup tables has been suggested in the [Extended Lookup tables RFC](../rfcs/extended-lookup-tables.md).
 
 {sections.runtime_tables}
 
