@@ -97,6 +97,12 @@ For example, the following **query** tells us that we want to check if $r_0 \opl
 | :---:    | :---:    | :---:    |
 | 1, $r_0$ | 1, $r_2$ | 2, $r_1$ |
 
+$r_0$, $r_1$ and $r_2$ will be the result of the evaluation at $g^i$ of
+respectively the wire polynomials $w_0$, $w_1$ and $w_2$.
+To perform vector lookups (i.e. lookups over a list of values, not a single
+element), we use a standard technique which consists of coining a combiner value
+$j$ and sum the individual elements of the list using powers of this coin.
+
 The grand product argument for the lookup constraint will look like this at this point:
 
 $$
