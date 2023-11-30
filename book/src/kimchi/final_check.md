@@ -1,6 +1,6 @@
 # Understanding the implementation of the $f(\zeta) = Z_H(\zeta) t(\zeta)$ check
 
-Unlike the latest version of vanilla $\plonk$ that implements the the final check using a polynomial opening (via Maller's optimization), we implement it manually. (That is to say, Izaak implemented Maller's optimization for 5-wires.)
+Unlike the latest version of vanilla $\plonk$ that implements the final check using a polynomial opening (via Maller's optimization), we implement it manually. (That is to say, Izaak implemented Maller's optimization for 5-wires.)
 
 But the check is not exactly $f(\zeta) = Z_H(\zeta) t(\zeta)$. This note describes how and why the implementation deviates a little.
 
