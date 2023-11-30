@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cargo run -p kimchi_optimism -- \
+cargo run --release -p kimchi_optimism -- \
     --pprof-cpu \
     --info-at '%10000000' \
     --proof-at never \
