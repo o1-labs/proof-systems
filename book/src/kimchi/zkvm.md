@@ -23,7 +23,11 @@ Let's list the different polynomials and the reason of their existence.
 
 ### Instructions parts
 
-At each step, the current instruction is fetched from the memory, and it is decoded in its different parts, see [the instruction format](https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html). This is the role of the interpreter, implemented in [interpreter.rs](./interpreter.rs) <-- TODO: update the link -->
+At each step, the current instruction is fetched from the memory, and it is
+decoded in its different parts, see [the instruction
+format](https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html).
+This is the role of the interpreter, implemented in
+[interpreter.rs](./interpreter.rs) <-- TODO: update the link -->
 
 | op
 
