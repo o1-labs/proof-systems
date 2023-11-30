@@ -362,13 +362,35 @@
 <a href="#362" id="362">362</a>
 <a href="#363" id="363">363</a>
 <a href="#364" id="364">364</a>
+<a href="#365" id="365">365</a>
+<a href="#366" id="366">366</a>
+<a href="#367" id="367">367</a>
+<a href="#368" id="368">368</a>
+<a href="#369" id="369">369</a>
+<a href="#370" id="370">370</a>
+<a href="#371" id="371">371</a>
+<a href="#372" id="372">372</a>
+<a href="#373" id="373">373</a>
+<a href="#374" id="374">374</a>
+<a href="#375" id="375">375</a>
+<a href="#376" id="376">376</a>
+<a href="#377" id="377">377</a>
+<a href="#378" id="378">378</a>
+<a href="#379" id="379">379</a>
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
     mips::{
-        interpreter::{<span class="self">self</span>, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
+        interpreter::{
+            <span class="self">self</span>, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
+        },
         registers::Registers,
     },
     preimage_oracle::PreImageOracle,
@@ -454,6 +476,24 @@
             </span>PREFIXES.chars().nth(idx).unwrap();
 
         <span class="macro">format!</span>(<span class="string">&quot;{:.1} {}iB&quot;</span>, value, prefix)
+    }
+}
+
+<span class="kw">impl</span>&lt;Fp: Field&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp&gt; {
+    <span class="kw">type </span>Variable = u32;
+
+    <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable {
+        x
+    }
+
+    <span class="kw">fn </span>set_halted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable) {
+        <span class="kw">if </span>flag == <span class="number">0 </span>{
+            <span class="self">self</span>.halt = <span class="bool-val">false
+        </span>} <span class="kw">else if </span>flag == <span class="number">1 </span>{
+            <span class="self">self</span>.halt = <span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="macro">panic!</span>(<span class="string">&quot;Bad value for flag in set_halted: {}&quot;</span>, flag);
+        }
     }
 }
 
@@ -634,7 +674,8 @@
     }
 
     <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, config: VmConfiguration, metadata: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
-        <span class="macro">println!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, <span class="self">self</span>.decode_instruction());
+        <span class="kw">let </span>instruction = <span class="self">self</span>.decode_instruction();
+        <span class="macro">println!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, instruction);
 
         <span class="self">self</span>.pp_info(config.info_at, metadata, start);
 
@@ -644,8 +685,7 @@
             <span class="kw">return</span>;
         }
 
-        <span class="comment">// TODO
-        </span><span class="self">self</span>.halt = <span class="bool-val">true</span>;
+        interpreter::interpret_instruction(<span class="self">self</span>, instruction);
     }
 
     <span class="kw">fn </span>should_trigger_at(<span class="kw-2">&amp;</span><span class="self">self</span>, at: StepFrequency) -&gt; bool {
