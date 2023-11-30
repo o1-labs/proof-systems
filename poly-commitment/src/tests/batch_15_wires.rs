@@ -120,20 +120,9 @@ where
             let combined_inner_product = {
                 let es: Vec<_> = comm
                     .iter()
-                    .map(|(commitment, evaluations, degree_bound)| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*degree_bound)?;
-                            let x = commitment.commitment.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evaluations.clone(), bound)
-                    })
+                    .map(|(commitment, evaluations, degree_bound)| evaluations.clone())
                     .collect();
-                combined_inner_product(&x, &polymask, &evalmask, &es, srs.g.len())
+                combined_inner_product(&polymask, &evalmask, &es)
             };
 
             (

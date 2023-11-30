@@ -453,10 +453,10 @@ where
                 let ft_eval1 = vec![self.ft_eval1];
 
                 #[allow(clippy::type_complexity)]
-                let mut es: Vec<(Vec<Vec<G::ScalarField>>, Option<usize>)> =
-                    polys.iter().map(|(_, e)| (e.clone(), None)).collect();
-                es.push((public_evals.to_vec(), None));
-                es.push((vec![ft_eval0, ft_eval1], None));
+                let mut es: Vec<Vec<Vec<G::ScalarField>>> =
+                    polys.iter().map(|(_, e)| e.clone()).collect();
+                es.push(public_evals.to_vec());
+                es.push(vec![ft_eval0, ft_eval1]);
                 for col in [
                     Column::Z,
                     Column::Index(GateType::Generic),
@@ -551,19 +551,16 @@ where
                         .into_iter()
                         .flatten(),
                 ) {
-                    es.push((
-                        {
-                            let evals = self
-                                .evals
-                                .get_column(col)
-                                .ok_or(VerifyError::MissingEvaluation(col))?;
-                            vec![evals.zeta.clone(), evals.zeta_omega.clone()]
-                        },
-                        None,
-                    ))
+                    es.push({
+                        let evals = self
+                            .evals
+                            .get_column(col)
+                            .ok_or(VerifyError::MissingEvaluation(col))?;
+                        vec![evals.zeta.clone(), evals.zeta_omega.clone()]
+                    })
                 }
 
-                combined_inner_product(&evaluation_points, &v, &u, &es, index.srs().max_poly_size())
+                combined_inner_product(&v, &u, &es)
             };
 
         let oracles = RandomOracles {

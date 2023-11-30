@@ -41,7 +41,7 @@ pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
     pub unshifted: Vec<C>,
     #[serde_as(as = "Option<o1_utils::serialization::SerdeAs>")]
-    pub shifted: Option<C>,
+    pub shifted: Option<C>, // TODO REMOVE
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -447,17 +447,15 @@ pub fn to_group<G: CommitmentCurve>(m: &G::Map, t: <G as AffineCurve>::BaseField
 /// the evaluation for the last segment is potentially shifted to meet the proof.
 #[allow(clippy::type_complexity)]
 pub fn combined_inner_product<F: PrimeField>(
-    evaluation_points: &[F],
     polyscale: &F,
     evalscale: &F,
     // TODO(mimoo): needs a type that can get you evaluations or segments
-    polys: &[(Vec<Vec<F>>, Option<usize>)],
-    srs_length: usize,
+    polys: &[Vec<Vec<F>>],
 ) -> F {
     let mut res = F::zero();
     let mut xi_i = F::one();
 
-    for (evals_tr, shifted) in polys.iter().filter(|(evals_tr, _)| !evals_tr[0].is_empty()) {
+    for evals_tr in polys.iter().filter(|evals_tr| !evals_tr[0].is_empty()) {
         // transpose the evaluations
         let evals = (0..evals_tr[0].len())
             .map(|i| evals_tr.iter().map(|v| v[i]).collect::<Vec<_>>())
@@ -468,23 +466,6 @@ pub fn combined_inner_product<F: PrimeField>(
             let term = DensePolynomial::<F>::eval_polynomial(eval, *evalscale);
 
             res += &(xi_i * term);
-            xi_i *= polyscale;
-        }
-
-        if let Some(m) = shifted {
-            // polyscale^i sum_j evalscale^j elm_j^{N - m} f(elm_j)
-            let last_evals = if *m >= evals.len() * srs_length {
-                vec![F::zero(); evaluation_points.len()]
-            } else {
-                evals[evals.len() - 1].clone()
-            };
-            let shifted_evals: Vec<_> = evaluation_points
-                .iter()
-                .zip(&last_evals)
-                .map(|(elm, f_elm)| elm.pow([(srs_length - (*m) % srs_length) as u64]) * f_elm)
-                .collect();
-
-            res += &(xi_i * DensePolynomial::<F>::eval_polynomial(&shifted_evals, *evalscale));
             xi_i *= polyscale;
         }
     }
@@ -1124,26 +1105,9 @@ mod tests {
         let combined_inner_product = {
             let es: Vec<_> = evaluations
                 .iter()
-                .map(
-                    |Evaluation {
-                         commitment,
-                         evaluations,
-                         degree_bound,
-                     }| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*degree_bound)?;
-                            let x = commitment.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evaluations.clone(), bound)
-                    },
-                )
+                .map(|Evaluation { evaluations, .. }| evaluations.clone())
                 .collect();
-            combined_inner_product(&elm, &v, &u, &es, srs.g.len())
+            combined_inner_product(&v, &u, &es)
         };
 
         // verify the proof
@@ -1174,7 +1138,7 @@ pub mod caml {
     #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlPolyComm<CamlG> {
         pub unshifted: Vec<CamlG>,
-        pub shifted: Option<CamlG>,
+        pub shifted: Option<CamlG>, // TODO REMOVE
     }
 
     // handy conversions

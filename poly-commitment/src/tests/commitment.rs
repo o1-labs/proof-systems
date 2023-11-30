@@ -76,7 +76,6 @@ impl AggregatedEvaluationProof {
     /// This function converts an aggregated evaluation proof into something the verify API understands
     pub fn verify_type(
         &self,
-        srs: &SRS<Vesta>,
     ) -> BatchEvaluationProof<Vesta, DefaultFqSponge<VestaParameters, SC>, OpeningProof<Vesta>>
     {
         let mut coms = vec![];
@@ -97,27 +96,10 @@ impl AggregatedEvaluationProof {
                          commitment,
                          evaluations,
                          degree_bound,
-                     }| {
-                        let bound: Option<usize> = (|| {
-                            let b = (*degree_bound)?;
-                            let x = commitment.shifted?;
-                            if x.is_zero() {
-                                None
-                            } else {
-                                Some(b)
-                            }
-                        })();
-                        (evaluations.clone(), bound)
-                    },
+                     }| { evaluations.clone() },
                 )
                 .collect();
-            combined_inner_product(
-                &self.eval_points,
-                &self.polymask,
-                &self.evalmask,
-                &es,
-                srs.g.len(),
-            )
+            combined_inner_product(&self.polymask, &self.evalmask, &es)
         };
 
         BatchEvaluationProof {
@@ -257,7 +239,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
     let timer = Instant::now();
 
     // batch verify all the proofs
-    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type(&srs)).collect();
+    let mut batch: Vec<_> = proofs.iter().map(|p| p.verify_type()).collect();
     assert!(srs.verify::<DefaultFqSponge<VestaParameters, SC>, _>(&group_map, &mut batch, &mut rng));
 
     // TODO: move to bench
