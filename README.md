@@ -63,7 +63,7 @@ Check [CONTRIBUTING.md](CONTRIBUTING.md) if you are interested in contributing t
 
 ## Generate rustdoc locally
 
-An effort is made to have the documentation being self-explained, referring to the mina book for more details when necessary.
+An effort is made to have the documentation being self-contained, referring to the mina book for more details when necessary.
 You can build the rust documentation with
 <!-- This must be the same than the content in .github/workflows/gh-page.yml -->
 ```
