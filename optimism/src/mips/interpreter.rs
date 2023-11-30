@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+use std::ops::Index;
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -7,6 +9,42 @@ pub const FD_HINT_READ: u32 = 3;
 pub const FD_HINT_WRITE: u32 = 4;
 pub const FD_PREIMAGE_READ: u32 = 5;
 pub const FD_PREIMAGE_WRITE: u32 = 6;
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
+pub enum InstructionPart {
+    OpCode,
+    RS,
+    RT,
+    RD,
+    Shamt,
+    Funct,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
+pub struct InstructionParts<T> {
+    pub op_code: T,
+    pub rs: T,
+    pub rt: T,
+    pub rd: T,
+    pub shamt: T,
+    pub funct: T,
+}
+
+// To use InstructionParts[OpCode]
+impl<A> Index<InstructionPart> for InstructionParts<A> {
+    type Output = A;
+
+    fn index(&self, index: InstructionPart) -> &Self::Output {
+        match index {
+            InstructionPart::OpCode => &self.op_code,
+            InstructionPart::RS => &self.rs,
+            InstructionPart::RT => &self.rt,
+            InstructionPart::RD => &self.rd,
+            InstructionPart::Shamt => &self.shamt,
+            InstructionPart::Funct => &self.funct,
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Instruction {
