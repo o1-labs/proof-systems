@@ -49,3 +49,10 @@ all: check
 
 build: check
 	mdbook build
+
+#
+# use `make clean` to clean the generated artefacts
+#
+
+clean:
+	mdbook clean

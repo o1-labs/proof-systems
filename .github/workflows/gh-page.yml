@@ -41,6 +41,7 @@ jobs:
           # https://github.com/ocaml/setup-ocaml/issues/211#issuecomment-1058882386
           # disable-cache: true
 
+      # This must be the same as in the section "Generate rustdoc locally" in the README.md
       - name: Build Rust Documentation
         run: |
           eval $(opam env)

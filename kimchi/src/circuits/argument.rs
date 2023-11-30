@@ -3,6 +3,7 @@
 //! Both the permutation and the plookup arguments fit this type.
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
+//! For more info, read book/src/kimchi/arguments.md
 
 use std::marker::PhantomData;
 
@@ -32,7 +33,7 @@ pub enum ArgumentType {
 
 /// The argument environment is used to specify how the argument's constraints are
 /// represented when they are built.  If the environment is created without ArgumentData
-/// and with F = Expr<F>, then the constraints are built as Expr expressions (e.g. for
+/// and with `F = Expr<F>`, then the constraints are built as Expr expressions (e.g. for
 /// use with the prover/verifier).  On the other hand, if the environment is
 /// created with ArgumentData and F = Field or F = PrimeField, then the constraints
 /// are built as expressions of real field elements and can be evaluated directly on
