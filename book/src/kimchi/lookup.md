@@ -95,7 +95,7 @@ $j$ and sum the individual elements of the list using powers of this coin.
 The grand product argument for the lookup constraint will look like this at this point:
 
 $$
-\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot {\color{green}(\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i))} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
+\mathsf{acc}_i = \mathsf{acc}_{i-1} \cdot \frac{(1+\beta) \cdot {\color{green}(\gamma + j^0 \cdot 1 \cdot w_0(g^i) + j \cdot 1 \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i))} \cdot (\gamma(1 + \beta) + t_{i-1} + \beta t_i)}{(\gamma(1+\beta) + s_{i-1} + \beta s_{i})(\gamma(1+\beta) + s_{n+i-1} + \beta s_{n+i})}
 $$
 
 Not all rows need to perform queries into a lookup table. We will use a query selector in the next section to make the constraints work with this in mind.
@@ -122,7 +122,7 @@ where $\color{green}{\mathsf{query}}$ is constructed so that a dummy query ($0 \
 
 $$
 \begin{align}
-\mathsf{query} := &\ \mathsf{selector} \cdot (\gamma + w_0(g^i) + j \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i)) + \\
+\mathsf{query} := &\ \mathsf{selector} \cdot (\gamma + j^0 \cdot 1 \cdot w_0(g^i) + j \cdot 1 \cdot w_2(g^i) + j^2 \cdot 2 \cdot w_1(g^i)) + \\
 &\ (1- \mathsf{selector}) \cdot (\gamma + 0 + j \cdot 0 + j^2 \cdot 0)
 \end{align}
 $$
