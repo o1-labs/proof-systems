@@ -257,3 +257,54 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
     // TODO: Don't halt.
     env.set_halted(Env::constant(1));
 }
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::cannon::HostProgram;
+    use crate::mips::registers::Registers;
+    use crate::mips::witness::{Env, SyscallEnv, SCRATCH_SIZE};
+    use crate::preimage_oracle::PreImageOracle;
+    use mina_curves::pasta::Fp;
+
+    fn dummy_env() -> Env<Fp> {
+        let host_program = Some(HostProgram {
+            name: String::from("true"),
+            arguments: vec![],
+        });
+        let dummy_preimage_oracle = PreImageOracle::create(&host_program);
+        Env {
+            instruction_parts: InstructionParts::default(),
+            instruction_counter: 0,
+            memory: vec![],
+            memory_write_index: vec![],
+            registers: Registers::default(),
+            registers_write_index: Registers::default(),
+            instruction_pointer: 0,
+            next_instruction_pointer: 0,
+            scratch_state_idx: 0,
+            scratch_state: [Fp::from(0); SCRATCH_SIZE],
+            halt: true,
+            syscall_env: SyscallEnv::default(),
+            preimage_oracle: dummy_preimage_oracle,
+        }
+    }
+    #[test]
+    fn test_unit_jump_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b00001000000000101010011001100111
+        // j 173671
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b00000,
+            rt: 0b00010,
+            rd: 0b10100,
+            shamt: 0b11001,
+            funct: 0b100111,
+        };
+        interpret_jtype(&mut dummy_env, JTypeInstruction::Jump);
+        assert_eq!(dummy_env.instruction_pointer, 694684);
+    }
+}

@@ -23,7 +23,7 @@ pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 pub const SCRATCH_SIZE: usize = 25;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SyscallEnv {
     pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
     pub preimage_offset: u32,
