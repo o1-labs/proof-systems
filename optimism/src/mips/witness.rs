@@ -4,7 +4,9 @@ use crate::{
         PAGE_SIZE,
     },
     mips::{
-        interpreter::{self, ITypeInstruction, Instruction, JTypeInstruction, RTypeInstruction},
+        interpreter::{
+            self, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
+        },
         registers::Registers,
     },
     preimage_oracle::PreImageOracle,
@@ -90,6 +92,24 @@ fn memory_size(total: usize) -> String {
             PREFIXES.chars().nth(idx).unwrap();
 
         format!("{:.1} {}iB", value, prefix)
+    }
+}
+
+impl<Fp: Field> InterpreterEnv for Env<Fp> {
+    type Variable = u32;
+
+    fn constant(x: u32) -> Self::Variable {
+        x
+    }
+
+    fn set_halted(&mut self, flag: Self::Variable) {
+        if flag == 0 {
+            self.halt = false
+        } else if flag == 1 {
+            self.halt = true
+        } else {
+            panic!("Bad value for flag in set_halted: {}", flag);
+        }
     }
 }
 
@@ -270,7 +290,8 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
-        println!("instruction: {:?}", self.decode_instruction());
+        let instruction = self.decode_instruction();
+        println!("instruction: {:?}", instruction);
 
         self.pp_info(config.info_at, metadata, start);
 
@@ -280,8 +301,7 @@ impl<Fp: Field> Env<Fp> {
             return;
         }
 
-        // TODO
-        self.halt = true;
+        interpreter::interpret_instruction(self, instruction);
     }
 
     fn should_trigger_at(&self, at: StepFrequency) -> bool {

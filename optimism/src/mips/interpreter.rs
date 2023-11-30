@@ -93,3 +93,107 @@ pub enum ITypeInstruction {
     StoreWordLeft,                // swl
     StoreWordRight,               // swr
 }
+
+pub trait InterpreterEnv {
+    type Variable: Clone + std::ops::Add<Self::Variable, Output = Self::Variable>;
+
+    fn constant(x: u32) -> Self::Variable;
+
+    fn set_halted(&mut self, flag: Self::Variable);
+}
+
+pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
+    match instr {
+        Instruction::RType(instr) => interpret_rtype(env, instr),
+        Instruction::JType(instr) => interpret_jtype(env, instr),
+        Instruction::IType(instr) => interpret_itype(env, instr),
+    }
+}
+
+pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
+    match instr {
+        RTypeInstruction::ShiftLeftLogical => (),
+        RTypeInstruction::ShiftRightLogical => (),
+        RTypeInstruction::ShiftRightArithmetic => (),
+        RTypeInstruction::ShiftLeftLogicalVariable => (),
+        RTypeInstruction::ShiftRightLogicalVariable => (),
+        RTypeInstruction::ShiftRightArithmeticVariable => (),
+        RTypeInstruction::JumpRegister => (),
+        RTypeInstruction::JumpAndLinkRegister => (),
+        RTypeInstruction::SyscallMmap => (),
+        RTypeInstruction::SyscallExitGroup => (),
+        RTypeInstruction::SyscallReadPreimage => (),
+        RTypeInstruction::SyscallReadOther => (),
+        RTypeInstruction::SyscallWriteHint => (),
+        RTypeInstruction::SyscallWritePreimage => (),
+        RTypeInstruction::SyscallWriteOther => (),
+        RTypeInstruction::SyscallFcntl => (),
+        RTypeInstruction::SyscallOther => (),
+        RTypeInstruction::MoveZero => (),
+        RTypeInstruction::MoveNonZero => (),
+        RTypeInstruction::Sync => (),
+        RTypeInstruction::MoveFromHi => (),
+        RTypeInstruction::MoveToHi => (),
+        RTypeInstruction::MoveFromLo => (),
+        RTypeInstruction::MoveToLo => (),
+        RTypeInstruction::Multiply => (),
+        RTypeInstruction::MultiplyUnsigned => (),
+        RTypeInstruction::Div => (),
+        RTypeInstruction::DivUnsigned => (),
+        RTypeInstruction::Add => (),
+        RTypeInstruction::AddUnsigned => (),
+        RTypeInstruction::Sub => (),
+        RTypeInstruction::SubUnsigned => (),
+        RTypeInstruction::And => (),
+        RTypeInstruction::Or => (),
+        RTypeInstruction::Xor => (),
+        RTypeInstruction::Nor => (),
+        RTypeInstruction::SetLessThan => (),
+        RTypeInstruction::SetLessThanUnsigned => (),
+        RTypeInstruction::MultiplyToRegister => (),
+        RTypeInstruction::CountLeadingOnes => (),
+        RTypeInstruction::CountLeadingZeros => (),
+    };
+    // TODO: Don't halt.
+    env.set_halted(Env::constant(1));
+}
+
+pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
+    match instr {
+        JTypeInstruction::Jump => (),
+        JTypeInstruction::JumpAndLink => (),
+    };
+    // TODO: Don't halt.
+    env.set_halted(Env::constant(1));
+}
+
+pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
+    match instr {
+        ITypeInstruction::BranchEq => (),
+        ITypeInstruction::BranchNeq => (),
+        ITypeInstruction::BranchLeqZero => (),
+        ITypeInstruction::BranchGtZero => (),
+        ITypeInstruction::AddImmediate => (),
+        ITypeInstruction::AddImmediateUnsigned => (),
+        ITypeInstruction::SetLessThanImmediate => (),
+        ITypeInstruction::SetLessThanImmediateUnsigned => (),
+        ITypeInstruction::AndImmediate => (),
+        ITypeInstruction::OrImmediate => (),
+        ITypeInstruction::XorImmediate => (),
+        ITypeInstruction::LoadUpperImmediate => (),
+        ITypeInstruction::Load8 => (),
+        ITypeInstruction::Load16 => (),
+        ITypeInstruction::Load32 => (),
+        ITypeInstruction::Load8Unsigned => (),
+        ITypeInstruction::Load16Unsigned => (),
+        ITypeInstruction::LoadWordLeft => (),
+        ITypeInstruction::LoadWordRight => (),
+        ITypeInstruction::Store8 => (),
+        ITypeInstruction::Store16 => (),
+        ITypeInstruction::Store32 => (),
+        ITypeInstruction::StoreWordLeft => (),
+        ITypeInstruction::StoreWordRight => (),
+    };
+    // TODO: Don't halt.
+    env.set_halted(Env::constant(1));
+}
