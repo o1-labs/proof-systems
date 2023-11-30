@@ -15,13 +15,13 @@ where
         // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
         // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
-        for chunk in self.unshifted.iter().rev() {
+        for chunk in self.elems.iter().rev() {
             res *= zeta_n;
             res.add_assign_mixed(chunk);
         }
 
         PolyComm {
-            unshifted: vec![res.into_affine()],
+            elems: vec![res.into_affine()],
         }
     }
 }
@@ -37,7 +37,7 @@ where
         // use Horner's to compute chunk[0] + z^n chunk[1] + z^2n chunk[2] + ...
         // as ( chunk[-1] * z^n + chunk[-2] ) * z^n + chunk[-3]
         // (https://en.wikipedia.org/wiki/Horner%27s_method)
-        for chunk in self.unshifted.iter().rev() {
+        for chunk in self.elems.iter().rev() {
             res *= zeta_n;
             res += chunk
         }

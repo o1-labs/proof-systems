@@ -285,7 +285,7 @@ impl<
         let quotient = srs
             .full_srs
             .commit_non_hiding(&quotient_poly, 1, None)
-            .unshifted[0];
+            .elems[0];
 
         Some(PairingProof {
             quotient,
@@ -318,11 +318,11 @@ impl<
         let divisor_commitment = srs
             .verifier_srs
             .commit_non_hiding(&divisor_polynomial(elm), 1, None)
-            .unshifted[0];
+            .elems[0];
         let eval_commitment = srs
             .full_srs
             .commit_non_hiding(&eval_polynomial(elm, &evals), 1, None)
-            .unshifted[0]
+            .elems[0]
             .into_projective();
         let numerator_commitment = { poly_commitment - eval_commitment - blinding_commitment };
 

@@ -1151,7 +1151,7 @@ where
 
             PolyComm {
                 // blinding_f - Z_H(zeta) * blinding_t
-                unshifted: vec![
+                elems: vec![
                     blinding_f - (zeta_to_domain_size - G::ScalarField::one()) * blinding_t,
                 ],
             }
@@ -1187,7 +1187,7 @@ where
             .map(|RecursionChallenge { chals, comm }| {
                 (
                     DensePolynomial::from_coefficients_vec(b_poly_coefficients(chals)),
-                    comm.unshifted.len(),
+                    comm.elems.len(),
                 )
             })
             .collect::<Vec<_>>();
@@ -1222,7 +1222,7 @@ where
         //~    (and evaluation proofs) in the protocol.
         //~    First, include the previous challenges, in case we are in a recursive prover.
         let non_hiding = |d1_size: usize| PolyComm {
-            unshifted: vec![G::ScalarField::zero(); d1_size],
+            elems: vec![G::ScalarField::zero(); d1_size],
         };
 
         let coefficients_form = DensePolynomialOrEvaluations::DensePolynomial;
@@ -1234,7 +1234,7 @@ where
             .collect::<Vec<_>>();
 
         let fixed_hiding = |d1_size: usize| PolyComm {
-            unshifted: vec![G::ScalarField::one(); d1_size],
+            elems: vec![G::ScalarField::one(); d1_size],
         };
 
         //~ 1. Then, include:
@@ -1387,12 +1387,12 @@ where
 
                 let unshifted = runtime_comm
                     .blinders
-                    .unshifted
+                    .elems
                     .iter()
                     .map(|blinding| *joint_combiner * blinding)
                     .collect();
 
-                PolyComm { unshifted }
+                PolyComm { elems: unshifted }
             } else {
                 non_hiding(num_chunks)
             };

@@ -93,8 +93,8 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     .for_each(|(i, x)| {
                         *x += scale * evals[i * stride];
                     });
-                for j in 0..omegas.unshifted.len() {
-                    omega += &(omegas.unshifted[j] * scale);
+                for j in 0..omegas.elems.len() {
+                    omega += &(omegas.elems[j] * scale);
                     scale *= &polyscale;
                 }
                 // We assume here that we have no shifted segment.
@@ -106,13 +106,13 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                 if let Some(m) = degree_bound {
                     assert!(p_i.coeffs.len() <= m + 1);
                 }
-                for j in 0..omegas.unshifted.len() {
+                for j in 0..omegas.elems.len() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     // always mixing in the unshifted segments
                     plnm.add_poly(scale, segment);
 
-                    omega += &(omegas.unshifted[j] * scale);
+                    omega += &(omegas.elems[j] * scale);
                     scale *= &polyscale;
                     offset += srs_length;
                 }
@@ -349,9 +349,9 @@ impl<G: CommitmentCurve> SRS<G> {
                     }
                 };
                 let chunked_polynomial =
-                    poly.to_chunked_polynomial(blinders.unshifted.len(), self.g.len());
+                    poly.to_chunked_polynomial(blinders.elems.len(), self.g.len());
                 let chunked_commitment =
-                    { self.commit_non_hiding(&poly, blinders.unshifted.len(), None) };
+                    { self.commit_non_hiding(&poly, blinders.elems.len(), None) };
                 let masked_commitment = match self.mask_custom(chunked_commitment, blinders) {
                     Ok(comm) => comm,
                     Err(err) => panic!("Error at index {i}: {err}"),

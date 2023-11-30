@@ -39,7 +39,7 @@ use super::evaluation_proof::*;
 #[serde(bound = "C: CanonicalDeserialize + CanonicalSerialize")]
 pub struct PolyComm<C> {
     #[serde_as(as = "Vec<o1_utils::serialization::SerdeAs>")]
-    pub unshifted: Vec<C>,
+    pub elems: Vec<C>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -52,8 +52,8 @@ where
 }
 
 impl<T> PolyComm<T> {
-    pub fn new(unshifted: Vec<T>) -> Self {
-        Self { unshifted }
+    pub fn new(elems: Vec<T>) -> Self {
+        Self { elems }
     }
 }
 
@@ -66,18 +66,18 @@ where
         F: FnMut(A) -> B,
         B: CanonicalDeserialize + CanonicalSerialize,
     {
-        let unshifted = self.unshifted.iter().map(|x| f(x.clone())).collect();
-        PolyComm { unshifted }
+        let elems = self.elems.iter().map(|x| f(x.clone())).collect();
+        PolyComm { elems: elems }
     }
 
-    /// Returns the length of the unshifted commitment.
+    /// Returns the length of the commitment.
     pub fn len(&self) -> usize {
-        self.unshifted.len()
+        self.elems.len()
     }
 
     /// Returns `true` if the commitment is empty.
     pub fn is_empty(&self) -> bool {
-        self.unshifted.is_empty()
+        self.elems.is_empty()
     }
 }
 
@@ -87,16 +87,16 @@ impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
         &self,
         other: &PolyComm<B>,
     ) -> Option<PolyComm<(A, B)>> {
-        if self.unshifted.len() != other.unshifted.len() {
+        if self.elems.len() != other.elems.len() {
             return None;
         }
-        let unshifted = self
-            .unshifted
+        let elems = self
+            .elems
             .iter()
-            .zip(other.unshifted.iter())
+            .zip(other.elems.iter())
             .map(|(x, y)| (*x, *y))
             .collect();
-        Some(PolyComm { unshifted })
+        Some(PolyComm { elems: elems })
     }
 }
 
@@ -151,20 +151,20 @@ impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn add(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut unshifted = vec![];
-        let n1 = self.unshifted.len();
-        let n2 = other.unshifted.len();
+        let mut elems = vec![];
+        let n1 = self.elems.len();
+        let n2 = other.elems.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                self.unshifted[i] + other.unshifted[i]
+                self.elems[i] + other.elems[i]
             } else if i < n1 {
-                self.unshifted[i]
+                self.elems[i]
             } else {
-                other.unshifted[i]
+                other.elems[i]
             };
-            unshifted.push(pt);
+            elems.push(pt);
         }
-        PolyComm { unshifted }
+        PolyComm { elems: elems }
     }
 }
 
@@ -172,31 +172,27 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
     type Output = PolyComm<C>;
 
     fn sub(self, other: &'a PolyComm<C>) -> PolyComm<C> {
-        let mut unshifted = vec![];
-        let n1 = self.unshifted.len();
-        let n2 = other.unshifted.len();
+        let mut elems = vec![];
+        let n1 = self.elems.len();
+        let n2 = other.elems.len();
         for i in 0..std::cmp::max(n1, n2) {
             let pt = if i < n1 && i < n2 {
-                self.unshifted[i] + (-other.unshifted[i])
+                self.elems[i] + (-other.elems[i])
             } else if i < n1 {
-                self.unshifted[i]
+                self.elems[i]
             } else {
-                other.unshifted[i]
+                other.elems[i]
             };
-            unshifted.push(pt);
+            elems.push(pt);
         }
-        PolyComm { unshifted }
+        PolyComm { elems: elems }
     }
 }
 
 impl<C: AffineCurve> PolyComm<C> {
     pub fn scale(&self, c: C::ScalarField) -> PolyComm<C> {
         PolyComm {
-            unshifted: self
-                .unshifted
-                .iter()
-                .map(|g| g.mul(c).into_affine())
-                .collect(),
+            elems: self.elems.iter().map(|g| g.mul(c).into_affine()).collect(),
         }
     }
 
@@ -215,22 +211,22 @@ impl<C: AffineCurve> PolyComm<C> {
 
         let all_scalars: Vec<_> = elm.iter().map(|s| s.into_repr()).collect();
 
-        let unshifted_size = Iterator::max(com.iter().map(|c| c.unshifted.len())).unwrap();
-        let mut unshifted = Vec::with_capacity(unshifted_size);
+        let elems_size = Iterator::max(com.iter().map(|c| c.elems.len())).unwrap();
+        let mut elems = Vec::with_capacity(elems_size);
 
-        for chunk in 0..unshifted_size {
+        for chunk in 0..elems_size {
             let (points, scalars): (Vec<_>, Vec<_>) = com
                 .iter()
                 .zip(&all_scalars)
                 // get rid of scalars that don't have an associated chunk
-                .filter_map(|(com, scalar)| com.unshifted.get(chunk).map(|c| (c, scalar)))
+                .filter_map(|(com, scalar)| com.elems.get(chunk).map(|c| (c, scalar)))
                 .unzip();
 
             let chunk_msm = VariableBaseMSM::multi_scalar_mul::<C>(&points, &scalars);
-            unshifted.push(chunk_msm.into_affine());
+            elems.push(chunk_msm.into_affine());
         }
 
-        Self::new(unshifted)
+        Self::new(elems)
     }
 }
 
@@ -310,7 +306,7 @@ pub fn absorb_commitment<
     sponge: &mut EFqSponge,
     commitment: &PolyComm<G>,
 ) {
-    sponge.absorb_g(&commitment.unshifted);
+    sponge.absorb_g(&commitment.elems);
 }
 
 /// A useful trait extending AffineCurve for commitments.
@@ -484,10 +480,10 @@ pub fn combine_commitments<G: CommitmentCurve>(
         ..
     } in evaluations
         .iter()
-        .filter(|x| !x.commitment.unshifted.is_empty())
+        .filter(|x| !x.commitment.elems.is_empty())
     {
         // iterating over the polynomial segments
-        for comm_ch in &commitment.unshifted {
+        for comm_ch in &commitment.elems {
             scalars.push(rand_base * xi_i);
             points.push(*comm_ch);
 
@@ -516,7 +512,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         ..
     } in evaluations
         .iter()
-        .filter(|x| !x.commitment.unshifted.is_empty())
+        .filter(|x| !x.commitment.elems.is_empty())
     {
         // iterating over the polynomial segments
         for j in 0..evaluations[0].len() {
@@ -591,7 +587,7 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
 
     /// This function commits a polynomial using the SRS' basis of size `n`.
     /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `num_chunks`: the number of unshifted commitments to be included in the output polynomial commitment
+    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
     /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
     /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
     /// as well as an optional bounded commitment (if `max` is set).
@@ -610,21 +606,21 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
 
         // chunk while commiting
-        let mut unshifted = vec![];
+        let mut elems = vec![];
         if is_zero {
-            unshifted.push(G::zero());
+            elems.push(G::zero());
         } else {
             coeffs.chunks(self.g.len()).for_each(|coeffs_chunk| {
                 let chunk = VariableBaseMSM::multi_scalar_mul(&self.g, coeffs_chunk);
-                unshifted.push(chunk.into_affine());
+                elems.push(chunk.into_affine());
             });
         }
 
-        for _ in unshifted.len()..num_chunks {
-            unshifted.push(G::zero());
+        for _ in elems.len()..num_chunks {
+            elems.push(G::zero());
         }
 
-        PolyComm::<G> { unshifted }
+        PolyComm::<G> { elems: elems }
     }
 
     fn commit_evaluations_non_hiding(
@@ -1065,7 +1061,7 @@ pub mod caml {
 
     #[derive(Clone, Debug, ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)]
     pub struct CamlPolyComm<CamlG> {
-        pub unshifted: Vec<CamlG>,
+        pub elems: Vec<CamlG>,
     }
 
     // handy conversions
@@ -1077,7 +1073,7 @@ pub mod caml {
     {
         fn from(polycomm: PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.unshifted.into_iter().map(Into::into).collect(),
+                elems: polycomm.elems.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -1089,7 +1085,7 @@ pub mod caml {
     {
         fn from(polycomm: &'a PolyComm<G>) -> Self {
             Self {
-                unshifted: polycomm.unshifted.iter().map(Into::into).collect(),
+                elems: polycomm.elems.iter().map(Into::into).collect(),
             }
         }
     }
@@ -1100,7 +1096,7 @@ pub mod caml {
     {
         fn from(camlpolycomm: CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
-                unshifted: camlpolycomm.unshifted.into_iter().map(Into::into).collect(),
+                elems: camlpolycomm.elems.into_iter().map(Into::into).collect(),
             }
         }
     }
@@ -1111,7 +1107,8 @@ pub mod caml {
     {
         fn from(camlpolycomm: &'a CamlPolyComm<CamlG>) -> PolyComm<G> {
             PolyComm {
-                shifted: camlpolycomm.shifted.as_ref().map(Into::into),
+                //FIXME something with as_ref()
+                elems: camlpolycomm.elems.iter().map(Into::into).collect(),
             }
         }
     }
