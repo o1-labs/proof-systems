@@ -3,7 +3,7 @@
 //! Both the permutation and the plookup arguments fit this type.
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
-//! For more info, read book/kimchi/src/kimchi/arguments.md
+//! For more info, read book/src/kimchi/arguments.md
 
 use std::marker::PhantomData;
 
