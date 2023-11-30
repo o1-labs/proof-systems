@@ -126,7 +126,7 @@ $$
 
 Since we would like to allow multiple table lookups per row, we define multiple **queries**, where each query is associated with a **lookup selector**.
 
-Previously, ChaCha20 was implemented in Kimchi but has been removed as unneeded.
+Previously, ChaCha20 was implemented in Kimchi but has been removed as it has become unneeded.
 You can still find the implementation
 [here](https://github.com/o1-labs/proof-systems/blob/601e0adb2a4ba325c9a76468b091ded2bc7b0f70/kimchi/src/circuits/polynomials/chacha.rs).
 The `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
