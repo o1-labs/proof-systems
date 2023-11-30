@@ -9,20 +9,23 @@ MDBOOK_LINKCHECK_VERSION = 0.7.7
 MDBOOK_MERMAID_VERSION = 0.12.6
 MDBOOK_TOC_VERSION = 0.14.1
 
+
+all: deps check build serve
+
 #
-# use `make deps` to install the dependencies required to serve or build the book
+# Installs the dependencies required to serve or build the book
 #
 
 deps:
 	cargo install "mdbook@$(MDBOOK_VERSION)"
 	cargo install "mdbook-admonish@$(MDBOOK_ADMONISH_VERSION)"
 	cargo install "mdbook-katex@$(MDBOOK_KATEX_VERSION)"
-	# cargo install "mdbook-linkcheck@$(MDBOOK_LINKCHECK_VERSION)"
+	cargo install "mdbook-linkcheck@$(MDBOOK_LINKCHECK_VERSION)"
 	cargo install "mdbook-mermaid@$(MDBOOK_MERMAID_VERSION)"
 	cargo install "mdbook-toc@$(MDBOOK_TOC_VERSION)"
 
 #
-# use `make check` to check if your installed dependencies match what we've listed above
+# Checks if your installed dependencies match what we've listed above
 #
 
 define check_version
@@ -37,21 +40,21 @@ check:
 	$(call check_version,mdbook-toc,$(MDBOOK_TOC_VERSION))
 
 #
-# use `make` to serve the book locally
-#
-
-all: check
-	mdbook serve --open
-
-#
-# use `make build` to build the book
+# Builds the book
 #
 
 build: check
 	mdbook build
 
 #
-# use `make clean` to clean the generated artefacts
+# Serves the book locally
+#
+
+serve: check
+	mdbook serve --open
+
+#
+# Cleans the generated artefacts
 #
 
 clean:
