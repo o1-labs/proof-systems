@@ -10,7 +10,7 @@ We integrate plookup in kimchi with the following differences:
 
 * we snake-ify the sorted table instead of wrapping it around (see later)
 * we allow fixed-ahead-of-time linear combinations of columns of the queries we make
-* we only use a single table (XOR) at the moment of this writing
+* we implemented different tables, like RangeCheck and XOR. <!-- This sentence must be changed if we update ../../../kimchi/src/circuits/lookup/tables/mod.rs -->
 * we allow several lookups (or queries) to be performed within the same row
 * zero-knowledgeness is added in a specific way (see later)
 
@@ -57,7 +57,8 @@ $$
 
 ### Lookup tables
 
-Kimchi uses a single **lookup table** at the moment of this writing; the XOR table. The XOR table for values of 1 bit is the following:
+<!-- This sentence must be changed if we update ../../../kimchi/src/circuits/lookup/tables/mod.rs -->
+Kimchi uses different lookup tables, including RangeCheck and XOR. The XOR table for values of 1 bit is the following:
 
 
 | l   | r   | o   |
@@ -110,7 +111,7 @@ The associated **query selector** tells us on which rows the query into the XOR 
 |   1   |       0        |
 
 
-Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time. Currently only the ChaCha gates make use of the lookups.
+Both the (XOR) lookup table and the query are built-ins in kimchi. The query selector is derived from the circuit at setup time.
 
 With the selectors, the grand product argument for the lookup constraint has the following form:
 
@@ -131,7 +132,10 @@ $$
 
 Since we would like to allow multiple table lookups per row, we define multiple **queries**, where each query is associated with a **lookup selector**.
 
-At the moment of this writing, the `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
+Previously, ChaCha20 was implemented in Kimchi but has been removed as it has become unneeded.
+You can still find the implementation
+[here](https://github.com/o1-labs/proof-systems/blob/601e0adb2a4ba325c9a76468b091ded2bc7b0f70/kimchi/src/circuits/polynomials/chacha.rs).
+The `ChaCha` gates all perform $4$ queries in a row. Thus, $4$ is trivially the largest number of queries that happen in a row.
 
 **Important**: to make constraints work, this means that each row must make $4$ queries. Potentially some or all of them are dummy queries.
 
@@ -202,7 +206,7 @@ The denominator thus becomes $\prod_{k=1}^{5} (\gamma (1+\beta) + s_{kn+i-1} + \
 
 There are two things that we haven't touched on:
 
-* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit (for now only one, the XOR lookup table, can be used in the circuit).
+* The vector $t$ representing the **combined lookup table** (after its columns have been combined with a joint combiner $j$). The **non-combined loookup table** is fixed at setup time and derived based on the lookup tables used in the circuit.
 * The vector $s$ representing the sorted multiset of both the queries and the lookup table. This is created by the prover and sent as commitment to the verifier.
 
 The first vector $t$ is quite straightforward to think about:
