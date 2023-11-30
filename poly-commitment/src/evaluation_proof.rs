@@ -12,15 +12,11 @@ use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 use std::iter::Iterator;
 
-enum OptShiftedPolynomial<P> {
-    Unshifted(P),
-}
-
 // A formal sum of the form
 // `s_0 * p_0 + ... s_n * p_n`
-// where each `s_i` is a scalar and each `p_i` is an optionally shifted polynomial.
+// where each `s_i` is a scalar and each `p_i` is a polynomial.
 #[derive(Default)]
-struct ScaledChunkedPolynomial<F, P>(Vec<(F, OptShiftedPolynomial<P>)>);
+struct ScaledChunkedPolynomial<F, P>(Vec<(F, P)>);
 
 pub enum DensePolynomialOrEvaluations<'a, F: FftField, D: EvaluationDomain<F>> {
     DensePolynomial(&'a DensePolynomial<F>),
@@ -28,8 +24,8 @@ pub enum DensePolynomialOrEvaluations<'a, F: FftField, D: EvaluationDomain<F>> {
 }
 
 impl<F, P> ScaledChunkedPolynomial<F, P> {
-    fn add_unshifted(&mut self, scale: F, p: P) {
-        self.0.push((scale, OptShiftedPolynomial::Unshifted(p)))
+    fn add_poly(&mut self, scale: F, p: P) {
+        self.0.push((scale, p))
     }
 }
 
@@ -42,12 +38,8 @@ impl<'a, F: Field> ScaledChunkedPolynomial<F, &'a [F]> {
             .par_iter()
             .map(|(scale, segment)| {
                 let scale = *scale;
-                match segment {
-                    OptShiftedPolynomial::Unshifted(segment) => {
-                        let v = segment.par_iter().map(|x| scale * *x).collect();
-                        DensePolynomial::from_coefficients_vec(v)
-                    }
-                }
+                let v = segment.par_iter().map(|x| scale * *x).collect();
+                DensePolynomial::from_coefficients_vec(v)
             })
             .collect();
 
@@ -85,7 +77,6 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
             .unwrap_or(0);
         vec![G::ScalarField::zero(); degree]
     };
-    // let mut plnm_chunks: Vec<(G::ScalarField, OptShiftedPolynomial<_>)> = vec![];
 
     let mut omega = G::ScalarField::zero();
     let mut scale = G::ScalarField::one();
@@ -119,7 +110,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
                     // always mixing in the unshifted segments
-                    plnm.add_unshifted(scale, segment);
+                    plnm.add_poly(scale, segment);
 
                     omega += &(omegas.unshifted[j] * scale);
                     scale *= &polyscale;
