@@ -226,7 +226,8 @@ in-circuit commitment.</li>
 <li><strong>fixed tables</strong> are tables declared as part of the constraint system, and
 are the same for every proof of that circuit.</li>
 <li><strong>runtime tables</strong> are tables whose contents are determined at proving time,
-to be used for array accesses to data from the witness.</li>
+to be used for array accesses to data from the witness. Also called dynamic
+tables in other projects.</li>
 <li><strong>side-loaded tables</strong> are tables that are committed to in a
 proof-independent way, so that they may be reused across proofs and/or signed
 without knowledge of the specific proof, but may be different for each
