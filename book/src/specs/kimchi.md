@@ -369,7 +369,7 @@ This is used to check that the value fits in 12 bits.
 
 ##### Runtime tables
 
-Another type of lookup tables has been suggested in the [Extended Lookup tables RFC](../rfcs/extended-lookup-tables.md).
+Another type of lookup tables has been suggested in the [Extended Lookup Tables](../kimchi/extended-lookup-tables.md).
 
 
 
