@@ -265,6 +265,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let immediate_value = env.get_immediate();
             env.overwrite_register_checked(&rt, &immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
