@@ -329,13 +329,13 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::LoadUpperImmediate => {
             // lui $reg, [most significant 16 bits of immediate]
             let rt = env.get_instruction_part(InstructionPart::RT);
-            let immediate_value = env.get_immediate();
+            let immediate_value = env.get_immediate() << 16;
             env.overwrite_register_checked(&rt, &immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
             return;
-        },
+        }
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
@@ -468,9 +468,6 @@ mod tests {
             funct: 0b001010,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
-        assert_eq!(
-            dummy_env.registers[REGISTER_AT as usize],
-            0xa,
-        );
+        assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000,);
     }
 }
