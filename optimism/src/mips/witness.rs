@@ -193,9 +193,6 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn get_memory_direct(&self, addr: u32) -> u8 {
-        const PAGE_ADDRESS_SIZE: u32 = 12;
-        const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
-        const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         for (page_index, memory) in self.memory.iter() {
@@ -371,14 +368,14 @@ impl<Fp: Field> Env<Fp> {
 
     // Compute memory usage
     fn memory_usage(&self) -> String {
-        let total = self.memory.len() * PAGE_SIZE;
+        let total = self.memory.len() * PAGE_SIZE as usize;
         memory_size(total)
     }
 
     fn page_address(&self) -> (u32, usize) {
         let address = self.instruction_pointer;
         let page = address >> PAGE_ADDRESS_SIZE;
-        let page_address = (address & (PAGE_ADDRESS_MASK as u32)) as usize;
+        let page_address = (address & PAGE_ADDRESS_MASK) as usize;
         (page, page_address)
     }
 

@@ -7,9 +7,9 @@ use regex::Regex;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::io::Read;
 
-pub const PAGE_ADDRESS_SIZE: usize = 12;
-pub const PAGE_SIZE: usize = 1 << PAGE_ADDRESS_SIZE;
-pub const PAGE_ADDRESS_MASK: usize = PAGE_SIZE - 1;
+pub const PAGE_ADDRESS_SIZE: u32 = 12;
+pub const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
+pub const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Page {
@@ -27,7 +27,7 @@ where
     let mut decoder = Decoder::new(&b64_decoded[..]).unwrap();
     let mut data = Vec::new();
     decoder.read_to_end(&mut data).unwrap();
-    assert_eq!(data.len(), PAGE_SIZE);
+    assert_eq!(data.len(), PAGE_SIZE as usize);
     Ok(data)
 }
 
