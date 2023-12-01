@@ -140,7 +140,11 @@ pub trait InterpreterEnv {
         + std::ops::BitAnd<u32, Output = Self::Variable>
         + std::fmt::Display;
 
+    fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
+
+    fn get_instruction_pointer(&self) -> Self::Variable;
 
     fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable;
 
@@ -220,11 +224,13 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
                 + (env.get_instruction_part(InstructionPart::Shamt) << 6)
                 + (env.get_instruction_part(InstructionPart::Funct));
             env.set_instruction_pointer(addr * 4);
+            // REMOVEME: when all jtype instructions are implemented.
+            return;
         }
         JTypeInstruction::JumpAndLink => (),
     };
-    // TODO: Don't halt.
-    // env.set_halted(Env::constant(1));
+    // REMOVEME: when all jtype instructions are implemented.
+    env.set_halted(Env::constant(1));
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
@@ -243,7 +249,17 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::LoadUpperImmediate => (),
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
-        ITypeInstruction::Load32 => (),
+        ITypeInstruction::Load32 => {
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            // Values are the first 16bits
+            let immediate_value = (env.get_instruction_part(InstructionPart::RD) << 11)
+                + (env.get_instruction_part(InstructionPart::Shamt) << 6)
+                + (env.get_instruction_part(InstructionPart::Funct));
+            env.overwrite_register_checked(&rt, &immediate_value);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::Load8Unsigned => (),
         ITypeInstruction::Load16Unsigned => (),
         ITypeInstruction::LoadWordLeft => (),
@@ -254,8 +270,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::StoreWordLeft => (),
         ITypeInstruction::StoreWordRight => (),
     };
-    // TODO: Don't halt.
-    env.set_halted(Env::constant(1));
+
+    // REMOVEME: when all itype instructions are implemented.
+    env.set_halted(Env::constant(1))
 }
 
 #[cfg(test)]
@@ -290,6 +307,7 @@ mod tests {
             preimage_oracle: dummy_preimage_oracle,
         }
     }
+
     #[test]
     fn test_unit_jump_instruction() {
         // We only care about instruction parts and instruction pointer
@@ -306,5 +324,24 @@ mod tests {
         };
         interpret_jtype(&mut dummy_env, JTypeInstruction::Jump);
         assert_eq!(dummy_env.instruction_pointer, 694684);
+    }
+
+    #[test]
+    fn test_unit_load32_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b10001111101001000000000000000000
+        // lw $a0, 0
+        // a0 = 4
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b11101,
+            rt: 0b00100,
+            rd: 0b00000,
+            shamt: 0b00000,
+            funct: 0b000000,
+        };
+        interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
+        assert_eq!(dummy_env.registers[4], 0);
     }
 }

@@ -100,6 +100,14 @@ fn memory_size(total: usize) -> String {
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
     type Variable = u32;
 
+    fn overwrite_register_checked(
+        &mut self,
+        register_idx: &Self::Variable,
+        value: &Self::Variable,
+    ) {
+        self.registers[*register_idx as usize] = *value
+    }
+
     fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable {
         self.instruction_parts[part]
     }
@@ -107,6 +115,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
         self.instruction_pointer = ip;
         // Set next instruction pointer?
+    }
+
+    fn get_instruction_pointer(&self) -> Self::Variable {
+        self.instruction_pointer
     }
 
     fn constant(x: u32) -> Self::Variable {
