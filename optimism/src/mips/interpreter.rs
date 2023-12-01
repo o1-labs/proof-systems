@@ -385,11 +385,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let dest = env.get_instruction_part(InstructionPart::RT);
             let addr = env.get_instruction_part(InstructionPart::RS);
             let offset = env.get_immediate();
-            let addr_with_offset = addr.clone() + offset.clone();
+            let addr_with_offset = Env::add_16bits_signed_offset(&addr, &offset);
             debug!(
                 "lw {}, {}({})",
-                dest.clone(),
-                offset.clone(),
+                Env::debug_register(&dest),
+                Env::debug_signed_16bits_variable(&offset),
                 Env::debug_register(&addr)
             );
             // We load 4 bytes, i.e. one word.
