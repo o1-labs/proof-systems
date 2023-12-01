@@ -364,6 +364,6 @@ mod tests {
             funct: 0b000000,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
-        assert_eq!(dummy_env.registers[4], 0);
+        assert_eq!(dummy_env.registers[REGISTER_A0 as usize], 0);
     }
 }
