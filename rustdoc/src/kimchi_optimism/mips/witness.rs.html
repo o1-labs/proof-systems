@@ -382,6 +382,24 @@
 <a href="#382" id="382">382</a>
 <a href="#383" id="383">383</a>
 <a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -389,7 +407,8 @@
     },
     mips::{
         interpreter::{
-            <span class="self">self</span>, ITypeInstruction, Instruction, InterpreterEnv, JTypeInstruction, RTypeInstruction,
+            <span class="self">self</span>, ITypeInstruction, Instruction, InstructionParts, InterpreterEnv,
+            JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
     },
@@ -426,6 +445,7 @@
 }
 
 <span class="kw">pub struct </span>Env&lt;Fp&gt; {
+    <span class="kw">pub </span>instruction_parts: InstructionParts&lt;u32&gt;,
     <span class="kw">pub </span>instruction_counter: usize,
     <span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
     <span class="kw">pub </span>memory_write_index: Vec&lt;(u32, Vec&lt;usize&gt;)&gt;,
@@ -528,6 +548,9 @@
         };
 
         Env {
+            <span class="comment">// Will be modified by decode_instruction.
+            // We set the instruction parts to 0 to begin
+            </span>instruction_parts: InstructionParts::default(),
             instruction_counter: state.step <span class="kw">as </span>usize,
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
@@ -560,122 +583,135 @@
         <span class="macro">panic!</span>(<span class="string">&quot;Could not access address&quot;</span>)
     }
 
-    <span class="kw">pub fn </span>decode_instruction(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Instruction {
+    <span class="kw">pub fn </span>decode_instruction(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Instruction, u32) {
         <span class="kw">let </span>instruction = ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer) <span class="kw">as </span>u32) &lt;&lt; <span class="number">24</span>)
             | ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer + <span class="number">1</span>) <span class="kw">as </span>u32) &lt;&lt; <span class="number">16</span>)
             | ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer + <span class="number">2</span>) <span class="kw">as </span>u32) &lt;&lt; <span class="number">8</span>)
             | (<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.instruction_pointer + <span class="number">3</span>) <span class="kw">as </span>u32);
-        <span class="kw">match </span>instruction &gt;&gt; <span class="number">26 </span>{
-            <span class="number">0x00 </span>=&gt; <span class="kw">match </span>instruction &amp; <span class="number">0x3F </span>{
-                <span class="number">0x00 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogical),
-                <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightLogical),
-                <span class="number">0x03 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightArithmetic),
-                <span class="number">0x04 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogicalVariable),
-                <span class="number">0x06 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightLogicalVariable),
-                <span class="number">0x07 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightArithmeticVariable),
-                <span class="number">0x08 </span>=&gt; Instruction::RType(RTypeInstruction::JumpRegister),
-                <span class="number">0x09 </span>=&gt; Instruction::RType(RTypeInstruction::JumpAndLinkRegister),
-                <span class="number">0x0a </span>=&gt; Instruction::RType(RTypeInstruction::MoveZero),
-                <span class="number">0x0b </span>=&gt; Instruction::RType(RTypeInstruction::MoveNonZero),
-                <span class="number">0x0c </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">2</span>] {
-                    <span class="number">4090 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallMmap),
-                    <span class="number">4045 </span>=&gt; {
-                        <span class="comment">// sysBrk
-                        </span>Instruction::RType(RTypeInstruction::SyscallOther)
-                    }
-                    <span class="number">4120 </span>=&gt; {
-                        <span class="comment">// sysClone
-                        </span>Instruction::RType(RTypeInstruction::SyscallOther)
-                    }
-                    <span class="number">4246 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallExitGroup),
-                    <span class="number">4003 </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">4</span>] {
-                        interpreter::FD_PREIMAGE_READ =&gt; {
-                            Instruction::RType(RTypeInstruction::SyscallReadPreimage)
+        <span class="kw">let </span>opcode = {
+            <span class="kw">match </span>instruction &gt;&gt; <span class="number">26 </span>{
+                <span class="number">0x00 </span>=&gt; <span class="kw">match </span>instruction &amp; <span class="number">0x3F </span>{
+                    <span class="number">0x00 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogical),
+                    <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightLogical),
+                    <span class="number">0x03 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightArithmetic),
+                    <span class="number">0x04 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftLeftLogicalVariable),
+                    <span class="number">0x06 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightLogicalVariable),
+                    <span class="number">0x07 </span>=&gt; Instruction::RType(RTypeInstruction::ShiftRightArithmeticVariable),
+                    <span class="number">0x08 </span>=&gt; Instruction::RType(RTypeInstruction::JumpRegister),
+                    <span class="number">0x09 </span>=&gt; Instruction::RType(RTypeInstruction::JumpAndLinkRegister),
+                    <span class="number">0x0a </span>=&gt; Instruction::RType(RTypeInstruction::MoveZero),
+                    <span class="number">0x0b </span>=&gt; Instruction::RType(RTypeInstruction::MoveNonZero),
+                    <span class="number">0x0c </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">2</span>] {
+                        <span class="number">4090 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallMmap),
+                        <span class="number">4045 </span>=&gt; {
+                            <span class="comment">// sysBrk
+                            </span>Instruction::RType(RTypeInstruction::SyscallOther)
                         }
-                        <span class="kw">_ </span>=&gt; Instruction::RType(RTypeInstruction::SyscallReadOther),
+                        <span class="number">4120 </span>=&gt; {
+                            <span class="comment">// sysClone
+                            </span>Instruction::RType(RTypeInstruction::SyscallOther)
+                        }
+                        <span class="number">4246 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallExitGroup),
+                        <span class="number">4003 </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">4</span>] {
+                            interpreter::FD_PREIMAGE_READ =&gt; {
+                                Instruction::RType(RTypeInstruction::SyscallReadPreimage)
+                            }
+                            <span class="kw">_ </span>=&gt; Instruction::RType(RTypeInstruction::SyscallReadOther),
+                        },
+                        <span class="number">4004 </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">4</span>] {
+                            interpreter::FD_PREIMAGE_WRITE =&gt; {
+                                Instruction::RType(RTypeInstruction::SyscallWritePreimage)
+                            }
+                            interpreter::FD_HINT_WRITE =&gt; {
+                                Instruction::RType(RTypeInstruction::SyscallWriteHint)
+                            }
+                            <span class="kw">_ </span>=&gt; Instruction::RType(RTypeInstruction::SyscallWriteOther),
+                        },
+                        <span class="number">4055 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallFcntl),
+                        <span class="kw">_ </span>=&gt; {
+                            <span class="comment">// NB: This has well-defined behavior. Don&#39;t panic!
+                            </span>Instruction::RType(RTypeInstruction::SyscallOther)
+                        }
                     },
-                    <span class="number">4004 </span>=&gt; <span class="kw">match </span><span class="self">self</span>.registers.general_purpose[<span class="number">4</span>] {
-                        interpreter::FD_PREIMAGE_WRITE =&gt; {
-                            Instruction::RType(RTypeInstruction::SyscallWritePreimage)
-                        }
-                        interpreter::FD_HINT_WRITE =&gt; {
-                            Instruction::RType(RTypeInstruction::SyscallWriteHint)
-                        }
-                        <span class="kw">_ </span>=&gt; Instruction::RType(RTypeInstruction::SyscallWriteOther),
-                    },
-                    <span class="number">4055 </span>=&gt; Instruction::RType(RTypeInstruction::SyscallFcntl),
+                    <span class="number">0x0f </span>=&gt; Instruction::RType(RTypeInstruction::Sync),
+                    <span class="number">0x10 </span>=&gt; Instruction::RType(RTypeInstruction::MoveFromHi),
+                    <span class="number">0x11 </span>=&gt; Instruction::RType(RTypeInstruction::MoveToHi),
+                    <span class="number">0x12 </span>=&gt; Instruction::RType(RTypeInstruction::MoveFromLo),
+                    <span class="number">0x13 </span>=&gt; Instruction::RType(RTypeInstruction::MoveToLo),
+                    <span class="number">0x18 </span>=&gt; Instruction::RType(RTypeInstruction::Multiply),
+                    <span class="number">0x19 </span>=&gt; Instruction::RType(RTypeInstruction::MultiplyUnsigned),
+                    <span class="number">0x1a </span>=&gt; Instruction::RType(RTypeInstruction::Div),
+                    <span class="number">0x1b </span>=&gt; Instruction::RType(RTypeInstruction::DivUnsigned),
+                    <span class="number">0x20 </span>=&gt; Instruction::RType(RTypeInstruction::Add),
+                    <span class="number">0x21 </span>=&gt; Instruction::RType(RTypeInstruction::AddUnsigned),
+                    <span class="number">0x22 </span>=&gt; Instruction::RType(RTypeInstruction::Sub),
+                    <span class="number">0x23 </span>=&gt; Instruction::RType(RTypeInstruction::SubUnsigned),
+                    <span class="number">0x24 </span>=&gt; Instruction::RType(RTypeInstruction::And),
+                    <span class="number">0x25 </span>=&gt; Instruction::RType(RTypeInstruction::Or),
+                    <span class="number">0x26 </span>=&gt; Instruction::RType(RTypeInstruction::Xor),
+                    <span class="number">0x2a </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThan),
+                    <span class="number">0x2b </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
                     <span class="kw">_ </span>=&gt; {
-                        <span class="comment">// NB: This has well-defined behavior. Don&#39;t panic!
-                        </span>Instruction::RType(RTypeInstruction::SyscallOther)
+                        <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
                     }
                 },
-                <span class="number">0x0f </span>=&gt; Instruction::RType(RTypeInstruction::Sync),
-                <span class="number">0x10 </span>=&gt; Instruction::RType(RTypeInstruction::MoveFromHi),
-                <span class="number">0x11 </span>=&gt; Instruction::RType(RTypeInstruction::MoveToHi),
-                <span class="number">0x12 </span>=&gt; Instruction::RType(RTypeInstruction::MoveFromLo),
-                <span class="number">0x13 </span>=&gt; Instruction::RType(RTypeInstruction::MoveToLo),
-                <span class="number">0x18 </span>=&gt; Instruction::RType(RTypeInstruction::Multiply),
-                <span class="number">0x19 </span>=&gt; Instruction::RType(RTypeInstruction::MultiplyUnsigned),
-                <span class="number">0x1a </span>=&gt; Instruction::RType(RTypeInstruction::Div),
-                <span class="number">0x1b </span>=&gt; Instruction::RType(RTypeInstruction::DivUnsigned),
-                <span class="number">0x20 </span>=&gt; Instruction::RType(RTypeInstruction::Add),
-                <span class="number">0x21 </span>=&gt; Instruction::RType(RTypeInstruction::AddUnsigned),
-                <span class="number">0x22 </span>=&gt; Instruction::RType(RTypeInstruction::Sub),
-                <span class="number">0x23 </span>=&gt; Instruction::RType(RTypeInstruction::SubUnsigned),
-                <span class="number">0x24 </span>=&gt; Instruction::RType(RTypeInstruction::And),
-                <span class="number">0x25 </span>=&gt; Instruction::RType(RTypeInstruction::Or),
-                <span class="number">0x26 </span>=&gt; Instruction::RType(RTypeInstruction::Xor),
-                <span class="number">0x2a </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThan),
-                <span class="number">0x2b </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
+                <span class="number">0x02 </span>=&gt; Instruction::JType(JTypeInstruction::Jump),
+                <span class="number">0x03 </span>=&gt; Instruction::JType(JTypeInstruction::JumpAndLink),
+                <span class="number">0x08 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediate),
+                <span class="number">0x09 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediateUnsigned),
+                <span class="number">0x0A </span>=&gt; Instruction::IType(ITypeInstruction::SetLessThanImmediate),
+                <span class="number">0x0B </span>=&gt; Instruction::IType(ITypeInstruction::SetLessThanImmediateUnsigned),
+                <span class="number">0x0C </span>=&gt; Instruction::IType(ITypeInstruction::AndImmediate),
+                <span class="number">0x0D </span>=&gt; Instruction::IType(ITypeInstruction::OrImmediate),
+                <span class="number">0x0E </span>=&gt; Instruction::IType(ITypeInstruction::XorImmediate),
+                <span class="number">0x0F </span>=&gt; Instruction::IType(ITypeInstruction::LoadUpperImmediate),
+                <span class="number">0x1C </span>=&gt; <span class="kw">match </span>instruction &amp; <span class="number">0x3F </span>{
+                    <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::MultiplyToRegister),
+                    <span class="number">0x20 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingZeros),
+                    <span class="number">0x21 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingOnes),
+                    <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction),
+                },
+                <span class="number">0x20 </span>=&gt; Instruction::IType(ITypeInstruction::Load8),
+                <span class="number">0x21 </span>=&gt; Instruction::IType(ITypeInstruction::Load16),
+                <span class="number">0x22 </span>=&gt; Instruction::IType(ITypeInstruction::LoadWordLeft),
+                <span class="number">0x23 </span>=&gt; Instruction::IType(ITypeInstruction::Load32),
+                <span class="number">0x24 </span>=&gt; Instruction::IType(ITypeInstruction::Load8Unsigned),
+                <span class="number">0x25 </span>=&gt; Instruction::IType(ITypeInstruction::Load16Unsigned),
+                <span class="number">0x26 </span>=&gt; Instruction::IType(ITypeInstruction::LoadWordRight),
+                <span class="number">0x28 </span>=&gt; Instruction::IType(ITypeInstruction::Store8),
+                <span class="number">0x29 </span>=&gt; Instruction::IType(ITypeInstruction::Store16),
+                <span class="number">0x2a </span>=&gt; Instruction::IType(ITypeInstruction::StoreWordLeft),
+                <span class="number">0x2b </span>=&gt; Instruction::IType(ITypeInstruction::Store32),
+                <span class="number">0x2e </span>=&gt; Instruction::IType(ITypeInstruction::StoreWordRight),
+                <span class="number">0x30 </span>=&gt; {
+                    <span class="comment">// Note: This is ll (LoadLinked), but we&#39;re only simulating a single processor.
+                    </span>Instruction::IType(ITypeInstruction::Load32)
+                }
+                <span class="number">0x38 </span>=&gt; {
+                    <span class="comment">// Note: This is sc (StoreConditional), but we&#39;re only simulating a single processor.
+                    </span>Instruction::IType(ITypeInstruction::Store32)
+                }
                 <span class="kw">_ </span>=&gt; {
                     <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
                 }
-            },
-            <span class="number">0x02 </span>=&gt; Instruction::JType(JTypeInstruction::Jump),
-            <span class="number">0x03 </span>=&gt; Instruction::JType(JTypeInstruction::JumpAndLink),
-            <span class="number">0x08 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediate),
-            <span class="number">0x09 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediateUnsigned),
-            <span class="number">0x0A </span>=&gt; Instruction::IType(ITypeInstruction::SetLessThanImmediate),
-            <span class="number">0x0B </span>=&gt; Instruction::IType(ITypeInstruction::SetLessThanImmediateUnsigned),
-            <span class="number">0x0C </span>=&gt; Instruction::IType(ITypeInstruction::AndImmediate),
-            <span class="number">0x0D </span>=&gt; Instruction::IType(ITypeInstruction::OrImmediate),
-            <span class="number">0x0E </span>=&gt; Instruction::IType(ITypeInstruction::XorImmediate),
-            <span class="number">0x0F </span>=&gt; Instruction::IType(ITypeInstruction::LoadUpperImmediate),
-            <span class="number">0x1C </span>=&gt; <span class="kw">match </span>instruction &amp; <span class="number">0x3F </span>{
-                <span class="number">0x02 </span>=&gt; Instruction::RType(RTypeInstruction::MultiplyToRegister),
-                <span class="number">0x20 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingZeros),
-                <span class="number">0x21 </span>=&gt; Instruction::RType(RTypeInstruction::CountLeadingOnes),
-                <span class="kw">_ </span>=&gt; <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction),
-            },
-            <span class="number">0x20 </span>=&gt; Instruction::IType(ITypeInstruction::Load8),
-            <span class="number">0x21 </span>=&gt; Instruction::IType(ITypeInstruction::Load16),
-            <span class="number">0x22 </span>=&gt; Instruction::IType(ITypeInstruction::LoadWordLeft),
-            <span class="number">0x23 </span>=&gt; Instruction::IType(ITypeInstruction::Load32),
-            <span class="number">0x24 </span>=&gt; Instruction::IType(ITypeInstruction::Load8Unsigned),
-            <span class="number">0x25 </span>=&gt; Instruction::IType(ITypeInstruction::Load16Unsigned),
-            <span class="number">0x26 </span>=&gt; Instruction::IType(ITypeInstruction::LoadWordRight),
-            <span class="number">0x28 </span>=&gt; Instruction::IType(ITypeInstruction::Store8),
-            <span class="number">0x29 </span>=&gt; Instruction::IType(ITypeInstruction::Store16),
-            <span class="number">0x2a </span>=&gt; Instruction::IType(ITypeInstruction::StoreWordLeft),
-            <span class="number">0x2b </span>=&gt; Instruction::IType(ITypeInstruction::Store32),
-            <span class="number">0x2e </span>=&gt; Instruction::IType(ITypeInstruction::StoreWordRight),
-            <span class="number">0x30 </span>=&gt; {
-                <span class="comment">// Note: This is ll (LoadLinked), but we&#39;re only simulating a single processor.
-                </span>Instruction::IType(ITypeInstruction::Load32)
             }
-            <span class="number">0x38 </span>=&gt; {
-                <span class="comment">// Note: This is sc (StoreConditional), but we&#39;re only simulating a single processor.
-                </span>Instruction::IType(ITypeInstruction::Store32)
-            }
-            <span class="kw">_ </span>=&gt; {
-                <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
-            }
-        }
+        };
+        (opcode, instruction)
     }
 
     <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, config: VmConfiguration, metadata: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
-        <span class="kw">let </span>instruction = <span class="self">self</span>.decode_instruction();
-        <span class="macro">println!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, instruction);
+        <span class="kw">let </span>(opcode, instruction) = <span class="self">self</span>.decode_instruction();
+        <span class="kw">let </span>instruction_parts: InstructionParts&lt;u32&gt; = InstructionParts {
+            op_code: ((instruction &gt;&gt; <span class="number">26</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- <span class="number">26</span>)) - <span class="number">1</span>)),
+            rs: ((instruction &gt;&gt; <span class="number">21</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">26 </span>- <span class="number">21</span>)) - <span class="number">1</span>)),
+            rt: ((instruction &gt;&gt; <span class="number">16</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">21 </span>- <span class="number">16</span>)) - <span class="number">1</span>)),
+            rd: ((instruction &gt;&gt; <span class="number">11</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">16 </span>- <span class="number">11</span>)) - <span class="number">1</span>)),
+            shamt: ((instruction &gt;&gt; <span class="number">6</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">11 </span>- <span class="number">6</span>)) - <span class="number">1</span>)),
+            funct: (instruction &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">6</span>) - <span class="number">1</span>)),
+        };
+        <span class="self">self</span>.instruction_parts = instruction_parts;
+
+        <span class="macro">println!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, opcode);
 
         <span class="self">self</span>.pp_info(config.info_at, metadata, start);
 
@@ -685,7 +721,7 @@
             <span class="kw">return</span>;
         }
 
-        interpreter::interpret_instruction(<span class="self">self</span>, instruction);
+        interpreter::interpret_instruction(<span class="self">self</span>, opcode);
     }
 
     <span class="kw">fn </span>should_trigger_at(<span class="kw-2">&amp;</span><span class="self">self</span>, at: StepFrequency) -&gt; bool {
@@ -745,7 +781,7 @@
                 .unwrap_or_else(|| <span class="string">&quot;n/a&quot;</span>.to_string());
 
             <span class="macro">info!</span>(
-                <span class="string">&quot;processing step {} pc {:#010x} insn {:#010x} ips {:.2} page {} mem {} name {}&quot;</span>,
+                <span class="string">&quot;processing step={} pc={:#010x} insn={:#010x} ips={:.2} page={} mem={} name={}&quot;</span>,
                 step, pc, insn, ips, pages, mem, name
             );
         }
