@@ -148,6 +148,13 @@ pub trait InterpreterEnv {
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
+    fn get_immediate(&self) -> Self::Variable {
+        // The immediate value is the first 16bits
+        (self.get_instruction_part(InstructionPart::RD) << 11)
+            + (self.get_instruction_part(InstructionPart::Shamt) << 6)
+            + (self.get_instruction_part(InstructionPart::Funct))
+    }
+
     fn get_instruction_pointer(&self) -> Self::Variable;
 
     fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable;
@@ -255,10 +262,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
             let rt = env.get_instruction_part(InstructionPart::RT);
-            // Values are the first 16bits
-            let immediate_value = (env.get_instruction_part(InstructionPart::RD) << 11)
-                + (env.get_instruction_part(InstructionPart::Shamt) << 6)
-                + (env.get_instruction_part(InstructionPart::Funct));
+            let immediate_value = env.get_immediate();
             env.overwrite_register_checked(&rt, &immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.
