@@ -146,6 +146,8 @@ pub trait InterpreterEnv {
 
     fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
 
+    fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
     fn get_immediate(&self) -> Self::Variable {

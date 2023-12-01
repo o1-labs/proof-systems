@@ -108,6 +108,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.registers[*register_idx as usize] = *value
     }
 
+    fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable {
+        self.registers[*register_idx as usize]
+    }
+
     fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable {
         self.instruction_parts[part]
     }
