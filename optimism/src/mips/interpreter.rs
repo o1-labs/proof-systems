@@ -10,6 +10,10 @@ pub const FD_HINT_WRITE: u32 = 4;
 pub const FD_PREIMAGE_READ: u32 = 5;
 pub const FD_PREIMAGE_WRITE: u32 = 6;
 
+pub const REGISTER_A0: u32 = 4;
+pub const REGISTER_A1: u32 = 5;
+pub const REGISTER_SP: u32 = 29;
+
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
 pub enum InstructionPart {
     OpCode,
