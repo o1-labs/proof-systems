@@ -354,7 +354,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::AddImmediateUnsigned => {
             let rs = env.get_instruction_part(InstructionPart::RS);
             let rt = env.get_instruction_part(InstructionPart::RT);
-            debug!("Fetching register: {}", rs);
+            debug!("Fetching register: {}", Env::debug_register(&rs));
             let register_rs = env.fetch_register_checked(&rs);
             let immediate = env.get_immediate();
             let res = register_rs + immediate;
@@ -386,7 +386,12 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let addr = env.get_instruction_part(InstructionPart::RS);
             let offset = env.get_immediate();
             let addr_with_offset = addr.clone() + offset.clone();
-            debug!("lw {}, {}({})", dest.clone(), offset.clone(), addr.clone());
+            debug!(
+                "lw {}, {}({})",
+                dest.clone(),
+                offset.clone(),
+                Env::debug_register(&addr)
+            );
             // We load 4 bytes, i.e. one word.
             let v0 = env.fetch_memory(&addr_with_offset);
             let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
