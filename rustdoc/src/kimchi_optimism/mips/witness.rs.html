@@ -400,6 +400,27 @@
 <a href="#400" id="400">400</a>
 <a href="#401" id="401">401</a>
 <a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -407,7 +428,7 @@
     },
     mips::{
         interpreter::{
-            <span class="self">self</span>, ITypeInstruction, Instruction, InstructionParts, InterpreterEnv,
+            <span class="self">self</span>, ITypeInstruction, Instruction, InstructionPart, InstructionParts, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
@@ -415,7 +436,7 @@
     preimage_oracle::PreImageOracle,
 };
 <span class="kw">use </span>ark_ff::Field;
-<span class="kw">use </span>log::info;
+<span class="kw">use </span>log::{debug, info};
 <span class="kw">use </span>std::array;
 
 <span class="kw">pub const </span>NUM_GLOBAL_LOOKUP_TERMS: usize = <span class="number">1</span>;
@@ -425,7 +446,7 @@
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 <span class="kw">pub const </span>SCRATCH_SIZE: usize = <span class="number">25</span>;
 
-<span class="attr">#[derive(Clone)]
+<span class="attr">#[derive(Clone, Default)]
 </span><span class="kw">pub struct </span>SyscallEnv {
     <span class="kw">pub </span>heap: u32, <span class="comment">// Heap pointer (actually unused in Cannon as of [2023-10-18])
     </span><span class="kw">pub </span>preimage_offset: u32,
@@ -501,6 +522,15 @@
 
 <span class="kw">impl</span>&lt;Fp: Field&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp&gt; {
     <span class="kw">type </span>Variable = u32;
+
+    <span class="kw">fn </span>get_instruction_part(<span class="kw-2">&amp;</span><span class="self">self</span>, part: InstructionPart) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.instruction_parts[part]
+    }
+
+    <span class="kw">fn </span>set_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.instruction_pointer = ip;
+        <span class="comment">// Set next instruction pointer?
+    </span>}
 
     <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable {
         x
@@ -701,17 +731,29 @@
 
     <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, config: VmConfiguration, metadata: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
         <span class="kw">let </span>(opcode, instruction) = <span class="self">self</span>.decode_instruction();
+        <span class="kw">let </span>op_code = (instruction &gt;&gt; <span class="number">26</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- <span class="number">26</span>)) - <span class="number">1</span>);
+        <span class="kw">let </span>rs = (instruction &gt;&gt; <span class="number">21</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">26 </span>- <span class="number">21</span>)) - <span class="number">1</span>);
+        <span class="kw">let </span>rt = (instruction &gt;&gt; <span class="number">16</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">21 </span>- <span class="number">16</span>)) - <span class="number">1</span>);
+        <span class="kw">let </span>rd = (instruction &gt;&gt; <span class="number">11</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">16 </span>- <span class="number">11</span>)) - <span class="number">1</span>);
+        <span class="kw">let </span>shamt = (instruction &gt;&gt; <span class="number">6</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">11 </span>- <span class="number">6</span>)) - <span class="number">1</span>);
+        <span class="kw">let </span>funct = instruction &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">6</span>) - <span class="number">1</span>);
         <span class="kw">let </span>instruction_parts: InstructionParts&lt;u32&gt; = InstructionParts {
-            op_code: ((instruction &gt;&gt; <span class="number">26</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- <span class="number">26</span>)) - <span class="number">1</span>)),
-            rs: ((instruction &gt;&gt; <span class="number">21</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">26 </span>- <span class="number">21</span>)) - <span class="number">1</span>)),
-            rt: ((instruction &gt;&gt; <span class="number">16</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">21 </span>- <span class="number">16</span>)) - <span class="number">1</span>)),
-            rd: ((instruction &gt;&gt; <span class="number">11</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">16 </span>- <span class="number">11</span>)) - <span class="number">1</span>)),
-            shamt: ((instruction &gt;&gt; <span class="number">6</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">11 </span>- <span class="number">6</span>)) - <span class="number">1</span>)),
-            funct: (instruction &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">6</span>) - <span class="number">1</span>)),
+            op_code,
+            rs,
+            rt,
+            rd,
+            shamt,
+            funct,
         };
+        <span class="macro">debug!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, opcode);
+        <span class="macro">debug!</span>(<span class="string">&quot;Instruction hex: {:#010x}&quot;</span>, instruction);
+        <span class="macro">debug!</span>(<span class="string">&quot;Instruction: {:#034b}&quot;</span>, instruction);
+        <span class="macro">debug!</span>(<span class="string">&quot;Rs: {:#07b}&quot;</span>, rs);
+        <span class="macro">debug!</span>(<span class="string">&quot;Rt: {:#07b}&quot;</span>, rt);
+        <span class="macro">debug!</span>(<span class="string">&quot;Rd: {:#07b}&quot;</span>, rd);
+        <span class="macro">debug!</span>(<span class="string">&quot;Shamt: {:#07b}&quot;</span>, shamt);
+        <span class="macro">debug!</span>(<span class="string">&quot;Funct: {:#08b}&quot;</span>, funct);
         <span class="self">self</span>.instruction_parts = instruction_parts;
-
-        <span class="macro">println!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, opcode);
 
         <span class="self">self</span>.pp_info(config.info_at, metadata, start);
 
