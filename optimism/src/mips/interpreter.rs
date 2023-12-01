@@ -466,7 +466,7 @@ mod tests {
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env();
         // Instruction: 0b00111100000000010000000000001010
-        // lui	at,0xa
+        // lui at, 0xa
         dummy_env.instruction_parts = InstructionParts {
             op_code: 0b000010,
             rs: 0b00000,
