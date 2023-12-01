@@ -341,10 +341,16 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::BranchGtZero => (),
         ITypeInstruction::AddImmediate => {
             let rs = env.get_instruction_part(InstructionPart::RS);
-            let register_rs = env.fetch_register_checked(&rs);
-            let imm = env.get_immediate();
-            let res = register_rs + imm;
             let rt = env.get_instruction_part(InstructionPart::RT);
+            let imm = env.get_immediate();
+            debug!(
+                "Instr: addi {}, {}, {}",
+                Env::debug_register(&rt),
+                Env::debug_register(&rs),
+                Env::debug_signed_16bits_variable(&imm)
+            );
+            let vrs = env.fetch_register_checked(&rs);
+            let res = Env::add_16bits_signed_offset(&vrs, &imm);
             env.overwrite_register_checked(&rt, &res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
@@ -354,9 +360,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::AddImmediateUnsigned => {
             let rs = env.get_instruction_part(InstructionPart::RS);
             let rt = env.get_instruction_part(InstructionPart::RT);
-            debug!("Fetching register: {}", Env::debug_register(&rs));
-            let register_rs = env.fetch_register_checked(&rs);
             let immediate = env.get_immediate();
+            debug!(
+                "Instr: addiu {}, {}, {}",
+                Env::debug_register(&rt),
+                Env::debug_register(&rs),
+                immediate
+            );
+            let register_rs = env.fetch_register_checked(&rs);
             let res = register_rs + immediate;
             env.overwrite_register_checked(&rt, &res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
@@ -372,7 +383,13 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::LoadUpperImmediate => {
             // lui $reg, [most significant 16 bits of immediate]
             let rt = env.get_instruction_part(InstructionPart::RT);
-            let immediate_value = env.get_immediate() << 16;
+            let immediate_value = env.get_immediate();
+            debug!(
+                "Instr: lui {}, {}",
+                Env::debug_register(&rt),
+                immediate_value
+            );
+            let immediate_value = immediate_value << 16;
             env.overwrite_register_checked(&rt, &immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
@@ -399,7 +416,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let v3 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(3)));
             let value = (v0 << 24) + (v1 << 16) + (v2 << 8) + v3;
             debug!(
-                "Loaded 32 bits value from {}: {}",
+                "Loaded 32 bits value from address {}: {}",
                 addr_with_offset.clone(),
                 value
             );
@@ -420,9 +437,13 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let reg_dest = env.get_instruction_part(InstructionPart::RD);
             let offset = env.get_immediate();
             let mem_addr = env.fetch_register_checked(&reg_dest);
-            debug!("Fetch address {} in register {}", mem_addr, Env::debug_register(&reg_src));
             debug!(
-                "sw {}, {}({})",
+                "Fetch address {} in register {}",
+                mem_addr,
+                Env::debug_register(&reg_src)
+            );
+            debug!(
+                "Instr: sw {}, {}({})",
                 Env::debug_register(&reg_dest),
                 Env::debug_signed_16bits_variable(&offset),
                 Env::debug_register(&reg_src),
