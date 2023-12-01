@@ -1,6 +1,6 @@
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
-use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -347,8 +347,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset = env.get_immediate();
             let addr_with_offset = addr.clone() + offset.clone();
             debug!("lw {}, {}({})", dest.clone(), offset.clone(), addr.clone());
-            let value = env.fetch_memory(&addr_with_offset);
-            debug!("Loaded value from {}: {}", addr_with_offset.clone(), value);
+            // We load 4 bytes, i.e. one word.
+            debug!("{}, {}({})", dest.clone(), offset.clone(), addr.clone());
+            let v0 = env.fetch_memory(&addr_with_offset);
+            let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
+            let v2 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(2)));
+            let v3 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(3)));
+            let value = (v0 << 24) + (v1 << 16) + (v2 << 8) + v3;
+            debug!(
+                "Loaded 32 bits value from {}: {}",
+                addr_with_offset.clone(),
+                value
+            );
             env.overwrite_register_checked(&dest, &value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
@@ -374,22 +384,25 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
 mod tests {
 
     use super::*;
-    use crate::cannon::HostProgram;
+    use crate::cannon::{HostProgram, PAGE_SIZE};
     use crate::mips::registers::Registers;
     use crate::mips::witness::{Env, SyscallEnv, SCRATCH_SIZE};
     use crate::preimage_oracle::PreImageOracle;
     use mina_curves::pasta::Fp;
+    use rand::Rng;
 
     fn dummy_env() -> Env<Fp> {
         let host_program = Some(HostProgram {
             name: String::from("true"),
             arguments: vec![],
         });
+        let mut rng = rand::thread_rng();
         let dummy_preimage_oracle = PreImageOracle::create(&host_program);
         Env {
             instruction_parts: InstructionParts::default(),
             instruction_counter: 0,
-            memory: vec![],
+            // Only 4kb of memory (one PAGE_ADDRESS_SIZE)
+            memory: vec![(0, vec![rng.gen(); PAGE_SIZE as usize])],
             memory_write_index: vec![],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
@@ -423,11 +436,25 @@ mod tests {
 
     #[test]
     fn test_unit_load32_instruction() {
-        // We only care about instruction parts and instruction pointer
+        let mut rng = rand::thread_rng();
+        // lw instruction
         let mut dummy_env = dummy_env();
         // Instruction: 0b10001111101001000000000000000000
-        // lw $a0, 0
+        // lw $a0, 0(29)
         // a0 = 4
+        // Random address in SP
+        // Address has only one index
+        let addr: u32 = rng.gen_range(0u32..100u32);
+        let aligned_addr: u32 = (addr / 4) * 4;
+        dummy_env.registers[REGISTER_SP as usize] = aligned_addr;
+        let mem = dummy_env.memory[0].clone();
+        let mem = mem.1;
+        let v0 = mem[aligned_addr as usize];
+        let v1 = mem[(aligned_addr + 1) as usize];
+        let v2 = mem[(aligned_addr + 2) as usize];
+        let v3 = mem[(aligned_addr + 3) as usize];
+        let exp_v = ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
+        // Set random alue into registers
         dummy_env.instruction_parts = InstructionParts {
             op_code: 0b000010,
             rs: 0b11101,
@@ -437,7 +464,7 @@ mod tests {
             funct: 0b000000,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
-        assert_eq!(dummy_env.registers[REGISTER_A0 as usize], 0);
+        assert_eq!(dummy_env.registers[REGISTER_A0 as usize], exp_v);
     }
 
     #[test]
