@@ -206,6 +206,8 @@ pub trait InterpreterEnv {
 
     fn debug_signed_16bits_variable(v: &Self::Variable) -> String;
 
+    fn add_16bits_signed_offset(x: &Self::Variable, v: &Self::Variable) -> Self::Variable;
+
     fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;

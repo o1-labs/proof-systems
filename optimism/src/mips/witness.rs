@@ -147,6 +147,30 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
         panic!("Unhandled register index: {}", v);
     }
+
+    fn add_16bits_signed_offset(x: &Self::Variable, v: &Self::Variable) -> Self::Variable {
+        // FIXME: overflow/underflow of x - v.
+        // x - v < 0 should not be happen.
+        // FIXME: it does suppose y is between 0 and 2^16
+        let x = *x;
+        let v = *v;
+
+        // handle 0b1000000000000000
+        if v == 1 << 15 {
+            return x;
+        }
+
+        let bit_sign = v >> 15;
+        if bit_sign == 1 {
+            let v = !(v - 1) & 0x0000ffff;
+            if x == 0 {
+                panic!("Underflow expected: x = {}, v = -{}", x, v)
+            }
+            x - v
+        } else {
+            x + v
+        }
+    }
     fn overwrite_register_checked(
         &mut self,
         register_idx: &Self::Variable,
@@ -490,6 +514,45 @@ impl<Fp: Field> Env<Fp> {
 mod tests {
 
     use super::*;
+
+    use mina_curves::pasta::Fp;
+
+    #[test]
+    fn test_add_16bits_signed() {
+        let x = Env::<Fp>::constant(1);
+        let y = Env::<Fp>::constant(1);
+        let exp_res = Env::<Fp>::constant(2);
+        let res = Env::<Fp>::add_16bits_signed_offset(&x, &y);
+        assert_eq!(res, exp_res);
+
+        let x = Env::<Fp>::constant(4);
+        // -4
+        let y = Env::<Fp>::constant(0b1111111111111100);
+        let exp_res = Env::<Fp>::constant(0);
+        let res = Env::<Fp>::add_16bits_signed_offset(&x, &y);
+        assert_eq!(res, exp_res);
+
+        let x = Env::<Fp>::constant(5);
+        // -4
+        let y = Env::<Fp>::constant(0b1111111111111100);
+        let exp_res = Env::<Fp>::constant(1);
+        let res = Env::<Fp>::add_16bits_signed_offset(&x, &y);
+        assert_eq!(res, exp_res);
+
+        let x = Env::<Fp>::constant(5);
+        // 0
+        let y = Env::<Fp>::constant(0b1000000000000000);
+        let exp_res = Env::<Fp>::constant(5);
+        let res = Env::<Fp>::add_16bits_signed_offset(&x, &y);
+        assert_eq!(res, exp_res);
+
+        let x = Env::<Fp>::constant(5);
+        // 0
+        let y = Env::<Fp>::constant(0b0000000000000000);
+        let exp_res = Env::<Fp>::constant(5);
+        let res = Env::<Fp>::add_16bits_signed_offset(&x, &y);
+        assert_eq!(res, exp_res);
+    }
 
     #[test]
     fn test_memory_size() {
