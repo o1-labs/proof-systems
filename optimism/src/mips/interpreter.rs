@@ -476,7 +476,10 @@ mod tests {
             funct: 0b000000,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
-        assert_eq!(dummy_env.registers[REGISTER_A0 as usize], exp_v);
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_A0 as usize],
+            exp_v
+        );
     }
 
     #[test]
@@ -495,8 +498,8 @@ mod tests {
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
         assert_eq!(
-            dummy_env.registers[REGISTER_A1 as usize],
-            dummy_env.registers[REGISTER_SP as usize] + 4
+            dummy_env.registers.general_purpose[REGISTER_A1 as usize],
+            dummy_env.registers.general_purpose[REGISTER_SP as usize] + 4
         );
     }
 
@@ -515,7 +518,10 @@ mod tests {
             funct: 0b001010,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
-        assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000);
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_AT as usize],
+            0xa0000
+        );
     }
 
     #[test]
@@ -534,6 +540,9 @@ mod tests {
         };
         let exp_res = dummy_env.registers[REGISTER_AT as usize] + 27880;
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
-        assert_eq!(dummy_env.registers[REGISTER_AT as usize], exp_res);
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_AT as usize],
+            exp_res
+        );
     }
 }
