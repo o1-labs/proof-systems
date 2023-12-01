@@ -452,4 +452,25 @@ mod tests {
             dummy_env.registers[REGISTER_SP as usize] + 4
         );
     }
+
+    #[test]
+    fn test_unit_lui_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b00111100000000010000000000001010
+        // lui	at,0xa
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b00000,
+            rt: 0b00001,
+            rd: 0b00000,
+            shamt: 0b00000,
+            funct: 0b001010,
+        };
+        interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
+        assert_eq!(
+            dummy_env.registers[REGISTER_AT as usize],
+            0xa,
+        );
+    }
 }
