@@ -119,23 +119,23 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn debug_register(v: &Self::Variable) -> String {
         if *v == 0 {
-            return String::from("$zero")
+            return String::from("$zero");
         } else if *v == 1 {
-            return String::from("$at")
+            return String::from("$at");
         } else if *v == 2 {
-            return String::from("$v0")
+            return String::from("$v0");
         } else if *v == 3 {
-            return String::from("$v1")
+            return String::from("$v1");
         } else if (4..=7).contains(v) {
-            return format!("$v{}", *v - 4)
+            return format!("$v{}", *v - 4);
         } else if (8..=15).contains(v) {
-            return format!("$t{}", v - 8)
+            return format!("$t{}", v - 8);
         } else if (16..=23).contains(v) {
-            return format!("$s{}", *v - 16)
+            return format!("$s{}", *v - 16);
         } else if (24..=25).contains(v) {
-            return format!("$t{}", *v - 16)
+            return format!("$t{}", *v - 16);
         } else if (26..=27).contains(v) {
-            return format!("$k{}", *v - 26)
+            return format!("$k{}", *v - 26);
         } else if *v == 28 {
             return String::from("$gp");
         } else if *v == 29 {
