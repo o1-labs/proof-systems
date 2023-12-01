@@ -515,6 +515,6 @@ mod tests {
             funct: 0b001010,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
-        assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000,);
+        assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000);
     }
 }
