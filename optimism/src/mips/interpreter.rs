@@ -557,8 +557,6 @@ mod tests {
     fn test_unit_jr_instruction() {
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env();
-        // Instruction: 0b00100100001000010110110011101000
-        // lui at, 0xa
         dummy_env.instruction_parts = InstructionParts {
             op_code: 0b000000,
             rs: 0b00001,
