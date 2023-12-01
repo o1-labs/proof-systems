@@ -252,7 +252,18 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::BranchNeq => (),
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
-        ITypeInstruction::AddImmediate => (),
+        ITypeInstruction::AddImmediate => {
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let register_rs = env.fetch_register_checked(&rs);
+            let imm = env.get_immediate();
+            let res = register_rs + imm;
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            env.overwrite_register_checked(&rt, &res);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::AddImmediateUnsigned => (),
         ITypeInstruction::SetLessThanImmediate => (),
         ITypeInstruction::SetLessThanImmediateUnsigned => (),
