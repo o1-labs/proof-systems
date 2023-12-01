@@ -323,7 +323,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::AddImmediateUnsigned => (),
+        ITypeInstruction::AddImmediateUnsigned => {
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            debug!("Fetching register: {}", rs);
+            let register_rs = env.fetch_register_checked(&rs);
+            let immediate = env.get_immediate();
+            let res = register_rs + immediate;
+            env.overwrite_register_checked(&rt, &res);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::SetLessThanImmediate => (),
         ITypeInstruction::SetLessThanImmediateUnsigned => (),
         ITypeInstruction::AndImmediate => (),
