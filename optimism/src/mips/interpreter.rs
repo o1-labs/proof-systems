@@ -348,7 +348,6 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let addr_with_offset = addr.clone() + offset.clone();
             debug!("lw {}, {}({})", dest.clone(), offset.clone(), addr.clone());
             // We load 4 bytes, i.e. one word.
-            debug!("{}, {}({})", dest.clone(), offset.clone(), addr.clone());
             let v0 = env.fetch_memory(&addr_with_offset);
             let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
             let v2 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(2)));
