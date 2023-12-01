@@ -133,7 +133,16 @@ pub enum ITypeInstruction {
 }
 
 pub trait InterpreterEnv {
-    type Variable: Clone + std::ops::Add<Self::Variable, Output = Self::Variable>;
+    type Variable: Clone
+        + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Mul<u32, Output = Self::Variable>
+        + std::ops::Shl<u32, Output = Self::Variable>
+        + std::ops::BitAnd<u32, Output = Self::Variable>
+        + std::fmt::Display;
+
+    fn set_instruction_pointer(&mut self, ip: Self::Variable);
+
+    fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable;
 
     fn constant(x: u32) -> Self::Variable;
 
@@ -198,11 +207,24 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
     match instr {
-        JTypeInstruction::Jump => (),
+        JTypeInstruction::Jump => {
+            // > The address stored in a j instruction is 26 bits of the address
+            // > associated with the specified label. The 26 bits are achieved by
+            // > dropping the high-order 4 bits of the address and the low-order 2
+            // > bits (which would always be 00, since addresses are always
+            // > divisible by 4).
+            // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
+            let addr = (env.get_instruction_part(InstructionPart::RS) << 21)
+                + (env.get_instruction_part(InstructionPart::RT) << 16)
+                + (env.get_instruction_part(InstructionPart::RD) << 11)
+                + (env.get_instruction_part(InstructionPart::Shamt) << 6)
+                + (env.get_instruction_part(InstructionPart::Funct));
+            env.set_instruction_pointer(addr * 4);
+        }
         JTypeInstruction::JumpAndLink => (),
     };
     // TODO: Don't halt.
-    env.set_halted(Env::constant(1));
+    // env.set_halted(Env::constant(1));
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
@@ -234,4 +256,55 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
     };
     // TODO: Don't halt.
     env.set_halted(Env::constant(1));
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+    use crate::cannon::HostProgram;
+    use crate::mips::registers::Registers;
+    use crate::mips::witness::{Env, SyscallEnv, SCRATCH_SIZE};
+    use crate::preimage_oracle::PreImageOracle;
+    use mina_curves::pasta::Fp;
+
+    fn dummy_env() -> Env<Fp> {
+        let host_program = Some(HostProgram {
+            name: String::from("true"),
+            arguments: vec![],
+        });
+        let dummy_preimage_oracle = PreImageOracle::create(&host_program);
+        Env {
+            instruction_parts: InstructionParts::default(),
+            instruction_counter: 0,
+            memory: vec![],
+            memory_write_index: vec![],
+            registers: Registers::default(),
+            registers_write_index: Registers::default(),
+            instruction_pointer: 0,
+            next_instruction_pointer: 0,
+            scratch_state_idx: 0,
+            scratch_state: [Fp::from(0); SCRATCH_SIZE],
+            halt: true,
+            syscall_env: SyscallEnv::default(),
+            preimage_oracle: dummy_preimage_oracle,
+        }
+    }
+    #[test]
+    fn test_unit_jump_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b00001000000000101010011001100111
+        // j 173671
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b00000,
+            rt: 0b00010,
+            rd: 0b10100,
+            shamt: 0b11001,
+            funct: 0b100111,
+        };
+        interpret_jtype(&mut dummy_env, JTypeInstruction::Jump);
+        assert_eq!(dummy_env.instruction_pointer, 694684);
+    }
 }

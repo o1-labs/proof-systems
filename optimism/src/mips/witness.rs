@@ -5,7 +5,7 @@ use crate::{
     },
     mips::{
         interpreter::{
-            self, ITypeInstruction, Instruction, InstructionParts, InterpreterEnv,
+            self, ITypeInstruction, Instruction, InstructionPart, InstructionParts, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
@@ -13,7 +13,7 @@ use crate::{
     preimage_oracle::PreImageOracle,
 };
 use ark_ff::Field;
-use log::info;
+use log::{debug, info};
 use std::array;
 
 pub const NUM_GLOBAL_LOOKUP_TERMS: usize = 1;
@@ -23,7 +23,7 @@ pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
 pub const SCRATCH_SIZE: usize = 25;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct SyscallEnv {
     pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
     pub preimage_offset: u32,
@@ -99,6 +99,15 @@ fn memory_size(total: usize) -> String {
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
     type Variable = u32;
+
+    fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable {
+        self.instruction_parts[part]
+    }
+
+    fn set_instruction_pointer(&mut self, ip: Self::Variable) {
+        self.instruction_pointer = ip;
+        // Set next instruction pointer?
+    }
 
     fn constant(x: u32) -> Self::Variable {
         x
@@ -299,17 +308,29 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
         let (opcode, instruction) = self.decode_instruction();
+        let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
+        let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
+        let rt = (instruction >> 16) & ((1 << (21 - 16)) - 1);
+        let rd = (instruction >> 11) & ((1 << (16 - 11)) - 1);
+        let shamt = (instruction >> 6) & ((1 << (11 - 6)) - 1);
+        let funct = instruction & ((1 << 6) - 1);
         let instruction_parts: InstructionParts<u32> = InstructionParts {
-            op_code: ((instruction >> 26) & ((1 << (32 - 26)) - 1)),
-            rs: ((instruction >> 21) & ((1 << (26 - 21)) - 1)),
-            rt: ((instruction >> 16) & ((1 << (21 - 16)) - 1)),
-            rd: ((instruction >> 11) & ((1 << (16 - 11)) - 1)),
-            shamt: ((instruction >> 6) & ((1 << (11 - 6)) - 1)),
-            funct: (instruction & ((1 << 6) - 1)),
+            op_code,
+            rs,
+            rt,
+            rd,
+            shamt,
+            funct,
         };
+        debug!("instruction: {:?}", opcode);
+        debug!("Instruction hex: {:#010x}", instruction);
+        debug!("Instruction: {:#034b}", instruction);
+        debug!("Rs: {:#07b}", rs);
+        debug!("Rt: {:#07b}", rt);
+        debug!("Rd: {:#07b}", rd);
+        debug!("Shamt: {:#07b}", shamt);
+        debug!("Funct: {:#08b}", funct);
         self.instruction_parts = instruction_parts;
-
-        println!("instruction: {:?}", opcode);
 
         self.pp_info(config.info_at, metadata, start);
 
