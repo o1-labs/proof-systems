@@ -400,15 +400,16 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
             let dest = env.get_instruction_part(InstructionPart::RT);
-            let addr = env.get_instruction_part(InstructionPart::RS);
+            let src = env.get_instruction_part(InstructionPart::RS);
             let offset = env.get_immediate();
-            let addr_with_offset = Env::add_16bits_signed_offset(&addr, &offset);
             debug!(
-                "lw {}, {}({})",
+                "Instr: lw {}, {}({})",
                 Env::debug_register(&dest),
                 Env::debug_signed_16bits_variable(&offset),
-                Env::debug_register(&addr)
+                Env::debug_register(&src)
             );
+            let addr = env.fetch_register_checked(&src);
+            let addr_with_offset = Env::add_16bits_signed_offset(&addr, &offset);
             // We load 4 bytes, i.e. one word.
             let v0 = env.fetch_memory(&addr_with_offset);
             let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
