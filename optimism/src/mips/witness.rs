@@ -105,7 +105,15 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         register_idx: &Self::Variable,
         value: &Self::Variable,
     ) {
-        self.registers[*register_idx as usize] = *value
+        if *register_idx < 32 {
+            self.registers.general_purpose[*register_idx as usize] = *value
+        } else if *register_idx == 32 {
+            self.registers.hi = *value
+        } else if *register_idx == 33 {
+            self.registers.lo = *value
+        } else {
+            panic!("Impossible to fetch register idx: {}", register_idx);
+        }
     }
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable {
