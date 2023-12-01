@@ -10,9 +10,65 @@ pub const FD_HINT_WRITE: u32 = 4;
 pub const FD_PREIMAGE_READ: u32 = 5;
 pub const FD_PREIMAGE_WRITE: u32 = 6;
 
+// Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
+// Reserved for assembler
+pub const REGISTER_AT: u32 = 1;
+// Argument 0
 pub const REGISTER_A0: u32 = 4;
+// Argument 1
 pub const REGISTER_A1: u32 = 5;
+// Argument 2
+pub const REGISTER_A2: u32 = 6;
+// Argument 3
+pub const REGISTER_A3: u32 = 7;
+// Temporary (not preserved across call)
+pub const REGISTER_T0: u32 = 8;
+// Temporary (not preserved across call)
+pub const REGISTER_T1: u32 = 9;
+// Temporary (not preserved across call)
+pub const REGISTER_T2: u32 = 10;
+// Temporary (not preserved across call)
+pub const REGISTER_T3: u32 = 11;
+// Temporary (not preserved across call)
+pub const REGISTER_T4: u32 = 12;
+// Temporary (not preserved across call)
+pub const REGISTER_T5: u32 = 13;
+// Temporary (not preserved across call)
+pub const REGISTER_T6: u32 = 14;
+// Temporary (not preserved across call)
+pub const REGISTER_T7: u32 = 15;
+// Saved temporary (preserved across call)
+pub const REGISTER_S0: u32 = 16;
+// Saved temporary (preserved across call)
+pub const REGISTER_S1: u32 = 17;
+// Saved temporary (preserved across call)
+pub const REGISTER_S2: u32 = 18;
+// Saved temporary (preserved across call)
+pub const REGISTER_S3: u32 = 19;
+// Saved temporary (preserved across call)
+pub const REGISTER_S4: u32 = 20;
+// Saved temporary (preserved across call)
+pub const REGISTER_S5: u32 = 21;
+// Saved temporary (preserved across call)
+pub const REGISTER_S6: u32 = 22;
+// Saved temporary (preserved across call)
+pub const REGISTER_S7: u32 = 23;
+// Temporary (not preserved across call)
+pub const REGISTER_T8: u32 = 24;
+// Temporary (not preserved across call)
+pub const REGISTER_T9: u32 = 25;
+// Reserved for OS kernel
+pub const REGISTER_K0: u32 = 26;
+// Reserved for OS kernel
+pub const REGISTER_K1: u32 = 27;
+// Pointer to global area
+pub const REGISTER_GP: u32 = 28;
+// Stack pointer
 pub const REGISTER_SP: u32 = 29;
+// Frame pointer
+pub const REGISTER_FP: u32 = 30;
+// Return address (used by function call)
+pub const REGISTER_RA: u32 = 31;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
 pub enum InstructionPart {
@@ -270,7 +326,16 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::AndImmediate => (),
         ITypeInstruction::OrImmediate => (),
         ITypeInstruction::XorImmediate => (),
-        ITypeInstruction::LoadUpperImmediate => (),
+        ITypeInstruction::LoadUpperImmediate => {
+            // lui $reg, [most significant 16 bits of immediate]
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            let immediate_value = env.get_immediate() << 16;
+            env.overwrite_register_checked(&rt, &immediate_value);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
@@ -386,5 +451,23 @@ mod tests {
             dummy_env.registers[REGISTER_A1 as usize],
             dummy_env.registers[REGISTER_SP as usize] + 4
         );
+    }
+
+    #[test]
+    fn test_unit_lui_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b00111100000000010000000000001010
+        // lui	at,0xa
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b00000,
+            rt: 0b00001,
+            rd: 0b00000,
+            shamt: 0b00000,
+            funct: 0b001010,
+        };
+        interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
+        assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000,);
     }
 }
