@@ -100,13 +100,40 @@ fn memory_size(total: usize) -> String {
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
     type Variable = u32;
 
+    fn overwrite_register_checked(
+        &mut self,
+        register_idx: &Self::Variable,
+        value: &Self::Variable,
+    ) {
+        self.registers[*register_idx as usize] = *value
+    }
+
+    fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable {
+        self.registers[*register_idx as usize]
+    }
+
     fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable {
         self.instruction_parts[part]
+    }
+
+    fn fetch_memory(&mut self, addr: &Self::Variable) -> Self::Variable {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory) in self.memory.iter() {
+            if *page_index == page {
+                return memory[page_address].into();
+            }
+        }
+        panic!("Could not access address")
     }
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
         self.instruction_pointer = ip;
         // Set next instruction pointer?
+    }
+
+    fn get_instruction_pointer(&self) -> Self::Variable {
+        self.instruction_pointer
     }
 
     fn constant(x: u32) -> Self::Variable {
@@ -177,9 +204,6 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn get_memory_direct(&self, addr: u32) -> u8 {
-        const PAGE_ADDRESS_SIZE: u32 = 12;
-        const PAGE_SIZE: u32 = 1 << PAGE_ADDRESS_SIZE;
-        const PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - 1;
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         for (page_index, memory) in self.memory.iter() {
@@ -355,14 +379,14 @@ impl<Fp: Field> Env<Fp> {
 
     // Compute memory usage
     fn memory_usage(&self) -> String {
-        let total = self.memory.len() * PAGE_SIZE;
+        let total = self.memory.len() * PAGE_SIZE as usize;
         memory_size(total)
     }
 
     fn page_address(&self) -> (u32, usize) {
         let address = self.instruction_pointer;
         let page = address >> PAGE_ADDRESS_SIZE;
-        let page_address = (address & (PAGE_ADDRESS_MASK as u32)) as usize;
+        let page_address = (address & PAGE_ADDRESS_MASK) as usize;
         (page, page_address)
     }
 

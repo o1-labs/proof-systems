@@ -143,7 +143,7 @@ pub fn main() -> ExitCode {
 
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
-    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE, state, po);
+    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE as usize, state, po);
 
     while !env.halt {
         env.step(configuration.clone(), &meta, &start);

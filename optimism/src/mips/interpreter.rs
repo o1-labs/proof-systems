@@ -1,3 +1,4 @@
+use log::debug;
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
 use strum_macros::{EnumCount, EnumIter};
@@ -9,6 +10,66 @@ pub const FD_HINT_READ: u32 = 3;
 pub const FD_HINT_WRITE: u32 = 4;
 pub const FD_PREIMAGE_READ: u32 = 5;
 pub const FD_PREIMAGE_WRITE: u32 = 6;
+
+// Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
+// Reserved for assembler
+pub const REGISTER_AT: u32 = 1;
+// Argument 0
+pub const REGISTER_A0: u32 = 4;
+// Argument 1
+pub const REGISTER_A1: u32 = 5;
+// Argument 2
+pub const REGISTER_A2: u32 = 6;
+// Argument 3
+pub const REGISTER_A3: u32 = 7;
+// Temporary (not preserved across call)
+pub const REGISTER_T0: u32 = 8;
+// Temporary (not preserved across call)
+pub const REGISTER_T1: u32 = 9;
+// Temporary (not preserved across call)
+pub const REGISTER_T2: u32 = 10;
+// Temporary (not preserved across call)
+pub const REGISTER_T3: u32 = 11;
+// Temporary (not preserved across call)
+pub const REGISTER_T4: u32 = 12;
+// Temporary (not preserved across call)
+pub const REGISTER_T5: u32 = 13;
+// Temporary (not preserved across call)
+pub const REGISTER_T6: u32 = 14;
+// Temporary (not preserved across call)
+pub const REGISTER_T7: u32 = 15;
+// Saved temporary (preserved across call)
+pub const REGISTER_S0: u32 = 16;
+// Saved temporary (preserved across call)
+pub const REGISTER_S1: u32 = 17;
+// Saved temporary (preserved across call)
+pub const REGISTER_S2: u32 = 18;
+// Saved temporary (preserved across call)
+pub const REGISTER_S3: u32 = 19;
+// Saved temporary (preserved across call)
+pub const REGISTER_S4: u32 = 20;
+// Saved temporary (preserved across call)
+pub const REGISTER_S5: u32 = 21;
+// Saved temporary (preserved across call)
+pub const REGISTER_S6: u32 = 22;
+// Saved temporary (preserved across call)
+pub const REGISTER_S7: u32 = 23;
+// Temporary (not preserved across call)
+pub const REGISTER_T8: u32 = 24;
+// Temporary (not preserved across call)
+pub const REGISTER_T9: u32 = 25;
+// Reserved for OS kernel
+pub const REGISTER_K0: u32 = 26;
+// Reserved for OS kernel
+pub const REGISTER_K1: u32 = 27;
+// Pointer to global area
+pub const REGISTER_GP: u32 = 28;
+// Stack pointer
+pub const REGISTER_SP: u32 = 29;
+// Frame pointer
+pub const REGISTER_FP: u32 = 30;
+// Return address (used by function call)
+pub const REGISTER_RA: u32 = 31;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
 pub enum InstructionPart {
@@ -140,7 +201,22 @@ pub trait InterpreterEnv {
         + std::ops::BitAnd<u32, Output = Self::Variable>
         + std::fmt::Display;
 
+    fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
+
+    fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
+
+    fn fetch_memory(&mut self, addr: &Self::Variable) -> Self::Variable;
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
+
+    fn get_immediate(&self) -> Self::Variable {
+        // The immediate value is the last 16bits
+        (self.get_instruction_part(InstructionPart::RD) << 11)
+            + (self.get_instruction_part(InstructionPart::Shamt) << 6)
+            + (self.get_instruction_part(InstructionPart::Funct))
+    }
+
+    fn get_instruction_pointer(&self) -> Self::Variable;
 
     fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable;
 
@@ -220,11 +296,13 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
                 + (env.get_instruction_part(InstructionPart::Shamt) << 6)
                 + (env.get_instruction_part(InstructionPart::Funct));
             env.set_instruction_pointer(addr * 4);
+            // REMOVEME: when all jtype instructions are implemented.
+            return;
         }
         JTypeInstruction::JumpAndLink => (),
     };
-    // TODO: Don't halt.
-    // env.set_halted(Env::constant(1));
+    // REMOVEME: when all jtype instructions are implemented.
+    env.set_halted(Env::constant(1));
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
@@ -233,17 +311,59 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::BranchNeq => (),
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
-        ITypeInstruction::AddImmediate => (),
+        ITypeInstruction::AddImmediate => {
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let register_rs = env.fetch_register_checked(&rs);
+            let imm = env.get_immediate();
+            let res = register_rs + imm;
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            env.overwrite_register_checked(&rt, &res);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::AddImmediateUnsigned => (),
         ITypeInstruction::SetLessThanImmediate => (),
         ITypeInstruction::SetLessThanImmediateUnsigned => (),
         ITypeInstruction::AndImmediate => (),
         ITypeInstruction::OrImmediate => (),
         ITypeInstruction::XorImmediate => (),
-        ITypeInstruction::LoadUpperImmediate => (),
+        ITypeInstruction::LoadUpperImmediate => {
+            // lui $reg, [most significant 16 bits of immediate]
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            let immediate_value = env.get_immediate() << 16;
+            env.overwrite_register_checked(&rt, &immediate_value);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
-        ITypeInstruction::Load32 => (),
+        ITypeInstruction::Load32 => {
+            let dest = env.get_instruction_part(InstructionPart::RT);
+            let addr = env.get_instruction_part(InstructionPart::RS);
+            let offset = env.get_immediate();
+            let addr_with_offset = addr.clone() + offset.clone();
+            debug!("lw {}, {}({})", dest.clone(), offset.clone(), addr.clone());
+            // We load 4 bytes, i.e. one word.
+            let v0 = env.fetch_memory(&addr_with_offset);
+            let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
+            let v2 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(2)));
+            let v3 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(3)));
+            let value = (v0 << 24) + (v1 << 16) + (v2 << 8) + v3;
+            debug!(
+                "Loaded 32 bits value from {}: {}",
+                addr_with_offset.clone(),
+                value
+            );
+            env.overwrite_register_checked(&dest, &value);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::Load8Unsigned => (),
         ITypeInstruction::Load16Unsigned => (),
         ITypeInstruction::LoadWordLeft => (),
@@ -254,30 +374,34 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::StoreWordLeft => (),
         ITypeInstruction::StoreWordRight => (),
     };
-    // TODO: Don't halt.
-    env.set_halted(Env::constant(1));
+
+    // REMOVEME: when all itype instructions are implemented.
+    env.set_halted(Env::constant(1))
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use crate::cannon::HostProgram;
+    use crate::cannon::{HostProgram, PAGE_SIZE};
     use crate::mips::registers::Registers;
     use crate::mips::witness::{Env, SyscallEnv, SCRATCH_SIZE};
     use crate::preimage_oracle::PreImageOracle;
     use mina_curves::pasta::Fp;
+    use rand::Rng;
 
     fn dummy_env() -> Env<Fp> {
         let host_program = Some(HostProgram {
             name: String::from("true"),
             arguments: vec![],
         });
+        let mut rng = rand::thread_rng();
         let dummy_preimage_oracle = PreImageOracle::create(&host_program);
         Env {
             instruction_parts: InstructionParts::default(),
             instruction_counter: 0,
-            memory: vec![],
+            // Only 4kb of memory (one PAGE_ADDRESS_SIZE)
+            memory: vec![(0, vec![rng.gen(); PAGE_SIZE as usize])],
             memory_write_index: vec![],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
@@ -290,6 +414,7 @@ mod tests {
             preimage_oracle: dummy_preimage_oracle,
         }
     }
+
     #[test]
     fn test_unit_jump_instruction() {
         // We only care about instruction parts and instruction pointer
@@ -306,5 +431,77 @@ mod tests {
         };
         interpret_jtype(&mut dummy_env, JTypeInstruction::Jump);
         assert_eq!(dummy_env.instruction_pointer, 694684);
+    }
+
+    #[test]
+    fn test_unit_load32_instruction() {
+        let mut rng = rand::thread_rng();
+        // lw instruction
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b10001111101001000000000000000000
+        // lw $a0, 0(29)
+        // a0 = 4
+        // Random address in SP
+        // Address has only one index
+        let addr: u32 = rng.gen_range(0u32..100u32);
+        let aligned_addr: u32 = (addr / 4) * 4;
+        dummy_env.registers[REGISTER_SP as usize] = aligned_addr;
+        let mem = dummy_env.memory[0].clone();
+        let mem = mem.1;
+        let v0 = mem[aligned_addr as usize];
+        let v1 = mem[(aligned_addr + 1) as usize];
+        let v2 = mem[(aligned_addr + 2) as usize];
+        let v3 = mem[(aligned_addr + 3) as usize];
+        let exp_v = ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
+        // Set random alue into registers
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b11101,
+            rt: 0b00100,
+            rd: 0b00000,
+            shamt: 0b00000,
+            funct: 0b000000,
+        };
+        interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
+        assert_eq!(dummy_env.registers[REGISTER_A0 as usize], exp_v);
+    }
+
+    #[test]
+    fn test_unit_addi_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b10001111101001000000000000000000
+        // addi	a1,sp,4
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b11101,
+            rt: 0b00101,
+            rd: 0b00000,
+            shamt: 0b00000,
+            funct: 0b000100,
+        };
+        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
+        assert_eq!(
+            dummy_env.registers[REGISTER_A1 as usize],
+            dummy_env.registers[REGISTER_SP as usize] + 4
+        );
+    }
+
+    #[test]
+    fn test_unit_lui_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b00111100000000010000000000001010
+        // lui at, 0xa
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000010,
+            rs: 0b00000,
+            rt: 0b00001,
+            rd: 0b00000,
+            shamt: 0b00000,
+            funct: 0b001010,
+        };
+        interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
+        assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000,);
     }
 }
