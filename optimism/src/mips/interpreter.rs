@@ -323,7 +323,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::AddImmediateUnsigned => (),
+        ITypeInstruction::AddImmediateUnsigned => {
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            debug!("Fetching register: {}", rs);
+            let register_rs = env.fetch_register_checked(&rs);
+            let immediate = env.get_immediate();
+            let res = register_rs + immediate;
+            env.overwrite_register_checked(&rt, &res);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::SetLessThanImmediate => (),
         ITypeInstruction::SetLessThanImmediateUnsigned => (),
         ITypeInstruction::AndImmediate => (),
@@ -463,7 +475,10 @@ mod tests {
             funct: 0b000000,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
-        assert_eq!(dummy_env.registers[REGISTER_A0 as usize], exp_v);
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_A0 as usize],
+            exp_v
+        );
     }
 
     #[test]
@@ -482,8 +497,8 @@ mod tests {
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
         assert_eq!(
-            dummy_env.registers[REGISTER_A1 as usize],
-            dummy_env.registers[REGISTER_SP as usize] + 4
+            dummy_env.registers.general_purpose[REGISTER_A1 as usize],
+            dummy_env.registers.general_purpose[REGISTER_SP as usize] + 4
         );
     }
 
@@ -502,6 +517,31 @@ mod tests {
             funct: 0b001010,
         };
         interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
-        assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000,);
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_AT as usize],
+            0xa0000
+        );
+    }
+
+    #[test]
+    fn test_unit_addiu_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b00100100001000010110110011101000
+        // lui at, 0xa
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b001001,
+            rs: 0b00001,
+            rt: 0b00001,
+            rd: 0b01101,
+            shamt: 0b10011,
+            funct: 0b101000,
+        };
+        let exp_res = dummy_env.registers[REGISTER_AT as usize] + 27880;
+        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_AT as usize],
+            exp_res
+        );
     }
 }
