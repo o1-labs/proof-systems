@@ -432,9 +432,9 @@
 <span class="kw">use </span>serde::{Deserialize, Deserializer, Serialize};
 <span class="kw">use </span>std::io::Read;
 
-<span class="kw">pub const </span>PAGE_ADDRESS_SIZE: usize = <span class="number">12</span>;
-<span class="kw">pub const </span>PAGE_SIZE: usize = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
-<span class="kw">pub const </span>PAGE_ADDRESS_MASK: usize = PAGE_SIZE - <span class="number">1</span>;
+<span class="kw">pub const </span>PAGE_ADDRESS_SIZE: u32 = <span class="number">12</span>;
+<span class="kw">pub const </span>PAGE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
+<span class="kw">pub const </span>PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - <span class="number">1</span>;
 
 <span class="attr">#[derive(Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>Page {
@@ -452,7 +452,7 @@
     <span class="kw">let </span><span class="kw-2">mut </span>decoder = Decoder::new(<span class="kw-2">&amp;</span>b64_decoded[..]).unwrap();
     <span class="kw">let </span><span class="kw-2">mut </span>data = Vec::new();
     decoder.read_to_end(<span class="kw-2">&amp;mut </span>data).unwrap();
-    <span class="macro">assert_eq!</span>(data.len(), PAGE_SIZE);
+    <span class="macro">assert_eq!</span>(data.len(), PAGE_SIZE <span class="kw">as </span>usize);
     <span class="prelude-val">Ok</span>(data)
 }
 

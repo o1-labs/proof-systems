@@ -421,6 +421,30 @@
 <a href="#421" id="421">421</a>
 <a href="#422" id="422">422</a>
 <a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -523,14 +547,41 @@
 <span class="kw">impl</span>&lt;Fp: Field&gt; InterpreterEnv <span class="kw">for </span>Env&lt;Fp&gt; {
     <span class="kw">type </span>Variable = u32;
 
+    <span class="kw">fn </span>overwrite_register_checked(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        register_idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    ) {
+        <span class="self">self</span>.registers[<span class="kw-2">*</span>register_idx <span class="kw">as </span>usize] = <span class="kw-2">*</span>value
+    }
+
+    <span class="kw">fn </span>fetch_register_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, register_idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.registers[<span class="kw-2">*</span>register_idx <span class="kw">as </span>usize]
+    }
+
     <span class="kw">fn </span>get_instruction_part(<span class="kw-2">&amp;</span><span class="self">self</span>, part: InstructionPart) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.instruction_parts[part]
+    }
+
+    <span class="kw">fn </span>fetch_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
+        <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
+        <span class="kw">for </span>(page_index, memory) <span class="kw">in </span><span class="self">self</span>.memory.iter() {
+            <span class="kw">if </span><span class="kw-2">*</span>page_index == page {
+                <span class="kw">return </span>memory[page_address].into();
+            }
+        }
+        <span class="macro">panic!</span>(<span class="string">&quot;Could not access address&quot;</span>)
     }
 
     <span class="kw">fn </span>set_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable) {
         <span class="self">self</span>.instruction_pointer = ip;
         <span class="comment">// Set next instruction pointer?
     </span>}
+
+    <span class="kw">fn </span>get_instruction_pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.instruction_pointer
+    }
 
     <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable {
         x
@@ -600,9 +651,6 @@
     }
 
     <span class="kw">pub fn </span>get_memory_direct(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: u32) -&gt; u8 {
-        <span class="kw">const </span>PAGE_ADDRESS_SIZE: u32 = <span class="number">12</span>;
-        <span class="kw">const </span>PAGE_SIZE: u32 = <span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE;
-        <span class="kw">const </span>PAGE_ADDRESS_MASK: u32 = PAGE_SIZE - <span class="number">1</span>;
         <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
         <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
         <span class="kw">for </span>(page_index, memory) <span class="kw">in </span><span class="self">self</span>.memory.iter() {
@@ -778,14 +826,14 @@
 
     <span class="comment">// Compute memory usage
     </span><span class="kw">fn </span>memory_usage(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; String {
-        <span class="kw">let </span>total = <span class="self">self</span>.memory.len() * PAGE_SIZE;
+        <span class="kw">let </span>total = <span class="self">self</span>.memory.len() * PAGE_SIZE <span class="kw">as </span>usize;
         memory_size(total)
     }
 
     <span class="kw">fn </span>page_address(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (u32, usize) {
         <span class="kw">let </span>address = <span class="self">self</span>.instruction_pointer;
         <span class="kw">let </span>page = address &gt;&gt; PAGE_ADDRESS_SIZE;
-        <span class="kw">let </span>page_address = (address &amp; (PAGE_ADDRESS_MASK <span class="kw">as </span>u32)) <span class="kw">as </span>usize;
+        <span class="kw">let </span>page_address = (address &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
         (page, page_address)
     }
 
