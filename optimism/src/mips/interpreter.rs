@@ -517,4 +517,23 @@ mod tests {
         interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
         assert_eq!(dummy_env.registers[REGISTER_AT as usize], 0xa0000);
     }
+
+    #[test]
+    fn test_unit_addiu_instruction() {
+        // We only care about instruction parts and instruction pointer
+        let mut dummy_env = dummy_env();
+        // Instruction: 0b00100100001000010110110011101000
+        // lui at, 0xa
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b001001,
+            rs: 0b00001,
+            rt: 0b00001,
+            rd: 0b01101,
+            shamt: 0b10011,
+            funct: 0b101000,
+        };
+        let exp_res = dummy_env.registers[REGISTER_AT as usize] + 27880;
+        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
+        assert_eq!(dummy_env.registers[REGISTER_AT as usize], exp_res);
+    }
 }
