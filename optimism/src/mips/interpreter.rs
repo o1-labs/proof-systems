@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::ops::Index;
+use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -204,6 +205,8 @@ pub trait InterpreterEnv {
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
 
+    fn fetch_memory(&mut self, addr: &Self::Variable) -> Self::Variable;
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
     fn get_immediate(&self) -> Self::Variable {
@@ -339,9 +342,14 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
-            let rt = env.get_instruction_part(InstructionPart::RT);
-            let immediate_value = env.get_immediate();
-            env.overwrite_register_checked(&rt, &immediate_value);
+            let dest = env.get_instruction_part(InstructionPart::RT);
+            let addr = env.get_instruction_part(InstructionPart::RS);
+            let offset = env.get_immediate();
+            let addr_with_offset = addr.clone() + offset.clone();
+            debug!("lw {}, {}({})", dest.clone(), offset.clone(), addr.clone());
+            let value = env.fetch_memory(&addr_with_offset);
+            debug!("Loaded value from {}: {}", addr_with_offset.clone(), value);
+            env.overwrite_register_checked(&dest, &value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.

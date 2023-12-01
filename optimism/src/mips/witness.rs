@@ -116,6 +116,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.instruction_parts[part]
     }
 
+    fn fetch_memory(&mut self, addr: &Self::Variable) -> Self::Variable {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory) in self.memory.iter() {
+            if *page_index == page {
+                return memory[page_address].into();
+            }
+        }
+        panic!("Could not access address")
+    }
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
         self.instruction_pointer = ip;
         // Set next instruction pointer?
