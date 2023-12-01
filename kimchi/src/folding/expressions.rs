@@ -1,33 +1,138 @@
-use super::{CacheId, GateType};
-use crate::circuits::{
-    expr::{Column, Expr, FeatureFlag, Op2, Variable},
-    gate::CurrOrNext,
-};
+use super::{quadricization::quadricization, Fi, FoldingConfig};
+use crate::circuits::{expr::Op2, gate::CurrOrNext};
+use ark_ec::AffineCurve;
+use itertools::Itertools;
+use num_traits::Zero;
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub enum FoldingColumn {
-    Witness(usize),
+pub trait FoldingColumnTrait: Copy + Clone {
+    fn is_witness(&self) -> bool;
+    fn degree(&self) -> Degree {
+        match self.is_witness() {
+            true => Degree::One,
+            false => Degree::Zero,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum ExtendedFoldingColumn<C: FoldingConfig> {
+    Inner(C::Column),
     ///for the extra columns added by quadricization
     #[allow(dead_code)]
     WitnessExtended(usize),
-    Index(GateType),
-    Coefficient(usize),
+    Error,
     ///basically X, to allow accesing the next row
     Shift,
+    UnnormalizedLagrangeBasis(usize),
+    Constant(<C::Curve as AffineCurve>::ScalarField),
+    Challenge(C::Challenge),
+    Alpha(usize),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-///A simplified expression to be use in folding
-pub enum FoldingExp<C> {
-    Constant(C),
-    Cell(FoldingColumn),
+pub struct Var<C> {
+    pub col: C,
+    pub row: CurrOrNext,
+}
+///designed for easy translation to and from most Expr
+pub enum FoldingCompatibleExpr<C: FoldingConfig> {
+    Constant(<C::Curve as AffineCurve>::ScalarField),
+    Challenge(C::Challenge),
+    Cell(Var<C::Column>),
+    Double(Box<Self>),
+    Square(Box<Self>),
+    BinOp(Op2, Box<Self>, Box<Self>),
+    VanishesOnZeroKnowledgeAndPreviousRows,
+    /// UnnormalizedLagrangeBasis(i) is
+    /// (x^n - 1) / (x - omega^i)
+    UnnormalizedLagrangeBasis(usize),
+    Pow(Box<Self>, u64),
+    ///extra nodes created by folding, should not be passed to folding
+    Extensions(ExpExtension),
+}
+
+pub enum ExpExtension {
+    U,
+    Error,
+    //from quadricization
+    ExtendedWitness(usize),
+    Alpha(usize),
+    Shift,
+}
+///Internal expression used for folding, simplified for that purpose
+#[derive(Clone, Debug)]
+pub enum FoldingExp<C: FoldingConfig> {
+    Cell(ExtendedFoldingColumn<C>),
     Double(Box<FoldingExp<C>>),
     Square(Box<FoldingExp<C>>),
     Add(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
     Sub(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
     Mul(Box<FoldingExp<C>>, Box<FoldingExp<C>>),
-    UnnormalizedLagrangeBasis(i32),
-    Cache(CacheId, Box<FoldingExp<C>>),
+}
+impl<C: FoldingConfig> FoldingCompatibleExpr<C> {
+    pub(crate) fn simplify(self) -> FoldingExp<C> {
+        type Ex<C> = ExtendedFoldingColumn<C>;
+        use FoldingExp::*;
+        match self {
+            FoldingCompatibleExpr::Constant(c) => Cell(ExtendedFoldingColumn::Constant(c)),
+            FoldingCompatibleExpr::Challenge(c) => Cell(ExtendedFoldingColumn::Challenge(c)),
+            FoldingCompatibleExpr::Cell(col) => {
+                let Var { col, row } = col;
+                let col = Cell(ExtendedFoldingColumn::Inner(col));
+                match row {
+                    CurrOrNext::Curr => col,
+                    CurrOrNext::Next => {
+                        let shift = Cell(Ex::Shift);
+                        Mul(Box::new(col), Box::new(shift))
+                    }
+                }
+            }
+            FoldingCompatibleExpr::Double(exp) => Double(Box::new((*exp).simplify())),
+            FoldingCompatibleExpr::Square(exp) => Square(Box::new((*exp).simplify())),
+            FoldingCompatibleExpr::BinOp(op, e1, e2) => {
+                let e1 = Box::new(e1.simplify());
+                let e2 = Box::new(e2.simplify());
+                match op {
+                    Op2::Add => Add(e1, e2),
+                    Op2::Mul => Mul(e1, e2),
+                    Op2::Sub => Sub(e1, e2),
+                }
+            }
+            FoldingCompatibleExpr::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
+            FoldingCompatibleExpr::UnnormalizedLagrangeBasis(i) => {
+                Cell(Ex::UnnormalizedLagrangeBasis(i))
+            }
+            FoldingCompatibleExpr::Pow(e, p) => Self::pow_to_mul(e.simplify(), p),
+            FoldingCompatibleExpr::Extensions(_) => {
+                panic!("this should only be created by folding itself")
+            }
+        }
+    }
+    fn pow_to_mul(exp: FoldingExp<C>, p: u64) -> FoldingExp<C>
+    where
+        C::Column: Clone,
+        C::Challenge: Clone,
+    {
+        use FoldingExp::*;
+        let e = Box::new(exp);
+        let e_2 = Box::new(Square(e.clone()));
+        let new_exp = match p {
+            2 => *e_2,
+            3 => Mul(e, e_2),
+            4..=8 => {
+                let e_4 = Box::new(Square(e_2.clone()));
+                match p {
+                    4 => *e_4,
+                    5 => Mul(e, e_4),
+                    6 => Mul(e_2, e_4),
+                    7 => Mul(e, Box::new(Mul(e_2, e_4))),
+                    8 => Square(e_4),
+                    _ => unreachable!(),
+                }
+            }
+            _ => panic!("unsupported"),
+        };
+        new_exp
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -36,22 +141,63 @@ pub enum Degree {
     One,
     Two,
 }
-impl<C> FoldingExp<C> {
-    pub(super) fn degree(&self) -> Degree {
+impl<C: FoldingConfig> FoldingExp<C> {
+    pub(super) fn folding_degree(&self) -> Degree {
         use Degree::*;
         match self {
-            FoldingExp::Constant(_) => Zero,
-            FoldingExp::Cell(col) => match col {
-                FoldingColumn::Witness(_) | FoldingColumn::WitnessExtended(_) => One,
-                _ => Zero,
+            FoldingExp::Cell(ex_col) => match ex_col {
+                ExtendedFoldingColumn::Inner(col) => col.degree(),
+                ExtendedFoldingColumn::WitnessExtended(_) => One,
+                ExtendedFoldingColumn::Error => One,
+                ExtendedFoldingColumn::Shift => Zero,
+                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(_) => Zero,
+                ExtendedFoldingColumn::Constant(_) => Zero,
+                ExtendedFoldingColumn::Challenge(_) => One,
+                ExtendedFoldingColumn::Alpha(_) => One,
             },
-            FoldingExp::Double(e) => e.degree(),
-            FoldingExp::Square(e) => &e.degree() * &e.degree(),
-            FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) | FoldingExp::Mul(e1, e2) => {
-                e1.degree() + e2.degree()
+            FoldingExp::Double(e) => e.folding_degree(),
+            FoldingExp::Square(e) => &e.folding_degree() * &e.folding_degree(),
+            FoldingExp::Mul(e1, e2) => &e1.folding_degree() * &e2.folding_degree(),
+            FoldingExp::Add(e1, e2) | FoldingExp::Sub(e1, e2) => {
+                e1.folding_degree() + e2.folding_degree()
             }
-            FoldingExp::UnnormalizedLagrangeBasis(_) => Zero,
-            FoldingExp::Cache(_, e) => e.degree(),
+        }
+    }
+    fn to_compatible(self) -> FoldingCompatibleExpr<C> {
+        use FoldingCompatibleExpr::*;
+        match self {
+            FoldingExp::Cell(c) => match c {
+                ExtendedFoldingColumn::Inner(col) => Cell(Var {
+                    col,
+                    row: CurrOrNext::Curr,
+                }),
+                ExtendedFoldingColumn::WitnessExtended(i) => {
+                    Extensions(ExpExtension::ExtendedWitness(i))
+                }
+                ExtendedFoldingColumn::Error => Extensions(ExpExtension::Error),
+                ExtendedFoldingColumn::Shift => Extensions(ExpExtension::Shift),
+                ExtendedFoldingColumn::UnnormalizedLagrangeBasis(i) => UnnormalizedLagrangeBasis(i),
+                ExtendedFoldingColumn::Constant(c) => Constant(c),
+                ExtendedFoldingColumn::Challenge(c) => Challenge(c),
+                ExtendedFoldingColumn::Alpha(i) => Extensions(ExpExtension::Alpha(i)),
+            },
+            FoldingExp::Double(exp) => Double(Box::new(exp.to_compatible())),
+            FoldingExp::Square(exp) => Square(Box::new(exp.to_compatible())),
+            FoldingExp::Add(e1, e2) => {
+                let e1 = Box::new(e1.to_compatible());
+                let e2 = Box::new(e2.to_compatible());
+                BinOp(Op2::Add, e1, e2)
+            }
+            FoldingExp::Sub(e1, e2) => {
+                let e1 = Box::new(e1.to_compatible());
+                let e2 = Box::new(e2.to_compatible());
+                BinOp(Op2::Sub, e1, e2)
+            }
+            FoldingExp::Mul(e1, e2) => {
+                let e1 = Box::new(e1.to_compatible());
+                let e2 = Box::new(e2.to_compatible());
+                BinOp(Op2::Mul, e1, e2)
+            }
         }
     }
 }
@@ -81,23 +227,41 @@ impl std::ops::Mul for &Degree {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Term<C> {
+#[derive(Clone, Debug)]
+pub struct Term<C: FoldingConfig> {
     pub exp: FoldingExp<C>,
     pub sign: bool,
-    pub degree: Degree,
 }
 
-impl<C> Term<C> {
-    fn new(exp: FoldingExp<C>, degree: Degree) -> Self {
-        Self {
-            exp,
-            sign: true,
-            degree,
-        }
+impl<C: FoldingConfig> Term<C> {
+    /*fn map_exp<F>(self, f: F) -> Self
+    where
+        F: Fn(FoldingExp2<C>) -> FoldingExp2<C>,
+    {
+        let Self { exp, sign } = self;
+        let exp = f(exp);
+        Self { exp, sign }
+    }*/
+    fn wrap_exp<F>(self, f: F) -> Self
+    where
+        F: Fn(Box<FoldingExp<C>>) -> FoldingExp<C>,
+    {
+        let Self { exp, sign } = self;
+        let exp = f(Box::new(exp));
+        Self { exp, sign }
     }
 }
-impl<C> std::ops::Neg for Term<C> {
+impl<C: FoldingConfig> std::ops::Mul for &Term<C> {
+    type Output = Term<C>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let sign = self.sign ^ rhs.sign;
+        let exp = FoldingExp::Mul(Box::new(self.exp.clone()), Box::new(rhs.exp.clone()));
+        Term { exp, sign }
+    }
+}
+
+impl<C: FoldingConfig> std::ops::Neg for Term<C> {
     type Output = Self;
 
     fn neg(self) -> Self::Output {
@@ -108,13 +272,14 @@ impl<C> std::ops::Neg for Term<C> {
     }
 }
 ///A simplified expression with all terms separated by degree
-pub struct IntegratedFoldingExpr<C> {
+#[derive(Clone, Debug)]
+pub struct IntegratedFoldingExpr<C: FoldingConfig> {
     pub(super) degree_0: Vec<(FoldingExp<C>, bool)>,
     pub(super) degree_1: Vec<(FoldingExp<C>, bool)>,
     pub(super) degree_2: Vec<(FoldingExp<C>, bool)>,
 }
 
-impl<C> Default for IntegratedFoldingExpr<C> {
+impl<C: FoldingConfig> Default for IntegratedFoldingExpr<C> {
     fn default() -> Self {
         Self {
             degree_0: vec![],
@@ -123,114 +288,95 @@ impl<C> Default for IntegratedFoldingExpr<C> {
         }
     }
 }
-pub fn extract_terms<C: Clone, F>(exp: FoldingExp<C>, terms: &mut Vec<Term<C>>, f: &F)
-where
-    F: Fn(Term<C>) -> Term<C>,
-{
-    use Degree::*;
-    match exp {
-        e @ FoldingExp::Constant(_) => {
-            let term = f(Term::new(e, Zero));
-            terms.push(term)
-        }
-        FoldingExp::Cell(col) => {
-            let degree = match col {
-                FoldingColumn::Witness(_) | FoldingColumn::WitnessExtended(_) => One,
-                _ => Zero,
-            };
-            let exp = FoldingExp::Cell(col);
-            let term = f(Term::new(exp, degree));
-            terms.push(term)
-        }
-        FoldingExp::Double(e) => {
-            let f = |t| {
-                let Term { exp, sign, degree } = t;
-                let exp = FoldingExp::Double(Box::new(exp));
-                f(Term { exp, sign, degree })
-            };
-            let f: Box<dyn Fn(Term<C>) -> Term<C>> = Box::new(f);
-            extract_terms(*e, terms, &f);
-        }
-        FoldingExp::Square(e) => {
-            let mut temp = Vec::with_capacity(4);
-            extract_terms(*e.clone(), &mut temp, f);
-            for term in temp {
-                let Term { exp, sign, degree } = term;
-                let exp = Box::new(exp);
-                let f = |t| {
-                    let Term {
-                        exp: exp2,
-                        sign: sign2,
-                        degree: degree2,
-                    } = t;
-                    let degree = &degree * &degree2;
-                    let sign = sign != sign2;
-                    //TODO: specialize square case
-                    let exp = FoldingExp::Mul(exp.clone(), Box::new(exp2));
-                    Term { exp, sign, degree }
-                };
-                let f: Box<dyn Fn(Term<C>) -> Term<C>> = Box::new(f);
-                extract_terms(*e.clone(), terms, &f);
-            }
-        }
-        FoldingExp::Add(e1, e2) => {
-            extract_terms(*e1, terms, f);
-            extract_terms(*e2, terms, f);
-        }
-        FoldingExp::Sub(e1, e2) => {
-            extract_terms(*e1, terms, f);
-            let f = |t: Term<C>| f(-t);
-            let f: Box<dyn Fn(Term<C>) -> Term<C>> = Box::new(f);
-            extract_terms(*e2, terms, &f);
-        }
-        FoldingExp::Mul(e1, e2) => {
-            let mut temp = Vec::with_capacity(4);
-            extract_terms(*e1, &mut temp, f);
-            for term in temp {
-                let Term { exp, sign, degree } = term;
-                let exp = Box::new(exp);
-                let f = |t| {
-                    let Term {
-                        exp: exp2,
-                        sign: sign2,
-                        degree: degree2,
-                    } = t;
-                    let degree = &degree * &degree2;
-                    let sign = sign == sign2;
-                    let exp = FoldingExp::Mul(exp.clone(), Box::new(exp2));
-                    Term { exp, sign, degree }
-                };
-                let f: Box<dyn Fn(Term<C>) -> Term<C>> = Box::new(f);
-                extract_terms(*e2.clone(), terms, &f);
-            }
-        }
-        e @ FoldingExp::UnnormalizedLagrangeBasis(_) => {
-            let term = f(Term::new(e, Zero));
-            terms.push(term)
-        }
-        FoldingExp::Cache(id, e) => {
-            let f = |t| {
-                let Term { exp, sign, degree } = t;
-                let exp = FoldingExp::Cache(id, Box::new(exp));
-                Term { exp, sign, degree }
-            };
-            let f: Box<dyn Fn(Term<C>) -> Term<C>> = Box::new(f);
-            extract_terms(*e, terms, &f);
-        }
+impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
+    ///combines constraints into single expression
+    // fn combine(self, u: Fi<C>) -> FoldingExp2<C> {
+    pub fn final_expression(self) -> FoldingCompatibleExpr<C> {
+        ///todo: should use powers of alpha
+        use FoldingCompatibleExpr::*;
+        let Self {
+            degree_0,
+            degree_1,
+            degree_2,
+        } = self;
+        let [d0, d1, d2] = [degree_0, degree_1, degree_2]
+            .map(|exps| {
+                let init = FoldingExp::Cell(ExtendedFoldingColumn::Constant(Fi::<C>::zero()));
+                exps.into_iter().fold(init, |acc, (exp, sign)| {
+                    if sign {
+                        FoldingExp::Add(Box::new(acc), Box::new(exp))
+                    } else {
+                        FoldingExp::Sub(Box::new(acc), Box::new(exp))
+                    }
+                })
+            })
+            .map(|e| e.to_compatible());
+        let u = || Box::new(Extensions(ExpExtension::U));
+        let u2 = || Box::new(Square(u()));
+        let d0 = Box::new(BinOp(Op2::Mul, Box::new(d0), u2()));
+        let d1 = Box::new(BinOp(Op2::Mul, Box::new(d1), u()));
+        let d2 = Box::new(d2);
+        let exp = Box::new(BinOp(Op2::Add, d0, d1));
+        let exp = Box::new(BinOp(Op2::Add, exp, d2));
+        BinOp(Op2::Add, exp, Box::new(Extensions(ExpExtension::Error)))
     }
 }
 
-///simplyfies the expression, and separates it into terms of different degree y
-pub fn folding_expression<C: Copy, F: Fn(&FeatureFlag) -> bool>(
-    exp: &Expr<C>,
-    flag_resolver: &F,
+// pub fn extract_terms2<C: FoldingConfig, F>(exp: FoldingExp2<C>, f: &F) -> Vec<Term2<C>>
+pub fn extract_terms2<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
+    use FoldingExp::*;
+    let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
+        exp @ Cell(_) => Box::new([Term { exp, sign: true }].into_iter()),
+        Double(exp) => Box::new(extract_terms2(*exp).map(|t| t.wrap_exp(Double))),
+        Square(exp) => {
+            let terms = extract_terms2(*exp).collect_vec();
+            let mut combinations = Vec::with_capacity(terms.len() ^ 2);
+            for t1 in terms.iter() {
+                for t2 in terms.iter() {
+                    combinations.push(t1 * t2)
+                }
+            }
+            Box::new(combinations.into_iter())
+        }
+        Add(e1, e2) => {
+            let e1 = extract_terms2(*e1);
+            let e2 = extract_terms2(*e2);
+            Box::new(e1.chain(e2))
+        }
+        Sub(e1, e2) => {
+            let e1 = extract_terms2(*e1);
+            let e2 = extract_terms2(*e2).map(|t| -t);
+            Box::new(e1.chain(e2))
+        }
+        Mul(e1, e2) => {
+            let e1 = extract_terms2(*e1).collect_vec();
+            let e2 = extract_terms2(*e2).collect_vec();
+            let mut combinations = Vec::with_capacity(e1.len() * e2.len());
+            for t1 in e1.iter() {
+                for t2 in e2.iter() {
+                    combinations.push(t1 * t2)
+                }
+            }
+            Box::new(combinations.into_iter())
+        }
+    };
+    exps
+}
+pub fn folding_expression<C: FoldingConfig>(
+    exps: Vec<FoldingCompatibleExpr<C>>,
 ) -> IntegratedFoldingExpr<C> {
-    let simplied = simplify_expression(exp, flag_resolver);
+    // let simplied = simplify_expression(exp, flag_resolver);
+    let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
+    let expressions = quadricization(simplified_expressions);
     let mut terms = vec![];
-    extract_terms(simplied, &mut terms, &|t| t);
+    // let terms = extract_terms2(expressions);
+    for exp in expressions.into_iter() {
+        terms.extend(extract_terms2(exp))
+    }
     let mut integrated = IntegratedFoldingExpr::default();
     for term in terms.into_iter() {
-        let Term { exp, sign, degree } = term;
+        let Term { exp, sign } = term;
+        let degree = exp.folding_degree();
         let t = (exp, sign);
         match degree {
             Degree::Zero => integrated.degree_0.push(t),
@@ -239,66 +385,4 @@ pub fn folding_expression<C: Copy, F: Fn(&FeatureFlag) -> bool>(
         }
     }
     integrated
-}
-fn simplify_expression<C: Copy, F: Fn(&FeatureFlag) -> bool>(
-    exp: &Expr<C>,
-    flag_resolver: &F,
-) -> FoldingExp<C> {
-    match exp {
-        Expr::Constant(c) => FoldingExp::Constant(*c),
-        Expr::Cell(v) => {
-            let Variable { col, row } = v;
-            let col = match col {
-                Column::Witness(i) => FoldingColumn::Witness(*i),
-                Column::Index(i) => FoldingColumn::Index(*i),
-                Column::Coefficient(i) => FoldingColumn::Coefficient(*i),
-                _ => unreachable!(),
-            };
-            let cell = Box::new(FoldingExp::Cell(col));
-            let shift = Box::new(FoldingExp::Cell(FoldingColumn::Shift));
-            match row {
-                CurrOrNext::Curr => *cell,
-                CurrOrNext::Next => FoldingExp::Mul(cell, shift),
-            }
-        }
-        //may be better to replace by mul by 2
-        Expr::Double(e) => {
-            let e = simplify_expression(e, flag_resolver);
-            FoldingExp::Double(Box::new(e))
-        }
-        //may be better to replace by mul by itself
-        Expr::Square(e) => {
-            let e = simplify_expression(e, flag_resolver);
-            FoldingExp::Square(Box::new(e))
-        }
-        Expr::BinOp(op, e1, e2) => {
-            let e1 = Box::new(simplify_expression(e1, flag_resolver));
-            let e2 = Box::new(simplify_expression(e2, flag_resolver));
-            match op {
-                Op2::Add => FoldingExp::Add(e1, e2),
-                Op2::Sub => FoldingExp::Sub(e1, e2),
-                Op2::Mul => FoldingExp::Mul(e1, e2),
-            }
-        }
-        Expr::UnnormalizedLagrangeBasis(i) => {
-            assert!(!i.zk_rows);
-            FoldingExp::UnnormalizedLagrangeBasis(i.offset)
-        }
-        Expr::Cache(id, e) => {
-            let e = simplify_expression(e, flag_resolver);
-            FoldingExp::Cache(*id, Box::new(e))
-        }
-        Expr::IfFeature(flag, e1, e2) => {
-            if flag_resolver(flag) {
-                simplify_expression(e1, flag_resolver)
-            } else {
-                simplify_expression(e2, flag_resolver)
-            }
-        }
-        Expr::Pow(_, _) => {
-            unreachable!()
-        }
-        //TODO: check that this is fine
-        Expr::VanishesOnZeroKnowledgeAndPreviousRows => todo!(),
-    }
 }

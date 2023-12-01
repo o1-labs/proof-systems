@@ -1,7 +1,8 @@
 use super::expressions::{FoldingExp, IntegratedFoldingExpr};
-use super::FoldingEnv;
-use crate::folding::expressions::{Degree, FoldingColumn};
+use super::{FoldingConfig, FoldingEnv, RelaxedInstance, RelaxedWitness};
+use crate::folding::expressions::{Degree, ExtendedFoldingColumn};
 use crate::folding::EvalLeaf;
+use ark_ec::AffineCurve;
 use ark_ff::Field;
 
 #[derive(Clone, Copy)]
@@ -19,49 +20,41 @@ impl std::ops::Not for Side {
         }
     }
 }
-pub(crate) fn eval_exp_error<'a, F: Field, E: FoldingEnv<F>>(
-    exp: &FoldingExp<F>,
-    env: &'a E,
+type Fi<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
+
+pub(crate) fn eval_exp_error<'a, C: FoldingConfig>(
+    exp: &FoldingExp<C>,
+    env: &'a ExtendedEnv<C>,
     side: Side,
-) -> EvalLeaf<'a, F> {
-    let degree = exp.degree();
-    use EvalLeaf::*;
-    use FoldingColumn::*;
+) -> EvalLeaf<'a, Fi<C>> {
+    let degree = exp.folding_degree();
     use FoldingExp::*;
 
     match exp {
-        Constant(c) => EvalLeaf::Const(*c),
-        Cell(col) => match col {
-            Witness(i) => Col(env.witness(*i, side)),
-            WitnessExtended(i) => Col(env.witness_ext(*i, side)),
-            Index(i) => Col(env.index(i)),
-            Coefficient(i) => Col(env.coefficient(*i)),
-            //TODO: maybe specialize
-            Shift => Col(env.shift()),
-        },
+        Cell(col) => env.col(col, side),
         Double(e) => {
             let col = eval_exp_error(e, env, side);
             col.map(Field::double, |f| {
                 Field::double_in_place(f);
             })
         }
-        FoldingExp::Square(e) => {
+        Square(e) => {
             let col = eval_exp_error(e, env, side);
             col.map(Field::square, |f| {
                 Field::square_in_place(f);
             })
         }
-        FoldingExp::Add(e1, e2) => {
+        Add(e1, e2) => {
             let a = eval_exp_error(e1, env, side);
             let b = eval_exp_error(e2, env, side);
             EvalLeaf::bin_op(a, b, |a, b| *a + b, |a, b| *a += b)
         }
-        FoldingExp::Sub(e1, e2) => {
+        Sub(e1, e2) => {
             let a = eval_exp_error(e1, env, side);
             let b = eval_exp_error(e2, env, side);
             EvalLeaf::bin_op(a, b, |a, b| *a - b, |a, b| *a -= b)
         }
-        FoldingExp::Mul(e1, e2) => match (degree, e1.degree()) {
+        Mul(e1, e2) => match (degree, e1.folding_degree()) {
             (Degree::Two, Degree::One) => {
                 let a = eval_exp_error(e1, env, side);
                 let b = eval_exp_error(e2, env, !side);
@@ -77,22 +70,19 @@ pub(crate) fn eval_exp_error<'a, F: Field, E: FoldingEnv<F>>(
                 EvalLeaf::bin_op(a, b, |a, b| *a * b, |a, b| *a *= b)
             }
         },
-        FoldingExp::UnnormalizedLagrangeBasis(i) => EvalLeaf::Result(env.lagrange_basis(i)),
-        //TODO: use cache
-        FoldingExp::Cache(_id, exp) => eval_exp_error(exp, env, side),
     }
 }
 
-pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
-    exp: &IntegratedFoldingExpr<F>,
-    env: &E,
-    u: (F, F),
-) -> Vec<F> {
+pub(crate) fn compute_error<C: FoldingConfig>(
+    exp: &IntegratedFoldingExpr<C>,
+    env: &ExtendedEnv<C>,
+    u: (Fi<C>, Fi<C>),
+) -> Vec<Fi<C>> {
     let add = |a, b| EvalLeaf::bin_op(a, b, |a, b| *a + b, |a, b| *a += b);
     let sub = |a, b| EvalLeaf::bin_op(a, b, |a, b| *a - b, |a, b| *a -= b);
     let scale = |t, s| EvalLeaf::bin_op(t, EvalLeaf::Const(s), |a, b| *a * b, |a, b| *a *= b);
 
-    let t_0 = EvalLeaf::Result(env.zero_vec());
+    let t_0 = EvalLeaf::Result(env.inner().zero_vec());
     let t_0 = exp.degree_0.iter().fold(t_0, |t_0, (exp, sign)| {
         //could be true or false, doesn't matter for constant terms
         let e = eval_exp_error(exp, env, Side::Left);
@@ -104,10 +94,10 @@ pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
     });
     let t_0 = scale(t_0, (u.0 * u.1).double());
 
-    let t_1l = EvalLeaf::Result(env.zero_vec());
-    let t_1r = EvalLeaf::Result(env.zero_vec());
+    let t_1l = EvalLeaf::Result(env.inner().zero_vec());
+    let t_1r = EvalLeaf::Result(env.inner().zero_vec());
     let (t_1l, t_1r) = exp
-        .degree_0
+        .degree_1
         .iter()
         .fold((t_1l, t_1r), |(t_1l, t_1r), (exp, sign)| {
             let el = eval_exp_error(exp, env, Side::Left);
@@ -122,8 +112,8 @@ pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
     let t_1r = scale(t_1r, u.0);
     let t_1 = EvalLeaf::bin_op(t_1l, t_1r, |a, b| *a + b, |a, b| *a += b);
 
-    let t_2 = EvalLeaf::Result(env.zero_vec());
-    let t_2 = exp.degree_0.iter().fold(t_2, |t_2, (exp, sign)| {
+    let t_2 = EvalLeaf::Result(env.inner().zero_vec());
+    let t_2 = exp.degree_2.iter().fold(t_2, |t_2, (exp, sign)| {
         //true or false matter in some way, but not at the top level call
         let e = eval_exp_error(exp, env, Side::Left);
         if *sign {
@@ -137,5 +127,76 @@ pub(crate) fn compute_error<F: Field, E: FoldingEnv<F>>(
     match t {
         EvalLeaf::Result(res) => res,
         _ => unreachable!(),
+    }
+}
+
+type Evals<C> = Vec<<<C as FoldingConfig>::Curve as AffineCurve>::ScalarField>;
+pub(crate) struct ExtendedEnv<'a, CF: FoldingConfig> {
+    inner: CF::Env,
+    instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
+    witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
+    shift: &'a Evals<CF>,
+}
+
+impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
+    pub fn new(
+        structure: &CF::Structure,
+        //maybe better to have some structure exteded or something like that
+        shift: &'a Evals<CF>,
+        instances: [RelaxedInstance<CF::Curve, CF::Instance>; 2],
+        witnesses: [RelaxedWitness<CF::Curve, CF::Witness>; 2],
+    ) -> Self {
+        let inner_instances = [
+            instances[0].inner_instance().inner(),
+            instances[1].inner_instance().inner(),
+        ];
+        let inner_witnesses = [witnesses[0].inner().inner(), witnesses[1].inner().inner()];
+        let inner = <CF::Env>::new(structure, inner_instances, inner_witnesses);
+        Self {
+            inner,
+            instances,
+            witnesses,
+            shift,
+        }
+    }
+    pub fn inner(&self) -> &CF::Env {
+        &self.inner
+    }
+    pub fn unwrap(
+        self,
+    ) -> (
+        [RelaxedInstance<CF::Curve, CF::Instance>; 2],
+        [RelaxedWitness<CF::Curve, CF::Witness>; 2],
+    ) {
+        let Self {
+            instances,
+            witnesses,
+            ..
+        } = self;
+        (instances, witnesses)
+    }
+    // fn col_side_choosen()
+    pub fn col(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> EvalLeaf<Fi<CF>> {
+        use EvalLeaf::Col;
+        use ExtendedFoldingColumn::*;
+        let (instance, witness) = match side {
+            Side::Left => (&self.instances[0], &self.witnesses[0]),
+            Side::Right => (&self.instances[1], &self.witnesses[1]),
+        };
+        match col {
+            Inner(col) => Col(self.inner().col(*col, side)),
+            WitnessExtended(i) => Col(witness
+                .inner()
+                .extended
+                .get(*i)
+                .expect("extended column not present")),
+            Error => panic!("shouldn't happen"),
+            Shift => Col(self.shift),
+            ///handle todos
+            UnnormalizedLagrangeBasis(i) => Col(self.inner().lagrange_basis(*i)),
+            Constant(c) => EvalLeaf::Const(*c),
+            Challenge(chall) => EvalLeaf::Const(self.inner().challenge(*chall)),
+            Alpha(_) => todo!(),
+        }
     }
 }
