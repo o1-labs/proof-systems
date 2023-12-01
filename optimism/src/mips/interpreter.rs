@@ -208,6 +208,16 @@ pub trait InterpreterEnv {
 
     fn add_16bits_signed_offset(x: &Self::Variable, v: &Self::Variable) -> Self::Variable;
 
+    fn decompose_32bits_in_8bits_chunks(
+        &self,
+        value: &Self::Variable,
+    ) -> (
+        Self::Variable,
+        Self::Variable,
+        Self::Variable,
+        Self::Variable,
+    );
+
     fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;

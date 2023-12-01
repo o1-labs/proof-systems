@@ -171,6 +171,24 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             x + v
         }
     }
+
+    // Decomposition
+    fn decompose_32bits_in_8bits_chunks(
+        &self,
+        value: &Self::Variable,
+    ) -> (
+        Self::Variable,
+        Self::Variable,
+        Self::Variable,
+        Self::Variable,
+    ) {
+        let v1 = (*value >> 24) & ((1 << (32 - 24)) - 1);
+        let v2 = (*value >> 16) & ((1 << (24 - 16)) - 1);
+        let v3 = (*value >> 8) & ((1 << (16 - 8)) - 1);
+        let v4 = *value & ((1 << 8) - 1);
+        (v1, v2, v3, v4)
+    }
+
     fn overwrite_register_checked(
         &mut self,
         register_idx: &Self::Variable,
