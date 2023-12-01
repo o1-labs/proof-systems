@@ -100,6 +100,53 @@ fn memory_size(total: usize) -> String {
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
     type Variable = u32;
 
+    // Debug
+    fn debug_signed_16bits_variable(v: &Self::Variable) -> String {
+        // FIXME: It does suppose u32 is between 0 and 2 ^ 16
+        let v = *v;
+        // handle 0b1000000000000000
+        if v == 1 << 15 {
+            return String::from("0");
+        }
+        let bit_sign = v >> 15;
+        if bit_sign == 1 {
+            let v = !(v - 1) & 0x0000ffff;
+            format!("-{v}")
+        } else {
+            format!("{v}")
+        }
+    }
+
+    fn debug_register(v: &Self::Variable) -> String {
+        if *v == 0 {
+            return String::from("$zero")
+        } else if *v == 1 {
+            return String::from("$at")
+        } else if *v == 2 {
+            return String::from("$v0")
+        } else if *v == 3 {
+            return String::from("$v1")
+        } else if (4..=7).contains(v) {
+            return format!("$v{}", *v - 4)
+        } else if (8..=15).contains(v) {
+            return format!("$t{}", v - 8)
+        } else if (16..=23).contains(v) {
+            return format!("$s{}", *v - 16)
+        } else if (24..=25).contains(v) {
+            return format!("$t{}", *v - 16)
+        } else if (26..=27).contains(v) {
+            return format!("$k{}", *v - 26)
+        } else if *v == 28 {
+            return String::from("$gp");
+        } else if *v == 29 {
+            return String::from("$sp");
+        } else if *v == 30 {
+            return String::from("$fp");
+        } else if *v == 31 {
+            return String::from("$ra");
+        }
+        panic!("Unhandled register index: {}", v);
+    }
     fn overwrite_register_checked(
         &mut self,
         register_idx: &Self::Variable,

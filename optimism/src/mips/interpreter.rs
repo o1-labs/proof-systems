@@ -201,6 +201,11 @@ pub trait InterpreterEnv {
         + std::ops::BitAnd<u32, Output = Self::Variable>
         + std::fmt::Display;
 
+    // Debug functions
+    fn debug_register(v: &Self::Variable) -> String;
+
+    fn debug_signed_16bits_variable(v: &Self::Variable) -> String;
+
     fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
