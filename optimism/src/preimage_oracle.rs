@@ -3,6 +3,7 @@ use crate::cannon::{
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
 };
 use command_fds::{CommandFdExt, FdMapping};
+use log::debug;
 use os_pipe::{PipeReader, PipeWriter};
 use std::io::{Read, Write};
 use std::os::fd::AsRawFd;
@@ -24,6 +25,7 @@ impl Key {
         }
     }
 
+    // Byte-encoding of key types
     pub fn typ(&self) -> u8 {
         use Key::*;
         match self {
@@ -36,10 +38,10 @@ impl Key {
 
 pub struct PreImageOracle {
     pub cmd: Command,
-    pub preimage_write: RW,
-    pub preimage_read: RW,
-    pub hint_write: RW,
-    pub hint_read: RW,
+    pub oracle_client: RW,
+    pub oracle_server: RW,
+    pub hint_client: RW,
+    pub hint_server: RW,
 }
 
 pub struct ReadWrite<R, W> {
@@ -49,11 +51,28 @@ pub struct ReadWrite<R, W> {
 
 pub struct RW(pub ReadWrite<PipeReader, PipeWriter>);
 
-impl RW {
-    pub fn create() -> Option<Self> {
-        let (reader, writer) = os_pipe::pipe().ok()?;
-        Some(RW(ReadWrite { reader, writer }))
-    }
+// Create bidirectional channel between A and B
+//
+// Schematically we create 2 unidirectional pipes and creates 2 structures made
+// by taking the writer from one and the reader from the other.
+//
+//     A                     B
+//     |     ar  <---- bw    |
+//     |     aw  ----> br    |
+//
+pub fn create_bidirectional_channel() -> Option<(RW, RW)> {
+    let (ar, bw) = os_pipe::pipe().ok()?;
+    let (br, aw) = os_pipe::pipe().ok()?;
+    Some((
+        RW(ReadWrite {
+            reader: ar,
+            writer: aw,
+        }),
+        RW(ReadWrite {
+            reader: br,
+            writer: bw,
+        }),
+    ))
 }
 
 impl PreImageOracle {
@@ -63,41 +82,40 @@ impl PreImageOracle {
         let mut cmd = Command::new(&host_program.name);
         cmd.args(&host_program.arguments);
 
-        let preimage_write = RW::create().expect("Could not create preimage write channel");
-        let preimage_read = RW::create().expect("Could not create preimage read channel");
-
-        let hint_write = RW::create().expect("Could not create hint write channel");
-        let hint_read = RW::create().expect("Could not create hint read channel");
+        let (oracle_client, oracle_server) =
+            create_bidirectional_channel().expect("Could not create bidirectional oracle channel");
+        let (hint_client, hint_server) =
+            create_bidirectional_channel().expect("Could not create bidirectional hint channel");
 
         // file descriptors 0, 1, 2 respectively correspond to the inherited stdin,
         // stdout, stderr.
         // We need to map 3, 4, 5, 6 in the child process
         cmd.fd_mappings(vec![
             FdMapping {
-                parent_fd: hint_read.0.writer.as_raw_fd(),
+                parent_fd: hint_server.0.writer.as_raw_fd(),
                 child_fd: HINT_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: hint_write.0.reader.as_raw_fd(),
+                parent_fd: hint_server.0.reader.as_raw_fd(),
                 child_fd: HINT_CLIENT_READ_FD,
             },
             FdMapping {
-                parent_fd: preimage_read.0.writer.as_raw_fd(),
+                parent_fd: oracle_server.0.writer.as_raw_fd(),
                 child_fd: PREIMAGE_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: preimage_write.0.reader.as_raw_fd(),
+                parent_fd: oracle_server.0.reader.as_raw_fd(),
                 child_fd: PREIMAGE_CLIENT_READ_FD,
             },
         ])
-        .unwrap_or_else(|_| panic!("Could not map file descriptors to server process"));
+        .unwrap_or_else(|_| panic!("Could not map file descriptors to preimage server process"));
 
         PreImageOracle {
             cmd,
-            preimage_read,
-            preimage_write,
-            hint_read,
-            hint_write,
+            oracle_client,
+            oracle_server,
+            hint_client,
+            hint_server,
         }
     }
 
@@ -117,30 +135,42 @@ impl PreImageOracle {
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
     pub fn get_preimage(&mut self, key: Key) -> Preimage {
-        let RW(ReadWrite {
-            reader: _,
-            writer: preimage_writer,
-        }) = &mut self.preimage_write;
-        let RW(ReadWrite {
-            reader: preimage_reader,
-            writer: _,
-        }) = &mut self.preimage_read;
+        let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
         let key_contents = key.contents();
         let key_type = key.typ();
 
         let mut msg_key = vec![key_type];
-        msg_key.extend_from_slice(&key_contents[1..31]);
-        let _ = preimage_writer.write(&msg_key);
+        msg_key.extend_from_slice(&key_contents[1..32]);
+        debug!(
+            "Sending request {} of size {}",
+            hex::encode(&msg_key),
+            msg_key.len()
+        );
 
+        let r = writer.write_all(&msg_key);
+        assert!(r.is_ok());
+        let r = writer.flush();
+        assert!(r.is_ok());
+
+        debug!("Reading response");
         let mut buf = [0_u8; 8];
-        let _ = preimage_reader.read_exact(&mut buf);
+        let resp = reader.read_exact(&mut buf);
+        assert!(resp.is_ok());
 
+        debug!("Extracting contents");
         let length = u64::from_be_bytes(buf);
-        let mut handle = preimage_reader.take(length);
+        let mut handle = reader.take(length);
         let mut preimage = vec![0_u8; length as usize];
-        let _ = handle.read(&mut preimage);
+        let resp = handle.read(&mut preimage);
 
+        assert!(resp.is_ok());
+
+        debug!(
+            "Got preimage of length {}\n {}",
+            preimage.len(),
+            hex::encode(&preimage)
+        );
         // We should have read exactly <length> bytes
         assert_eq!(preimage.len(), length as usize);
 
@@ -155,14 +185,7 @@ impl PreImageOracle {
     //
     // 2. Get back a single ack byte informing the the hint has been processed.
     pub fn hint(&mut self, hint: Hint) {
-        let RW(ReadWrite {
-            reader: _,
-            writer: hint_writer,
-        }) = &mut self.hint_write;
-        let RW(ReadWrite {
-            reader: hint_reader,
-            writer: _,
-        }) = &mut self.hint_read;
+        let RW(ReadWrite { reader, writer }) = &mut self.hint_client;
 
         // Write hint request
         let mut hint_bytes = hint.get();
@@ -172,18 +195,71 @@ impl PreImageOracle {
         msg.append(&mut u64::to_be_bytes(hint_length as u64).to_vec());
         msg.append(&mut hint_bytes);
 
-        let _ = hint_writer.write(&msg);
+        let _ = writer.write(&msg);
 
         // Read single byte acknowledgment response
         let mut buf = [0_u8];
-        let _ = hint_reader.read_exact(&mut buf);
+        // And do nothing with it anyway
+        let _ = reader.read_exact(&mut buf);
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
-    // TODO
+    // Test that bidirectional channels work as expected
+    // That is, after creating a pair (c0, c1)
+    // 1. c1's reader can read what c0's writer produces
+    // 2. c0's reader can read what c1's writer produces
     #[test]
-    fn test_preimage_get() {}
+    fn test_bidir_channels() {
+        let (mut c0, mut c1) = create_bidirectional_channel().unwrap();
+
+        // 1. First send a single byte message
+        let msg = [42_u8];
+        let mut buf = [0_u8; 1];
+
+        let r = c0.0.writer.write(&msg);
+        assert!(r.is_ok());
+
+        let r = c1.0.reader.read_exact(&mut buf);
+        assert!(r.is_ok());
+
+        // 2. Check that we correctly read the single byte message
+        assert_eq!(msg, buf);
+
+        // 3. Create a more structured message with the preimage format
+        //      +------------+--------------------+
+        //      | length <8> | pre-image <length> |
+        //      +---------------------------------+
+        //   Here we'll use a length of 2
+        let len = 2_u64;
+        let msg2 = vec![42_u8, 43_u8];
+        let mut msg = u64::to_be_bytes(len).to_vec();
+        msg.extend_from_slice(&msg2);
+
+        // 4. Write the message
+        let r = c1.0.writer.write(&msg);
+        assert!(r.is_ok());
+
+        // 5. Read back the length from the other end of the bidirectionnal
+        // channel
+        let mut len_buf: [u8; 8] = [0_u8; 8];
+        let r = c0.0.reader.read_exact(&mut len_buf);
+        assert!(r.is_ok());
+
+        // 6. Check it is the expected length
+        let n = u64::from_be_bytes(len_buf);
+        assert_eq!(n, len);
+
+        // 7. Read the data
+        let mut data = vec![0_u8; n as usize];
+        let mut h = c0.0.reader.take(len);
+        let r = h.read(&mut data);
+        assert!(r.is_ok());
+
+        // 8. Check they are equal to the message
+        assert_eq!(data, msg2);
+    }
 }
