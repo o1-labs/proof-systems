@@ -1338,6 +1338,7 @@ dependencies = [
  "mina-poseidon",
  "os_pipe",
  "poly-commitment",
+ "rand",
  "regex",
  "rmp-serde",
  "serde",
