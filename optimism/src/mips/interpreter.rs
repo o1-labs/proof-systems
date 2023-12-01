@@ -151,7 +151,7 @@ pub trait InterpreterEnv {
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
     fn get_immediate(&self) -> Self::Variable {
-        // The immediate value is the first 16bits
+        // The immediate value is the last 16bits
         (self.get_instruction_part(InstructionPart::RD) << 11)
             + (self.get_instruction_part(InstructionPart::Shamt) << 6)
             + (self.get_instruction_part(InstructionPart::Funct))
