@@ -505,6 +505,46 @@
 <a href="#505" id="505">505</a>
 <a href="#506" id="506">506</a>
 <a href="#507" id="507">507</a>
+<a href="#508" id="508">508</a>
+<a href="#509" id="509">509</a>
+<a href="#510" id="510">510</a>
+<a href="#511" id="511">511</a>
+<a href="#512" id="512">512</a>
+<a href="#513" id="513">513</a>
+<a href="#514" id="514">514</a>
+<a href="#515" id="515">515</a>
+<a href="#516" id="516">516</a>
+<a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
+<a href="#524" id="524">524</a>
+<a href="#525" id="525">525</a>
+<a href="#526" id="526">526</a>
+<a href="#527" id="527">527</a>
+<a href="#528" id="528">528</a>
+<a href="#529" id="529">529</a>
+<a href="#530" id="530">530</a>
+<a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Index;
@@ -830,7 +870,19 @@
             // REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
-        ITypeInstruction::AddImmediateUnsigned =&gt; (),
+        ITypeInstruction::AddImmediateUnsigned =&gt; {
+            <span class="kw">let </span>rs = env.get_instruction_part(InstructionPart::RS);
+            <span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
+            <span class="macro">debug!</span>(<span class="string">&quot;Fetching register: {}&quot;</span>, rs);
+            <span class="kw">let </span>register_rs = env.fetch_register_checked(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>immediate = env.get_immediate();
+            <span class="kw">let </span>res = register_rs + immediate;
+            env.overwrite_register_checked(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>res);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// TODO: update next_instruction_pointer
+            // REMOVEME: when all itype instructions are implemented.
+            </span><span class="kw">return</span>;
+        }
         ITypeInstruction::SetLessThanImmediate =&gt; (),
         ITypeInstruction::SetLessThanImmediateUnsigned =&gt; (),
         ITypeInstruction::AndImmediate =&gt; (),
@@ -970,7 +1022,10 @@
             funct: <span class="number">0b000000</span>,
         };
         interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::Load32);
-        <span class="macro">assert_eq!</span>(dummy_env.registers[REGISTER_A0 <span class="kw">as </span>usize], exp_v);
+        <span class="macro">assert_eq!</span>(
+            dummy_env.registers.general_purpose[REGISTER_A0 <span class="kw">as </span>usize],
+            exp_v
+        );
     }
 
     <span class="attr">#[test]
@@ -989,8 +1044,8 @@
         };
         interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::AddImmediate);
         <span class="macro">assert_eq!</span>(
-            dummy_env.registers[REGISTER_A1 <span class="kw">as </span>usize],
-            dummy_env.registers[REGISTER_SP <span class="kw">as </span>usize] + <span class="number">4
+            dummy_env.registers.general_purpose[REGISTER_A1 <span class="kw">as </span>usize],
+            dummy_env.registers.general_purpose[REGISTER_SP <span class="kw">as </span>usize] + <span class="number">4
         </span>);
     }
 
@@ -1009,7 +1064,32 @@
             funct: <span class="number">0b001010</span>,
         };
         interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::LoadUpperImmediate);
-        <span class="macro">assert_eq!</span>(dummy_env.registers[REGISTER_AT <span class="kw">as </span>usize], <span class="number">0xa0000</span>,);
+        <span class="macro">assert_eq!</span>(
+            dummy_env.registers.general_purpose[REGISTER_AT <span class="kw">as </span>usize],
+            <span class="number">0xa0000
+        </span>);
+    }
+
+    <span class="attr">#[test]
+    </span><span class="kw">fn </span>test_unit_addiu_instruction() {
+        <span class="comment">// We only care about instruction parts and instruction pointer
+        </span><span class="kw">let </span><span class="kw-2">mut </span>dummy_env = dummy_env();
+        <span class="comment">// Instruction: 0b00100100001000010110110011101000
+        // lui at, 0xa
+        </span>dummy_env.instruction_parts = InstructionParts {
+            op_code: <span class="number">0b001001</span>,
+            rs: <span class="number">0b00001</span>,
+            rt: <span class="number">0b00001</span>,
+            rd: <span class="number">0b01101</span>,
+            shamt: <span class="number">0b10011</span>,
+            funct: <span class="number">0b101000</span>,
+        };
+        <span class="kw">let </span>exp_res = dummy_env.registers[REGISTER_AT <span class="kw">as </span>usize] + <span class="number">27880</span>;
+        interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::AddImmediateUnsigned);
+        <span class="macro">assert_eq!</span>(
+            dummy_env.registers.general_purpose[REGISTER_AT <span class="kw">as </span>usize],
+            exp_res
+        );
     }
 }
 </code></pre></div></section></main></body></html>
