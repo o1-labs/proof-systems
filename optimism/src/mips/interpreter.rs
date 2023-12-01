@@ -222,7 +222,10 @@ pub trait InterpreterEnv {
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
 
+    // Memory RW
     fn fetch_memory(&mut self, addr: &Self::Variable) -> Self::Variable;
+
+    fn overwrite_memory_checked(&mut self, addr: &Self::Variable, value: &Self::Variable);
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 

@@ -224,6 +224,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         panic!("Could not access address")
     }
 
+    fn overwrite_memory_checked(&mut self, address: &Self::Variable, value: &Self::Variable) {
+        let page = address >> PAGE_ADDRESS_SIZE;
+        let page_address = (address & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory) in self.memory.iter_mut() {
+            if *page_index == page {
+                memory[page_address] = *value as u8;
+                return;
+            }
+        }
+        panic!("Could not access address: {}", address)
+    }
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
         self.instruction_pointer = ip;
         // Set next instruction pointer?
