@@ -294,7 +294,28 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::MultiplyUnsigned => (),
         RTypeInstruction::Div => (),
         RTypeInstruction::DivUnsigned => (),
-        RTypeInstruction::Add => (),
+        RTypeInstruction::Add => {
+            // add: R[rd] <- R[rs] + R[rt]
+            //               -------------
+            //                    res
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            let rd = env.get_instruction_part(InstructionPart::RD);
+            debug!(
+                "Instr: add {}, {}, {}",
+                Env::debug_register(&rd),
+                Env::debug_register(&rs),
+                Env::debug_register(&rt),
+            );
+            let r_rs = env.fetch_register_checked(&rs);
+            let r_rt = env.fetch_register_checked(&rs);
+            let res = r_rs + r_rt;
+            env.overwrite_register_checked(&rd, &res);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            // TODO: update next_instruction_pointer?
+            // REMOVEME: when all rtype instructions are implemented.
+            return;
+        }
         RTypeInstruction::AddUnsigned => (),
         RTypeInstruction::Sub => (),
         RTypeInstruction::SubUnsigned => (),
@@ -700,5 +721,29 @@ mod tests {
             dummy_env.instruction_pointer,
             dummy_env.registers.general_purpose[REGISTER_AT as usize]
         )
+    }
+
+    #[test]
+    fn test_unit_add_instruction() {
+        let mut dummy_env = dummy_env();
+        let ip = dummy_env.instruction_pointer;
+        // 0b00000011101101110000100000100000
+        // add at, sp, s7
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000000,
+            rs: 0b11101,
+            rt: 0b10111,
+            rd: 0b00001,
+            shamt: 0b00000,
+            funct: 0b100000,
+        };
+        interpret_rtype(&mut dummy_env, RTypeInstruction::Add);
+        let exp_res = dummy_env.registers.general_purpose[REGISTER_SP as usize]
+            + dummy_env.registers.general_purpose[REGISTER_S7 as usize];
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_AT as usize],
+            exp_res
+        );
+        assert_eq!(dummy_env.instruction_pointer, ip + 4);
     }
 }
