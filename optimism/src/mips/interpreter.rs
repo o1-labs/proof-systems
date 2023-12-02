@@ -325,7 +325,9 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
                 + (env.get_instruction_part(InstructionPart::RD) << 11)
                 + (env.get_instruction_part(InstructionPart::Shamt) << 6)
                 + (env.get_instruction_part(InstructionPart::Funct));
-            env.set_instruction_pointer(addr * 4);
+            let addr = addr * 4;
+            debug!("Instr: j {}", Env::debug_hexa_variable(&addr));
+            env.set_instruction_pointer(addr);
             // REMOVEME: when all jtype instructions are implemented.
             return;
         }
