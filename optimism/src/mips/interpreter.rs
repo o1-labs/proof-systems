@@ -266,6 +266,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::JumpRegister => {
             let rs = env.get_instruction_part(InstructionPart::RS);
             let register_rs = env.fetch_register_checked(&rs);
+            debug!("Instr: jr {}", Env::debug_register(&rs));
             // TODO: Check if address is aligned
             env.set_instruction_pointer(register_rs);
             // TODO: update next_instruction_pointer?
