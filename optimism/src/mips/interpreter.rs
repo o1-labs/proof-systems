@@ -363,17 +363,22 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             return;
         }
         ITypeInstruction::AddImmediateUnsigned => {
+            // addiu: R[rt] <- R[rs] + signed_extended_imm
+            //                 -----------
+            //                     res
+            // Despite the name, it is adding a signed extended value!
+            // The difference with addi: doesn't cause overflow.
             let rs = env.get_instruction_part(InstructionPart::RS);
             let rt = env.get_instruction_part(InstructionPart::RT);
-            let immediate = env.get_immediate();
+            let signed_extended_imm = env.get_immediate();
             debug!(
                 "Instr: addiu {}, {}, {}",
                 Env::debug_register(&rt),
                 Env::debug_register(&rs),
-                immediate
+                Env::debug_signed_16bits_variable(&signed_extended_imm)
             );
-            let register_rs = env.fetch_register_checked(&rs);
-            let res = register_rs + immediate;
+            let r_rs = env.fetch_register_checked(&rs);
+            let res = Env::add_16bits_signed_offset(&r_rs, &signed_extended_imm);
             env.overwrite_register_checked(&rt, &res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
