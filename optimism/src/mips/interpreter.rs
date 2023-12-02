@@ -634,22 +634,24 @@ mod tests {
     fn test_unit_addiu_instruction() {
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env();
-        // Instruction: 0b00100100001000010110110011101000
-        // lui at, 0xa
+        let ip = dummy_env.instruction_pointer;
+        // Instruction: 0b00100100001000010111000001001100
+        // addiu at, at, 28748
         dummy_env.instruction_parts = InstructionParts {
             op_code: 0b001001,
             rs: 0b00001,
             rt: 0b00001,
-            rd: 0b01101,
-            shamt: 0b10011,
-            funct: 0b101000,
+            rd: 0b01110,
+            shamt: 0b00001,
+            funct: 0b001100,
         };
-        let exp_res = dummy_env.registers[REGISTER_AT as usize] + 27880;
+        let exp_res = dummy_env.registers[REGISTER_AT as usize] + 28748;
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
         assert_eq!(
             dummy_env.registers.general_purpose[REGISTER_AT as usize],
             exp_res
         );
+        assert_eq!(dummy_env.instruction_pointer, ip + 4);
     }
 
     #[test]
