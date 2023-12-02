@@ -127,7 +127,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         } else if *v == 3 {
             return String::from("$v1");
         } else if (4..=7).contains(v) {
-            return format!("$v{}", *v - 4);
+            return format!("$a{}", *v - 4);
         } else if (8..=15).contains(v) {
             return format!("$t{}", v - 8);
         } else if (16..=23).contains(v) {
