@@ -444,32 +444,38 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Store8 => (),
         ITypeInstruction::Store16 => (),
         ITypeInstruction::Store32 => {
-            let reg_src = env.get_instruction_part(InstructionPart::RS);
-            let reg_dest = env.get_instruction_part(InstructionPart::RD);
-            let offset = env.get_immediate();
-            let mem_addr = env.fetch_register_checked(&reg_dest);
-            debug!(
-                "Fetch address {} in register {}",
-                mem_addr,
-                Env::debug_register(&reg_src)
-            );
+            // sw: M[R[rs] + sign_extended_imm] <- R[rt]
+            //       -------------------------
+            //                addr
+            // sw rt, imm(rs)
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let r_rs = env.fetch_register_checked(&rs);
+            let sign_extended_imm = env.get_immediate();
+            let addr = Env::add_16bits_signed_offset(&r_rs, &sign_extended_imm);
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            let r_rt = env.fetch_register_checked(&rt);
             debug!(
                 "Instr: sw {}, {}({})",
-                Env::debug_register(&reg_dest),
-                Env::debug_signed_16bits_variable(&offset),
-                Env::debug_register(&reg_src),
+                Env::debug_register(&rt),
+                Env::debug_signed_16bits_variable(&sign_extended_imm),
+                Env::debug_register(&rs),
             );
-            let addr_with_offset = Env::add_16bits_signed_offset(&mem_addr, &offset);
-            debug!("Compute offset address: {}", addr_with_offset);
+            debug!(
+                "Fetch address {} in register {}",
+                Env::debug_hexa_variable(&r_rs),
+                Env::debug_register(&rs)
+            );
+            debug!("Compute address: {}", Env::debug_hexa_variable(&addr));
+            // r_rt is a 32 bits value. The memory is represented by 8 bits.
+            // We create chunks of it. We get the big endian representation
+            let (v4, v3, v2, v1) = env.decompose_32bits_in_8bits_chunks(&r_rt);
             //           31  24 | 23    16 | 15     8 | 7      0 |
-            //             V1   |    V2    |    V3    |    V4    |
+            //             V4   |    V3    |    V2    |    V1    |
             //            addr  | addr + 1 | addr + 2 | addr + 3 |
-            let value = env.fetch_register_checked(&reg_src);
-            let (v1, v2, v3, v4) = env.decompose_32bits_in_8bits_chunks(&value);
-            env.overwrite_memory_checked(&addr_with_offset, &v1);
-            env.overwrite_memory_checked(&(addr_with_offset.clone() + Env::constant(1)), &v2);
-            env.overwrite_memory_checked(&(addr_with_offset.clone() + Env::constant(2)), &v3);
-            env.overwrite_memory_checked(&(addr_with_offset.clone() + Env::constant(3)), &v4);
+            env.overwrite_memory_checked(&addr, &v4);
+            env.overwrite_memory_checked(&(addr.clone() + Env::constant(1)), &v3);
+            env.overwrite_memory_checked(&(addr.clone() + Env::constant(2)), &v2);
+            env.overwrite_memory_checked(&(addr.clone() + Env::constant(3)), &v1);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
