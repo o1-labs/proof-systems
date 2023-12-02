@@ -148,6 +148,11 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         panic!("Unhandled register index: {}", v);
     }
 
+    fn debug_hexa_variable(v: &Self::Variable) -> String {
+        let v = *v;
+        format!("{:#02x}", v)
+    }
+
     fn add_16bits_signed_offset(x: &Self::Variable, v: &Self::Variable) -> Self::Variable {
         // FIXME: overflow/underflow of x - v.
         // x - v < 0 should not be happen.

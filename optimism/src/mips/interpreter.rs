@@ -206,6 +206,8 @@ pub trait InterpreterEnv {
 
     fn debug_signed_16bits_variable(v: &Self::Variable) -> String;
 
+    fn debug_hexa_variable(v: &Self::Variable) -> String;
+
     fn add_16bits_signed_offset(x: &Self::Variable, v: &Self::Variable) -> Self::Variable;
 
     fn decompose_32bits_in_8bits_chunks(
