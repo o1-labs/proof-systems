@@ -345,17 +345,20 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
         ITypeInstruction::AddImmediate => {
+            // addi: R[rt] <- R[rs] + sign_extended_imm
+            //                -------------------------
+            //                           res
             let rs = env.get_instruction_part(InstructionPart::RS);
             let rt = env.get_instruction_part(InstructionPart::RT);
-            let imm = env.get_immediate();
+            let sign_extended_imm = env.get_immediate();
             debug!(
                 "Instr: addi {}, {}, {}",
                 Env::debug_register(&rt),
                 Env::debug_register(&rs),
-                Env::debug_signed_16bits_variable(&imm)
+                Env::debug_signed_16bits_variable(&sign_extended_imm)
             );
-            let vrs = env.fetch_register_checked(&rs);
-            let res = Env::add_16bits_signed_offset(&vrs, &imm);
+            let r_rs = env.fetch_register_checked(&rs);
+            let res = Env::add_16bits_signed_offset(&r_rs, &sign_extended_imm);
             env.overwrite_register_checked(&rt, &res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
