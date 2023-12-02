@@ -404,29 +404,38 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
-            let dest = env.get_instruction_part(InstructionPart::RT);
-            let src = env.get_instruction_part(InstructionPart::RS);
-            let offset = env.get_immediate();
+            // lw: R[rt] <- M[R[rs] + sign_extended_imm]
+            //                -------------------------
+            //                         address
+            //              ----------------------------
+            //                        value
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let r_rs = env.fetch_register_checked(&rs);
+            let sign_extended_imm = env.get_immediate();
             debug!(
                 "Instr: lw {}, {}({})",
-                Env::debug_register(&dest),
-                Env::debug_signed_16bits_variable(&offset),
-                Env::debug_register(&src)
+                Env::debug_register(&rt),
+                Env::debug_signed_16bits_variable(&sign_extended_imm),
+                Env::debug_register(&rs)
             );
-            let addr = env.fetch_register_checked(&src);
-            let addr_with_offset = Env::add_16bits_signed_offset(&addr, &offset);
+            let address = Env::add_16bits_signed_offset(&r_rs, &sign_extended_imm);
             // We load 4 bytes, i.e. one word.
-            let v0 = env.fetch_memory(&addr_with_offset);
-            let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
-            let v2 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(2)));
-            let v3 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(3)));
-            let value = (v0 << 24) + (v1 << 16) + (v2 << 8) + v3;
+            // We combine the bytes after that
+            //           31  24 | 23    16 | 15     8 | 7      0 |
+            //             V4   |    V3    |    V2    |    V1    |
+            //            addr  | addr + 1 | addr + 2 | addr + 3 |
+            let v4 = env.fetch_memory(&address);
+            let v3 = env.fetch_memory(&(address.clone() + Env::constant(1)));
+            let v2 = env.fetch_memory(&(address.clone() + Env::constant(2)));
+            let v1 = env.fetch_memory(&(address.clone() + Env::constant(3)));
+            let value = (v4 << 24) + (v3 << 16) + (v2 << 8) + v1;
             debug!(
                 "Loaded 32 bits value from address {}: {}",
-                Env::debug_hexa_variable(&addr_with_offset.clone()),
+                Env::debug_hexa_variable(&address.clone()),
                 value
             );
-            env.overwrite_register_checked(&dest, &value);
+            env.overwrite_register_checked(&rt, &value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
