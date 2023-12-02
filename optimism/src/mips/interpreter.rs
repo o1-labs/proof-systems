@@ -515,6 +515,7 @@ mod tests {
         });
         let mut rng = rand::thread_rng();
         let dummy_preimage_oracle = PreImageOracle::create(&host_program);
+        let ip: u32 = (rng.gen_range(0..(1 << 16)) / 4) * 4;
         Env {
             instruction_parts: InstructionParts::default(),
             instruction_counter: 0,
@@ -523,7 +524,7 @@ mod tests {
             memory_write_index: vec![],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
-            instruction_pointer: 0,
+            instruction_pointer: ip,
             next_instruction_pointer: 0,
             scratch_state_idx: 0,
             scratch_state: [Fp::from(0); SCRATCH_SIZE],
