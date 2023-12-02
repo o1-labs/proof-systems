@@ -333,9 +333,25 @@ impl<Fp: Field> Env<Fp> {
             | ((self.get_memory_direct(self.instruction_pointer + 1) as u32) << 16)
             | ((self.get_memory_direct(self.instruction_pointer + 2) as u32) << 8)
             | (self.get_memory_direct(self.instruction_pointer + 3) as u32);
+        // R-Format: register-to-register
+        // I-Format: register immediate
+        // J-Format: jump format
+        // shamt: shift amount
+        // rs/rt are sources for R-format, rd as destination
+        // immediate: !can be sign extended!
+        //| Format   | 6 bits | 5 bits | 5 bits | 5 bits | 5 bits | 6 bits |
+        //| ------   |--------|--------| ------ | ------ | ------ | ------ |
+        //| R-Format |   op   |  rs    |   rt   |   rd   |  shamt |  funct |
+        //| I-Format |   op   |  rs    |   rt   |   address/immediate      |
+        //| J-Format |   op   |            target address                  |
+        //| -------- |--------|--------| ------ | ------ | ------ | ------ |
+        let op = instruction >> 26;
+        let funct = instruction & 0x3F;
         let opcode = {
-            match instruction >> 26 {
-                0x00 => match instruction & 0x3F {
+            match op {
+                // If the operation is 0, it is a R-format instruction, and we
+                // must check the funct field, i.e. the last 6 bits.
+                0x00 => match funct {
                     0x00 => Instruction::RType(RTypeInstruction::ShiftLeftLogical),
                     0x02 => Instruction::RType(RTypeInstruction::ShiftRightLogical),
                     0x03 => Instruction::RType(RTypeInstruction::ShiftRightArithmetic),
@@ -400,8 +416,10 @@ impl<Fp: Field> Env<Fp> {
                         panic!("Unhandled instruction {:#X}", instruction)
                     }
                 },
+                // JType
                 0x02 => Instruction::JType(JTypeInstruction::Jump),
                 0x03 => Instruction::JType(JTypeInstruction::JumpAndLink),
+                // IType
                 0x08 => Instruction::IType(ITypeInstruction::AddImmediate),
                 0x09 => Instruction::IType(ITypeInstruction::AddImmediateUnsigned),
                 0x0A => Instruction::IType(ITypeInstruction::SetLessThanImmediate),
@@ -410,7 +428,7 @@ impl<Fp: Field> Env<Fp> {
                 0x0D => Instruction::IType(ITypeInstruction::OrImmediate),
                 0x0E => Instruction::IType(ITypeInstruction::XorImmediate),
                 0x0F => Instruction::IType(ITypeInstruction::LoadUpperImmediate),
-                0x1C => match instruction & 0x3F {
+                0x1C => match funct {
                     0x02 => Instruction::RType(RTypeInstruction::MultiplyToRegister),
                     0x20 => Instruction::RType(RTypeInstruction::CountLeadingZeros),
                     0x21 => Instruction::RType(RTypeInstruction::CountLeadingOnes),
