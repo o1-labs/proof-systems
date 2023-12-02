@@ -497,6 +497,7 @@ impl<Fp: Field> Env<Fp> {
         }
 
         interpreter::interpret_instruction(self, opcode);
+        self.instruction_counter += 1;
     }
 
     fn should_trigger_at(&self, at: StepFrequency) -> bool {
