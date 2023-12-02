@@ -204,6 +204,9 @@ pub trait InterpreterEnv {
     // Debug functions
     fn debug_register(v: &Self::Variable) -> String;
 
+    // Write in the log the state of the register
+    fn debug_register_states(&self);
+
     fn debug_signed_16bits_variable(v: &Self::Variable) -> String;
 
     fn debug_hexa_variable(v: &Self::Variable) -> String;

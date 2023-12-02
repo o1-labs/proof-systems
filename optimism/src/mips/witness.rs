@@ -117,6 +117,122 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         }
     }
 
+    fn debug_register_states(&self) {
+        // print general purposes registers
+        // | Register    v
+        // |--------  | ------ |
+        // |  $zero   |
+        // |  $at     |
+
+        debug!("{}", format!("{0: <10} | {1: <10}", "Register", "Value"));
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$zero", self.registers.general_purpose[0]
+            )
+        );
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$at", self.registers.general_purpose[1]
+            )
+        );
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$v0", self.registers.general_purpose[2]
+            )
+        );
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$v1", self.registers.general_purpose[3]
+            )
+        );
+        for i in 0..=3 {
+            debug!(
+                "{}",
+                format!(
+                    "$a{0: <8} | {1: <10}",
+                    i,
+                    self.registers.general_purpose[4 + i]
+                )
+            );
+        }
+        for i in 0..=7 {
+            debug!(
+                "{}",
+                format!(
+                    "$t{0: <8} | {1: <10}",
+                    i,
+                    self.registers.general_purpose[8 + i]
+                )
+            );
+        }
+        for i in 0..=7 {
+            debug!(
+                "{}",
+                format!(
+                    "$s{0: <8} | {1: <10}",
+                    i,
+                    self.registers.general_purpose[16 + i]
+                )
+            );
+        }
+        for i in 0..=1 {
+            debug!(
+                "{}",
+                format!(
+                    "$t{0: <8} | {1: <10}",
+                    8 + i,
+                    self.registers.general_purpose[24 + i]
+                )
+            );
+        }
+        for i in 0..=1 {
+            debug!(
+                "{}",
+                format!(
+                    "$k{0: <8} | {1: <10}",
+                    i,
+                    self.registers.general_purpose[26 + i]
+                )
+            );
+        }
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$gp", self.registers.general_purpose[28]
+            )
+        );
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$sp", self.registers.general_purpose[29]
+            )
+        );
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$fp", self.registers.general_purpose[30]
+            )
+        );
+        debug!(
+            "{}",
+            format!(
+                "{0: <10} | {1: <10}",
+                "$ra", self.registers.general_purpose[31]
+            )
+        );
+    }
+
     fn debug_register(v: &Self::Variable) -> String {
         if *v == 0 {
             return String::from("$zero");
