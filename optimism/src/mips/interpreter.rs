@@ -423,7 +423,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let value = (v0 << 24) + (v1 << 16) + (v2 << 8) + v3;
             debug!(
                 "Loaded 32 bits value from address {}: {}",
-                addr_with_offset.clone(),
+                Env::debug_hexa_variable(&addr_with_offset.clone()),
                 value
             );
             env.overwrite_register_checked(&dest, &value);
