@@ -386,16 +386,12 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::OrImmediate => (),
         ITypeInstruction::XorImmediate => (),
         ITypeInstruction::LoadUpperImmediate => {
-            // lui $reg, [most significant 16 bits of immediate]
+            // lui: R[rt] = imm || 0b0...0 (imm * 2^16)
             let rt = env.get_instruction_part(InstructionPart::RT);
-            let immediate_value = env.get_immediate();
-            debug!(
-                "Instr: lui {}, {}",
-                Env::debug_register(&rt),
-                immediate_value
-            );
-            let immediate_value = immediate_value << 16;
-            env.overwrite_register_checked(&rt, &immediate_value);
+            let imm = env.get_immediate();
+            debug!("Instr: lui {}, {}", Env::debug_register(&rt), imm);
+            let imm = imm << 16;
+            env.overwrite_register_checked(&rt, &imm);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
