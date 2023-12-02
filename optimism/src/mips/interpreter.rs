@@ -655,6 +655,35 @@ mod tests {
     }
 
     #[test]
+    fn test_unit_addiu_instruction_with_signed_value() {
+        // Setup
+        let mut rng = rand::thread_rng();
+        let mut dummy_env = dummy_env();
+        let ip = dummy_env.instruction_pointer;
+        // Add a value bigger than 12 to avoid underflow
+        dummy_env.registers[REGISTER_SP as usize] = rng.gen_range(12..1_000_000);
+        // Instruction: 0b00100111101111011111111111110100
+        // addiu $sp, $sp, -12
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b001001,
+            rs: 0b11101,
+            rt: 0b11101,
+            rd: 0b11111,
+            shamt: 0b11111,
+            funct: 0b110100,
+        };
+        let exp_res = dummy_env.registers[REGISTER_SP as usize] - 12;
+        // run
+        interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
+        // test
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_SP as usize],
+            exp_res
+        );
+        assert_eq!(dummy_env.instruction_pointer, ip + 4);
+    }
+
+    #[test]
     fn test_unit_jr_instruction() {
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env();
