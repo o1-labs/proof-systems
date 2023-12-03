@@ -775,4 +775,23 @@ mod tests {
         );
         assert_eq!(dummy_env.instruction_pointer, ip + 4);
     }
+
+    #[test]
+    fn test_unit_beqz_instruction_jump() {
+        let mut dummy_env = dummy_env();
+        let ip = dummy_env.instruction_pointer;
+        // 0b00010011001000000000000000001010
+        // beqz $t9, 0xa70b8
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000100,
+            rs: 0b11001,
+            rt: 0b00000,
+            rd: 0b00000,
+            shamt: 0b00000,
+            // 10
+            funct: 0b001010,
+        };
+        interpret_itype(&mut dummy_env, ITypeInstruction::BranchEqZeroJump);
+        assert_eq!(dummy_env.instruction_pointer, ip + (10 + 1) * 4);
+    }
 }
