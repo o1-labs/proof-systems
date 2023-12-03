@@ -170,6 +170,8 @@ pub enum ITypeInstruction {
     BranchEq,                     // beq
     BranchNeq,                    // bne
     BranchLeqZero,                // blez
+    BranchEqZeroContinue,         // beqz when R[rs] != 0 (0x04)
+    BranchEqZeroJump,             // beqz when R[rs] == 0 (0x04)
     BranchGtZero,                 // bgtz
     AddImmediate,                 // addi
     AddImmediateUnsigned,         // addiu
@@ -367,6 +369,30 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::BranchEq => (),
         ITypeInstruction::BranchNeq => (),
         ITypeInstruction::BranchLeqZero => (),
+        ITypeInstruction::BranchEqZeroJump => {
+            // This is beqz in the case of R[rs] == 0. This is translated into a
+            // jump. We only have to compute correctly the address.
+            // beqz: if R[rs] == 0 then address else continue
+            // FIXME: rs is useless at runtime. Check if we overconstraint
+            let rs = env.get_instruction_part(InstructionPart::RS);
+            let offset = env.get_immediate();
+            // Not sure it is correct. I think we must use the next instruction
+            // pointer, in the case of a pseudo instruction (?).
+            let address = env.get_instruction_pointer() + (offset + Env::constant(1)) * 4;
+            debug!(
+                "Instr: beqz {}, {}",
+                Env::debug_register(&rs),
+                Env::debug_hexa_variable(&address)
+            );
+            env.set_instruction_pointer(address);
+            return;
+        }
+        ITypeInstruction::BranchEqZeroContinue => {
+            // This is beqz in the case of R[rs] != 0.
+            // beqz: if R[rs] == 0 then address else continue
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            return;
+        }
         ITypeInstruction::BranchGtZero => (),
         ITypeInstruction::AddImmediate => {
             // addi: R[rt] <- R[rs] + sign_extended_imm

@@ -462,6 +462,7 @@ impl<Fp: Field> Env<Fp> {
         //| J-Format |   op   |            target address                  |
         //| -------- |--------|--------| ------ | ------ | ------ | ------ |
         let op = instruction >> 26;
+        let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
         let funct = instruction & 0x3F;
         let opcode = {
             match op {
@@ -536,6 +537,11 @@ impl<Fp: Field> Env<Fp> {
                 0x02 => Instruction::JType(JTypeInstruction::Jump),
                 0x03 => Instruction::JType(JTypeInstruction::JumpAndLink),
                 // IType
+                // beqz: we check if rs is zero or no
+                0x04 => match self.registers.general_purpose[rs as usize] {
+                    0 => Instruction::IType(ITypeInstruction::BranchEqZeroJump),
+                    _ => Instruction::IType(ITypeInstruction::BranchEqZeroContinue),
+                },
                 0x08 => Instruction::IType(ITypeInstruction::AddImmediate),
                 0x09 => Instruction::IType(ITypeInstruction::AddImmediateUnsigned),
                 0x0A => Instruction::IType(ITypeInstruction::SetLessThanImmediate),
