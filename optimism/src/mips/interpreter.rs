@@ -355,8 +355,6 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             let addr = addr * 4;
             debug!("Instr: j {}", Env::debug_hexa_variable(&addr));
             env.set_instruction_pointer(addr);
-            // REMOVEME: when all jtype instructions are implemented.
-            return;
         }
         JTypeInstruction::JumpAndLink => {
             // jal addr
@@ -374,11 +372,8 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             let addr = addr * 4;
             debug!("Instr: jal {}", Env::debug_hexa_variable(&addr));
             env.set_instruction_pointer(addr);
-            return;
-        },
+        }
     };
-    // REMOVEME: when all jtype instructions are implemented.
-    env.set_halted(Env::constant(1));
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
