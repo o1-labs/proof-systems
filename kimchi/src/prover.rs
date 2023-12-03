@@ -260,7 +260,7 @@ where
         .interpolate();
 
         //~ 1. Commit (non-hiding) to the negated public input polynomial.
-        let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks, None);
+        let public_comm = index.srs.commit_non_hiding(&public_poly, num_chunks);
         let public_comm = {
             index
                 .srs
@@ -393,7 +393,7 @@ where
                 let runtime_table_comm =
                     index
                         .srs
-                        .commit(&runtime_table_contribution, num_chunks, None, rng);
+                        .commit(&runtime_table_contribution, num_chunks, rng);
 
                 // absorb the commitment
                 absorb_commitment(&mut fq_sponge, &runtime_table_comm.commitment);
@@ -607,7 +607,7 @@ where
         let z_poly = index.perm_aggreg(&witness, &beta, &gamma, rng)?;
 
         //~ 1. Commit (hidding) to the permutation aggregation polynomial $z$.
-        let z_comm = index.srs.commit(&z_poly, num_chunks, None, rng);
+        let z_comm = index.srs.commit(&z_poly, num_chunks, rng);
 
         //~ 1. Absorb the permutation aggregation polynomial $z$ with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &z_comm.commitment);
@@ -866,7 +866,7 @@ where
         };
 
         //~ 1. commit (hiding) to the quotient polynomial $t$
-        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, None, rng) };
+        let t_comm = { index.srs.commit(&quotient_poly, 7 * num_chunks, rng) };
 
         //~ 1. Absorb the the commitment of the quotient polynomial with the Fq-Sponge.
         absorb_commitment(&mut fq_sponge, &t_comm.commitment);

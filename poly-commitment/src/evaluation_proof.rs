@@ -350,8 +350,7 @@ impl<G: CommitmentCurve> SRS<G> {
                 };
                 let chunked_polynomial =
                     poly.to_chunked_polynomial(blinders.elems.len(), self.g.len());
-                let chunked_commitment =
-                    { self.commit_non_hiding(&poly, blinders.elems.len(), None) };
+                let chunked_commitment = { self.commit_non_hiding(&poly, blinders.elems.len()) };
                 let masked_commitment = match self.mask_custom(chunked_commitment, blinders) {
                     Ok(comm) => comm,
                     Err(err) => panic!("Error at index {i}: {err}"),

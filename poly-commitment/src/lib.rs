@@ -37,7 +37,6 @@ pub trait SRS<G: CommitmentCurve> {
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G>;
 
@@ -60,15 +59,13 @@ pub trait SRS<G: CommitmentCurve> {
 
     /// This function commits a polynomial using the SRS' basis of size `n`.
     /// - `plnm`: polynomial to commit to with max size of sections
-    /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
-    /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
-    /// as well as an optional bounded commitment (if `max` is set).
-    /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
+    /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
+    /// The function returns an unbounded commitment vector
+    /// (which splits the commitment into several commitments of size at most `n`).
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
     ) -> PolyComm<G>;
 
     fn commit_evaluations_non_hiding(
@@ -86,6 +83,7 @@ pub trait SRS<G: CommitmentCurve> {
 }
 
 #[allow(type_alias_bounds)]
+/// Vector of triples (polynomial itself, degree bound, omegas).
 type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
     DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
     Option<usize>,

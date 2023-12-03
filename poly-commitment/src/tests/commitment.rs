@@ -91,13 +91,7 @@ impl AggregatedEvaluationProof {
         let combined_inner_product = {
             let es: Vec<_> = coms
                 .iter()
-                .map(
-                    |Evaluation {
-                         commitment,
-                         evaluations,
-                         degree_bound,
-                     }| { evaluations.clone() },
-                )
+                .map(|Evaluation { evaluations, .. }| evaluations.clone())
                 .collect();
             combined_inner_product(&self.polymask, &self.evalmask, &es)
         };
@@ -159,7 +153,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
             let BlindedCommitment {
                 commitment: chunked_commitment,
                 blinders: chunked_blinding,
-            } = srs.commit(&poly, num_chunks, bound, &mut rng);
+            } = srs.commit(&poly, num_chunks, &mut rng);
             time_commit += timer.elapsed();
 
             let mut chunked_evals = vec![];

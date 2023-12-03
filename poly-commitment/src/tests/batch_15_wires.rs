@@ -82,7 +82,7 @@ where
             let comm = (0..a.len())
                 .map(|i| {
                     (
-                        srs.commit(&a[i].clone(), num_chunks, bounds[i], rng),
+                        srs.commit(&a[i].clone(), num_chunks, rng),
                         x.iter()
                             .map(|xx| a[i].to_chunked_polynomial(1, size).evaluate_chunks(*xx))
                             .collect::<Vec<_>>(),
@@ -120,7 +120,7 @@ where
             let combined_inner_product = {
                 let es: Vec<_> = comm
                     .iter()
-                    .map(|(commitment, evaluations, degree_bound)| evaluations.clone())
+                    .map(|(_, evaluations, _)| evaluations.clone())
                     .collect();
                 combined_inner_product(&polymask, &evalmask, &es)
             };

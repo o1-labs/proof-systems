@@ -67,7 +67,7 @@ where
         B: CanonicalDeserialize + CanonicalSerialize,
     {
         let elems = self.elems.iter().map(|x| f(x.clone())).collect();
-        PolyComm { elems: elems }
+        PolyComm { elems }
     }
 
     /// Returns the length of the commitment.
@@ -96,7 +96,7 @@ impl<A: Copy + CanonicalDeserialize + CanonicalSerialize> PolyComm<A> {
             .zip(other.elems.iter())
             .map(|(x, y)| (*x, *y))
             .collect();
-        Some(PolyComm { elems: elems })
+        Some(PolyComm { elems })
     }
 }
 
@@ -164,7 +164,7 @@ impl<'a, 'b, C: AffineCurve> Add<&'a PolyComm<C>> for &'b PolyComm<C> {
             };
             elems.push(pt);
         }
-        PolyComm { elems: elems }
+        PolyComm { elems }
     }
 }
 
@@ -185,7 +185,7 @@ impl<'a, 'b, C: AffineCurve> Sub<&'a PolyComm<C>> for &'b PolyComm<C> {
             };
             elems.push(pt);
         }
-        PolyComm { elems: elems }
+        PolyComm { elems }
     }
 }
 
@@ -474,11 +474,7 @@ pub fn combine_commitments<G: CommitmentCurve>(
 ) {
     let mut xi_i = G::ScalarField::one();
 
-    for Evaluation {
-        commitment,
-        degree_bound,
-        ..
-    } in evaluations
+    for Evaluation { commitment, .. } in evaluations
         .iter()
         .filter(|x| !x.commitment.elems.is_empty())
     {
@@ -549,10 +545,9 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
         rng: &mut (impl RngCore + CryptoRng),
     ) -> BlindedCommitment<G> {
-        self.mask(self.commit_non_hiding(plnm, num_chunks, max), rng)
+        self.mask(self.commit_non_hiding(plnm, num_chunks), rng)
     }
 
     /// Turns a non-hiding polynomial commitment into a hidding polynomial commitment. Transforms each given `<a, G>` into `(<a, G> + wH, w)` with a random `w` per commitment.
@@ -588,20 +583,14 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
     /// This function commits a polynomial using the SRS' basis of size `n`.
     /// - `plnm`: polynomial to commit to with max size of sections
     /// - `num_chunks`: the number of commitments to be included in the output polynomial commitment
-    /// - `max`: maximal degree of the polynomial (not inclusive), if none, no degree bound
-    /// The function returns an unbounded commitment vector (which splits the commitment into several commitments of size at most `n`),
-    /// as well as an optional bounded commitment (if `max` is set).
-    /// Note that a maximum degree cannot (and doesn't need to) be enforced via a shift if `max` is a multiple of `n`.
+    /// The function returns an unbounded commitment vector
+    /// (which splits the commitment into several commitments of size at most `n`).
     fn commit_non_hiding(
         &self,
         plnm: &DensePolynomial<G::ScalarField>,
         num_chunks: usize,
-        max: Option<usize>,
     ) -> PolyComm<G> {
         let is_zero = plnm.is_zero();
-
-        let basis_len = self.g.len();
-        let coeffs_len = plnm.coeffs.len();
 
         let coeffs: Vec<_> = plnm.iter().map(|c| c.into_repr()).collect();
 
@@ -620,7 +609,7 @@ impl<G: CommitmentCurve> SRSTrait<G> for SRS<G> {
             elems.push(G::zero());
         }
 
-        PolyComm::<G> { elems: elems }
+        PolyComm::<G> { elems }
     }
 
     fn commit_evaluations_non_hiding(
@@ -873,7 +862,7 @@ mod tests {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks, None)
+                srs.commit_non_hiding(&p, num_chunks)
             })
             .collect();
 
@@ -887,21 +876,24 @@ mod tests {
     }
 
     #[test]
+    // This tests with two chunks.
     fn test_chunked_lagrange_commitments() {
         let n = 64;
+        let divisor = 4;
         let domain = D::<Fp>::new(n).unwrap();
 
-        let mut srs = SRS::<VestaG>::create(n / 2);
+        let mut srs = SRS::<VestaG>::create(n / divisor);
         srs.add_lagrange_basis(domain);
 
         let num_chunks = domain.size() / srs.g.len();
+        assert!(num_chunks == divisor);
 
         let expected_lagrange_commitments: Vec<_> = (0..n)
             .map(|i| {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks, None)
+                srs.commit_non_hiding(&p, num_chunks)
             })
             .collect();
 
@@ -915,6 +907,10 @@ mod tests {
     }
 
     #[test]
+    // TODO @volhovm I don't understand what this test does and
+    // whether it is worth leaving.
+    /// Same as test_chunked_lagrange_commitments, but with a slight
+    /// offset in the SRS
     fn test_offset_chunked_lagrange_commitments() {
         let n = 64;
         let domain = D::<Fp>::new(n).unwrap();
@@ -922,14 +918,16 @@ mod tests {
         let mut srs = SRS::<VestaG>::create(n / 2 + 1);
         srs.add_lagrange_basis(domain);
 
+        // Is this even taken into account?...
         let num_chunks = (domain.size() + srs.g.len() - 1) / srs.g.len();
+        assert!(num_chunks == 2);
 
         let expected_lagrange_commitments: Vec<_> = (0..n)
             .map(|i| {
                 let mut e = vec![Fp::zero(); n];
                 e[i] = Fp::one();
                 let p = Evaluations::<Fp, D<Fp>>::from_vec_and_domain(e, domain).interpolate();
-                srs.commit_non_hiding(&p, num_chunks, Some(64))
+                srs.commit_non_hiding(&p, num_chunks) // this requires max = Some(64)
             })
             .collect();
 
@@ -954,9 +952,9 @@ mod tests {
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
         // commit the two polynomials (and upperbound the second one)
-        let commitment = srs.commit(&poly1, 1, None, rng);
+        let commitment = srs.commit(&poly1, 1, rng);
         let upperbound = poly2.degree() + 1;
-        let bounded_commitment = srs.commit(&poly2, 1, Some(upperbound), rng);
+        let bounded_commitment = srs.commit(&poly2, 1, rng);
 
         // create an aggregated opening proof
         let (u, v) = (Fp::rand(rng), Fp::rand(rng));
