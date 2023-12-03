@@ -806,4 +806,26 @@ mod tests {
         interpret_itype(&mut dummy_env, ITypeInstruction::BranchEqZeroJump);
         assert_eq!(dummy_env.instruction_pointer, ip + (10 + 1) * 4);
     }
+
+    #[test]
+    fn test_unit_jal_instruction() {
+        let mut dummy_env = dummy_env();
+        let ip = dummy_env.instruction_pointer;
+        // 0b00001100000000011110101111001001
+        // jal 0x7af24
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000011,
+            rs: 0b00000,
+            rt: 0b00001,
+            rd: 0b11101,
+            shamt: 0b01111,
+            funct: 0b001001,
+        };
+        interpret_jtype(&mut dummy_env, JTypeInstruction::JumpAndLink);
+        assert_eq!(dummy_env.instruction_pointer, 0x7af24);
+        assert_eq!(
+            dummy_env.registers.general_purpose[REGISTER_RA as usize],
+            ip + 4
+        );
+    }
 }
