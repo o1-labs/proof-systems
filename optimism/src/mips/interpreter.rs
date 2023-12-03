@@ -847,4 +847,22 @@ mod tests {
             ip + 4
         );
     }
+
+    #[test]
+    fn test_unit_sll_instruction() {
+        let mut dummy_env = dummy_env();
+        let ip = dummy_env.instruction_pointer;
+        // 0b00000000000000000000000000000000
+        // sll $zero, $zero, 0 (nop)
+        dummy_env.instruction_parts = InstructionParts {
+            op_code: 0b000000,
+            rs: 0b00000,
+            rt: 0b00000,
+            rd: 0b00000,
+            shamt: 0b00000,
+            funct: 0b000000,
+        };
+        interpret_rtype(&mut dummy_env, RTypeInstruction::ShiftLeftLogical);
+        assert_eq!(dummy_env.instruction_pointer, ip + 4);
+    }
 }
