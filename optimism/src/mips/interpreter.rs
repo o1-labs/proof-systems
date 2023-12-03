@@ -358,7 +358,24 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             // REMOVEME: when all jtype instructions are implemented.
             return;
         }
-        JTypeInstruction::JumpAndLink => (),
+        JTypeInstruction::JumpAndLink => {
+            // jal addr
+            // R[31] <-  PC + 4  ; jump addr
+            //          --------
+            //           next_pc
+            let pc = env.get_instruction_pointer();
+            let next_pc = pc + Env::constant(4);
+            env.overwrite_register_checked(&Env::constant(REGISTER_RA), &next_pc);
+            let addr = (env.get_instruction_part(InstructionPart::RS) << 21)
+                + (env.get_instruction_part(InstructionPart::RT) << 16)
+                + (env.get_instruction_part(InstructionPart::RD) << 11)
+                + (env.get_instruction_part(InstructionPart::Shamt) << 6)
+                + (env.get_instruction_part(InstructionPart::Funct));
+            let addr = addr * 4;
+            debug!("Instr: jal {}", Env::debug_hexa_variable(&addr));
+            env.set_instruction_pointer(addr);
+            return;
+        },
     };
     // REMOVEME: when all jtype instructions are implemented.
     env.set_halted(Env::constant(1));
