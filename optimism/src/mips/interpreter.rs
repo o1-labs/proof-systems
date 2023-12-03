@@ -200,6 +200,7 @@ pub trait InterpreterEnv {
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<u32, Output = Self::Variable>
         + std::ops::Shl<u32, Output = Self::Variable>
+        + std::ops::Shl<Self::Variable, Output = Self::Variable>
         + std::ops::BitAnd<u32, Output = Self::Variable>
         + std::fmt::Display;
 
@@ -262,7 +263,25 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
     match instr {
-        RTypeInstruction::ShiftLeftLogical => (),
+        RTypeInstruction::ShiftLeftLogical => {
+            // sll: R[rd] <- R[rt] << shamt
+            //               --------------
+            //                    value
+            let rd = env.get_instruction_part(InstructionPart::RD);
+            let rt = env.get_instruction_part(InstructionPart::RT);
+            let shamt = env.get_instruction_part(InstructionPart::Shamt);
+            debug!(
+                "Instr: sll {}, {}, {}",
+                Env::debug_register(&rd),
+                Env::debug_register(&rt),
+                shamt
+            );
+            let r_rt = env.fetch_register_checked(&rt);
+            let value = r_rt << shamt;
+            env.overwrite_register_checked(&rd, &value);
+            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4));
+            return;
+        }
         RTypeInstruction::ShiftRightLogical => (),
         RTypeInstruction::ShiftRightArithmetic => (),
         RTypeInstruction::ShiftLeftLogicalVariable => (),
