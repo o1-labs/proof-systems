@@ -1,7 +1,7 @@
 use super::{
     expressions::FoldingColumnTrait, FoldingConfig, FoldingEnv, InstanceTrait, Sponge, WitnessTrait,
 };
-use crate::folding::expressions::{extract_terms2, ExtendedFoldingColumn, FoldingExp};
+use crate::folding::expressions::{extract_terms, ExtendedFoldingColumn, FoldingExp};
 use ark_ec::AffineCurve;
 use itertools::Itertools;
 use mina_curves::pasta::Pallas;
@@ -9,7 +9,7 @@ use num_traits::Zero;
 use poly_commitment::commitment::CommitmentCurve;
 use std::marker::PhantomData;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Mock;
 impl FoldingColumnTrait for u8 {
     fn is_witness(&self) -> bool {
@@ -58,7 +58,7 @@ impl<F, I, W, Col, Chal> FoldingEnv<F, I, W, Col, Chal> for MockEnv<F, I, W, Col
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct TestConfig;
 impl FoldingConfig for TestConfig {
     type Column = u8;
@@ -111,6 +111,6 @@ fn test_term_separation() {
     // let test_exp = t1;
     // let mut terms = vec![];
     println!("{:#?}", test_exp);
-    let terms = extract_terms2(test_exp).collect_vec();
+    let terms = extract_terms(test_exp).collect_vec();
     println!("{:#?}", terms);
 }

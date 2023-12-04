@@ -10,7 +10,7 @@ pub use instance_witness::{InstanceTrait, RelaxedInstance, RelaxedWitness, Witne
 use instance_witness::{RelaxableInstance, RelaxablePair};
 use poly_commitment::PolyComm;
 use poly_commitment::{commitment::CommitmentCurve, SRS};
-use std::fmt::Debug;
+use std::{fmt::Debug, hash::Hash};
 
 mod error;
 mod expressions;
@@ -21,9 +21,9 @@ mod test;
 
 type Fi<C> = <<C as FoldingConfig>::Curve as AffineCurve>::ScalarField;
 
-pub trait FoldingConfig: Clone + Debug + 'static {
-    type Column: FoldingColumnTrait + Debug;
-    type Challenge: Clone + Copy + Debug;
+pub trait FoldingConfig: Clone + Debug + Eq + Hash + 'static {
+    type Column: FoldingColumnTrait + Debug + Eq + Hash;
+    type Challenge: Clone + Copy + Debug + Eq + Hash;
     type Curve: CommitmentCurve;
     type Srs: SRS<Self::Curve>;
     type Sponge: Sponge<Self::Curve>;
@@ -105,7 +105,6 @@ impl<'a, F: Field> EvalLeaf<'a, F> {
 
 pub trait FoldingEnv<F, I, W, Col, Chal> {
     type Structure;
-    // fn lagrange_basis(&self, i: &i32) -> Vec<G::ScalarField>;
     ///a vec of just zeros of the same length as other columns
     fn zero_vec(&self) -> Vec<F>;
     fn col(&self, col: Col, side: Side) -> &Vec<F>;

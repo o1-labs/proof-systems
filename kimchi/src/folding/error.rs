@@ -84,7 +84,7 @@ pub(crate) fn compute_error<C: FoldingConfig>(
 
     let t_0 = EvalLeaf::Result(env.inner().zero_vec());
     let t_0 = exp.degree_0.iter().fold(t_0, |t_0, (exp, sign)| {
-        //could be true or false, doesn't matter for constant terms
+        //could be left or right, doesn't matter for constant terms
         let e = eval_exp_error(exp, env, Side::Left);
         if *sign {
             add(t_0, e)
@@ -114,7 +114,7 @@ pub(crate) fn compute_error<C: FoldingConfig>(
 
     let t_2 = EvalLeaf::Result(env.inner().zero_vec());
     let t_2 = exp.degree_2.iter().fold(t_2, |t_2, (exp, sign)| {
-        //true or false matter in some way, but not at the top level call
+        //left or right matter in some way, but not at the top level call
         let e = eval_exp_error(exp, env, Side::Left);
         if *sign {
             add(t_2, e)
@@ -175,7 +175,6 @@ impl<'a, CF: FoldingConfig> ExtendedEnv<'a, CF> {
         } = self;
         (instances, witnesses)
     }
-    // fn col_side_choosen()
     pub fn col(&self, col: &ExtendedFoldingColumn<CF>, side: Side) -> EvalLeaf<Fi<CF>> {
         use EvalLeaf::Col;
         use ExtendedFoldingColumn::*;

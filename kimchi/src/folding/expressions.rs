@@ -14,7 +14,7 @@ pub trait FoldingColumnTrait: Copy + Clone {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtendedFoldingColumn<C: FoldingConfig> {
     Inner(C::Column),
     ///for the extra columns added by quadricization
@@ -59,7 +59,7 @@ pub enum ExpExtension {
     Shift,
 }
 ///Internal expression used for folding, simplified for that purpose
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum FoldingExp<C: FoldingConfig> {
     Cell(ExtendedFoldingColumn<C>),
     Double(Box<FoldingExp<C>>),
@@ -322,14 +322,13 @@ impl<C: FoldingConfig> IntegratedFoldingExpr<C> {
     }
 }
 
-// pub fn extract_terms2<C: FoldingConfig, F>(exp: FoldingExp2<C>, f: &F) -> Vec<Term2<C>>
-pub fn extract_terms2<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
+pub fn extract_terms<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<Item = Term<C>>> {
     use FoldingExp::*;
     let exps: Box<dyn Iterator<Item = Term<C>>> = match exp {
         exp @ Cell(_) => Box::new([Term { exp, sign: true }].into_iter()),
-        Double(exp) => Box::new(extract_terms2(*exp).map(|t| t.wrap_exp(Double))),
+        Double(exp) => Box::new(extract_terms(*exp).map(|t| t.wrap_exp(Double))),
         Square(exp) => {
-            let terms = extract_terms2(*exp).collect_vec();
+            let terms = extract_terms(*exp).collect_vec();
             let mut combinations = Vec::with_capacity(terms.len() ^ 2);
             for t1 in terms.iter() {
                 for t2 in terms.iter() {
@@ -339,18 +338,18 @@ pub fn extract_terms2<C: FoldingConfig>(exp: FoldingExp<C>) -> Box<dyn Iterator<
             Box::new(combinations.into_iter())
         }
         Add(e1, e2) => {
-            let e1 = extract_terms2(*e1);
-            let e2 = extract_terms2(*e2);
+            let e1 = extract_terms(*e1);
+            let e2 = extract_terms(*e2);
             Box::new(e1.chain(e2))
         }
         Sub(e1, e2) => {
-            let e1 = extract_terms2(*e1);
-            let e2 = extract_terms2(*e2).map(|t| -t);
+            let e1 = extract_terms(*e1);
+            let e2 = extract_terms(*e2).map(|t| -t);
             Box::new(e1.chain(e2))
         }
         Mul(e1, e2) => {
-            let e1 = extract_terms2(*e1).collect_vec();
-            let e2 = extract_terms2(*e2).collect_vec();
+            let e1 = extract_terms(*e1).collect_vec();
+            let e2 = extract_terms(*e2).collect_vec();
             let mut combinations = Vec::with_capacity(e1.len() * e2.len());
             for t1 in e1.iter() {
                 for t2 in e2.iter() {
@@ -367,11 +366,16 @@ pub fn folding_expression<C: FoldingConfig>(
 ) -> IntegratedFoldingExpr<C> {
     // let simplied = simplify_expression(exp, flag_resolver);
     let simplified_expressions = exps.into_iter().map(|exp| exp.simplify()).collect_vec();
-    let expressions = quadricization(simplified_expressions);
+    let (expressions, extra_expressions) = quadricization(simplified_expressions);
     let mut terms = vec![];
     // let terms = extract_terms2(expressions);
+    println!("constraints");
     for exp in expressions.into_iter() {
-        terms.extend(extract_terms2(exp))
+        terms.extend(extract_terms(exp))
+    }
+    println!("extra");
+    for exp in extra_expressions.into_iter() {
+        terms.extend(extract_terms(exp))
     }
     let mut integrated = IntegratedFoldingExpr::default();
     for term in terms.into_iter() {
