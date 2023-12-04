@@ -197,7 +197,6 @@ pub trait InterpreterEnv {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::BitAnd<u32, Output = Self::Variable>
         + std::fmt::Debug;
 
     fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
