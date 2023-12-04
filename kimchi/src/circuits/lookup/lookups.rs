@@ -222,7 +222,7 @@ impl LookupInfo {
         };
 
         // TODO: is take(n) useful here? I don't see why we need this
-        for (i, gate) in gates.iter().enumerate().take(n) {
+        for (i, gate) in gates.iter().take(n).enumerate() {
             let typ = gate.typ;
 
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
@@ -323,7 +323,6 @@ pub type JointLookupSpec<F> = JointLookup<SingleLookup<F>, LookupTableID>;
 pub type JointLookupValue<F> = JointLookup<F, F>;
 
 impl<F: Zero + One + Clone + Neg<Output = F> + From<u64>> JointLookupValue<F> {
-    // TODO: Support multiple tables
     /// Evaluate the combined value of a joint-lookup.
     pub fn evaluate(&self, joint_combiner: &F, table_id_combiner: &F) -> F {
         combine_table_entry(
@@ -548,5 +547,60 @@ fn lookup_pattern_constants_correct() {
         // NB: We include pat in the assertions so that the test will print out which pattern failed
         assert_eq!((pat, pat.max_lookups_per_row()), (pat, lookups.len()));
         assert_eq!((pat, pat.max_joint_size()), (pat, max_joint_size as u32));
+    }
+}
+
+#[cfg(feature = "wasm_types")]
+pub mod wasm {
+    use super::*;
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupPatterns {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            xor: bool,
+            lookup: bool,
+            range_check: bool,
+            foreign_field_mul: bool,
+        ) -> LookupPatterns {
+            LookupPatterns {
+                xor,
+                lookup,
+                range_check,
+                foreign_field_mul,
+            }
+        }
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupFeatures {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            patterns: LookupPatterns,
+            joint_lookup_used: bool,
+            uses_runtime_tables: bool,
+        ) -> LookupFeatures {
+            LookupFeatures {
+                patterns,
+                joint_lookup_used,
+                uses_runtime_tables,
+            }
+        }
+    }
+
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    impl LookupInfo {
+        #[wasm_bindgen::prelude::wasm_bindgen(constructor)]
+        pub fn new(
+            max_per_row: usize,
+            max_joint_size: u32,
+            features: LookupFeatures,
+        ) -> LookupInfo {
+            LookupInfo {
+                max_per_row,
+                max_joint_size,
+                features,
+            }
+        }
     }
 }

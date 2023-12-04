@@ -37,10 +37,8 @@ pub fn xor_table<F: Field>() -> LookupTable<F> {
         // Just to be safe.
         assert!(r[r.len() - 1].is_zero());
     }
-    LookupTable {
-        id: XOR_TABLE_ID,
-        data,
-    }
+
+    LookupTable::create(XOR_TABLE_ID, data).expect("xor_table creation must succeed")
 }
 
 pub const TABLE_SIZE: usize = 256;

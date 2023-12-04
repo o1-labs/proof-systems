@@ -50,7 +50,7 @@ mina-poseidon = { path = "../poseidon", version = "0.1.0" }
 ocaml = { version = "0.22.2", optional = true }
 ocaml-gen = { version = "0.1.5", optional = true }
 
-wasm-bindgen = { version = "0.2.81", optional = true }
+wasm-bindgen = { version = "=0.2.87", optional = true }
 
 internal-tracing = { path = "../internal-tracing", version = "0.1.0" }
 
