@@ -1,6 +1,6 @@
 # Domain
 
-Plonk needs a domain to encode the circuit on (for each point we can encode a row/constraint/gate).
+$\plonk$ needs a domain to encode the circuit on (for each point we can encode a row/constraint/gate).
 We choose a domain $H$ such that it is a multiplicative subgroup of the scalar field of our curve.
 
 ## 2-adicity

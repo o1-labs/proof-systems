@@ -104,6 +104,9 @@ where
     }
 }
 
+// If you add new tables, update ../../../../../book/src/kimchi/lookup.md
+// accordingly
+
 //~ spec:startcode
 /// The table ID associated with the XOR lookup table.
 pub const XOR_TABLE_ID: i32 = 0;

@@ -2,7 +2,7 @@
 
 ```admonish
 Note that the URS is called SRS in our codebase at the moment.
-SRS is incorrect, as it is used in the presence of a trusted setup (which kimchi does not have). 
+SRS is incorrect, as it is used in the presence of a trusted setup (which kimchi does not have).
 This needs to be fixed.
 ```
 
@@ -68,7 +68,7 @@ TODO: specify the encoding
 
 ### Vesta
 
-**`Gs`**. 
+**`Gs`**.
 
 ```
 G0 = (x=121C4426885FD5A9701385AAF8D43E52E7660F1FC5AFC5F6468CC55312FC60F8, y=21B439C01247EA3518C5DDEB324E4CB108AF617780DDF766D96D3FD8AB028B70)

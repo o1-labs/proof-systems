@@ -41,10 +41,10 @@ use super::circuitgates;
 //
 //     so that most significant limb, q2, is in W[2][0].
 //
-fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
+fn create_layout<F: PrimeField>() -> [Vec<Box<dyn WitnessCell<F>>>; 2] {
     [
         // ForeignFieldMul row
-        [
+        vec![
             // Copied for multi-range-check
             VariableCell::create("left_input0"),
             VariableCell::create("left_input1"),
@@ -64,7 +64,7 @@ fn create_layout<F: PrimeField>() -> [[Box<dyn WitnessCell<F>>; COLUMNS]; 2] {
             VariableBitsCell::create("carry1", 90, None),
         ],
         // Zero row
-        [
+        vec![
             // Copied for multi-range-check
             VariableCell::create("remainder01"),
             VariableCell::create("remainder2"),

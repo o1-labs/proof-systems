@@ -1,8 +1,15 @@
-# Plookup
+# $\plookup$
 
-Plookup allows us to check if witness values belong to a look up table. This is usualy useful for reducing the number of constraints needed for bit-wise operations. So in the rest of this document we'll use the XOR table as an example.
+$\plookup$ allows us to check if witness values belong to a look up table. This is usualy useful for reducing the number of constraints needed for bit-wise operations. So in the rest of this document we'll use the XOR table as an example.
 
-![XOR table](../img/xor.png)
+
+| A   | B   | Y   |
+| --- | --- | --- |
+| 0   | 0   | 0   |
+| 0   | 1   | 1   |
+| 1   | 0   | 1   |
+| 1   | 1   | 0   |
+
 
 First, let's define some terms:
 

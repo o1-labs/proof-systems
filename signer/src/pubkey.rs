@@ -311,7 +311,7 @@ impl CompressedPubKey {
     }
 
     /// The empty [`CompressedPubKey`] value that is used as `public_key` in empty account
-    /// and [None] value for calculating the hash of [Option<CompressedPubKey>], etc.
+    /// and [None] value for calculating the hash of [`Option<CompressedPubKey>`], etc.
     pub fn empty() -> Self {
         Self {
             x: BaseField::zero(),

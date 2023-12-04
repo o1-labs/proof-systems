@@ -17,7 +17,7 @@ pub const SERIALIZED_SRS_SIZE: u32 = 16;
 
 /// The path of the serialized SRS.
 fn get_srs_path<G: KimchiCurve>() -> PathBuf {
-    let base_path = std::env::var("CARGO_MANIFEST_DIR").expect("failed to get manifest path");
+    let base_path = env!("CARGO_MANIFEST_DIR");
     PathBuf::from(base_path)
         .join("../srs")
         .join(format!("{}.srs", G::NAME))
