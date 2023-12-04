@@ -197,7 +197,6 @@ pub trait InterpreterEnv {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
-        + std::ops::Shl<u32, Output = Self::Variable>
         + std::ops::BitAnd<u32, Output = Self::Variable>
         + std::fmt::Debug;
 
@@ -211,8 +210,8 @@ pub trait InterpreterEnv {
 
     fn get_immediate(&self) -> Self::Variable {
         // The immediate value is the last 16bits
-        (self.get_instruction_part(InstructionPart::RD) << 11)
-            + (self.get_instruction_part(InstructionPart::Shamt) << 6)
+        (self.get_instruction_part(InstructionPart::RD) * Self::constant(1 << 11))
+            + (self.get_instruction_part(InstructionPart::Shamt) * Self::constant(1 << 6))
             + (self.get_instruction_part(InstructionPart::Funct))
     }
 
@@ -290,10 +289,10 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             // > bits (which would always be 00, since addresses are always
             // > divisible by 4).
             // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            let addr = (env.get_instruction_part(InstructionPart::RS) << 21)
-                + (env.get_instruction_part(InstructionPart::RT) << 16)
-                + (env.get_instruction_part(InstructionPart::RD) << 11)
-                + (env.get_instruction_part(InstructionPart::Shamt) << 6)
+            let addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(1 << 21))
+                + (env.get_instruction_part(InstructionPart::RT) * Env::constant(1 << 16))
+                + (env.get_instruction_part(InstructionPart::RD) * Env::constant(1 << 11))
+                + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(1 << 6))
                 + (env.get_instruction_part(InstructionPart::Funct));
             env.set_instruction_pointer(addr * Env::constant(4));
             // REMOVEME: when all jtype instructions are implemented.
@@ -344,7 +343,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::LoadUpperImmediate => {
             // lui $reg, [most significant 16 bits of immediate]
             let rt = env.get_instruction_part(InstructionPart::RT);
-            let immediate_value = env.get_immediate() << 16;
+            let immediate_value = env.get_immediate() * Env::constant(1 << 16);
             env.overwrite_register_checked(&rt, &immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
@@ -369,7 +368,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
             let v2 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(2)));
             let v3 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(3)));
-            let value = (v0 << 24) + (v1 << 16) + (v2 << 8) + v3;
+            let value = (v0 * Env::constant(1 << 24))
+                + (v1 * Env::constant(1 << 16))
+                + (v2 * Env::constant(1 << 8))
+                + v3;
             debug!(
                 "Loaded 32 bits value from {:?}: {:?}",
                 addr_with_offset.clone(),
