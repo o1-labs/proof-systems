@@ -65,7 +65,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
         // If/when we change this, we can add more complicated code to handle different degrees.
         let degree = plnms
             .iter()
-            .fold(None, |acc, (p, _, _)| match p {
+            .fold(None, |acc, (p, _)| match p {
                 DensePolynomialOrEvaluations::DensePolynomial(_) => acc,
                 DensePolynomialOrEvaluations::Evaluations(_, d) => {
                     if let Some(n) = acc {
@@ -82,7 +82,7 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
     let mut scale = G::ScalarField::one();
 
     // iterating over polynomials in the batch
-    for (p_i, degree_bound, omegas) in plnms {
+    for (p_i, omegas) in plnms {
         match p_i {
             DensePolynomialOrEvaluations::Evaluations(evals_i, sub_domain) => {
                 let stride = evals_i.evals.len() / sub_domain.size();
@@ -103,9 +103,6 @@ pub fn combine_polys<G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>>(
             DensePolynomialOrEvaluations::DensePolynomial(p_i) => {
                 let mut offset = 0;
                 // iterating over chunks of the polynomial
-                if let Some(m) = degree_bound {
-                    assert!(p_i.coeffs.len() <= m + 1);
-                }
                 for j in 0..omegas.elems.len() {
                     let segment = &p_i.coeffs[std::cmp::min(offset, p_i.coeffs.len())
                         ..std::cmp::min(offset + srs_length, p_i.coeffs.len())];
@@ -149,15 +146,11 @@ impl<G: CommitmentCurve> SRS<G> {
         &self,
         group_map: &G::Map,
         // TODO(mimoo): create a type for that entry
-        plnms: &[(
-            DensePolynomialOrEvaluations<G::ScalarField, D>,
-            Option<usize>,
-            PolyComm<G::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
-        elm: &[G::ScalarField],    // vector of evaluation points
-        polyscale: G::ScalarField, // scaling factor for polynoms
-        evalscale: G::ScalarField, // scaling factor for evaluation point powers
-        mut sponge: EFqSponge,     // sponge
+        plnms: PolynomialsToCombine<G, D>, // vector of polynomial with commitment randomness
+        elm: &[G::ScalarField],            // vector of evaluation points
+        polyscale: G::ScalarField,         // scaling factor for polynoms
+        evalscale: G::ScalarField,         // scaling factor for evaluation point powers
+        mut sponge: EFqSponge,             // sponge
         rng: &mut RNG,
     ) -> OpeningProof<G>
     where
@@ -328,11 +321,7 @@ impl<G: CommitmentCurve> SRS<G> {
     #[allow(clippy::many_single_char_names)]
     pub fn prover_polynomials_to_verifier_evaluations<D: EvaluationDomain<G::ScalarField>>(
         &self,
-        plnms: &[(
-            DensePolynomialOrEvaluations<G::ScalarField, D>,
-            Option<usize>,
-            PolyComm<G::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
+        plnms: PolynomialsToCombine<G, D>,
         elm: &[G::ScalarField], // vector of evaluation points
     ) -> Vec<Evaluation<G>>
     where
@@ -341,7 +330,7 @@ impl<G: CommitmentCurve> SRS<G> {
         plnms
             .iter()
             .enumerate()
-            .map(|(i, (poly_or_evals, degree_bound, blinders))| {
+            .map(|(i, (poly_or_evals, blinders))| {
                 let poly = match poly_or_evals {
                     DensePolynomialOrEvaluations::DensePolynomial(poly) => (*poly).clone(),
                     DensePolynomialOrEvaluations::Evaluations(evals, _) => {
@@ -363,8 +352,6 @@ impl<G: CommitmentCurve> SRS<G> {
                     commitment: masked_commitment.commitment,
 
                     evaluations: chunked_evals,
-
-                    degree_bound: *degree_bound,
                 }
             })
             .collect()
@@ -398,11 +385,7 @@ impl<
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
         srs: &Self::SRS,
         group_map: &<G as CommitmentCurve>::Map,
-        plnms: &[(
-            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
-            Option<usize>,
-            PolyComm<<G as AffineCurve>::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
+        plnms: PolynomialsToCombine<G, D>,
         elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
         polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
         evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers

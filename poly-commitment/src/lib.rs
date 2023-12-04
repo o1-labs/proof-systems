@@ -86,7 +86,6 @@ pub trait SRS<G: CommitmentCurve> {
 /// Vector of triples (polynomial itself, degree bound, omegas).
 type PolynomialsToCombine<'a, G: CommitmentCurve, D: EvaluationDomain<G::ScalarField>> = &'a [(
     DensePolynomialOrEvaluations<'a, G::ScalarField, D>,
-    Option<usize>,
     PolyComm<G::ScalarField>,
 )];
 

@@ -62,6 +62,8 @@ where
                     }
                 })
                 .collect::<Vec<_>>();
+
+            // TODO @volhovm remove?
             let bounds = a
                 .iter()
                 .enumerate()
@@ -96,12 +98,10 @@ where
             let polys: Vec<(
                 DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
                 _,
-                _,
             )> = (0..a.len())
                 .map(|i| {
                     (
                         DensePolynomialOrEvaluations::DensePolynomial(&a[i]),
-                        bounds[i],
                         (comm[i].0).blinders.clone(),
                     )
                 })
@@ -150,7 +150,6 @@ where
                 .map(|poly| Evaluation {
                     commitment: (poly.0).commitment.clone(),
                     evaluations: poly.1.clone(),
-                    degree_bound: poly.2,
                 })
                 .collect::<Vec<_>>(),
             opening: &proof.5,

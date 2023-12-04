@@ -440,9 +440,6 @@ where
 
     /// Contains an evaluation table
     pub evaluations: Vec<Vec<G::ScalarField>>,
-
-    /// optional degree bound
-    pub degree_bound: Option<usize>,
 }
 
 /// Contains the batch evaluation
@@ -502,11 +499,7 @@ pub fn combine_evaluations<G: CommitmentCurve>(
         vec![G::ScalarField::zero(); num_evals]
     };
 
-    for Evaluation {
-        evaluations,
-        degree_bound,
-        ..
-    } in evaluations
+    for Evaluation { evaluations, .. } in evaluations
         .iter()
         .filter(|x| !x.commitment.elems.is_empty())
     {
@@ -516,10 +509,6 @@ pub fn combine_evaluations<G: CommitmentCurve>(
                 acc[i] += evaluations[i][j] * xi_i;
             }
             xi_i *= polyscale;
-        }
-
-        if let Some(_m) = degree_bound {
-            todo!("Misaligned chunked commitments are not supported")
         }
     }
 
@@ -951,10 +940,9 @@ mod tests {
         let srs = SRS::<VestaG>::create(20);
         let rng = &mut StdRng::from_seed([0u8; 32]);
 
-        // commit the two polynomials (and upperbound the second one)
-        let commitment = srs.commit(&poly1, 1, rng);
-        let upperbound = poly2.degree() + 1;
-        let bounded_commitment = srs.commit(&poly2, 1, rng);
+        // commit the two polynomials
+        let commitment1 = srs.commit(&poly1, 1, rng);
+        let commitment2 = srs.commit(&poly2, 1, rng);
 
         // create an aggregated opening proof
         let (u, v) = (Fp::rand(rng), Fp::rand(rng));
@@ -964,18 +952,15 @@ mod tests {
 
         let polys: Vec<(
             DensePolynomialOrEvaluations<_, Radix2EvaluationDomain<_>>,
-            Option<usize>,
             PolyComm<_>,
         )> = vec![
             (
                 DensePolynomialOrEvaluations::DensePolynomial(&poly1),
-                None,
-                commitment.blinders,
+                commitment1.blinders,
             ),
             (
                 DensePolynomialOrEvaluations::DensePolynomial(&poly2),
-                Some(upperbound),
-                bounded_commitment.blinders,
+                commitment2.blinders,
             ),
         ];
         let elm = vec![Fp::rand(rng), Fp::rand(rng)];
@@ -1013,14 +998,12 @@ mod tests {
 
         let evaluations = vec![
             Evaluation {
-                commitment: commitment.commitment,
+                commitment: commitment1.commitment,
                 evaluations: poly1_chunked_evals,
-                degree_bound: None,
             },
             Evaluation {
-                commitment: bounded_commitment.commitment,
+                commitment: commitment2.commitment,
                 evaluations: poly2_chunked_evals,
-                degree_bound: Some(upperbound),
             },
         ];
 

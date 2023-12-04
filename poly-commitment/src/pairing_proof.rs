@@ -1,5 +1,5 @@
 use crate::commitment::*;
-use crate::evaluation_proof::{combine_polys, DensePolynomialOrEvaluations};
+use crate::evaluation_proof::combine_polys;
 use crate::srs::SRS;
 use crate::{CommitmentError, PolynomialsToCombine, SRS as SRSTrait};
 use ark_ec::{msm::VariableBaseMSM, AffineCurve, PairingEngine};
@@ -94,11 +94,7 @@ impl<
     fn open<EFqSponge, RNG, D: EvaluationDomain<<G as AffineCurve>::ScalarField>>(
         srs: &Self::SRS,
         _group_map: &<G as CommitmentCurve>::Map,
-        plnms: &[(
-            DensePolynomialOrEvaluations<<G as AffineCurve>::ScalarField, D>,
-            Option<usize>,
-            PolyComm<<G as AffineCurve>::ScalarField>,
-        )], // vector of polynomial with optional degree bound and commitment randomness
+        plnms: PolynomialsToCombine<G, D>,
         elm: &[<G as AffineCurve>::ScalarField], // vector of evaluation points
         polyscale: <G as AffineCurve>::ScalarField, // scaling factor for polynoms
         _evalscale: <G as AffineCurve>::ScalarField, // scaling factor for evaluation point powers
@@ -378,15 +374,14 @@ mod tests {
             .map(|p| srs.full_srs.commit(p, 1, rng))
             .collect();
 
-        let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _, _)> =
-            polynomials
-                .iter()
-                .zip(comms.iter())
-                .map(|(p, comm)| {
-                    let p = DensePolynomialOrEvaluations::DensePolynomial(p);
-                    (p, None, comm.blinders.clone())
-                })
-                .collect();
+        let polynomials_and_blinders: Vec<(DensePolynomialOrEvaluations<_, D<_>>, _)> = polynomials
+            .iter()
+            .zip(comms.iter())
+            .map(|(p, comm)| {
+                let p = DensePolynomialOrEvaluations::DensePolynomial(p);
+                (p, comm.blinders.clone())
+            })
+            .collect();
 
         let evaluation_points = vec![ScalarField::rand(rng), ScalarField::rand(rng)];
 
@@ -404,7 +399,6 @@ mod tests {
                 Evaluation {
                     commitment: commitment.commitment,
                     evaluations,
-                    degree_bound: None,
                 }
             })
             .collect();

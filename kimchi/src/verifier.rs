@@ -911,21 +911,18 @@ where
     evaluations.extend(polys.into_iter().map(|(c, e)| Evaluation {
         commitment: c,
         evaluations: e,
-        degree_bound: None,
     }));
 
     //~~ * public input commitment
     evaluations.push(Evaluation {
         commitment: public_comm,
         evaluations: public_evals.to_vec(),
-        degree_bound: None,
     });
 
     //~~ * ft commitment (chunks of it)
     evaluations.push(Evaluation {
         commitment: ft_comm,
         evaluations: vec![vec![ft_eval0], vec![proof.ft_eval1]],
-        degree_bound: None,
     });
 
     for col in [
@@ -1009,7 +1006,6 @@ where
                 .ok_or(VerifyError::MissingCommitment(col))?
                 .clone(),
             evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
-            degree_bound: None,
         });
     }
 
@@ -1054,7 +1050,6 @@ where
         evaluations.push(Evaluation {
             commitment: table_comm,
             evaluations: vec![lookup_table.zeta.clone(), lookup_table.zeta_omega.clone()],
-            degree_bound: None,
         });
 
         // add evaluation of the runtime table polynomial
@@ -1071,7 +1066,6 @@ where
             evaluations.push(Evaluation {
                 commitment: runtime.clone(),
                 evaluations: vec![runtime_eval.zeta, runtime_eval.zeta_omega],
-                degree_bound: None,
             });
         }
     }
@@ -1122,7 +1116,6 @@ where
                 .ok_or(VerifyError::MissingCommitment(col))?
                 .clone(),
             evaluations: vec![evals.zeta.clone(), evals.zeta_omega.clone()],
-            degree_bound: None,
         });
     }
 

@@ -27,8 +27,6 @@ use std::time::{Duration, Instant};
 pub struct Commitment {
     /// the commitment itself, potentially in chunks
     chunked_commitment: PolyComm<Vesta>,
-    /// an optional degree bound
-    bound: Option<usize>,
 }
 
 /// An evaluated commitment (given a number of evaluation points)
@@ -84,7 +82,6 @@ impl AggregatedEvaluationProof {
             coms.push(Evaluation {
                 commitment: eval_com.commit.chunked_commitment.clone(),
                 evaluations: eval_com.chunked_evals.clone(),
-                degree_bound: eval_com.commit.bound,
             });
         }
 
@@ -132,20 +129,15 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         // create 11 polynomials of random degree (of at most 500)
         // and commit to them
         let mut commitments = vec![];
-        for i in 0..11 {
+        for _ in 0..11 {
             let len: usize = rng.gen();
             let len = len % 500;
+            // TODO @volhovm maybe remove the second case.
+            // every other polynomial is upperbounded
             let poly = if len == 0 {
                 DensePolynomial::<Fp>::zero()
             } else {
                 DensePolynomial::<Fp>::rand(len, &mut rng)
-            };
-
-            // every other polynomial is upperbounded
-            let bound = if i % 2 == 0 {
-                Some(poly.coeffs.len())
-            } else {
-                None
             };
 
             // create commitments for each polynomial, and evaluate each polynomial at the 7 random points
@@ -164,10 +156,7 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
                 );
             }
 
-            let commit = Commitment {
-                chunked_commitment,
-                bound,
-            };
+            let commit = Commitment { chunked_commitment };
 
             let eval_commit = EvaluatedCommitment {
                 commit,
@@ -185,13 +174,11 @@ fn test_randomised<RNG: Rng + CryptoRng>(mut rng: &mut RNG) {
         #[allow(clippy::type_complexity)]
         let mut polynomials: Vec<(
             DensePolynomialOrEvaluations<Fp, Radix2EvaluationDomain<Fp>>,
-            Option<usize>,
             PolyComm<_>,
         )> = vec![];
         for c in &commitments {
             polynomials.push((
                 DensePolynomialOrEvaluations::DensePolynomial(&c.poly),
-                c.eval_commit.commit.bound,
                 c.chunked_blinding.clone(),
             ));
         }
