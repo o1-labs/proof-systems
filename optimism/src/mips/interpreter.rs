@@ -194,6 +194,10 @@ pub enum ITypeInstruction {
 }
 
 pub trait InterpreterEnv {
+    type Position;
+
+    fn alloc_scratch(&mut self) -> Self::Position;
+
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>

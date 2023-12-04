@@ -99,6 +99,14 @@ fn memory_size(total: usize) -> String {
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
+    type Position = Column;
+
+    fn alloc_scratch(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx;
+        self.scratch_state_idx += 1;
+        Column::ScratchState(scratch_idx)
+    }
+
     type Variable = u32;
 
     fn overwrite_register_checked(
