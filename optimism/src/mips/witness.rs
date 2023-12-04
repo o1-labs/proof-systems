@@ -4,6 +4,7 @@ use crate::{
         PAGE_SIZE,
     },
     mips::{
+        column::Column,
         interpreter::{
             self, ITypeInstruction, Instruction, InstructionPart, InstructionParts, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
@@ -208,6 +209,12 @@ impl<Fp: Field> Env<Fp> {
             halt: state.exited,
             syscall_env,
             preimage_oracle,
+        }
+    }
+
+    pub fn write_column(&mut self, column: Column, value: u64) {
+        match column {
+            Column::ScratchState(idx) => self.scratch_state[idx] = value.into(),
         }
     }
 
