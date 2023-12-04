@@ -222,7 +222,7 @@ impl LookupInfo {
         };
 
         // TODO: is take(n) useful here? I don't see why we need this
-        for (i, gate) in gates.iter().take(n).enumerate() {
+        for (i, gate) in gates.iter().enumerate().take(n) {
             let typ = gate.typ;
 
             if let Some(lookup_pattern) = LookupPattern::from_gate(typ, CurrOrNext::Curr) {
