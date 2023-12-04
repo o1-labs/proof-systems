@@ -196,7 +196,7 @@ pub enum ITypeInstruction {
 pub trait InterpreterEnv {
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
-        + std::ops::Mul<u32, Output = Self::Variable>
+        + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::ops::Shl<u32, Output = Self::Variable>
         + std::ops::BitAnd<u32, Output = Self::Variable>
         + std::fmt::Debug;
@@ -295,7 +295,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
                 + (env.get_instruction_part(InstructionPart::RD) << 11)
                 + (env.get_instruction_part(InstructionPart::Shamt) << 6)
                 + (env.get_instruction_part(InstructionPart::Funct));
-            env.set_instruction_pointer(addr * 4);
+            env.set_instruction_pointer(addr * Env::constant(4));
             // REMOVEME: when all jtype instructions are implemented.
             return;
         }
