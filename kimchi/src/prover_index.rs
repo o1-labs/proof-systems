@@ -211,7 +211,6 @@ pub mod testing {
             override_srs_size,
             |d1: D<G::ScalarField>, size: usize| {
                 let log2_size = size.ilog2();
-                // Run test_srs_serialization test to generate test SRS & enable this
                 let mut srs = if log2_size <= precomputed_srs::SERIALIZED_SRS_SIZE {
                     // TODO: we should trim it if it's smaller
                     precomputed_srs::get_srs()
