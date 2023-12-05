@@ -733,7 +733,26 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallWritePreimage => (),
         RTypeInstruction::SyscallWriteOther => (),
         RTypeInstruction::SyscallFcntl => (),
-        RTypeInstruction::SyscallOther => (),
+        RTypeInstruction::SyscallOther => {
+            let syscall_num = env.read_register(&Env::constant(2));
+            let is_sysbrk = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(4045)), pos) }
+            };
+            let is_sysclone = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(4120)), pos) }
+            };
+            let v0 = { is_sysbrk * Env::constant(0x40000000) + is_sysclone };
+            let v1 = Env::constant(0);
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveZero => (),
         RTypeInstruction::MoveNonZero => (),
         RTypeInstruction::Sync => (),
