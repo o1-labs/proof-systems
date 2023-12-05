@@ -47,7 +47,7 @@ pub struct Env<Fp> {
     pub instruction_parts: InstructionParts<u32>,
     pub instruction_counter: usize,
     pub memory: Vec<(u32, Vec<u8>)>,
-    pub memory_write_index: Vec<(u32, Vec<usize>)>,
+    pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<usize>,
     pub instruction_pointer: u32,
@@ -150,6 +150,47 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         panic!("Could not access address")
     }
 
+    unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory) in self.memory.iter_mut() {
+            if *page_index == page {
+                memory[page_address] = value.try_into().expect("push_memory values fit in a u8");
+                return;
+            }
+        }
+        panic!("Could not write to address")
+    }
+
+    unsafe fn fetch_memory_access(
+        &mut self,
+        addr: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory_write_index) in self.memory_write_index.iter() {
+            if *page_index == page {
+                let value = memory_write_index[page_address];
+                self.write_column(output, value.into());
+                return value;
+            }
+        }
+        panic!("Could not access address")
+    }
+
+    unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory_write_index) in self.memory_write_index.iter_mut() {
+            if *page_index == page {
+                memory_write_index[page_address] = value;
+                return;
+            }
+        }
+        panic!("Could not write to address")
+    }
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
         self.instruction_pointer = ip;
         // Set next instruction pointer?
@@ -212,7 +253,7 @@ impl<Fp: Field> Env<Fp> {
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
                 .iter()
-                .map(|offset| (*offset, vec![0usize; page_size]))
+                .map(|offset| (*offset, vec![0u32; page_size]))
                 .collect(),
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),

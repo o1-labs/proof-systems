@@ -219,6 +219,35 @@ pub trait InterpreterEnv {
         output: Self::Position,
     ) -> Self::Variable;
 
+    /// Set the memory value at address `addr` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
+    unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable);
+
+    /// Fetch the last 'access index' that the memory at address `addr` was written at, and store
+    /// it in local position `output`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
+    unsafe fn fetch_memory_access(
+        &mut self,
+        addr: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable;
+
+    /// Set the last 'access index' for the memory at address `addr` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
+    unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable);
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
     fn get_immediate(&self) -> Self::Variable {
