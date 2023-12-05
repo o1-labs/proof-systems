@@ -108,6 +108,15 @@ impl InstructionParts<u32> {
             funct,
         }
     }
+
+    pub fn encode(self) -> u32 {
+        (self.op_code << 26)
+            | (self.rs << 21)
+            | (self.rt << 16)
+            | (self.rd << 11)
+            | (self.shamt << 6)
+            | self.funct
+    }
 }
 
 // To use InstructionParts[OpCode]
