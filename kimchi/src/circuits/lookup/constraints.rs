@@ -256,6 +256,8 @@ where
             .iter()
             .enumerate()
             .map(|(i, s)| {
+                // Snake pattern: even chunks of s are direct
+                // while the odd ones are reversed
                 let (i1, i2) = if i % 2 == 0 {
                     (row, row + 1)
                 } else {
