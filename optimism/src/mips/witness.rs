@@ -238,6 +238,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn shift_right_arithmetic(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = ((*x as i32) >> by) as u32;
+        self.write_column(position, res.into());
+        res
+    }
+
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         let res = if *x == 0 { 1 } else { 0 };
         self.write_column(position, res.into());
