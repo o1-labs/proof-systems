@@ -4,6 +4,7 @@ use crate::{
         PAGE_SIZE,
     },
     mips::{
+        column::Column,
         interpreter::{
             self, ITypeInstruction, Instruction, InstructionPart, InstructionParts, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
@@ -98,6 +99,14 @@ fn memory_size(total: usize) -> String {
 }
 
 impl<Fp: Field> InterpreterEnv for Env<Fp> {
+    type Position = Column;
+
+    fn alloc_scratch(&mut self) -> Self::Position {
+        let scratch_idx = self.scratch_state_idx;
+        self.scratch_state_idx += 1;
+        Column::ScratchState(scratch_idx)
+    }
+
     type Variable = u32;
 
     fn overwrite_register_checked(
@@ -208,6 +217,12 @@ impl<Fp: Field> Env<Fp> {
             halt: state.exited,
             syscall_env,
             preimage_oracle,
+        }
+    }
+
+    pub fn write_column(&mut self, column: Column, value: u64) {
+        match column {
+            Column::ScratchState(idx) => self.scratch_state[idx] = value.into(),
         }
     }
 
