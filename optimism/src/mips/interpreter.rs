@@ -510,6 +510,11 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 }
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
+    let addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(1 << 21))
+        + (env.get_instruction_part(InstructionPart::RT) * Env::constant(1 << 16))
+        + (env.get_instruction_part(InstructionPart::RD) * Env::constant(1 << 11))
+        + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(1 << 6))
+        + (env.get_instruction_part(InstructionPart::Funct));
     match instr {
         JTypeInstruction::Jump => {
             // > The address stored in a j instruction is 26 bits of the address
@@ -518,11 +523,6 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             // > bits (which would always be 00, since addresses are always
             // > divisible by 4).
             // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            let addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(1 << 21))
-                + (env.get_instruction_part(InstructionPart::RT) * Env::constant(1 << 16))
-                + (env.get_instruction_part(InstructionPart::RD) * Env::constant(1 << 11))
-                + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(1 << 6))
-                + (env.get_instruction_part(InstructionPart::Funct));
             env.set_instruction_pointer(addr * Env::constant(4));
             // REMOVEME: when all jtype instructions are implemented.
             return;
