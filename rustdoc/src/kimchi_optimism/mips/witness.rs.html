@@ -951,7 +951,7 @@
         (opcode, instruction)
     }
 
-    <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, config: VmConfiguration, metadata: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
+    <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, config: <span class="kw-2">&amp;</span>VmConfiguration, metadata: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
         <span class="kw">let </span>(opcode, instruction) = <span class="self">self</span>.decode_instruction();
         <span class="kw">let </span>op_code = (instruction &gt;&gt; <span class="number">26</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- <span class="number">26</span>)) - <span class="number">1</span>);
         <span class="kw">let </span>rs = (instruction &gt;&gt; <span class="number">21</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">26 </span>- <span class="number">21</span>)) - <span class="number">1</span>);
@@ -977,10 +977,10 @@
         <span class="macro">debug!</span>(<span class="string">&quot;Funct: {:#08b}&quot;</span>, funct);
         <span class="self">self</span>.instruction_parts = instruction_parts;
 
-        <span class="self">self</span>.pp_info(config.info_at, metadata, start);
+        <span class="self">self</span>.pp_info(<span class="kw-2">&amp;</span>config.info_at, metadata, start);
 
         <span class="comment">// Force stops at given iteration
-        </span><span class="kw">if </span><span class="self">self</span>.should_trigger_at(config.stop_at) {
+        </span><span class="kw">if </span><span class="self">self</span>.should_trigger_at(<span class="kw-2">&amp;</span>config.stop_at) {
             <span class="self">self</span>.halt = <span class="bool-val">true</span>;
             <span class="kw">return</span>;
         }
@@ -990,13 +990,13 @@
         <span class="self">self</span>.instruction_counter += <span class="number">1</span>;
     }
 
-    <span class="kw">fn </span>should_trigger_at(<span class="kw-2">&amp;</span><span class="self">self</span>, at: StepFrequency) -&gt; bool {
+    <span class="kw">fn </span>should_trigger_at(<span class="kw-2">&amp;</span><span class="self">self</span>, at: <span class="kw-2">&amp;</span>StepFrequency) -&gt; bool {
         <span class="kw">let </span>m: u64 = <span class="self">self</span>.instruction_counter <span class="kw">as </span>u64;
         <span class="kw">match </span>at {
             StepFrequency::Never =&gt; <span class="bool-val">false</span>,
             StepFrequency::Always =&gt; <span class="bool-val">true</span>,
-            StepFrequency::Exactly(n) =&gt; n == m,
-            StepFrequency::Every(n) =&gt; m % n == <span class="number">0</span>,
+            StepFrequency::Exactly(n) =&gt; <span class="kw-2">*</span>n == m,
+            StepFrequency::Every(n) =&gt; m % <span class="kw-2">*</span>n == <span class="number">0</span>,
         }
     }
 
@@ -1026,7 +1026,7 @@
         <span class="prelude-val">None
     </span>}
 
-    <span class="kw">fn </span>pp_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, at: StepFrequency, meta: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
+    <span class="kw">fn </span>pp_info(<span class="kw-2">&amp;mut </span><span class="self">self</span>, at: <span class="kw-2">&amp;</span>StepFrequency, meta: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
         <span class="kw">if </span><span class="self">self</span>.should_trigger_at(at) {
             <span class="kw">let </span>elapsed = start.time.elapsed();
             <span class="kw">let </span>step = <span class="self">self</span>.instruction_counter;
