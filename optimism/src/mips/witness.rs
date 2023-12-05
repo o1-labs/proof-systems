@@ -22,7 +22,7 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 29;
+pub const SCRATCH_SIZE: usize = 31;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -49,8 +49,6 @@ pub struct Env<Fp> {
     pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u32>, // TODO: u32 will not be big enough..
-    pub instruction_pointer: u32,
-    pub next_instruction_pointer: u32,
     pub scratch_state_idx: usize,
     pub scratch_state: [Fp; SCRATCH_SIZE],
     pub halt: bool,
@@ -202,22 +200,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         panic!("Could not write to address")
     }
 
-    fn set_instruction_pointer(&mut self, ip: Self::Variable) {
-        self.instruction_pointer = ip;
-    }
-
-    fn get_instruction_pointer(&self) -> Self::Variable {
-        self.instruction_pointer
-    }
-
-    fn set_next_instruction_pointer(&mut self, ip: Self::Variable) {
-        self.next_instruction_pointer = ip;
-    }
-
-    fn get_next_instruction_pointer(&self) -> Self::Variable {
-        self.next_instruction_pointer
-    }
-
     fn constant(x: u32) -> Self::Variable {
         x
     }
@@ -284,6 +266,8 @@ impl<Fp: Field> Env<Fp> {
             lo: state.lo,
             hi: state.hi,
             general_purpose: state.registers,
+            current_instruction_pointer: initial_instruction_pointer,
+            next_instruction_pointer,
         };
 
         Env {
@@ -295,8 +279,6 @@ impl<Fp: Field> Env<Fp> {
                 .collect(),
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
-            instruction_pointer: initial_instruction_pointer,
-            next_instruction_pointer,
             scratch_state_idx: 0,
             scratch_state: fresh_scratch_state(),
             halt: state.exited,
@@ -328,10 +310,13 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn decode_instruction(&self) -> (Instruction, u32) {
-        let instruction = ((self.get_memory_direct(self.instruction_pointer) as u32) << 24)
-            | ((self.get_memory_direct(self.instruction_pointer + 1) as u32) << 16)
-            | ((self.get_memory_direct(self.instruction_pointer + 2) as u32) << 8)
-            | (self.get_memory_direct(self.instruction_pointer + 3) as u32);
+        let instruction =
+            ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
+                    << 16)
+                | ((self.get_memory_direct(self.registers.current_instruction_pointer + 2) as u32)
+                    << 8)
+                | (self.get_memory_direct(self.registers.current_instruction_pointer + 3) as u32);
         let opcode = {
             match instruction >> 26 {
                 0x00 => match instruction & 0x3F {
@@ -490,7 +475,7 @@ impl<Fp: Field> Env<Fp> {
     }
 
     fn page_address(&self) -> (u32, usize) {
-        let address = self.instruction_pointer;
+        let address = self.registers.current_instruction_pointer;
         let page = address >> PAGE_ADDRESS_SIZE;
         let page_address = (address & PAGE_ADDRESS_MASK) as usize;
         (page, page_address)
@@ -513,7 +498,7 @@ impl<Fp: Field> Env<Fp> {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             let step = self.instruction_counter;
-            let pc = self.instruction_pointer;
+            let pc = self.registers.current_instruction_pointer;
 
             // Get the 32-bits opcode
             let insn = self.get_opcode().unwrap();
