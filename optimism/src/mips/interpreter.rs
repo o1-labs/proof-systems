@@ -485,6 +485,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
@@ -513,7 +514,8 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             // > bits (which would always be 00, since addresses are always
             // > divisible by 4).
             // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            env.set_instruction_pointer(addr * Env::constant(4));
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr * Env::constant(4));
             // REMOVEME: when all jtype instructions are implemented.
             return;
         }
@@ -525,6 +527,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
@@ -564,8 +567,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let register_rs = env.read_register(&rs);
             let res = register_rs + immediate;
             env.write_register(&rt, res);
-            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
-            // TODO: update next_instruction_pointer
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
@@ -574,8 +577,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let register_rs = env.read_register(&rs);
             let res = register_rs + immediate;
             env.write_register(&rt, res);
-            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
-            // TODO: update next_instruction_pointer
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
@@ -588,8 +591,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // lui $reg, [most significant 16 bits of immediate]
             let immediate_value = immediate * Env::constant(1 << 16);
             env.write_register(&rt, immediate_value);
-            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
-            // TODO: update next_instruction_pointer
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
@@ -621,8 +624,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 value
             );
             env.write_register(&dest, value);
-            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
-            // TODO: update next_instruction_pointer
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
