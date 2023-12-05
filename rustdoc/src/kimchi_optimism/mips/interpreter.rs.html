@@ -594,6 +594,35 @@
 <a href="#594" id="594">594</a>
 <a href="#595" id="595">595</a>
 <a href="#596" id="596">596</a>
+<a href="#597" id="597">597</a>
+<a href="#598" id="598">598</a>
+<a href="#599" id="599">599</a>
+<a href="#600" id="600">600</a>
+<a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Index;
@@ -814,6 +843,35 @@
         addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="doccomment">/// Set the memory value at address `addr` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
+    </span><span class="kw">unsafe fn </span>push_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Fetch the last &#39;access index&#39; that the memory at address `addr` was written at, and store
+    /// it in local position `output`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
+    </span><span class="kw">unsafe fn </span>fetch_memory_access(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        output: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="doccomment">/// Set the last &#39;access index&#39; for the memory at address `addr` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
+    </span><span class="kw">unsafe fn </span>push_memory_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>set_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable);
 
