@@ -438,6 +438,15 @@ pub trait InterpreterEnv {
     ) -> Self::Variable;
 
     fn set_halted(&mut self, flag: Self::Variable);
+
+    fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
+        // FIXME: Constrain `high_bit`
+        let high_bit = {
+            let pos = self.alloc_scratch();
+            unsafe { self.bitmask(x, bitlength, bitlength - 1, pos) }
+        };
+        high_bit * Self::constant(((1 << (32 - bitlength)) - 1) << bitlength) + x.clone()
+    }
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {
@@ -636,7 +645,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::BranchGtZero => (),
         ITypeInstruction::AddImmediate => {
             let register_rs = env.read_register(&rs);
-            let res = register_rs + immediate;
+            let offset = env.sign_extend(&immediate, 16);
+            let res = register_rs + offset;
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -646,7 +656,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::AddImmediateUnsigned => {
             debug!("Fetching register: {:?}", rs);
             let register_rs = env.read_register(&rs);
-            let res = register_rs + immediate;
+            let offset = env.sign_extend(&immediate, 16);
+            let res = register_rs + offset;
             env.write_register(&rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
@@ -670,10 +681,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
+            let base = env.read_register(&rs);
             let dest = rt;
-            let addr = rs;
-            let offset = immediate;
-            let addr_with_offset = addr.clone() + offset.clone();
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
             debug!(
                 "lw {:?}, {:?}({:?})",
                 dest.clone(),
@@ -681,19 +692,15 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 addr.clone()
             );
             // We load 4 bytes, i.e. one word.
-            let v0 = env.read_memory(&addr_with_offset);
-            let v1 = env.read_memory(&(addr_with_offset.clone() + Env::constant(1)));
-            let v2 = env.read_memory(&(addr_with_offset.clone() + Env::constant(2)));
-            let v3 = env.read_memory(&(addr_with_offset.clone() + Env::constant(3)));
+            let v0 = env.read_memory(&addr);
+            let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
+            let v2 = env.read_memory(&(addr.clone() + Env::constant(2)));
+            let v3 = env.read_memory(&(addr.clone() + Env::constant(3)));
             let value = (v0 * Env::constant(1 << 24))
                 + (v1 * Env::constant(1 << 16))
                 + (v2 * Env::constant(1 << 8))
                 + v3;
-            debug!(
-                "Loaded 32 bits value from {:?}: {:?}",
-                addr_with_offset.clone(),
-                value
-            );
+            debug!("Loaded 32 bits value from {:?}: {:?}", addr.clone(), value);
             env.write_register(&dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
