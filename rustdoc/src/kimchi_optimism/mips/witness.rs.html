@@ -536,6 +536,17 @@
 <a href="#536" id="536">536</a>
 <a href="#537" id="537">537</a>
 <a href="#538" id="538">538</a>
+<a href="#539" id="539">539</a>
+<a href="#540" id="540">540</a>
+<a href="#541" id="541">541</a>
+<a href="#542" id="542">542</a>
+<a href="#543" id="543">543</a>
+<a href="#544" id="544">544</a>
+<a href="#545" id="545">545</a>
+<a href="#546" id="546">546</a>
+<a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -768,6 +779,17 @@
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>res = (x &gt;&gt; lowest_bit) &amp; ((<span class="number">1 </span>&lt;&lt; (highest_bit - lowest_bit)) - <span class="number">1</span>);
+        <span class="self">self</span>.write_column(position, res.into());
+        res
+    }
+
+    <span class="kw">unsafe fn </span>shift_left(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>res = x &lt;&lt; by;
         <span class="self">self</span>.write_column(position, res.into());
         res
     }
