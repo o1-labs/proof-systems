@@ -207,7 +207,17 @@ pub trait InterpreterEnv {
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
 
-    fn fetch_memory(&mut self, addr: &Self::Variable) -> Self::Variable;
+    /// Fetch the memory value at address `addr` and store it in local position `output`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
+    unsafe fn fetch_memory(
+        &mut self,
+        addr: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable;
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
@@ -367,10 +377,39 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 addr.clone()
             );
             // We load 4 bytes, i.e. one word.
-            let v0 = env.fetch_memory(&addr_with_offset);
-            let v1 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(1)));
-            let v2 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(2)));
-            let v3 = env.fetch_memory(&(addr_with_offset.clone() + Env::constant(3)));
+            let v0 = unsafe {
+                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
+                // constraints that are missing here.
+                let output_location = env.alloc_scratch();
+                env.fetch_memory(&addr_with_offset, output_location)
+            };
+            let v1 = unsafe {
+                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
+                // constraints that are missing here.
+                let output_location = env.alloc_scratch();
+                env.fetch_memory(
+                    &(addr_with_offset.clone() + Env::constant(1)),
+                    output_location,
+                )
+            };
+            let v2 = unsafe {
+                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
+                // constraints that are missing here.
+                let output_location = env.alloc_scratch();
+                env.fetch_memory(
+                    &(addr_with_offset.clone() + Env::constant(2)),
+                    output_location,
+                )
+            };
+            let v3 = unsafe {
+                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
+                // constraints that are missing here.
+                let output_location = env.alloc_scratch();
+                env.fetch_memory(
+                    &(addr_with_offset.clone() + Env::constant(3)),
+                    output_location,
+                )
+            };
             let value = (v0 * Env::constant(1 << 24))
                 + (v1 * Env::constant(1 << 16))
                 + (v2 * Env::constant(1 << 8))
