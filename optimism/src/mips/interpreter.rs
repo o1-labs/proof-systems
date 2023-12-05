@@ -194,11 +194,13 @@ pub enum ITypeInstruction {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum LookupTable {}
+pub enum LookupTable {
+    MemoryLookup,
+}
 
 #[derive(Clone, Debug)]
 pub struct Lookup<Fp> {
-    pub numerator: Fp,
+    pub numerator: i32, // FIXME: Bad, sad hack.
     pub table_id: LookupTable,
     pub value: Vec<Fp>,
 }
@@ -210,6 +212,7 @@ pub trait InterpreterEnv {
 
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
@@ -261,6 +264,72 @@ pub trait InterpreterEnv {
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this memory operation.
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable);
+
+    /// Access the memory address `addr`, adding constraints asserting that the old value was
+    /// `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the memory if required, this function will
+    /// only update the access counter.
+    unsafe fn access_memory(
+        &mut self,
+        addr: &Self::Variable,
+        old_value: &Self::Variable,
+        new_value: &Self::Variable,
+    ) {
+        let last_accessed = {
+            let last_accessed_location = self.alloc_scratch();
+            unsafe { self.fetch_memory_access(addr, last_accessed_location) }
+        };
+        let instruction_counter = self.instruction_counter();
+        let elapsed_time = instruction_counter.clone() - last_accessed.clone();
+        let new_accessed = {
+            // Here, we write as if the memory had been written *at the start of the next
+            // instruction*. This ensures that we can't 'time travel' within this
+            // instruction, and claim to read the value that we're about to write!
+            instruction_counter + Self::constant(1)
+        };
+        self.add_lookup(Lookup {
+            numerator: 1,
+            table_id: LookupTable::MemoryLookup,
+            value: vec![addr.clone(), last_accessed, old_value.clone()],
+        });
+        self.add_lookup(Lookup {
+            numerator: -1,
+            table_id: LookupTable::MemoryLookup,
+            value: vec![addr.clone(), new_accessed, new_value.clone()],
+        });
+        self.range_check64(&elapsed_time);
+    }
+
+    fn read_memory(&mut self, addr: &Self::Variable) -> Self::Variable {
+        let value = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_memory(addr, value_location) }
+        };
+        unsafe {
+            self.access_memory(addr, &value, &value);
+        };
+        value
+    }
+
+    fn write_memory(&mut self, addr: &Self::Variable, new_value: Self::Variable) {
+        let old_value = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_memory(addr, value_location) }
+        };
+        unsafe {
+            self.access_memory(addr, &old_value, &new_value);
+        };
+        unsafe {
+            self.push_memory(addr, new_value);
+        };
+    }
+
+    fn range_check64(&mut self, _value: &Self::Variable) {
+        // TODO
+    }
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
@@ -420,39 +489,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 addr.clone()
             );
             // We load 4 bytes, i.e. one word.
-            let v0 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(&addr_with_offset, output_location)
-            };
-            let v1 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    &(addr_with_offset.clone() + Env::constant(1)),
-                    output_location,
-                )
-            };
-            let v2 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    &(addr_with_offset.clone() + Env::constant(2)),
-                    output_location,
-                )
-            };
-            let v3 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    &(addr_with_offset.clone() + Env::constant(3)),
-                    output_location,
-                )
-            };
+            let v0 = env.read_memory(&addr_with_offset);
+            let v1 = env.read_memory(&(addr_with_offset.clone() + Env::constant(1)));
+            let v2 = env.read_memory(&(addr_with_offset.clone() + Env::constant(2)));
+            let v3 = env.read_memory(&(addr_with_offset.clone() + Env::constant(3)));
             let value = (v0 * Env::constant(1 << 24))
                 + (v1 * Env::constant(1 << 16))
                 + (v2 * Env::constant(1 << 8))
@@ -506,7 +546,7 @@ mod tests {
             instruction_counter: 0,
             // Only 4kb of memory (one PAGE_ADDRESS_SIZE)
             memory: vec![(0, vec![rng.gen(); PAGE_SIZE as usize])],
-            memory_write_index: vec![],
+            memory_write_index: vec![(0, vec![0; PAGE_SIZE as usize])],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
             instruction_pointer: 0,
@@ -550,8 +590,8 @@ mod tests {
         let addr: u32 = rng.gen_range(0u32..100u32);
         let aligned_addr: u32 = (addr / 4) * 4;
         dummy_env.registers[REGISTER_SP as usize] = aligned_addr;
-        let mem = dummy_env.memory[0].clone();
-        let mem = mem.1;
+        let mem = &dummy_env.memory[0];
+        let mem = &mem.1;
         let v0 = mem[aligned_addr as usize];
         let v1 = mem[(aligned_addr + 1) as usize];
         let v2 = mem[(aligned_addr + 2) as usize];
