@@ -193,6 +193,16 @@ pub enum ITypeInstruction {
     StoreWordRight,               // swr
 }
 
+#[derive(Copy, Clone, Debug)]
+pub enum LookupTable {}
+
+#[derive(Clone, Debug)]
+pub struct Lookup<Fp> {
+    pub numerator: Fp,
+    pub table_id: LookupTable,
+    pub value: Vec<Fp>,
+}
+
 pub trait InterpreterEnv {
     type Position;
 
@@ -202,6 +212,8 @@ pub trait InterpreterEnv {
         + std::ops::Add<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
+
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     fn instruction_counter(&self) -> Self::Variable;
 
