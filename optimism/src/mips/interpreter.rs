@@ -546,7 +546,7 @@ mod tests {
             instruction_counter: 0,
             // Only 4kb of memory (one PAGE_ADDRESS_SIZE)
             memory: vec![(0, vec![rng.gen(); PAGE_SIZE as usize])],
-            memory_write_index: vec![],
+            memory_write_index: vec![(0, vec![0; PAGE_SIZE as usize])],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
             instruction_pointer: 0,
