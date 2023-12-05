@@ -672,9 +672,19 @@ mod tests {
         Env {
             instruction_parts: InstructionParts::default(),
             instruction_counter: 0,
-            // Only 4kb of memory (one PAGE_ADDRESS_SIZE)
-            memory: vec![(0, vec![rng.gen(); PAGE_SIZE as usize])],
-            memory_write_index: vec![(0, vec![0; PAGE_SIZE as usize])],
+            // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
+            memory: vec![
+                // Read/write memory
+                (0, vec![rng.gen(); PAGE_SIZE as usize]),
+                // Executable memory
+                (1, vec![0; PAGE_SIZE as usize]),
+            ],
+            memory_write_index: vec![
+                // Read/write memory
+                (0, vec![0; PAGE_SIZE as usize]),
+                // Executable memory
+                (1, vec![0; PAGE_SIZE as usize]),
+            ],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
             instruction_pointer: 0,
