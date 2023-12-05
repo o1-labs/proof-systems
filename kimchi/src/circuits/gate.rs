@@ -209,6 +209,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             EndoMul => self.verify_endomul::<G>(row, witness, &index.cs),
             EndoMulScalar => self.verify_endomul_scalar::<G>(row, witness, &index.cs),
             // TODO: implement the verification for the lookup gate
+            // See https://github.com/MinaProtocol/mina/issues/14011
             Lookup => Ok(()),
             CairoClaim | CairoInstruction | CairoFlags | CairoTransition => {
                 self.verify_cairo_gate::<G>(row, witness, &index.cs)
@@ -303,6 +304,7 @@ impl<F: PrimeField + SquareRootField> CircuitGate<F> {
             }
             GateType::Lookup => {
                 // TODO: implement the verification for the lookup gate
+                // See https://github.com/MinaProtocol/mina/issues/14011
                 vec![]
             }
             GateType::CairoClaim => turshi::Claim::constraint_checks(&env, &mut cache),
