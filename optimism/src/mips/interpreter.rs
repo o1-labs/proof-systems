@@ -605,7 +605,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
-        },
+        }
         RTypeInstruction::AddUnsigned => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
@@ -613,7 +613,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
-        },
+        }
         RTypeInstruction::Sub => (),
         RTypeInstruction::SubUnsigned => (),
         RTypeInstruction::And => (),
