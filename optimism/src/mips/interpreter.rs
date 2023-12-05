@@ -436,6 +436,47 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
 }
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
+    let instruction_pointer = env.get_instruction_pointer();
+    let instruction = {
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    let _opcode = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 26, pos) }
+    };
+    let _rs = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 26, 21, pos) }
+    };
+    let _rt = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 21, 16, pos) }
+    };
+    let _rd = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 16, 11, pos) }
+    };
+    let _shamt = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 11, 6, pos) }
+    };
+    let _funct = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 6, 0, pos) }
+    };
     match instr {
         RTypeInstruction::ShiftLeftLogical => (),
         RTypeInstruction::ShiftRightLogical => (),
