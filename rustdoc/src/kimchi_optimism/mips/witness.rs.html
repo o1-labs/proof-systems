@@ -529,6 +529,13 @@
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
+<a href="#532" id="532">532</a>
+<a href="#533" id="533">533</a>
+<a href="#534" id="534">534</a>
+<a href="#535" id="535">535</a>
+<a href="#536" id="536">536</a>
+<a href="#537" id="537">537</a>
+<a href="#538" id="538">538</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -735,11 +742,18 @@
 
     <span class="kw">fn </span>set_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable) {
         <span class="self">self</span>.instruction_pointer = ip;
-        <span class="comment">// Set next instruction pointer?
-    </span>}
+    }
 
     <span class="kw">fn </span>get_instruction_pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="self">self</span>.instruction_pointer
+    }
+
+    <span class="kw">fn </span>set_next_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.next_instruction_pointer = ip;
+    }
+
+    <span class="kw">fn </span>get_next_instruction_pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.next_instruction_pointer
     }
 
     <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable {

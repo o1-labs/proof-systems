@@ -677,6 +677,13 @@
 <a href="#677" id="677">677</a>
 <a href="#678" id="678">678</a>
 <a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
 
@@ -1080,6 +1087,10 @@
 
     <span class="kw">fn </span>get_instruction_pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="kw">fn </span>set_next_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable);
+
+    <span class="kw">fn </span>get_next_instruction_pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
+
     <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
@@ -1159,8 +1170,9 @@
 }
 
 <span class="kw">pub fn </span>interpret_jtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: JTypeInstruction) {
+    <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
     <span class="kw">let </span>instruction = {
-        <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
         <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
         <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
@@ -1188,7 +1200,8 @@
             // &gt; bits (which would always be 00, since addresses are always
             // &gt; divisible by 4).
             // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            </span>env.set_instruction_pointer(addr * Env::constant(<span class="number">4</span>));
+            </span>env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr * Env::constant(<span class="number">4</span>));
             <span class="comment">// REMOVEME: when all jtype instructions are implemented.
             </span><span class="kw">return</span>;
         }
@@ -1199,12 +1212,13 @@
 }
 
 <span class="kw">pub fn </span>interpret_itype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: ITypeInstruction) {
+    <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
+    <span class="kw">let </span>next_instruction_pointer = env.get_next_instruction_pointer();
     <span class="kw">let </span>instruction = {
-        <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
         <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
         <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
-        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer + Env::constant(<span class="number">3</span>)));
+        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">3</span>)));
         (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
             + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
             + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
@@ -1239,9 +1253,9 @@
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>res = register_rs + immediate;
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// TODO: update next_instruction_pointer
-            // REMOVEME: when all itype instructions are implemented.
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
         ITypeInstruction::AddImmediateUnsigned =&gt; {
@@ -1249,9 +1263,9 @@
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>res = register_rs + immediate;
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// TODO: update next_instruction_pointer
-            // REMOVEME: when all itype instructions are implemented.
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
         ITypeInstruction::SetLessThanImmediate =&gt; (),
@@ -1263,9 +1277,9 @@
             <span class="comment">// lui $reg, [most significant 16 bits of immediate]
             </span><span class="kw">let </span>immediate_value = immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>);
             env.write_register(<span class="kw-2">&amp;</span>rt, immediate_value);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// TODO: update next_instruction_pointer
-            // REMOVEME: when all itype instructions are implemented.
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
         ITypeInstruction::Load8 =&gt; (),
@@ -1296,9 +1310,9 @@
                 value
             );
             env.write_register(<span class="kw-2">&amp;</span>dest, value);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// TODO: update next_instruction_pointer
-            // REMOVEME: when all itype instructions are implemented.
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
         ITypeInstruction::Load8Unsigned =&gt; (),
