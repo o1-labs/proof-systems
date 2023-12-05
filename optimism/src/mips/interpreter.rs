@@ -286,6 +286,9 @@ pub trait InterpreterEnv {
             // Here, we write as if the register had been written *at the start of the next
             // instruction*. This ensures that we can't 'time travel' within this
             // instruction, and claim to read the value that we're about to write!
+
+            // FIXME: A register should allow multiple accesses within the same instruction.
+
             instruction_counter + Self::constant(1)
         };
         self.add_lookup(Lookup {
