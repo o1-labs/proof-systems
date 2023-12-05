@@ -786,6 +786,8 @@
 <a href="#786" id="786">786</a>
 <a href="#787" id="787">787</a>
 <a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     circuits::{
         berkeley_columns::Column,
@@ -1044,7 +1046,9 @@
             .iter()
             .enumerate()
             .map(|(i, s)| {
-                <span class="kw">let </span>(i1, i2) = <span class="kw">if </span>i % <span class="number">2 </span>== <span class="number">0 </span>{
+                <span class="comment">// Snake pattern: even chunks of s are direct
+                // while the odd ones are reversed
+                </span><span class="kw">let </span>(i1, i2) = <span class="kw">if </span>i % <span class="number">2 </span>== <span class="number">0 </span>{
                     (row, row + <span class="number">1</span>)
                 } <span class="kw">else </span>{
                     (row + <span class="number">1</span>, row)

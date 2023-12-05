@@ -910,6 +910,41 @@
 <a href="#910" id="910">910</a>
 <a href="#911" id="911">911</a>
 <a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -917,7 +952,11 @@
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
+        lookup::{
+            index::LookupConstraintSystem,
+            lookups::LookupFeatures,
+            tables::{GateLookupTables, LookupTable},
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::Shifts,
         wires::<span class="kw-2">*</span>,
@@ -944,7 +983,12 @@
 //
 
 </span><span class="doccomment">/// Flags for optional features in the constraint system
-</span><span class="attr">#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
+</span><span class="attr">#[cfg_attr(
+    feature = <span class="string">&quot;ocaml_types&quot;</span>,
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+#[cfg_attr(feature = <span class="string">&quot;wasm_types&quot;</span>, wasm_bindgen::prelude::wasm_bindgen)]
+#[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 </span><span class="kw">pub struct </span>FeatureFlags {
     <span class="doccomment">/// RangeCheck0 gate
     </span><span class="kw">pub </span>range_check0: bool,
@@ -1526,6 +1570,47 @@
     (<span class="number">2 </span>* (PERMUTS + <span class="number">1</span>) * num_chunks - <span class="number">2</span>) / PERMUTS
 }
 
+<span class="kw">impl </span>FeatureFlags {
+    <span class="kw">pub fn </span>from_gates_and_lookup_features&lt;F: PrimeField&gt;(
+        gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
+        lookup_features: LookupFeatures,
+    ) -&gt; FeatureFlags {
+        <span class="kw">let </span><span class="kw-2">mut </span>feature_flags = FeatureFlags {
+            range_check0: <span class="bool-val">false</span>,
+            range_check1: <span class="bool-val">false</span>,
+            lookup_features,
+            foreign_field_add: <span class="bool-val">false</span>,
+            foreign_field_mul: <span class="bool-val">false</span>,
+            xor: <span class="bool-val">false</span>,
+            rot: <span class="bool-val">false</span>,
+        };
+
+        <span class="kw">for </span>gate <span class="kw">in </span>gates {
+            <span class="kw">match </span>gate.typ {
+                GateType::RangeCheck0 =&gt; feature_flags.range_check0 = <span class="bool-val">true</span>,
+                GateType::RangeCheck1 =&gt; feature_flags.range_check1 = <span class="bool-val">true</span>,
+                GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
+                GateType::ForeignFieldMul =&gt; feature_flags.foreign_field_mul = <span class="bool-val">true</span>,
+                GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
+                GateType::Rot64 =&gt; feature_flags.rot = <span class="bool-val">true</span>,
+                <span class="kw">_ </span>=&gt; (),
+            }
+        }
+
+        feature_flags
+    }
+
+    <span class="kw">pub fn </span>from_gates&lt;F: PrimeField&gt;(
+        gates: <span class="kw-2">&amp;</span>[CircuitGate&lt;F&gt;],
+        uses_runtime_tables: bool,
+    ) -&gt; FeatureFlags {
+        FeatureFlags::from_gates_and_lookup_features(
+            gates,
+            LookupFeatures::from_gates(gates, uses_runtime_tables),
+        )
+    }
+}
+
 <span class="kw">impl</span>&lt;F: PrimeField + SquareRootField&gt; Builder&lt;F&gt; {
     <span class="doccomment">/// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
@@ -1594,7 +1679,7 @@
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         </span><span class="macro">assert!</span>(gates.len() &gt; <span class="number">1</span>);
 
-        <span class="kw">let </span>lookup_features = LookupFeatures::from_gates(<span class="kw-2">&amp;</span>gates, runtime_tables.is_some());
+        <span class="kw">let </span>feature_flags = FeatureFlags::from_gates(<span class="kw-2">&amp;</span>gates, runtime_tables.is_some());
 
         <span class="kw">let </span>lookup_domain_size = {
             <span class="comment">// First we sum over the lookup table size
@@ -1617,11 +1702,18 @@
                 }
             }
             <span class="comment">// And we add the built-in tables, depending on the features.
-            </span><span class="kw">let </span>LookupFeatures { patterns, .. } = <span class="kw-2">&amp;</span>lookup_features;
+            </span><span class="kw">let </span>LookupFeatures { patterns, .. } = <span class="kw-2">&amp;</span>feature_flags.lookup_features;
+            <span class="kw">let </span><span class="kw-2">mut </span>gate_lookup_tables = GateLookupTables {
+                xor: <span class="bool-val">false</span>,
+                range_check: <span class="bool-val">false</span>,
+            };
             <span class="kw">for </span>pattern <span class="kw">in </span>patterns.into_iter() {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(gate_table) = pattern.table() {
-                    lookup_domain_size += gate_table.table_size();
-                }
+                    gate_lookup_tables[gate_table] = <span class="bool-val">true
+                </span>}
+            }
+            <span class="kw">for </span>gate_table <span class="kw">in </span>gate_lookup_tables.into_iter() {
+                lookup_domain_size += gate_table.table_size();
             }
             lookup_domain_size
         };
@@ -1698,28 +1790,6 @@
             })
             .collect();
         gates.append(<span class="kw-2">&amp;mut </span>padding);
-
-        <span class="kw">let </span><span class="kw-2">mut </span>feature_flags = FeatureFlags {
-            range_check0: <span class="bool-val">false</span>,
-            range_check1: <span class="bool-val">false</span>,
-            lookup_features,
-            foreign_field_add: <span class="bool-val">false</span>,
-            foreign_field_mul: <span class="bool-val">false</span>,
-            xor: <span class="bool-val">false</span>,
-            rot: <span class="bool-val">false</span>,
-        };
-
-        <span class="kw">for </span>gate <span class="kw">in </span><span class="kw-2">&amp;</span>gates {
-            <span class="kw">match </span>gate.typ {
-                GateType::RangeCheck0 =&gt; feature_flags.range_check0 = <span class="bool-val">true</span>,
-                GateType::RangeCheck1 =&gt; feature_flags.range_check1 = <span class="bool-val">true</span>,
-                GateType::ForeignFieldAdd =&gt; feature_flags.foreign_field_add = <span class="bool-val">true</span>,
-                GateType::ForeignFieldMul =&gt; feature_flags.foreign_field_mul = <span class="bool-val">true</span>,
-                GateType::Xor16 =&gt; feature_flags.xor = <span class="bool-val">true</span>,
-                GateType::Rot64 =&gt; feature_flags.rot = <span class="bool-val">true</span>,
-                <span class="kw">_ </span>=&gt; (),
-            }
-        }
 
         <span class="comment">//~ 1. sample the `PERMUTS` shifts.
         </span><span class="kw">let </span>shifts = Shifts::new(<span class="kw-2">&amp;</span>domain.d1);

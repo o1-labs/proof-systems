@@ -604,7 +604,6 @@
 <a href="#604" id="604">604</a>
 <a href="#605" id="605">605</a>
 <a href="#606" id="606">606</a>
-<a href="#607" id="607">607</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::circuits::{
     domains::EvaluationDomains,
     gate::{CircuitGate, CurrOrNext, GateType},
@@ -930,8 +929,7 @@
 </span><span class="kw">pub type </span>JointLookupValue&lt;F&gt; = JointLookup&lt;F, F&gt;;
 
 <span class="kw">impl</span>&lt;F: Zero + One + Clone + Neg&lt;Output = F&gt; + From&lt;u64&gt;&gt; JointLookupValue&lt;F&gt; {
-    <span class="comment">// TODO: Support multiple tables
-    </span><span class="doccomment">/// Evaluate the combined value of a joint-lookup.
+    <span class="doccomment">/// Evaluate the combined value of a joint-lookup.
     </span><span class="kw">pub fn </span>evaluate(<span class="kw-2">&amp;</span><span class="self">self</span>, joint_combiner: <span class="kw-2">&amp;</span>F, table_id_combiner: <span class="kw-2">&amp;</span>F) -&gt; F {
         combine_table_entry(
             joint_combiner,
