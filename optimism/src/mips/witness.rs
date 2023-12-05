@@ -109,6 +109,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u32;
 
+    fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
+        // FIXME: Track the lookup values in the environment.
+    }
+
     fn instruction_counter(&self) -> Self::Variable {
         self.instruction_counter
     }
