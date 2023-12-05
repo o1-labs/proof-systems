@@ -194,11 +194,13 @@ pub enum ITypeInstruction {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub enum LookupTable {}
+pub enum LookupTable {
+    MemoryLookup,
+}
 
 #[derive(Clone, Debug)]
 pub struct Lookup<Fp> {
-    pub numerator: Fp,
+    pub numerator: i32, // FIXME: Bad, sad hack.
     pub table_id: LookupTable,
     pub value: Vec<Fp>,
 }
@@ -210,6 +212,7 @@ pub trait InterpreterEnv {
 
     type Variable: Clone
         + std::ops::Add<Self::Variable, Output = Self::Variable>
+        + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
@@ -261,6 +264,72 @@ pub trait InterpreterEnv {
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this memory operation.
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable);
+
+    /// Access the memory address `addr`, adding constraints asserting that the old value was
+    /// `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the memory if required, this function will
+    /// only update the access counter.
+    unsafe fn access_memory(
+        &mut self,
+        addr: &Self::Variable,
+        old_value: &Self::Variable,
+        new_value: &Self::Variable,
+    ) {
+        let last_accessed = {
+            let last_accessed_location = self.alloc_scratch();
+            unsafe { self.fetch_memory_access(addr, last_accessed_location) }
+        };
+        let instruction_counter = self.instruction_counter();
+        let elapsed_time = instruction_counter.clone() - last_accessed.clone();
+        let new_accessed = {
+            // Here, we write as if the memory had been written *at the start of the next
+            // instruction*. This ensures that we can't 'time travel' within this
+            // instruction, and claim to read the value that we're about to write!
+            instruction_counter + Self::constant(1)
+        };
+        self.add_lookup(Lookup {
+            numerator: 1,
+            table_id: LookupTable::MemoryLookup,
+            value: vec![addr.clone(), last_accessed, old_value.clone()],
+        });
+        self.add_lookup(Lookup {
+            numerator: -1,
+            table_id: LookupTable::MemoryLookup,
+            value: vec![addr.clone(), new_accessed, new_value.clone()],
+        });
+        self.range_check64(&elapsed_time);
+    }
+
+    fn read_memory(&mut self, addr: &Self::Variable) -> Self::Variable {
+        let value = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_memory(addr, value_location) }
+        };
+        unsafe {
+            self.access_memory(addr, &value, &value);
+        };
+        value
+    }
+
+    fn write_memory(&mut self, addr: &Self::Variable, new_value: Self::Variable) {
+        let old_value = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_memory(addr, value_location) }
+        };
+        unsafe {
+            self.access_memory(addr, &old_value, &new_value);
+        };
+        unsafe {
+            self.push_memory(addr, new_value);
+        };
+    }
+
+    fn range_check64(&mut self, _value: &Self::Variable) {
+        // TODO
+    }
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
