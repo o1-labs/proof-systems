@@ -178,11 +178,11 @@ impl<G: CommitmentCurve> SRS<G> {
         // By computing each of these, and recollecting the terms as a vector of polynomial
         // commitments, we obtain a chunked commitment to the L_i polynomials.
         let srs_size = self.g.len();
-        let num_unshifteds = (n + srs_size - 1) / srs_size;
-        let mut unshifted = Vec::with_capacity(num_unshifteds);
+        let num_elems = (n + srs_size - 1) / srs_size;
+        let mut elems = Vec::with_capacity(num_elems);
 
         // For each chunk
-        for i in 0..num_unshifteds {
+        for i in 0..num_elems {
             // Initialize the vector with zero curve points
             let mut lg: Vec<<G as AffineCurve>::Projective> =
                 vec![<G as AffineCurve>::Projective::zero(); n];
@@ -195,13 +195,13 @@ impl<G: CommitmentCurve> SRS<G> {
             // Apply the IFFT
             domain.ifft_in_place(&mut lg);
             <G as AffineCurve>::Projective::batch_normalization(lg.as_mut_slice());
-            // Append the 'partial Langrange polynomials' to the vector of unshifted chunks
-            unshifted.push(lg)
+            // Append the 'partial Langrange polynomials' to the vector of elems chunks
+            elems.push(lg)
         }
 
         let chunked_commitments: Vec<_> = (0..n)
             .map(|i| PolyComm {
-                elems: unshifted.iter().map(|v| v[i].into_affine()).collect(),
+                elems: elems.iter().map(|v| v[i].into_affine()).collect(),
             })
             .collect();
         self.lagrange_bases.insert(n, chunked_commitments);
