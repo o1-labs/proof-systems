@@ -510,6 +510,11 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 }
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
+    let addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(1 << 21))
+        + (env.get_instruction_part(InstructionPart::RT) * Env::constant(1 << 16))
+        + (env.get_instruction_part(InstructionPart::RD) * Env::constant(1 << 11))
+        + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(1 << 6))
+        + (env.get_instruction_part(InstructionPart::Funct));
     match instr {
         JTypeInstruction::Jump => {
             // > The address stored in a j instruction is 26 bits of the address
@@ -518,11 +523,6 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
             // > bits (which would always be 00, since addresses are always
             // > divisible by 4).
             // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            let addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(1 << 21))
-                + (env.get_instruction_part(InstructionPart::RT) * Env::constant(1 << 16))
-                + (env.get_instruction_part(InstructionPart::RD) * Env::constant(1 << 11))
-                + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(1 << 6))
-                + (env.get_instruction_part(InstructionPart::Funct));
             env.set_instruction_pointer(addr * Env::constant(4));
             // REMOVEME: when all jtype instructions are implemented.
             return;
@@ -534,17 +534,17 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
+    let rs = env.get_instruction_part(InstructionPart::RS);
+    let rt = env.get_instruction_part(InstructionPart::RT);
+    let immediate = env.get_immediate();
     match instr {
         ITypeInstruction::BranchEq => (),
         ITypeInstruction::BranchNeq => (),
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
         ITypeInstruction::AddImmediate => {
-            let rs = env.get_instruction_part(InstructionPart::RS);
             let register_rs = env.read_register(&rs);
-            let imm = env.get_immediate();
-            let res = register_rs + imm;
-            let rt = env.get_instruction_part(InstructionPart::RT);
+            let res = register_rs + immediate;
             env.write_register(&rt, res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
@@ -552,11 +552,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             return;
         }
         ITypeInstruction::AddImmediateUnsigned => {
-            let rs = env.get_instruction_part(InstructionPart::RS);
-            let rt = env.get_instruction_part(InstructionPart::RT);
             debug!("Fetching register: {:?}", rs);
             let register_rs = env.read_register(&rs);
-            let immediate = env.get_immediate();
             let res = register_rs + immediate;
             env.write_register(&rt, res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
@@ -571,8 +568,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::XorImmediate => (),
         ITypeInstruction::LoadUpperImmediate => {
             // lui $reg, [most significant 16 bits of immediate]
-            let rt = env.get_instruction_part(InstructionPart::RT);
-            let immediate_value = env.get_immediate() * Env::constant(1 << 16);
+            let immediate_value = immediate * Env::constant(1 << 16);
             env.write_register(&rt, immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
@@ -582,9 +578,9 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Load8 => (),
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
-            let dest = env.get_instruction_part(InstructionPart::RT);
-            let addr = env.get_instruction_part(InstructionPart::RS);
-            let offset = env.get_immediate();
+            let dest = rt;
+            let addr = rs;
+            let offset = immediate;
             let addr_with_offset = addr.clone() + offset.clone();
             debug!(
                 "lw {:?}, {:?}({:?})",
