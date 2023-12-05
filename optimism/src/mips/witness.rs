@@ -150,6 +150,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         panic!("Could not access address")
     }
 
+    unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory) in self.memory.iter_mut() {
+            if *page_index == page {
+                memory[page_address] = value.try_into().expect("push_memory values fit in a u8");
+                return;
+            }
+        }
+        panic!("Could not write to address")
+    }
+
     unsafe fn fetch_memory_access(
         &mut self,
         addr: &Self::Variable,
@@ -165,6 +177,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
         }
         panic!("Could not access address")
+    }
+
+    unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory_write_index) in self.memory_write_index.iter_mut() {
+            if *page_index == page {
+                memory_write_index[page_address] = value.into();
+                return;
+            }
+        }
+        panic!("Could not write to address")
     }
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
