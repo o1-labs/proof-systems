@@ -422,7 +422,7 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
         let (opcode, instruction) = self.decode_instruction();
-        let instruction_parts: InstructionParts<u32> = InstructionParts::<u32>::decode(instruction);
+        let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
         debug!("instruction: {:?}", opcode);
         debug!("Instruction hex: {:#010x}", instruction);
         debug!("Instruction: {:#034b}", instruction);

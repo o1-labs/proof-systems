@@ -71,16 +71,16 @@ pub const REGISTER_FP: u32 = 30;
 pub const REGISTER_RA: u32 = 31;
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
-pub struct InstructionParts<T> {
-    pub op_code: T,
-    pub rs: T,
-    pub rt: T,
-    pub rd: T,
-    pub shamt: T,
-    pub funct: T,
+pub struct InstructionParts {
+    pub op_code: u32,
+    pub rs: u32,
+    pub rt: u32,
+    pub rd: u32,
+    pub shamt: u32,
+    pub funct: u32,
 }
 
-impl InstructionParts<u32> {
+impl InstructionParts {
     pub fn decode(instruction: u32) -> Self {
         let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
         let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
@@ -721,7 +721,7 @@ mod tests {
         }
     }
 
-    fn write_instruction(env: &mut Env<Fp>, instruction_parts: InstructionParts<u32>) {
+    fn write_instruction(env: &mut Env<Fp>, instruction_parts: InstructionParts) {
         let instr = instruction_parts.encode();
         env.memory[1].1[0] = ((instr >> 24) & 0xFF) as u8;
         env.memory[1].1[1] = ((instr >> 16) & 0xFF) as u8;
