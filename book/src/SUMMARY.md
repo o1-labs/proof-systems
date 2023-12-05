@@ -9,15 +9,15 @@
 - [Rings](./fundamentals/zkbook_rings.md)
 - [Fields](./fundamentals/zkbook.md)
 - [Polynomials](./fundamentals/zkbook_polynomials.md)
-  - [Multiplying polynomials](./fundamentals/zkbook_multiplying_polynomials.md)
-  - [Fast Fourier transform](./fundamentals/zkbook_fft.md)
+  - [Multiplying Polynomials](./fundamentals/zkbook_multiplying_polynomials.md)
+  - [Fast Fourier Transform](./fundamentals/zkbook_fft.md)
 
 # Cryptographic Tools
 
 - [Commitments](./fundamentals/zkbook_commitment.md)
-- [Polynomial commitments](./plonk/polynomial_commitments.md)
-  - [Inner product argument](./plonk/inner_product.md)
-  - [Different functionnalities](./plonk/inner_product_api.md)
+- [Polynomial Commitments](./plonk/polynomial_commitments.md)
+  - [Inner Product Argument](./plonk/inner_product.md)
+  - [Different Functionnalities](./plonk/inner_product_api.md)
 - [Two Party Computation](./fundamentals/zkbook_2pc/overview.md)
   - [Garbled Circuits](./fundamentals/zkbook_2pc/gc.md)
     - [Basics](./fundamentals/zkbook_2pc/basics.md)
@@ -70,8 +70,8 @@
 # Technical Specifications
 
 - [Poseidon hash](./specs/poseidon.md)
-- [Polynomial commitment](./specs/poly-commitment.md)
-- [Pasta curves](./specs/pasta.md)
+- [Polynomial Commitment](./specs/poly-commitment.md)
+- [Pasta Curves](./specs/pasta.md)
 - [Kimchi](./specs/kimchi.md)
 - [Universal Reference String (URS)](./specs/urs.md)
 - [Pickles](./specs/pickles.md)
