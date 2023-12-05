@@ -134,6 +134,8 @@ pub enum ITypeInstruction {
     BranchNeq,                    // bne
     BranchLeqZero,                // blez
     BranchGtZero,                 // bgtz
+    BranchLtZero,                 // bltz
+    BranchGeqZero,                // bgez
     AddImmediate,                 // addi
     AddImmediateUnsigned,         // addiu
     SetLessThanImmediate,         // slti
@@ -946,6 +948,8 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         }
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
+        ITypeInstruction::BranchLtZero => (),
+        ITypeInstruction::BranchGeqZero => (),
         ITypeInstruction::AddImmediate => {
             let register_rs = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
