@@ -538,6 +538,8 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
+
     fn set_halted(&mut self, flag: Self::Variable);
 
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
