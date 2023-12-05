@@ -49,7 +49,7 @@ pub struct Env<Fp> {
     pub memory: Vec<(u32, Vec<u8>)>,
     pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
     pub registers: Registers<u32>,
-    pub registers_write_index: Registers<usize>,
+    pub registers_write_index: Registers<u32>, // TODO: u32 will not be big enough..
     pub instruction_pointer: u32,
     pub next_instruction_pointer: u32,
     pub scratch_state_idx: usize,
@@ -117,24 +117,32 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.instruction_counter
     }
 
-    fn overwrite_register_checked(
+    unsafe fn fetch_register(
         &mut self,
-        register_idx: &Self::Variable,
-        value: &Self::Variable,
-    ) {
-        if *register_idx < 32 {
-            self.registers.general_purpose[*register_idx as usize] = *value
-        } else if *register_idx == 32 {
-            self.registers.hi = *value
-        } else if *register_idx == 33 {
-            self.registers.lo = *value
-        } else {
-            panic!("Impossible to fetch register idx: {}", register_idx);
-        }
+        idx: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable {
+        let res = self.registers[*idx as usize];
+        self.write_column(output, res.into());
+        res
     }
 
-    fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable {
-        self.registers[*register_idx as usize]
+    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable) {
+        self.registers[*idx as usize] = value
+    }
+
+    unsafe fn fetch_register_access(
+        &mut self,
+        idx: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable {
+        let res = self.registers_write_index[*idx as usize];
+        self.write_column(output, res.into());
+        res
+    }
+
+    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
+        self.registers_write_index[*idx as usize] = value
     }
 
     fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable {
