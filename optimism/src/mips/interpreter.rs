@@ -687,8 +687,8 @@ mod tests {
             ],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
-            instruction_pointer: 0,
-            next_instruction_pointer: 0,
+            instruction_pointer: PAGE_SIZE,
+            next_instruction_pointer: PAGE_SIZE + 4,
             scratch_state_idx: 0,
             scratch_state: [Fp::from(0); SCRATCH_SIZE],
             halt: true,
@@ -697,20 +697,32 @@ mod tests {
         }
     }
 
+    fn write_instruction(env: &mut Env<Fp>, instruction_parts: InstructionParts<u32>) {
+        env.instruction_parts = instruction_parts.clone();
+        let instr = instruction_parts.encode();
+        env.memory[1].1[0] = ((instr >> 24) & 0xFF) as u8;
+        env.memory[1].1[1] = ((instr >> 16) & 0xFF) as u8;
+        env.memory[1].1[2] = ((instr >> 8) & 0xFF) as u8;
+        env.memory[1].1[3] = ((instr >> 0) & 0xFF) as u8;
+    }
+
     #[test]
     fn test_unit_jump_instruction() {
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env();
         // Instruction: 0b00001000000000101010011001100111
         // j 173671
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b00000,
-            rt: 0b00010,
-            rd: 0b10100,
-            shamt: 0b11001,
-            funct: 0b100111,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b00000,
+                rt: 0b00010,
+                rd: 0b10100,
+                shamt: 0b11001,
+                funct: 0b100111,
+            },
+        );
         interpret_jtype(&mut dummy_env, JTypeInstruction::Jump);
         assert_eq!(dummy_env.instruction_pointer, 694684);
     }
@@ -736,14 +748,17 @@ mod tests {
         let v3 = mem[(aligned_addr + 3) as usize];
         let exp_v = ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
         // Set random alue into registers
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b11101,
-            rt: 0b00100,
-            rd: 0b00000,
-            shamt: 0b00000,
-            funct: 0b000000,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b11101,
+                rt: 0b00100,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b000000,
+            },
+        );
         interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
         assert_eq!(
             dummy_env.registers.general_purpose[REGISTER_A0 as usize],
@@ -757,14 +772,17 @@ mod tests {
         let mut dummy_env = dummy_env();
         // Instruction: 0b10001111101001000000000000000000
         // addi	a1,sp,4
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b11101,
-            rt: 0b00101,
-            rd: 0b00000,
-            shamt: 0b00000,
-            funct: 0b000100,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b11101,
+                rt: 0b00101,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b000100,
+            },
+        );
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
         assert_eq!(
             dummy_env.registers.general_purpose[REGISTER_A1 as usize],
@@ -778,14 +796,17 @@ mod tests {
         let mut dummy_env = dummy_env();
         // Instruction: 0b00111100000000010000000000001010
         // lui at, 0xa
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b00000,
-            rt: 0b00001,
-            rd: 0b00000,
-            shamt: 0b00000,
-            funct: 0b001010,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b00000,
+                rt: 0b00001,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b001010,
+            },
+        );
         interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
         assert_eq!(
             dummy_env.registers.general_purpose[REGISTER_AT as usize],
@@ -799,14 +820,17 @@ mod tests {
         let mut dummy_env = dummy_env();
         // Instruction: 0b00100100001000010110110011101000
         // lui at, 0xa
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b001001,
-            rs: 0b00001,
-            rt: 0b00001,
-            rd: 0b01101,
-            shamt: 0b10011,
-            funct: 0b101000,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b001001,
+                rs: 0b00001,
+                rt: 0b00001,
+                rd: 0b01101,
+                shamt: 0b10011,
+                funct: 0b101000,
+            },
+        );
         let exp_res = dummy_env.registers[REGISTER_AT as usize] + 27880;
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
         assert_eq!(
