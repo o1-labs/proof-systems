@@ -1,6 +1,4 @@
 use log::debug;
-use serde::{Deserialize, Serialize};
-use std::ops::Index;
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -70,42 +68,6 @@ pub const REGISTER_SP: u32 = 29;
 pub const REGISTER_FP: u32 = 30;
 // Return address (used by function call)
 pub const REGISTER_RA: u32 = 31;
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum InstructionPart {
-    OpCode,
-    RS,
-    RT,
-    RD,
-    Shamt,
-    Funct,
-}
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
-pub struct InstructionParts<T> {
-    pub op_code: T,
-    pub rs: T,
-    pub rt: T,
-    pub rd: T,
-    pub shamt: T,
-    pub funct: T,
-}
-
-// To use InstructionParts[OpCode]
-impl<A> Index<InstructionPart> for InstructionParts<A> {
-    type Output = A;
-
-    fn index(&self, index: InstructionPart) -> &Self::Output {
-        match index {
-            InstructionPart::OpCode => &self.op_code,
-            InstructionPart::RS => &self.rs,
-            InstructionPart::RT => &self.rt,
-            InstructionPart::RD => &self.rd,
-            InstructionPart::Shamt => &self.shamt,
-            InstructionPart::Funct => &self.funct,
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Instruction {
@@ -437,18 +399,26 @@ pub trait InterpreterEnv {
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
-    fn get_immediate(&self) -> Self::Variable {
-        // The immediate value is the last 16bits
-        (self.get_instruction_part(InstructionPart::RD) * Self::constant(1 << 11))
-            + (self.get_instruction_part(InstructionPart::Shamt) * Self::constant(1 << 6))
-            + (self.get_instruction_part(InstructionPart::Funct))
-    }
-
     fn get_instruction_pointer(&self) -> Self::Variable;
 
-    fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable;
-
     fn constant(x: u32) -> Self::Variable;
+
+    /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
+    /// the result in `position`.
+    /// `lowest_bit` becomes the least-significant bit of the resulting value.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
+    /// bits.
+    unsafe fn bitmask(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: Self::Position,
+    ) -> Self::Variable;
 
     fn set_halted(&mut self, flag: Self::Variable);
 }
@@ -510,11 +480,27 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 }
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
-    let addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(1 << 21))
-        + (env.get_instruction_part(InstructionPart::RT) * Env::constant(1 << 16))
-        + (env.get_instruction_part(InstructionPart::RD) * Env::constant(1 << 11))
-        + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(1 << 6))
-        + (env.get_instruction_part(InstructionPart::Funct));
+    let instruction = {
+        let instruction_pointer = env.get_instruction_pointer();
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    let _opcode = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 26, pos) }
+    };
+    let addr = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 26, 0, pos) }
+    };
     match instr {
         JTypeInstruction::Jump => {
             // > The address stored in a j instruction is 26 bits of the address
@@ -534,9 +520,37 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
-    let rs = env.get_instruction_part(InstructionPart::RS);
-    let rt = env.get_instruction_part(InstructionPart::RT);
-    let immediate = env.get_immediate();
+    let instruction = {
+        let instruction_pointer = env.get_instruction_pointer();
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    let _opcode = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 26, pos) }
+    };
+    let rs = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 26, 21, pos) }
+    };
+    let rt = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 21, 16, pos) }
+    };
+    let immediate = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 16, 0, pos) }
+    };
     match instr {
         ITypeInstruction::BranchEq => (),
         ITypeInstruction::BranchNeq => (),
@@ -623,10 +637,51 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
     env.set_halted(Env::constant(1))
 }
 
+pub mod debugging {
+    use serde::{Deserialize, Serialize};
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
+    pub struct InstructionParts {
+        pub op_code: u32,
+        pub rs: u32,
+        pub rt: u32,
+        pub rd: u32,
+        pub shamt: u32,
+        pub funct: u32,
+    }
+
+    impl InstructionParts {
+        pub fn decode(instruction: u32) -> Self {
+            let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
+            let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
+            let rt = (instruction >> 16) & ((1 << (21 - 16)) - 1);
+            let rd = (instruction >> 11) & ((1 << (16 - 11)) - 1);
+            let shamt = (instruction >> 6) & ((1 << (11 - 6)) - 1);
+            let funct = instruction & ((1 << 6) - 1);
+            InstructionParts {
+                op_code,
+                rs,
+                rt,
+                rd,
+                shamt,
+                funct,
+            }
+        }
+
+        pub fn encode(self) -> u32 {
+            (self.op_code << 26)
+                | (self.rs << 21)
+                | (self.rt << 16)
+                | (self.rd << 11)
+                | (self.shamt << 6)
+                | self.funct
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
-    use super::*;
+    use super::{debugging::*, *};
     use crate::cannon::{HostProgram, PAGE_SIZE};
     use crate::mips::registers::Registers;
     use crate::mips::witness::{Env, SyscallEnv, SCRATCH_SIZE};
@@ -642,15 +697,24 @@ mod tests {
         let mut rng = rand::thread_rng();
         let dummy_preimage_oracle = PreImageOracle::create(&host_program);
         Env {
-            instruction_parts: InstructionParts::default(),
             instruction_counter: 0,
-            // Only 4kb of memory (one PAGE_ADDRESS_SIZE)
-            memory: vec![(0, vec![rng.gen(); PAGE_SIZE as usize])],
-            memory_write_index: vec![(0, vec![0; PAGE_SIZE as usize])],
+            // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
+            memory: vec![
+                // Read/write memory
+                (0, vec![rng.gen(); PAGE_SIZE as usize]),
+                // Executable memory
+                (1, vec![0; PAGE_SIZE as usize]),
+            ],
+            memory_write_index: vec![
+                // Read/write memory
+                (0, vec![0; PAGE_SIZE as usize]),
+                // Executable memory
+                (1, vec![0; PAGE_SIZE as usize]),
+            ],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
-            instruction_pointer: 0,
-            next_instruction_pointer: 0,
+            instruction_pointer: PAGE_SIZE,
+            next_instruction_pointer: PAGE_SIZE + 4,
             scratch_state_idx: 0,
             scratch_state: [Fp::from(0); SCRATCH_SIZE],
             halt: true,
@@ -659,20 +723,31 @@ mod tests {
         }
     }
 
+    fn write_instruction(env: &mut Env<Fp>, instruction_parts: InstructionParts) {
+        let instr = instruction_parts.encode();
+        env.memory[1].1[0] = ((instr >> 24) & 0xFF) as u8;
+        env.memory[1].1[1] = ((instr >> 16) & 0xFF) as u8;
+        env.memory[1].1[2] = ((instr >> 8) & 0xFF) as u8;
+        env.memory[1].1[3] = (instr & 0xFF) as u8;
+    }
+
     #[test]
     fn test_unit_jump_instruction() {
         // We only care about instruction parts and instruction pointer
         let mut dummy_env = dummy_env();
         // Instruction: 0b00001000000000101010011001100111
         // j 173671
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b00000,
-            rt: 0b00010,
-            rd: 0b10100,
-            shamt: 0b11001,
-            funct: 0b100111,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b00000,
+                rt: 0b00010,
+                rd: 0b10100,
+                shamt: 0b11001,
+                funct: 0b100111,
+            },
+        );
         interpret_jtype(&mut dummy_env, JTypeInstruction::Jump);
         assert_eq!(dummy_env.instruction_pointer, 694684);
     }
@@ -698,14 +773,17 @@ mod tests {
         let v3 = mem[(aligned_addr + 3) as usize];
         let exp_v = ((v0 as u32) << 24) + ((v1 as u32) << 16) + ((v2 as u32) << 8) + (v3 as u32);
         // Set random alue into registers
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b11101,
-            rt: 0b00100,
-            rd: 0b00000,
-            shamt: 0b00000,
-            funct: 0b000000,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b11101,
+                rt: 0b00100,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b000000,
+            },
+        );
         interpret_itype(&mut dummy_env, ITypeInstruction::Load32);
         assert_eq!(
             dummy_env.registers.general_purpose[REGISTER_A0 as usize],
@@ -719,14 +797,17 @@ mod tests {
         let mut dummy_env = dummy_env();
         // Instruction: 0b10001111101001000000000000000000
         // addi	a1,sp,4
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b11101,
-            rt: 0b00101,
-            rd: 0b00000,
-            shamt: 0b00000,
-            funct: 0b000100,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b11101,
+                rt: 0b00101,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b000100,
+            },
+        );
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediate);
         assert_eq!(
             dummy_env.registers.general_purpose[REGISTER_A1 as usize],
@@ -740,14 +821,17 @@ mod tests {
         let mut dummy_env = dummy_env();
         // Instruction: 0b00111100000000010000000000001010
         // lui at, 0xa
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b000010,
-            rs: 0b00000,
-            rt: 0b00001,
-            rd: 0b00000,
-            shamt: 0b00000,
-            funct: 0b001010,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b000010,
+                rs: 0b00000,
+                rt: 0b00001,
+                rd: 0b00000,
+                shamt: 0b00000,
+                funct: 0b001010,
+            },
+        );
         interpret_itype(&mut dummy_env, ITypeInstruction::LoadUpperImmediate);
         assert_eq!(
             dummy_env.registers.general_purpose[REGISTER_AT as usize],
@@ -761,14 +845,17 @@ mod tests {
         let mut dummy_env = dummy_env();
         // Instruction: 0b00100100001000010110110011101000
         // lui at, 0xa
-        dummy_env.instruction_parts = InstructionParts {
-            op_code: 0b001001,
-            rs: 0b00001,
-            rt: 0b00001,
-            rd: 0b01101,
-            shamt: 0b10011,
-            funct: 0b101000,
-        };
+        write_instruction(
+            &mut dummy_env,
+            InstructionParts {
+                op_code: 0b001001,
+                rs: 0b00001,
+                rt: 0b00001,
+                rd: 0b01101,
+                shamt: 0b10011,
+                funct: 0b101000,
+            },
+        );
         let exp_res = dummy_env.registers[REGISTER_AT as usize] + 27880;
         interpret_itype(&mut dummy_env, ITypeInstruction::AddImmediateUnsigned);
         assert_eq!(

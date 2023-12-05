@@ -6,7 +6,7 @@ use crate::{
     mips::{
         column::Column,
         interpreter::{
-            self, ITypeInstruction, Instruction, InstructionPart, InstructionParts, InterpreterEnv,
+            self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
@@ -44,7 +44,6 @@ impl SyscallEnv {
 }
 
 pub struct Env<Fp> {
-    pub instruction_parts: InstructionParts<u32>,
     pub instruction_counter: u32, // TODO: u32 will not be big enough..
     pub memory: Vec<(u32, Vec<u8>)>,
     pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
@@ -145,10 +144,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         self.registers_write_index[*idx as usize] = value
     }
 
-    fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable {
-        self.instruction_parts[part]
-    }
-
     unsafe fn fetch_memory(
         &mut self,
         addr: &Self::Variable,
@@ -220,6 +215,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         x
     }
 
+    unsafe fn bitmask(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
+        self.write_column(position, res.into());
+        res
+    }
+
     fn set_halted(&mut self, flag: Self::Variable) {
         if flag == 0 {
             self.halt = false
@@ -262,9 +269,6 @@ impl<Fp: Field> Env<Fp> {
         };
 
         Env {
-            // Will be modified by decode_instruction.
-            // We set the instruction parts to 0 to begin
-            instruction_parts: InstructionParts::default(),
             instruction_counter: state.step as u32,
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
@@ -281,6 +285,11 @@ impl<Fp: Field> Env<Fp> {
             syscall_env,
             preimage_oracle,
         }
+    }
+
+    pub fn reset_scratch_state(&mut self) {
+        self.scratch_state_idx = 0;
+        self.scratch_state = fresh_scratch_state();
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
@@ -417,30 +426,17 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
+        self.reset_scratch_state();
         let (opcode, instruction) = self.decode_instruction();
-        let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
-        let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
-        let rt = (instruction >> 16) & ((1 << (21 - 16)) - 1);
-        let rd = (instruction >> 11) & ((1 << (16 - 11)) - 1);
-        let shamt = (instruction >> 6) & ((1 << (11 - 6)) - 1);
-        let funct = instruction & ((1 << 6) - 1);
-        let instruction_parts: InstructionParts<u32> = InstructionParts {
-            op_code,
-            rs,
-            rt,
-            rd,
-            shamt,
-            funct,
-        };
+        let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
         debug!("instruction: {:?}", opcode);
         debug!("Instruction hex: {:#010x}", instruction);
         debug!("Instruction: {:#034b}", instruction);
-        debug!("Rs: {:#07b}", rs);
-        debug!("Rt: {:#07b}", rt);
-        debug!("Rd: {:#07b}", rd);
-        debug!("Shamt: {:#07b}", shamt);
-        debug!("Funct: {:#08b}", funct);
-        self.instruction_parts = instruction_parts;
+        debug!("Rs: {:#07b}", instruction_parts.rs);
+        debug!("Rt: {:#07b}", instruction_parts.rt);
+        debug!("Rd: {:#07b}", instruction_parts.rd);
+        debug!("Shamt: {:#07b}", instruction_parts.shamt);
+        debug!("Funct: {:#08b}", instruction_parts.funct);
 
         self.pp_info(&config.info_at, metadata, start);
 
