@@ -209,7 +209,10 @@ pub trait InterpreterEnv {
 
     /// Fetch the memory value at address `addr` and store it in local position `output`.
     ///
-    /// This is unsafe: no lookups or other constraints are added as part of this operation.
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this memory operation.
     unsafe fn fetch_memory(
         &mut self,
         addr: &Self::Variable,
