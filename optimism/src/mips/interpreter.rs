@@ -424,6 +424,19 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Return the result of shifting `x` by `by`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and the shift amount `by`.
+    unsafe fn shift_left(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn set_halted(&mut self, flag: Self::Variable);
 }
 
@@ -437,6 +450,7 @@ pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruct
 
 pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstruction) {
     let instruction_pointer = env.get_instruction_pointer();
+    let next_instruction_pointer = env.get_next_instruction_pointer();
     let instruction = {
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
@@ -457,17 +471,17 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
     };
-    let _rt = {
+    let rt = {
         // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 21, 16, pos) }
     };
-    let _rd = {
+    let rd = {
         // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 16, 11, pos) }
     };
-    let _shamt = {
+    let shamt = {
         // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 11, 6, pos) }
@@ -478,7 +492,18 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         unsafe { env.bitmask(&instruction, 6, 0, pos) }
     };
     match instr {
-        RTypeInstruction::ShiftLeftLogical => (),
+        RTypeInstruction::ShiftLeftLogical => {
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_left(&rt, &shamt, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::ShiftRightLogical => (),
         RTypeInstruction::ShiftRightArithmetic => (),
         RTypeInstruction::ShiftLeftLogicalVariable => (),
