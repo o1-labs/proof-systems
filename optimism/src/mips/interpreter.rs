@@ -466,7 +466,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 32, 26, pos) }
     };
-    let _rs = {
+    let rs = {
         // FIXME: Requires a range check
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 21, pos) }
@@ -509,7 +509,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::ShiftLeftLogicalVariable => (),
         RTypeInstruction::ShiftRightLogicalVariable => (),
         RTypeInstruction::ShiftRightArithmeticVariable => (),
-        RTypeInstruction::JumpRegister => (),
+        RTypeInstruction::JumpRegister => {
+            let addr = env.read_register(&rs);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(addr);
+            return;
+        }
         RTypeInstruction::JumpAndLinkRegister => (),
         RTypeInstruction::SyscallMmap => (),
         RTypeInstruction::SyscallExitGroup => (),
