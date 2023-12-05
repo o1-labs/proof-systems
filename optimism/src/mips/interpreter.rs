@@ -728,7 +728,7 @@ mod tests {
         env.memory[1].1[0] = ((instr >> 24) & 0xFF) as u8;
         env.memory[1].1[1] = ((instr >> 16) & 0xFF) as u8;
         env.memory[1].1[2] = ((instr >> 8) & 0xFF) as u8;
-        env.memory[1].1[3] = ((instr >> 0) & 0xFF) as u8;
+        env.memory[1].1[3] = (instr & 0xFF) as u8;
     }
 
     #[test]
