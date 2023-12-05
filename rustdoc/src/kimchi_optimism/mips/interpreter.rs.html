@@ -545,6 +545,12 @@
 <a href="#545" id="545">545</a>
 <a href="#546" id="546">546</a>
 <a href="#547" id="547">547</a>
+<a href="#548" id="548">548</a>
+<a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Index;
@@ -743,10 +749,8 @@
 <span class="kw">pub trait </span>InterpreterEnv {
     <span class="kw">type </span>Variable: Clone
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Mul&lt;u32, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::Shl&lt;u32, Output = <span class="self">Self</span>::Variable&gt;
-        + std::ops::BitAnd&lt;u32, Output = <span class="self">Self</span>::Variable&gt;
-        + std::fmt::Display;
+        + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::fmt::Debug;
 
     <span class="kw">fn </span>overwrite_register_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, register_idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
@@ -758,8 +762,8 @@
 
     <span class="kw">fn </span>get_immediate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
         <span class="comment">// The immediate value is the last 16bits
-        </span>(<span class="self">self</span>.get_instruction_part(InstructionPart::RD) &lt;&lt; <span class="number">11</span>)
-            + (<span class="self">self</span>.get_instruction_part(InstructionPart::Shamt) &lt;&lt; <span class="number">6</span>)
+        </span>(<span class="self">self</span>.get_instruction_part(InstructionPart::RD) * <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))
+            + (<span class="self">self</span>.get_instruction_part(InstructionPart::Shamt) * <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; <span class="number">6</span>))
             + (<span class="self">self</span>.get_instruction_part(InstructionPart::Funct))
     }
 
@@ -837,12 +841,12 @@
             // &gt; bits (which would always be 00, since addresses are always
             // &gt; divisible by 4).
             // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            </span><span class="kw">let </span>addr = (env.get_instruction_part(InstructionPart::RS) &lt;&lt; <span class="number">21</span>)
-                + (env.get_instruction_part(InstructionPart::RT) &lt;&lt; <span class="number">16</span>)
-                + (env.get_instruction_part(InstructionPart::RD) &lt;&lt; <span class="number">11</span>)
-                + (env.get_instruction_part(InstructionPart::Shamt) &lt;&lt; <span class="number">6</span>)
+            </span><span class="kw">let </span>addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">21</span>))
+                + (env.get_instruction_part(InstructionPart::RT) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
+                + (env.get_instruction_part(InstructionPart::RD) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))
+                + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">6</span>))
                 + (env.get_instruction_part(InstructionPart::Funct));
-            env.set_instruction_pointer(addr * <span class="number">4</span>);
+            env.set_instruction_pointer(addr * Env::constant(<span class="number">4</span>));
             <span class="comment">// REMOVEME: when all jtype instructions are implemented.
             </span><span class="kw">return</span>;
         }
@@ -873,7 +877,7 @@
         ITypeInstruction::AddImmediateUnsigned =&gt; {
             <span class="kw">let </span>rs = env.get_instruction_part(InstructionPart::RS);
             <span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
-            <span class="macro">debug!</span>(<span class="string">&quot;Fetching register: {}&quot;</span>, rs);
+            <span class="macro">debug!</span>(<span class="string">&quot;Fetching register: {:?}&quot;</span>, rs);
             <span class="kw">let </span>register_rs = env.fetch_register_checked(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>immediate = env.get_immediate();
             <span class="kw">let </span>res = register_rs + immediate;
@@ -891,7 +895,7 @@
         ITypeInstruction::LoadUpperImmediate =&gt; {
             <span class="comment">// lui $reg, [most significant 16 bits of immediate]
             </span><span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
-            <span class="kw">let </span>immediate_value = env.get_immediate() &lt;&lt; <span class="number">16</span>;
+            <span class="kw">let </span>immediate_value = env.get_immediate() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>);
             env.overwrite_register_checked(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
             <span class="comment">// TODO: update next_instruction_pointer
@@ -905,15 +909,23 @@
             <span class="kw">let </span>addr = env.get_instruction_part(InstructionPart::RS);
             <span class="kw">let </span>offset = env.get_immediate();
             <span class="kw">let </span>addr_with_offset = addr.clone() + offset.clone();
-            <span class="macro">debug!</span>(<span class="string">&quot;lw {}, {}({})&quot;</span>, dest.clone(), offset.clone(), addr.clone());
+            <span class="macro">debug!</span>(
+                <span class="string">&quot;lw {:?}, {:?}({:?})&quot;</span>,
+                dest.clone(),
+                offset.clone(),
+                addr.clone()
+            );
             <span class="comment">// We load 4 bytes, i.e. one word.
             </span><span class="kw">let </span>v0 = env.fetch_memory(<span class="kw-2">&amp;</span>addr_with_offset);
             <span class="kw">let </span>v1 = env.fetch_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">1</span>)));
             <span class="kw">let </span>v2 = env.fetch_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">2</span>)));
             <span class="kw">let </span>v3 = env.fetch_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">3</span>)));
-            <span class="kw">let </span>value = (v0 &lt;&lt; <span class="number">24</span>) + (v1 &lt;&lt; <span class="number">16</span>) + (v2 &lt;&lt; <span class="number">8</span>) + v3;
+            <span class="kw">let </span>value = (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
+                + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
+                + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
+                + v3;
             <span class="macro">debug!</span>(
-                <span class="string">&quot;Loaded 32 bits value from {}: {}&quot;</span>,
+                <span class="string">&quot;Loaded 32 bits value from {:?}: {:?}&quot;</span>,
                 addr_with_offset.clone(),
                 value
             );
