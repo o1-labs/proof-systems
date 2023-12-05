@@ -515,6 +515,12 @@
 <a href="#515" id="515">515</a>
 <a href="#516" id="516">516</a>
 <a href="#517" id="517">517</a>
+<a href="#518" id="518">518</a>
+<a href="#519" id="519">519</a>
+<a href="#520" id="520">520</a>
+<a href="#521" id="521">521</a>
+<a href="#522" id="522">522</a>
+<a href="#523" id="523">523</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -562,8 +568,8 @@
 
 <span class="kw">pub struct </span>Env&lt;Fp&gt; {
     <span class="kw">pub </span>instruction_parts: InstructionParts&lt;u32&gt;,
-    <span class="kw">pub </span>instruction_counter: usize,
-    <span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
+    <span class="kw">pub </span>instruction_counter: u32, <span class="comment">// TODO: u32 will not be big enough..
+    </span><span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
     <span class="kw">pub </span>memory_write_index: Vec&lt;(u32, Vec&lt;u32&gt;)&gt;, <span class="comment">// TODO: u32 will not be big enough..
     </span><span class="kw">pub </span>registers: Registers&lt;u32&gt;,
     <span class="kw">pub </span>registers_write_index: Registers&lt;usize&gt;,
@@ -625,6 +631,10 @@
     }
 
     <span class="kw">type </span>Variable = u32;
+
+    <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.instruction_counter
+    }
 
     <span class="kw">fn </span>overwrite_register_checked(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
@@ -766,7 +776,7 @@
             <span class="comment">// Will be modified by decode_instruction.
             // We set the instruction parts to 0 to begin
             </span>instruction_parts: InstructionParts::default(),
-            instruction_counter: state.step <span class="kw">as </span>usize,
+            instruction_counter: state.step <span class="kw">as </span>u32,
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
                 .iter()
@@ -952,6 +962,8 @@
         }
 
         interpreter::interpret_instruction(<span class="self">self</span>, opcode);
+
+        <span class="self">self</span>.instruction_counter += <span class="number">1</span>;
     }
 
     <span class="kw">fn </span>should_trigger_at(<span class="kw-2">&amp;</span><span class="self">self</span>, at: StepFrequency) -&gt; bool {
@@ -1000,7 +1012,7 @@
             </span><span class="kw">let </span>insn = <span class="self">self</span>.get_opcode().unwrap();
 
             <span class="comment">// Approximate instruction per seconds
-            </span><span class="kw">let </span>how_many_steps = step - start.step;
+            </span><span class="kw">let </span>how_many_steps = step <span class="kw">as </span>usize - start.step;
             <span class="kw">let </span>ips = how_many_steps <span class="kw">as </span>f64 / elapsed.as_secs() <span class="kw">as </span>f64;
 
             <span class="kw">let </span>pages = <span class="self">self</span>.memory.len();

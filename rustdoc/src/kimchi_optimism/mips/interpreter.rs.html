@@ -623,6 +623,8 @@
 <a href="#623" id="623">623</a>
 <a href="#624" id="624">624</a>
 <a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Index;
@@ -827,6 +829,8 @@
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::fmt::Debug;
+
+    <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>overwrite_register_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, register_idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
 
