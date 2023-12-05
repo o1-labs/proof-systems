@@ -756,7 +756,25 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         unsafe { env.bitmask(&instruction, 16, 0, pos) }
     };
     match instr {
-        ITypeInstruction::BranchEq => (),
+        ITypeInstruction::BranchEq => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let equals = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.equals_zero(&(rs - rt), pos) }
+            };
+            let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::BranchNeq => (),
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
