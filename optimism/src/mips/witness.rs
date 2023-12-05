@@ -287,6 +287,11 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
+    pub fn reset_scratch_state(&mut self) {
+        self.scratch_state_idx = 0;
+        self.scratch_state = fresh_scratch_state();
+    }
+
     pub fn write_column(&mut self, column: Column, value: u64) {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value.into(),
@@ -421,6 +426,7 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
+        self.reset_scratch_state();
         let (opcode, instruction) = self.decode_instruction();
         let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
         debug!("instruction: {:?}", opcode);
