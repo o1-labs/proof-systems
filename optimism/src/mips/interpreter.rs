@@ -683,7 +683,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
-        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
         (v0 * Env::constant(1 << 24))
             + (v1 * Env::constant(1 << 16))
             + (v2 * Env::constant(1 << 8))
@@ -699,23 +699,21 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 0, pos) }
     };
-    match instr {
-        JTypeInstruction::Jump => {
-            // > The address stored in a j instruction is 26 bits of the address
-            // > associated with the specified label. The 26 bits are achieved by
-            // > dropping the high-order 4 bits of the address and the low-order 2
-            // > bits (which would always be 00, since addresses are always
-            // > divisible by 4).
-            // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            env.set_instruction_pointer(next_instruction_pointer);
-            env.set_next_instruction_pointer(addr * Env::constant(4));
-            // REMOVEME: when all jtype instructions are implemented.
-            return;
-        }
-        JTypeInstruction::JumpAndLink => (),
+    let instruction_pointer_high_bits = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 28, pos) }
     };
-    // REMOVEME: when all jtype instructions are implemented.
-    env.set_halted(Env::constant(1));
+    let target_addr =
+        (instruction_pointer_high_bits * Env::constant(1 << 28)) + (addr * Env::constant(1 << 2));
+    match instr {
+        JTypeInstruction::Jump => (),
+        JTypeInstruction::JumpAndLink => {
+            env.write_register(&Env::constant(31), instruction_pointer + Env::constant(8));
+        }
+    };
+    env.set_instruction_pointer(next_instruction_pointer);
+    env.set_next_instruction_pointer(target_addr);
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
