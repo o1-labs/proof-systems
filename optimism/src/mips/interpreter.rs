@@ -1,4 +1,5 @@
 use log::debug;
+use crate::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -397,13 +398,65 @@ pub trait InterpreterEnv {
         // TODO
     }
 
-    fn set_instruction_pointer(&mut self, ip: Self::Variable);
+    fn set_instruction_pointer(&mut self, ip: Self::Variable) {
+        let idx = Self::constant(REGISTER_CURRENT_IP as u32);
+        let new_accessed = self.instruction_counter() + Self::constant(1);
+        unsafe {
+            self.push_register_access(&idx, new_accessed.clone());
+        }
+        unsafe {
+            self.push_register(&idx, ip.clone());
+        }
+        self.add_lookup(Lookup {
+            numerator: -1,
+            table_id: LookupTable::RegisterLookup,
+            value: vec![idx, new_accessed, ip],
+        });
+    }
 
-    fn get_instruction_pointer(&self) -> Self::Variable;
+    fn get_instruction_pointer(&mut self) -> Self::Variable {
+        let idx = Self::constant(REGISTER_CURRENT_IP as u32);
+        let ip = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_register(&idx, value_location) }
+        };
+        self.add_lookup(Lookup {
+            numerator: 1,
+            table_id: LookupTable::RegisterLookup,
+            value: vec![idx, self.instruction_counter(), ip.clone()],
+        });
+        ip
+    }
 
-    fn set_next_instruction_pointer(&mut self, ip: Self::Variable);
+    fn set_next_instruction_pointer(&mut self, ip: Self::Variable) {
+        let idx = Self::constant(REGISTER_NEXT_IP as u32);
+        let new_accessed = self.instruction_counter() + Self::constant(1);
+        unsafe {
+            self.push_register_access(&idx, new_accessed.clone());
+        }
+        unsafe {
+            self.push_register(&idx, ip.clone());
+        }
+        self.add_lookup(Lookup {
+            numerator: -1,
+            table_id: LookupTable::RegisterLookup,
+            value: vec![idx, new_accessed, ip],
+        });
+    }
 
-    fn get_next_instruction_pointer(&self) -> Self::Variable;
+    fn get_next_instruction_pointer(&mut self) -> Self::Variable {
+        let idx = Self::constant(REGISTER_NEXT_IP as u32);
+        let ip = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_register(&idx, value_location) }
+        };
+        self.add_lookup(Lookup {
+            numerator: 1,
+            table_id: LookupTable::RegisterLookup,
+            value: vec![idx, self.instruction_counter(), ip.clone()],
+        });
+        ip
+    }
 
     fn constant(x: u32) -> Self::Variable;
 

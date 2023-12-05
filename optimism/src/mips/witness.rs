@@ -22,7 +22,7 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 29;
+pub const SCRATCH_SIZE: usize = 31;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -198,22 +198,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             }
         }
         panic!("Could not write to address")
-    }
-
-    fn set_instruction_pointer(&mut self, ip: Self::Variable) {
-        self.registers.current_instruction_pointer = ip;
-    }
-
-    fn get_instruction_pointer(&self) -> Self::Variable {
-        self.registers.current_instruction_pointer
-    }
-
-    fn set_next_instruction_pointer(&mut self, ip: Self::Variable) {
-        self.registers.next_instruction_pointer = ip;
-    }
-
-    fn get_next_instruction_pointer(&self) -> Self::Variable {
-        self.registers.next_instruction_pointer
     }
 
     fn constant(x: u32) -> Self::Variable {
