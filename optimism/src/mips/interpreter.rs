@@ -216,6 +216,16 @@ pub trait InterpreterEnv {
         output: Self::Position,
     ) -> Self::Variable;
 
+    /// Fetch the last 'access index' that the memory at address `addr` was written at, and store
+    /// it in local position `output`.
+    ///
+    /// This is unsafe: no lookups or other constraints are added as part of this operation.
+    unsafe fn fetch_memory_access(
+        &mut self,
+        addr: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable;
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
     fn get_immediate(&self) -> Self::Variable {

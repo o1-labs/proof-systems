@@ -47,7 +47,7 @@ pub struct Env<Fp> {
     pub instruction_parts: InstructionParts<u32>,
     pub instruction_counter: usize,
     pub memory: Vec<(u32, Vec<u8>)>,
-    pub memory_write_index: Vec<(u32, Vec<usize>)>,
+    pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<usize>,
     pub instruction_pointer: u32,
@@ -150,6 +150,23 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         panic!("Could not access address")
     }
 
+    unsafe fn fetch_memory_access(
+        &mut self,
+        addr: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable {
+        let page = addr >> PAGE_ADDRESS_SIZE;
+        let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
+        for (page_index, memory_write_index) in self.memory_write_index.iter() {
+            if *page_index == page {
+                let value = memory_write_index[page_address];
+                self.write_column(output, value.into());
+                return value.into();
+            }
+        }
+        panic!("Could not access address")
+    }
+
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
         self.instruction_pointer = ip;
         // Set next instruction pointer?
@@ -212,7 +229,7 @@ impl<Fp: Field> Env<Fp> {
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
                 .iter()
-                .map(|offset| (*offset, vec![0usize; page_size]))
+                .map(|offset| (*offset, vec![0u32; page_size]))
                 .collect(),
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
