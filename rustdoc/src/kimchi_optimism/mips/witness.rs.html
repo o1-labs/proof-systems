@@ -529,10 +529,6 @@
 <a href="#529" id="529">529</a>
 <a href="#530" id="530">530</a>
 <a href="#531" id="531">531</a>
-<a href="#532" id="532">532</a>
-<a href="#533" id="533">533</a>
-<a href="#534" id="534">534</a>
-<a href="#535" id="535">535</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -541,7 +537,7 @@
     mips::{
         column::Column,
         interpreter::{
-            <span class="self">self</span>, ITypeInstruction, Instruction, InstructionPart, InstructionParts, InterpreterEnv,
+            <span class="self">self</span>, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
@@ -579,7 +575,6 @@
 }
 
 <span class="kw">pub struct </span>Env&lt;Fp&gt; {
-    <span class="kw">pub </span>instruction_parts: InstructionParts&lt;u32&gt;,
     <span class="kw">pub </span>instruction_counter: u32, <span class="comment">// TODO: u32 will not be big enough..
     </span><span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
     <span class="kw">pub </span>memory_write_index: Vec&lt;(u32, Vec&lt;u32&gt;)&gt;, <span class="comment">// TODO: u32 will not be big enough..
@@ -680,10 +675,6 @@
         <span class="self">self</span>.registers_write_index[<span class="kw-2">*</span>idx <span class="kw">as </span>usize] = value
     }
 
-    <span class="kw">fn </span>get_instruction_part(<span class="kw-2">&amp;</span><span class="self">self</span>, part: InstructionPart) -&gt; <span class="self">Self</span>::Variable {
-        <span class="self">self</span>.instruction_parts[part]
-    }
-
     <span class="kw">unsafe fn </span>fetch_memory(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
@@ -755,6 +746,18 @@
         x
     }
 
+    <span class="kw">unsafe fn </span>bitmask(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>res = (x &gt;&gt; lowest_bit) &amp; ((<span class="number">1 </span>&lt;&lt; (highest_bit - lowest_bit)) - <span class="number">1</span>);
+        <span class="self">self</span>.write_column(position, res.into());
+        res
+    }
+
     <span class="kw">fn </span>set_halted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable) {
         <span class="kw">if </span>flag == <span class="number">0 </span>{
             <span class="self">self</span>.halt = <span class="bool-val">false
@@ -797,9 +800,6 @@
         };
 
         Env {
-            <span class="comment">// Will be modified by decode_instruction.
-            // We set the instruction parts to 0 to begin
-            </span>instruction_parts: InstructionParts::default(),
             instruction_counter: state.step <span class="kw">as </span>u32,
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
@@ -816,6 +816,11 @@
             syscall_env,
             preimage_oracle,
         }
+    }
+
+    <span class="kw">pub fn </span>reset_scratch_state(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="self">self</span>.scratch_state_idx = <span class="number">0</span>;
+        <span class="self">self</span>.scratch_state = fresh_scratch_state();
     }
 
     <span class="kw">pub fn </span>write_column(<span class="kw-2">&amp;mut </span><span class="self">self</span>, column: Column, value: u64) {
@@ -952,30 +957,17 @@
     }
 
     <span class="kw">pub fn </span>step(<span class="kw-2">&amp;mut </span><span class="self">self</span>, config: <span class="kw-2">&amp;</span>VmConfiguration, metadata: <span class="kw-2">&amp;</span>Meta, start: <span class="kw-2">&amp;</span>Start) {
+        <span class="self">self</span>.reset_scratch_state();
         <span class="kw">let </span>(opcode, instruction) = <span class="self">self</span>.decode_instruction();
-        <span class="kw">let </span>op_code = (instruction &gt;&gt; <span class="number">26</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- <span class="number">26</span>)) - <span class="number">1</span>);
-        <span class="kw">let </span>rs = (instruction &gt;&gt; <span class="number">21</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">26 </span>- <span class="number">21</span>)) - <span class="number">1</span>);
-        <span class="kw">let </span>rt = (instruction &gt;&gt; <span class="number">16</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">21 </span>- <span class="number">16</span>)) - <span class="number">1</span>);
-        <span class="kw">let </span>rd = (instruction &gt;&gt; <span class="number">11</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">16 </span>- <span class="number">11</span>)) - <span class="number">1</span>);
-        <span class="kw">let </span>shamt = (instruction &gt;&gt; <span class="number">6</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">11 </span>- <span class="number">6</span>)) - <span class="number">1</span>);
-        <span class="kw">let </span>funct = instruction &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">6</span>) - <span class="number">1</span>);
-        <span class="kw">let </span>instruction_parts: InstructionParts&lt;u32&gt; = InstructionParts {
-            op_code,
-            rs,
-            rt,
-            rd,
-            shamt,
-            funct,
-        };
+        <span class="kw">let </span>instruction_parts: InstructionParts = InstructionParts::decode(instruction);
         <span class="macro">debug!</span>(<span class="string">&quot;instruction: {:?}&quot;</span>, opcode);
         <span class="macro">debug!</span>(<span class="string">&quot;Instruction hex: {:#010x}&quot;</span>, instruction);
         <span class="macro">debug!</span>(<span class="string">&quot;Instruction: {:#034b}&quot;</span>, instruction);
-        <span class="macro">debug!</span>(<span class="string">&quot;Rs: {:#07b}&quot;</span>, rs);
-        <span class="macro">debug!</span>(<span class="string">&quot;Rt: {:#07b}&quot;</span>, rt);
-        <span class="macro">debug!</span>(<span class="string">&quot;Rd: {:#07b}&quot;</span>, rd);
-        <span class="macro">debug!</span>(<span class="string">&quot;Shamt: {:#07b}&quot;</span>, shamt);
-        <span class="macro">debug!</span>(<span class="string">&quot;Funct: {:#08b}&quot;</span>, funct);
-        <span class="self">self</span>.instruction_parts = instruction_parts;
+        <span class="macro">debug!</span>(<span class="string">&quot;Rs: {:#07b}&quot;</span>, instruction_parts.rs);
+        <span class="macro">debug!</span>(<span class="string">&quot;Rt: {:#07b}&quot;</span>, instruction_parts.rt);
+        <span class="macro">debug!</span>(<span class="string">&quot;Rd: {:#07b}&quot;</span>, instruction_parts.rd);
+        <span class="macro">debug!</span>(<span class="string">&quot;Shamt: {:#07b}&quot;</span>, instruction_parts.shamt);
+        <span class="macro">debug!</span>(<span class="string">&quot;Funct: {:#08b}&quot;</span>, instruction_parts.funct);
 
         <span class="self">self</span>.pp_info(<span class="kw-2">&amp;</span>config.info_at, metadata, start);
 

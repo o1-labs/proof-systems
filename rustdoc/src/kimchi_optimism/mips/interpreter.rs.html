@@ -777,9 +777,94 @@
 <a href="#777" id="777">777</a>
 <a href="#778" id="778">778</a>
 <a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
-<span class="kw">use </span>serde::{Deserialize, Serialize};
-<span class="kw">use </span>std::ops::Index;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
 
 <span class="kw">pub const </span>FD_STDIN: u32 = <span class="number">0</span>;
@@ -849,42 +934,6 @@
 </span><span class="kw">pub const </span>REGISTER_FP: u32 = <span class="number">30</span>;
 <span class="comment">// Return address (used by function call)
 </span><span class="kw">pub const </span>REGISTER_RA: u32 = <span class="number">31</span>;
-
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-</span><span class="kw">pub enum </span>InstructionPart {
-    OpCode,
-    RS,
-    RT,
-    RD,
-    Shamt,
-    Funct,
-}
-
-<span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
-</span><span class="kw">pub struct </span>InstructionParts&lt;T&gt; {
-    <span class="kw">pub </span>op_code: T,
-    <span class="kw">pub </span>rs: T,
-    <span class="kw">pub </span>rt: T,
-    <span class="kw">pub </span>rd: T,
-    <span class="kw">pub </span>shamt: T,
-    <span class="kw">pub </span>funct: T,
-}
-
-<span class="comment">// To use InstructionParts[OpCode]
-</span><span class="kw">impl</span>&lt;A&gt; Index&lt;InstructionPart&gt; <span class="kw">for </span>InstructionParts&lt;A&gt; {
-    <span class="kw">type </span>Output = A;
-
-    <span class="kw">fn </span>index(<span class="kw-2">&amp;</span><span class="self">self</span>, index: InstructionPart) -&gt; <span class="kw-2">&amp;</span><span class="self">Self</span>::Output {
-        <span class="kw">match </span>index {
-            InstructionPart::OpCode =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.op_code,
-            InstructionPart::RS =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.rs,
-            InstructionPart::RT =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.rt,
-            InstructionPart::RD =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.rd,
-            InstructionPart::Shamt =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.shamt,
-            InstructionPart::Funct =&gt; <span class="kw-2">&amp;</span><span class="self">self</span>.funct,
-        }
-    }
-}
 
 <span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>Instruction {
@@ -1216,18 +1265,26 @@
 
     <span class="kw">fn </span>set_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable);
 
-    <span class="kw">fn </span>get_immediate(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable {
-        <span class="comment">// The immediate value is the last 16bits
-        </span>(<span class="self">self</span>.get_instruction_part(InstructionPart::RD) * <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))
-            + (<span class="self">self</span>.get_instruction_part(InstructionPart::Shamt) * <span class="self">Self</span>::constant(<span class="number">1 </span>&lt;&lt; <span class="number">6</span>))
-            + (<span class="self">self</span>.get_instruction_part(InstructionPart::Funct))
-    }
-
     <span class="kw">fn </span>get_instruction_pointer(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>get_instruction_part(<span class="kw-2">&amp;</span><span class="self">self</span>, part: InstructionPart) -&gt; <span class="self">Self</span>::Variable;
-
     <span class="kw">fn </span>constant(x: u32) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="doccomment">/// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
+    /// the result in `position`.
+    /// `lowest_bit` becomes the least-significant bit of the resulting value.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
+    /// bits.
+    </span><span class="kw">unsafe fn </span>bitmask(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>set_halted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable);
 }
@@ -1289,11 +1346,27 @@
 }
 
 <span class="kw">pub fn </span>interpret_jtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: JTypeInstruction) {
-    <span class="kw">let </span>addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">21</span>))
-        + (env.get_instruction_part(InstructionPart::RT) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
-        + (env.get_instruction_part(InstructionPart::RD) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))
-        + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">6</span>))
-        + (env.get_instruction_part(InstructionPart::Funct));
+    <span class="kw">let </span>instruction = {
+        <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
+        <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
+        <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
+        <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
+        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer + Env::constant(<span class="number">3</span>)));
+        (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
+            + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
+            + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
+            + v3
+    };
+    <span class="kw">let </span>_opcode = {
+        <span class="comment">// FIXME: Requires a range check
+        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">26</span>, pos) }
+    };
+    <span class="kw">let </span>addr = {
+        <span class="comment">// FIXME: Requires a range check
+        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">26</span>, <span class="number">0</span>, pos) }
+    };
     <span class="kw">match </span>instr {
         JTypeInstruction::Jump =&gt; {
             <span class="comment">// &gt; The address stored in a j instruction is 26 bits of the address
@@ -1313,9 +1386,37 @@
 }
 
 <span class="kw">pub fn </span>interpret_itype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: ITypeInstruction) {
-    <span class="kw">let </span>rs = env.get_instruction_part(InstructionPart::RS);
-    <span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
-    <span class="kw">let </span>immediate = env.get_immediate();
+    <span class="kw">let </span>instruction = {
+        <span class="kw">let </span>instruction_pointer = env.get_instruction_pointer();
+        <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
+        <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
+        <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
+        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer + Env::constant(<span class="number">3</span>)));
+        (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
+            + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
+            + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
+            + v3
+    };
+    <span class="kw">let </span>_opcode = {
+        <span class="comment">// FIXME: Requires a range check
+        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">26</span>, pos) }
+    };
+    <span class="kw">let </span>rs = {
+        <span class="comment">// FIXME: Requires a range check
+        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">26</span>, <span class="number">21</span>, pos) }
+    };
+    <span class="kw">let </span>rt = {
+        <span class="comment">// FIXME: Requires a range check
+        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">21</span>, <span class="number">16</span>, pos) }
+    };
+    <span class="kw">let </span>immediate = {
+        <span class="comment">// FIXME: Requires a range check
+        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">16</span>, <span class="number">0</span>, pos) }
+    };
     <span class="kw">match </span>instr {
         ITypeInstruction::BranchEq =&gt; (),
         ITypeInstruction::BranchNeq =&gt; (),
@@ -1402,10 +1503,51 @@
     </span>env.set_halted(Env::constant(<span class="number">1</span>))
 }
 
+<span class="kw">pub mod </span>debugging {
+    <span class="kw">use </span>serde::{Deserialize, Serialize};
+    <span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
+    </span><span class="kw">pub struct </span>InstructionParts {
+        <span class="kw">pub </span>op_code: u32,
+        <span class="kw">pub </span>rs: u32,
+        <span class="kw">pub </span>rt: u32,
+        <span class="kw">pub </span>rd: u32,
+        <span class="kw">pub </span>shamt: u32,
+        <span class="kw">pub </span>funct: u32,
+    }
+
+    <span class="kw">impl </span>InstructionParts {
+        <span class="kw">pub fn </span>decode(instruction: u32) -&gt; <span class="self">Self </span>{
+            <span class="kw">let </span>op_code = (instruction &gt;&gt; <span class="number">26</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- <span class="number">26</span>)) - <span class="number">1</span>);
+            <span class="kw">let </span>rs = (instruction &gt;&gt; <span class="number">21</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">26 </span>- <span class="number">21</span>)) - <span class="number">1</span>);
+            <span class="kw">let </span>rt = (instruction &gt;&gt; <span class="number">16</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">21 </span>- <span class="number">16</span>)) - <span class="number">1</span>);
+            <span class="kw">let </span>rd = (instruction &gt;&gt; <span class="number">11</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">16 </span>- <span class="number">11</span>)) - <span class="number">1</span>);
+            <span class="kw">let </span>shamt = (instruction &gt;&gt; <span class="number">6</span>) &amp; ((<span class="number">1 </span>&lt;&lt; (<span class="number">11 </span>- <span class="number">6</span>)) - <span class="number">1</span>);
+            <span class="kw">let </span>funct = instruction &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">6</span>) - <span class="number">1</span>);
+            InstructionParts {
+                op_code,
+                rs,
+                rt,
+                rd,
+                shamt,
+                funct,
+            }
+        }
+
+        <span class="kw">pub fn </span>encode(<span class="self">self</span>) -&gt; u32 {
+            (<span class="self">self</span>.op_code &lt;&lt; <span class="number">26</span>)
+                | (<span class="self">self</span>.rs &lt;&lt; <span class="number">21</span>)
+                | (<span class="self">self</span>.rt &lt;&lt; <span class="number">16</span>)
+                | (<span class="self">self</span>.rd &lt;&lt; <span class="number">11</span>)
+                | (<span class="self">self</span>.shamt &lt;&lt; <span class="number">6</span>)
+                | <span class="self">self</span>.funct
+        }
+    }
+}
+
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
 
-    <span class="kw">use super</span>::<span class="kw-2">*</span>;
+    <span class="kw">use super</span>::{debugging::<span class="kw-2">*</span>, <span class="kw-2">*</span>};
     <span class="kw">use </span><span class="kw">crate</span>::cannon::{HostProgram, PAGE_SIZE};
     <span class="kw">use </span><span class="kw">crate</span>::mips::registers::Registers;
     <span class="kw">use </span><span class="kw">crate</span>::mips::witness::{Env, SyscallEnv, SCRATCH_SIZE};
@@ -1421,15 +1563,24 @@
         <span class="kw">let </span><span class="kw-2">mut </span>rng = rand::thread_rng();
         <span class="kw">let </span>dummy_preimage_oracle = PreImageOracle::create(<span class="kw-2">&amp;</span>host_program);
         Env {
-            instruction_parts: InstructionParts::default(),
             instruction_counter: <span class="number">0</span>,
-            <span class="comment">// Only 4kb of memory (one PAGE_ADDRESS_SIZE)
-            </span>memory: <span class="macro">vec!</span>[(<span class="number">0</span>, <span class="macro">vec!</span>[rng.gen(); PAGE_SIZE <span class="kw">as </span>usize])],
-            memory_write_index: <span class="macro">vec!</span>[(<span class="number">0</span>, <span class="macro">vec!</span>[<span class="number">0</span>; PAGE_SIZE <span class="kw">as </span>usize])],
+            <span class="comment">// Only 8kb of memory (two PAGE_ADDRESS_SIZE)
+            </span>memory: <span class="macro">vec!</span>[
+                <span class="comment">// Read/write memory
+                </span>(<span class="number">0</span>, <span class="macro">vec!</span>[rng.gen(); PAGE_SIZE <span class="kw">as </span>usize]),
+                <span class="comment">// Executable memory
+                </span>(<span class="number">1</span>, <span class="macro">vec!</span>[<span class="number">0</span>; PAGE_SIZE <span class="kw">as </span>usize]),
+            ],
+            memory_write_index: <span class="macro">vec!</span>[
+                <span class="comment">// Read/write memory
+                </span>(<span class="number">0</span>, <span class="macro">vec!</span>[<span class="number">0</span>; PAGE_SIZE <span class="kw">as </span>usize]),
+                <span class="comment">// Executable memory
+                </span>(<span class="number">1</span>, <span class="macro">vec!</span>[<span class="number">0</span>; PAGE_SIZE <span class="kw">as </span>usize]),
+            ],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
-            instruction_pointer: <span class="number">0</span>,
-            next_instruction_pointer: <span class="number">0</span>,
+            instruction_pointer: PAGE_SIZE,
+            next_instruction_pointer: PAGE_SIZE + <span class="number">4</span>,
             scratch_state_idx: <span class="number">0</span>,
             scratch_state: [Fp::from(<span class="number">0</span>); SCRATCH_SIZE],
             halt: <span class="bool-val">true</span>,
@@ -1438,20 +1589,31 @@
         }
     }
 
+    <span class="kw">fn </span>write_instruction(env: <span class="kw-2">&amp;mut </span>Env&lt;Fp&gt;, instruction_parts: InstructionParts) {
+        <span class="kw">let </span>instr = instruction_parts.encode();
+        env.memory[<span class="number">1</span>].<span class="number">1</span>[<span class="number">0</span>] = ((instr &gt;&gt; <span class="number">24</span>) &amp; <span class="number">0xFF</span>) <span class="kw">as </span>u8;
+        env.memory[<span class="number">1</span>].<span class="number">1</span>[<span class="number">1</span>] = ((instr &gt;&gt; <span class="number">16</span>) &amp; <span class="number">0xFF</span>) <span class="kw">as </span>u8;
+        env.memory[<span class="number">1</span>].<span class="number">1</span>[<span class="number">2</span>] = ((instr &gt;&gt; <span class="number">8</span>) &amp; <span class="number">0xFF</span>) <span class="kw">as </span>u8;
+        env.memory[<span class="number">1</span>].<span class="number">1</span>[<span class="number">3</span>] = (instr &amp; <span class="number">0xFF</span>) <span class="kw">as </span>u8;
+    }
+
     <span class="attr">#[test]
     </span><span class="kw">fn </span>test_unit_jump_instruction() {
         <span class="comment">// We only care about instruction parts and instruction pointer
         </span><span class="kw">let </span><span class="kw-2">mut </span>dummy_env = dummy_env();
         <span class="comment">// Instruction: 0b00001000000000101010011001100111
         // j 173671
-        </span>dummy_env.instruction_parts = InstructionParts {
-            op_code: <span class="number">0b000010</span>,
-            rs: <span class="number">0b00000</span>,
-            rt: <span class="number">0b00010</span>,
-            rd: <span class="number">0b10100</span>,
-            shamt: <span class="number">0b11001</span>,
-            funct: <span class="number">0b100111</span>,
-        };
+        </span>write_instruction(
+            <span class="kw-2">&amp;mut </span>dummy_env,
+            InstructionParts {
+                op_code: <span class="number">0b000010</span>,
+                rs: <span class="number">0b00000</span>,
+                rt: <span class="number">0b00010</span>,
+                rd: <span class="number">0b10100</span>,
+                shamt: <span class="number">0b11001</span>,
+                funct: <span class="number">0b100111</span>,
+            },
+        );
         interpret_jtype(<span class="kw-2">&amp;mut </span>dummy_env, JTypeInstruction::Jump);
         <span class="macro">assert_eq!</span>(dummy_env.instruction_pointer, <span class="number">694684</span>);
     }
@@ -1477,14 +1639,17 @@
         <span class="kw">let </span>v3 = mem[(aligned_addr + <span class="number">3</span>) <span class="kw">as </span>usize];
         <span class="kw">let </span>exp_v = ((v0 <span class="kw">as </span>u32) &lt;&lt; <span class="number">24</span>) + ((v1 <span class="kw">as </span>u32) &lt;&lt; <span class="number">16</span>) + ((v2 <span class="kw">as </span>u32) &lt;&lt; <span class="number">8</span>) + (v3 <span class="kw">as </span>u32);
         <span class="comment">// Set random alue into registers
-        </span>dummy_env.instruction_parts = InstructionParts {
-            op_code: <span class="number">0b000010</span>,
-            rs: <span class="number">0b11101</span>,
-            rt: <span class="number">0b00100</span>,
-            rd: <span class="number">0b00000</span>,
-            shamt: <span class="number">0b00000</span>,
-            funct: <span class="number">0b000000</span>,
-        };
+        </span>write_instruction(
+            <span class="kw-2">&amp;mut </span>dummy_env,
+            InstructionParts {
+                op_code: <span class="number">0b000010</span>,
+                rs: <span class="number">0b11101</span>,
+                rt: <span class="number">0b00100</span>,
+                rd: <span class="number">0b00000</span>,
+                shamt: <span class="number">0b00000</span>,
+                funct: <span class="number">0b000000</span>,
+            },
+        );
         interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::Load32);
         <span class="macro">assert_eq!</span>(
             dummy_env.registers.general_purpose[REGISTER_A0 <span class="kw">as </span>usize],
@@ -1498,14 +1663,17 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>dummy_env = dummy_env();
         <span class="comment">// Instruction: 0b10001111101001000000000000000000
         // addi	a1,sp,4
-        </span>dummy_env.instruction_parts = InstructionParts {
-            op_code: <span class="number">0b000010</span>,
-            rs: <span class="number">0b11101</span>,
-            rt: <span class="number">0b00101</span>,
-            rd: <span class="number">0b00000</span>,
-            shamt: <span class="number">0b00000</span>,
-            funct: <span class="number">0b000100</span>,
-        };
+        </span>write_instruction(
+            <span class="kw-2">&amp;mut </span>dummy_env,
+            InstructionParts {
+                op_code: <span class="number">0b000010</span>,
+                rs: <span class="number">0b11101</span>,
+                rt: <span class="number">0b00101</span>,
+                rd: <span class="number">0b00000</span>,
+                shamt: <span class="number">0b00000</span>,
+                funct: <span class="number">0b000100</span>,
+            },
+        );
         interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::AddImmediate);
         <span class="macro">assert_eq!</span>(
             dummy_env.registers.general_purpose[REGISTER_A1 <span class="kw">as </span>usize],
@@ -1519,14 +1687,17 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>dummy_env = dummy_env();
         <span class="comment">// Instruction: 0b00111100000000010000000000001010
         // lui at, 0xa
-        </span>dummy_env.instruction_parts = InstructionParts {
-            op_code: <span class="number">0b000010</span>,
-            rs: <span class="number">0b00000</span>,
-            rt: <span class="number">0b00001</span>,
-            rd: <span class="number">0b00000</span>,
-            shamt: <span class="number">0b00000</span>,
-            funct: <span class="number">0b001010</span>,
-        };
+        </span>write_instruction(
+            <span class="kw-2">&amp;mut </span>dummy_env,
+            InstructionParts {
+                op_code: <span class="number">0b000010</span>,
+                rs: <span class="number">0b00000</span>,
+                rt: <span class="number">0b00001</span>,
+                rd: <span class="number">0b00000</span>,
+                shamt: <span class="number">0b00000</span>,
+                funct: <span class="number">0b001010</span>,
+            },
+        );
         interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::LoadUpperImmediate);
         <span class="macro">assert_eq!</span>(
             dummy_env.registers.general_purpose[REGISTER_AT <span class="kw">as </span>usize],
@@ -1540,14 +1711,17 @@
         </span><span class="kw">let </span><span class="kw-2">mut </span>dummy_env = dummy_env();
         <span class="comment">// Instruction: 0b00100100001000010110110011101000
         // lui at, 0xa
-        </span>dummy_env.instruction_parts = InstructionParts {
-            op_code: <span class="number">0b001001</span>,
-            rs: <span class="number">0b00001</span>,
-            rt: <span class="number">0b00001</span>,
-            rd: <span class="number">0b01101</span>,
-            shamt: <span class="number">0b10011</span>,
-            funct: <span class="number">0b101000</span>,
-        };
+        </span>write_instruction(
+            <span class="kw-2">&amp;mut </span>dummy_env,
+            InstructionParts {
+                op_code: <span class="number">0b001001</span>,
+                rs: <span class="number">0b00001</span>,
+                rt: <span class="number">0b00001</span>,
+                rd: <span class="number">0b01101</span>,
+                shamt: <span class="number">0b10011</span>,
+                funct: <span class="number">0b101000</span>,
+            },
+        );
         <span class="kw">let </span>exp_res = dummy_env.registers[REGISTER_AT <span class="kw">as </span>usize] + <span class="number">27880</span>;
         interpret_itype(<span class="kw-2">&amp;mut </span>dummy_env, ITypeInstruction::AddImmediateUnsigned);
         <span class="macro">assert_eq!</span>(
