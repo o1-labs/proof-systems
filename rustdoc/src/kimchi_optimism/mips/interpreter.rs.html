@@ -750,6 +750,18 @@
 <a href="#750" id="750">750</a>
 <a href="#751" id="751">751</a>
 <a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
 
@@ -1190,6 +1202,15 @@
     ) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="kw">fn </span>set_halted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable);
+
+    <span class="kw">fn </span>sign_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, bitlength: u32) -&gt; <span class="self">Self</span>::Variable {
+        <span class="comment">// FIXME: Constrain `high_bit`
+        </span><span class="kw">let </span>high_bit = {
+            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.bitmask(x, bitlength, bitlength - <span class="number">1</span>, pos) }
+        };
+        high_bit * <span class="self">Self</span>::constant(((<span class="number">1 </span>&lt;&lt; (<span class="number">32 </span>- bitlength)) - <span class="number">1</span>) &lt;&lt; bitlength) + x.clone()
+    }
 }
 
 <span class="kw">pub fn </span>interpret_instruction&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: Instruction) {
@@ -1218,7 +1239,7 @@
         </span><span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">32</span>, <span class="number">26</span>, pos) }
     };
-    <span class="kw">let </span>_rs = {
+    <span class="kw">let </span>rs = {
         <span class="comment">// FIXME: Requires a range check
         </span><span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">26</span>, <span class="number">21</span>, pos) }
@@ -1261,7 +1282,12 @@
         RTypeInstruction::ShiftLeftLogicalVariable =&gt; (),
         RTypeInstruction::ShiftRightLogicalVariable =&gt; (),
         RTypeInstruction::ShiftRightArithmeticVariable =&gt; (),
-        RTypeInstruction::JumpRegister =&gt; (),
+        RTypeInstruction::JumpRegister =&gt; {
+            <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>rs);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(addr);
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::JumpAndLinkRegister =&gt; (),
         RTypeInstruction::SyscallMmap =&gt; (),
         RTypeInstruction::SyscallExitGroup =&gt; (),
@@ -1383,7 +1409,8 @@
         ITypeInstruction::BranchGtZero =&gt; (),
         ITypeInstruction::AddImmediate =&gt; {
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
-            <span class="kw">let </span>res = register_rs + immediate;
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
+            <span class="kw">let </span>res = register_rs + offset;
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
@@ -1393,7 +1420,8 @@
         ITypeInstruction::AddImmediateUnsigned =&gt; {
             <span class="macro">debug!</span>(<span class="string">&quot;Fetching register: {:?}&quot;</span>, rs);
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
-            <span class="kw">let </span>res = register_rs + immediate;
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
+            <span class="kw">let </span>res = register_rs + offset;
             env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
@@ -1417,10 +1445,10 @@
         ITypeInstruction::Load8 =&gt; (),
         ITypeInstruction::Load16 =&gt; (),
         ITypeInstruction::Load32 =&gt; {
+            <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>dest = rt;
-            <span class="kw">let </span>addr = rs;
-            <span class="kw">let </span>offset = immediate;
-            <span class="kw">let </span>addr_with_offset = addr.clone() + offset.clone();
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
+            <span class="kw">let </span>addr = base.clone() + offset.clone();
             <span class="macro">debug!</span>(
                 <span class="string">&quot;lw {:?}, {:?}({:?})&quot;</span>,
                 dest.clone(),
@@ -1428,19 +1456,15 @@
                 addr.clone()
             );
             <span class="comment">// We load 4 bytes, i.e. one word.
-            </span><span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>addr_with_offset);
-            <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">1</span>)));
-            <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">2</span>)));
-            <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">3</span>)));
+            </span><span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>addr);
+            <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">1</span>)));
+            <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">2</span>)));
+            <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(addr.clone() + Env::constant(<span class="number">3</span>)));
             <span class="kw">let </span>value = (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
                 + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
                 + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
                 + v3;
-            <span class="macro">debug!</span>(
-                <span class="string">&quot;Loaded 32 bits value from {:?}: {:?}&quot;</span>,
-                addr_with_offset.clone(),
-                value
-            );
+            <span class="macro">debug!</span>(<span class="string">&quot;Loaded 32 bits value from {:?}: {:?}&quot;</span>, addr.clone(), value);
             env.write_register(<span class="kw-2">&amp;</span>dest, value);
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
