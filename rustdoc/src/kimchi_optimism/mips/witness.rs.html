@@ -547,6 +547,10 @@
 <a href="#547" id="547">547</a>
 <a href="#548" id="548">548</a>
 <a href="#549" id="549">549</a>
+<a href="#550" id="550">550</a>
+<a href="#551" id="551">551</a>
+<a href="#552" id="552">552</a>
+<a href="#553" id="553">553</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -950,6 +954,10 @@
                 },
                 <span class="number">0x02 </span>=&gt; Instruction::JType(JTypeInstruction::Jump),
                 <span class="number">0x03 </span>=&gt; Instruction::JType(JTypeInstruction::JumpAndLink),
+                <span class="number">0x04 </span>=&gt; Instruction::IType(ITypeInstruction::BranchEq),
+                <span class="number">0x05 </span>=&gt; Instruction::IType(ITypeInstruction::BranchNeq),
+                <span class="number">0x06 </span>=&gt; Instruction::IType(ITypeInstruction::BranchLeqZero),
+                <span class="number">0x07 </span>=&gt; Instruction::IType(ITypeInstruction::BranchGtZero),
                 <span class="number">0x08 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediate),
                 <span class="number">0x09 </span>=&gt; Instruction::IType(ITypeInstruction::AddImmediateUnsigned),
                 <span class="number">0x0A </span>=&gt; Instruction::IType(ITypeInstruction::SetLessThanImmediate),
