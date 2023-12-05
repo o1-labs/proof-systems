@@ -401,6 +401,10 @@ pub trait InterpreterEnv {
 
     fn get_instruction_pointer(&self) -> Self::Variable;
 
+    fn set_next_instruction_pointer(&mut self, ip: Self::Variable);
+
+    fn get_next_instruction_pointer(&self) -> Self::Variable;
+
     fn constant(x: u32) -> Self::Variable;
 
     /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store

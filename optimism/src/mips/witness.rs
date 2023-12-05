@@ -204,11 +204,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable) {
         self.instruction_pointer = ip;
-        // Set next instruction pointer?
     }
 
     fn get_instruction_pointer(&self) -> Self::Variable {
         self.instruction_pointer
+    }
+
+    fn set_next_instruction_pointer(&mut self, ip: Self::Variable) {
+        self.next_instruction_pointer = ip;
+    }
+
+    fn get_next_instruction_pointer(&self) -> Self::Variable {
+        self.next_instruction_pointer
     }
 
     fn constant(x: u32) -> Self::Variable {
