@@ -677,6 +677,106 @@
 <a href="#677" id="677">677</a>
 <a href="#678" id="678">678</a>
 <a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Index;
@@ -875,6 +975,7 @@
 <span class="attr">#[derive(Copy, Clone, Debug)]
 </span><span class="kw">pub enum </span>LookupTable {
     MemoryLookup,
+    RegisterLookup,
 }
 
 <span class="attr">#[derive(Clone, Debug)]
@@ -899,9 +1000,112 @@
 
     <span class="kw">fn </span>instruction_counter(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>overwrite_register_checked(<span class="kw-2">&amp;mut </span><span class="self">self</span>, register_idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+    <span class="doccomment">/// Fetch the value of the general purpose register with index `idx` and store it in local
+    /// position `output`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    </span><span class="kw">unsafe fn </span>fetch_register(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        output: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="kw">fn </span>fetch_register_checked(<span class="kw-2">&amp;</span><span class="self">self</span>, register_idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable;
+    <span class="doccomment">/// Set the general purpose register with index `idx` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    </span><span class="kw">unsafe fn </span>push_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Fetch the last &#39;access index&#39; for the general purpose register with index `idx`, and store
+    /// it in local position `output`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    </span><span class="kw">unsafe fn </span>fetch_register_access(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        output: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="doccomment">/// Set the last &#39;access index&#39; for the general purpose register with index `idx` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    </span><span class="kw">unsafe fn </span>push_register_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Access the general purpose register with index `idx`, adding constraints asserting that the
+    /// old value was `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the registers if required, this function will
+    /// only update the access counter.
+    </span><span class="kw">unsafe fn </span>access_register(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        old_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        new_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    ) {
+        <span class="kw">let </span>last_accessed = {
+            <span class="kw">let </span>last_accessed_location = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register_access(idx, last_accessed_location) }
+        };
+        <span class="kw">let </span>instruction_counter = <span class="self">self</span>.instruction_counter();
+        <span class="kw">let </span>elapsed_time = instruction_counter.clone() - last_accessed.clone();
+        <span class="kw">let </span>new_accessed = {
+            <span class="comment">// Here, we write as if the register had been written *at the start of the next
+            // instruction*. This ensures that we can&#39;t &#39;time travel&#39; within this
+            // instruction, and claim to read the value that we&#39;re about to write!
+
+            // FIXME: A register should allow multiple accesses within the same instruction.
+
+            </span>instruction_counter + <span class="self">Self</span>::constant(<span class="number">1</span>)
+        };
+        <span class="self">self</span>.add_lookup(Lookup {
+            numerator: <span class="number">1</span>,
+            table_id: LookupTable::RegisterLookup,
+            value: <span class="macro">vec!</span>[idx.clone(), last_accessed, old_value.clone()],
+        });
+        <span class="self">self</span>.add_lookup(Lookup {
+            numerator: -<span class="number">1</span>,
+            table_id: LookupTable::RegisterLookup,
+            value: <span class="macro">vec!</span>[idx.clone(), new_accessed, new_value.clone()],
+        });
+        <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
+    }
+
+    <span class="kw">fn </span>read_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>value = {
+            <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(idx, value_location) }
+        };
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.access_register(idx, <span class="kw-2">&amp;</span>value, <span class="kw-2">&amp;</span>value);
+        };
+        value
+    }
+
+    <span class="kw">fn </span>write_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, new_value: <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>old_value = {
+            <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(idx, value_location) }
+        };
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.access_register(idx, <span class="kw-2">&amp;</span>old_value, <span class="kw-2">&amp;</span>new_value);
+        };
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.push_register(idx, new_value);
+        };
+    }
 
     <span class="doccomment">/// Fetch the memory value at address `addr` and store it in local position `output`.
     ///
@@ -1085,6 +1289,11 @@
 }
 
 <span class="kw">pub fn </span>interpret_jtype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: JTypeInstruction) {
+    <span class="kw">let </span>addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">21</span>))
+        + (env.get_instruction_part(InstructionPart::RT) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
+        + (env.get_instruction_part(InstructionPart::RD) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))
+        + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">6</span>))
+        + (env.get_instruction_part(InstructionPart::Funct));
     <span class="kw">match </span>instr {
         JTypeInstruction::Jump =&gt; {
             <span class="comment">// &gt; The address stored in a j instruction is 26 bits of the address
@@ -1093,12 +1302,7 @@
             // &gt; bits (which would always be 00, since addresses are always
             // &gt; divisible by 4).
             // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            </span><span class="kw">let </span>addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">21</span>))
-                + (env.get_instruction_part(InstructionPart::RT) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
-                + (env.get_instruction_part(InstructionPart::RD) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">11</span>))
-                + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">6</span>))
-                + (env.get_instruction_part(InstructionPart::Funct));
-            env.set_instruction_pointer(addr * Env::constant(<span class="number">4</span>));
+            </span>env.set_instruction_pointer(addr * Env::constant(<span class="number">4</span>));
             <span class="comment">// REMOVEME: when all jtype instructions are implemented.
             </span><span class="kw">return</span>;
         }
@@ -1109,31 +1313,28 @@
 }
 
 <span class="kw">pub fn </span>interpret_itype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: ITypeInstruction) {
+    <span class="kw">let </span>rs = env.get_instruction_part(InstructionPart::RS);
+    <span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
+    <span class="kw">let </span>immediate = env.get_immediate();
     <span class="kw">match </span>instr {
         ITypeInstruction::BranchEq =&gt; (),
         ITypeInstruction::BranchNeq =&gt; (),
         ITypeInstruction::BranchLeqZero =&gt; (),
         ITypeInstruction::BranchGtZero =&gt; (),
         ITypeInstruction::AddImmediate =&gt; {
-            <span class="kw">let </span>rs = env.get_instruction_part(InstructionPart::RS);
-            <span class="kw">let </span>register_rs = env.fetch_register_checked(<span class="kw-2">&amp;</span>rs);
-            <span class="kw">let </span>imm = env.get_immediate();
-            <span class="kw">let </span>res = register_rs + imm;
-            <span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
-            env.overwrite_register_checked(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>res);
+            <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>res = register_rs + immediate;
+            env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
             <span class="comment">// TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
         ITypeInstruction::AddImmediateUnsigned =&gt; {
-            <span class="kw">let </span>rs = env.get_instruction_part(InstructionPart::RS);
-            <span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
             <span class="macro">debug!</span>(<span class="string">&quot;Fetching register: {:?}&quot;</span>, rs);
-            <span class="kw">let </span>register_rs = env.fetch_register_checked(<span class="kw-2">&amp;</span>rs);
-            <span class="kw">let </span>immediate = env.get_immediate();
+            <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>res = register_rs + immediate;
-            env.overwrite_register_checked(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>res);
+            env.write_register(<span class="kw-2">&amp;</span>rt, res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
             <span class="comment">// TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
@@ -1146,9 +1347,8 @@
         ITypeInstruction::XorImmediate =&gt; (),
         ITypeInstruction::LoadUpperImmediate =&gt; {
             <span class="comment">// lui $reg, [most significant 16 bits of immediate]
-            </span><span class="kw">let </span>rt = env.get_instruction_part(InstructionPart::RT);
-            <span class="kw">let </span>immediate_value = env.get_immediate() * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>);
-            env.overwrite_register_checked(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>immediate_value);
+            </span><span class="kw">let </span>immediate_value = immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>);
+            env.write_register(<span class="kw-2">&amp;</span>rt, immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
             <span class="comment">// TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
@@ -1157,9 +1357,9 @@
         ITypeInstruction::Load8 =&gt; (),
         ITypeInstruction::Load16 =&gt; (),
         ITypeInstruction::Load32 =&gt; {
-            <span class="kw">let </span>dest = env.get_instruction_part(InstructionPart::RT);
-            <span class="kw">let </span>addr = env.get_instruction_part(InstructionPart::RS);
-            <span class="kw">let </span>offset = env.get_immediate();
+            <span class="kw">let </span>dest = rt;
+            <span class="kw">let </span>addr = rs;
+            <span class="kw">let </span>offset = immediate;
             <span class="kw">let </span>addr_with_offset = addr.clone() + offset.clone();
             <span class="macro">debug!</span>(
                 <span class="string">&quot;lw {:?}, {:?}({:?})&quot;</span>,
@@ -1181,7 +1381,7 @@
                 addr_with_offset.clone(),
                 value
             );
-            env.overwrite_register_checked(<span class="kw-2">&amp;</span>dest, <span class="kw-2">&amp;</span>value);
+            env.write_register(<span class="kw-2">&amp;</span>dest, value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(<span class="number">4u32</span>));
             <span class="comment">// TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
