@@ -44,7 +44,6 @@ impl SyscallEnv {
 }
 
 pub struct Env<Fp> {
-    pub instruction_parts: InstructionParts<u32>,
     pub instruction_counter: u32, // TODO: u32 will not be big enough..
     pub memory: Vec<(u32, Vec<u8>)>,
     pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
@@ -270,9 +269,6 @@ impl<Fp: Field> Env<Fp> {
         };
 
         Env {
-            // Will be modified by decode_instruction.
-            // We set the instruction parts to 0 to begin
-            instruction_parts: InstructionParts::default(),
             instruction_counter: state.step as u32,
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
@@ -435,7 +431,6 @@ impl<Fp: Field> Env<Fp> {
         debug!("Rd: {:#07b}", instruction_parts.rd);
         debug!("Shamt: {:#07b}", instruction_parts.shamt);
         debug!("Funct: {:#08b}", instruction_parts.funct);
-        self.instruction_parts = instruction_parts;
 
         self.pp_info(config.info_at, metadata, start);
 

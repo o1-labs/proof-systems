@@ -722,7 +722,6 @@ mod tests {
         let mut rng = rand::thread_rng();
         let dummy_preimage_oracle = PreImageOracle::create(&host_program);
         Env {
-            instruction_parts: InstructionParts::default(),
             instruction_counter: 0,
             // Only 8kb of memory (two PAGE_ADDRESS_SIZE)
             memory: vec![
@@ -750,7 +749,6 @@ mod tests {
     }
 
     fn write_instruction(env: &mut Env<Fp>, instruction_parts: InstructionParts<u32>) {
-        env.instruction_parts = instruction_parts.clone();
         let instr = instruction_parts.encode();
         env.memory[1].1[0] = ((instr >> 24) & 0xFF) as u8;
         env.memory[1].1[1] = ((instr >> 16) & 0xFF) as u8;
