@@ -177,7 +177,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
             if *page_index == page {
                 let value = memory_write_index[page_address];
                 self.write_column(output, value.into());
-                return value.into();
+                return value;
             }
         }
         panic!("Could not access address")
@@ -188,7 +188,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
         for (page_index, memory_write_index) in self.memory_write_index.iter_mut() {
             if *page_index == page {
-                memory_write_index[page_address] = value.into();
+                memory_write_index[page_address] = value;
                 return;
             }
         }
