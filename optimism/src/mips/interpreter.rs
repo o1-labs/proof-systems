@@ -1,5 +1,5 @@
-use log::debug;
 use crate::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
+use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
