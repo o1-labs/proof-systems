@@ -590,8 +590,8 @@ mod tests {
         let addr: u32 = rng.gen_range(0u32..100u32);
         let aligned_addr: u32 = (addr / 4) * 4;
         dummy_env.registers[REGISTER_SP as usize] = aligned_addr;
-        let mem = dummy_env.memory[0].clone();
-        let mem = mem.1;
+        let mem = &dummy_env.memory[0];
+        let mem = &mem.1;
         let v0 = mem[aligned_addr as usize];
         let v1 = mem[(aligned_addr + 1) as usize];
         let v2 = mem[(aligned_addr + 2) as usize];
