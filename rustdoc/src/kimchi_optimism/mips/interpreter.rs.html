@@ -637,6 +637,46 @@
 <a href="#637" id="637">637</a>
 <a href="#638" id="638">638</a>
 <a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>log::debug;
 <span class="kw">use </span>serde::{Deserialize, Serialize};
 <span class="kw">use </span>std::ops::Index;
@@ -833,12 +873,14 @@
 </span>}
 
 <span class="attr">#[derive(Copy, Clone, Debug)]
-</span><span class="kw">pub enum </span>LookupTable {}
+</span><span class="kw">pub enum </span>LookupTable {
+    MemoryLookup,
+}
 
 <span class="attr">#[derive(Clone, Debug)]
 </span><span class="kw">pub struct </span>Lookup&lt;Fp&gt; {
-    <span class="kw">pub </span>numerator: Fp,
-    <span class="kw">pub </span>table_id: LookupTable,
+    <span class="kw">pub </span>numerator: i32, <span class="comment">// FIXME: Bad, sad hack.
+    </span><span class="kw">pub </span>table_id: LookupTable,
     <span class="kw">pub </span>value: Vec&lt;Fp&gt;,
 }
 
@@ -849,6 +891,7 @@
 
     <span class="kw">type </span>Variable: Clone
         + std::ops::Add&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
+        + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::fmt::Debug;
 
@@ -900,6 +943,72 @@
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this memory operation.
     </span><span class="kw">unsafe fn </span>push_memory_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Access the memory address `addr`, adding constraints asserting that the old value was
+    /// `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the memory if required, this function will
+    /// only update the access counter.
+    </span><span class="kw">unsafe fn </span>access_memory(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        old_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        new_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    ) {
+        <span class="kw">let </span>last_accessed = {
+            <span class="kw">let </span>last_accessed_location = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_memory_access(addr, last_accessed_location) }
+        };
+        <span class="kw">let </span>instruction_counter = <span class="self">self</span>.instruction_counter();
+        <span class="kw">let </span>elapsed_time = instruction_counter.clone() - last_accessed.clone();
+        <span class="kw">let </span>new_accessed = {
+            <span class="comment">// Here, we write as if the memory had been written *at the start of the next
+            // instruction*. This ensures that we can&#39;t &#39;time travel&#39; within this
+            // instruction, and claim to read the value that we&#39;re about to write!
+            </span>instruction_counter + <span class="self">Self</span>::constant(<span class="number">1</span>)
+        };
+        <span class="self">self</span>.add_lookup(Lookup {
+            numerator: <span class="number">1</span>,
+            table_id: LookupTable::MemoryLookup,
+            value: <span class="macro">vec!</span>[addr.clone(), last_accessed, old_value.clone()],
+        });
+        <span class="self">self</span>.add_lookup(Lookup {
+            numerator: -<span class="number">1</span>,
+            table_id: LookupTable::MemoryLookup,
+            value: <span class="macro">vec!</span>[addr.clone(), new_accessed, new_value.clone()],
+        });
+        <span class="self">self</span>.range_check64(<span class="kw-2">&amp;</span>elapsed_time);
+    }
+
+    <span class="kw">fn </span>read_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>value = {
+            <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_memory(addr, value_location) }
+        };
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.access_memory(addr, <span class="kw-2">&amp;</span>value, <span class="kw-2">&amp;</span>value);
+        };
+        value
+    }
+
+    <span class="kw">fn </span>write_memory(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, new_value: <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>old_value = {
+            <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_memory(addr, value_location) }
+        };
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.access_memory(addr, <span class="kw-2">&amp;</span>old_value, <span class="kw-2">&amp;</span>new_value);
+        };
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.push_memory(addr, new_value);
+        };
+    }
+
+    <span class="kw">fn </span>range_check64(<span class="kw-2">&amp;mut </span><span class="self">self</span>, _value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) {
+        <span class="comment">// TODO
+    </span>}
 
     <span class="kw">fn </span>set_instruction_pointer(<span class="kw-2">&amp;mut </span><span class="self">self</span>, ip: <span class="self">Self</span>::Variable);
 
@@ -1059,39 +1168,10 @@
                 addr.clone()
             );
             <span class="comment">// We load 4 bytes, i.e. one word.
-            </span><span class="kw">let </span>v0 = <span class="kw">unsafe </span>{
-                <span class="comment">// FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                </span><span class="kw">let </span>output_location = env.alloc_scratch();
-                env.fetch_memory(<span class="kw-2">&amp;</span>addr_with_offset, output_location)
-            };
-            <span class="kw">let </span>v1 = <span class="kw">unsafe </span>{
-                <span class="comment">// FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                </span><span class="kw">let </span>output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    <span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">1</span>)),
-                    output_location,
-                )
-            };
-            <span class="kw">let </span>v2 = <span class="kw">unsafe </span>{
-                <span class="comment">// FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                </span><span class="kw">let </span>output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    <span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">2</span>)),
-                    output_location,
-                )
-            };
-            <span class="kw">let </span>v3 = <span class="kw">unsafe </span>{
-                <span class="comment">// FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                </span><span class="kw">let </span>output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    <span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">3</span>)),
-                    output_location,
-                )
-            };
+            </span><span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>addr_with_offset);
+            <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">1</span>)));
+            <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">2</span>)));
+            <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(addr_with_offset.clone() + Env::constant(<span class="number">3</span>)));
             <span class="kw">let </span>value = (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
                 + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
                 + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
@@ -1145,7 +1225,7 @@
             instruction_counter: <span class="number">0</span>,
             <span class="comment">// Only 4kb of memory (one PAGE_ADDRESS_SIZE)
             </span>memory: <span class="macro">vec!</span>[(<span class="number">0</span>, <span class="macro">vec!</span>[rng.gen(); PAGE_SIZE <span class="kw">as </span>usize])],
-            memory_write_index: <span class="macro">vec!</span>[],
+            memory_write_index: <span class="macro">vec!</span>[(<span class="number">0</span>, <span class="macro">vec!</span>[<span class="number">0</span>; PAGE_SIZE <span class="kw">as </span>usize])],
             registers: Registers::default(),
             registers_write_index: Registers::default(),
             instruction_pointer: <span class="number">0</span>,
@@ -1189,8 +1269,8 @@
         </span><span class="kw">let </span>addr: u32 = rng.gen_range(<span class="number">0u32</span>..<span class="number">100u32</span>);
         <span class="kw">let </span>aligned_addr: u32 = (addr / <span class="number">4</span>) * <span class="number">4</span>;
         dummy_env.registers[REGISTER_SP <span class="kw">as </span>usize] = aligned_addr;
-        <span class="kw">let </span>mem = dummy_env.memory[<span class="number">0</span>].clone();
-        <span class="kw">let </span>mem = mem.<span class="number">1</span>;
+        <span class="kw">let </span>mem = <span class="kw-2">&amp;</span>dummy_env.memory[<span class="number">0</span>];
+        <span class="kw">let </span>mem = <span class="kw-2">&amp;</span>mem.<span class="number">1</span>;
         <span class="kw">let </span>v0 = mem[aligned_addr <span class="kw">as </span>usize];
         <span class="kw">let </span>v1 = mem[(aligned_addr + <span class="number">1</span>) <span class="kw">as </span>usize];
         <span class="kw">let </span>v2 = mem[(aligned_addr + <span class="number">2</span>) <span class="kw">as </span>usize];
