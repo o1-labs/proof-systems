@@ -1031,7 +1031,21 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::Load16Unsigned => (),
         ITypeInstruction::LoadWordLeft => (),
         ITypeInstruction::LoadWordRight => (),
-        ITypeInstruction::Store8 => (),
+        ITypeInstruction::Store8 => {
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+            let value = env.read_register(&rt);
+            let v0 = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&value, 32, 24, pos) }
+            };
+            env.write_memory(&addr, v0);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         ITypeInstruction::Store16 => (),
         ITypeInstruction::Store32 => {
             let base = env.read_register(&rs);
