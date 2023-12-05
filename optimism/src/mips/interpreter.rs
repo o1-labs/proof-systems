@@ -1,6 +1,5 @@
 use log::debug;
 use serde::{Deserialize, Serialize};
-use std::ops::Index;
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -71,16 +70,6 @@ pub const REGISTER_FP: u32 = 30;
 // Return address (used by function call)
 pub const REGISTER_RA: u32 = 31;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq, EnumCount, EnumIter)]
-pub enum InstructionPart {
-    OpCode,
-    RS,
-    RT,
-    RD,
-    Shamt,
-    Funct,
-}
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
 pub struct InstructionParts<T> {
     pub op_code: T,
@@ -116,22 +105,6 @@ impl InstructionParts<u32> {
             | (self.rd << 11)
             | (self.shamt << 6)
             | self.funct
-    }
-}
-
-// To use InstructionParts[OpCode]
-impl<A> Index<InstructionPart> for InstructionParts<A> {
-    type Output = A;
-
-    fn index(&self, index: InstructionPart) -> &Self::Output {
-        match index {
-            InstructionPart::OpCode => &self.op_code,
-            InstructionPart::RS => &self.rs,
-            InstructionPart::RT => &self.rt,
-            InstructionPart::RD => &self.rd,
-            InstructionPart::Shamt => &self.shamt,
-            InstructionPart::Funct => &self.funct,
-        }
     }
 }
 
