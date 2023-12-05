@@ -27,6 +27,7 @@ _build
 # If symlink created for kimchi-visu
 tools/srs
 
+.ignore
 optimism/*op-program-data-log.sh
 optimism/cpu.pprof
 optimism/meta.json
