@@ -91,6 +91,25 @@ pub struct InstructionParts<T> {
     pub funct: T,
 }
 
+impl InstructionParts<u32> {
+    pub fn decode(instruction: u32) -> Self {
+        let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
+        let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
+        let rt = (instruction >> 16) & ((1 << (21 - 16)) - 1);
+        let rd = (instruction >> 11) & ((1 << (16 - 11)) - 1);
+        let shamt = (instruction >> 6) & ((1 << (11 - 6)) - 1);
+        let funct = instruction & ((1 << 6) - 1);
+        InstructionParts {
+            op_code,
+            rs,
+            rt,
+            rd,
+            shamt,
+            funct,
+        }
+    }
+}
+
 // To use InstructionParts[OpCode]
 impl<A> Index<InstructionPart> for InstructionParts<A> {
     type Output = A;

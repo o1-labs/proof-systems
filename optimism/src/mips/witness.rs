@@ -418,28 +418,15 @@ impl<Fp: Field> Env<Fp> {
 
     pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
         let (opcode, instruction) = self.decode_instruction();
-        let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
-        let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
-        let rt = (instruction >> 16) & ((1 << (21 - 16)) - 1);
-        let rd = (instruction >> 11) & ((1 << (16 - 11)) - 1);
-        let shamt = (instruction >> 6) & ((1 << (11 - 6)) - 1);
-        let funct = instruction & ((1 << 6) - 1);
-        let instruction_parts: InstructionParts<u32> = InstructionParts {
-            op_code,
-            rs,
-            rt,
-            rd,
-            shamt,
-            funct,
-        };
+        let instruction_parts: InstructionParts<u32> = InstructionParts::<u32>::decode(instruction);
         debug!("instruction: {:?}", opcode);
         debug!("Instruction hex: {:#010x}", instruction);
         debug!("Instruction: {:#034b}", instruction);
-        debug!("Rs: {:#07b}", rs);
-        debug!("Rt: {:#07b}", rt);
-        debug!("Rd: {:#07b}", rd);
-        debug!("Shamt: {:#07b}", shamt);
-        debug!("Funct: {:#08b}", funct);
+        debug!("Rs: {:#07b}", instruction_parts.rs);
+        debug!("Rt: {:#07b}", instruction_parts.rt);
+        debug!("Rd: {:#07b}", instruction_parts.rd);
+        debug!("Shamt: {:#07b}", instruction_parts.shamt);
+        debug!("Funct: {:#08b}", instruction_parts.funct);
         self.instruction_parts = instruction_parts;
 
         self.pp_info(config.info_at, metadata, start);
