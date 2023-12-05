@@ -196,6 +196,7 @@ pub enum ITypeInstruction {
 #[derive(Copy, Clone, Debug)]
 pub enum LookupTable {
     MemoryLookup,
+    RegisterLookup,
 }
 
 #[derive(Clone, Debug)]
@@ -220,9 +221,112 @@ pub trait InterpreterEnv {
 
     fn instruction_counter(&self) -> Self::Variable;
 
-    fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
+    /// Fetch the value of the general purpose register with index `idx` and store it in local
+    /// position `output`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn fetch_register(
+        &mut self,
+        idx: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable;
 
-    fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
+    /// Set the general purpose register with index `idx` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable);
+
+    /// Fetch the last 'access index' for the general purpose register with index `idx`, and store
+    /// it in local position `output`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn fetch_register_access(
+        &mut self,
+        idx: &Self::Variable,
+        output: Self::Position,
+    ) -> Self::Variable;
+
+    /// Set the last 'access index' for the general purpose register with index `idx` to `value`.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable);
+
+    /// Access the general purpose register with index `idx`, adding constraints asserting that the
+    /// old value was `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the registers if required, this function will
+    /// only update the access counter.
+    unsafe fn access_register(
+        &mut self,
+        idx: &Self::Variable,
+        old_value: &Self::Variable,
+        new_value: &Self::Variable,
+    ) {
+        let last_accessed = {
+            let last_accessed_location = self.alloc_scratch();
+            unsafe { self.fetch_register_access(idx, last_accessed_location) }
+        };
+        let instruction_counter = self.instruction_counter();
+        let elapsed_time = instruction_counter.clone() - last_accessed.clone();
+        let new_accessed = {
+            // Here, we write as if the register had been written *at the start of the next
+            // instruction*. This ensures that we can't 'time travel' within this
+            // instruction, and claim to read the value that we're about to write!
+
+            // FIXME: A register should allow multiple accesses within the same instruction.
+
+            instruction_counter + Self::constant(1)
+        };
+        self.add_lookup(Lookup {
+            numerator: 1,
+            table_id: LookupTable::RegisterLookup,
+            value: vec![idx.clone(), last_accessed, old_value.clone()],
+        });
+        self.add_lookup(Lookup {
+            numerator: -1,
+            table_id: LookupTable::RegisterLookup,
+            value: vec![idx.clone(), new_accessed, new_value.clone()],
+        });
+        self.range_check64(&elapsed_time);
+    }
+
+    fn read_register(&mut self, idx: &Self::Variable) -> Self::Variable {
+        let value = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_register(idx, value_location) }
+        };
+        unsafe {
+            self.access_register(idx, &value, &value);
+        };
+        value
+    }
+
+    fn write_register(&mut self, idx: &Self::Variable, new_value: Self::Variable) {
+        let old_value = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_register(idx, value_location) }
+        };
+        unsafe {
+            self.access_register(idx, &old_value, &new_value);
+        };
+        unsafe {
+            self.push_register(idx, new_value);
+        };
+    }
 
     /// Fetch the memory value at address `addr` and store it in local position `output`.
     ///
@@ -437,11 +541,11 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::BranchGtZero => (),
         ITypeInstruction::AddImmediate => {
             let rs = env.get_instruction_part(InstructionPart::RS);
-            let register_rs = env.fetch_register_checked(&rs);
+            let register_rs = env.read_register(&rs);
             let imm = env.get_immediate();
             let res = register_rs + imm;
             let rt = env.get_instruction_part(InstructionPart::RT);
-            env.overwrite_register_checked(&rt, &res);
+            env.write_register(&rt, res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
@@ -451,10 +555,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let rs = env.get_instruction_part(InstructionPart::RS);
             let rt = env.get_instruction_part(InstructionPart::RT);
             debug!("Fetching register: {:?}", rs);
-            let register_rs = env.fetch_register_checked(&rs);
+            let register_rs = env.read_register(&rs);
             let immediate = env.get_immediate();
             let res = register_rs + immediate;
-            env.overwrite_register_checked(&rt, &res);
+            env.write_register(&rt, res);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
@@ -469,7 +573,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // lui $reg, [most significant 16 bits of immediate]
             let rt = env.get_instruction_part(InstructionPart::RT);
             let immediate_value = env.get_immediate() * Env::constant(1 << 16);
-            env.overwrite_register_checked(&rt, &immediate_value);
+            env.write_register(&rt, immediate_value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
@@ -502,7 +606,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 addr_with_offset.clone(),
                 value
             );
-            env.overwrite_register_checked(&dest, &value);
+            env.write_register(&dest, value);
             env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
