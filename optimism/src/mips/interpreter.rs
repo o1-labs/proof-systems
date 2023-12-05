@@ -561,6 +561,19 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns `x or y`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn or_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     fn set_halted(&mut self, flag: Self::Variable);
@@ -690,7 +703,19 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::Sub => (),
         RTypeInstruction::SubUnsigned => (),
         RTypeInstruction::And => (),
-        RTypeInstruction::Or => (),
+        RTypeInstruction::Or => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.or_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::Xor => (),
         RTypeInstruction::Nor => (),
         RTypeInstruction::SetLessThan => {
