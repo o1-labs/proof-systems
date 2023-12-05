@@ -526,6 +526,18 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns 1 if `x` is 0, or 0 otherwise, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// `x`.
+    unsafe fn equals_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn set_halted(&mut self, flag: Self::Variable);
 
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {

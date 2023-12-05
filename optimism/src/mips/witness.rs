@@ -227,6 +227,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn equals_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = if *x == 0 { 1 } else { 0 };
+        self.write_column(position, res.into());
+        res
+    }
+
     fn set_halted(&mut self, flag: Self::Variable) {
         if flag == 0 {
             self.halt = false
