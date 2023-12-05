@@ -534,6 +534,33 @@ pub trait InterpreterEnv {
     /// `x`.
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
+    /// Returns 1 if `x < y` as unsigned integers, or 0 otherwise, storing the result in
+    /// `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert that the value
+    /// correctly represents the relationship between `x` and `y`
+    unsafe fn test_less_than(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns 1 if `x < y` as signed integers, or 0 otherwise, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert that the value
+    /// correctly represents the relationship between `x` and `y`
+    unsafe fn test_less_than_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     fn set_halted(&mut self, flag: Self::Variable);
@@ -666,8 +693,32 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::Or => (),
         RTypeInstruction::Xor => (),
         RTypeInstruction::Nor => (),
-        RTypeInstruction::SetLessThan => (),
-        RTypeInstruction::SetLessThanUnsigned => (),
+        RTypeInstruction::SetLessThan => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::SetLessThanUnsigned => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MultiplyToRegister => (),
         RTypeInstruction::CountLeadingOnes => (),
         RTypeInstruction::CountLeadingZeros => (),
