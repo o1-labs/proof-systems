@@ -425,7 +425,7 @@ impl<Fp: Field> Env<Fp> {
         (opcode, instruction)
     }
 
-    pub fn step(&mut self, config: VmConfiguration, metadata: &Meta, start: &Start) {
+    pub fn step(&mut self, config: &VmConfiguration, metadata: &Meta, start: &Start) {
         self.reset_scratch_state();
         let (opcode, instruction) = self.decode_instruction();
         let instruction_parts: InstructionParts = InstructionParts::decode(instruction);
@@ -438,10 +438,10 @@ impl<Fp: Field> Env<Fp> {
         debug!("Shamt: {:#07b}", instruction_parts.shamt);
         debug!("Funct: {:#08b}", instruction_parts.funct);
 
-        self.pp_info(config.info_at, metadata, start);
+        self.pp_info(&config.info_at, metadata, start);
 
         // Force stops at given iteration
-        if self.should_trigger_at(config.stop_at) {
+        if self.should_trigger_at(&config.stop_at) {
             self.halt = true;
             return;
         }
@@ -451,13 +451,13 @@ impl<Fp: Field> Env<Fp> {
         self.instruction_counter += 1;
     }
 
-    fn should_trigger_at(&self, at: StepFrequency) -> bool {
+    fn should_trigger_at(&self, at: &StepFrequency) -> bool {
         let m: u64 = self.instruction_counter as u64;
         match at {
             StepFrequency::Never => false,
             StepFrequency::Always => true,
-            StepFrequency::Exactly(n) => n == m,
-            StepFrequency::Every(n) => m % n == 0,
+            StepFrequency::Exactly(n) => *n == m,
+            StepFrequency::Every(n) => m % *n == 0,
         }
     }
 
@@ -487,7 +487,7 @@ impl<Fp: Field> Env<Fp> {
         None
     }
 
-    fn pp_info(&mut self, at: StepFrequency, meta: &Meta, start: &Start) {
+    fn pp_info(&mut self, at: &StepFrequency, meta: &Meta, start: &Start) {
         if self.should_trigger_at(at) {
             let elapsed = start.time.elapsed();
             let step = self.instruction_counter;
