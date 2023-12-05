@@ -478,6 +478,23 @@ pub trait InterpreterEnv {
 
     fn constant(x: u32) -> Self::Variable;
 
+    /// Extract the bits from the variable `x` between `highest_bit` and `lowest_bit`, and store
+    /// the result in `position`.
+    /// `lowest_bit` becomes the least-significant bit of the resulting value.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and that the returned value fits in `highest_bit - lowest_bit`
+    /// bits.
+    unsafe fn bitmask(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn set_halted(&mut self, flag: Self::Variable);
 }
 

@@ -220,6 +220,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         x
     }
 
+    unsafe fn bitmask(
+        &mut self,
+        x: &Self::Variable,
+        highest_bit: u32,
+        lowest_bit: u32,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = (x >> lowest_bit) & ((1 << (highest_bit - lowest_bit)) - 1);
+        self.write_column(position, res.into());
+        res
+    }
+
     fn set_halted(&mut self, flag: Self::Variable) {
         if flag == 0 {
             self.halt = false
