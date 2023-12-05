@@ -45,7 +45,7 @@ impl SyscallEnv {
 
 pub struct Env<Fp> {
     pub instruction_parts: InstructionParts<u32>,
-    pub instruction_counter: usize,
+    pub instruction_counter: u32, // TODO: u32 will not be big enough..
     pub memory: Vec<(u32, Vec<u8>)>,
     pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
     pub registers: Registers<u32>,
@@ -108,6 +108,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     type Variable = u32;
+
+    fn instruction_counter(&self) -> Self::Variable {
+        self.instruction_counter
+    }
 
     fn overwrite_register_checked(
         &mut self,
@@ -249,7 +253,7 @@ impl<Fp: Field> Env<Fp> {
             // Will be modified by decode_instruction.
             // We set the instruction parts to 0 to begin
             instruction_parts: InstructionParts::default(),
-            instruction_counter: state.step as usize,
+            instruction_counter: state.step as u32,
             memory: initial_memory.clone(),
             memory_write_index: memory_offsets
                 .iter()
@@ -435,6 +439,8 @@ impl<Fp: Field> Env<Fp> {
         }
 
         interpreter::interpret_instruction(self, opcode);
+
+        self.instruction_counter += 1;
     }
 
     fn should_trigger_at(&self, at: StepFrequency) -> bool {
@@ -483,7 +489,7 @@ impl<Fp: Field> Env<Fp> {
             let insn = self.get_opcode().unwrap();
 
             // Approximate instruction per seconds
-            let how_many_steps = step - start.step;
+            let how_many_steps = step as usize - start.step;
             let ips = how_many_steps as f64 / elapsed.as_secs() as f64;
 
             let pages = self.memory.len();

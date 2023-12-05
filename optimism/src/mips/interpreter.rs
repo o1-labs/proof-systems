@@ -203,6 +203,8 @@ pub trait InterpreterEnv {
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
+    fn instruction_counter(&self) -> Self::Variable;
+
     fn overwrite_register_checked(&mut self, register_idx: &Self::Variable, value: &Self::Variable);
 
     fn fetch_register_checked(&self, register_idx: &Self::Variable) -> Self::Variable;
