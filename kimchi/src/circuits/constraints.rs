@@ -5,7 +5,11 @@ use crate::{
         domain_constant_evaluation::DomainConstantEvaluations,
         domains::EvaluationDomains,
         gate::{CircuitGate, GateType},
-        lookup::{index::LookupConstraintSystem, lookups::LookupFeatures, tables::LookupTable},
+        lookup::{
+            index::LookupConstraintSystem,
+            lookups::LookupFeatures,
+            tables::{GateLookupTables, LookupTable},
+        },
         polynomial::{WitnessEvals, WitnessOverDomains, WitnessShifts},
         polynomials::permutation::Shifts,
         wires::*,
@@ -32,6 +36,11 @@ use std::sync::Arc;
 //
 
 /// Flags for optional features in the constraint system
+#[cfg_attr(
+    feature = "ocaml_types",
+    derive(ocaml::IntoValue, ocaml::FromValue, ocaml_gen::Struct)
+)]
+#[cfg_attr(feature = "wasm_types", wasm_bindgen::prelude::wasm_bindgen)]
 #[derive(Copy, Clone, Serialize, Deserialize, Debug)]
 pub struct FeatureFlags {
     /// RangeCheck0 gate
@@ -614,6 +623,47 @@ pub fn zk_rows_strict_lower_bound(num_chunks: usize) -> usize {
     (2 * (PERMUTS + 1) * num_chunks - 2) / PERMUTS
 }
 
+impl FeatureFlags {
+    pub fn from_gates_and_lookup_features<F: PrimeField>(
+        gates: &[CircuitGate<F>],
+        lookup_features: LookupFeatures,
+    ) -> FeatureFlags {
+        let mut feature_flags = FeatureFlags {
+            range_check0: false,
+            range_check1: false,
+            lookup_features,
+            foreign_field_add: false,
+            foreign_field_mul: false,
+            xor: false,
+            rot: false,
+        };
+
+        for gate in gates {
+            match gate.typ {
+                GateType::RangeCheck0 => feature_flags.range_check0 = true,
+                GateType::RangeCheck1 => feature_flags.range_check1 = true,
+                GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
+                GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
+                GateType::Xor16 => feature_flags.xor = true,
+                GateType::Rot64 => feature_flags.rot = true,
+                _ => (),
+            }
+        }
+
+        feature_flags
+    }
+
+    pub fn from_gates<F: PrimeField>(
+        gates: &[CircuitGate<F>],
+        uses_runtime_tables: bool,
+    ) -> FeatureFlags {
+        FeatureFlags::from_gates_and_lookup_features(
+            gates,
+            LookupFeatures::from_gates(gates, uses_runtime_tables),
+        )
+    }
+}
+
 impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Set up the number of public inputs.
     /// If not invoked, it equals `0` by default.
@@ -682,7 +732,7 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
         // for some reason we need more than 1 gate for the circuit to work, see TODO below
         assert!(gates.len() > 1);
 
-        let lookup_features = LookupFeatures::from_gates(&gates, runtime_tables.is_some());
+        let feature_flags = FeatureFlags::from_gates(&gates, runtime_tables.is_some());
 
         let lookup_domain_size = {
             // First we sum over the lookup table size
@@ -705,11 +755,18 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
                 }
             }
             // And we add the built-in tables, depending on the features.
-            let LookupFeatures { patterns, .. } = &lookup_features;
+            let LookupFeatures { patterns, .. } = &feature_flags.lookup_features;
+            let mut gate_lookup_tables = GateLookupTables {
+                xor: false,
+                range_check: false,
+            };
             for pattern in patterns.into_iter() {
                 if let Some(gate_table) = pattern.table() {
-                    lookup_domain_size += gate_table.table_size();
+                    gate_lookup_tables[gate_table] = true
                 }
+            }
+            for gate_table in gate_lookup_tables.into_iter() {
+                lookup_domain_size += gate_table.table_size();
             }
             lookup_domain_size
         };
@@ -786,28 +843,6 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             })
             .collect();
         gates.append(&mut padding);
-
-        let mut feature_flags = FeatureFlags {
-            range_check0: false,
-            range_check1: false,
-            lookup_features,
-            foreign_field_add: false,
-            foreign_field_mul: false,
-            xor: false,
-            rot: false,
-        };
-
-        for gate in &gates {
-            match gate.typ {
-                GateType::RangeCheck0 => feature_flags.range_check0 = true,
-                GateType::RangeCheck1 => feature_flags.range_check1 = true,
-                GateType::ForeignFieldAdd => feature_flags.foreign_field_add = true,
-                GateType::ForeignFieldMul => feature_flags.foreign_field_mul = true,
-                GateType::Xor16 => feature_flags.xor = true,
-                GateType::Rot64 => feature_flags.rot = true,
-                _ => (),
-            }
-        }
 
         //~ 1. sample the `PERMUTS` shifts.
         let shifts = Shifts::new(&domain.d1);
