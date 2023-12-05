@@ -465,16 +465,7 @@ pub trait InterpreterEnv {
 
     fn set_instruction_pointer(&mut self, ip: Self::Variable);
 
-    fn get_immediate(&self) -> Self::Variable {
-        // The immediate value is the last 16bits
-        (self.get_instruction_part(InstructionPart::RD) * Self::constant(1 << 11))
-            + (self.get_instruction_part(InstructionPart::Shamt) * Self::constant(1 << 6))
-            + (self.get_instruction_part(InstructionPart::Funct))
-    }
-
     fn get_instruction_pointer(&self) -> Self::Variable;
-
-    fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable;
 
     fn constant(x: u32) -> Self::Variable;
 

@@ -6,7 +6,7 @@ use crate::{
     mips::{
         column::Column,
         interpreter::{
-            self, ITypeInstruction, Instruction, InstructionPart, InstructionParts, InterpreterEnv,
+            self, ITypeInstruction, Instruction, InstructionParts, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
@@ -143,10 +143,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
         self.registers_write_index[*idx as usize] = value
-    }
-
-    fn get_instruction_part(&self, part: InstructionPart) -> Self::Variable {
-        self.instruction_parts[part]
     }
 
     unsafe fn fetch_memory(
