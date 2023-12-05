@@ -146,7 +146,7 @@ pub fn main() -> ExitCode {
     let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE as usize, state, po);
 
     while !env.halt {
-        env.step(configuration.clone(), &meta, &start);
+        env.step(&configuration, &meta, &start);
     }
 
     // TODO: Logic
