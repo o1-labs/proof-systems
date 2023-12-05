@@ -1,5 +1,4 @@
 use log::debug;
-use serde::{Deserialize, Serialize};
 use strum_macros::{EnumCount, EnumIter};
 
 pub const FD_STDIN: u32 = 0;
@@ -69,44 +68,6 @@ pub const REGISTER_SP: u32 = 29;
 pub const REGISTER_FP: u32 = 30;
 // Return address (used by function call)
 pub const REGISTER_RA: u32 = 31;
-
-#[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
-pub struct InstructionParts {
-    pub op_code: u32,
-    pub rs: u32,
-    pub rt: u32,
-    pub rd: u32,
-    pub shamt: u32,
-    pub funct: u32,
-}
-
-impl InstructionParts {
-    pub fn decode(instruction: u32) -> Self {
-        let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
-        let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
-        let rt = (instruction >> 16) & ((1 << (21 - 16)) - 1);
-        let rd = (instruction >> 11) & ((1 << (16 - 11)) - 1);
-        let shamt = (instruction >> 6) & ((1 << (11 - 6)) - 1);
-        let funct = instruction & ((1 << 6) - 1);
-        InstructionParts {
-            op_code,
-            rs,
-            rt,
-            rd,
-            shamt,
-            funct,
-        }
-    }
-
-    pub fn encode(self) -> u32 {
-        (self.op_code << 26)
-            | (self.rs << 21)
-            | (self.rt << 16)
-            | (self.rd << 11)
-            | (self.shamt << 6)
-            | self.funct
-    }
-}
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Instruction {
@@ -676,10 +637,51 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
     env.set_halted(Env::constant(1))
 }
 
+pub mod debugging {
+    use serde::{Deserialize, Serialize};
+    #[derive(Debug, Clone, Copy, Eq, PartialEq, Default, Serialize, Deserialize)]
+    pub struct InstructionParts {
+        pub op_code: u32,
+        pub rs: u32,
+        pub rt: u32,
+        pub rd: u32,
+        pub shamt: u32,
+        pub funct: u32,
+    }
+
+    impl InstructionParts {
+        pub fn decode(instruction: u32) -> Self {
+            let op_code = (instruction >> 26) & ((1 << (32 - 26)) - 1);
+            let rs = (instruction >> 21) & ((1 << (26 - 21)) - 1);
+            let rt = (instruction >> 16) & ((1 << (21 - 16)) - 1);
+            let rd = (instruction >> 11) & ((1 << (16 - 11)) - 1);
+            let shamt = (instruction >> 6) & ((1 << (11 - 6)) - 1);
+            let funct = instruction & ((1 << 6) - 1);
+            InstructionParts {
+                op_code,
+                rs,
+                rt,
+                rd,
+                shamt,
+                funct,
+            }
+        }
+
+        pub fn encode(self) -> u32 {
+            (self.op_code << 26)
+                | (self.rs << 21)
+                | (self.rt << 16)
+                | (self.rd << 11)
+                | (self.shamt << 6)
+                | self.funct
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
-    use super::*;
+    use super::{debugging::*, *};
     use crate::cannon::{HostProgram, PAGE_SIZE};
     use crate::mips::registers::Registers;
     use crate::mips::witness::{Env, SyscallEnv, SCRATCH_SIZE};

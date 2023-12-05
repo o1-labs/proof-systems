@@ -6,7 +6,7 @@ use crate::{
     mips::{
         column::Column,
         interpreter::{
-            self, ITypeInstruction, Instruction, InstructionParts, InterpreterEnv,
+            self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
         },
         registers::Registers,
