@@ -484,8 +484,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 }
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
+    let instruction_pointer = env.get_instruction_pointer();
     let instruction = {
-        let instruction_pointer = env.get_instruction_pointer();
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
@@ -524,12 +524,12 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
+    let instruction_pointer = env.get_instruction_pointer();
     let instruction = {
-        let instruction_pointer = env.get_instruction_pointer();
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
-        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
         (v0 * Env::constant(1 << 24))
             + (v1 * Env::constant(1 << 16))
             + (v2 * Env::constant(1 << 8))
@@ -564,7 +564,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let register_rs = env.read_register(&rs);
             let res = register_rs + immediate;
             env.write_register(&rt, res);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
             return;
@@ -574,7 +574,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let register_rs = env.read_register(&rs);
             let res = register_rs + immediate;
             env.write_register(&rt, res);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
             return;
@@ -588,7 +588,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // lui $reg, [most significant 16 bits of immediate]
             let immediate_value = immediate * Env::constant(1 << 16);
             env.write_register(&rt, immediate_value);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
             return;
@@ -621,7 +621,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 value
             );
             env.write_register(&dest, value);
-            env.set_instruction_pointer(env.get_instruction_pointer() + Env::constant(4u32));
+            env.set_instruction_pointer(instruction_pointer + Env::constant(4u32));
             // TODO: update next_instruction_pointer
             // REMOVEME: when all itype instructions are implemented.
             return;
