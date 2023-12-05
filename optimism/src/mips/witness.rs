@@ -234,6 +234,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn shift_left(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = x << by;
+        self.write_column(position, res.into());
+        res
+    }
+
     fn set_halted(&mut self, flag: Self::Variable) {
         if flag == 0 {
             self.halt = false
