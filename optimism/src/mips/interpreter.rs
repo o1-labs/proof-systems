@@ -157,6 +157,18 @@ pub enum ITypeInstruction {
 }
 
 #[derive(Copy, Clone, Debug)]
+pub enum Sign {
+    Pos,
+    Neg,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub struct Signed<T> {
+    pub sign: Sign,
+    pub magnitude: T,
+}
+
+#[derive(Copy, Clone, Debug)]
 pub enum LookupTable {
     MemoryLookup,
     RegisterLookup,
@@ -164,7 +176,7 @@ pub enum LookupTable {
 
 #[derive(Clone, Debug)]
 pub struct Lookup<Fp> {
-    pub numerator: i32, // FIXME: Bad, sad hack.
+    pub numerator: Signed<Fp>,
     pub table_id: LookupTable,
     pub value: Vec<Fp>,
 }
@@ -255,12 +267,18 @@ pub trait InterpreterEnv {
             instruction_counter + Self::constant(1)
         };
         self.add_lookup(Lookup {
-            numerator: 1,
+            numerator: Signed {
+                sign: Sign::Pos,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), last_accessed, old_value.clone()],
         });
         self.add_lookup(Lookup {
-            numerator: -1,
+            numerator: Signed {
+                sign: Sign::Neg,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), new_accessed, new_value.clone()],
         });
@@ -358,12 +376,18 @@ pub trait InterpreterEnv {
             instruction_counter + Self::constant(1)
         };
         self.add_lookup(Lookup {
-            numerator: 1,
+            numerator: Signed {
+                sign: Sign::Pos,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::MemoryLookup,
             value: vec![addr.clone(), last_accessed, old_value.clone()],
         });
         self.add_lookup(Lookup {
-            numerator: -1,
+            numerator: Signed {
+                sign: Sign::Neg,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::MemoryLookup,
             value: vec![addr.clone(), new_accessed, new_value.clone()],
         });
@@ -408,7 +432,10 @@ pub trait InterpreterEnv {
             self.push_register(&idx, ip.clone());
         }
         self.add_lookup(Lookup {
-            numerator: -1,
+            numerator: Signed {
+                sign: Sign::Neg,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, new_accessed, ip],
         });
@@ -421,7 +448,10 @@ pub trait InterpreterEnv {
             unsafe { self.fetch_register(&idx, value_location) }
         };
         self.add_lookup(Lookup {
-            numerator: 1,
+            numerator: Signed {
+                sign: Sign::Pos,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, self.instruction_counter(), ip.clone()],
         });
@@ -438,7 +468,10 @@ pub trait InterpreterEnv {
             self.push_register(&idx, ip.clone());
         }
         self.add_lookup(Lookup {
-            numerator: -1,
+            numerator: Signed {
+                sign: Sign::Neg,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, new_accessed, ip],
         });
@@ -451,7 +484,10 @@ pub trait InterpreterEnv {
             unsafe { self.fetch_register(&idx, value_location) }
         };
         self.add_lookup(Lookup {
-            numerator: 1,
+            numerator: Signed {
+                sign: Sign::Pos,
+                magnitude: Self::constant(1),
+            },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx, self.instruction_counter(), ip.clone()],
         });
