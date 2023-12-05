@@ -555,11 +555,27 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
 }
 
 pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstruction) {
-    let addr = (env.get_instruction_part(InstructionPart::RS) * Env::constant(1 << 21))
-        + (env.get_instruction_part(InstructionPart::RT) * Env::constant(1 << 16))
-        + (env.get_instruction_part(InstructionPart::RD) * Env::constant(1 << 11))
-        + (env.get_instruction_part(InstructionPart::Shamt) * Env::constant(1 << 6))
-        + (env.get_instruction_part(InstructionPart::Funct));
+    let instruction = {
+        let instruction_pointer = env.get_instruction_pointer();
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    let _opcode = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 26, pos) }
+    };
+    let addr = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 26, 0, pos) }
+    };
     match instr {
         JTypeInstruction::Jump => {
             // > The address stored in a j instruction is 26 bits of the address
@@ -579,9 +595,37 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
-    let rs = env.get_instruction_part(InstructionPart::RS);
-    let rt = env.get_instruction_part(InstructionPart::RT);
-    let immediate = env.get_immediate();
+    let instruction = {
+        let instruction_pointer = env.get_instruction_pointer();
+        let v0 = env.read_memory(&instruction_pointer);
+        let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
+        let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
+        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        (v0 * Env::constant(1 << 24))
+            + (v1 * Env::constant(1 << 16))
+            + (v2 * Env::constant(1 << 8))
+            + v3
+    };
+    let _opcode = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 32, 26, pos) }
+    };
+    let rs = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 26, 21, pos) }
+    };
+    let rt = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 21, 16, pos) }
+    };
+    let immediate = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&instruction, 16, 0, pos) }
+    };
     match instr {
         ITypeInstruction::BranchEq => (),
         ITypeInstruction::BranchNeq => (),
