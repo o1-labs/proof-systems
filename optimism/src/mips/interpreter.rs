@@ -532,11 +532,7 @@ pub trait InterpreterEnv {
     ///
     /// There are no constraints on the returned value; callers must assert the relationship with
     /// `x`.
-    unsafe fn equals_zero(
-        &mut self,
-        x: &Self::Variable,
-        position: Self::Position,
-    ) -> Self::Variable;
+    unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
@@ -763,7 +759,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let equals = {
                 // FIXME: Requires constraints
                 let pos = env.alloc_scratch();
-                unsafe { env.equals_zero(&(rs - rt), pos) }
+                unsafe { env.test_zero(&(rs - rt), pos) }
             };
             let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * offset;
             let addr = {
