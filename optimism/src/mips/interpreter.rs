@@ -489,39 +489,10 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 addr.clone()
             );
             // We load 4 bytes, i.e. one word.
-            let v0 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(&addr_with_offset, output_location)
-            };
-            let v1 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    &(addr_with_offset.clone() + Env::constant(1)),
-                    output_location,
-                )
-            };
-            let v2 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    &(addr_with_offset.clone() + Env::constant(2)),
-                    output_location,
-                )
-            };
-            let v3 = unsafe {
-                // FIXME: A safe wrapper should be exposed in the trait, and it must add the
-                // constraints that are missing here.
-                let output_location = env.alloc_scratch();
-                env.fetch_memory(
-                    &(addr_with_offset.clone() + Env::constant(3)),
-                    output_location,
-                )
-            };
+            let v0 = env.read_memory(&addr_with_offset);
+            let v1 = env.read_memory(&(addr_with_offset.clone() + Env::constant(1)));
+            let v2 = env.read_memory(&(addr_with_offset.clone() + Env::constant(2)));
+            let v3 = env.read_memory(&(addr_with_offset.clone() + Env::constant(3)));
             let value = (v0 * Env::constant(1 << 24))
                 + (v1 * Env::constant(1 << 16))
                 + (v2 * Env::constant(1 << 8))
