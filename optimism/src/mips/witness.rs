@@ -7,7 +7,7 @@ use crate::{
         column::Column,
         interpreter::{
             self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
-            JTypeInstruction, RTypeInstruction,
+            JTypeInstruction, Lookup, RTypeInstruction,
         },
         registers::Registers,
     },
@@ -54,6 +54,7 @@ pub struct Env<Fp> {
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
+    pub lookups: Vec<Lookup<u32>>,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -106,8 +107,9 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u32;
 
-    fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
-        // FIXME: Track the lookup values in the environment.
+    fn add_lookup(&mut self, lookup: Lookup<Self::Variable>) {
+        // FIXME: Shouldn't this type be `Lookup<Fp>`?
+        self.lookups.push(lookup);
     }
 
     fn instruction_counter(&self) -> Self::Variable {
@@ -295,6 +297,7 @@ impl<Fp: Field> Env<Fp> {
             halt: state.exited,
             syscall_env,
             preimage_oracle,
+            lookups: vec![],
         }
     }
 
