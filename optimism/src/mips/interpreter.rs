@@ -10,6 +10,14 @@ pub const FD_HINT_WRITE: u32 = 4;
 pub const FD_PREIMAGE_READ: u32 = 5;
 pub const FD_PREIMAGE_WRITE: u32 = 6;
 
+pub const SYSCALL_MMAP: u32 = 4090;
+pub const SYSCALL_BRK: u32 = 4045;
+pub const SYSCALL_CLONE: u32 = 4120;
+pub const SYSCALL_EXIT_GROUP: u32 = 4246;
+pub const SYSCALL_READ: u32 = 4003;
+pub const SYSCALL_WRITE: u32 = 4004;
+pub const SYSCALL_FCNTL: u32 = 4055;
+
 // Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
 // Reserved for assembler
 pub const REGISTER_AT: u32 = 1;
