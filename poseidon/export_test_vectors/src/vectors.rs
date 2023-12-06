@@ -1,5 +1,5 @@
 use super::{Mode, ParamType};
-use ark_ff::{fields::PrimeField as _, UniformRand as _};
+use ark_ff::UniformRand as _;
 use ark_serialize::CanonicalSerialize as _;
 use mina_curves::pasta::Fp;
 use mina_poseidon::{
@@ -78,9 +78,10 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
             .into_iter()
             .map(|elem| {
                 let mut input_bytes = vec![];
-                elem.into_repr()
-                    .serialize(&mut input_bytes)
+                elem.0
+                    .serialize_uncompressed(&mut input_bytes)
                     .expect("canonical serialiation should work");
+
                 match mode {
                     Mode::Hex => hex::encode(&input_bytes),
                     Mode::B10 => BigUint::from_bytes_le(&input_bytes).to_string(),
@@ -89,8 +90,8 @@ pub fn generate(mode: Mode, param_type: ParamType) -> TestVectors {
             .collect();
         let mut output_bytes = vec![];
         output
-            .into_repr()
-            .serialize(&mut output_bytes)
+            .0
+            .serialize_uncompressed(&mut output_bytes)
             .expect("canonical serialization should work");
 
         // add vector
