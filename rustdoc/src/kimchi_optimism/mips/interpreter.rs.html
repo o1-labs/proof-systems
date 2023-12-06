@@ -1341,6 +1341,20 @@
 <a href="#1341" id="1341">1341</a>
 <a href="#1342" id="1342">1342</a>
 <a href="#1343" id="1343">1343</a>
+<a href="#1344" id="1344">1344</a>
+<a href="#1345" id="1345">1345</a>
+<a href="#1346" id="1346">1346</a>
+<a href="#1347" id="1347">1347</a>
+<a href="#1348" id="1348">1348</a>
+<a href="#1349" id="1349">1349</a>
+<a href="#1350" id="1350">1350</a>
+<a href="#1351" id="1351">1351</a>
+<a href="#1352" id="1352">1352</a>
+<a href="#1353" id="1353">1353</a>
+<a href="#1354" id="1354">1354</a>
+<a href="#1355" id="1355">1355</a>
+<a href="#1356" id="1356">1356</a>
+<a href="#1357" id="1357">1357</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -2208,8 +2222,22 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::Sub =&gt; (),
-        RTypeInstruction::SubUnsigned =&gt; (),
+        RTypeInstruction::Sub =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
+            env.write_register(<span class="kw-2">&amp;</span>rd, rs - rt);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
+        RTypeInstruction::SubUnsigned =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
+            env.write_register(<span class="kw-2">&amp;</span>rd, rs - rt);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::And =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);

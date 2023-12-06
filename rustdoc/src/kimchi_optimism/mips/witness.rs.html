@@ -668,6 +668,7 @@
 <a href="#668" id="668">668</a>
 <a href="#669" id="669">669</a>
 <a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -1172,6 +1173,7 @@
                     <span class="number">0x24 </span>=&gt; Instruction::RType(RTypeInstruction::And),
                     <span class="number">0x25 </span>=&gt; Instruction::RType(RTypeInstruction::Or),
                     <span class="number">0x26 </span>=&gt; Instruction::RType(RTypeInstruction::Xor),
+                    <span class="number">0x27 </span>=&gt; Instruction::RType(RTypeInstruction::Nor),
                     <span class="number">0x2a </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThan),
                     <span class="number">0x2b </span>=&gt; Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
                     <span class="kw">_ </span>=&gt; {
