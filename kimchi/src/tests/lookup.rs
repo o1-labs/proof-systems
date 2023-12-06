@@ -597,7 +597,7 @@ fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id
     let table_id: i32 = rng.gen_range(1i32..max_table_id);
     // No index 0 in the table.
     let indices: Vec<Fp> = (0..len)
-        .map(|_| 1 + rng.gen_range(0u32..max_len))
+        .map(|_| rng.gen_range(1u32..max_len))
         .map(Into::into)
         .collect();
     // No zero value
