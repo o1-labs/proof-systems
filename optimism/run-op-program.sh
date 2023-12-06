@@ -21,8 +21,9 @@ set -x
 
 ./ethereum-optimism/cannon/bin/cannon run \
     --pprof.cpu \
-    --info-at '%10000000' \
+    --info-at "${INFO_AT:-%10000000}" \
     --proof-at never \
+    --stop-at "${STOP_AT:-never}" \
     --input ./state.json \
     -- \
     ./ethereum-optimism/op-program/bin/op-program \
