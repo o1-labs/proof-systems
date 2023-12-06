@@ -233,6 +233,28 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn test_less_than(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = if *x < *y { 1 } else { 0 };
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn test_less_than_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = if (*x as i32) < (*y as i32) { 1 } else { 0 };
+        self.write_column(position, res.into());
+        res
+    }
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, (*x).into());
         *x
