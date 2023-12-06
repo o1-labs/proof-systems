@@ -840,16 +840,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallFcntl => (),
         RTypeInstruction::SyscallOther => {
             let syscall_num = env.read_register(&Env::constant(2));
-            let is_sysbrk = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(4045)), pos) }
-            };
-            let is_sysclone = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(4120)), pos) }
-            };
+            let is_sysbrk = env.equal(&syscall_num, &Env::constant(4045));
+            let is_sysclone = env.equal(&syscall_num, &Env::constant(4120));
             let v0 = { is_sysbrk * Env::constant(0x40000000) + is_sysclone };
             let v1 = Env::constant(0);
             env.write_register(&Env::constant(2), v0);
@@ -1059,11 +1051,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            let equals = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(rs - rt), pos) }
-            };
+            let equals = env.equal(&rs, &rt);
             let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * offset;
             let addr = {
                 let pos = env.alloc_scratch();
@@ -1078,11 +1066,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            let equals = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(rs - rt), pos) }
-            };
+            let equals = env.equal(&rs, &rt);
             let offset = equals.clone() * Env::constant(4) + (Env::constant(1) - equals) * offset;
             let addr = {
                 let pos = env.alloc_scratch();
