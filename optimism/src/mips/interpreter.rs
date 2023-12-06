@@ -803,12 +803,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let is_sysbrk = {
                 // FIXME: Requires constraints
                 let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(4045)), pos) }
+                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(SYSCALL_BRK)), pos) }
             };
             let is_sysclone = {
                 // FIXME: Requires constraints
                 let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(4120)), pos) }
+                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(SYSCALL_CLONE)), pos) }
             };
             let v0 = { is_sysbrk * Env::constant(0x40000000) + is_sysclone };
             let v1 = Env::constant(0);
