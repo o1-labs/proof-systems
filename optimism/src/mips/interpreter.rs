@@ -276,6 +276,7 @@ pub trait InterpreterEnv {
 
             instruction_counter + Self::constant(1)
         };
+        unsafe { self.push_register_access(idx, new_accessed.clone()) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
@@ -385,6 +386,7 @@ pub trait InterpreterEnv {
             // instruction, and claim to read the value that we're about to write!
             instruction_counter + Self::constant(1)
         };
+        unsafe { self.push_memory_access(addr, new_accessed.clone()) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
