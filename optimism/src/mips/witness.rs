@@ -322,6 +322,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn nor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = !(x | y);
+        self.write_column(position, res.into());
+        res
+    }
+
     unsafe fn or_witness(
         &mut self,
         x: &Self::Variable,
@@ -340,6 +351,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         position: Self::Position,
     ) -> Self::Variable {
         let res = *x ^ *y;
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn mul_signed_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = ((*x as i32) * (*y as i32)) as u32;
         self.write_column(position, res.into());
         res
     }
@@ -518,6 +540,7 @@ impl<Fp: Field> Env<Fp> {
                     0x24 => Instruction::RType(RTypeInstruction::And),
                     0x25 => Instruction::RType(RTypeInstruction::Or),
                     0x26 => Instruction::RType(RTypeInstruction::Xor),
+                    0x27 => Instruction::RType(RTypeInstruction::Nor),
                     0x2a => Instruction::RType(RTypeInstruction::SetLessThan),
                     0x2b => Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
                     _ => {
@@ -663,7 +686,7 @@ impl<Fp: Field> Env<Fp> {
                 .unwrap_or_else(|| "n/a".to_string());
 
             info!(
-                "processing step={} pc={:#010x} insn={:#010x} ips={:.2} page={} mem={} name={}",
+                "processing step={} pc={:010x} insn={:010x} ips={:.2} pages={} mem={} name={}",
                 step, pc, insn, ips, pages, mem, name
             );
         }

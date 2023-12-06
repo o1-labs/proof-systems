@@ -307,6 +307,7 @@ pub trait InterpreterEnv {
 
             instruction_counter + Self::constant(1)
         };
+        unsafe { self.push_register_access(idx, new_accessed.clone()) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
@@ -416,6 +417,7 @@ pub trait InterpreterEnv {
             // instruction, and claim to read the value that we're about to write!
             instruction_counter + Self::constant(1)
         };
+        unsafe { self.push_memory_access(addr, new_accessed.clone()) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
@@ -689,6 +691,19 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns `x nor y`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn nor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     /// Returns `x xor y`, storing the result in `position`.
     ///
     /// # Safety
@@ -696,6 +711,19 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned value; callers must manually add constraints to
     /// ensure that it is correctly constructed.
     unsafe fn xor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x * y`, where `x` and `y` are treated as integers, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn mul_signed_witness(
         &mut self,
         x: &Self::Variable,
         y: &Self::Variable,
@@ -840,8 +868,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallFcntl => (),
         RTypeInstruction::SyscallOther => {
             let syscall_num = env.read_register(&Env::constant(2));
-            let is_sysbrk = env.equal(&syscall_num, &Env::constant(4045));
-            let is_sysclone = env.equal(&syscall_num, &Env::constant(4120));
+            let is_sysbrk = env.equal(&syscall_num, &Env::constant(SYSCALL_BRK));
+            let is_sysclone = env.equal(&syscall_num, &Env::constant(SYSCALL_CLONE));
             let v0 = { is_sysbrk * Env::constant(0x40000000) + is_sysclone };
             let v1 = Env::constant(0);
             env.write_register(&Env::constant(2), v0);
@@ -897,8 +925,22 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::Sub => (),
-        RTypeInstruction::SubUnsigned => (),
+        RTypeInstruction::Sub => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            env.write_register(&rd, rs - rt);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::SubUnsigned => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            env.write_register(&rd, rs - rt);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::And => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
@@ -938,7 +980,19 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::Nor => (),
+        RTypeInstruction::Nor => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.nor_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SetLessThan => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
@@ -965,7 +1019,19 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MultiplyToRegister => (),
+        RTypeInstruction::MultiplyToRegister => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_signed_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::CountLeadingOnes => (),
         RTypeInstruction::CountLeadingZeros => (),
     };
@@ -1146,7 +1212,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        ITypeInstruction::AndImmediate => (),
+        ITypeInstruction::AndImmediate => {
+            let rs = env.read_register(&rs);
+            let res = {
+                // FIXME: Constraint
+                let pos = env.alloc_scratch();
+                unsafe { env.and_witness(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::OrImmediate => (),
         ITypeInstruction::XorImmediate => {
             let rs = env.read_register(&rs);
