@@ -526,6 +526,16 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns 1 if `x` is 0, or 0 otherwise, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// `x`.
+    unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
+
+    fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
+
     fn set_halted(&mut self, flag: Self::Variable);
 
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
@@ -742,7 +752,25 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         unsafe { env.bitmask(&instruction, 16, 0, pos) }
     };
     match instr {
-        ITypeInstruction::BranchEq => (),
+        ITypeInstruction::BranchEq => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let equals = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_zero(&(rs - rt), pos) }
+            };
+            let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::BranchNeq => (),
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
