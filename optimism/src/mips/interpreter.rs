@@ -957,7 +957,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             return;
         }
         ITypeInstruction::SetLessThanImmediate => (),
-        ITypeInstruction::SetLessThanImmediateUnsigned => (),
+        ITypeInstruction::SetLessThanImmediateUnsigned => {
+            let rs = env.read_register(&rs);
+            let immediate = env.sign_extend(&immediate, 16);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         ITypeInstruction::AndImmediate => (),
         ITypeInstruction::OrImmediate => (),
         ITypeInstruction::XorImmediate => {
