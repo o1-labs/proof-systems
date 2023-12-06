@@ -89,6 +89,7 @@ pub enum RTypeInstruction {
     JumpAndLinkRegister,          // jalr
     SyscallMmap,                  // syscall (Mmap)
     SyscallExitGroup,             // syscall (ExitGroup)
+    SyscallReadHint,              // syscall (Read 3)
     SyscallReadPreimage,          // syscall (Read 5)
     SyscallReadOther,             // syscall (Read ?)
     SyscallWriteHint,             // syscall (Write 4)
@@ -784,6 +785,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::JumpAndLinkRegister => (),
         RTypeInstruction::SyscallMmap => (),
         RTypeInstruction::SyscallExitGroup => (),
+        RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),
         RTypeInstruction::SyscallReadOther => (),
         RTypeInstruction::SyscallWriteHint => (),

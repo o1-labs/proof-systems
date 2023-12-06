@@ -466,6 +466,9 @@ impl<Fp: Field> Env<Fp> {
                         }
                         4246 => Instruction::RType(RTypeInstruction::SyscallExitGroup),
                         4003 => match self.registers.general_purpose[4] {
+                            interpreter::FD_HINT_READ => {
+                                Instruction::RType(RTypeInstruction::SyscallReadHint)
+                            }
                             interpreter::FD_PREIMAGE_READ => {
                                 Instruction::RType(RTypeInstruction::SyscallReadPreimage)
                             }
