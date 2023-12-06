@@ -574,6 +574,19 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Returns `x xor y`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn xor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     fn set_halted(&mut self, flag: Self::Variable);
@@ -891,7 +904,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         ITypeInstruction::SetLessThanImmediateUnsigned => (),
         ITypeInstruction::AndImmediate => (),
         ITypeInstruction::OrImmediate => (),
-        ITypeInstruction::XorImmediate => (),
+        ITypeInstruction::XorImmediate => {
+            let rs = env.read_register(&rs);
+            let res = {
+                // FIXME: Constraint
+                let pos = env.alloc_scratch();
+                unsafe { env.xor_witness(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::LoadUpperImmediate => {
             // lui $reg, [most significant 16 bits of immediate]
             let immediate_value = immediate * Env::constant(1 << 16);
