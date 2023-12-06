@@ -1159,6 +1159,52 @@
 <a href="#1159" id="1159">1159</a>
 <a href="#1160" id="1160">1160</a>
 <a href="#1161" id="1161">1161</a>
+<a href="#1162" id="1162">1162</a>
+<a href="#1163" id="1163">1163</a>
+<a href="#1164" id="1164">1164</a>
+<a href="#1165" id="1165">1165</a>
+<a href="#1166" id="1166">1166</a>
+<a href="#1167" id="1167">1167</a>
+<a href="#1168" id="1168">1168</a>
+<a href="#1169" id="1169">1169</a>
+<a href="#1170" id="1170">1170</a>
+<a href="#1171" id="1171">1171</a>
+<a href="#1172" id="1172">1172</a>
+<a href="#1173" id="1173">1173</a>
+<a href="#1174" id="1174">1174</a>
+<a href="#1175" id="1175">1175</a>
+<a href="#1176" id="1176">1176</a>
+<a href="#1177" id="1177">1177</a>
+<a href="#1178" id="1178">1178</a>
+<a href="#1179" id="1179">1179</a>
+<a href="#1180" id="1180">1180</a>
+<a href="#1181" id="1181">1181</a>
+<a href="#1182" id="1182">1182</a>
+<a href="#1183" id="1183">1183</a>
+<a href="#1184" id="1184">1184</a>
+<a href="#1185" id="1185">1185</a>
+<a href="#1186" id="1186">1186</a>
+<a href="#1187" id="1187">1187</a>
+<a href="#1188" id="1188">1188</a>
+<a href="#1189" id="1189">1189</a>
+<a href="#1190" id="1190">1190</a>
+<a href="#1191" id="1191">1191</a>
+<a href="#1192" id="1192">1192</a>
+<a href="#1193" id="1193">1193</a>
+<a href="#1194" id="1194">1194</a>
+<a href="#1195" id="1195">1195</a>
+<a href="#1196" id="1196">1196</a>
+<a href="#1197" id="1197">1197</a>
+<a href="#1198" id="1198">1198</a>
+<a href="#1199" id="1199">1199</a>
+<a href="#1200" id="1200">1200</a>
+<a href="#1201" id="1201">1201</a>
+<a href="#1202" id="1202">1202</a>
+<a href="#1203" id="1203">1203</a>
+<a href="#1204" id="1204">1204</a>
+<a href="#1205" id="1205">1205</a>
+<a href="#1206" id="1206">1206</a>
+<a href="#1207" id="1207">1207</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -1303,6 +1349,8 @@
     </span>BranchNeq,                    <span class="comment">// bne
     </span>BranchLeqZero,                <span class="comment">// blez
     </span>BranchGtZero,                 <span class="comment">// bgtz
+    </span>BranchLtZero,                 <span class="comment">// bltz
+    </span>BranchGeqZero,                <span class="comment">// bgez
     </span>AddImmediate,                 <span class="comment">// addi
     </span>AddImmediateUnsigned,         <span class="comment">// addiu
     </span>SetLessThanImmediate,         <span class="comment">// slti
@@ -1965,7 +2013,19 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::Xor =&gt; (),
+        RTypeInstruction::Xor =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
+            <span class="kw">let </span>res = {
+                <span class="comment">// FIXME: Constrain
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.xor_witness(<span class="kw-2">&amp;</span>rs, <span class="kw-2">&amp;</span>rt, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::Nor =&gt; (),
         RTypeInstruction::SetLessThan =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
@@ -2115,6 +2175,26 @@
         }
         ITypeInstruction::BranchLeqZero =&gt; (),
         ITypeInstruction::BranchGtZero =&gt; (),
+        ITypeInstruction::BranchLtZero =&gt; {
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>less_than = {
+                <span class="comment">// FIXME: Requires constraints
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.test_less_than_signed(<span class="kw-2">&amp;</span>rs, <span class="kw-2">&amp;</span>Env::constant(<span class="number">0</span>), pos) }
+            };
+            <span class="kw">let </span>offset =
+                (Env::constant(<span class="number">1</span>) - less_than.clone()) * Env::constant(<span class="number">4</span>) + less_than * offset;
+            <span class="kw">let </span>addr = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.copy(<span class="kw-2">&amp;</span>(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
+            </span><span class="kw">return</span>;
+        }
+        ITypeInstruction::BranchGeqZero =&gt; (),
         ITypeInstruction::AddImmediate =&gt; {
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
@@ -2215,7 +2295,19 @@
             <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
-        ITypeInstruction::Load8Unsigned =&gt; (),
+        ITypeInstruction::Load8Unsigned =&gt; {
+            <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>dest = rt;
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
+            <span class="kw">let </span>addr = base + offset;
+            <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>addr);
+            <span class="kw">let </span>value = v0;
+            env.write_register(<span class="kw-2">&amp;</span>dest, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
+            </span><span class="kw">return</span>;
+        }
         ITypeInstruction::Load16Unsigned =&gt; (),
         ITypeInstruction::LoadWordLeft =&gt; (),
         ITypeInstruction::LoadWordRight =&gt; (),
