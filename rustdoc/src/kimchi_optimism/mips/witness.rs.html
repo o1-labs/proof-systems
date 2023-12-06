@@ -646,6 +646,17 @@
 <a href="#646" id="646">646</a>
 <a href="#647" id="647">647</a>
 <a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -954,6 +965,17 @@
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>res = <span class="kw-2">*</span>x ^ <span class="kw-2">*</span>y;
+        <span class="self">self</span>.write_column(position, res.into());
+        res
+    }
+
+    <span class="kw">unsafe fn </span>mul_signed_witness(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>res = ((<span class="kw-2">*</span>x <span class="kw">as </span>i32) * (<span class="kw-2">*</span>y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
         <span class="self">self</span>.write_column(position, res.into());
         res
     }
