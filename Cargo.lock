@@ -220,6 +220,7 @@ dependencies = [
  "ark-std 0.4.0",
  "derivative",
  "hashbrown 0.13.2",
+ "rayon",
 ]
 
 [[package]]
@@ -1615,10 +1616,10 @@ dependencies = [
 name = "o1-utils"
 version = "0.1.0"
 dependencies = [
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
- "ark-poly 0.3.0",
- "ark-serialize 0.3.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
  "bcs",
  "hex",
  "mina-curves",
