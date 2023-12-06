@@ -3,6 +3,7 @@
 //! Both the permutation and the plookup arguments fit this type.
 //! Gates can be seen as filtered arguments,
 //! which apply only in some points (rows) of the domain.
+//! For more info, read book/src/kimchi/arguments.md
 
 use std::marker::PhantomData;
 
@@ -32,7 +33,7 @@ pub enum ArgumentType {
 
 /// The argument environment is used to specify how the argument's constraints are
 /// represented when they are built.  If the environment is created without ArgumentData
-/// and with F = Expr<F>, then the constraints are built as Expr expressions (e.g. for
+/// and with `F = Expr<F>`, then the constraints are built as Expr expressions (e.g. for
 /// use with the prover/verifier).  On the other hand, if the environment is
 /// created with ArgumentData and F = Field or F = PrimeField, then the constraints
 /// are built as expressions of real field elements and can be evaluated directly on
@@ -85,9 +86,36 @@ impl<F: Field, T: ExprOps<F>, const COLUMNS: usize> ArgumentEnv<F, T, COLUMNS> {
         T::witness(Next, col, self.data.as_ref())
     }
 
+    /// Witness cells in current row in an interval [from, to)
+    pub fn witness_curr_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.witness_curr(i));
+        }
+        chunk
+    }
+
+    /// Witness cells in next row in an interval [from, to)
+    pub fn witness_next_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.witness_next(i));
+        }
+        chunk
+    }
+
     /// Coefficient value at index idx
     pub fn coeff(&self, idx: usize) -> T {
         T::coeff(idx, self.data.as_ref())
+    }
+
+    /// Chunk of consecutive coefficients in an interval [from, to)
+    pub fn coeff_chunk(&self, from: usize, to: usize) -> Vec<T> {
+        let mut chunk = Vec::with_capacity(to - from);
+        for i in from..to {
+            chunk.push(self.coeff(i));
+        }
+        chunk
     }
 
     /// Constant value (see [ConstantExpr] for supported constants)

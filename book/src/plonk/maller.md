@@ -1,6 +1,6 @@
-# Maller optimization to reduce proof size
+# Maller's Optimization to Reduce Proof Size
 
-In the PLONK paper, they make use of an optimization from Mary Maller in order to reduce the proof size.
+In the $\plonk$ paper, they make use of an optimization from Mary Maller in order to reduce the proof size.
 
 ## Explanation
 
@@ -19,7 +19,7 @@ Let's see the protocol where _Prover_ wants to prove to _Verifier_ that
 
 $$\forall x \in \mathbb{F}, \; h_1(x)h_2(x) - h_3(x) = 0$$
 
-given commitments of $h_1, h_2, h_3$, 
+given commitments of $h_1, h_2, h_3$,
 
 ![maller 1](../img/maller_1.png)
 
@@ -37,7 +37,7 @@ Note right of Verifier: verifies that \n h1(s)h2(s) - h3(s) = 0
 ```
 -->
 
-A shorter proof exists. Essentially, if the verifier already has the opening `h1(s)`, they can reduce the problem to showing that 
+A shorter proof exists. Essentially, if the verifier already has the opening `h1(s)`, they can reduce the problem to showing that
 
 $$ \forall x \in \mathbb{F}, \; L(x) = h_1(s)h_2(x) - h_3(x) = 0$$
 
@@ -87,9 +87,9 @@ The problem here is that you can't multiply the commitments together without usi
 
 If you're using an inner-product-based commitment, you can't even multiply commitments.
 
-question: where does the multiplication of commitment occurs in the pairing-based protocol of PLONK? And how come we can use bootleproof if we need that multiplication of commitment?
+question: where does the multiplication of commitment occurs in the pairing-based protocol of $\plonk$? And how come we can use bootleproof if we need that multiplication of commitment?
 
-## Appendix: Original explanation from the PLONK paper
+## Appendix: Original explanation from the $\plonk$ paper
 
 https://eprint.iacr.org/2019/953.pdf
 

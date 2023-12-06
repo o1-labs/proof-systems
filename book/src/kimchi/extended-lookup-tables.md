@@ -1,6 +1,6 @@
-# RFC: Extended lookup tables
+# Extended lookup tables
 
-This RFC proposes an extension to our use of lookup tables using the PLOOKUP
+This (old) RFC proposes an extension to our use of lookup tables using the PLOOKUP
 multiset inclusion argument, so that values within lookup tables can be chosen
 after the constraint system for a circuit has been fixed.
 
@@ -39,7 +39,8 @@ In order to support the desired goals, we first define 3 types of table:
 * **fixed tables** are tables declared as part of the constraint system, and
   are the same for every proof of that circuit.
 * **runtime tables** are tables whose contents are determined at proving time,
-  to be used for array accesses to data from the witness.
+  to be used for array accesses to data from the witness. Also called dynamic
+  tables in other projects.
 * **side-loaded tables** are tables that are committed to in a
   proof-independent way, so that they may be reused across proofs and/or signed
   without knowledge of the specific proof, but may be different for each

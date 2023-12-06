@@ -19,7 +19,9 @@ Let $f(X)$ be an interpolation polynomial of degree $n-1$ such that $f(h_i) = v_
 
 **Proof sketch.** Recall that the interpolation polynomial is
 
-$f(X) = \sum_{j = 1}^n \prod_{k \neq j} \frac{(X-h_k)}{(h_j-h_k)} v_j$
+$$
+f(X) = \sum_{j = 1}^n \prod_{k \neq j} \frac{(X-h_k)}{(h_j-h_k)} v_j
+$$
 
 With $V_{w+1}, \ldots, V_{w+k}$ as random variables, we have,
 $f(X) = a_{w+1} V_{w+1} + a_{w+2} V_{w+2} + \ldots + a_{w+k} V_{w+k} + a$
@@ -32,23 +34,28 @@ The idea here is to set the last $k$ evaluations to be uniformly random elements
 
 **Modified permutation polynomial.** Specifically, set $z(X)$ as follows.
 
-$z(X) = L_1(X) + \sum_{i = 1}^{\blue{n-k-2}} \left(L_{i+1} \prod_{j=1}^i \mathsf{frac}_{i,j} \right) + \blue{t_1 L_{n-k}(X) + \ldots + t_k L_{n}(X) }$
+$$
+z(X) = L_1(X) + \sum_{i = 1}^{\blue{n-k-2}} \left(L_{i+1} \prod_{j=1}^i \mathsf{frac}_{i,j} \right) + \blue{t_1 L_{n-k}(X) + \ldots + t_k L_{n}(X) }
+$$
 
 From Lemma 1, the above $z(X)$ has the desired zero knowledge property when $k$ evaluations are revealed. However, we need to modify the other parts of the protocol so that the last $k$ elements are not subject to the permutation evaluation, since they will no longer satisfy the permutation check. Specifically, we will need to modify the permutation polynomial to disregard those random elements, as follows.
 
-$ \begin{aligned}  & t(X) = \\
-  & (a(X)b(X)q_M(X) + a(X)q_L(X) + b(X)q_R(X) + c(X)q_O(X) + PI(X) + q_C(X)) \frac{1}{z_H(X)} \\
-  &+ ((a(X) + \beta X + \gamma)(b(X) + \beta k_1 X + \gamma)(c(X) + \beta k_2X + \gamma)z(X) \blue{(X-h_{n-k}) \ldots (X-h_{n-1})(X-h_n)} ) \frac{\alpha}{z_{H}(X)} \\
-  & - ((a(X) + \beta S_{\sigma1}(X) + \gamma)(b(X) + \beta S_{\sigma2}(X) + \gamma)(c(X) + \beta S_{\sigma3}(X) + \gamma)z(X\omega) \blue{(X-h_{n-k}) \ldots (X-h_{n-1})(X-h_n)}) \frac{\alpha}{z_{H}(X)} \\
-  & + (z(X)-1)L_1(X) \frac{\alpha^2}{z_H(X)} \\
-  & + \blue{(z(X)-1)L_{n-k}(X) \frac{\alpha^3}{z_H(X)} }  \end{aligned} $
+$$
+\begin{aligned}  & t(X) = \\
+  & \Big(a(X)b(X)q_M(X) + a(X)q_L(X) + b(X)q_R(X) + c(X)q_O(X) + PI(X) + q_C(X)\Big) \frac{1}{z_H(X)} \\
+  &+ \Big((a(X) + \beta X + \gamma)(b(X) + \beta k_1 X + \gamma)(c(X) + \beta k_2X + \gamma)z(X)\\
+  &\qquad\qquad\qquad\times{\blue{(X-h_{n-k}) \ldots (X-h_{n-1})(X-h_n)}} \Big) \frac{\alpha}{z_{H}(X)} \\
+  & - \Big((a(X) + \beta S_{\sigma1}(X) + \gamma)(b(X) + \beta S_{\sigma2}(X) + \gamma)(c(X) + \beta S_{\sigma3}(X) + \gamma)z(X\omega)\\
+  &\qquad\qquad\qquad\times{\blue{(X-h_{n-k}) \ldots (X-h_{n-1})(X-h_n)}}\Big) \frac{\alpha}{z_{H}(X)} \\
+  & + \Big(z(X)-1\Big)\cdot L_1(X) \frac{\alpha^2}{z_H(X)} \\
+  & + \blue{\Big(z(X)-1\Big)\cdot L_{n-k}(X) \frac{\alpha^3}{z_H(X)} }  \end{aligned}
+$$
 
 **Modified permutation checks.** To recall, the permutation check was originally as follows. For all $h \in H$,
 
 * $L_1(h)(Z(h) - 1) = 0$
 *  $Z(h)[(a(h) + \beta h + \gamma)(b(h) + \beta k_1 h + \gamma)(c(h) + \beta k_2 h + \gamma)] \\
   = Z(\omega h)[(a(h) + \beta S_{\sigma1}(h) + \gamma)(b(h) + \beta S_{\sigma2}(h) + \gamma)(c(h) + \beta S_{\sigma3}(h) + \gamma)]$
-
 
 
 The modified permuation checks that ensures that the check is performed only on all the values except the last $k$ elements in the witness polynomials are as follows.

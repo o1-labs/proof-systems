@@ -367,6 +367,12 @@ The range check table is a single-column table containing the numbers from 0 to 
 This is used to check that the value fits in 12 bits.
 
 
+##### Runtime tables
+
+Another type of lookup tables has been suggested in the [Extended Lookup Tables](../kimchi/extended-lookup-tables.md).
+
+
+
 #### The Lookup Selectors
 
 **XorSelector**. Performs 4 queries to the XOR lookup table.
@@ -2212,7 +2218,7 @@ The prover then follows the following steps to create the proof:
 	* $s_i$
 	* $w_i$
 	* $z$
-	* lookup (TODO)
+	* lookup (TODO, see [this issue](https://github.com/MinaProtocol/mina/issues/13886))
 	* generic selector
 	* poseidon selector
 

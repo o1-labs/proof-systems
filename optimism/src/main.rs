@@ -1,7 +1,8 @@
 use clap::{arg, value_parser, Arg, ArgAction, Command};
 use kimchi_optimism::{
-    cannon::{State, VmConfiguration},
+    cannon::{self, Meta, Start, State, VmConfiguration},
     mips::witness,
+    preimage_oracle::PreImageOracle,
 };
 use std::{fs::File, io::BufReader, process::ExitCode};
 
@@ -113,29 +114,39 @@ fn cli() -> VmConfiguration {
 pub fn main() -> ExitCode {
     let configuration = cli();
 
-    println!("configuration\n{:#?}", configuration);
-
-    let file = File::open(configuration.input_state_file).expect("Error opening input state file ");
+    let file =
+        File::open(&configuration.input_state_file).expect("Error opening input state file ");
 
     let reader = BufReader::new(file);
     // Read the JSON contents of the file as an instance of `State`.
     let state: State = serde_json::from_reader(reader).expect("Error reading input state file");
 
-    if let Some(host_program) = configuration.host {
-        println!("Launching host program {}", host_program.name);
+    let meta_file = File::open(&configuration.metadata_file).unwrap_or_else(|_| {
+        panic!(
+            "Could not open metadata file {}",
+            &configuration.metadata_file
+        )
+    });
 
-        let _child = std::process::Command::new(host_program.name)
-            .args(host_program.arguments)
-            .spawn()
-            .expect("Could not spawn host process");
-    };
+    let meta: Meta = serde_json::from_reader(BufReader::new(meta_file)).unwrap_or_else(|_| {
+        panic!(
+            "Error deserializing metadata file {}",
+            &configuration.metadata_file
+        )
+    });
 
-    let page_size = 1 << 12;
+    let mut po = PreImageOracle::create(&configuration.host);
+    let _child = po.start();
 
-    let mut env = witness::Env::<ark_bn254::Fq>::create(page_size, state);
+    // Initialize some data used for statistical computations
+    let start = Start::create(state.step as usize);
+
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
+    let mut env = witness::Env::<ark_bn254::Fq>::create(cannon::PAGE_SIZE as usize, state, po);
 
     while !env.halt {
-        env.step();
+        env.step(&configuration, &meta, &start);
     }
 
     // TODO: Logic

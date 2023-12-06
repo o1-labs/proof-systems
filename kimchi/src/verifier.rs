@@ -93,6 +93,8 @@ impl<'a, G: KimchiCurve, OpeningProof: OpenProof<G>, const COLUMNS: usize>
                     ForeignFieldMul => Some(self.verifier_index.foreign_field_mul_comm.as_ref()?),
                     Xor16 => Some(self.verifier_index.xor_comm.as_ref()?),
                     Rot64 => Some(self.verifier_index.rot_comm.as_ref()?),
+                    KeccakRound => todo!(),
+                    KeccakSponge => todo!(),
                 }
             }
         }
@@ -1047,6 +1049,9 @@ where
             let joint_combiner = oracles
                 .joint_combiner
                 .expect("joint_combiner should be present if lookups are used");
+            // The table ID is added as the last column of the vector.
+            // Therefore, the exponent for the combiner for the table ID is the
+            // width of the concatenated table, i.e. max_joint_size.
             let table_id_combiner = joint_combiner
                 .1
                 .pow([u64::from(li.lookup_info.max_joint_size)]);
