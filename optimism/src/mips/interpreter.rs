@@ -1113,7 +1113,20 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::Load16Unsigned => (),
+        ITypeInstruction::Load16Unsigned => {
+            let base = env.read_register(&rs);
+            let dest = rt;
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+            let v0 = env.read_memory(&addr);
+            let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
+            let value = v0 * Env::constant(1 << 8) + v1;
+            env.write_register(&dest, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::LoadWordLeft => (),
         ITypeInstruction::LoadWordRight => (),
         ITypeInstruction::Store8 => {
