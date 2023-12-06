@@ -106,6 +106,12 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u32;
 
+    fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
+        // No-op for witness
+        // Do not assert that _assert_equals_zero is zero here! Some variables may have
+        // placeholders that do not faithfully represent the underlying values.
+    }
+
     fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
         // FIXME: Track the lookup values in the environment.
     }

@@ -202,6 +202,8 @@ pub trait InterpreterEnv {
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
+    fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
+
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     fn instruction_counter(&self) -> Self::Variable;
