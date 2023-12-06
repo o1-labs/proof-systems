@@ -224,6 +224,15 @@ pub trait InterpreterEnv {
         self.add_constraint(x - y);
     }
 
+    /// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
+    fn check_boolean(x: &Self::Variable);
+
+    /// Assert that the value `x` is boolean, and add a constraint in the proof system.
+    fn assert_boolean(&mut self, x: Self::Variable) {
+        Self::check_boolean(&x);
+        self.add_constraint(x.clone() * x.clone() - x);
+    }
+
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     fn instruction_counter(&self) -> Self::Variable;
