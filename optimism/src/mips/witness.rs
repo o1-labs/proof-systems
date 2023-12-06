@@ -116,6 +116,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         assert_eq!(*assert_equals_zero, 0);
     }
 
+    fn check_equal(x: &Self::Variable, y: &Self::Variable) {
+        assert_eq!(*x, *y);
+    }
+
     fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
         // FIXME: Track the lookup values in the environment.
     }

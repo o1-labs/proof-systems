@@ -214,6 +214,16 @@ pub trait InterpreterEnv {
         self.add_constraint(assert_equals_zero);
     }
 
+    /// Check that the witness values in `x` and `y` are equal; otherwise abort.
+    fn check_equal(x: &Self::Variable, y: &Self::Variable);
+
+    /// Assert that the values `x` and `y` are equal, and add a constraint in the proof system.
+    fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
+        // NB: We use a different function to give a better error message for debugging.
+        Self::check_equal(&x, &y);
+        self.add_constraint(x - y);
+    }
+
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     fn instruction_counter(&self) -> Self::Variable;
