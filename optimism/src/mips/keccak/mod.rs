@@ -1,21 +1,8 @@
 pub mod column;
-pub mod constraints;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub enum KTypeInstruction {
-    // Either an Absorb or a Squeeze
-    // Root: Whether the old state is the root state (only happens in the first absorb)
-    // Pad: Whether the 10*1 padding rule is applied in this absrob sponge
-    // usize: How many bytes are involved in the padding rule [0..136]
-    SpongeSqueeze,
-    SpongeAbsorb,
-    SpongeAbsorbRoot,
-    SpongeAbsorbPad(usize),
-    SpongeAbsorbRootPad(usize),
-    // Each of the 24 rounds involved in the permutation function
-    Round(usize),
-}
-
+pub const ZKVM_KECCAK_COLS: usize = 1965 + 6;
+pub const RATE: usize = 1088;
+pub const RATE_IN_BYTES: usize = RATE / 8;
 pub const DIM: usize = 5;
 pub const QUARTERS: usize = 4;
 
@@ -33,62 +20,6 @@ fn grid_100(y: usize, x: usize, q: usize) -> usize {
 
 fn grid_400(i: usize, y: usize, x: usize, q: usize) -> usize {
     q + QUARTERS * (x + DIM * (y + DIM * i))
-}
-
-#[macro_export]
-macro_rules! grid {
-    (20, $v:expr) => {{
-        |x: usize, q: usize| $v[q + QUARTERS * x].clone()
-    }};
-    (80, $v:expr) => {{
-        |i: usize, x: usize, q: usize| $v[q + QUARTERS * (x + DIM * i)].clone()
-    }};
-    (100, $v:expr) => {{
-        |y: usize, x: usize, q: usize| $v[q + QUARTERS * (x + DIM * y)].clone()
-    }};
-    (400, $v:expr) => {{
-        |i: usize, y: usize, x: usize, q: usize| {
-            $v[q + QUARTERS * (x + DIM * (y + DIM * i))].clone()
-        }
-    }};
-}
-
-#[macro_export]
-macro_rules! from_quarters {
-    ($quarters:ident, $x:ident) => {
-        $quarters($x, 0)
-            + T::two_pow(16) * $quarters($x, 1)
-            + T::two_pow(32) * $quarters($x, 2)
-            + T::two_pow(48) * $quarters($x, 3)
-    };
-    ($quarters:ident, $y:ident, $x:ident) => {
-        $quarters($y, $x, 0)
-            + T::two_pow(16) * $quarters($y, $x, 1)
-            + T::two_pow(32) * $quarters($y, $x, 2)
-            + T::two_pow(48) * $quarters($y, $x, 3)
-    };
-}
-
-#[macro_export]
-macro_rules! from_shifts {
-    ($shifts:ident, $i:ident) => {
-        $shifts($i)
-            + T::two_pow(1) * $shifts(100 + $i)
-            + T::two_pow(2) * $shifts(200 + $i)
-            + T::two_pow(3) * $shifts(300 + $i)
-    };
-    ($shifts:ident, $x:ident, $q:ident) => {
-        $shifts(0, $x, $q)
-            + T::two_pow(1) * $shifts(1, $x, $q)
-            + T::two_pow(2) * $shifts(2, $x, $q)
-            + T::two_pow(3) * $shifts(3, $x, $q)
-    };
-    ($shifts:ident, $y:ident, $x:ident, $q:ident) => {
-        $shifts(0, $y, $x, $q)
-            + T::two_pow(1) * $shifts(1, $y, $x, $q)
-            + T::two_pow(2) * $shifts(2, $y, $x, $q)
-            + T::two_pow(3) * $shifts(3, $y, $x, $q)
-    };
 }
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64

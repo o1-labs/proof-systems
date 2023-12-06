@@ -1,14 +1,17 @@
-use std::ops::Index;
+use std::ops::{Index, IndexMut};
 
 use serde::{Deserialize, Serialize};
 
-use super::{grid_100, grid_20, grid_400, grid_80, KTypeInstruction};
-
-pub const RATE: usize = 1088;
-pub const RATE_IN_BYTES: usize = RATE / 8;
+use crate::mips::keccak::{grid_100, grid_20, grid_400, grid_80};
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, Eq, PartialEq)]
 pub enum KeccakColumn {
+    FlagRound,                                // Coeff Round = 0 | 1
+    FlagAbsorb,                               // Coeff Absorb = 0 | 1
+    FlagSqueeze,                              // Coeff Squeeze = 0 | 1
+    FlagRoot,                                 // Coeff Root = 0 | 1
+    FlagPad,                                  // Coeff Pad = 0 | 1
+    FlagLength,                               // Coeff Length 0 | 1 .. 136
     ThetaStateA(usize, usize, usize),         // Round Curr[0..100)
     ThetaShiftsC(usize, usize, usize),        // Round Curr[100..180)
     ThetaDenseC(usize, usize),                // Round Curr[180..200)
@@ -33,8 +36,14 @@ pub enum KeccakColumn {
     SpongeXorState(usize),                    // Sponge Next[0..100)
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct KeccakColumns<T> {
+    pub flag_round: T,               // Coeff Round = 0 | 1
+    pub flag_absorb: T,              // Coeff Absorb = 0 | 1
+    pub flag_squeeze: T,             // Coeff Squeeze = 0 | 1
+    pub flag_root: T,                // Coeff Root = 0 | 1
+    pub flag_pad: T,                 // Coeff Pad = 0 | 1
+    pub flag_length: T,              // Coeff Length 0 | 1 .. 136
     pub theta_state_a: Vec<T>,       // Round Curr[0..100)
     pub theta_shifts_c: Vec<T>,      // Round Curr[100..180)
     pub theta_dense_c: Vec<T>,       // Round Curr[180..200)
@@ -64,6 +73,12 @@ impl<A> Index<KeccakColumn> for KeccakColumns<A> {
 
     fn index(&self, index: KeccakColumn) -> &Self::Output {
         match index {
+            KeccakColumn::FlagRound => &self.flag_round,
+            KeccakColumn::FlagAbsorb => &self.flag_absorb,
+            KeccakColumn::FlagSqueeze => &self.flag_squeeze,
+            KeccakColumn::FlagRoot => &self.flag_root,
+            KeccakColumn::FlagPad => &self.flag_pad,
+            KeccakColumn::FlagLength => &self.flag_length,
             KeccakColumn::ThetaStateA(y, x, q) => &self.theta_state_a[grid_100(y, x, q)],
             KeccakColumn::ThetaShiftsC(i, x, q) => &self.theta_shifts_c[grid_80(i, x, q)],
             KeccakColumn::ThetaDenseC(x, q) => &self.theta_dense_c[grid_20(x, q)],
@@ -90,105 +105,47 @@ impl<A> Index<KeccakColumn> for KeccakColumns<A> {
     }
 }
 
-#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
-pub struct KTypeInstructionSelectors<T> {
-    pub sponge: T,
-    pub round: T,
-}
-
-pub fn encode_ktype(instr: KTypeInstruction) -> u32 {
-    match instr {
-        KTypeInstruction::SpongeSqueeze => 0,
-        KTypeInstruction::SpongeAbsorb => 1,
-        KTypeInstruction::SpongeAbsorbRoot => 2,
-        KTypeInstruction::SpongeAbsorbPad(pad_bytes) => {
-            assert!(pad_bytes >= 1 && pad_bytes <= RATE_IN_BYTES);
-            2 + pad_bytes as u32
-        }
-        KTypeInstruction::SpongeAbsorbRootPad(pad_bytes) => {
-            assert!(pad_bytes >= 1 && pad_bytes <= RATE_IN_BYTES);
-            (2 + RATE_IN_BYTES + pad_bytes) as u32
-        }
-        KTypeInstruction::Round(i) => {
-            assert!(i >= 0 && i < 24);
-            (3 + 2 * RATE_IN_BYTES + i) as u32
-        }
-    }
-}
-
-pub fn decode_ktype(instr: u32) -> Option<KTypeInstruction> {
-    match instr {
-        0 => Some(KTypeInstruction::SpongeSqueeze),
-        1 => Some(KTypeInstruction::SpongeAbsorb),
-        2 => Some(KTypeInstruction::SpongeAbsorbRoot),
-        3..=138 => Some(KTypeInstruction::SpongeAbsorbPad((instr - 2) as usize)),
-        139..=274 => Some(KTypeInstruction::SpongeAbsorbRootPad(
-            instr as usize - 3 - RATE_IN_BYTES,
-        )),
-        275..=298 => Some(KTypeInstruction::Round(
-            instr as usize - 3 - 2 * RATE_IN_BYTES,
-        )),
-        _ => None,
-    }
-}
-
-/*
-#[derive(Clone, Copy, Default, Debug, Serialize, Deserialize)]
-pub struct KTypeInstructionSelectors<T> {
-    pub sponge_squeeze: T,
-    pub sponge_absorb: T,
-    pub sponge_absorb_root: T,
-    pub sponge_absorb_pad: T,
-    pub sponge_absorb_root_pad: T,
-    pub round: T,
-}
-*/
-
-impl<A> Index<KTypeInstruction> for KTypeInstructionSelectors<A> {
-    type Output = A;
-
-    fn index(&self, index: KTypeInstruction) -> &Self::Output {
+impl<A> IndexMut<KeccakColumn> for KeccakColumns<A> {
+    fn index_mut(&mut self, index: KeccakColumn) -> &mut Self::Output {
         match index {
-            KTypeInstruction::SpongeSqueeze => &self.sponge,
-            KTypeInstruction::SpongeAbsorb => &self.sponge,
-            KTypeInstruction::SpongeAbsorbRoot => &self.sponge,
-            KTypeInstruction::SpongeAbsorbPad(_) => &self.sponge,
-            KTypeInstruction::SpongeAbsorbRootPad(_) => &self.sponge,
-            KTypeInstruction::Round(_) => &self.round,
+            KeccakColumn::FlagRound => &mut self.flag_round,
+            KeccakColumn::FlagAbsorb => &mut self.flag_absorb,
+            KeccakColumn::FlagSqueeze => &mut self.flag_squeeze,
+            KeccakColumn::FlagRoot => &mut self.flag_root,
+            KeccakColumn::FlagPad => &mut self.flag_pad,
+            KeccakColumn::FlagLength => &mut self.flag_length,
+            KeccakColumn::ThetaStateA(y, x, q) => &mut self.theta_state_a[grid_100(y, x, q)],
+            KeccakColumn::ThetaShiftsC(i, x, q) => &mut self.theta_shifts_c[grid_80(i, x, q)],
+            KeccakColumn::ThetaDenseC(x, q) => &mut self.theta_dense_c[grid_20(x, q)],
+            KeccakColumn::ThetaQuotientC(x) => &mut self.theta_quotient_c[x],
+            KeccakColumn::ThetaRemainderC(x, q) => &mut self.theta_remainder_c[grid_20(x, q)],
+            KeccakColumn::ThetaDenseRotC(x, q) => &mut self.theta_dense_rot_c[grid_20(x, q)],
+            KeccakColumn::ThetaExpandRotC(x, q) => &mut self.theta_expand_rot_c[grid_20(x, q)],
+            KeccakColumn::PiRhoShiftsE(i, y, x, q) => {
+                &mut self.pi_rho_shifts_e[grid_400(i, y, x, q)]
+            }
+            KeccakColumn::PiRhoDenseE(y, x, q) => &mut self.pi_rho_dense_e[grid_100(y, x, q)],
+            KeccakColumn::PiRhoQuotientE(y, x, q) => &mut self.pi_rho_quotient_e[grid_100(y, x, q)],
+            KeccakColumn::PiRhoRemainderE(y, x, q) => {
+                &mut self.pi_rho_remainder_e[grid_100(y, x, q)]
+            }
+            KeccakColumn::PiRhoDenseRotE(y, x, q) => {
+                &mut self.pi_rho_dense_rot_e[grid_100(y, x, q)]
+            }
+            KeccakColumn::PiRhoExpandRotE(y, x, q) => {
+                &mut self.pi_rho_expand_rot_e[grid_100(y, x, q)]
+            }
+            KeccakColumn::ChiShiftsB(i, y, x, q) => &mut self.chi_shifts_b[grid_400(i, y, x, q)],
+            KeccakColumn::ChiShiftsSum(i, y, x, q) => {
+                &mut self.chi_shifts_sum[grid_400(i, y, x, q)]
+            }
+            KeccakColumn::IotaStateG(y, x, q) => &mut self.iota_state_g[grid_100(y, x, q)],
+            KeccakColumn::SpongeOldState(i) => &mut self.sponge_old_state[i],
+            KeccakColumn::SpongeNewState(i) => &mut self.sponge_new_state[i],
+            KeccakColumn::SpongeZeros(i) => &mut self.sponge_zeros[i],
+            KeccakColumn::SpongeBytes(i) => &mut self.sponge_bytes[i],
+            KeccakColumn::SpongeShifts(i) => &mut self.sponge_shifts[i],
+            KeccakColumn::SpongeXorState(i) => &mut self.sponge_xor_state[i],
         }
-    }
-}
-
-impl<A> KTypeInstructionSelectors<A> {
-    pub fn as_ref(&self) -> KTypeInstructionSelectors<&A> {
-        KTypeInstructionSelectors {
-            sponge: &self.sponge,
-            round: &self.round,
-        }
-    }
-
-    pub fn as_mut(&mut self) -> KTypeInstructionSelectors<&mut A> {
-        KTypeInstructionSelectors {
-            sponge: &mut self.sponge,
-            round: &mut self.round,
-        }
-    }
-
-    pub fn map<B, F: FnMut(A) -> B>(self, mut f: F) -> KTypeInstructionSelectors<B> {
-        let KTypeInstructionSelectors { sponge, round } = self;
-        KTypeInstructionSelectors {
-            sponge: f(sponge),
-            round: f(round),
-        }
-    }
-}
-
-impl<A> IntoIterator for KTypeInstructionSelectors<A> {
-    type Item = A;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        let KTypeInstructionSelectors { sponge, round } = self;
-        vec![sponge, round].into_iter()
     }
 }
