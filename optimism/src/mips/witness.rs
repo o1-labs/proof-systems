@@ -625,7 +625,7 @@ impl<Fp: Field> Env<Fp> {
                 .unwrap_or_else(|| "n/a".to_string());
 
             info!(
-                "processing step={} pc={:#010x} insn={:#010x} ips={:.2} page={} mem={} name={}",
+                "processing step={} pc={:010x} insn={:010x} ips={:.2} page={} mem={} name={}",
                 step, pc, insn, ips, pages, mem, name
             );
         }
