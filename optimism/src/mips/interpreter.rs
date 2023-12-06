@@ -13,6 +13,11 @@ pub const FD_PREIMAGE_WRITE: u32 = 6;
 // Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
 // Reserved for assembler
 pub const REGISTER_AT: u32 = 1;
+
+pub const REGISTER_V0: u32 = 2;
+
+pub const REGISTER_V1: u32 = 3;
+
 // Argument 0
 pub const REGISTER_A0: u32 = 4;
 // Argument 1
