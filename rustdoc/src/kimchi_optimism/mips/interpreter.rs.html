@@ -1054,42 +1054,6 @@
 <a href="#1054" id="1054">1054</a>
 <a href="#1055" id="1055">1055</a>
 <a href="#1056" id="1056">1056</a>
-<a href="#1057" id="1057">1057</a>
-<a href="#1058" id="1058">1058</a>
-<a href="#1059" id="1059">1059</a>
-<a href="#1060" id="1060">1060</a>
-<a href="#1061" id="1061">1061</a>
-<a href="#1062" id="1062">1062</a>
-<a href="#1063" id="1063">1063</a>
-<a href="#1064" id="1064">1064</a>
-<a href="#1065" id="1065">1065</a>
-<a href="#1066" id="1066">1066</a>
-<a href="#1067" id="1067">1067</a>
-<a href="#1068" id="1068">1068</a>
-<a href="#1069" id="1069">1069</a>
-<a href="#1070" id="1070">1070</a>
-<a href="#1071" id="1071">1071</a>
-<a href="#1072" id="1072">1072</a>
-<a href="#1073" id="1073">1073</a>
-<a href="#1074" id="1074">1074</a>
-<a href="#1075" id="1075">1075</a>
-<a href="#1076" id="1076">1076</a>
-<a href="#1077" id="1077">1077</a>
-<a href="#1078" id="1078">1078</a>
-<a href="#1079" id="1079">1079</a>
-<a href="#1080" id="1080">1080</a>
-<a href="#1081" id="1081">1081</a>
-<a href="#1082" id="1082">1082</a>
-<a href="#1083" id="1083">1083</a>
-<a href="#1084" id="1084">1084</a>
-<a href="#1085" id="1085">1085</a>
-<a href="#1086" id="1086">1086</a>
-<a href="#1087" id="1087">1087</a>
-<a href="#1088" id="1088">1088</a>
-<a href="#1089" id="1089">1089</a>
-<a href="#1090" id="1090">1090</a>
-<a href="#1091" id="1091">1091</a>
-<a href="#1092" id="1092">1092</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -1626,19 +1590,6 @@
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
-    <span class="doccomment">/// Return the result of shifting `x` by `by`, storing the result in `position`.
-    ///
-    /// # Safety
-    ///
-    /// There are no constraints on the returned value; callers must assert the relationship with
-    /// the source variable `x` and the shift amount `by`.
-    </span><span class="kw">unsafe fn </span>shift_right(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position: <span class="self">Self</span>::Position,
-    ) -&gt; <span class="self">Self</span>::Variable;
-
     <span class="doccomment">/// Returns 1 if `x` is 0, or 0 otherwise, storing the result in `position`.
     ///
     /// # Safety
@@ -1778,18 +1729,7 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::ShiftRightLogical =&gt; {
-            <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
-            <span class="comment">// FIXME: Constrain this value
-            </span><span class="kw">let </span>shifted = <span class="kw">unsafe </span>{
-                <span class="kw">let </span>pos = env.alloc_scratch();
-                env.shift_right(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>shamt, pos)
-            };
-            env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
-            env.set_instruction_pointer(next_instruction_pointer.clone());
-            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="kw">return</span>;
-        }
+        RTypeInstruction::ShiftRightLogical =&gt; (),
         RTypeInstruction::ShiftRightArithmetic =&gt; (),
         RTypeInstruction::ShiftLeftLogicalVariable =&gt; (),
         RTypeInstruction::ShiftRightLogicalVariable =&gt; (),
@@ -2050,19 +1990,7 @@
             <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
-        ITypeInstruction::Load8 =&gt; {
-            <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
-            <span class="kw">let </span>dest = rt;
-            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
-            <span class="kw">let </span>addr = base + offset;
-            <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>addr);
-            <span class="kw">let </span>value = env.sign_extend(<span class="kw-2">&amp;</span>v0, <span class="number">8</span>);
-            env.write_register(<span class="kw-2">&amp;</span>dest, value);
-            env.set_instruction_pointer(next_instruction_pointer.clone());
-            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
-            <span class="comment">// REMOVEME: when all itype instructions are implemented.
-            </span><span class="kw">return</span>;
-        }
+        ITypeInstruction::Load8 =&gt; (),
         ITypeInstruction::Load16 =&gt; (),
         ITypeInstruction::Load32 =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);

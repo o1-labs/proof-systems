@@ -591,17 +591,6 @@
 <a href="#591" id="591">591</a>
 <a href="#592" id="592">592</a>
 <a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -827,17 +816,6 @@
         position: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable {
         <span class="kw">let </span>res = x &lt;&lt; by;
-        <span class="self">self</span>.write_column(position, res.into());
-        res
-    }
-
-    <span class="kw">unsafe fn </span>shift_right(
-        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        by: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
-        position: <span class="self">Self</span>::Position,
-    ) -&gt; <span class="self">Self</span>::Variable {
-        <span class="kw">let </span>res = x &gt;&gt; by;
         <span class="self">self</span>.write_column(position, res.into());
         res
     }
