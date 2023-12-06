@@ -14,6 +14,7 @@ use mina_poseidon::{
     constants::PlonkSpongeConstantsKimchi,
     sponge::{DefaultFqSponge, DefaultFrSponge},
 };
+use rand::prelude::*;
 use rand::Rng;
 use std::array;
 
@@ -131,7 +132,9 @@ fn setup_successfull_runtime_table_test(
     runtime_tables: Vec<RuntimeTable<Fp>>,
     lookups: Vec<i32>,
 ) {
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
     let nb_lookups = lookups.len();
 
     // circuit
@@ -194,7 +197,9 @@ fn setup_successfull_runtime_table_test(
 #[test]
 fn test_runtime_table() {
     let num = 5;
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
 
     let first_column = [8u32, 9, 8, 7, 1];
     let len = first_column.len();
@@ -448,7 +453,9 @@ fn test_negative_test_runtime_table_prover_uses_undefined_id_in_index_and_witnes
 
 #[test]
 fn test_runtime_table_with_more_than_one_runtime_table_data_given_by_prover() {
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
 
     let first_column = [0, 1, 2, 3, 4];
     let len = first_column.len();
@@ -551,7 +558,9 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_fixed_va
 
 #[test]
 fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_values() {
-    let mut rng = rand::thread_rng();
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
 
     let len = rng.gen_range(1usize..1000);
     let first_column: Vec<i32> = (0..len as i32).collect();
