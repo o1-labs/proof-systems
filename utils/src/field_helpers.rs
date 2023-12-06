@@ -1,7 +1,6 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
 use ark_ff::{BigInteger, Field, PrimeField};
-use mina_curves::pasta::fields::FpParameters;
 use num_bigint::{BigUint, RandBigInt};
 use rand::rngs::StdRng;
 use std::ops::Neg;
