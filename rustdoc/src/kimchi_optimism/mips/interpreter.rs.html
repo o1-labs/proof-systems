@@ -2172,12 +2172,12 @@
             <span class="kw">let </span>is_sysbrk = {
                 <span class="comment">// FIXME: Requires constraints
                 </span><span class="kw">let </span>pos = env.alloc_scratch();
-                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(syscall_num.clone() - Env::constant(<span class="number">4045</span>)), pos) }
+                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(syscall_num.clone() - Env::constant(SYSCALL_BRK)), pos) }
             };
             <span class="kw">let </span>is_sysclone = {
                 <span class="comment">// FIXME: Requires constraints
                 </span><span class="kw">let </span>pos = env.alloc_scratch();
-                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(syscall_num.clone() - Env::constant(<span class="number">4120</span>)), pos) }
+                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(syscall_num.clone() - Env::constant(SYSCALL_CLONE)), pos) }
             };
             <span class="kw">let </span>v0 = { is_sysbrk * Env::constant(<span class="number">0x40000000</span>) + is_sysclone };
             <span class="kw">let </span>v1 = Env::constant(<span class="number">0</span>);
