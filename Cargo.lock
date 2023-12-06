@@ -912,7 +912,7 @@ checksum = "b5320ae4c3782150d900b79807611a59a99fc9a1d61d686faafc24b93fc8d7ca"
 name = "export_test_vectors"
 version = "0.1.0"
 dependencies = [
- "ark-ff 0.3.0",
+ "ark-ff 0.4.2",
  "ark-serialize 0.3.0",
  "hex",
  "mina-curves",
@@ -1426,10 +1426,10 @@ dependencies = [
 name = "mina-poseidon"
 version = "0.1.0"
 dependencies = [
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
- "ark-poly 0.3.0",
- "ark-serialize 0.3.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
  "hex",
  "mina-curves",
  "o1-utils",
