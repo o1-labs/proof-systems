@@ -927,6 +927,14 @@
 <a href="#927" id="927">927</a>
 <a href="#928" id="928">928</a>
 <a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -938,6 +946,14 @@
 <span class="kw">pub const </span>FD_HINT_WRITE: u32 = <span class="number">4</span>;
 <span class="kw">pub const </span>FD_PREIMAGE_READ: u32 = <span class="number">5</span>;
 <span class="kw">pub const </span>FD_PREIMAGE_WRITE: u32 = <span class="number">6</span>;
+
+<span class="kw">pub const </span>SYSCALL_MMAP: u32 = <span class="number">4090</span>;
+<span class="kw">pub const </span>SYSCALL_BRK: u32 = <span class="number">4045</span>;
+<span class="kw">pub const </span>SYSCALL_CLONE: u32 = <span class="number">4120</span>;
+<span class="kw">pub const </span>SYSCALL_EXIT_GROUP: u32 = <span class="number">4246</span>;
+<span class="kw">pub const </span>SYSCALL_READ: u32 = <span class="number">4003</span>;
+<span class="kw">pub const </span>SYSCALL_WRITE: u32 = <span class="number">4004</span>;
+<span class="kw">pub const </span>SYSCALL_FCNTL: u32 = <span class="number">4055</span>;
 
 <span class="comment">// Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
 // Reserved for assembler
