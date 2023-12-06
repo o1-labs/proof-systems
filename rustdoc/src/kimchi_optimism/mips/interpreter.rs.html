@@ -1126,6 +1126,20 @@
 <a href="#1126" id="1126">1126</a>
 <a href="#1127" id="1127">1127</a>
 <a href="#1128" id="1128">1128</a>
+<a href="#1129" id="1129">1129</a>
+<a href="#1130" id="1130">1130</a>
+<a href="#1131" id="1131">1131</a>
+<a href="#1132" id="1132">1132</a>
+<a href="#1133" id="1133">1133</a>
+<a href="#1134" id="1134">1134</a>
+<a href="#1135" id="1135">1135</a>
+<a href="#1136" id="1136">1136</a>
+<a href="#1137" id="1137">1137</a>
+<a href="#1138" id="1138">1138</a>
+<a href="#1139" id="1139">1139</a>
+<a href="#1140" id="1140">1140</a>
+<a href="#1141" id="1141">1141</a>
+<a href="#1142" id="1142">1142</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -2167,7 +2181,21 @@
         ITypeInstruction::Load16Unsigned =&gt; (),
         ITypeInstruction::LoadWordLeft =&gt; (),
         ITypeInstruction::LoadWordRight =&gt; (),
-        ITypeInstruction::Store8 =&gt; (),
+        ITypeInstruction::Store8 =&gt; {
+            <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
+            <span class="kw">let </span>addr = base.clone() + offset.clone();
+            <span class="kw">let </span>value = env.read_register(<span class="kw-2">&amp;</span>rt);
+            <span class="kw">let </span>v0 = {
+                <span class="comment">// FIXME: Requires a range check
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>value, <span class="number">8</span>, <span class="number">0</span>, pos) }
+            };
+            env.write_memory(<span class="kw-2">&amp;</span>addr, v0);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         ITypeInstruction::Store16 =&gt; (),
         ITypeInstruction::Store32 =&gt; {
             <span class="kw">let </span>base = env.read_register(<span class="kw-2">&amp;</span>rs);
