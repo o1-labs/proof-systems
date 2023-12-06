@@ -547,6 +547,19 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Return the result of shifting `x` by `by`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and the shift amount `by`.
+    unsafe fn shift_right_arithmetic(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     /// Returns 1 if `x` is 0, or 0 otherwise, storing the result in `position`.
     ///
     /// # Safety
@@ -698,7 +711,18 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::ShiftRightArithmetic => (),
+        RTypeInstruction::ShiftRightArithmetic => {
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_right(&rt, &shamt, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::ShiftLeftLogicalVariable => (),
         RTypeInstruction::ShiftRightLogicalVariable => (),
         RTypeInstruction::ShiftRightArithmeticVariable => (),
