@@ -601,6 +601,41 @@ pub trait InterpreterEnv {
     /// `x`.
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
+    /// Returns `x^(-1)`, or `0` if `x` is `0`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// `x`.
+    ///
+    /// The value returned may be a placeholder; callers should be careful not to depend directly
+    /// on the value stored in the variable.
+    unsafe fn inverse_or_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
+        let res = {
+            let pos = self.alloc_scratch();
+            unsafe { self.test_zero(x, pos) }
+        };
+        let x_inv_or_zero = {
+            let pos = self.alloc_scratch();
+            unsafe { self.inverse_or_zero(x, pos) }
+        };
+        // If x = 0, then res = 1 and x_inv_or_zero = _
+        // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
+        self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
+        self.add_constraint(x.clone() * res.clone());
+        res
+    }
+
+    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
+        self.is_zero(&(x.clone() - y.clone()))
+    }
+
     /// Returns 1 if `x < y` as unsigned integers, or 0 otherwise, storing the result in
     /// `position`.
     ///

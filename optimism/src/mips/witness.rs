@@ -275,6 +275,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn inverse_or_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        if *x == 0 {
+            self.write_column(position, 0);
+            0
+        } else {
+            self.write_field_column(position, Fp::from(*x as u64).inverse().unwrap());
+            1 // Placeholder value
+        }
+    }
+
     unsafe fn test_less_than(
         &mut self,
         x: &Self::Variable,
@@ -415,8 +429,12 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
+        self.write_field_column(column, value.into())
+    }
+
+    pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
-            Column::ScratchState(idx) => self.scratch_state[idx] = value.into(),
+            Column::ScratchState(idx) => self.scratch_state[idx] = value,
         }
     }
 
