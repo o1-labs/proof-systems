@@ -1039,7 +1039,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let v0 = {
                 // FIXME: Requires a range check
                 let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&value, 32, 24, pos) }
+                unsafe { env.bitmask(&value, 8, 0, pos) }
             };
             env.write_memory(&addr, v0);
             env.set_instruction_pointer(next_instruction_pointer.clone());
