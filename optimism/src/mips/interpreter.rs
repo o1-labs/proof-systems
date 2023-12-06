@@ -205,6 +205,15 @@ pub trait InterpreterEnv {
     /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
     fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
 
+    /// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
+    fn check_is_zero(assert_equals_zero: &Self::Variable);
+
+    /// Assert that the value `assert_equals_zero` is 0, and add a constraint in the proof system.
+    fn assert_is_zero(&mut self, assert_equals_zero: Self::Variable) {
+        Self::check_is_zero(&assert_equals_zero);
+        self.add_constraint(assert_equals_zero);
+    }
+
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     fn instruction_counter(&self) -> Self::Variable;

@@ -112,6 +112,10 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         // placeholders that do not faithfully represent the underlying values.
     }
 
+    fn check_is_zero(assert_equals_zero: &Self::Variable) {
+        assert_eq!(*assert_equals_zero, 0);
+    }
+
     fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
         // FIXME: Track the lookup values in the environment.
     }
