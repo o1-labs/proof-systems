@@ -272,7 +272,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         y: &Self::Variable,
         position: Self::Position,
     ) -> Self::Variable {
-        let res = x ^ y;
+        let res = *x ^ *y;
         self.write_column(position, res.into());
         res
     }
