@@ -927,8 +927,6 @@
 <a href="#927" id="927">927</a>
 <a href="#928" id="928">928</a>
 <a href="#929" id="929">929</a>
-<a href="#930" id="930">930</a>
-<a href="#931" id="931">931</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -1614,7 +1612,7 @@
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
         <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
         <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
-        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer + Env::constant(<span class="number">3</span>)));
+        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">3</span>)));
         (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
             + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
             + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
@@ -1630,23 +1628,21 @@
         </span><span class="kw">let </span>pos = env.alloc_scratch();
         <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>instruction, <span class="number">26</span>, <span class="number">0</span>, pos) }
     };
-    <span class="kw">match </span>instr {
-        JTypeInstruction::Jump =&gt; {
-            <span class="comment">// &gt; The address stored in a j instruction is 26 bits of the address
-            // &gt; associated with the specified label. The 26 bits are achieved by
-            // &gt; dropping the high-order 4 bits of the address and the low-order 2
-            // &gt; bits (which would always be 00, since addresses are always
-            // &gt; divisible by 4).
-            // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            </span>env.set_instruction_pointer(next_instruction_pointer);
-            env.set_next_instruction_pointer(addr * Env::constant(<span class="number">4</span>));
-            <span class="comment">// REMOVEME: when all jtype instructions are implemented.
-            </span><span class="kw">return</span>;
-        }
-        JTypeInstruction::JumpAndLink =&gt; (),
+    <span class="kw">let </span>instruction_pointer_high_bits = {
+        <span class="comment">// FIXME: Requires a range check
+        </span><span class="kw">let </span>pos = env.alloc_scratch();
+        <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>next_instruction_pointer, <span class="number">32</span>, <span class="number">28</span>, pos) }
     };
-    <span class="comment">// REMOVEME: when all jtype instructions are implemented.
-    </span>env.set_halted(Env::constant(<span class="number">1</span>));
+    <span class="kw">let </span>target_addr =
+        (instruction_pointer_high_bits * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">28</span>)) + (addr * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>));
+    <span class="kw">match </span>instr {
+        JTypeInstruction::Jump =&gt; (),
+        JTypeInstruction::JumpAndLink =&gt; {
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">31</span>), instruction_pointer + Env::constant(<span class="number">8</span>));
+        }
+    };
+    env.set_instruction_pointer(next_instruction_pointer);
+    env.set_next_instruction_pointer(target_addr);
 }
 
 <span class="kw">pub fn </span>interpret_itype&lt;Env: InterpreterEnv&gt;(env: <span class="kw-2">&amp;mut </span>Env, instr: ITypeInstruction) {
