@@ -310,6 +310,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn mul_signed_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = ((*x as i32) * (*y as i32)) as u32;
+        self.write_column(position, res.into());
+        res
+    }
+
     unsafe fn divmod(
         &mut self,
         x: &Self::Variable,
