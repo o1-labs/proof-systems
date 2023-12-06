@@ -310,6 +310,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn divmod(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_quotient: Self::Position,
+        position_remainder: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let q = x / y;
+        let r = x % y;
+        self.write_column(position_quotient, q.into());
+        self.write_column(position_remainder, r.into());
+        (q, r)
+    }
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, (*x).into());
         *x
