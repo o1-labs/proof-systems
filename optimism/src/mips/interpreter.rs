@@ -702,7 +702,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
     let instruction_pointer_high_bits = {
         // FIXME: Requires a range check
         let pos = env.alloc_scratch();
-        unsafe { env.bitmask(&instruction, 32, 28, pos) }
+        unsafe { env.bitmask(&next_instruction_pointer, 32, 28, pos) }
     };
     let target_addr =
         (instruction_pointer_high_bits * Env::constant(1 << 28)) + (addr * Env::constant(1 << 2));
