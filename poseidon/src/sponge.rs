@@ -1,7 +1,7 @@
 use crate::constants::SpongeConstants;
 use crate::poseidon::{ArithmeticSponge, ArithmeticSpongeParams, Sponge};
-use ark_ec::{short_weierstrass_jacobian::GroupAffine, SWModelParameters};
-use ark_ff::{BigInteger, Field, FpParameters, One, PrimeField, Zero};
+use ark_ec::models::short_weierstrass::{Affine, SWCurveConfig};
+use ark_ff::{BigInteger, Field, One, PrimeField, Zero};
 
 pub use crate::FqSponge;
 
@@ -17,9 +17,7 @@ pub struct ScalarChallenge<F>(pub F);
 pub fn endo_coefficient<F: PrimeField>() -> F {
     let p_minus_1_over_3 = (F::zero() - F::one()) / F::from(3u64);
 
-    let t = F::multiplicative_generator();
-
-    t.pow(p_minus_1_over_3.into_repr().as_ref())
+    F::GENERATOR.pow(p_minus_1_over_3.into_bigint().as_ref())
 }
 
 fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
@@ -30,7 +28,7 @@ fn get_bit(limbs_lsb: &[u64], i: u64) -> u64 {
 
 impl<F: PrimeField> ScalarChallenge<F> {
     pub fn to_field_with_length(&self, length_in_bits: usize, endo_coeff: &F) -> F {
-        let rep = self.0.into_repr();
+        let rep = self.0.into_bigint();
         let r = rep.as_ref();
 
         let mut a: F = 2_u64.into();
@@ -63,7 +61,7 @@ impl<F: PrimeField> ScalarChallenge<F> {
 }
 
 #[derive(Clone)]
-pub struct DefaultFqSponge<P: SWModelParameters, SC: SpongeConstants> {
+pub struct DefaultFqSponge<P: SWCurveConfig, SC: SpongeConstants> {
     pub sponge: ArithmeticSponge<P::BaseField, SC>,
     pub last_squeezed: Vec<u64>,
 }
@@ -74,10 +72,10 @@ pub struct DefaultFrSponge<Fr: Field, SC: SpongeConstants> {
 }
 
 fn pack<B: BigInteger>(limbs_lsb: &[u64]) -> B {
-    let mut res: B = 0.into();
+    let mut res: B = 0u64.into();
     for &x in limbs_lsb.iter().rev() {
         res.muln(64);
-        res.add_nocarry(&x.into());
+        res.add_with_carry(&x.into());
     }
     res
 }
@@ -88,10 +86,9 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
             let last_squeezed = self.last_squeezed.clone();
             let (limbs, remaining) = last_squeezed.split_at(num_limbs);
             self.last_squeezed = remaining.to_vec();
-            Fr::from_repr(pack::<Fr::BigInt>(limbs))
-                .expect("internal representation was not a valid field element")
+            Fr::from(pack::<Fr::BigInt>(limbs))
         } else {
-            let x = self.sponge.squeeze().into_repr();
+            let x = self.sponge.squeeze().into_bigint();
             self.last_squeezed
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze(num_limbs)
@@ -99,7 +96,7 @@ impl<Fr: PrimeField, SC: SpongeConstants> DefaultFrSponge<Fr, SC> {
     }
 }
 
-impl<P: SWModelParameters, SC: SpongeConstants> DefaultFqSponge<P, SC>
+impl<P: SWCurveConfig, SC: SpongeConstants> DefaultFqSponge<P, SC>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
@@ -111,7 +108,7 @@ where
             self.last_squeezed = remaining.to_vec();
             limbs.to_vec()
         } else {
-            let x = self.sponge.squeeze().into_repr();
+            let x = self.sponge.squeeze().into_bigint();
             self.last_squeezed
                 .extend(&x.as_ref()[0..HIGH_ENTROPY_LIMBS]);
             self.squeeze_limbs(num_limbs)
@@ -124,13 +121,56 @@ where
     }
 
     pub fn squeeze(&mut self, num_limbs: usize) -> P::ScalarField {
-        P::ScalarField::from_repr(pack(&self.squeeze_limbs(num_limbs)))
+        P::ScalarField::from_bigint(pack(&self.squeeze_limbs(num_limbs)))
             .expect("internal representation was not a valid field element")
     }
 }
 
-impl<P: SWModelParameters, SC: SpongeConstants>
-    FqSponge<P::BaseField, GroupAffine<P>, P::ScalarField> for DefaultFqSponge<P, SC>
+// Debugging macros -- these only insert code when non-release build and
+// "debug_sponge" feature is enabled.
+macro_rules! debug_sponge {
+    ($name:expr, $sponge:expr) => {
+        #[cfg(feature = "debug_sponge")]
+        {
+            // No input
+            debug_sponge_print_state!($name, $sponge);
+        }
+    };
+    ($name:expr, $input:expr, $sponge:expr) => {
+        #[cfg(feature = "debug_sponge")]
+        {
+            // Field input
+            debug_sponge_print_state!($name, $sponge);
+
+            println!(
+                "debug_sponge: id{} {} input {}",
+                $sponge.id,
+                $name,
+                $input.to_hex()
+            );
+        }
+    };
+}
+#[cfg(feature = "debug_sponge")]
+macro_rules! debug_sponge_print_state {
+    ($name:expr, $sponge:expr) => {
+        println!(
+            "debug_sponge: id{} {} state {:?} {}",
+            $sponge.id,
+            $name,
+            $sponge.sponge_state,
+            $sponge
+                .state
+                .iter()
+                .map(|f| { f.to_hex() })
+                .collect::<Vec<String>>()
+                .join(" "),
+        );
+    };
+}
+
+impl<P: SWCurveConfig, SC: SpongeConstants> FqSponge<P::BaseField, Affine<P>, P::ScalarField>
+    for DefaultFqSponge<P, SC>
 where
     P::BaseField: PrimeField,
     <P::BaseField as PrimeField>::BigInt: Into<<P::ScalarField as PrimeField>::BigInt>,
@@ -143,7 +183,7 @@ where
         }
     }
 
-    fn absorb_g(&mut self, g: &[GroupAffine<P>]) {
+    fn absorb_g(&mut self, g: &[Affine<P>]) {
         self.last_squeezed = vec![];
         for g in g.iter() {
             if g.infinity {
@@ -170,13 +210,13 @@ where
         self.last_squeezed = vec![];
 
         x.iter().for_each(|x| {
-            let bits = x.into_repr().to_bits_le();
+            let bits = x.into_bigint().to_bits_le();
 
             // absorb
-            if <P::ScalarField as PrimeField>::Params::MODULUS
-                < <P::BaseField as PrimeField>::Params::MODULUS.into()
+            if <P::ScalarField as PrimeField>::MODULUS
+                < <P::BaseField as PrimeField>::MODULUS.into()
             {
-                let fe = P::BaseField::from_repr(
+                let fe = P::BaseField::from_bigint(
                     <P::BaseField as PrimeField>::BigInt::from_bits_le(&bits),
                 )
                 .expect("padding code has a bug");
@@ -188,7 +228,7 @@ where
                     P::BaseField::zero()
                 };
 
-                let high_bits = P::BaseField::from_repr(
+                let high_bits = P::BaseField::from_bigint(
                     <P::BaseField as PrimeField>::BigInt::from_bits_le(&bits[1..bits.len()]),
                 )
                 .expect("padding code has a bug");
@@ -200,14 +240,15 @@ where
     }
 
     fn digest(mut self) -> P::ScalarField {
-        let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_repr();
+        debug_sponge!("squeeze", self.sponge);
+        let x: <P::BaseField as PrimeField>::BigInt = self.squeeze_field().into_bigint();
         // Returns zero for values that are too large.
         // This means that there is a bias for the value zero (in one of the curve).
         // An attacker could try to target that seed, in order to predict the challenges u and v produced by the Fr-Sponge.
         // This would allow the attacker to mess with the result of the aggregated evaluation proof.
         // Previously the attacker's odds were 1/q, now it's (q-p)/q.
         // Since log2(q-p) ~ 86 and log2(q) ~ 254 the odds of a successful attack are negligible.
-        P::ScalarField::from_repr(x.into()).unwrap_or_else(P::ScalarField::zero)
+        P::ScalarField::from_bigint(x.into()).unwrap_or_else(P::ScalarField::zero)
     }
 
     fn digest_fq(mut self) -> P::BaseField {
