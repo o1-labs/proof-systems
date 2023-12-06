@@ -505,6 +505,7 @@ impl<Fp: Field> Env<Fp> {
                     0x24 => Instruction::RType(RTypeInstruction::And),
                     0x25 => Instruction::RType(RTypeInstruction::Or),
                     0x26 => Instruction::RType(RTypeInstruction::Xor),
+                    0x27 => Instruction::RType(RTypeInstruction::Nor),
                     0x2a => Instruction::RType(RTypeInstruction::SetLessThan),
                     0x2b => Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
                     _ => {
