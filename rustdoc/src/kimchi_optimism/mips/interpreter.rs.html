@@ -1355,6 +1355,18 @@
 <a href="#1355" id="1355">1355</a>
 <a href="#1356" id="1356">1356</a>
 <a href="#1357" id="1357">1357</a>
+<a href="#1358" id="1358">1358</a>
+<a href="#1359" id="1359">1359</a>
+<a href="#1360" id="1360">1360</a>
+<a href="#1361" id="1361">1361</a>
+<a href="#1362" id="1362">1362</a>
+<a href="#1363" id="1363">1363</a>
+<a href="#1364" id="1364">1364</a>
+<a href="#1365" id="1365">1365</a>
+<a href="#1366" id="1366">1366</a>
+<a href="#1367" id="1367">1367</a>
+<a href="#1368" id="1368">1368</a>
+<a href="#1369" id="1369">1369</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -2517,7 +2529,19 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        ITypeInstruction::AndImmediate =&gt; (),
+        ITypeInstruction::AndImmediate =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>res = {
+                <span class="comment">// FIXME: Constraint
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.and_witness(<span class="kw-2">&amp;</span>rs, <span class="kw-2">&amp;</span>immediate, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
+            </span><span class="kw">return</span>;
+        }
         ITypeInstruction::OrImmediate =&gt; (),
         ITypeInstruction::XorImmediate =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
