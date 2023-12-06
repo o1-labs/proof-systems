@@ -582,3 +582,50 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
 
     setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
+
+#[test]
+fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+    let max_len: u32 = 100u32;
+    let max_table_id: i32 = 100;
+
+    // No zero-length table
+    let len = rng.gen_range(1u32..max_len);
+    // No table of ID 0
+    let table_id: i32 = rng.gen_range(1i32..max_table_id);
+    // No index 0 in the table.
+    let indices: Vec<Fp> = (0..len)
+        .map(|_| rng.gen_range(1u32..max_len))
+        .map(Into::into)
+        .collect();
+    // No zero value
+    let values: Vec<Fp> = (0..len)
+        .map(|_| rng.gen_range(1u32..max_len))
+        .map(Into::into)
+        .collect();
+    let lookup_table = LookupTable {
+        id: table_id,
+        data: vec![indices, values],
+    };
+    let lookup_tables = vec![lookup_table];
+    let num_lookups = 20;
+
+    // circuit gates
+    let gates = (0..num_lookups)
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+        .collect();
+
+    // 0 everywhere, it should handle the case (0, 0, 0). We simulate a lot of
+    // lookups with (0, 0, 0).
+    let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
+
+    TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup()
+        .prove_and_verify::<BaseSponge, ScalarSponge>()
+        .unwrap();
+}
