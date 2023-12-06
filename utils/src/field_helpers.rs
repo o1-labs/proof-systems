@@ -1,6 +1,7 @@
 //! Useful helper methods to extend [ark_ff::Field].
 
-use ark_ff::{BigInteger, Field, FpParameters, PrimeField};
+use ark_ff::{BigInteger, Field, PrimeField};
+use mina_curves::pasta::fields::FpParameters;
 use num_bigint::{BigUint, RandBigInt};
 use rand::rngs::StdRng;
 use std::ops::Neg;
@@ -114,7 +115,7 @@ pub trait FieldHelpers<F> {
     where
         F: PrimeField,
     {
-        F::size_in_bits() / 8 + (F::size_in_bits() % 8 != 0) as usize
+        (F::MODULUS_BIT_SIZE / 8) as usize + (F::MODULUS_BIT_SIZE % 8 != 0) as usize
     }
 
     /// Get the modulus as `BigUint`
@@ -122,18 +123,19 @@ pub trait FieldHelpers<F> {
     where
         F: PrimeField,
     {
-        BigUint::from_bytes_le(&F::Params::MODULUS.to_bytes_le())
+        BigUint::from_bytes_le(&F::MODULUS.to_bytes_le())
     }
 }
 
 impl<F: Field> FieldHelpers<F> for F {
     fn from_bytes(bytes: &[u8]) -> Result<F> {
-        F::deserialize(&mut &*bytes).map_err(|_| FieldHelpersError::DeserializeBytes)
+        F::deserialize_uncompressed(&mut &*bytes).map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     fn from_hex(hex: &str) -> Result<F> {
         let bytes: Vec<u8> = hex::decode(hex).map_err(|_| FieldHelpersError::DecodeHex)?;
-        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
+        F::deserialize_uncompressed(&mut &bytes[..])
+            .map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     fn from_bits(bits: &[bool]) -> Result<F> {
@@ -145,12 +147,13 @@ impl<F: Field> FieldHelpers<F> for F {
                 bytes
             });
 
-        F::deserialize(&mut &bytes[..]).map_err(|_| FieldHelpersError::DeserializeBytes)
+        F::deserialize_uncompressed(&mut &bytes[..])
+            .map_err(|_| FieldHelpersError::DeserializeBytes)
     }
 
     fn to_bytes(&self) -> Vec<u8> {
         let mut bytes: Vec<u8> = vec![];
-        self.serialize(&mut bytes)
+        self.serialize_uncompressed(&mut bytes)
             .expect("Failed to serialize field");
 
         bytes
@@ -201,12 +204,12 @@ pub fn i32_to_field<F: From<u64> + Neg<Output = F>>(i: i32) -> F {
 mod tests {
     use super::*;
 
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use ark_ff::One;
     use mina_curves::pasta::Pallas as CurvePoint;
 
     /// Base field element type
-    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
 
     #[test]
     fn field_hex() {
@@ -298,7 +301,10 @@ mod tests {
         .is_ok());
 
         assert_eq!(
-            BaseField::from_bits(&vec![true; BaseField::size_in_bits()]),
+            BaseField::from_bits(&vec![
+                true;
+                <BaseField as PrimeField>::MODULUS_BIT_SIZE as usize
+            ]),
             Err(FieldHelpersError::DeserializeBytes)
         );
 
@@ -328,7 +334,7 @@ mod tests {
         let field_zero = BaseField::from(0u32);
 
         assert_eq!(
-            BigUint::from_bytes_be(&field_zero.into_repr().to_bytes_be()),
+            BigUint::from_bytes_be(&field_zero.0.to_bytes_be()),
             BigUint::from_bytes_be(&be_zero_32bytes)
         );
 

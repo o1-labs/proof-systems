@@ -23,7 +23,7 @@ pub mod ser {
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize(&mut bytes)
+        val.serialize_uncompressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         Bytes::serialize_as(&bytes, serializer)
@@ -37,7 +37,7 @@ pub mod ser {
         D: serde::Deserializer<'de>,
     {
         let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
-        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        T::deserialize_uncompressed(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }
 
@@ -60,7 +60,7 @@ where
         S: serde::Serializer,
     {
         let mut bytes = vec![];
-        val.serialize(&mut bytes)
+        val.serialize_uncompressed(&mut bytes)
             .map_err(serde::ser::Error::custom)?;
 
         if serializer.is_human_readable() {
@@ -79,11 +79,7 @@ where
     where
         D: serde::Deserializer<'de>,
     {
-        let bytes: Vec<u8> = if deserializer.is_human_readable() {
-            hex::serde::deserialize(deserializer)?
-        } else {
-            Bytes::deserialize_as(deserializer)?
-        };
-        T::deserialize(&mut &bytes[..]).map_err(serde::de::Error::custom)
+        let bytes: Vec<u8> = Bytes::deserialize_as(deserializer)?;
+        T::deserialize_uncompressed(&mut &bytes[..]).map_err(serde::de::Error::custom)
     }
 }

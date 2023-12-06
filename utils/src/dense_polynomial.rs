@@ -1,7 +1,7 @@
 //! This adds a few utility functions for the [DensePolynomial] arkworks type.
 
 use ark_ff::Field;
-use ark_poly::{univariate::DensePolynomial, Polynomial, UVPolynomial};
+use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial, Polynomial};
 use rayon::prelude::*;
 
 use crate::chunked_polynomial::ChunkedPolynomial;
@@ -32,7 +32,7 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
         result
             .coeffs
             .par_iter_mut()
-            .for_each(|coeff| *coeff *= &elm);
+            .for_each(|coeff: &mut F| *coeff *= &elm);
         result
     }
 
@@ -72,7 +72,7 @@ impl<F: Field> ExtendedDensePolynomial<F> for DensePolynomial<F> {
 mod tests {
     use super::*;
     use ark_ff::One;
-    use ark_poly::{univariate::DensePolynomial, UVPolynomial};
+    use ark_poly::{univariate::DensePolynomial, DenseUVPolynomial};
     use mina_curves::pasta::Fp;
 
     #[test]
