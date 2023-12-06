@@ -31,7 +31,7 @@ fn grid_400(i: usize, y: usize, x: usize, q: usize) -> usize {
 /// | 3     | 28 | 55 | 25 | 21 | 56 |
 /// | 4     | 27 | 20 | 39 |  8 | 14 |
 /// Note that the order of the indexing is [y][x] to match the encoding of the witness algorithm
-pub(crate) const OFF: [[u64; DIM]; DIM] = [
+pub(crate) const _OFF: [[u64; DIM]; DIM] = [
     [0, 1, 62, 28, 27],
     [36, 44, 6, 55, 20],
     [3, 10, 43, 25, 39],
