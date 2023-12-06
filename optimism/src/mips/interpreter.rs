@@ -1152,7 +1152,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        ITypeInstruction::AndImmediate => (),
+        ITypeInstruction::AndImmediate => {
+            let rs = env.read_register(&rs);
+            let res = {
+                // FIXME: Constraint
+                let pos = env.alloc_scratch();
+                unsafe { env.and_witness(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::OrImmediate => (),
         ITypeInstruction::XorImmediate => {
             let rs = env.read_register(&rs);
