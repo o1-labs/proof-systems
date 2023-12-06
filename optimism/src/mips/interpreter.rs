@@ -789,7 +789,13 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::Sync => (),
         RTypeInstruction::MoveFromHi => (),
         RTypeInstruction::MoveToHi => (),
-        RTypeInstruction::MoveFromLo => (),
+        RTypeInstruction::MoveFromLo => {
+            let lo = env.read_register(&Env::constant(REGISTER_LO as u32));
+            env.write_register(&rd, lo);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveToLo => (),
         RTypeInstruction::Multiply => (),
         RTypeInstruction::MultiplyUnsigned => (),
