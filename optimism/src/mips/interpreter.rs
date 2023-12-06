@@ -806,7 +806,19 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::Xor => (),
+        RTypeInstruction::Xor => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.xor_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::Nor => (),
         RTypeInstruction::SetLessThan => {
             let rs = env.read_register(&rs);
