@@ -142,6 +142,8 @@ pub enum ITypeInstruction {
     BranchNeq,                    // bne
     BranchLeqZero,                // blez
     BranchGtZero,                 // bgtz
+    BranchLtZero,                 // bltz
+    BranchGeqZero,                // bgez
     AddImmediate,                 // addi
     AddImmediateUnsigned,         // addiu
     SetLessThanImmediate,         // slti
@@ -954,6 +956,26 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
         }
         ITypeInstruction::BranchLeqZero => (),
         ITypeInstruction::BranchGtZero => (),
+        ITypeInstruction::BranchLtZero => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let less_than = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&rs, &Env::constant(0), pos) }
+            };
+            let offset =
+                (Env::constant(1) - less_than.clone()) * Env::constant(4) + less_than * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
+        ITypeInstruction::BranchGeqZero => (),
         ITypeInstruction::AddImmediate => {
             let register_rs = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);

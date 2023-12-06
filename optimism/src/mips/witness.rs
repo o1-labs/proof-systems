@@ -461,6 +461,14 @@ impl<Fp: Field> Env<Fp> {
                         panic!("Unhandled instruction {:#X}", instruction)
                     }
                 },
+                0x01 => {
+                    // RegImm instructions
+                    match (instruction >> 16) & 0x1F {
+                        0x0 => Instruction::IType(ITypeInstruction::BranchLtZero),
+                        0x1 => Instruction::IType(ITypeInstruction::BranchGeqZero),
+                        _ => panic!("Unhandled instruction {:#X}", instruction),
+                    }
+                }
                 0x02 => Instruction::JType(JTypeInstruction::Jump),
                 0x03 => Instruction::JType(JTypeInstruction::JumpAndLink),
                 0x04 => Instruction::IType(ITypeInstruction::BranchEq),
