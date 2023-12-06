@@ -582,3 +582,43 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
 
     setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
+
+#[test]
+fn test_dummy_zero_entry_is_counted_while_computing_domain_size() {
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+
+    let power_of_2: u32 = rng.gen_range(3..16);
+    // 4 = zk_rows + 1 for the closing constraint on the polynomial.
+    let len = (1 << power_of_2) - 3 - 1;
+    // We want to create a table with an ID different than 0.
+    let table_id: i32 = rng.gen_range(1..1_000);
+    let idx: Vec<Fp> = (1..(len + 1) as i32).map(Into::into).collect();
+    let values: Vec<Fp> = (1..(len + 1))
+        .map(|_| UniformRand::rand(&mut rng))
+        .collect();
+    let lt = LookupTable {
+        id: table_id,
+        data: vec![idx, values],
+    };
+
+    // Dummy, used for the setup. Only the number of gates must be lower than
+    // the length of the table to avoid having a bigger circuit than the table
+    // size, and therefore use it as the main component for the domain size
+    // computation.
+    let num_lookups = rng.gen_range(1..len);
+    let gates = (0..num_lookups)
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+        .collect();
+    let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
+
+    let setup = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(vec![lt])
+        .setup();
+    let domain_size = setup.prover_index().cs.domain.d1.size;
+    // As the dummy entry has been added, we reached the next power of two
+    assert!(domain_size == (1 << (power_of_2 + 1)));
+}
