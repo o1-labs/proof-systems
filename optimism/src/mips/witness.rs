@@ -277,6 +277,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn and_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = x & y;
+        self.write_column(position, res.into());
+        res
+    }
+
     unsafe fn or_witness(
         &mut self,
         x: &Self::Variable,
