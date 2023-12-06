@@ -787,7 +787,31 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallExitGroup => (),
         RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),
-        RTypeInstruction::SyscallReadOther => (),
+        RTypeInstruction::SyscallReadOther => {
+            let fd_id = env.read_register(&Env::constant(4));
+            let mut check_equal = |expected_fd_id: u32| {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_zero(&(fd_id.clone() - Env::constant(expected_fd_id)), pos) }
+            };
+            let is_stdin = check_equal(FD_STDIN);
+            let is_preimage_read = check_equal(FD_PREIMAGE_READ);
+            let is_hint_read = check_equal(FD_HINT_READ);
+
+            // FIXME: Should assert that `is_preimage_read` and `is_hint_read` cannot be true here.
+            let other_fd = Env::constant(1) - is_stdin - is_preimage_read - is_hint_read;
+
+            // We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
+            // bad FD that we reject with EBADF.
+            let v0 = other_fd.clone() * Env::constant(0xFFFFFFFF);
+            let v1 = other_fd * Env::constant(0x9); // EBADF
+
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallWriteHint => (),
         RTypeInstruction::SyscallWritePreimage => (),
         RTypeInstruction::SyscallWriteOther => (),
