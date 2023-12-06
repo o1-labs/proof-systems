@@ -1030,7 +1030,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
                 unsafe { env.test_less_than_signed(&rs, &Env::constant(0), pos) }
             };
             let offset =
-                less_than.clone() * Env::constant(4) + (Env::constant(1) - less_than) * offset;
+                (Env::constant(1) - less_than.clone()) * Env::constant(4) + less_than * offset;
             let addr = {
                 let pos = env.alloc_scratch();
                 env.copy(&(next_instruction_pointer.clone() + offset), pos)
