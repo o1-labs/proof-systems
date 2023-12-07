@@ -28,3 +28,11 @@ _build
 tools/srs
 
 .ignore
+optimism/*op-program-data-log.sh
+optimism/cpu.pprof
+optimism/meta.json
+optimism/out.json
+optimism/op-program-db*
+optimism/state.json
+meta.json
+state.json

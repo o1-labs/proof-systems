@@ -15,24 +15,24 @@ We might want to piggy back on the [zcash poseidon spec](https://github.com/C2SP
 
 We define a base sponge, and a scalar sponge. Both must be instantiated when verifying a proof (this is due to recursion-support baked in Kimchi).
 
-External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the [pickles specification](./pickles.md)). 
+External users of kimchi (or pickles) are most likely to interact with a wrap proof (see the [pickles specification](./pickles.md)).
 As such, the sponges they need to instantiate are most likely to be instantiated with:
 
 * Poseidon-Fp for base sponge
-* Poseidon-Fq for the scalar sponge 
+* Poseidon-Fq for the scalar sponge
 
 ### Base Sponge
 
 * `new(params) -> BaseSponge`. Creates a new base sponge.
 * `BaseSponge.absorb(field_element)`. Absorbs a field element by calling the underlying sponge `absorb` function.
 * `BaseSponge.absorb_point(point)`. Absorbs an elliptic curve point. If the point is the point at infinity, absorb two zeros. Otherwise, absorb the x and y coordinates with two calls to `absorb`.
-* `BaseSponge.absorb_scalar(field_element_of_scalar_field)`. Absorbs a scalar. 
+* `BaseSponge.absorb_scalar(field_element_of_scalar_field)`. Absorbs a scalar.
   * If the scalar field is smaller than the base field (e.g. Fp is smaller than Fq), then the scalar is casted to a field element of the base field and absorbed via `absorb`.
   * Otherwise, the value is split between its least significant bit and the rest. Then both values are casted to field elements of the base field and absorbed via `absorb` (the high bits first, then the low bit).
 * `BaseSponge.digest() -> field_element`. The `squeeze` function of the underlying sponge function is called and the first field element is returned.
-* `BaseSponge.digest_scalar() -> field_element_of_scalar_field`. 
-* `BaseSponge.challenge // TODO: specify`. 
-* `BaseSponge.challenge_fq // TODO: specify`. 
+* `BaseSponge.digest_scalar() -> field_element_of_scalar_field`.
+* `BaseSponge.challenge // TODO: specify`.
+* `BaseSponge.challenge_fq // TODO: specify`.
 
 ### Scalar Sponge
 
@@ -64,7 +64,7 @@ def apply_mds(state):
     n[1] = state[0] * mds[1][0] + state[1] * mds[1][1] + state[2] * mds[1][2]
     n[2] = state[0] * mds[2][0] + state[1] * mds[2][1] + state[2] * mds[2][2]
     return n
-    
+
 # a round in the permutation
 def apply_round(round, state):
     # sbox
@@ -89,9 +89,9 @@ def permutation(state):
         state[1] += constant[1]
         state[2] += constant[2]
         round_offset = 1
-        
+
     for round in range(round_offset, ROUNDS + round_offset):
-        apply_round(round, state)    
+        apply_round(round, state)
 ```
 
 ### Sponge
@@ -115,7 +115,7 @@ def absorb(sponge, field_element):
     elif sponge.offset == RATE:
         sponge.state = permutation(sponge.state)
         sponge.offset = 0
-    
+
     # absorb by adding to the state
     sponge.state[sponge.offset] += field_element
     sponge.offset += 1

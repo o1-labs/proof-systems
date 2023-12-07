@@ -2,12 +2,12 @@
 # list versions of mdbook and mdbook plugins
 #
 
-MDBOOK_VERSION = 0.4.27
-MDBOOK_ADMONISH_VERSION = 1.8.0
+MDBOOK_VERSION = 0.4.35
 MDBOOK_KATEX_VERSION = 0.3.8
-MDBOOK_LINKCHECK_VERSION = 0.7.6
+MDBOOK_ADMONISH_VERSION = 1.14.0
+MDBOOK_LINKCHECK_VERSION = 0.7.7
 MDBOOK_MERMAID_VERSION = 0.12.6
-MDBOOK_TOC_VERSION = 0.11.2
+MDBOOK_TOC_VERSION = 0.14.1
 
 #
 # use `make deps` to install the dependencies required to serve or build the book
@@ -26,7 +26,7 @@ deps:
 #
 
 define check_version
-	(cargo install --list | grep "$(1) v" | cut -d " " -f 2 | tr -d ':' | grep -Fx "v$(2)") || (echo "your $(1) version needs to be $(2)" && exit 1)
+	@(cargo install --list | grep "$(1) v" | cut -d " " -f 2 | tr -d ':' | grep -Fx "v$(2)") || (echo "your $(1) version needs to be $(2)" && exit 1)
 endef
 
 check:
@@ -49,3 +49,10 @@ all: check
 
 build: check
 	mdbook build
+
+#
+# use `make clean` to clean the generated artefacts
+#
+
+clean:
+	mdbook clean
