@@ -1,5 +1,4 @@
 pub mod column;
-pub mod constraints;
 
 pub const ZKVM_KECCAK_COLS: usize = 1965 + 6;
 pub const RATE: usize = 1088;
