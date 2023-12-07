@@ -142,8 +142,19 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable) {
-        self.registers[*idx as usize] = value
+    unsafe fn push_register_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
+        if *if_is_true == 1 {
+            self.registers[*idx as usize] = value
+        } else if *if_is_true == 0 {
+            // No-op
+        } else {
+            panic!("Bad value for flag in push_register: {}", *if_is_true);
+        }
     }
 
     unsafe fn fetch_register_access(
