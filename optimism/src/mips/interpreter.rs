@@ -836,7 +836,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
-        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
         (v0 * Env::constant(1 << 24))
             + (v1 * Env::constant(1 << 16))
             + (v2 * Env::constant(1 << 8))
@@ -942,7 +942,12 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(addr);
             return;
         }
-        RTypeInstruction::JumpAndLinkRegister => (),
+        RTypeInstruction::JumpAndLinkRegister => {
+            let addr = env.read_register(&rs);
+            env.write_register(&rd, instruction_pointer + Env::constant(8u32));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(addr);
+        }
         RTypeInstruction::SyscallMmap => {
             let requested_alloc_size = env.read_register(&Env::constant(5));
             let size_in_pages = {
