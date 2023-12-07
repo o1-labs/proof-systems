@@ -1580,6 +1580,18 @@
 <a href="#1580" id="1580">1580</a>
 <a href="#1581" id="1581">1581</a>
 <a href="#1582" id="1582">1582</a>
+<a href="#1583" id="1583">1583</a>
+<a href="#1584" id="1584">1584</a>
+<a href="#1585" id="1585">1585</a>
+<a href="#1586" id="1586">1586</a>
+<a href="#1587" id="1587">1587</a>
+<a href="#1588" id="1588">1588</a>
+<a href="#1589" id="1589">1589</a>
+<a href="#1590" id="1590">1590</a>
+<a href="#1591" id="1591">1591</a>
+<a href="#1592" id="1592">1592</a>
+<a href="#1593" id="1593">1593</a>
+<a href="#1594" id="1594">1594</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2454,7 +2466,19 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::ShiftLeftLogicalVariable =&gt; (),
+        RTypeInstruction::ShiftLeftLogicalVariable =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
+            <span class="comment">// FIXME: Constrain this value
+            </span><span class="kw">let </span>shifted = <span class="kw">unsafe </span>{
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.shift_left(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>rs, pos)
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::ShiftRightLogicalVariable =&gt; (),
         RTypeInstruction::ShiftRightArithmeticVariable =&gt; (),
         RTypeInstruction::JumpRegister =&gt; {
