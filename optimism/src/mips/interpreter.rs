@@ -747,6 +747,18 @@ pub trait InterpreterEnv {
         position_remainder: Self::Position,
     ) -> (Self::Variable, Self::Variable);
 
+    /// Returns the number of leading 0s in `x`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn count_leading_zeros(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
     /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
@@ -1115,7 +1127,18 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             return;
         }
         RTypeInstruction::CountLeadingOnes => (),
-        RTypeInstruction::CountLeadingZeros => (),
+        RTypeInstruction::CountLeadingZeros => {
+            let rs = env.read_register(&rs);
+            let leading_zeros = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.count_leading_zeros(&rs, pos) }
+            };
+            env.write_register(&rd, leading_zeros);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
     };
     // TODO: Don't halt.
     env.set_halted(Env::constant(1));
