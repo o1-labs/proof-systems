@@ -400,6 +400,16 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         (q, r)
     }
 
+    unsafe fn count_leading_zeros(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = x.leading_zeros();
+        self.write_column(position, res.into());
+        res
+    }
+
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, (*x).into());
         *x
