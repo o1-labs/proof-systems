@@ -334,7 +334,12 @@ pub trait InterpreterEnv {
         self.access_register_if(idx, old_value, new_value, &Self::constant(1))
     }
 
-    fn write_register(&mut self, idx: &Self::Variable, new_value: Self::Variable) {
+    fn write_register_if(
+        &mut self,
+        idx: &Self::Variable,
+        new_value: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
         let old_value = {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_register(idx, value_location) }
@@ -346,11 +351,15 @@ pub trait InterpreterEnv {
             self.copy(&((Self::constant(1) - idx_is_zero) * new_value), pos)
         };
         unsafe {
-            self.access_register(idx, &old_value, &actual_new_value);
+            self.access_register_if(idx, &old_value, &actual_new_value, if_is_true);
         };
         unsafe {
-            self.push_register(idx, actual_new_value);
+            self.push_register_if(idx, actual_new_value, if_is_true);
         };
+    }
+
+    fn write_register(&mut self, idx: &Self::Variable, new_value: Self::Variable) {
+        self.write_register_if(idx, new_value, &Self::constant(1))
     }
 
     /// Fetch the memory value at address `addr` and store it in local position `output`.
@@ -969,7 +978,15 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MoveZero => (),
+        RTypeInstruction::MoveZero => {
+            let rt = env.read_register(&rt);
+            let is_zero = env.is_zero(&rt);
+            let rs = env.read_register(&rs);
+            env.write_register_if(&rd, rs, &is_zero);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveNonZero => (),
         RTypeInstruction::Sync => {
             env.set_instruction_pointer(next_instruction_pointer.clone());
