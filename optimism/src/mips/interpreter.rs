@@ -255,17 +255,19 @@ pub trait InterpreterEnv {
     }
 
     /// Access the general purpose register with index `idx`, adding constraints asserting that the
-    /// old value was `old_value` and that the new value will be `new_value`.
+    /// old value was `old_value` and that the new value will be `new_value`, if `if_is_true` is
+    /// true.
     ///
     /// # Safety
     ///
     /// Callers of this function must manually update the registers if required, this function will
     /// only update the access counter.
-    unsafe fn access_register(
+    unsafe fn access_register_if(
         &mut self,
         idx: &Self::Variable,
         old_value: &Self::Variable,
         new_value: &Self::Variable,
+        if_is_true: &Self::Variable,
     ) {
         let last_accessed = {
             let last_accessed_location = self.alloc_scratch();
@@ -282,11 +284,11 @@ pub trait InterpreterEnv {
 
             instruction_counter + Self::constant(1)
         };
-        unsafe { self.push_register_access(idx, new_accessed.clone()) };
+        unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
-                magnitude: Self::constant(1),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), last_accessed, old_value.clone()],
@@ -294,7 +296,7 @@ pub trait InterpreterEnv {
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Neg,
-                magnitude: Self::constant(1),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), new_accessed, new_value.clone()],
@@ -311,6 +313,22 @@ pub trait InterpreterEnv {
             self.access_register(idx, &value, &value);
         };
         value
+    }
+
+    /// Access the general purpose register with index `idx`, adding constraints asserting that the
+    /// old value was `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the registers if required, this function will
+    /// only update the access counter.
+    unsafe fn access_register(
+        &mut self,
+        idx: &Self::Variable,
+        old_value: &Self::Variable,
+        new_value: &Self::Variable,
+    ) {
+        self.access_register_if(idx, old_value, new_value, &Self::constant(1))
     }
 
     fn write_register(&mut self, idx: &Self::Variable, new_value: Self::Variable) {
