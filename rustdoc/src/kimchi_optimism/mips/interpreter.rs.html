@@ -2644,7 +2644,7 @@
             <span class="comment">// FIXME: Constrain this value
             </span><span class="kw">let </span>shifted = <span class="kw">unsafe </span>{
                 <span class="kw">let </span>pos = env.alloc_scratch();
-                env.shift_right(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>shamt, pos)
+                env.shift_right_arithmetic(<span class="kw-2">&amp;</span>rt, <span class="kw-2">&amp;</span>shamt, pos)
             };
             env.write_register(<span class="kw-2">&amp;</span>rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
