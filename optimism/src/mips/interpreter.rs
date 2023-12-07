@@ -1,4 +1,9 @@
-use crate::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
+use crate::{
+    cannon::PAGE_ADDRESS_SIZE,
+    mips::registers::{
+        REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
+    },
+};
 use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
@@ -191,13 +196,28 @@ pub trait InterpreterEnv {
         output: Self::Position,
     ) -> Self::Variable;
 
+    /// Set the general purpose register with index `idx` to `value` if `if_is_true` is true.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn push_register_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    );
+
     /// Set the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this operation.
-    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable);
+    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable) {
+        self.push_register_if(idx, value, &Self::constant(1))
+    }
 
     /// Fetch the last 'access index' for the general purpose register with index `idx`, and store
     /// it in local position `output`.
@@ -212,26 +232,44 @@ pub trait InterpreterEnv {
         output: Self::Position,
     ) -> Self::Variable;
 
+    /// Set the last 'access index' for the general purpose register with index `idx` to `value` if
+    /// `if_is_true` is true.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn push_register_access_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    );
+
     /// Set the last 'access index' for the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this operation.
-    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable);
+    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
+        self.push_register_access_if(idx, value, &Self::constant(1))
+    }
 
     /// Access the general purpose register with index `idx`, adding constraints asserting that the
-    /// old value was `old_value` and that the new value will be `new_value`.
+    /// old value was `old_value` and that the new value will be `new_value`, if `if_is_true` is
+    /// true.
     ///
     /// # Safety
     ///
     /// Callers of this function must manually update the registers if required, this function will
     /// only update the access counter.
-    unsafe fn access_register(
+    unsafe fn access_register_if(
         &mut self,
         idx: &Self::Variable,
         old_value: &Self::Variable,
         new_value: &Self::Variable,
+        if_is_true: &Self::Variable,
     ) {
         let last_accessed = {
             let last_accessed_location = self.alloc_scratch();
@@ -248,11 +286,11 @@ pub trait InterpreterEnv {
 
             instruction_counter + Self::constant(1)
         };
-        unsafe { self.push_register_access(idx, new_accessed.clone()) };
+        unsafe { self.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
-                magnitude: Self::constant(1),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), last_accessed, old_value.clone()],
@@ -260,7 +298,7 @@ pub trait InterpreterEnv {
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Neg,
-                magnitude: Self::constant(1),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: vec![idx.clone(), new_accessed, new_value.clone()],
@@ -277,6 +315,22 @@ pub trait InterpreterEnv {
             self.access_register(idx, &value, &value);
         };
         value
+    }
+
+    /// Access the general purpose register with index `idx`, adding constraints asserting that the
+    /// old value was `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the registers if required, this function will
+    /// only update the access counter.
+    unsafe fn access_register(
+        &mut self,
+        idx: &Self::Variable,
+        old_value: &Self::Variable,
+        new_value: &Self::Variable,
+    ) {
+        self.access_register_if(idx, old_value, new_value, &Self::constant(1))
     }
 
     fn write_register(&mut self, idx: &Self::Variable, new_value: Self::Variable) {
@@ -695,6 +749,28 @@ pub trait InterpreterEnv {
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
+    /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
+    /// value of the heap pointer.
+    fn increase_heap_pointer(
+        &mut self,
+        by_amount: &Self::Variable,
+        if_is_true: &Self::Variable,
+    ) -> Self::Variable {
+        let idx = Self::constant(REGISTER_HEAP_POINTER as u32);
+        let old_ptr = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_register(&idx, value_location) }
+        };
+        let new_ptr = old_ptr.clone() + by_amount.clone();
+        unsafe {
+            self.access_register_if(&idx, &old_ptr, &new_ptr, if_is_true);
+        };
+        unsafe {
+            self.push_register_if(&idx, new_ptr, if_is_true);
+        };
+        old_ptr
+    }
+
     fn set_halted(&mut self, flag: Self::Variable);
 
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
@@ -805,7 +881,37 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             return;
         }
         RTypeInstruction::JumpAndLinkRegister => (),
-        RTypeInstruction::SyscallMmap => (),
+        RTypeInstruction::SyscallMmap => {
+            let requested_alloc_size = env.read_register(&Env::constant(5));
+            let size_in_pages = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&requested_alloc_size, 32, PAGE_ADDRESS_SIZE, pos) }
+            };
+            let requires_extra_page = {
+                let remainder = requested_alloc_size
+                    - (size_in_pages.clone() * Env::constant(1 << PAGE_ADDRESS_SIZE));
+                Env::constant(1) - env.is_zero(&remainder)
+            };
+            let actual_alloc_size =
+                (size_in_pages + requires_extra_page) * Env::constant(1 << PAGE_ADDRESS_SIZE);
+            let address = env.read_register(&Env::constant(4));
+            let address_is_zero = env.is_zero(&address);
+            let old_heap_ptr = env.increase_heap_pointer(&actual_alloc_size, &address_is_zero);
+            let return_position = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(address_is_zero.clone() * old_heap_ptr
+                        + (Env::constant(1) - address_is_zero) * address),
+                    pos,
+                )
+            };
+            env.write_register(&Env::constant(2), return_position);
+            env.write_register(&Env::constant(7), Env::constant(0));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallExitGroup => (),
         RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),

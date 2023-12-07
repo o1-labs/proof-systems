@@ -22,11 +22,10 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 32;
+pub const SCRATCH_SIZE: usize = 38;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
-    pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
     pub preimage_offset: u32,
     pub preimage_key: [u8; 32],
     pub last_hint: Option<Vec<u8>>,
@@ -35,7 +34,6 @@ pub struct SyscallEnv {
 impl SyscallEnv {
     pub fn create(state: &State) -> Self {
         SyscallEnv {
-            heap: state.heap,
             preimage_key: state.preimage_key,
             preimage_offset: state.preimage_offset,
             last_hint: state.last_hint.clone(),
@@ -144,8 +142,19 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn push_register(&mut self, idx: &Self::Variable, value: Self::Variable) {
-        self.registers[*idx as usize] = value
+    unsafe fn push_register_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
+        if *if_is_true == 1 {
+            self.registers[*idx as usize] = value
+        } else if *if_is_true == 0 {
+            // No-op
+        } else {
+            panic!("Bad value for flag in push_register: {}", *if_is_true);
+        }
     }
 
     unsafe fn fetch_register_access(
@@ -158,8 +167,19 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
-    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
-        self.registers_write_index[*idx as usize] = value
+    unsafe fn push_register_access_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
+        if *if_is_true == 1 {
+            self.registers_write_index[*idx as usize] = value
+        } else if *if_is_true == 0 {
+            // No-op
+        } else {
+            panic!("Bad value for flag in push_register: {}", *if_is_true);
+        }
     }
 
     unsafe fn fetch_memory(
@@ -426,6 +446,7 @@ impl<Fp: Field> Env<Fp> {
             general_purpose: state.registers,
             current_instruction_pointer: initial_instruction_pointer,
             next_instruction_pointer,
+            heap_pointer: state.heap,
         };
 
         Env {
