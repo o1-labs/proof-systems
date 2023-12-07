@@ -736,20 +736,25 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
 
         let lookup_domain_size = {
             // First we sum over the lookup table size
+            let mut has_table_with_id_0 = false;
             let mut lookup_domain_size: usize = lookup_tables
                 .iter()
-                .map(
-                    |LookupTable { data, id: _ }| {
-                        if data.is_empty() {
-                            0
-                        } else {
-                            data[0].len()
-                        }
-                    },
-                )
+                .map(|LookupTable { id, data }| {
+                    // See below for the reason
+                    if *id == 0_i32 {
+                        has_table_with_id_0 = true
+                    }
+                    if data.is_empty() {
+                        0
+                    } else {
+                        data[0].len()
+                    }
+                })
                 .sum();
             // After that on the runtime tables
             if let Some(runtime_tables) = runtime_tables.as_ref() {
+                // FIXME: Check that a runtime table with ID 0 is enforced to
+                // contain a zero entry row.
                 for runtime_table in runtime_tables.iter() {
                     lookup_domain_size += runtime_table.len();
                 }
@@ -768,7 +773,14 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
             for gate_table in gate_lookup_tables.into_iter() {
                 lookup_domain_size += gate_table.table_size();
             }
-            lookup_domain_size
+
+            // A dummy zero entry will be added if there is no table with ID
+            // zero. Therefore we must count this in the size.
+            if has_table_with_id_0 {
+                lookup_domain_size
+            } else {
+                lookup_domain_size + 1
+            }
         };
 
         //~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
