@@ -583,6 +583,55 @@ fn test_runtime_table_only_one_table_with_id_zero_with_non_zero_entries_random_v
     setup_successfull_runtime_table_test(vec![cfg], vec![runtime_table], lookups);
 }
 
+// This test verifies that if there is a table with ID 0, it contains a row with only zeroes.
+// This is to enforce the constraint we have on the so-called "dummy value".
+// FIXME: see https://github.com/o1-labs/proof-systems/issues/1460
+// We should test the error message, "expected" argument of the macro won't be
+// allowed anymore in future release, see clippy output.
+#[test]
+#[should_panic]
+fn test_lookup_with_a_table_with_id_zero_but_no_zero_entry() {
+    let max_len: u32 = 100u32;
+    let seed: [u8; 32] = thread_rng().gen();
+    eprintln!("Seed: {:?}", seed);
+    let mut rng = StdRng::from_seed(seed);
+
+    // Non zero-length table
+    let len = 1u32 + rng.gen_range(0u32..max_len);
+    let table_id: i32 = 0;
+    // No index 0 in the table.
+    let indices: Vec<Fp> = (0..len)
+        .map(|_| 1 + rng.gen_range(0u32..max_len))
+        .map(Into::into)
+        .collect();
+    // No zero value
+    let values: Vec<Fp> = (0..len)
+        .map(|_| rng.gen_range(1u32..max_len))
+        .map(Into::into)
+        .collect();
+    let lookup_table = LookupTable {
+        id: table_id,
+        data: vec![indices, values],
+    };
+    let lookup_tables = vec![lookup_table];
+    let num_lookups = 20;
+
+    // circuit gates
+    let gates = (0..num_lookups)
+        .map(|i| CircuitGate::new(GateType::Lookup, Wire::for_row(i), vec![]))
+        .collect();
+
+    // 0 everywhere, it should handle the case (0, 0, 0). We simulate a lot of
+    // lookups with (0, 0, 0).
+    let witness = array::from_fn(|_col| vec![Fp::zero(); num_lookups]);
+
+    let _ = TestFramework::<Vesta>::default()
+        .gates(gates)
+        .witness(witness)
+        .lookup_tables(lookup_tables)
+        .setup();
+}
+
 #[test]
 fn test_dummy_value_is_added_in_an_arbitraly_created_table_when_no_table_with_id_0() {
     let seed: [u8; 32] = thread_rng().gen();
