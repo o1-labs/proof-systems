@@ -394,6 +394,15 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                 }
 
                 //~ 6. Pad the end of the concatened table with the dummy value.
+                //     By padding with 0, we constraint the table with ID 0 to
+                //     have a zero entry.
+                //     This is for the rows which do not have a lookup selector,
+                //     see ../../../../book/src/kimchi/lookup.md.
+                //     The zero entry row is contained in the built-in XOR table.
+                //     An error is raised when creating the CS if a user-defined
+                //     table is defined with ID 0 without a row contain zeroes.
+                //     If no such table is used, we artificially add a dummy
+                //     table with ID 0 and a row containing only zeroes.
                 lookup_table
                     .iter_mut()
                     .for_each(|col| col.extend(repeat_n(F::zero(), max_num_entries - col.len())));
