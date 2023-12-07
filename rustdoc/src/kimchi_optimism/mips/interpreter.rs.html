@@ -1466,6 +1466,10 @@
 <a href="#1466" id="1466">1466</a>
 <a href="#1467" id="1467">1467</a>
 <a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -2374,7 +2378,11 @@
         }
         RTypeInstruction::MoveZero =&gt; (),
         RTypeInstruction::MoveNonZero =&gt; (),
-        RTypeInstruction::Sync =&gt; (),
+        RTypeInstruction::Sync =&gt; {
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::MoveFromHi =&gt; (),
         RTypeInstruction::MoveToHi =&gt; (),
         RTypeInstruction::MoveFromLo =&gt; {
