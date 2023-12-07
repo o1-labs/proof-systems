@@ -230,13 +230,29 @@ pub trait InterpreterEnv {
         output: Self::Position,
     ) -> Self::Variable;
 
+    /// Set the last 'access index' for the general purpose register with index `idx` to `value` if
+    /// `if_is_true` is true.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    unsafe fn push_register_access_if(
+        &mut self,
+        idx: &Self::Variable,
+        value: Self::Variable,
+        if_is_true: &Self::Variable,
+    );
+
     /// Set the last 'access index' for the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this operation.
-    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable);
+    unsafe fn push_register_access(&mut self, idx: &Self::Variable, value: Self::Variable) {
+        self.push_register_access_if(idx, value, &Self::constant(1))
+    }
 
     /// Access the general purpose register with index `idx`, adding constraints asserting that the
     /// old value was `old_value` and that the new value will be `new_value`.
