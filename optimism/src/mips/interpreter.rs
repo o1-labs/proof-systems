@@ -1,4 +1,4 @@
-use crate::mips::registers::{REGISTER_CURRENT_IP, REGISTER_NEXT_IP};
+use crate::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
 use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
@@ -9,6 +9,14 @@ pub const FD_HINT_READ: u32 = 3;
 pub const FD_HINT_WRITE: u32 = 4;
 pub const FD_PREIMAGE_READ: u32 = 5;
 pub const FD_PREIMAGE_WRITE: u32 = 6;
+
+pub const SYSCALL_MMAP: u32 = 4090;
+pub const SYSCALL_BRK: u32 = 4045;
+pub const SYSCALL_CLONE: u32 = 4120;
+pub const SYSCALL_EXIT_GROUP: u32 = 4246;
+pub const SYSCALL_READ: u32 = 4003;
+pub const SYSCALL_WRITE: u32 = 4004;
+pub const SYSCALL_FCNTL: u32 = 4055;
 
 // Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
 // Reserved for assembler
@@ -89,6 +97,7 @@ pub enum RTypeInstruction {
     JumpAndLinkRegister,          // jalr
     SyscallMmap,                  // syscall (Mmap)
     SyscallExitGroup,             // syscall (ExitGroup)
+    SyscallReadHint,              // syscall (Read 3)
     SyscallReadPreimage,          // syscall (Read 5)
     SyscallReadOther,             // syscall (Read ?)
     SyscallWriteHint,             // syscall (Write 4)
@@ -134,6 +143,8 @@ pub enum ITypeInstruction {
     BranchNeq,                    // bne
     BranchLeqZero,                // blez
     BranchGtZero,                 // bgtz
+    BranchLtZero,                 // bltz
+    BranchGeqZero,                // bgez
     AddImmediate,                 // addi
     AddImmediateUnsigned,         // addiu
     SetLessThanImmediate,         // slti
@@ -191,6 +202,37 @@ pub trait InterpreterEnv {
         + std::ops::Sub<Self::Variable, Output = Self::Variable>
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
+
+    /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
+    fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
+
+    /// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
+    fn check_is_zero(assert_equals_zero: &Self::Variable);
+
+    /// Assert that the value `assert_equals_zero` is 0, and add a constraint in the proof system.
+    fn assert_is_zero(&mut self, assert_equals_zero: Self::Variable) {
+        Self::check_is_zero(&assert_equals_zero);
+        self.add_constraint(assert_equals_zero);
+    }
+
+    /// Check that the witness values in `x` and `y` are equal; otherwise abort.
+    fn check_equal(x: &Self::Variable, y: &Self::Variable);
+
+    /// Assert that the values `x` and `y` are equal, and add a constraint in the proof system.
+    fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
+        // NB: We use a different function to give a better error message for debugging.
+        Self::check_equal(&x, &y);
+        self.add_constraint(x - y);
+    }
+
+    /// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
+    fn check_boolean(x: &Self::Variable);
+
+    /// Assert that the value `x` is boolean, and add a constraint in the proof system.
+    fn assert_boolean(&mut self, x: Self::Variable) {
+        Self::check_boolean(&x);
+        self.add_constraint(x.clone() * x.clone() - x);
+    }
 
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
@@ -266,6 +308,7 @@ pub trait InterpreterEnv {
 
             instruction_counter + Self::constant(1)
         };
+        unsafe { self.push_register_access(idx, new_accessed.clone()) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
@@ -375,6 +418,7 @@ pub trait InterpreterEnv {
             // instruction, and claim to read the value that we're about to write!
             instruction_counter + Self::constant(1)
         };
+        unsafe { self.push_memory_access(addr, new_accessed.clone()) };
         self.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
@@ -526,6 +570,32 @@ pub trait InterpreterEnv {
         position: Self::Position,
     ) -> Self::Variable;
 
+    /// Return the result of shifting `x` by `by`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and the shift amount `by`.
+    unsafe fn shift_right(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Return the result of shifting `x` by `by`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// the source variable `x` and the shift amount `by`.
+    unsafe fn shift_right_arithmetic(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
     /// Returns 1 if `x` is 0, or 0 otherwise, storing the result in `position`.
     ///
     /// # Safety
@@ -533,6 +603,149 @@ pub trait InterpreterEnv {
     /// There are no constraints on the returned value; callers must assert the relationship with
     /// `x`.
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
+
+    /// Returns `x^(-1)`, or `0` if `x` is `0`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// `x`.
+    ///
+    /// The value returned may be a placeholder; callers should be careful not to depend directly
+    /// on the value stored in the variable.
+    unsafe fn inverse_or_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
+        let res = {
+            let pos = self.alloc_scratch();
+            unsafe { self.test_zero(x, pos) }
+        };
+        let x_inv_or_zero = {
+            let pos = self.alloc_scratch();
+            unsafe { self.inverse_or_zero(x, pos) }
+        };
+        // If x = 0, then res = 1 and x_inv_or_zero = _
+        // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
+        self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
+        self.add_constraint(x.clone() * res.clone());
+        res
+    }
+
+    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
+        self.is_zero(&(x.clone() - y.clone()))
+    }
+
+    /// Returns 1 if `x < y` as unsigned integers, or 0 otherwise, storing the result in
+    /// `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert that the value
+    /// correctly represents the relationship between `x` and `y`
+    unsafe fn test_less_than(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns 1 if `x < y` as signed integers, or 0 otherwise, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert that the value
+    /// correctly represents the relationship between `x` and `y`
+    unsafe fn test_less_than_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x or y`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn and_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x or y`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn or_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x nor y`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn nor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x xor y`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn xor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `x * y`, where `x` and `y` are treated as integers, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    unsafe fn mul_signed_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    /// Returns `(x / y, x % y)`, storing the results in `position_quotient` and
+    /// `position_remainder` respectively.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned values; callers must manually add constraints to
+    /// ensure that the pair of returned values correspond to the given values `x` and `y`, and
+    /// that they fall within the desired range.
+    unsafe fn divmod(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_quotient: Self::Position,
+        position_remainder: Self::Position,
+    ) -> (Self::Variable, Self::Variable);
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
@@ -612,8 +825,30 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::ShiftRightLogical => (),
-        RTypeInstruction::ShiftRightArithmetic => (),
+        RTypeInstruction::ShiftRightLogical => {
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_right(&rt, &shamt, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::ShiftRightArithmetic => {
+            let rt = env.read_register(&rt);
+            // FIXME: Constrain this value
+            let shifted = unsafe {
+                let pos = env.alloc_scratch();
+                env.shift_right(&rt, &shamt, pos)
+            };
+            env.write_register(&rd, shifted);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::ShiftLeftLogicalVariable => (),
         RTypeInstruction::ShiftRightLogicalVariable => (),
         RTypeInstruction::ShiftRightArithmeticVariable => (),
@@ -626,24 +861,84 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::JumpAndLinkRegister => (),
         RTypeInstruction::SyscallMmap => (),
         RTypeInstruction::SyscallExitGroup => (),
+        RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),
-        RTypeInstruction::SyscallReadOther => (),
+        RTypeInstruction::SyscallReadOther => {
+            let fd_id = env.read_register(&Env::constant(4));
+            let mut check_equal = |expected_fd_id: u32| {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_zero(&(fd_id.clone() - Env::constant(expected_fd_id)), pos) }
+            };
+            let is_stdin = check_equal(FD_STDIN);
+            let is_preimage_read = check_equal(FD_PREIMAGE_READ);
+            let is_hint_read = check_equal(FD_HINT_READ);
+
+            // FIXME: Should assert that `is_preimage_read` and `is_hint_read` cannot be true here.
+            let other_fd = Env::constant(1) - is_stdin - is_preimage_read - is_hint_read;
+
+            // We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
+            // bad FD that we reject with EBADF.
+            let v0 = other_fd.clone() * Env::constant(0xFFFFFFFF);
+            let v1 = other_fd * Env::constant(0x9); // EBADF
+
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallWriteHint => (),
         RTypeInstruction::SyscallWritePreimage => (),
         RTypeInstruction::SyscallWriteOther => (),
         RTypeInstruction::SyscallFcntl => (),
-        RTypeInstruction::SyscallOther => (),
+        RTypeInstruction::SyscallOther => {
+            let syscall_num = env.read_register(&Env::constant(2));
+            let is_sysbrk = env.equal(&syscall_num, &Env::constant(SYSCALL_BRK));
+            let is_sysclone = env.equal(&syscall_num, &Env::constant(SYSCALL_CLONE));
+            let v0 = { is_sysbrk * Env::constant(0x40000000) + is_sysclone };
+            let v1 = Env::constant(0);
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveZero => (),
         RTypeInstruction::MoveNonZero => (),
-        RTypeInstruction::Sync => (),
+        RTypeInstruction::Sync => {
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveFromHi => (),
         RTypeInstruction::MoveToHi => (),
-        RTypeInstruction::MoveFromLo => (),
+        RTypeInstruction::MoveFromLo => {
+            let lo = env.read_register(&Env::constant(REGISTER_LO as u32));
+            env.write_register(&rd, lo);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveToLo => (),
         RTypeInstruction::Multiply => (),
         RTypeInstruction::MultiplyUnsigned => (),
         RTypeInstruction::Div => (),
-        RTypeInstruction::DivUnsigned => (),
+        RTypeInstruction::DivUnsigned => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let (quotient, remainder) = {
+                // Fixme: constrain
+                let quotient_pos = env.alloc_scratch();
+                let remainder_pos = env.alloc_scratch();
+                unsafe { env.divmod(&rs, &rt, quotient_pos, remainder_pos) }
+            };
+            env.write_register(&Env::constant(REGISTER_LO as u32), quotient);
+            env.write_register(&Env::constant(REGISTER_HI as u32), remainder);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::Add => {
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
@@ -660,15 +955,113 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::Sub => (),
-        RTypeInstruction::SubUnsigned => (),
-        RTypeInstruction::And => (),
-        RTypeInstruction::Or => (),
-        RTypeInstruction::Xor => (),
-        RTypeInstruction::Nor => (),
-        RTypeInstruction::SetLessThan => (),
-        RTypeInstruction::SetLessThanUnsigned => (),
-        RTypeInstruction::MultiplyToRegister => (),
+        RTypeInstruction::Sub => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            env.write_register(&rd, rs - rt);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::SubUnsigned => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            env.write_register(&rd, rs - rt);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::And => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.and_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::Or => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.or_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::Xor => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.xor_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::Nor => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.nor_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::SetLessThan => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::SetLessThanUnsigned => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        RTypeInstruction::MultiplyToRegister => {
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.mul_signed_witness(&rs, &rt, pos) }
+            };
+            env.write_register(&rd, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::CountLeadingOnes => (),
         RTypeInstruction::CountLeadingZeros => (),
     };
@@ -683,7 +1076,7 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let v0 = env.read_memory(&instruction_pointer);
         let v1 = env.read_memory(&(instruction_pointer.clone() + Env::constant(1)));
         let v2 = env.read_memory(&(instruction_pointer.clone() + Env::constant(2)));
-        let v3 = env.read_memory(&(instruction_pointer + Env::constant(3)));
+        let v3 = env.read_memory(&(instruction_pointer.clone() + Env::constant(3)));
         (v0 * Env::constant(1 << 24))
             + (v1 * Env::constant(1 << 16))
             + (v2 * Env::constant(1 << 8))
@@ -699,23 +1092,21 @@ pub fn interpret_jtype<Env: InterpreterEnv>(env: &mut Env, instr: JTypeInstructi
         let pos = env.alloc_scratch();
         unsafe { env.bitmask(&instruction, 26, 0, pos) }
     };
-    match instr {
-        JTypeInstruction::Jump => {
-            // > The address stored in a j instruction is 26 bits of the address
-            // > associated with the specified label. The 26 bits are achieved by
-            // > dropping the high-order 4 bits of the address and the low-order 2
-            // > bits (which would always be 00, since addresses are always
-            // > divisible by 4).
-            // Source: https://max.cs.kzoo.edu/cs230/Resources/MIPS/MachineXL/InstructionFormats.html
-            env.set_instruction_pointer(next_instruction_pointer);
-            env.set_next_instruction_pointer(addr * Env::constant(4));
-            // REMOVEME: when all jtype instructions are implemented.
-            return;
-        }
-        JTypeInstruction::JumpAndLink => (),
+    let instruction_pointer_high_bits = {
+        // FIXME: Requires a range check
+        let pos = env.alloc_scratch();
+        unsafe { env.bitmask(&next_instruction_pointer, 32, 28, pos) }
     };
-    // REMOVEME: when all jtype instructions are implemented.
-    env.set_halted(Env::constant(1));
+    let target_addr =
+        (instruction_pointer_high_bits * Env::constant(1 << 28)) + (addr * Env::constant(1 << 2));
+    match instr {
+        JTypeInstruction::Jump => (),
+        JTypeInstruction::JumpAndLink => {
+            env.write_register(&Env::constant(31), instruction_pointer + Env::constant(8));
+        }
+    };
+    env.set_instruction_pointer(next_instruction_pointer);
+    env.set_next_instruction_pointer(target_addr);
 }
 
 pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstruction) {
@@ -756,11 +1147,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            let equals = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(rs - rt), pos) }
-            };
+            let equals = env.equal(&rs, &rt);
             let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * offset;
             let addr = {
                 let pos = env.alloc_scratch();
@@ -771,9 +1158,64 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::BranchNeq => (),
-        ITypeInstruction::BranchLeqZero => (),
+        ITypeInstruction::BranchNeq => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let rt = env.read_register(&rt);
+            let equals = env.equal(&rs, &rt);
+            let offset = equals.clone() * Env::constant(4) + (Env::constant(1) - equals) * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
+        ITypeInstruction::BranchLeqZero => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let less_than_or_equal_to = {
+                let greater_than_zero = {
+                    // FIXME: Requires constraints
+                    let pos = env.alloc_scratch();
+                    unsafe { env.test_less_than_signed(&Env::constant(0), &rs, pos) }
+                };
+                Env::constant(1) - greater_than_zero
+            };
+            let offset = (Env::constant(1) - less_than_or_equal_to.clone()) * Env::constant(4)
+                + less_than_or_equal_to * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::BranchGtZero => (),
+        ITypeInstruction::BranchLtZero => {
+            let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
+            let rs = env.read_register(&rs);
+            let less_than = {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&rs, &Env::constant(0), pos) }
+            };
+            let offset =
+                (Env::constant(1) - less_than.clone()) * Env::constant(4) + less_than * offset;
+            let addr = {
+                let pos = env.alloc_scratch();
+                env.copy(&(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
+        ITypeInstruction::BranchGeqZero => (),
         ITypeInstruction::AddImmediate => {
             let register_rs = env.read_register(&rs);
             let offset = env.sign_extend(&immediate, 16);
@@ -795,11 +1237,59 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::SetLessThanImmediate => (),
-        ITypeInstruction::SetLessThanImmediateUnsigned => (),
-        ITypeInstruction::AndImmediate => (),
+        ITypeInstruction::SetLessThanImmediate => {
+            let rs = env.read_register(&rs);
+            let immediate = env.sign_extend(&immediate, 16);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than_signed(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        ITypeInstruction::SetLessThanImmediateUnsigned => {
+            let rs = env.read_register(&rs);
+            let immediate = env.sign_extend(&immediate, 16);
+            let res = {
+                // FIXME: Constrain
+                let pos = env.alloc_scratch();
+                unsafe { env.test_less_than(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
+        ITypeInstruction::AndImmediate => {
+            let rs = env.read_register(&rs);
+            let res = {
+                // FIXME: Constraint
+                let pos = env.alloc_scratch();
+                unsafe { env.and_witness(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::OrImmediate => (),
-        ITypeInstruction::XorImmediate => (),
+        ITypeInstruction::XorImmediate => {
+            let rs = env.read_register(&rs);
+            let res = {
+                // FIXME: Constraint
+                let pos = env.alloc_scratch();
+                unsafe { env.xor_witness(&rs, &immediate, pos) }
+            };
+            env.write_register(&rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::LoadUpperImmediate => {
             // lui $reg, [most significant 16 bits of immediate]
             let immediate_value = immediate * Env::constant(1 << 16);
@@ -809,7 +1299,19 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::Load8 => (),
+        ITypeInstruction::Load8 => {
+            let base = env.read_register(&rs);
+            let dest = rt;
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base + offset;
+            let v0 = env.read_memory(&addr);
+            let value = env.sign_extend(&v0, 8);
+            env.write_register(&dest, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::Load16 => (),
         ITypeInstruction::Load32 => {
             let base = env.read_register(&rs);
@@ -838,11 +1340,50 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::Load8Unsigned => (),
-        ITypeInstruction::Load16Unsigned => (),
+        ITypeInstruction::Load8Unsigned => {
+            let base = env.read_register(&rs);
+            let dest = rt;
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base + offset;
+            let v0 = env.read_memory(&addr);
+            let value = v0;
+            env.write_register(&dest, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
+        ITypeInstruction::Load16Unsigned => {
+            let base = env.read_register(&rs);
+            let dest = rt;
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+            let v0 = env.read_memory(&addr);
+            let v1 = env.read_memory(&(addr.clone() + Env::constant(1)));
+            let value = v0 * Env::constant(1 << 8) + v1;
+            env.write_register(&dest, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::LoadWordLeft => (),
         ITypeInstruction::LoadWordRight => (),
-        ITypeInstruction::Store8 => (),
+        ITypeInstruction::Store8 => {
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+            let value = env.read_register(&rt);
+            let v0 = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&value, 8, 0, pos) }
+            };
+            env.write_memory(&addr, v0);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         ITypeInstruction::Store16 => (),
         ITypeInstruction::Store32 => {
             let base = env.read_register(&rs);

@@ -108,6 +108,26 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u32;
 
+    fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
+        // No-op for witness
+        // Do not assert that _assert_equals_zero is zero here! Some variables may have
+        // placeholders that do not faithfully represent the underlying values.
+    }
+
+    fn check_is_zero(assert_equals_zero: &Self::Variable) {
+        assert_eq!(*assert_equals_zero, 0);
+    }
+
+    fn check_equal(x: &Self::Variable, y: &Self::Variable) {
+        assert_eq!(*x, *y);
+    }
+
+    fn check_boolean(x: &Self::Variable) {
+        if !(*x == 0 || *x == 1) {
+            panic!("The value {} is not a boolean", *x);
+        }
+    }
+
     fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
         // FIXME: Track the lookup values in the environment.
     }
@@ -229,10 +249,137 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         res
     }
 
+    unsafe fn shift_right(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = x >> by;
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn shift_right_arithmetic(
+        &mut self,
+        x: &Self::Variable,
+        by: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = ((*x as i32) >> by) as u32;
+        self.write_column(position, res.into());
+        res
+    }
+
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         let res = if *x == 0 { 1 } else { 0 };
         self.write_column(position, res.into());
         res
+    }
+
+    unsafe fn inverse_or_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        if *x == 0 {
+            self.write_column(position, 0);
+            0
+        } else {
+            self.write_field_column(position, Fp::from(*x as u64).inverse().unwrap());
+            1 // Placeholder value
+        }
+    }
+
+    unsafe fn test_less_than(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = if *x < *y { 1 } else { 0 };
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn test_less_than_signed(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = if (*x as i32) < (*y as i32) { 1 } else { 0 };
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn and_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = x & y;
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn nor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = !(x | y);
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn or_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = x | y;
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn xor_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = *x ^ *y;
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn mul_signed_witness(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        let res = ((*x as i32) * (*y as i32)) as u32;
+        self.write_column(position, res.into());
+        res
+    }
+
+    unsafe fn divmod(
+        &mut self,
+        x: &Self::Variable,
+        y: &Self::Variable,
+        position_quotient: Self::Position,
+        position_remainder: Self::Position,
+    ) -> (Self::Variable, Self::Variable) {
+        let q = x / y;
+        let r = x % y;
+        self.write_column(position_quotient, q.into());
+        self.write_column(position_remainder, r.into());
+        (q, r)
     }
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
@@ -307,9 +454,13 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
+        self.write_field_column(column, value.into())
+    }
+
+    pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
-            Column::ScratchState(idx) => self.scratch_state[idx] = value.into(),
-            Column::KeccakState(col) => self.keccak_state[col] = value.into(),
+            Column::ScratchState(idx) => self.scratch_state[idx] = value,
+            Column::KeccakState(col) => self.keccak_state[col] = value,
         }
     }
 
@@ -357,6 +508,9 @@ impl<Fp: Field> Env<Fp> {
                         }
                         4246 => Instruction::RType(RTypeInstruction::SyscallExitGroup),
                         4003 => match self.registers.general_purpose[4] {
+                            interpreter::FD_HINT_READ => {
+                                Instruction::RType(RTypeInstruction::SyscallReadHint)
+                            }
                             interpreter::FD_PREIMAGE_READ => {
                                 Instruction::RType(RTypeInstruction::SyscallReadPreimage)
                             }
@@ -393,12 +547,21 @@ impl<Fp: Field> Env<Fp> {
                     0x24 => Instruction::RType(RTypeInstruction::And),
                     0x25 => Instruction::RType(RTypeInstruction::Or),
                     0x26 => Instruction::RType(RTypeInstruction::Xor),
+                    0x27 => Instruction::RType(RTypeInstruction::Nor),
                     0x2a => Instruction::RType(RTypeInstruction::SetLessThan),
                     0x2b => Instruction::RType(RTypeInstruction::SetLessThanUnsigned),
                     _ => {
                         panic!("Unhandled instruction {:#X}", instruction)
                     }
                 },
+                0x01 => {
+                    // RegImm instructions
+                    match (instruction >> 16) & 0x1F {
+                        0x0 => Instruction::IType(ITypeInstruction::BranchLtZero),
+                        0x1 => Instruction::IType(ITypeInstruction::BranchGeqZero),
+                        _ => panic!("Unhandled instruction {:#X}", instruction),
+                    }
+                }
                 0x02 => Instruction::JType(JTypeInstruction::Jump),
                 0x03 => Instruction::JType(JTypeInstruction::JumpAndLink),
                 0x04 => Instruction::IType(ITypeInstruction::BranchEq),
@@ -530,7 +693,7 @@ impl<Fp: Field> Env<Fp> {
                 .unwrap_or_else(|| "n/a".to_string());
 
             info!(
-                "processing step={} pc={:#010x} insn={:#010x} ips={:.2} page={} mem={} name={}",
+                "processing step={} pc={:010x} insn={:010x} ips={:.2} pages={} mem={} name={}",
                 step, pc, insn, ips, pages, mem, name
             );
         }
