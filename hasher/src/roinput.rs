@@ -91,7 +91,7 @@ impl ROInput {
     pub fn append_scalar(mut self, s: Fq) -> Self {
         // mina scalars are 255 bytes
         let bytes = s.to_bytes();
-        let bits = &bytes.as_bits::<Lsb0>()[..Fq::size_in_bits()];
+        let bits = &bytes.as_bits::<Lsb0>()[..Fq::MODULUS_BIT_SIZE as usize];
         self.bits.extend(bits);
         self
     }
@@ -121,7 +121,9 @@ impl ROInput {
     /// Serialize random oracle input to bytes
     pub fn to_bytes(&self) -> Vec<u8> {
         let mut bits: BitVec<u8> = self.fields.iter().fold(BitVec::new(), |mut acc, fe| {
-            acc.extend_from_bitslice(&fe.to_bytes().as_bits::<Lsb0>()[..Fp::size_in_bits()]);
+            acc.extend_from_bitslice(
+                &fe.to_bytes().as_bits::<Lsb0>()[..Fp::MODULUS_BIT_SIZE as usize],
+            );
 
             acc
         });
@@ -137,7 +139,8 @@ impl ROInput {
 
         let bits_as_fields =
             self.bits
-                .chunks(Fp::size_in_bits() - 1)
+                .chunks(Fp::MODULUS_BIT_SIZE as usize - 1)
+                .into_iter()
                 .fold(vec![], |mut acc, chunk| {
                     // Workaround: chunk.clone() does not appear to respect
                     // the chunk's boundaries when it's not byte-aligned.
@@ -157,7 +160,7 @@ impl ROInput {
                     bv.clone_from_bitslice(chunk);
 
                     // extend to the size of a field;
-                    bv.resize(Fp::size_in_bits(), false);
+                    bv.resize(Fp::MODULUS_BIT_SIZE as usize, false);
 
                     acc.push(
                         Fp::from_bytes(&bv.into_vec())

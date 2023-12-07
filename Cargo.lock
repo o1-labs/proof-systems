@@ -1573,7 +1573,7 @@ dependencies = [
 name = "mina-hasher"
 version = "0.1.0"
 dependencies = [
- "ark-ff 0.3.0",
+ "ark-ff 0.4.2",
  "bitvec",
  "mina-curves",
  "mina-poseidon",
