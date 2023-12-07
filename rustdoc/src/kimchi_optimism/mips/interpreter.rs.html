@@ -1592,6 +1592,23 @@
 <a href="#1592" id="1592">1592</a>
 <a href="#1593" id="1593">1593</a>
 <a href="#1594" id="1594">1594</a>
+<a href="#1595" id="1595">1595</a>
+<a href="#1596" id="1596">1596</a>
+<a href="#1597" id="1597">1597</a>
+<a href="#1598" id="1598">1598</a>
+<a href="#1599" id="1599">1599</a>
+<a href="#1600" id="1600">1600</a>
+<a href="#1601" id="1601">1601</a>
+<a href="#1602" id="1602">1602</a>
+<a href="#1603" id="1603">1603</a>
+<a href="#1604" id="1604">1604</a>
+<a href="#1605" id="1605">1605</a>
+<a href="#1606" id="1606">1606</a>
+<a href="#1607" id="1607">1607</a>
+<a href="#1608" id="1608">1608</a>
+<a href="#1609" id="1609">1609</a>
+<a href="#1610" id="1610">1610</a>
+<a href="#1611" id="1611">1611</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -1928,7 +1945,12 @@
         <span class="self">self</span>.access_register_if(idx, old_value, new_value, <span class="kw-2">&amp;</span><span class="self">Self</span>::constant(<span class="number">1</span>))
     }
 
-    <span class="kw">fn </span>write_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, new_value: <span class="self">Self</span>::Variable) {
+    <span class="kw">fn </span>write_register_if(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        new_value: <span class="self">Self</span>::Variable,
+        if_is_true: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    ) {
         <span class="kw">let </span>old_value = {
             <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
             <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(idx, value_location) }
@@ -1940,11 +1962,15 @@
             <span class="self">self</span>.copy(<span class="kw-2">&amp;</span>((<span class="self">Self</span>::constant(<span class="number">1</span>) - idx_is_zero) * new_value), pos)
         };
         <span class="kw">unsafe </span>{
-            <span class="self">self</span>.access_register(idx, <span class="kw-2">&amp;</span>old_value, <span class="kw-2">&amp;</span>actual_new_value);
+            <span class="self">self</span>.access_register_if(idx, <span class="kw-2">&amp;</span>old_value, <span class="kw-2">&amp;</span>actual_new_value, if_is_true);
         };
         <span class="kw">unsafe </span>{
-            <span class="self">self</span>.push_register(idx, actual_new_value);
+            <span class="self">self</span>.push_register_if(idx, actual_new_value, if_is_true);
         };
+    }
+
+    <span class="kw">fn </span>write_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, new_value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.write_register_if(idx, new_value, <span class="kw-2">&amp;</span><span class="self">Self</span>::constant(<span class="number">1</span>))
     }
 
     <span class="doccomment">/// Fetch the memory value at address `addr` and store it in local position `output`.
@@ -2563,7 +2589,15 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::MoveZero =&gt; (),
+        RTypeInstruction::MoveZero =&gt; {
+            <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
+            <span class="kw">let </span>is_zero = env.is_zero(<span class="kw-2">&amp;</span>rt);
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            env.write_register_if(<span class="kw-2">&amp;</span>rd, rs, <span class="kw-2">&amp;</span>is_zero);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::MoveNonZero =&gt; (),
         RTypeInstruction::Sync =&gt; {
             env.set_instruction_pointer(next_instruction_pointer.clone());
