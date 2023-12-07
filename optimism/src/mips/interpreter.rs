@@ -1,4 +1,7 @@
-use crate::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
+use crate::{
+    cannon::PAGE_ADDRESS_SIZE,
+    mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP},
+};
 use log::debug;
 use strum_macros::{EnumCount, EnumIter};
 
@@ -695,6 +698,27 @@ pub trait InterpreterEnv {
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
+    unsafe fn get_heap_pointer(&mut self) -> Self::Variable;
+
+    unsafe fn set_heap_pointer(
+        &mut self,
+        heap_pointer: Self::Variable,
+        if_is_true: &Self::Variable,
+    );
+
+    /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
+    /// value of the heap pointer.
+    fn increase_heap_pointer(
+        &mut self,
+        by_amount: &Self::Variable,
+        if_is_true: &Self::Variable,
+    ) -> Self::Variable {
+        let old_ptr = unsafe { self.get_heap_pointer() };
+        let new_ptr = old_ptr.clone() + by_amount.clone();
+        unsafe { self.set_heap_pointer(new_ptr, if_is_true) };
+        old_ptr
+    }
+
     fn set_halted(&mut self, flag: Self::Variable);
 
     fn sign_extend(&mut self, x: &Self::Variable, bitlength: u32) -> Self::Variable {
@@ -805,7 +829,36 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             return;
         }
         RTypeInstruction::JumpAndLinkRegister => (),
-        RTypeInstruction::SyscallMmap => (),
+        RTypeInstruction::SyscallMmap => {
+            let requested_alloc_size = env.read_register(&Env::constant(5));
+            let size_in_pages = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&instruction, 32, PAGE_ADDRESS_SIZE, pos) }
+            };
+            let requires_extra_page = {
+                let remainder = requested_alloc_size
+                    - (size_in_pages.clone() * Env::constant(1 << PAGE_ADDRESS_SIZE));
+                Env::constant(1) - env.is_zero(&remainder)
+            };
+            let actual_alloc_size =
+                (size_in_pages + requires_extra_page) * Env::constant(1 << PAGE_ADDRESS_SIZE);
+            let address = env.read_register(&Env::constant(4));
+            let address_is_zero = env.is_zero(&address);
+            let old_heap_ptr = env.increase_heap_pointer(&actual_alloc_size, &address_is_zero);
+            let return_position = {
+                let pos = env.alloc_scratch();
+                env.copy(
+                    &(address_is_zero.clone() * old_heap_ptr
+                        + (Env::constant(1) - address_is_zero) * address),
+                    pos,
+                )
+            };
+            env.write_register(&Env::constant(2), return_position);
+            env.write_register(&Env::constant(7), Env::constant(0));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+        }
         RTypeInstruction::SyscallExitGroup => (),
         RTypeInstruction::SyscallReadHint => (),
         RTypeInstruction::SyscallReadPreimage => (),

@@ -22,7 +22,7 @@ pub const NUM_DECODING_LOOKUP_TERMS: usize = 2;
 pub const NUM_INSTRUCTION_LOOKUP_TERMS: usize = 5;
 pub const NUM_LOOKUP_TERMS: usize =
     NUM_GLOBAL_LOOKUP_TERMS + NUM_DECODING_LOOKUP_TERMS + NUM_INSTRUCTION_LOOKUP_TERMS;
-pub const SCRATCH_SIZE: usize = 32;
+pub const SCRATCH_SIZE: usize = 36;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
@@ -383,6 +383,24 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable {
         self.write_column(position, (*x).into());
         *x
+    }
+
+    unsafe fn get_heap_pointer(&mut self) -> Self::Variable {
+        self.syscall_env.heap
+    }
+
+    unsafe fn set_heap_pointer(
+        &mut self,
+        heap_pointer: Self::Variable,
+        if_is_true: &Self::Variable,
+    ) {
+        if *if_is_true == 1 {
+            self.syscall_env.heap = heap_pointer
+        } else if *if_is_true == 0 {
+            // No-op
+        } else {
+            panic!("Bad value for flag in set_heap_pointer: {}", if_is_true);
+        }
     }
 
     fn set_halted(&mut self, flag: Self::Variable) {
