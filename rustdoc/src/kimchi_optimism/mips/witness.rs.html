@@ -766,6 +766,32 @@
 <a href="#766" id="766">766</a>
 <a href="#767" id="767">767</a>
 <a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -812,8 +838,10 @@
 <span class="kw">pub struct </span>Env&lt;Fp&gt; {
     <span class="kw">pub </span>instruction_counter: u32, <span class="comment">// TODO: u32 will not be big enough..
     </span><span class="kw">pub </span>memory: Vec&lt;(u32, Vec&lt;u8&gt;)&gt;,
+    <span class="kw">pub </span>last_memory_accesses: [usize; <span class="number">3</span>],
     <span class="kw">pub </span>memory_write_index: Vec&lt;(u32, Vec&lt;u32&gt;)&gt;, <span class="comment">// TODO: u32 will not be big enough..
-    </span><span class="kw">pub </span>registers: Registers&lt;u32&gt;,
+    </span><span class="kw">pub </span>last_memory_write_index_accesses: [usize; <span class="number">3</span>],
+    <span class="kw">pub </span>registers: Registers&lt;u32&gt;,
     <span class="kw">pub </span>registers_write_index: Registers&lt;u32&gt;, <span class="comment">// TODO: u32 will not be big enough..
     </span><span class="kw">pub </span>scratch_state_idx: usize,
     <span class="kw">pub </span>scratch_state: [Fp; SCRATCH_SIZE],
@@ -1228,10 +1256,12 @@
         Env {
             instruction_counter: state.step <span class="kw">as </span>u32,
             memory: initial_memory.clone(),
+            last_memory_accesses: [<span class="number">0usize</span>; <span class="number">3</span>],
             memory_write_index: memory_offsets
                 .iter()
                 .map(|offset| (<span class="kw-2">*</span>offset, <span class="macro">vec!</span>[<span class="number">0u32</span>; page_size]))
                 .collect(),
+            last_memory_write_index_accesses: [<span class="number">0usize</span>; <span class="number">3</span>],
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: <span class="number">0</span>,
@@ -1257,9 +1287,20 @@
         }
     }
 
+    <span class="kw">pub fn </span>update_last_memory_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize) {
+        <span class="kw">let </span>[i_0, i_1, <span class="kw">_</span>] = <span class="self">self</span>.last_memory_accesses;
+        <span class="self">self</span>.last_memory_accesses = [i, i_0, i_1]
+    }
+
     <span class="kw">pub fn </span>get_memory_page_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, page: u32) -&gt; usize {
+        <span class="kw">for </span><span class="kw-2">&amp;</span>i <span class="kw">in </span><span class="self">self</span>.last_memory_accesses.iter() {
+            <span class="kw">if </span><span class="self">self</span>.memory_write_index[i].<span class="number">0 </span>== page {
+                <span class="kw">return </span>i;
+            }
+        }
         <span class="kw">for </span>(i, (page_index, _memory)) <span class="kw">in </span><span class="self">self</span>.memory.iter_mut().enumerate() {
             <span class="kw">if </span><span class="kw-2">*</span>page_index == page {
+                <span class="self">self</span>.update_last_memory_access(i);
                 <span class="kw">return </span>i;
             }
         }
@@ -1267,13 +1308,26 @@
         <span class="comment">// Memory not found; dynamically allocate
         </span><span class="kw">let </span>memory = <span class="macro">vec!</span>[<span class="number">0u8</span>; PAGE_SIZE <span class="kw">as </span>usize];
         <span class="self">self</span>.memory.push((page, memory));
-        <span class="self">self</span>.memory.len() - <span class="number">1
-    </span>}
+        <span class="kw">let </span>i = <span class="self">self</span>.memory.len() - <span class="number">1</span>;
+        <span class="self">self</span>.update_last_memory_access(i);
+        i
+    }
+
+    <span class="kw">pub fn </span>update_last_memory_write_index_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, i: usize) {
+        <span class="kw">let </span>[i_0, i_1, <span class="kw">_</span>] = <span class="self">self</span>.last_memory_write_index_accesses;
+        <span class="self">self</span>.last_memory_write_index_accesses = [i, i_0, i_1]
+    }
 
     <span class="kw">pub fn </span>get_memory_access_page_index(<span class="kw-2">&amp;mut </span><span class="self">self</span>, page: u32) -&gt; usize {
+        <span class="kw">for </span><span class="kw-2">&amp;</span>i <span class="kw">in </span><span class="self">self</span>.last_memory_write_index_accesses.iter() {
+            <span class="kw">if </span><span class="self">self</span>.memory_write_index[i].<span class="number">0 </span>== page {
+                <span class="kw">return </span>i;
+            }
+        }
         <span class="kw">for </span>(i, (page_index, _memory_write_index)) <span class="kw">in </span><span class="self">self</span>.memory_write_index.iter_mut().enumerate()
         {
             <span class="kw">if </span><span class="kw-2">*</span>page_index == page {
+                <span class="self">self</span>.update_last_memory_write_index_access(i);
                 <span class="kw">return </span>i;
             }
         }
@@ -1281,21 +1335,19 @@
         <span class="comment">// Memory not found; dynamically allocate
         </span><span class="kw">let </span>memory_write_index = <span class="macro">vec!</span>[<span class="number">0u32</span>; PAGE_SIZE <span class="kw">as </span>usize];
         <span class="self">self</span>.memory_write_index.push((page, memory_write_index));
-        <span class="self">self</span>.memory_write_index.len() - <span class="number">1
-    </span>}
-
-    <span class="kw">pub fn </span>get_memory_direct(<span class="kw-2">&amp;</span><span class="self">self</span>, addr: u32) -&gt; u8 {
-        <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
-        <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
-        <span class="kw">for </span>(page_index, memory) <span class="kw">in </span><span class="self">self</span>.memory.iter() {
-            <span class="kw">if </span><span class="kw-2">*</span>page_index == page {
-                <span class="kw">return </span>memory[page_address];
-            }
-        }
-        <span class="macro">panic!</span>(<span class="string">&quot;Could not access address&quot;</span>)
+        <span class="kw">let </span>i = <span class="self">self</span>.memory_write_index.len() - <span class="number">1</span>;
+        <span class="self">self</span>.update_last_memory_write_index_access(i);
+        i
     }
 
-    <span class="kw">pub fn </span>decode_instruction(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (Instruction, u32) {
+    <span class="kw">pub fn </span>get_memory_direct(<span class="kw-2">&amp;mut </span><span class="self">self</span>, addr: u32) -&gt; u8 {
+        <span class="kw">let </span>page = addr &gt;&gt; PAGE_ADDRESS_SIZE;
+        <span class="kw">let </span>page_address = (addr &amp; PAGE_ADDRESS_MASK) <span class="kw">as </span>usize;
+        <span class="kw">let </span>memory_idx = <span class="self">self</span>.get_memory_page_index(page);
+        <span class="self">self</span>.memory[memory_idx].<span class="number">1</span>[page_address]
+    }
+
+    <span class="kw">pub fn </span>decode_instruction(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; (Instruction, u32) {
         <span class="kw">let </span>instruction =
             ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.registers.current_instruction_pointer) <span class="kw">as </span>u32) &lt;&lt; <span class="number">24</span>)
                 | ((<span class="self">self</span>.get_memory_direct(<span class="self">self</span>.registers.current_instruction_pointer + <span class="number">1</span>) <span class="kw">as </span>u32)
