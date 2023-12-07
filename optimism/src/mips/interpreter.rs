@@ -763,10 +763,10 @@ pub trait InterpreterEnv {
         };
         let new_ptr = old_ptr.clone() + by_amount.clone();
         unsafe {
-            self.access_register_if(&idx, &old_ptr, &new_ptr, &if_is_true);
+            self.access_register_if(&idx, &old_ptr, &new_ptr, if_is_true);
         };
         unsafe {
-            self.push_register_if(&idx, new_ptr, &if_is_true);
+            self.push_register_if(&idx, new_ptr, if_is_true);
         };
         old_ptr
     }
