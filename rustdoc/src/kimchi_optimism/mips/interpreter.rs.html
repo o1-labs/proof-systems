@@ -1675,6 +1675,29 @@
 <a href="#1675" id="1675">1675</a>
 <a href="#1676" id="1676">1676</a>
 <a href="#1677" id="1677">1677</a>
+<a href="#1678" id="1678">1678</a>
+<a href="#1679" id="1679">1679</a>
+<a href="#1680" id="1680">1680</a>
+<a href="#1681" id="1681">1681</a>
+<a href="#1682" id="1682">1682</a>
+<a href="#1683" id="1683">1683</a>
+<a href="#1684" id="1684">1684</a>
+<a href="#1685" id="1685">1685</a>
+<a href="#1686" id="1686">1686</a>
+<a href="#1687" id="1687">1687</a>
+<a href="#1688" id="1688">1688</a>
+<a href="#1689" id="1689">1689</a>
+<a href="#1690" id="1690">1690</a>
+<a href="#1691" id="1691">1691</a>
+<a href="#1692" id="1692">1692</a>
+<a href="#1693" id="1693">1693</a>
+<a href="#1694" id="1694">1694</a>
+<a href="#1695" id="1695">1695</a>
+<a href="#1696" id="1696">1696</a>
+<a href="#1697" id="1697">1697</a>
+<a href="#1698" id="1698">1698</a>
+<a href="#1699" id="1699">1699</a>
+<a href="#1700" id="1700">1700</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2450,6 +2473,18 @@
         position_remainder: <span class="self">Self</span>::Position,
     ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable);
 
+    <span class="doccomment">/// Returns the number of leading 0s in `x`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must manually add constraints to
+    /// ensure that it is correctly constructed.
+    </span><span class="kw">unsafe fn </span>count_leading_zeros(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
 
     <span class="doccomment">/// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
@@ -2858,7 +2893,18 @@
             <span class="kw">return</span>;
         }
         RTypeInstruction::CountLeadingOnes =&gt; (),
-        RTypeInstruction::CountLeadingZeros =&gt; (),
+        RTypeInstruction::CountLeadingZeros =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>leading_zeros = {
+                <span class="comment">// FIXME: Constrain
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.count_leading_zeros(<span class="kw-2">&amp;</span>rs, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rd, leading_zeros);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
     };
     <span class="comment">// TODO: Don&#39;t halt.
     </span>env.set_halted(Env::constant(<span class="number">1</span>));
