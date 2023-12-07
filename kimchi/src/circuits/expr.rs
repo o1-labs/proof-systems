@@ -36,6 +36,9 @@ pub enum ExprError {
     #[error("Empty stack")]
     EmptyStack,
 
+    #[error("Empty stack {0}")]
+    EmptyStackAtItem(usize),
+
     #[error("Lookup should not have been used")]
     LookupShouldNotBeUsed,
 
@@ -1525,6 +1528,78 @@ impl<F: FftField> Expr<ConstantExpr<F>> {
                 }
             }
         }
+    }
+
+    /// Convert RPN vector to an expression
+    pub fn from_polish(polish: &[PolishToken<F>]) -> Result<Self, ExprError> {
+        use PolishToken::*;
+        let mut stack: Vec<Self> = vec![];
+        let mut i = 0;
+        while i < polish.len() {
+            let token = &polish[i];
+            match token {
+                Alpha => stack.push(Expr::Constant(ConstantExpr::Alpha)),
+                Beta => stack.push(Expr::Constant(ConstantExpr::Beta)),
+                Gamma => stack.push(Expr::Constant(ConstantExpr::Gamma)),
+                JointCombiner => stack.push(Expr::Constant(ConstantExpr::JointCombiner)),
+                EndoCoefficient => stack.push(Expr::Constant(ConstantExpr::EndoCoefficient)),
+                &Mds { row, col } => stack.push(Expr::Constant(ConstantExpr::Mds { row, col })),
+                Literal(lit) => stack.push(Expr::Constant(ConstantExpr::Literal(*lit))),
+                Cell(cell) => stack.push(Expr::Cell(*cell)),
+                Dup => {
+                    assert!(i < polish.len() - 1);
+                    let next = &polish[i + 1];
+                    if *next == PolishToken::Mul {
+                        // Special case for Dup, Mul
+                        let x = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                        stack.push(Expr::Square(Box::new(x)));
+                        i += 1; // Skip ahead
+                    }
+                    // TODO? Possibly need special case for Dup, Add -> Double
+                    else {
+                        // Duplicate last value (normal behavior)
+                        let x = stack.last().ok_or(ExprError::EmptyStackAtItem(i))?;
+                        stack.push(x.clone());
+                    }
+                }
+                Pow(exp) => {
+                    let base = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                    if base == Expr::Constant(ConstantExpr::Alpha) {
+                        // Special case for powers of alpha
+                        stack.push(Expr::Constant(ConstantExpr::Alpha.pow(*exp)));
+                    } else {
+                        stack.push(Expr::Pow(Box::new(base), *exp));
+                    }
+                }
+                Add => {
+                    let y = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                    stack.push(Expr::BinOp(Op2::Add, Box::new(x), Box::new(y)));
+                }
+                Mul => {
+                    let y = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                    stack.push(Expr::BinOp(Op2::Mul, Box::new(x), Box::new(y)));
+                }
+                Sub => {
+                    let y = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                    let x = stack.pop().ok_or(ExprError::EmptyStackAtItem(i))?;
+                    stack.push(Expr::BinOp(Op2::Sub, Box::new(x), Box::new(y)));
+                }
+                VanishesOnZeroKnowledgeAndPreviousRows => {
+                    stack.push(Expr::VanishesOnZeroKnowledgeAndPreviousRows)
+                }
+                UnnormalizedLagrangeBasis(row_offset) => {
+                    stack.push(Expr::UnnormalizedLagrangeBasis(*row_offset))
+                }
+                // Store/Load/SkipIf/SkipIfNot not implemented
+                _ => unreachable!(),
+            }
+
+            i += 1;
+        }
+
+        stack.last().ok_or(ExprError::EmptyStack).cloned()
     }
 
     /// The expression `beta`.

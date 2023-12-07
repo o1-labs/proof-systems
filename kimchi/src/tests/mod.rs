@@ -9,6 +9,7 @@ mod framework;
 mod generic;
 mod lookup;
 mod not;
+mod polish_token;
 mod poseidon;
 mod range_check;
 mod recursion;

@@ -11,7 +11,7 @@ use ark_ff::{Field, PrimeField};
 use serde::{Deserialize, Serialize};
 
 use super::{
-    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants},
+    expr::{constraints::ExprOps, Cache, ConstantExpr, Constants, PolishToken},
     gate::{CurrOrNext, GateType},
     polynomial::COLUMNS,
 };
@@ -165,20 +165,33 @@ pub trait Argument<F: PrimeField> {
             combined_constraints
         }
     }
+
+    /// Constraints combined and converted in polish token format
+    fn to_polish(alphas: &Alphas<F>, cache: &mut Cache) -> Vec<PolishToken<F>> {
+        Self::combined_constraints(alphas, cache).to_polish()
+    }
 }
 
 pub trait DynArgument<F: PrimeField> {
+    fn constraint_count(&self) -> u32;
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>>;
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F>;
+    fn to_polish(&self, alphas: &Alphas<F>, cache: &mut Cache) -> Vec<PolishToken<F>>;
     fn argument_type(&self) -> ArgumentType;
 }
 
 impl<F: PrimeField, T: Argument<F>> DynArgument<F> for T {
+    fn constraint_count(&self) -> u32 {
+        <Self as Argument<F>>::CONSTRAINTS
+    }
     fn constraints(&self, cache: &mut Cache) -> Vec<E<F>> {
         <Self as Argument<F>>::constraints(cache)
     }
     fn combined_constraints(&self, alphas: &Alphas<F>, cache: &mut Cache) -> E<F> {
         <Self as Argument<F>>::combined_constraints(alphas, cache)
+    }
+    fn to_polish(&self, alphas: &Alphas<F>, cache: &mut Cache) -> Vec<PolishToken<F>> {
+        <Self as Argument<F>>::to_polish(alphas, cache)
     }
     fn argument_type(&self) -> ArgumentType {
         <Self as Argument<F>>::ARGUMENT_TYPE
