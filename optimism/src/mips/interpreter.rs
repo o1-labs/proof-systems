@@ -947,6 +947,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&rd, instruction_pointer + Env::constant(8u32));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(addr);
+            return;
         }
         RTypeInstruction::SyscallMmap => {
             let requested_alloc_size = env.read_register(&Env::constant(5));
