@@ -1132,8 +1132,8 @@ checksum = "4271d37baee1b8c7e4b708028c57d816cf9d2434acb33a549475f78c181f6253"
 name = "groupmap"
 version = "0.1.0"
 dependencies = [
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
  "mina-curves",
  "rand",
 ]
