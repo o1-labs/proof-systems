@@ -1009,7 +1009,13 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             return;
         }
-        RTypeInstruction::MoveFromHi => (),
+        RTypeInstruction::MoveFromHi => {
+            let hi = env.read_register(&Env::constant(REGISTER_HI as u32));
+            env.write_register(&rd, hi);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::MoveToHi => (),
         RTypeInstruction::MoveFromLo => {
             let lo = env.read_register(&Env::constant(REGISTER_LO as u32));
