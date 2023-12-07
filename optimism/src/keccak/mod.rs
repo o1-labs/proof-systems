@@ -6,20 +6,14 @@ pub const RATE_IN_BYTES: usize = RATE / 8;
 pub const DIM: usize = 5;
 pub const QUARTERS: usize = 4;
 
-fn grid_20(x: usize, q: usize) -> usize {
-    q + QUARTERS * x
-}
-
-fn grid_80(i: usize, x: usize, q: usize) -> usize {
-    q + QUARTERS * (x + DIM * i)
-}
-
-fn grid_100(y: usize, x: usize, q: usize) -> usize {
-    q + QUARTERS * (x + DIM * y)
-}
-
-fn grid_400(i: usize, y: usize, x: usize, q: usize) -> usize {
-    q + QUARTERS * (x + DIM * (y + DIM * i))
+fn grid(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
+    match size {
+        20 => q + QUARTERS * x,
+        80 => q + QUARTERS * (x + DIM * i),
+        100 => q + QUARTERS * (x + DIM * y),
+        400 => q + QUARTERS * (x + DIM * y),
+        _ => panic!("Invalid grid size"),
+    }
 }
 
 /// Creates the 5x5 table of rotation bits for Keccak modulo 64

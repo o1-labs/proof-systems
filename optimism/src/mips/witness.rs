@@ -3,13 +3,13 @@ use crate::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
         PAGE_SIZE,
     },
+    keccak::column::KeccakColumns,
     mips::{
         column::Column,
         interpreter::{
             self, debugging::InstructionParts, ITypeInstruction, Instruction, InterpreterEnv,
             JTypeInstruction, RTypeInstruction,
         },
-        keccak::column::KeccakColumns,
         registers::Registers,
     },
     preimage_oracle::PreImageOracle,

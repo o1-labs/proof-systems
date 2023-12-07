@@ -1,4 +1,4 @@
-use crate::mips::keccak::column::KeccakColumn;
+use crate::keccak::column::KeccakColumn;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Column {
