@@ -1369,6 +1369,56 @@
 <a href="#1369" id="1369">1369</a>
 <a href="#1370" id="1370">1370</a>
 <a href="#1371" id="1371">1371</a>
+<a href="#1372" id="1372">1372</a>
+<a href="#1373" id="1373">1373</a>
+<a href="#1374" id="1374">1374</a>
+<a href="#1375" id="1375">1375</a>
+<a href="#1376" id="1376">1376</a>
+<a href="#1377" id="1377">1377</a>
+<a href="#1378" id="1378">1378</a>
+<a href="#1379" id="1379">1379</a>
+<a href="#1380" id="1380">1380</a>
+<a href="#1381" id="1381">1381</a>
+<a href="#1382" id="1382">1382</a>
+<a href="#1383" id="1383">1383</a>
+<a href="#1384" id="1384">1384</a>
+<a href="#1385" id="1385">1385</a>
+<a href="#1386" id="1386">1386</a>
+<a href="#1387" id="1387">1387</a>
+<a href="#1388" id="1388">1388</a>
+<a href="#1389" id="1389">1389</a>
+<a href="#1390" id="1390">1390</a>
+<a href="#1391" id="1391">1391</a>
+<a href="#1392" id="1392">1392</a>
+<a href="#1393" id="1393">1393</a>
+<a href="#1394" id="1394">1394</a>
+<a href="#1395" id="1395">1395</a>
+<a href="#1396" id="1396">1396</a>
+<a href="#1397" id="1397">1397</a>
+<a href="#1398" id="1398">1398</a>
+<a href="#1399" id="1399">1399</a>
+<a href="#1400" id="1400">1400</a>
+<a href="#1401" id="1401">1401</a>
+<a href="#1402" id="1402">1402</a>
+<a href="#1403" id="1403">1403</a>
+<a href="#1404" id="1404">1404</a>
+<a href="#1405" id="1405">1405</a>
+<a href="#1406" id="1406">1406</a>
+<a href="#1407" id="1407">1407</a>
+<a href="#1408" id="1408">1408</a>
+<a href="#1409" id="1409">1409</a>
+<a href="#1410" id="1410">1410</a>
+<a href="#1411" id="1411">1411</a>
+<a href="#1412" id="1412">1412</a>
+<a href="#1413" id="1413">1413</a>
+<a href="#1414" id="1414">1414</a>
+<a href="#1415" id="1415">1415</a>
+<a href="#1416" id="1416">1416</a>
+<a href="#1417" id="1417">1417</a>
+<a href="#1418" id="1418">1418</a>
+<a href="#1419" id="1419">1419</a>
+<a href="#1420" id="1420">1420</a>
+<a href="#1421" id="1421">1421</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -1572,6 +1622,37 @@
         + std::ops::Sub&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::ops::Mul&lt;<span class="self">Self</span>::Variable, Output = <span class="self">Self</span>::Variable&gt;
         + std::fmt::Debug;
+
+    <span class="doccomment">/// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
+    </span><span class="kw">fn </span>add_constraint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
+    </span><span class="kw">fn </span>check_is_zero(assert_equals_zero: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Assert that the value `assert_equals_zero` is 0, and add a constraint in the proof system.
+    </span><span class="kw">fn </span>assert_is_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, assert_equals_zero: <span class="self">Self</span>::Variable) {
+        <span class="self">Self</span>::check_is_zero(<span class="kw-2">&amp;</span>assert_equals_zero);
+        <span class="self">self</span>.add_constraint(assert_equals_zero);
+    }
+
+    <span class="doccomment">/// Check that the witness values in `x` and `y` are equal; otherwise abort.
+    </span><span class="kw">fn </span>check_equal(x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Assert that the values `x` and `y` are equal, and add a constraint in the proof system.
+    </span><span class="kw">fn </span>assert_equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable, y: <span class="self">Self</span>::Variable) {
+        <span class="comment">// NB: We use a different function to give a better error message for debugging.
+        </span><span class="self">Self</span>::check_equal(<span class="kw-2">&amp;</span>x, <span class="kw-2">&amp;</span>y);
+        <span class="self">self</span>.add_constraint(x - y);
+    }
+
+    <span class="doccomment">/// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
+    </span><span class="kw">fn </span>check_boolean(x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable);
+
+    <span class="doccomment">/// Assert that the value `x` is boolean, and add a constraint in the proof system.
+    </span><span class="kw">fn </span>assert_boolean(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="self">Self</span>::Variable) {
+        <span class="self">Self</span>::check_boolean(<span class="kw-2">&amp;</span>x);
+        <span class="self">self</span>.add_constraint(x.clone() * x.clone() - x);
+    }
 
     <span class="kw">fn </span>add_lookup(<span class="kw-2">&amp;mut </span><span class="self">self</span>, lookup: Lookup&lt;<span class="self">Self</span>::Variable&gt;);
 
@@ -1943,6 +2024,41 @@
     /// `x`.
     </span><span class="kw">unsafe fn </span>test_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="doccomment">/// Returns `x^(-1)`, or `0` if `x` is `0`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// `x`.
+    ///
+    /// The value returned may be a placeholder; callers should be careful not to depend directly
+    /// on the value stored in the variable.
+    </span><span class="kw">unsafe fn </span>inverse_or_zero(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position: <span class="self">Self</span>::Position,
+    ) -&gt; <span class="self">Self</span>::Variable;
+
+    <span class="kw">fn </span>is_zero(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>res = {
+            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.test_zero(x, pos) }
+        };
+        <span class="kw">let </span>x_inv_or_zero = {
+            <span class="kw">let </span>pos = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.inverse_or_zero(x, pos) }
+        };
+        <span class="comment">// If x = 0, then res = 1 and x_inv_or_zero = _
+        // If x &lt;&gt; 0, then res = 0 and x_inv_or_zero = x^(-1)
+        </span><span class="self">self</span>.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - <span class="self">Self</span>::constant(<span class="number">1</span>));
+        <span class="self">self</span>.add_constraint(x.clone() * res.clone());
+        res
+    }
+
+    <span class="kw">fn </span>equal(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable) -&gt; <span class="self">Self</span>::Variable {
+        <span class="self">self</span>.is_zero(<span class="kw-2">&amp;</span>(x.clone() - y.clone()))
+    }
+
     <span class="doccomment">/// Returns 1 if `x &lt; y` as unsigned integers, or 0 otherwise, storing the result in
     /// `position`.
     ///
@@ -2173,16 +2289,8 @@
         RTypeInstruction::SyscallFcntl =&gt; (),
         RTypeInstruction::SyscallOther =&gt; {
             <span class="kw">let </span>syscall_num = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>));
-            <span class="kw">let </span>is_sysbrk = {
-                <span class="comment">// FIXME: Requires constraints
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
-                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(syscall_num.clone() - Env::constant(SYSCALL_BRK)), pos) }
-            };
-            <span class="kw">let </span>is_sysclone = {
-                <span class="comment">// FIXME: Requires constraints
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
-                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(syscall_num.clone() - Env::constant(SYSCALL_CLONE)), pos) }
-            };
+            <span class="kw">let </span>is_sysbrk = env.equal(<span class="kw-2">&amp;</span>syscall_num, <span class="kw-2">&amp;</span>Env::constant(SYSCALL_BRK));
+            <span class="kw">let </span>is_sysclone = env.equal(<span class="kw-2">&amp;</span>syscall_num, <span class="kw-2">&amp;</span>Env::constant(SYSCALL_CLONE));
             <span class="kw">let </span>v0 = { is_sysbrk * Env::constant(<span class="number">0x40000000</span>) + is_sysclone };
             <span class="kw">let </span>v1 = Env::constant(<span class="number">0</span>);
             env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), v0);
@@ -2430,11 +2538,7 @@
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
-            <span class="kw">let </span>equals = {
-                <span class="comment">// FIXME: Requires constraints
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
-                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(rs - rt), pos) }
-            };
+            <span class="kw">let </span>equals = env.equal(<span class="kw-2">&amp;</span>rs, <span class="kw-2">&amp;</span>rt);
             <span class="kw">let </span>offset = (Env::constant(<span class="number">1</span>) - equals.clone()) * Env::constant(<span class="number">4</span>) + equals * offset;
             <span class="kw">let </span>addr = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
@@ -2449,11 +2553,7 @@
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>rt = env.read_register(<span class="kw-2">&amp;</span>rt);
-            <span class="kw">let </span>equals = {
-                <span class="comment">// FIXME: Requires constraints
-                </span><span class="kw">let </span>pos = env.alloc_scratch();
-                <span class="kw">unsafe </span>{ env.test_zero(<span class="kw-2">&amp;</span>(rs - rt), pos) }
-            };
+            <span class="kw">let </span>equals = env.equal(<span class="kw-2">&amp;</span>rs, <span class="kw-2">&amp;</span>rt);
             <span class="kw">let </span>offset = equals.clone() * Env::constant(<span class="number">4</span>) + (Env::constant(<span class="number">1</span>) - equals) * offset;
             <span class="kw">let </span>addr = {
                 <span class="kw">let </span>pos = env.alloc_scratch();
