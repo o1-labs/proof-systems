@@ -44,7 +44,9 @@ impl SyscallEnv {
 pub struct Env<Fp> {
     pub instruction_counter: u32, // TODO: u32 will not be big enough..
     pub memory: Vec<(u32, Vec<u8>)>,
+    pub last_memory_accesses: [usize; 3],
     pub memory_write_index: Vec<(u32, Vec<u32>)>, // TODO: u32 will not be big enough..
+    pub last_memory_write_index_accesses: [usize; 3],
     pub registers: Registers<u32>,
     pub registers_write_index: Registers<u32>, // TODO: u32 will not be big enough..
     pub scratch_state_idx: usize,
@@ -435,10 +437,12 @@ impl<Fp: Field> Env<Fp> {
         Env {
             instruction_counter: state.step as u32,
             memory: initial_memory.clone(),
+            last_memory_accesses: [0usize; 3],
             memory_write_index: memory_offsets
                 .iter()
                 .map(|offset| (*offset, vec![0u32; page_size]))
                 .collect(),
+            last_memory_write_index_accesses: [0usize; 3],
             registers: initial_registers.clone(),
             registers_write_index: Registers::default(),
             scratch_state_idx: 0,
@@ -464,9 +468,20 @@ impl<Fp: Field> Env<Fp> {
         }
     }
 
+    pub fn update_last_memory_access(&mut self, i: usize) {
+        let [i_0, i_1, _] = self.last_memory_accesses;
+        self.last_memory_accesses = [i, i_0, i_1]
+    }
+
     pub fn get_memory_page_index(&mut self, page: u32) -> usize {
+        for &i in self.last_memory_accesses.iter() {
+            if self.memory_write_index[i].0 == page {
+                return i;
+            }
+        }
         for (i, (page_index, _memory)) in self.memory.iter_mut().enumerate() {
             if *page_index == page {
+                self.update_last_memory_access(i);
                 return i;
             }
         }
@@ -474,13 +489,26 @@ impl<Fp: Field> Env<Fp> {
         // Memory not found; dynamically allocate
         let memory = vec![0u8; PAGE_SIZE as usize];
         self.memory.push((page, memory));
-        self.memory.len() - 1
+        let i = self.memory.len() - 1;
+        self.update_last_memory_access(i);
+        i
+    }
+
+    pub fn update_last_memory_write_index_access(&mut self, i: usize) {
+        let [i_0, i_1, _] = self.last_memory_write_index_accesses;
+        self.last_memory_write_index_accesses = [i, i_0, i_1]
     }
 
     pub fn get_memory_access_page_index(&mut self, page: u32) -> usize {
+        for &i in self.last_memory_write_index_accesses.iter() {
+            if self.memory_write_index[i].0 == page {
+                return i;
+            }
+        }
         for (i, (page_index, _memory_write_index)) in self.memory_write_index.iter_mut().enumerate()
         {
             if *page_index == page {
+                self.update_last_memory_write_index_access(i);
                 return i;
             }
         }
@@ -488,21 +516,19 @@ impl<Fp: Field> Env<Fp> {
         // Memory not found; dynamically allocate
         let memory_write_index = vec![0u32; PAGE_SIZE as usize];
         self.memory_write_index.push((page, memory_write_index));
-        self.memory_write_index.len() - 1
+        let i = self.memory_write_index.len() - 1;
+        self.update_last_memory_write_index_access(i);
+        i
     }
 
-    pub fn get_memory_direct(&self, addr: u32) -> u8 {
+    pub fn get_memory_direct(&mut self, addr: u32) -> u8 {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory) in self.memory.iter() {
-            if *page_index == page {
-                return memory[page_address];
-            }
-        }
-        panic!("Could not access address")
+        let memory_idx = self.get_memory_page_index(page);
+        self.memory[memory_idx].1[page_address]
     }
 
-    pub fn decode_instruction(&self) -> (Instruction, u32) {
+    pub fn decode_instruction(&mut self) -> (Instruction, u32) {
         let instruction =
             ((self.get_memory_direct(self.registers.current_instruction_pointer) as u32) << 24)
                 | ((self.get_memory_direct(self.registers.current_instruction_pointer + 1) as u32)
