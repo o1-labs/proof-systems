@@ -344,11 +344,17 @@ pub trait InterpreterEnv {
             let value_location = self.alloc_scratch();
             unsafe { self.fetch_register(idx, value_location) }
         };
-        unsafe {
-            self.access_register(idx, &old_value, &new_value);
+        // Ensure that we only write 0 to the 0 register.
+        let actual_new_value = {
+            let idx_is_zero = self.is_zero(idx);
+            let pos = self.alloc_scratch();
+            self.copy(&((Self::constant(1) - idx_is_zero) * new_value), pos)
         };
         unsafe {
-            self.push_register(idx, new_value);
+            self.access_register(idx, &old_value, &actual_new_value);
+        };
+        unsafe {
+            self.push_register(idx, actual_new_value);
         };
     }
 
