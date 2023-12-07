@@ -21,7 +21,3 @@ pub fn combine<F: Field>(constraints: impl Iterator<Item = E<F>>) -> E<F> {
 pub fn curr_cell<F: Field>(col: Column) -> E<F> {
     Expr::cell(col, CurrOrNext::Curr)
 }
-
-pub fn next_cell<F: Field>(col: Column) -> E<F> {
-    Expr::cell(col, CurrOrNext::Next)
-}
