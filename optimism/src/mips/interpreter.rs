@@ -886,7 +886,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             let size_in_pages = {
                 // FIXME: Requires a range check
                 let pos = env.alloc_scratch();
-                unsafe { env.bitmask(&instruction, 32, PAGE_ADDRESS_SIZE, pos) }
+                unsafe { env.bitmask(&requested_alloc_size, 32, PAGE_ADDRESS_SIZE, pos) }
             };
             let requires_extra_page = {
                 let remainder = requested_alloc_size
