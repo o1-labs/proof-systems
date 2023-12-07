@@ -1494,7 +1494,58 @@
 <a href="#1494" id="1494">1494</a>
 <a href="#1495" id="1495">1495</a>
 <a href="#1496" id="1496">1496</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
+<a href="#1497" id="1497">1497</a>
+<a href="#1498" id="1498">1498</a>
+<a href="#1499" id="1499">1499</a>
+<a href="#1500" id="1500">1500</a>
+<a href="#1501" id="1501">1501</a>
+<a href="#1502" id="1502">1502</a>
+<a href="#1503" id="1503">1503</a>
+<a href="#1504" id="1504">1504</a>
+<a href="#1505" id="1505">1505</a>
+<a href="#1506" id="1506">1506</a>
+<a href="#1507" id="1507">1507</a>
+<a href="#1508" id="1508">1508</a>
+<a href="#1509" id="1509">1509</a>
+<a href="#1510" id="1510">1510</a>
+<a href="#1511" id="1511">1511</a>
+<a href="#1512" id="1512">1512</a>
+<a href="#1513" id="1513">1513</a>
+<a href="#1514" id="1514">1514</a>
+<a href="#1515" id="1515">1515</a>
+<a href="#1516" id="1516">1516</a>
+<a href="#1517" id="1517">1517</a>
+<a href="#1518" id="1518">1518</a>
+<a href="#1519" id="1519">1519</a>
+<a href="#1520" id="1520">1520</a>
+<a href="#1521" id="1521">1521</a>
+<a href="#1522" id="1522">1522</a>
+<a href="#1523" id="1523">1523</a>
+<a href="#1524" id="1524">1524</a>
+<a href="#1525" id="1525">1525</a>
+<a href="#1526" id="1526">1526</a>
+<a href="#1527" id="1527">1527</a>
+<a href="#1528" id="1528">1528</a>
+<a href="#1529" id="1529">1529</a>
+<a href="#1530" id="1530">1530</a>
+<a href="#1531" id="1531">1531</a>
+<a href="#1532" id="1532">1532</a>
+<a href="#1533" id="1533">1533</a>
+<a href="#1534" id="1534">1534</a>
+<a href="#1535" id="1535">1535</a>
+<a href="#1536" id="1536">1536</a>
+<a href="#1537" id="1537">1537</a>
+<a href="#1538" id="1538">1538</a>
+<a href="#1539" id="1539">1539</a>
+<a href="#1540" id="1540">1540</a>
+<a href="#1541" id="1541">1541</a>
+<a href="#1542" id="1542">1542</a>
+</pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
+    cannon::PAGE_ADDRESS_SIZE,
+    mips::registers::{
+        REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
+    },
+};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
 
@@ -1513,66 +1564,6 @@
 <span class="kw">pub const </span>SYSCALL_READ: u32 = <span class="number">4003</span>;
 <span class="kw">pub const </span>SYSCALL_WRITE: u32 = <span class="number">4004</span>;
 <span class="kw">pub const </span>SYSCALL_FCNTL: u32 = <span class="number">4055</span>;
-
-<span class="comment">// Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
-// Reserved for assembler
-</span><span class="kw">pub const </span>REGISTER_AT: u32 = <span class="number">1</span>;
-<span class="comment">// Argument 0
-</span><span class="kw">pub const </span>REGISTER_A0: u32 = <span class="number">4</span>;
-<span class="comment">// Argument 1
-</span><span class="kw">pub const </span>REGISTER_A1: u32 = <span class="number">5</span>;
-<span class="comment">// Argument 2
-</span><span class="kw">pub const </span>REGISTER_A2: u32 = <span class="number">6</span>;
-<span class="comment">// Argument 3
-</span><span class="kw">pub const </span>REGISTER_A3: u32 = <span class="number">7</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T0: u32 = <span class="number">8</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T1: u32 = <span class="number">9</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T2: u32 = <span class="number">10</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T3: u32 = <span class="number">11</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T4: u32 = <span class="number">12</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T5: u32 = <span class="number">13</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T6: u32 = <span class="number">14</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T7: u32 = <span class="number">15</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S0: u32 = <span class="number">16</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S1: u32 = <span class="number">17</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S2: u32 = <span class="number">18</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S3: u32 = <span class="number">19</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S4: u32 = <span class="number">20</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S5: u32 = <span class="number">21</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S6: u32 = <span class="number">22</span>;
-<span class="comment">// Saved temporary (preserved across call)
-</span><span class="kw">pub const </span>REGISTER_S7: u32 = <span class="number">23</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T8: u32 = <span class="number">24</span>;
-<span class="comment">// Temporary (not preserved across call)
-</span><span class="kw">pub const </span>REGISTER_T9: u32 = <span class="number">25</span>;
-<span class="comment">// Reserved for OS kernel
-</span><span class="kw">pub const </span>REGISTER_K0: u32 = <span class="number">26</span>;
-<span class="comment">// Reserved for OS kernel
-</span><span class="kw">pub const </span>REGISTER_K1: u32 = <span class="number">27</span>;
-<span class="comment">// Pointer to global area
-</span><span class="kw">pub const </span>REGISTER_GP: u32 = <span class="number">28</span>;
-<span class="comment">// Stack pointer
-</span><span class="kw">pub const </span>REGISTER_SP: u32 = <span class="number">29</span>;
-<span class="comment">// Frame pointer
-</span><span class="kw">pub const </span>REGISTER_FP: u32 = <span class="number">30</span>;
-<span class="comment">// Return address (used by function call)
-</span><span class="kw">pub const </span>REGISTER_RA: u32 = <span class="number">31</span>;
 
 <span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>Instruction {
@@ -1747,13 +1738,28 @@
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="doccomment">/// Set the general purpose register with index `idx` to `value` if `if_is_true` is true.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    </span><span class="kw">unsafe fn </span>push_register_if(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        value: <span class="self">Self</span>::Variable,
+        if_is_true: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    );
+
     <span class="doccomment">/// Set the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this operation.
-    </span><span class="kw">unsafe fn </span>push_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    </span><span class="kw">unsafe fn </span>push_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.push_register_if(idx, value, <span class="kw-2">&amp;</span><span class="self">Self</span>::constant(<span class="number">1</span>))
+    }
 
     <span class="doccomment">/// Fetch the last &#39;access index&#39; for the general purpose register with index `idx`, and store
     /// it in local position `output`.
@@ -1768,26 +1774,44 @@
         output: <span class="self">Self</span>::Position,
     ) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="doccomment">/// Set the last &#39;access index&#39; for the general purpose register with index `idx` to `value` if
+    /// `if_is_true` is true.
+    ///
+    /// # Safety
+    ///
+    /// No lookups or other constraints are added as part of this operation. The caller must
+    /// manually add the lookups for this operation.
+    </span><span class="kw">unsafe fn </span>push_register_access_if(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        value: <span class="self">Self</span>::Variable,
+        if_is_true: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    );
+
     <span class="doccomment">/// Set the last &#39;access index&#39; for the general purpose register with index `idx` to `value`.
     ///
     /// # Safety
     ///
     /// No lookups or other constraints are added as part of this operation. The caller must
     /// manually add the lookups for this operation.
-    </span><span class="kw">unsafe fn </span>push_register_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable);
+    </span><span class="kw">unsafe fn </span>push_register_access(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, value: <span class="self">Self</span>::Variable) {
+        <span class="self">self</span>.push_register_access_if(idx, value, <span class="kw-2">&amp;</span><span class="self">Self</span>::constant(<span class="number">1</span>))
+    }
 
     <span class="doccomment">/// Access the general purpose register with index `idx`, adding constraints asserting that the
-    /// old value was `old_value` and that the new value will be `new_value`.
+    /// old value was `old_value` and that the new value will be `new_value`, if `if_is_true` is
+    /// true.
     ///
     /// # Safety
     ///
     /// Callers of this function must manually update the registers if required, this function will
     /// only update the access counter.
-    </span><span class="kw">unsafe fn </span>access_register(
+    </span><span class="kw">unsafe fn </span>access_register_if(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         old_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
         new_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        if_is_true: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
     ) {
         <span class="kw">let </span>last_accessed = {
             <span class="kw">let </span>last_accessed_location = <span class="self">self</span>.alloc_scratch();
@@ -1804,11 +1828,11 @@
 
             </span>instruction_counter + <span class="self">Self</span>::constant(<span class="number">1</span>)
         };
-        <span class="kw">unsafe </span>{ <span class="self">self</span>.push_register_access(idx, new_accessed.clone()) };
+        <span class="kw">unsafe </span>{ <span class="self">self</span>.push_register_access_if(idx, new_accessed.clone(), if_is_true) };
         <span class="self">self</span>.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Pos,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: <span class="macro">vec!</span>[idx.clone(), last_accessed, old_value.clone()],
@@ -1816,7 +1840,7 @@
         <span class="self">self</span>.add_lookup(Lookup {
             numerator: Signed {
                 sign: Sign::Neg,
-                magnitude: <span class="self">Self</span>::constant(<span class="number">1</span>),
+                magnitude: if_is_true.clone(),
             },
             table_id: LookupTable::RegisterLookup,
             value: <span class="macro">vec!</span>[idx.clone(), new_accessed, new_value.clone()],
@@ -1833,6 +1857,22 @@
             <span class="self">self</span>.access_register(idx, <span class="kw-2">&amp;</span>value, <span class="kw-2">&amp;</span>value);
         };
         value
+    }
+
+    <span class="doccomment">/// Access the general purpose register with index `idx`, adding constraints asserting that the
+    /// old value was `old_value` and that the new value will be `new_value`.
+    ///
+    /// # Safety
+    ///
+    /// Callers of this function must manually update the registers if required, this function will
+    /// only update the access counter.
+    </span><span class="kw">unsafe fn </span>access_register(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        old_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        new_value: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    ) {
+        <span class="self">self</span>.access_register_if(idx, old_value, new_value, <span class="kw-2">&amp;</span><span class="self">Self</span>::constant(<span class="number">1</span>))
     }
 
     <span class="kw">fn </span>write_register(<span class="kw-2">&amp;mut </span><span class="self">self</span>, idx: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, new_value: <span class="self">Self</span>::Variable) {
@@ -2251,6 +2291,28 @@
 
     <span class="kw">fn </span>copy(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, position: <span class="self">Self</span>::Position) -&gt; <span class="self">Self</span>::Variable;
 
+    <span class="doccomment">/// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
+    /// value of the heap pointer.
+    </span><span class="kw">fn </span>increase_heap_pointer(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        by_amount: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        if_is_true: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+    ) -&gt; <span class="self">Self</span>::Variable {
+        <span class="kw">let </span>idx = <span class="self">Self</span>::constant(REGISTER_HEAP_POINTER <span class="kw">as </span>u32);
+        <span class="kw">let </span>old_ptr = {
+            <span class="kw">let </span>value_location = <span class="self">self</span>.alloc_scratch();
+            <span class="kw">unsafe </span>{ <span class="self">self</span>.fetch_register(<span class="kw-2">&amp;</span>idx, value_location) }
+        };
+        <span class="kw">let </span>new_ptr = old_ptr.clone() + by_amount.clone();
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.access_register_if(<span class="kw-2">&amp;</span>idx, <span class="kw-2">&amp;</span>old_ptr, <span class="kw-2">&amp;</span>new_ptr, if_is_true);
+        };
+        <span class="kw">unsafe </span>{
+            <span class="self">self</span>.push_register_if(<span class="kw-2">&amp;</span>idx, new_ptr, if_is_true);
+        };
+        old_ptr
+    }
+
     <span class="kw">fn </span>set_halted(<span class="kw-2">&amp;mut </span><span class="self">self</span>, flag: <span class="self">Self</span>::Variable);
 
     <span class="kw">fn </span>sign_extend(<span class="kw-2">&amp;mut </span><span class="self">self</span>, x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable, bitlength: u32) -&gt; <span class="self">Self</span>::Variable {
@@ -2361,7 +2423,37 @@
             <span class="kw">return</span>;
         }
         RTypeInstruction::JumpAndLinkRegister =&gt; (),
-        RTypeInstruction::SyscallMmap =&gt; (),
+        RTypeInstruction::SyscallMmap =&gt; {
+            <span class="kw">let </span>requested_alloc_size = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
+            <span class="kw">let </span>size_in_pages = {
+                <span class="comment">// FIXME: Requires a range check
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.bitmask(<span class="kw-2">&amp;</span>requested_alloc_size, <span class="number">32</span>, PAGE_ADDRESS_SIZE, pos) }
+            };
+            <span class="kw">let </span>requires_extra_page = {
+                <span class="kw">let </span>remainder = requested_alloc_size
+                    - (size_in_pages.clone() * Env::constant(<span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE));
+                Env::constant(<span class="number">1</span>) - env.is_zero(<span class="kw-2">&amp;</span>remainder)
+            };
+            <span class="kw">let </span>actual_alloc_size =
+                (size_in_pages + requires_extra_page) * Env::constant(<span class="number">1 </span>&lt;&lt; PAGE_ADDRESS_SIZE);
+            <span class="kw">let </span>address = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">4</span>));
+            <span class="kw">let </span>address_is_zero = env.is_zero(<span class="kw-2">&amp;</span>address);
+            <span class="kw">let </span>old_heap_ptr = env.increase_heap_pointer(<span class="kw-2">&amp;</span>actual_alloc_size, <span class="kw-2">&amp;</span>address_is_zero);
+            <span class="kw">let </span>return_position = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.copy(
+                    <span class="kw-2">&amp;</span>(address_is_zero.clone() * old_heap_ptr
+                        + (Env::constant(<span class="number">1</span>) - address_is_zero) * address),
+                    pos,
+                )
+            };
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">2</span>), return_position);
+            env.write_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">7</span>), Env::constant(<span class="number">0</span>));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::SyscallExitGroup =&gt; (),
         RTypeInstruction::SyscallReadHint =&gt; (),
         RTypeInstruction::SyscallReadPreimage =&gt; (),
