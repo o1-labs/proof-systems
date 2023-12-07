@@ -1470,6 +1470,24 @@
 <a href="#1470" id="1470">1470</a>
 <a href="#1471" id="1471">1471</a>
 <a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -2687,7 +2705,25 @@
             <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
-        ITypeInstruction::BranchGeqZero =&gt; (),
+        ITypeInstruction::BranchGeqZero =&gt; {
+            <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>(immediate * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">2</span>)), <span class="number">18</span>);
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>less_than = {
+                <span class="comment">// FIXME: Requires constraints
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.test_less_than_signed(<span class="kw-2">&amp;</span>rs, <span class="kw-2">&amp;</span>Env::constant(<span class="number">0</span>), pos) }
+            };
+            <span class="kw">let </span>offset =
+                less_than.clone() * Env::constant(<span class="number">4</span>) + (Env::constant(<span class="number">1</span>) - less_than) * offset;
+            <span class="kw">let </span>addr = {
+                <span class="kw">let </span>pos = env.alloc_scratch();
+                env.copy(<span class="kw-2">&amp;</span>(next_instruction_pointer.clone() + offset), pos)
+            };
+            env.set_instruction_pointer(next_instruction_pointer);
+            env.set_next_instruction_pointer(addr);
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
+            </span><span class="kw">return</span>;
+        }
         ITypeInstruction::AddImmediate =&gt; {
             <span class="kw">let </span>register_rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>offset = env.sign_extend(<span class="kw-2">&amp;</span>immediate, <span class="number">16</span>);
