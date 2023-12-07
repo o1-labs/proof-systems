@@ -1710,6 +1710,12 @@
 <a href="#1710" id="1710">1710</a>
 <a href="#1711" id="1711">1711</a>
 <a href="#1712" id="1712">1712</a>
+<a href="#1713" id="1713">1713</a>
+<a href="#1714" id="1714">1714</a>
+<a href="#1715" id="1715">1715</a>
+<a href="#1716" id="1716">1716</a>
+<a href="#1717" id="1717">1717</a>
+<a href="#1718" id="1718">1718</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2548,7 +2554,7 @@
         <span class="kw">let </span>v0 = env.read_memory(<span class="kw-2">&amp;</span>instruction_pointer);
         <span class="kw">let </span>v1 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">1</span>)));
         <span class="kw">let </span>v2 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">2</span>)));
-        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer + Env::constant(<span class="number">3</span>)));
+        <span class="kw">let </span>v3 = env.read_memory(<span class="kw-2">&amp;</span>(instruction_pointer.clone() + Env::constant(<span class="number">3</span>)));
         (v0 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">24</span>))
             + (v1 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">16</span>))
             + (v2 * Env::constant(<span class="number">1 </span>&lt;&lt; <span class="number">8</span>))
@@ -2654,7 +2660,13 @@
             env.set_next_instruction_pointer(addr);
             <span class="kw">return</span>;
         }
-        RTypeInstruction::JumpAndLinkRegister =&gt; (),
+        RTypeInstruction::JumpAndLinkRegister =&gt; {
+            <span class="kw">let </span>addr = env.read_register(<span class="kw-2">&amp;</span>rs);
+            env.write_register(<span class="kw-2">&amp;</span>rd, instruction_pointer + Env::constant(<span class="number">8u32</span>));
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(addr);
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::SyscallMmap =&gt; {
             <span class="kw">let </span>requested_alloc_size = env.read_register(<span class="kw-2">&amp;</span>Env::constant(<span class="number">5</span>));
             <span class="kw">let </span>size_in_pages = {
