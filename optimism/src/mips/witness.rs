@@ -26,7 +26,6 @@ pub const SCRATCH_SIZE: usize = 36;
 
 #[derive(Clone, Default)]
 pub struct SyscallEnv {
-    pub heap: u32, // Heap pointer (actually unused in Cannon as of [2023-10-18])
     pub preimage_offset: u32,
     pub preimage_key: [u8; 32],
     pub last_hint: Option<Vec<u8>>,
@@ -35,7 +34,6 @@ pub struct SyscallEnv {
 impl SyscallEnv {
     pub fn create(state: &State) -> Self {
         SyscallEnv {
-            heap: state.heap,
             preimage_key: state.preimage_key,
             preimage_offset: state.preimage_offset,
             last_hint: state.last_hint.clone(),
@@ -386,7 +384,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     unsafe fn get_heap_pointer(&mut self) -> Self::Variable {
-        self.syscall_env.heap
+        self.registers.heap_pointer
     }
 
     unsafe fn set_heap_pointer(
@@ -395,7 +393,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         if_is_true: &Self::Variable,
     ) {
         if *if_is_true == 1 {
-            self.syscall_env.heap = heap_pointer
+            self.registers.heap_pointer = heap_pointer
         } else if *if_is_true == 0 {
             // No-op
         } else {
@@ -444,6 +442,7 @@ impl<Fp: Field> Env<Fp> {
             general_purpose: state.registers,
             current_instruction_pointer: initial_instruction_pointer,
             next_instruction_pointer,
+            heap_pointer: state.heap,
         };
 
         Env {
