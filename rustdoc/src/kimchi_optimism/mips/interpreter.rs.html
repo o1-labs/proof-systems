@@ -1434,6 +1434,66 @@
 <a href="#1434" id="1434">1434</a>
 <a href="#1435" id="1435">1435</a>
 <a href="#1436" id="1436">1436</a>
+<a href="#1437" id="1437">1437</a>
+<a href="#1438" id="1438">1438</a>
+<a href="#1439" id="1439">1439</a>
+<a href="#1440" id="1440">1440</a>
+<a href="#1441" id="1441">1441</a>
+<a href="#1442" id="1442">1442</a>
+<a href="#1443" id="1443">1443</a>
+<a href="#1444" id="1444">1444</a>
+<a href="#1445" id="1445">1445</a>
+<a href="#1446" id="1446">1446</a>
+<a href="#1447" id="1447">1447</a>
+<a href="#1448" id="1448">1448</a>
+<a href="#1449" id="1449">1449</a>
+<a href="#1450" id="1450">1450</a>
+<a href="#1451" id="1451">1451</a>
+<a href="#1452" id="1452">1452</a>
+<a href="#1453" id="1453">1453</a>
+<a href="#1454" id="1454">1454</a>
+<a href="#1455" id="1455">1455</a>
+<a href="#1456" id="1456">1456</a>
+<a href="#1457" id="1457">1457</a>
+<a href="#1458" id="1458">1458</a>
+<a href="#1459" id="1459">1459</a>
+<a href="#1460" id="1460">1460</a>
+<a href="#1461" id="1461">1461</a>
+<a href="#1462" id="1462">1462</a>
+<a href="#1463" id="1463">1463</a>
+<a href="#1464" id="1464">1464</a>
+<a href="#1465" id="1465">1465</a>
+<a href="#1466" id="1466">1466</a>
+<a href="#1467" id="1467">1467</a>
+<a href="#1468" id="1468">1468</a>
+<a href="#1469" id="1469">1469</a>
+<a href="#1470" id="1470">1470</a>
+<a href="#1471" id="1471">1471</a>
+<a href="#1472" id="1472">1472</a>
+<a href="#1473" id="1473">1473</a>
+<a href="#1474" id="1474">1474</a>
+<a href="#1475" id="1475">1475</a>
+<a href="#1476" id="1476">1476</a>
+<a href="#1477" id="1477">1477</a>
+<a href="#1478" id="1478">1478</a>
+<a href="#1479" id="1479">1479</a>
+<a href="#1480" id="1480">1480</a>
+<a href="#1481" id="1481">1481</a>
+<a href="#1482" id="1482">1482</a>
+<a href="#1483" id="1483">1483</a>
+<a href="#1484" id="1484">1484</a>
+<a href="#1485" id="1485">1485</a>
+<a href="#1486" id="1486">1486</a>
+<a href="#1487" id="1487">1487</a>
+<a href="#1488" id="1488">1488</a>
+<a href="#1489" id="1489">1489</a>
+<a href="#1490" id="1490">1490</a>
+<a href="#1491" id="1491">1491</a>
+<a href="#1492" id="1492">1492</a>
+<a href="#1493" id="1493">1493</a>
+<a href="#1494" id="1494">1494</a>
+<a href="#1495" id="1495">1495</a>
+<a href="#1496" id="1496">1496</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP};
 <span class="kw">use </span>log::debug;
 <span class="kw">use </span>strum_macros::{EnumCount, EnumIter};
@@ -1453,6 +1513,66 @@
 <span class="kw">pub const </span>SYSCALL_READ: u32 = <span class="number">4003</span>;
 <span class="kw">pub const </span>SYSCALL_WRITE: u32 = <span class="number">4004</span>;
 <span class="kw">pub const </span>SYSCALL_FCNTL: u32 = <span class="number">4055</span>;
+
+<span class="comment">// Source: https://www.doc.ic.ac.uk/lab/secondyear/spim/node10.html
+// Reserved for assembler
+</span><span class="kw">pub const </span>REGISTER_AT: u32 = <span class="number">1</span>;
+<span class="comment">// Argument 0
+</span><span class="kw">pub const </span>REGISTER_A0: u32 = <span class="number">4</span>;
+<span class="comment">// Argument 1
+</span><span class="kw">pub const </span>REGISTER_A1: u32 = <span class="number">5</span>;
+<span class="comment">// Argument 2
+</span><span class="kw">pub const </span>REGISTER_A2: u32 = <span class="number">6</span>;
+<span class="comment">// Argument 3
+</span><span class="kw">pub const </span>REGISTER_A3: u32 = <span class="number">7</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T0: u32 = <span class="number">8</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T1: u32 = <span class="number">9</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T2: u32 = <span class="number">10</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T3: u32 = <span class="number">11</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T4: u32 = <span class="number">12</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T5: u32 = <span class="number">13</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T6: u32 = <span class="number">14</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T7: u32 = <span class="number">15</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S0: u32 = <span class="number">16</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S1: u32 = <span class="number">17</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S2: u32 = <span class="number">18</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S3: u32 = <span class="number">19</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S4: u32 = <span class="number">20</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S5: u32 = <span class="number">21</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S6: u32 = <span class="number">22</span>;
+<span class="comment">// Saved temporary (preserved across call)
+</span><span class="kw">pub const </span>REGISTER_S7: u32 = <span class="number">23</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T8: u32 = <span class="number">24</span>;
+<span class="comment">// Temporary (not preserved across call)
+</span><span class="kw">pub const </span>REGISTER_T9: u32 = <span class="number">25</span>;
+<span class="comment">// Reserved for OS kernel
+</span><span class="kw">pub const </span>REGISTER_K0: u32 = <span class="number">26</span>;
+<span class="comment">// Reserved for OS kernel
+</span><span class="kw">pub const </span>REGISTER_K1: u32 = <span class="number">27</span>;
+<span class="comment">// Pointer to global area
+</span><span class="kw">pub const </span>REGISTER_GP: u32 = <span class="number">28</span>;
+<span class="comment">// Stack pointer
+</span><span class="kw">pub const </span>REGISTER_SP: u32 = <span class="number">29</span>;
+<span class="comment">// Frame pointer
+</span><span class="kw">pub const </span>REGISTER_FP: u32 = <span class="number">30</span>;
+<span class="comment">// Return address (used by function call)
+</span><span class="kw">pub const </span>REGISTER_RA: u32 = <span class="number">31</span>;
 
 <span class="attr">#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 </span><span class="kw">pub enum </span>Instruction {
