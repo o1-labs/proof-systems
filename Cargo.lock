@@ -1043,8 +1043,8 @@ checksum = "ad0a93d233ebf96623465aad4046a8d3aa4da22d4f4beba5388838c8a434bbb4"
 name = "groupmap"
 version = "0.1.0"
 dependencies = [
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
  "mina-curves",
  "rand",
 ]
@@ -1413,7 +1413,7 @@ dependencies = [
 name = "mina-hasher"
 version = "0.1.0"
 dependencies = [
- "ark-ff 0.3.0",
+ "ark-ff 0.4.2",
  "bitvec",
  "mina-curves",
  "mina-poseidon",
@@ -1876,10 +1876,10 @@ dependencies = [
 name = "poly-commitment"
 version = "0.1.0"
 dependencies = [
- "ark-ec 0.3.0",
- "ark-ff 0.3.0",
- "ark-poly 0.3.0",
- "ark-serialize 0.3.0",
+ "ark-ec 0.4.2",
+ "ark-ff 0.4.2",
+ "ark-poly 0.4.2",
+ "ark-serialize 0.4.2",
  "blake2",
  "colored",
  "groupmap",
