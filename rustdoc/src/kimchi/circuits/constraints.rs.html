@@ -945,6 +945,21 @@
 <a href="#945" id="945">945</a>
 <a href="#946" id="946">946</a>
 <a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This module implements Plonk circuit constraint primitive.
 </span><span class="kw">use </span><span class="kw">super</span>::lookup::runtime_tables::RuntimeTableCfg;
 <span class="kw">use crate</span>::{
@@ -1683,21 +1698,26 @@
 
         <span class="kw">let </span>lookup_domain_size = {
             <span class="comment">// First we sum over the lookup table size
-            </span><span class="kw">let </span><span class="kw-2">mut </span>lookup_domain_size: usize = lookup_tables
+            </span><span class="kw">let </span><span class="kw-2">mut </span>has_table_with_id_0 = <span class="bool-val">false</span>;
+            <span class="kw">let </span><span class="kw-2">mut </span>lookup_domain_size: usize = lookup_tables
                 .iter()
-                .map(
-                    |LookupTable { data, id: <span class="kw">_ </span>}| {
-                        <span class="kw">if </span>data.is_empty() {
-                            <span class="number">0
-                        </span>} <span class="kw">else </span>{
-                            data[<span class="number">0</span>].len()
-                        }
-                    },
-                )
+                .map(|LookupTable { id, data }| {
+                    <span class="comment">// See below for the reason
+                    </span><span class="kw">if </span><span class="kw-2">*</span>id == <span class="number">0_i32 </span>{
+                        has_table_with_id_0 = <span class="bool-val">true
+                    </span>}
+                    <span class="kw">if </span>data.is_empty() {
+                        <span class="number">0
+                    </span>} <span class="kw">else </span>{
+                        data[<span class="number">0</span>].len()
+                    }
+                })
                 .sum();
             <span class="comment">// After that on the runtime tables
             </span><span class="kw">if let </span><span class="prelude-val">Some</span>(runtime_tables) = runtime_tables.as_ref() {
-                <span class="kw">for </span>runtime_table <span class="kw">in </span>runtime_tables.iter() {
+                <span class="comment">// FIXME: Check that a runtime table with ID 0 is enforced to
+                // contain a zero entry row.
+                </span><span class="kw">for </span>runtime_table <span class="kw">in </span>runtime_tables.iter() {
                     lookup_domain_size += runtime_table.len();
                 }
             }
@@ -1715,7 +1735,14 @@
             <span class="kw">for </span>gate_table <span class="kw">in </span>gate_lookup_tables.into_iter() {
                 lookup_domain_size += gate_table.table_size();
             }
-            lookup_domain_size
+
+            <span class="comment">// A dummy zero entry will be added if there is no table with ID
+            // zero. Therefore we must count this in the size.
+            </span><span class="kw">if </span>has_table_with_id_0 {
+                lookup_domain_size
+            } <span class="kw">else </span>{
+                lookup_domain_size + <span class="number">1
+            </span>}
         };
 
         <span class="comment">//~ 1. Compute the number of zero-knowledge rows (`zk_rows`) that will be required to
@@ -1742,7 +1769,10 @@
         //~    ```
         //~
         </span><span class="kw">let </span>(zk_rows, domain_size_lower_bound) = {
-            <span class="kw">let </span>circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + <span class="number">1</span>);
+            <span class="comment">// We add 1 to the lookup domain size because there is one element
+            // used to close the permutation argument (the polynomial Z is of
+            // degree n + 1 where n is the order of the subgroup H).
+            </span><span class="kw">let </span>circuit_lower_bound = std::cmp::max(gates.len(), lookup_domain_size + <span class="number">1</span>);
             <span class="kw">let </span>get_domain_size_lower_bound = |zk_rows: u64| circuit_lower_bound + zk_rows <span class="kw">as </span>usize;
 
             <span class="kw">let </span><span class="kw-2">mut </span>zk_rows = <span class="number">3</span>;
