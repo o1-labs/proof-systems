@@ -5,8 +5,8 @@
 //! Details: <https://github.com/MinaProtocol/mina/blob/develop/docs/specs/signatures/description.md>
 
 use ark_ec::{
-    AffineCurve,     // for prime_subgroup_generator()
-    ProjectiveCurve, // for into_affine()
+    AffineRepr, // for prime_subgroup_generator()
+    CurveGroup,
 };
 use ark_ff::{
     BigInteger, // for is_even()
@@ -19,7 +19,7 @@ use blake2::{
     Blake2bVar,
 };
 use mina_hasher::{self, DomainParameter, Hasher, ROInput};
-use std::ops::Neg;
+use std::ops::{Add, Neg};
 
 use crate::{BaseField, CurvePoint, Hashable, Keypair, PubKey, ScalarField, Signature, Signer};
 
@@ -58,8 +58,10 @@ impl<H: Hashable> Hashable for Message<H> {
 impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
     fn sign(&mut self, kp: &Keypair, input: &H) -> Signature {
         let k: ScalarField = self.derive_nonce(kp, input);
-        let r: CurvePoint = CurvePoint::prime_subgroup_generator().mul(k).into_affine();
-        let k: ScalarField = if r.y.into_repr().is_even() { k } else { -k };
+        let r: CurvePoint = CurvePoint::generator()
+            .mul_bigint(k.into_bigint())
+            .into_affine();
+        let k: ScalarField = if r.y.into_bigint().is_even() { k } else { -k };
 
         let e: ScalarField = self.message_hash(&kp.public, r.x, input);
         let s: ScalarField = k + e * kp.secret.scalar();
@@ -70,17 +72,19 @@ impl<H: 'static + Hashable> Signer<H> for Schnorr<H> {
     fn verify(&mut self, sig: &Signature, public: &PubKey, input: &H) -> bool {
         let ev: ScalarField = self.message_hash(public, sig.rx, input);
 
-        let sv: CurvePoint = CurvePoint::prime_subgroup_generator()
-            .mul(sig.s)
+        let sv = CurvePoint::generator()
+            .mul_bigint(sig.s.into_bigint())
             .into_affine();
         // Perform addition and infinity check in projective coordinates for performance
-        let rv = public.point().mul(ev).neg().add_mixed(&sv);
+        let rv = public.point().mul_bigint(ev.into_bigint()).neg().add(sv);
+
         if rv.is_zero() {
             return false;
         }
+
         let rv = rv.into_affine();
 
-        rv.y.into_repr().is_even() && rv.x == sig.rx
+        rv.y.into_bigint().is_even() && rv.x == sig.rx
     }
 }
 
@@ -147,7 +151,6 @@ impl<H: 'static + Hashable> Schnorr<H> {
         // Squeeze and convert from base field element to scalar field element
         // Since the difference in modulus between the two fields is < 2^125, w.h.p., a
         // random value from one field will fit in the other field.
-        ScalarField::from_repr(self.hasher.hash(&schnorr_input).into_repr())
-            .expect("failed to create scalar")
+        ScalarField::from(self.hasher.hash(&schnorr_input).into_bigint())
     }
 }
