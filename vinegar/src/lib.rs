@@ -12,7 +12,7 @@ use kimchi::{
         },
     },
     curve::KimchiCurve,
-    proof::{PointEvaluations, ProofEvaluations, ProverCommitments},
+    proof::{PointEvaluations, ProofEvaluations, ProverCommitments, ProverProof},
     prover_index::ProverIndex,
 };
 use poly_commitment::evaluation_proof::{OpeningProof, PreChallenges};
@@ -200,12 +200,14 @@ pub struct StepDeferredValues<StepScalars> {
     /// Could be ei
     plonk: StepScalars,
     /// combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
+    ///   where r = evalscale most likely. Corresponds to Oracle.u. The opposite of the book's notation.
     combined_inner_product: Fq,
-    /// b = challenge_poly plonk.zeta + r * challenge_poly (domain_generrator * plonk.zeta)
+    /// The combined evaluation of h(x) challenge polynomial.
+    /// b = challenge_poly(plonk.zeta) + r * challenge_poly(domain_generrator * plonk.zeta)
     ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
     b: Fq,
-    // Might be polyscale from commitment.rs
-    /// The challenge used for combining polynomials
+    /// Most likely polyscale from commitment.rs. Also known as Oracle.v. Opposite of the book's notation.
+    /// The challenge used for combining polynomials.
     xi: ScalarChallenge,
     /// The challenges from the inner-product argument that was partially verified.
     bulletproof_challenges: BulletproofChallenges<Fq>,
@@ -335,6 +337,18 @@ pub struct StepStatement {
     /// "wrapping" proof system, and that can be handled opaquely by any "step" circuits.
     messages_for_next_wrap_proof: MessagesForNextWrapProof,
 }
+
+pub struct WrapProof<WrapScalars> {
+    statement: WrapStatement<WrapScalars>,
+    prev_evals: AllEvals,
+    proof: ProverProof<G1, OpeningProof<G1>>,
+}
+
+// The proposal is implemented in [#150](https://github.com/o1-labs/proof-systems/pull/150) with the following details:
+//
+// * the $\tilde L$ polynomial is called $ft$.
+// * the evaluation of $\tilde L(\zeta)$ is called $ft_eval0$.
+// * the evaluation $\tilde L(\zeta\omega)$ is called $ft_eval1$
 
 /// This type models an "inductive rule". It includes
 ///  - the list of previous statements which this one assumes

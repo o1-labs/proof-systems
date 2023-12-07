@@ -217,7 +217,12 @@ impl<G: CommitmentCurve> SRS<G> {
         // should use the local g, and not self.g.
         let rounds = math::ceil_log2(self.g.len());
 
-        // b_j = sum_i r^i elm_i^j
+        // The initial evaluation vector for polynomial commitment b_init is not
+        // just the powers of a single point as in the original IPA, but rather
+        // a vector of linearly combined powers with `evalscale` as recombiner.
+        //
+        // b_init_j = sum_i r^i elm_i^j
+        //          = zeta^j + evalscale * zeta^j omega^j
         let b_init = {
             // randomise/scale the eval powers
             let mut scale = G::ScalarField::one();
@@ -232,6 +237,7 @@ impl<G: CommitmentCurve> SRS<G> {
             res
         };
 
+        // Combined polynomial p, evaluated at the combined point b_init.
         let combined_inner_product = p
             .coeffs
             .iter()
