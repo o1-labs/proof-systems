@@ -169,15 +169,18 @@ pub struct WrapScalarsInCircuit {
     perm: Fp,
 }
 
+/// Linearization of the evaluation result for the combination of input polynomials
+///   combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
+///   where r = evalscale most likely. Corresponds to Oracle.u. The opposite of the book's notation.
+pub struct CombinedInnerProduct<F>(pub F);
+
 /// All the deferred values needed, comprising values from the PLONK IOP verification,
 /// values from the inner-product argument, and [which_branch] which is needed to know
 /// the proper domain to use.
 pub struct WrapDeferredValues<WrapScalars> {
     /// Could be either WrapScalarsMinimal or WrapScalarsInCircuit
     plonk: WrapScalars,
-    /// Linearization of the evaluation result for the combination of input polynomials
-    ///   combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
-    combined_inner_product: Fp,
+    combined_inner_product: CombinedInnerProduct<Fp>,
     /// Combined evaluation on two points:
     ///   b = challenge_poly * plonk.zeta + r * challenge_poly * (domain_generrator * plonk.zeta)
     ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
@@ -199,16 +202,14 @@ pub struct WrapDeferredValues<WrapScalars> {
 pub struct StepDeferredValues<StepScalars> {
     /// Could be ei
     plonk: StepScalars,
-    /// combined_inner_product = sum_{i < num_evaluation_points} sum_{j < num_polys} r^i xi^j f_j(pt_i)
-    ///   where r = evalscale most likely. Corresponds to Oracle.u. The opposite of the book's notation.
-    combined_inner_product: Fq,
+    /// Most likely polyscale from commitment.rs. Also known as Oracle.v. Opposite of the book's notation.
+    /// The challenge used for combining polynomials.
+    xi: ScalarChallenge,
+    combined_inner_product: CombinedInnerProduct<Fq>,
     /// The combined evaluation of h(x) challenge polynomial.
     /// b = challenge_poly(plonk.zeta) + r * challenge_poly(domain_generrator * plonk.zeta)
     ///   where challenge_poly(x) = \prod_i (1 + bulletproof_challenges.(i) * x^{2^{k - 1 - i}})
     b: Fq,
-    /// Most likely polyscale from commitment.rs. Also known as Oracle.v. Opposite of the book's notation.
-    /// The challenge used for combining polynomials.
-    xi: ScalarChallenge,
     /// The challenges from the inner-product argument that was partially verified.
     bulletproof_challenges: BulletproofChallenges<Fq>,
 }
@@ -256,6 +257,7 @@ pub struct StepWitness<WrapScalars> {
     prev_challenge_poly_coms: [G2; MAX_PROOFS_VERIFIED],
 }
 
+// Step -> Step
 /// The component of the proof accumulation state that is only
 /// computed on by the "stepping" proof system, and that can be
 /// handled opaquely by any "wrap" circuits.
@@ -273,11 +275,12 @@ pub struct MessagesForNextStepProof {
     old_bulletproof_challenges: BulletproofChallenges<Fq>,
 }
 
+// Wrap -> Wrap
 /// The component of the proof accumulation state that is only
 /// computed on by the "wrapping" proof system, and that can be
-/// handled opaquely by any "step" circuits. *)
+/// handled opaquely by any "step" circuits.
 pub struct MessagesForNextWrapProof {
-    challenge_polynomial_commitments: G1,
+    challenge_polynomial_commitments: ChallengePolynomialCommitments<G2>,
     old_bulletproof_challenges: BulletproofChallenges<Fp>,
 }
 
