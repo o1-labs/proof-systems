@@ -405,24 +405,6 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         *x
     }
 
-    unsafe fn get_heap_pointer(&mut self) -> Self::Variable {
-        self.registers.heap_pointer
-    }
-
-    unsafe fn set_heap_pointer(
-        &mut self,
-        heap_pointer: Self::Variable,
-        if_is_true: &Self::Variable,
-    ) {
-        if *if_is_true == 1 {
-            self.registers.heap_pointer = heap_pointer
-        } else if *if_is_true == 0 {
-            // No-op
-        } else {
-            panic!("Bad value for flag in set_heap_pointer: {}", if_is_true);
-        }
-    }
-
     fn set_halted(&mut self, flag: Self::Variable) {
         if flag == 0 {
             self.halt = false

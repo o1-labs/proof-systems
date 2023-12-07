@@ -1,6 +1,8 @@
 use crate::{
     cannon::PAGE_ADDRESS_SIZE,
-    mips::registers::{REGISTER_CURRENT_IP, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP},
+    mips::registers::{
+        REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
+    },
 };
 use log::debug;
 use strum_macros::{EnumCount, EnumIter};
@@ -747,14 +749,6 @@ pub trait InterpreterEnv {
 
     fn copy(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
-    unsafe fn get_heap_pointer(&mut self) -> Self::Variable;
-
-    unsafe fn set_heap_pointer(
-        &mut self,
-        heap_pointer: Self::Variable,
-        if_is_true: &Self::Variable,
-    );
-
     /// Increases the heap pointer by `by_amount` if `if_is_true` is `1`, and returns the previous
     /// value of the heap pointer.
     fn increase_heap_pointer(
@@ -762,9 +756,18 @@ pub trait InterpreterEnv {
         by_amount: &Self::Variable,
         if_is_true: &Self::Variable,
     ) -> Self::Variable {
-        let old_ptr = unsafe { self.get_heap_pointer() };
+        let idx = Self::constant(REGISTER_HEAP_POINTER as u32);
+        let old_ptr = {
+            let value_location = self.alloc_scratch();
+            unsafe { self.fetch_register(&idx, value_location) }
+        };
         let new_ptr = old_ptr.clone() + by_amount.clone();
-        unsafe { self.set_heap_pointer(new_ptr, if_is_true) };
+        unsafe {
+            self.access_register_if(&idx, &old_ptr, &new_ptr, &if_is_true);
+        };
+        unsafe {
+            self.push_register_if(&idx, new_ptr, &if_is_true);
+        };
         old_ptr
     }
 
