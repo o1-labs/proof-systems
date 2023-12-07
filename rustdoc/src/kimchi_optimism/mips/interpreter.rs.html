@@ -1627,6 +1627,18 @@
 <a href="#1627" id="1627">1627</a>
 <a href="#1628" id="1628">1628</a>
 <a href="#1629" id="1629">1629</a>
+<a href="#1630" id="1630">1630</a>
+<a href="#1631" id="1631">1631</a>
+<a href="#1632" id="1632">1632</a>
+<a href="#1633" id="1633">1633</a>
+<a href="#1634" id="1634">1634</a>
+<a href="#1635" id="1635">1635</a>
+<a href="#1636" id="1636">1636</a>
+<a href="#1637" id="1637">1637</a>
+<a href="#1638" id="1638">1638</a>
+<a href="#1639" id="1639">1639</a>
+<a href="#1640" id="1640">1640</a>
+<a href="#1641" id="1641">1641</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -3023,7 +3035,19 @@
             <span class="comment">// REMOVEME: when all itype instructions are implemented.
             </span><span class="kw">return</span>;
         }
-        ITypeInstruction::OrImmediate =&gt; (),
+        ITypeInstruction::OrImmediate =&gt; {
+            <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
+            <span class="kw">let </span>res = {
+                <span class="comment">// FIXME: Constraint
+                </span><span class="kw">let </span>pos = env.alloc_scratch();
+                <span class="kw">unsafe </span>{ env.or_witness(<span class="kw-2">&amp;</span>rs, <span class="kw-2">&amp;</span>immediate, pos) }
+            };
+            env.write_register(<span class="kw-2">&amp;</span>rt, res);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="comment">// REMOVEME: when all itype instructions are implemented.
+            </span><span class="kw">return</span>;
+        }
         ITypeInstruction::XorImmediate =&gt; {
             <span class="kw">let </span>rs = env.read_register(<span class="kw-2">&amp;</span>rs);
             <span class="kw">let </span>res = {
