@@ -617,7 +617,7 @@ impl<Fp: Field> Env<Fp> {
                 }
                 0x38 => {
                     // Note: This is sc (StoreConditional), but we're only simulating a single processor.
-                    Instruction::IType(ITypeInstruction::Store32)
+                    Instruction::IType(ITypeInstruction::Store32Conditional)
                 }
                 _ => {
                     panic!("Unhandled instruction {:#X}", instruction)
