@@ -189,26 +189,18 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     ) -> Self::Variable {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory) in self.memory.iter() {
-            if *page_index == page {
-                let value = memory[page_address];
-                self.write_column(output, value.into());
-                return value.into();
-            }
-        }
-        panic!("Could not access address")
+        let memory_page_idx = self.get_memory_page_index(page);
+        let value = self.memory[memory_page_idx].1[page_address];
+        self.write_column(output, value.into());
+        value.into()
     }
 
     unsafe fn push_memory(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory) in self.memory.iter_mut() {
-            if *page_index == page {
-                memory[page_address] = value.try_into().expect("push_memory values fit in a u8");
-                return;
-            }
-        }
-        panic!("Could not write to address")
+        let memory_page_idx = self.get_memory_page_index(page);
+        self.memory[memory_page_idx].1[page_address] =
+            value.try_into().expect("push_memory values fit in a u8");
     }
 
     unsafe fn fetch_memory_access(
@@ -218,26 +210,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     ) -> Self::Variable {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory_write_index) in self.memory_write_index.iter() {
-            if *page_index == page {
-                let value = memory_write_index[page_address];
-                self.write_column(output, value.into());
-                return value;
-            }
-        }
-        panic!("Could not access address")
+        let memory_write_index_page_idx = self.get_memory_access_page_index(page);
+        let value = self.memory_write_index[memory_write_index_page_idx].1[page_address];
+        self.write_column(output, value.into());
+        value
     }
 
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
         let page = addr >> PAGE_ADDRESS_SIZE;
         let page_address = (addr & PAGE_ADDRESS_MASK) as usize;
-        for (page_index, memory_write_index) in self.memory_write_index.iter_mut() {
-            if *page_index == page {
-                memory_write_index[page_address] = value;
-                return;
-            }
-        }
-        panic!("Could not write to address")
+        let memory_write_index_page_idx = self.get_memory_access_page_index(page);
+        self.memory_write_index[memory_write_index_page_idx].1[page_address] = value;
     }
 
     fn constant(x: u32) -> Self::Variable {
@@ -504,6 +487,33 @@ impl<Fp: Field> Env<Fp> {
         match column {
             Column::ScratchState(idx) => self.scratch_state[idx] = value,
         }
+    }
+
+    pub fn get_memory_page_index(&mut self, page: u32) -> usize {
+        for (i, (page_index, _memory)) in self.memory.iter_mut().enumerate() {
+            if *page_index == page {
+                return i;
+            }
+        }
+
+        // Memory not found; dynamically allocate
+        let memory = vec![0u8; PAGE_SIZE as usize];
+        self.memory.push((page, memory));
+        self.memory.len() - 1
+    }
+
+    pub fn get_memory_access_page_index(&mut self, page: u32) -> usize {
+        for (i, (page_index, _memory_write_index)) in self.memory_write_index.iter_mut().enumerate()
+        {
+            if *page_index == page {
+                return i;
+            }
+        }
+
+        // Memory not found; dynamically allocate
+        let memory_write_index = vec![0u32; PAGE_SIZE as usize];
+        self.memory_write_index.push((page, memory_write_index));
+        self.memory_write_index.len() - 1
     }
 
     pub fn get_memory_direct(&self, addr: u32) -> u8 {
