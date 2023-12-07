@@ -213,7 +213,7 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let memory_write_index_page_idx = self.get_memory_access_page_index(page);
         let value = self.memory_write_index[memory_write_index_page_idx].1[page_address];
         self.write_column(output, value.into());
-        return value;
+        value
     }
 
     unsafe fn push_memory_access(&mut self, addr: &Self::Variable, value: Self::Variable) {
