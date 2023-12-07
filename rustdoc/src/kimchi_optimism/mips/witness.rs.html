@@ -1350,7 +1350,7 @@
                 }
                 <span class="number">0x38 </span>=&gt; {
                     <span class="comment">// Note: This is sc (StoreConditional), but we&#39;re only simulating a single processor.
-                    </span>Instruction::IType(ITypeInstruction::Store32)
+                    </span>Instruction::IType(ITypeInstruction::Store32Conditional)
                 }
                 <span class="kw">_ </span>=&gt; {
                     <span class="macro">panic!</span>(<span class="string">&quot;Unhandled instruction {:#X}&quot;</span>, instruction)
