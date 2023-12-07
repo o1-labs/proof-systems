@@ -731,6 +731,21 @@
 <a href="#731" id="731">731</a>
 <a href="#732" id="732">732</a>
 <a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::{
         Meta, Start, State, StepFrequency, VmConfiguration, PAGE_ADDRESS_MASK, PAGE_ADDRESS_SIZE,
@@ -1117,6 +1132,21 @@
         <span class="kw">let </span>res = ((<span class="kw-2">*</span>x <span class="kw">as </span>i32) * (<span class="kw-2">*</span>y <span class="kw">as </span>i32)) <span class="kw">as </span>u32;
         <span class="self">self</span>.write_column(position, res.into());
         res
+    }
+
+    <span class="kw">unsafe fn </span>mul_hi_lo(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        x: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        y: <span class="kw-2">&amp;</span><span class="self">Self</span>::Variable,
+        position_hi: <span class="self">Self</span>::Position,
+        position_lo: <span class="self">Self</span>::Position,
+    ) -&gt; (<span class="self">Self</span>::Variable, <span class="self">Self</span>::Variable) {
+        <span class="kw">let </span>mul = (<span class="kw-2">*</span>x <span class="kw">as </span>u64) * (<span class="kw-2">*</span>y <span class="kw">as </span>u64);
+        <span class="kw">let </span>hi = (mul &gt;&gt; <span class="number">32</span>) <span class="kw">as </span>u32;
+        <span class="kw">let </span>lo = (mul &amp; ((<span class="number">1 </span>&lt;&lt; <span class="number">32</span>) - <span class="number">1</span>)) <span class="kw">as </span>u32;
+        <span class="self">self</span>.write_column(position_hi, hi.into());
+        <span class="self">self</span>.write_column(position_lo, lo.into());
+        (hi, lo)
     }
 
     <span class="kw">unsafe fn </span>divmod(
