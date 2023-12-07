@@ -1669,6 +1669,12 @@
 <a href="#1669" id="1669">1669</a>
 <a href="#1670" id="1670">1670</a>
 <a href="#1671" id="1671">1671</a>
+<a href="#1672" id="1672">1672</a>
+<a href="#1673" id="1673">1673</a>
+<a href="#1674" id="1674">1674</a>
+<a href="#1675" id="1675">1675</a>
+<a href="#1676" id="1676">1676</a>
+<a href="#1677" id="1677">1677</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
@@ -2680,7 +2686,13 @@
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
             <span class="kw">return</span>;
         }
-        RTypeInstruction::MoveFromHi =&gt; (),
+        RTypeInstruction::MoveFromHi =&gt; {
+            <span class="kw">let </span>hi = env.read_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_HI <span class="kw">as </span>u32));
+            env.write_register(<span class="kw-2">&amp;</span>rd, hi);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(<span class="number">4u32</span>));
+            <span class="kw">return</span>;
+        }
         RTypeInstruction::MoveToHi =&gt; (),
         RTypeInstruction::MoveFromLo =&gt; {
             <span class="kw">let </span>lo = env.read_register(<span class="kw-2">&amp;</span>Env::constant(REGISTER_LO <span class="kw">as </span>u32));
