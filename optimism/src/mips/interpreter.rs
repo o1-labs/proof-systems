@@ -202,6 +202,37 @@ pub trait InterpreterEnv {
         + std::ops::Mul<Self::Variable, Output = Self::Variable>
         + std::fmt::Debug;
 
+    /// Add a constraint to the proof system, asserting that `assert_equals_zero` is 0.
+    fn add_constraint(&mut self, assert_equals_zero: Self::Variable);
+
+    /// Check that the witness value in `assert_equals_zero` is 0; otherwise abort.
+    fn check_is_zero(assert_equals_zero: &Self::Variable);
+
+    /// Assert that the value `assert_equals_zero` is 0, and add a constraint in the proof system.
+    fn assert_is_zero(&mut self, assert_equals_zero: Self::Variable) {
+        Self::check_is_zero(&assert_equals_zero);
+        self.add_constraint(assert_equals_zero);
+    }
+
+    /// Check that the witness values in `x` and `y` are equal; otherwise abort.
+    fn check_equal(x: &Self::Variable, y: &Self::Variable);
+
+    /// Assert that the values `x` and `y` are equal, and add a constraint in the proof system.
+    fn assert_equal(&mut self, x: Self::Variable, y: Self::Variable) {
+        // NB: We use a different function to give a better error message for debugging.
+        Self::check_equal(&x, &y);
+        self.add_constraint(x - y);
+    }
+
+    /// Check that the witness value `x` is a boolean (`0` or `1`); otherwise abort.
+    fn check_boolean(x: &Self::Variable);
+
+    /// Assert that the value `x` is boolean, and add a constraint in the proof system.
+    fn assert_boolean(&mut self, x: Self::Variable) {
+        Self::check_boolean(&x);
+        self.add_constraint(x.clone() * x.clone() - x);
+    }
+
     fn add_lookup(&mut self, lookup: Lookup<Self::Variable>);
 
     fn instruction_counter(&self) -> Self::Variable;
@@ -572,6 +603,41 @@ pub trait InterpreterEnv {
     /// `x`.
     unsafe fn test_zero(&mut self, x: &Self::Variable, position: Self::Position) -> Self::Variable;
 
+    /// Returns `x^(-1)`, or `0` if `x` is `0`, storing the result in `position`.
+    ///
+    /// # Safety
+    ///
+    /// There are no constraints on the returned value; callers must assert the relationship with
+    /// `x`.
+    ///
+    /// The value returned may be a placeholder; callers should be careful not to depend directly
+    /// on the value stored in the variable.
+    unsafe fn inverse_or_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable;
+
+    fn is_zero(&mut self, x: &Self::Variable) -> Self::Variable {
+        let res = {
+            let pos = self.alloc_scratch();
+            unsafe { self.test_zero(x, pos) }
+        };
+        let x_inv_or_zero = {
+            let pos = self.alloc_scratch();
+            unsafe { self.inverse_or_zero(x, pos) }
+        };
+        // If x = 0, then res = 1 and x_inv_or_zero = _
+        // If x <> 0, then res = 0 and x_inv_or_zero = x^(-1)
+        self.add_constraint(x.clone() * x_inv_or_zero.clone() + res.clone() - Self::constant(1));
+        self.add_constraint(x.clone() * res.clone());
+        res
+    }
+
+    fn equal(&mut self, x: &Self::Variable, y: &Self::Variable) -> Self::Variable {
+        self.is_zero(&(x.clone() - y.clone()))
+    }
+
     /// Returns 1 if `x < y` as unsigned integers, or 0 otherwise, storing the result in
     /// `position`.
     ///
@@ -802,16 +868,8 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallFcntl => (),
         RTypeInstruction::SyscallOther => {
             let syscall_num = env.read_register(&Env::constant(2));
-            let is_sysbrk = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(SYSCALL_BRK)), pos) }
-            };
-            let is_sysclone = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(syscall_num.clone() - Env::constant(SYSCALL_CLONE)), pos) }
-            };
+            let is_sysbrk = env.equal(&syscall_num, &Env::constant(SYSCALL_BRK));
+            let is_sysclone = env.equal(&syscall_num, &Env::constant(SYSCALL_CLONE));
             let v0 = { is_sysbrk * Env::constant(0x40000000) + is_sysclone };
             let v1 = Env::constant(0);
             env.write_register(&Env::constant(2), v0);
@@ -1059,11 +1117,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            let equals = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(rs - rt), pos) }
-            };
+            let equals = env.equal(&rs, &rt);
             let offset = (Env::constant(1) - equals.clone()) * Env::constant(4) + equals * offset;
             let addr = {
                 let pos = env.alloc_scratch();
@@ -1078,11 +1132,7 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             let offset = env.sign_extend(&(immediate * Env::constant(1 << 2)), 18);
             let rs = env.read_register(&rs);
             let rt = env.read_register(&rt);
-            let equals = {
-                // FIXME: Requires constraints
-                let pos = env.alloc_scratch();
-                unsafe { env.test_zero(&(rs - rt), pos) }
-            };
+            let equals = env.equal(&rs, &rt);
             let offset = equals.clone() * Env::constant(4) + (Env::constant(1) - equals) * offset;
             let addr = {
                 let pos = env.alloc_scratch();

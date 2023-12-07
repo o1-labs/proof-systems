@@ -106,6 +106,26 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
 
     type Variable = u32;
 
+    fn add_constraint(&mut self, _assert_equals_zero: Self::Variable) {
+        // No-op for witness
+        // Do not assert that _assert_equals_zero is zero here! Some variables may have
+        // placeholders that do not faithfully represent the underlying values.
+    }
+
+    fn check_is_zero(assert_equals_zero: &Self::Variable) {
+        assert_eq!(*assert_equals_zero, 0);
+    }
+
+    fn check_equal(x: &Self::Variable, y: &Self::Variable) {
+        assert_eq!(*x, *y);
+    }
+
+    fn check_boolean(x: &Self::Variable) {
+        if !(*x == 0 || *x == 1) {
+            panic!("The value {} is not a boolean", *x);
+        }
+    }
+
     fn add_lookup(&mut self, _lookup: interpreter::Lookup<Self::Variable>) {
         // FIXME: Track the lookup values in the environment.
     }
@@ -253,6 +273,20 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
         let res = if *x == 0 { 1 } else { 0 };
         self.write_column(position, res.into());
         res
+    }
+
+    unsafe fn inverse_or_zero(
+        &mut self,
+        x: &Self::Variable,
+        position: Self::Position,
+    ) -> Self::Variable {
+        if *x == 0 {
+            self.write_column(position, 0);
+            0
+        } else {
+            self.write_field_column(position, Fp::from(*x as u64).inverse().unwrap());
+            1 // Placeholder value
+        }
     }
 
     unsafe fn test_less_than(
@@ -417,8 +451,12 @@ impl<Fp: Field> Env<Fp> {
     }
 
     pub fn write_column(&mut self, column: Column, value: u64) {
+        self.write_field_column(column, value.into())
+    }
+
+    pub fn write_field_column(&mut self, column: Column, value: Fp) {
         match column {
-            Column::ScratchState(idx) => self.scratch_state[idx] = value.into(),
+            Column::ScratchState(idx) => self.scratch_state[idx] = value,
         }
     }
 
