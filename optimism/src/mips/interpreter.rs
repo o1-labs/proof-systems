@@ -910,6 +910,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             env.write_register(&Env::constant(7), Env::constant(0));
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
         }
         RTypeInstruction::SyscallExitGroup => (),
         RTypeInstruction::SyscallReadHint => (),
