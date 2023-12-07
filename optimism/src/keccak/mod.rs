@@ -1,4 +1,5 @@
 pub mod column;
+pub mod constraints;
 
 pub const ZKVM_KECCAK_COLS: usize = 1965 + 6;
 pub const RATE: usize = 1088;
@@ -11,7 +12,7 @@ fn grid(size: usize, i: usize, y: usize, x: usize, q: usize) -> usize {
         20 => q + QUARTERS * x,
         80 => q + QUARTERS * (x + DIM * i),
         100 => q + QUARTERS * (x + DIM * y),
-        400 => q + QUARTERS * (x + DIM * y),
+        400 => q + QUARTERS * (x + DIM * (y + DIM * i)),
         _ => panic!("Invalid grid size"),
     }
 }
