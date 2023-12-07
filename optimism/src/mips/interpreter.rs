@@ -902,7 +902,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             // FIXME: Constrain this value
             let shifted = unsafe {
                 let pos = env.alloc_scratch();
-                env.shift_right(&rt, &shamt, pos)
+                env.shift_right_arithmetic(&rt, &shamt, pos)
             };
             env.write_register(&rd, shifted);
             env.set_instruction_pointer(next_instruction_pointer.clone());
