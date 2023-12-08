@@ -683,7 +683,9 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// If not invoked, it is `vec![]` by default.
     ///
     /// **Warning:** you have to make sure that the IDs of the lookup tables,
-    /// are unique and  not colliding with IDs of built-in lookup tables
+    /// are unique and not colliding with IDs of built-in lookup tables, otherwise
+    /// the error will be raised.
+    ///
     /// (see [crate::circuits::lookup::tables]).
     pub fn lookup(mut self, lookup_tables: Vec<LookupTable<F>>) -> Self {
         self.lookup_tables = lookup_tables;
@@ -693,8 +695,10 @@ impl<F: PrimeField + SquareRootField> Builder<F> {
     /// Set up the runtime tables.
     /// If not invoked, it is `None` by default.
     ///
-    /// **Warning:** you have to make sure that the IDs of the runtime lookup tables,
-    /// are unique and not colliding with IDs of built-in lookup tables
+    /// **Warning:** you have to make sure that the IDs of the runtime
+    /// lookup tables, are unique, i.e. not colliding internaly (with other runtime tables),
+    /// otherwise error will be raised.
+    ///
     /// (see [crate::circuits::lookup::tables]).
     pub fn runtime(mut self, runtime_tables: Option<Vec<RuntimeTableCfg<F>>>) -> Self {
         self.runtime_tables = runtime_tables;
