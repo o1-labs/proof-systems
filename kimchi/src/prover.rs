@@ -1359,14 +1359,14 @@ where
                 let runtime_comm = lookup_context.runtime_table_comm.as_ref().unwrap();
                 let joint_combiner = lookup_context.joint_combiner.as_ref().unwrap();
 
-                let unshifted = runtime_comm
+                let elems = runtime_comm
                     .blinders
                     .elems
                     .iter()
                     .map(|blinding| *joint_combiner * blinding)
                     .collect();
 
-                PolyComm { elems: unshifted }
+                PolyComm { elems }
             } else {
                 non_hiding(num_chunks)
             };
