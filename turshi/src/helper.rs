@@ -50,12 +50,12 @@ impl<F: Field> CairoFieldHelpers<F> for F {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ark_ec::AffineCurve;
+    use ark_ec::AffineRepr;
     use mina_curves::pasta::Pallas as CurvePoint;
     use o1_utils::FieldHelpers;
 
     /// Base field element type
-    pub type BaseField = <CurvePoint as AffineCurve>::BaseField;
+    pub type BaseField = <CurvePoint as AffineRepr>::BaseField;
 
     #[test]
     fn test_field_to_bits() {
