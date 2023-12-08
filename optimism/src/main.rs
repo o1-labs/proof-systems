@@ -1,12 +1,19 @@
 use clap::{arg, value_parser, Arg, ArgAction, Command};
 use kimchi_optimism::{
-    cannon::{self, Meta, Start, State, VmConfiguration},
+    cannon::{self, Meta, PreimageKey, Start, State, VmConfiguration},
     mips::witness,
-    preimage_oracle::PreImageOracle,
+    preimage_oracle::{Key, PreImageOracle},
 };
-use std::{fs::File, io::BufReader, process::ExitCode};
+use log::debug;
+use std::{
+    fs::File,
+    io::{self, BufReader},
+    path::{Path, PathBuf},
+    process::ExitCode,
+    str::FromStr,
+};
 
-fn cli() -> VmConfiguration {
+fn cli() -> (VmConfiguration, Option<String>) {
     use kimchi_optimism::cannon::*;
 
     let app_name = "zkvm";
@@ -57,6 +64,11 @@ fn cli() -> VmConfiguration {
                 .action(ArgAction::SetTrue),
         )
         .arg(
+            Arg::new("preimage-db-dir")
+                .long("preimage-db-dir")
+                .value_name("PREIMAGE_DB_DIR"),
+        )
+        .arg(
             arg!(host: [HOST] "host program specification <host program> [host program arguments]")
                 .num_args(1..)
                 .last(true)
@@ -97,23 +109,26 @@ fn cli() -> VmConfiguration {
         })
     };
 
-    VmConfiguration {
-        input_state_file: input_state_file.to_string(),
-        output_state_file: output_state_file.to_string(),
-        metadata_file: metadata_file.to_string(),
-        proof_at: proof_at.clone(),
-        stop_at: stop_at.clone(),
-        info_at: info_at.clone(),
-        proof_fmt: proof_fmt.to_string(),
-        snapshot_fmt: snapshot_fmt.to_string(),
-        pprof_cpu: *pprof_cpu,
-        host,
-    }
+    let test_preimage_read = cli.get_one::<String>("preimage-db-dir");
+
+    (
+        VmConfiguration {
+            input_state_file: input_state_file.to_string(),
+            output_state_file: output_state_file.to_string(),
+            metadata_file: metadata_file.to_string(),
+            proof_at: proof_at.clone(),
+            stop_at: stop_at.clone(),
+            info_at: info_at.clone(),
+            proof_fmt: proof_fmt.to_string(),
+            snapshot_fmt: snapshot_fmt.to_string(),
+            pprof_cpu: *pprof_cpu,
+            host,
+        },
+        test_preimage_read.map(|x| x.to_string()),
+    )
 }
 
-pub fn main() -> ExitCode {
-    let configuration = cli();
-
+pub fn nominal(configuration: VmConfiguration) -> ExitCode {
     let file =
         File::open(&configuration.input_state_file).expect("Error opening input state file ");
 
@@ -151,4 +166,72 @@ pub fn main() -> ExitCode {
 
     // TODO: Logic
     ExitCode::FAILURE
+}
+
+pub fn test_preimage_read(preimage_key_dir: String, configuration: VmConfiguration) -> ExitCode {
+    use rand::Rng;
+
+    let mut po = PreImageOracle::create(&configuration.host);
+    let _child = po.start();
+    println!("Let server start");
+    std::thread::sleep(std::time::Duration::from_secs(5));
+
+    println!("Reading from {}", preimage_key_dir);
+    // Get all files under the preimage db dir
+    let paths = std::fs::read_dir(preimage_key_dir)
+        .unwrap()
+        .map(|res| res.map(|e| e.path()))
+        .collect::<Result<Vec<_>, io::Error>>()
+        .unwrap();
+
+    // Just take 10 elements at random to test
+    let how_many = 10_usize;
+    let max = paths.len();
+    let mut rng = rand::thread_rng();
+
+    let mut selected: Vec<PathBuf> = vec![PathBuf::new(); how_many];
+    for pb in selected.iter_mut() {
+        let idx = rng.gen_range(0..max);
+        *pb = paths[idx].to_path_buf();
+    }
+
+    for (idx, path) in selected.into_iter().enumerate() {
+        let preimage_key = Path::new(&path)
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .split('.')
+            .collect::<Vec<_>>()[0];
+
+        let hash = PreimageKey::from_str(preimage_key).unwrap();
+        let key = Key::Keccak(hash.0);
+
+        debug!(
+            "Generating OP Keccak key for {} at index {}",
+            preimage_key, idx
+        );
+
+        let expected = std::fs::read_to_string(path).unwrap();
+
+        debug!("Asking for preimage");
+        let preimage = po.get_preimage(key);
+        let got = hex::encode(preimage.get()).to_string();
+
+        assert_eq!(expected, got);
+    }
+    ExitCode::SUCCESS
+}
+
+pub fn main() -> ExitCode {
+    let (configuration, maybe_test_preimage_read) = cli();
+
+    // When the test_preimage_read parameter is set, run in test configuration
+    match maybe_test_preimage_read {
+        None => nominal(configuration),
+        Some(preimage_key) => {
+            env_logger::init();
+            test_preimage_read(preimage_key, configuration)
+        }
+    }
 }
