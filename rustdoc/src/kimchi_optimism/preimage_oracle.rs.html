@@ -187,11 +187,88 @@
 <a href="#187" id="187">187</a>
 <a href="#188" id="188">188</a>
 <a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
+<a href="#198" id="198">198</a>
+<a href="#199" id="199">199</a>
+<a href="#200" id="200">200</a>
+<a href="#201" id="201">201</a>
+<a href="#202" id="202">202</a>
+<a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">crate</span>::cannon::{
     Hint, HostProgram, Preimage, HINT_CLIENT_READ_FD, HINT_CLIENT_WRITE_FD,
     PREIMAGE_CLIENT_READ_FD, PREIMAGE_CLIENT_WRITE_FD,
 };
 <span class="kw">use </span>command_fds::{CommandFdExt, FdMapping};
+<span class="kw">use </span>log::debug;
 <span class="kw">use </span>os_pipe::{PipeReader, PipeWriter};
 <span class="kw">use </span>std::io::{Read, Write};
 <span class="kw">use </span>std::os::fd::AsRawFd;
@@ -213,7 +290,8 @@
         }
     }
 
-    <span class="kw">pub fn </span>typ(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u8 {
+    <span class="comment">// Byte-encoding of key types
+    </span><span class="kw">pub fn </span>typ(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u8 {
         <span class="kw">use </span>Key::<span class="kw-2">*</span>;
         <span class="kw">match </span><span class="self">self </span>{
             Keccak(<span class="kw">_</span>) =&gt; <span class="number">2_u8</span>,
@@ -225,10 +303,10 @@
 
 <span class="kw">pub struct </span>PreImageOracle {
     <span class="kw">pub </span>cmd: Command,
-    <span class="kw">pub </span>preimage_write: RW,
-    <span class="kw">pub </span>preimage_read: RW,
-    <span class="kw">pub </span>hint_write: RW,
-    <span class="kw">pub </span>hint_read: RW,
+    <span class="kw">pub </span>oracle_client: RW,
+    <span class="kw">pub </span>oracle_server: RW,
+    <span class="kw">pub </span>hint_client: RW,
+    <span class="kw">pub </span>hint_server: RW,
 }
 
 <span class="kw">pub struct </span>ReadWrite&lt;R, W&gt; {
@@ -238,11 +316,28 @@
 
 <span class="kw">pub struct </span>RW(<span class="kw">pub </span>ReadWrite&lt;PipeReader, PipeWriter&gt;);
 
-<span class="kw">impl </span>RW {
-    <span class="kw">pub fn </span>create() -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
-        <span class="kw">let </span>(reader, writer) = os_pipe::pipe().ok()<span class="question-mark">?</span>;
-        <span class="prelude-val">Some</span>(RW(ReadWrite { reader, writer }))
-    }
+<span class="comment">// Create bidirectional channel between A and B
+//
+// Schematically we create 2 unidirectional pipes and creates 2 structures made
+// by taking the writer from one and the reader from the other.
+//
+//     A                     B
+//     |     ar  &lt;---- bw    |
+//     |     aw  ----&gt; br    |
+//
+</span><span class="kw">pub fn </span>create_bidirectional_channel() -&gt; <span class="prelude-ty">Option</span>&lt;(RW, RW)&gt; {
+    <span class="kw">let </span>(ar, bw) = os_pipe::pipe().ok()<span class="question-mark">?</span>;
+    <span class="kw">let </span>(br, aw) = os_pipe::pipe().ok()<span class="question-mark">?</span>;
+    <span class="prelude-val">Some</span>((
+        RW(ReadWrite {
+            reader: ar,
+            writer: aw,
+        }),
+        RW(ReadWrite {
+            reader: br,
+            writer: bw,
+        }),
+    ))
 }
 
 <span class="kw">impl </span>PreImageOracle {
@@ -252,41 +347,40 @@
         <span class="kw">let </span><span class="kw-2">mut </span>cmd = Command::new(<span class="kw-2">&amp;</span>host_program.name);
         cmd.args(<span class="kw-2">&amp;</span>host_program.arguments);
 
-        <span class="kw">let </span>preimage_write = RW::create().expect(<span class="string">&quot;Could not create preimage write channel&quot;</span>);
-        <span class="kw">let </span>preimage_read = RW::create().expect(<span class="string">&quot;Could not create preimage read channel&quot;</span>);
-
-        <span class="kw">let </span>hint_write = RW::create().expect(<span class="string">&quot;Could not create hint write channel&quot;</span>);
-        <span class="kw">let </span>hint_read = RW::create().expect(<span class="string">&quot;Could not create hint read channel&quot;</span>);
+        <span class="kw">let </span>(oracle_client, oracle_server) =
+            create_bidirectional_channel().expect(<span class="string">&quot;Could not create bidirectional oracle channel&quot;</span>);
+        <span class="kw">let </span>(hint_client, hint_server) =
+            create_bidirectional_channel().expect(<span class="string">&quot;Could not create bidirectional hint channel&quot;</span>);
 
         <span class="comment">// file descriptors 0, 1, 2 respectively correspond to the inherited stdin,
         // stdout, stderr.
         // We need to map 3, 4, 5, 6 in the child process
         </span>cmd.fd_mappings(<span class="macro">vec!</span>[
             FdMapping {
-                parent_fd: hint_read.<span class="number">0</span>.writer.as_raw_fd(),
+                parent_fd: hint_server.<span class="number">0</span>.writer.as_raw_fd(),
                 child_fd: HINT_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: hint_write.<span class="number">0</span>.reader.as_raw_fd(),
+                parent_fd: hint_server.<span class="number">0</span>.reader.as_raw_fd(),
                 child_fd: HINT_CLIENT_READ_FD,
             },
             FdMapping {
-                parent_fd: preimage_read.<span class="number">0</span>.writer.as_raw_fd(),
+                parent_fd: oracle_server.<span class="number">0</span>.writer.as_raw_fd(),
                 child_fd: PREIMAGE_CLIENT_WRITE_FD,
             },
             FdMapping {
-                parent_fd: preimage_write.<span class="number">0</span>.reader.as_raw_fd(),
+                parent_fd: oracle_server.<span class="number">0</span>.reader.as_raw_fd(),
                 child_fd: PREIMAGE_CLIENT_READ_FD,
             },
         ])
-        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Could not map file descriptors to server process&quot;</span>));
+        .unwrap_or_else(|<span class="kw">_</span>| <span class="macro">panic!</span>(<span class="string">&quot;Could not map file descriptors to preimage server process&quot;</span>));
 
         PreImageOracle {
             cmd,
-            preimage_read,
-            preimage_write,
-            hint_read,
-            hint_write,
+            oracle_client,
+            oracle_server,
+            hint_client,
+            hint_server,
         }
     }
 
@@ -306,30 +400,42 @@
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of &lt;length&gt; bits
     </span><span class="kw">pub fn </span>get_preimage(<span class="kw-2">&amp;mut </span><span class="self">self</span>, key: Key) -&gt; Preimage {
-        <span class="kw">let </span>RW(ReadWrite {
-            reader: <span class="kw">_</span>,
-            writer: preimage_writer,
-        }) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.preimage_write;
-        <span class="kw">let </span>RW(ReadWrite {
-            reader: preimage_reader,
-            writer: <span class="kw">_</span>,
-        }) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.preimage_read;
+        <span class="kw">let </span>RW(ReadWrite { reader, writer }) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.oracle_client;
 
         <span class="kw">let </span>key_contents = key.contents();
         <span class="kw">let </span>key_type = key.typ();
 
         <span class="kw">let </span><span class="kw-2">mut </span>msg_key = <span class="macro">vec!</span>[key_type];
-        msg_key.extend_from_slice(<span class="kw-2">&amp;</span>key_contents[<span class="number">1</span>..<span class="number">31</span>]);
-        <span class="kw">let _ </span>= preimage_writer.write(<span class="kw-2">&amp;</span>msg_key);
+        msg_key.extend_from_slice(<span class="kw-2">&amp;</span>key_contents[<span class="number">1</span>..<span class="number">32</span>]);
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;Sending request {} of size {}&quot;</span>,
+            hex::encode(<span class="kw-2">&amp;</span>msg_key),
+            msg_key.len()
+        );
 
+        <span class="kw">let </span>r = writer.write_all(<span class="kw-2">&amp;</span>msg_key);
+        <span class="macro">assert!</span>(r.is_ok());
+        <span class="kw">let </span>r = writer.flush();
+        <span class="macro">assert!</span>(r.is_ok());
+
+        <span class="macro">debug!</span>(<span class="string">&quot;Reading response&quot;</span>);
         <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0_u8</span>; <span class="number">8</span>];
-        <span class="kw">let _ </span>= preimage_reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
+        <span class="kw">let </span>resp = reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
+        <span class="macro">assert!</span>(resp.is_ok());
 
+        <span class="macro">debug!</span>(<span class="string">&quot;Extracting contents&quot;</span>);
         <span class="kw">let </span>length = u64::from_be_bytes(buf);
-        <span class="kw">let </span><span class="kw-2">mut </span>handle = preimage_reader.take(length);
+        <span class="kw">let </span><span class="kw-2">mut </span>handle = reader.take(length);
         <span class="kw">let </span><span class="kw-2">mut </span>preimage = <span class="macro">vec!</span>[<span class="number">0_u8</span>; length <span class="kw">as </span>usize];
-        <span class="kw">let _ </span>= handle.read(<span class="kw-2">&amp;mut </span>preimage);
+        <span class="kw">let </span>resp = handle.read(<span class="kw-2">&amp;mut </span>preimage);
 
+        <span class="macro">assert!</span>(resp.is_ok());
+
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;Got preimage of length {}\n {}&quot;</span>,
+            preimage.len(),
+            hex::encode(<span class="kw-2">&amp;</span>preimage)
+        );
         <span class="comment">// We should have read exactly &lt;length&gt; bytes
         </span><span class="macro">assert_eq!</span>(preimage.len(), length <span class="kw">as </span>usize);
 
@@ -344,14 +450,7 @@
     //
     // 2. Get back a single ack byte informing the the hint has been processed.
     </span><span class="kw">pub fn </span>hint(<span class="kw-2">&amp;mut </span><span class="self">self</span>, hint: Hint) {
-        <span class="kw">let </span>RW(ReadWrite {
-            reader: <span class="kw">_</span>,
-            writer: hint_writer,
-        }) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.hint_write;
-        <span class="kw">let </span>RW(ReadWrite {
-            reader: hint_reader,
-            writer: <span class="kw">_</span>,
-        }) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.hint_read;
+        <span class="kw">let </span>RW(ReadWrite { reader, writer }) = <span class="kw-2">&amp;mut </span><span class="self">self</span>.hint_client;
 
         <span class="comment">// Write hint request
         </span><span class="kw">let </span><span class="kw-2">mut </span>hint_bytes = hint.get();
@@ -361,19 +460,72 @@
         msg.append(<span class="kw-2">&amp;mut </span>u64::to_be_bytes(hint_length <span class="kw">as </span>u64).to_vec());
         msg.append(<span class="kw-2">&amp;mut </span>hint_bytes);
 
-        <span class="kw">let _ </span>= hint_writer.write(<span class="kw-2">&amp;</span>msg);
+        <span class="kw">let _ </span>= writer.write(<span class="kw-2">&amp;</span>msg);
 
         <span class="comment">// Read single byte acknowledgment response
         </span><span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0_u8</span>];
-        <span class="kw">let _ </span>= hint_reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
+        <span class="comment">// And do nothing with it anyway
+        </span><span class="kw">let _ </span>= reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
     }
 }
 
 <span class="attr">#[cfg(test)]
 </span><span class="kw">mod </span>tests {
+    <span class="kw">use super</span>::<span class="kw-2">*</span>;
 
-    <span class="comment">// TODO
+    <span class="comment">// Test that bidirectional channels work as expected
+    // That is, after creating a pair (c0, c1)
+    // 1. c1&#39;s reader can read what c0&#39;s writer produces
+    // 2. c0&#39;s reader can read what c1&#39;s writer produces
     </span><span class="attr">#[test]
-    </span><span class="kw">fn </span>test_preimage_get() {}
+    </span><span class="kw">fn </span>test_bidir_channels() {
+        <span class="kw">let </span>(<span class="kw-2">mut </span>c0, <span class="kw-2">mut </span>c1) = create_bidirectional_channel().unwrap();
+
+        <span class="comment">// 1. First send a single byte message
+        </span><span class="kw">let </span>msg = [<span class="number">42_u8</span>];
+        <span class="kw">let </span><span class="kw-2">mut </span>buf = [<span class="number">0_u8</span>; <span class="number">1</span>];
+
+        <span class="kw">let </span>r = c0.<span class="number">0</span>.writer.write(<span class="kw-2">&amp;</span>msg);
+        <span class="macro">assert!</span>(r.is_ok());
+
+        <span class="kw">let </span>r = c1.<span class="number">0</span>.reader.read_exact(<span class="kw-2">&amp;mut </span>buf);
+        <span class="macro">assert!</span>(r.is_ok());
+
+        <span class="comment">// 2. Check that we correctly read the single byte message
+        </span><span class="macro">assert_eq!</span>(msg, buf);
+
+        <span class="comment">// 3. Create a more structured message with the preimage format
+        //      +------------+--------------------+
+        //      | length &lt;8&gt; | pre-image &lt;length&gt; |
+        //      +---------------------------------+
+        //   Here we&#39;ll use a length of 2
+        </span><span class="kw">let </span>len = <span class="number">2_u64</span>;
+        <span class="kw">let </span>msg2 = <span class="macro">vec!</span>[<span class="number">42_u8</span>, <span class="number">43_u8</span>];
+        <span class="kw">let </span><span class="kw-2">mut </span>msg = u64::to_be_bytes(len).to_vec();
+        msg.extend_from_slice(<span class="kw-2">&amp;</span>msg2);
+
+        <span class="comment">// 4. Write the message
+        </span><span class="kw">let </span>r = c1.<span class="number">0</span>.writer.write(<span class="kw-2">&amp;</span>msg);
+        <span class="macro">assert!</span>(r.is_ok());
+
+        <span class="comment">// 5. Read back the length from the other end of the bidirectionnal
+        // channel
+        </span><span class="kw">let </span><span class="kw-2">mut </span>len_buf: [u8; <span class="number">8</span>] = [<span class="number">0_u8</span>; <span class="number">8</span>];
+        <span class="kw">let </span>r = c0.<span class="number">0</span>.reader.read_exact(<span class="kw-2">&amp;mut </span>len_buf);
+        <span class="macro">assert!</span>(r.is_ok());
+
+        <span class="comment">// 6. Check it is the expected length
+        </span><span class="kw">let </span>n = u64::from_be_bytes(len_buf);
+        <span class="macro">assert_eq!</span>(n, len);
+
+        <span class="comment">// 7. Read the data
+        </span><span class="kw">let </span><span class="kw-2">mut </span>data = <span class="macro">vec!</span>[<span class="number">0_u8</span>; n <span class="kw">as </span>usize];
+        <span class="kw">let </span><span class="kw-2">mut </span>h = c0.<span class="number">0</span>.reader.take(len);
+        <span class="kw">let </span>r = h.read(<span class="kw-2">&amp;mut </span>data);
+        <span class="macro">assert!</span>(r.is_ok());
+
+        <span class="comment">// 8. Check they are equal to the message
+        </span><span class="macro">assert_eq!</span>(data, msg2);
+    }
 }
 </code></pre></div></section></main></body></html>

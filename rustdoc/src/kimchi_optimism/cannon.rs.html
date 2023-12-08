@@ -481,7 +481,7 @@
 </span><span class="kw">pub struct </span>ParsePreimageKeyError(String);
 
 <span class="attr">#[derive(Debug, PartialEq)]
-</span><span class="kw">pub struct </span>PreimageKey([u8; <span class="number">32</span>]);
+</span><span class="kw">pub struct </span>PreimageKey(<span class="kw">pub </span>[u8; <span class="number">32</span>]);
 
 <span class="kw">use </span>std::str::FromStr;
 
