@@ -266,12 +266,8 @@ impl<F: PrimeField + SquareRootField> LookupConstraintSystem<F> {
                         let runtime_tables_ids: Vec<i32> =
                             runtime_tables.iter().map(|rt| rt.id).collect();
                         check_id_duplicates(runtime_tables_ids.iter(), "runtime table duplicates")?;
-                        check_id_duplicates(
-                            runtime_tables_ids
-                                .iter()
-                                .chain(fixed_lookup_tables_ids.iter()),
-                            "duplicates between runtime and fixed tables",
-                        )?;
+                        // Runtime table IDs may collide with lookup
+                        // table IDs, so we intentionally do not perform another potential check.
 
                         // save the offset of the end of the table
                         let mut runtime_table_offset = 0;
@@ -488,7 +484,7 @@ mod tests {
     use mina_curves::pasta::Fp;
 
     #[test]
-    fn colliding_table_ids() {
+    fn test_colliding_table_ids() {
         let (_, gates) = CircuitGate::<Fp>::create_multi_range_check(0);
         let collision_id: i32 = 5;
 
@@ -568,13 +564,8 @@ mod tests {
             .build();
 
         assert!(
-            matches!(
-                cs,
-                Err(SetupError::LookupCreation(
-                    LookupError::LookupTableIdCollision { .. }
-                ))
-            ),
-            "LookupConstraintSystem::create(...) must fail, collision between runtime and lookup ids"
+            cs.is_ok(),
+            "LookupConstraintSystem::create(...) must not fail when there is a collision between runtime and lookup ids"
         );
     }
 }
