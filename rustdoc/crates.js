@@ -1,1 +1,1 @@
-window.ALL_CRATES = ["export_test_vectors","flamegraph","groupmap","internal_tracing","kimchi","kimchi_optimism","kimchi_visu","mina_book","mina_curves","mina_hasher","mina_poseidon","mina_signer","o1_utils","poly_commitment","turshi"];
+window.ALL_CRATES = ["export_test_vectors","flamegraph","groupmap","internal_tracing","kimchi","kimchi_optimism","kimchi_visu","mina_book","mina_curves","mina_hasher","mina_poseidon","mina_signer","o1_utils","poly_commitment","test_optimism_preimage_read","turshi"];
