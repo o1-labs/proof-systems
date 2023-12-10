@@ -862,6 +862,8 @@ pub trait InterpreterEnv {
     );
 
     fn report_exit(&mut self, exit_code: &Self::Variable);
+
+    fn request_pp_info(&mut self);
 }
 
 pub fn interpret_instruction<Env: InterpreterEnv>(env: &mut Env, instr: Instruction) {

@@ -470,6 +470,17 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     fn report_exit(&mut self, exit_code: &Self::Variable) {
         println!("Exited with code {}", *exit_code);
     }
+
+    fn request_pp_info(&mut self) {
+        self.pp_info(
+            &StepFrequency::Always,
+            &Meta { symbols: vec![] },
+            &Start {
+                step: 1,
+                time: std::time::Instant::now(),
+            },
+        )
+    }
 }
 
 impl<Fp: Field> Env<Fp> {
