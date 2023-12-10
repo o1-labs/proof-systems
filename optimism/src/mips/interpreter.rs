@@ -1580,7 +1580,69 @@ pub fn interpret_itype<Env: InterpreterEnv>(env: &mut Env, instr: ITypeInstructi
             // REMOVEME: when all itype instructions are implemented.
             return;
         }
-        ITypeInstruction::LoadWordLeft => (),
+        ITypeInstruction::LoadWordLeft => {
+            let base = env.read_register(&rs);
+            let offset = env.sign_extend(&immediate, 16);
+            let addr = base.clone() + offset.clone();
+
+            let byte_subaddr = {
+                // FIXME: Requires a range check
+                let pos = env.alloc_scratch();
+                unsafe { env.bitmask(&addr, 2, 0, pos) }
+            };
+
+            let overwrite_3 = env.equal(&byte_subaddr, &Env::constant(0));
+            let overwrite_2 = env.equal(&byte_subaddr, &Env::constant(1)) + overwrite_3.clone();
+            let overwrite_1 = env.equal(&byte_subaddr, &Env::constant(2)) + overwrite_2.clone();
+            let overwrite_0 = env.equal(&byte_subaddr, &Env::constant(3)) + overwrite_1.clone();
+
+            let m0 = env.read_memory(&addr);
+            let m1 = env.read_memory(&(addr.clone() + Env::constant(1)));
+            let m2 = env.read_memory(&(addr.clone() + Env::constant(2)));
+            let m3 = env.read_memory(&(addr.clone() + Env::constant(3)));
+
+            let [r0, r1, r2, r3] = {
+                let initial_register_value = env.read_register(&rt);
+                [
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 32, 24, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 24, 16, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 16, 8, pos) }
+                    },
+                    {
+                        // FIXME: Requires a range check
+                        let pos = env.alloc_scratch();
+                        unsafe { env.bitmask(&initial_register_value, 8, 0, pos) }
+                    },
+                ]
+            };
+            let value = {
+                let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
+                    * Env::constant(1 << 24))
+                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1) * r1)
+                        * Env::constant(1 << 16))
+                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2) * r2)
+                        * Env::constant(1 << 8))
+                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3) * r3);
+                let pos = env.alloc_scratch();
+                env.copy(&value, pos)
+            };
+            env.write_register(&rt, value);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            // REMOVEME: when all itype instructions are implemented.
+            return;
+        }
         ITypeInstruction::LoadWordRight => (),
         ITypeInstruction::Store8 => {
             let base = env.read_register(&rs);
