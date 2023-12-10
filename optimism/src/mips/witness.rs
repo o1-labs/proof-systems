@@ -50,6 +50,7 @@ pub struct Env<Fp> {
     pub halt: bool,
     pub syscall_env: SyscallEnv,
     pub preimage_oracle: PreImageOracle,
+    pub preimage: Option<Vec<u8>>,
 }
 
 fn fresh_scratch_state<Fp: Field, const N: usize>() -> [Fp; N] {
@@ -468,7 +469,43 @@ impl<Fp: Field> InterpreterEnv for Env<Fp> {
     }
 
     fn report_exit(&mut self, exit_code: &Self::Variable) {
-        println!("Exited with code {}", *exit_code);
+        println!("Exited with code {} at step {}", *exit_code, self.instruction_counter);
+    }
+
+    fn request_preimage_write(
+        &mut self,
+        addr: &Self::Variable,
+        len: &Self::Variable,
+        pos: Self::Position,
+    ) -> Self::Variable {
+        if self.registers.preimage_offset == 0 {
+            let mut preimage_key = [0u8; 32];
+            for i in 0..8 {
+                let bytes = u32::to_be_bytes(self.registers.preimage_key[i]);
+                for j in 0..4 {
+                    preimage_key[4 * i + j] = bytes[j]
+                }
+            }
+            let preimage = self.preimage_oracle.get_preimage(preimage_key).get();
+            self.preimage = Some(preimage);
+        }
+        let preimage = self
+            .preimage
+            .as_ref()
+            .expect("to have a preimage if we're requesting it at a non-zero offset");
+        let read_len = std::cmp::min(self.registers.preimage_offset + len, preimage.len() as u32)
+            - self.registers.preimage_offset;
+        for i in 0..read_len {
+            // This should really be handled by the keccak oracle.
+            let preimage_byte =
+                self.preimage.as_ref().unwrap()[(self.registers.preimage_offset + i) as usize];
+            unsafe {
+                self.push_memory(&(*addr + i), preimage_byte as u32);
+                self.push_memory_access(&(*addr + i), self.instruction_counter + 1);
+            }
+        }
+        self.write_column(pos, read_len.into());
+        read_len
     }
 
     fn request_pp_info(&mut self) {
@@ -545,6 +582,7 @@ impl<Fp: Field> Env<Fp> {
             halt: state.exited,
             syscall_env,
             preimage_oracle,
+            preimage: None,
         }
     }
 

@@ -9,33 +9,6 @@ use std::io::{Read, Write};
 use std::os::fd::AsRawFd;
 use std::process::{Child, Command};
 
-pub enum Key {
-    Keccak([u8; 32]),
-    Local([u8; 32]),
-    Global([u8; 32]),
-}
-
-impl Key {
-    pub fn contents(&self) -> [u8; 32] {
-        use Key::*;
-        match self {
-            Keccak(v) => *v,
-            Local(v) => *v,
-            Global(v) => *v,
-        }
-    }
-
-    // Byte-encoding of key types
-    pub fn typ(&self) -> u8 {
-        use Key::*;
-        match self {
-            Keccak(_) => 2_u8,
-            Local(_) => 1_u8,
-            Global(_) => 3_u8,
-        }
-    }
-}
-
 pub struct PreImageOracle {
     pub cmd: Command,
     pub oracle_client: RW,
@@ -134,21 +107,10 @@ impl PreImageOracle {
     //      +---------------------------------+
     //   a. a 64-bit integer indicating the length of the actual data
     //   b. the preimage data, with a size of <length> bits
-    pub fn get_preimage(&mut self, key: Key) -> Preimage {
+    pub fn get_preimage(&mut self, key: [u8; 32]) -> Preimage {
         let RW(ReadWrite { reader, writer }) = &mut self.oracle_client;
 
-        let key_contents = key.contents();
-        let key_type = key.typ();
-
-        let mut msg_key = vec![key_type];
-        msg_key.extend_from_slice(&key_contents[1..32]);
-        debug!(
-            "Sending request {} of size {}",
-            hex::encode(&msg_key),
-            msg_key.len()
-        );
-
-        let r = writer.write_all(&msg_key);
+        let r = writer.write_all(&key);
         assert!(r.is_ok());
         let r = writer.flush();
         assert!(r.is_ok());
