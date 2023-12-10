@@ -6,8 +6,11 @@ pub const REGISTER_LO: usize = 33;
 pub const REGISTER_CURRENT_IP: usize = 34;
 pub const REGISTER_NEXT_IP: usize = 35;
 pub const REGISTER_HEAP_POINTER: usize = 36;
+pub const REGISTER_PREIMAGE_KEY_START: usize = 37;
+pub const REGISTER_PREIMAGE_KEY_END: usize = REGISTER_PREIMAGE_KEY_START + 32 /* 37 + 32 = 69 */;
+pub const REGISTER_PREIMAGE_OFFSET: usize = 69;
 
-pub const NUM_REGISTERS: usize = 37;
+pub const NUM_REGISTERS: usize = 70;
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct Registers<T> {
@@ -17,17 +20,23 @@ pub struct Registers<T> {
     pub current_instruction_pointer: T,
     pub next_instruction_pointer: T,
     pub heap_pointer: T,
+    pub preimage_key: [T; 8],
+    pub preimage_offset: T,
 }
 
 impl<T> Registers<T> {
     pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.general_purpose.iter().chain([
-            &self.hi,
-            &self.lo,
-            &self.current_instruction_pointer,
-            &self.next_instruction_pointer,
-            &self.heap_pointer,
-        ])
+        self.general_purpose
+            .iter()
+            .chain([
+                &self.hi,
+                &self.lo,
+                &self.current_instruction_pointer,
+                &self.next_instruction_pointer,
+                &self.heap_pointer,
+            ])
+            .chain(self.preimage_key.iter())
+            .chain([&self.preimage_offset])
     }
 }
 
@@ -47,6 +56,10 @@ impl<T: Clone> Index<usize> for Registers<T> {
             &self.next_instruction_pointer
         } else if index == REGISTER_HEAP_POINTER {
             &self.heap_pointer
+        } else if index >= REGISTER_PREIMAGE_KEY_START && index < REGISTER_PREIMAGE_KEY_END {
+            &self.preimage_key[index - REGISTER_PREIMAGE_KEY_START]
+        } else if index == REGISTER_PREIMAGE_OFFSET {
+            &self.preimage_offset
         } else {
             panic!("Index out of bounds");
         }
@@ -67,6 +80,10 @@ impl<T: Clone> IndexMut<usize> for Registers<T> {
             &mut self.next_instruction_pointer
         } else if index == REGISTER_HEAP_POINTER {
             &mut self.heap_pointer
+        } else if index >= REGISTER_PREIMAGE_KEY_START && index < REGISTER_PREIMAGE_KEY_END {
+            &mut self.preimage_key[index - REGISTER_PREIMAGE_KEY_START]
+        } else if index == REGISTER_PREIMAGE_OFFSET {
+            &mut self.preimage_offset
         } else {
             panic!("Index out of bounds");
         }
