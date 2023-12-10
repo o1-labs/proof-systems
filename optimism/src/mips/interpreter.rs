@@ -1054,7 +1054,35 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         }
         RTypeInstruction::SyscallWriteHint => (),
         RTypeInstruction::SyscallWritePreimage => (),
-        RTypeInstruction::SyscallWriteOther => (),
+        RTypeInstruction::SyscallWriteOther => {
+            let fd_id = env.read_register(&Env::constant(4));
+            let write_length = env.read_register(&Env::constant(6));
+            let mut check_equal = |expected_fd_id: u32| {
+                // FIXME: Requires constraints
+                let pos = env.alloc_scratch();
+                unsafe { env.test_zero(&(fd_id.clone() - Env::constant(expected_fd_id)), pos) }
+            };
+            let is_stdout = check_equal(FD_STDOUT);
+            let is_stderr = check_equal(FD_STDERR);
+            let is_preimage_write = check_equal(FD_PREIMAGE_WRITE);
+            let is_hint_write = check_equal(FD_HINT_WRITE);
+
+            // FIXME: Should assert that `is_preimage_write` and `is_hint_write` cannot be true
+            // here.
+            let known_fd = is_stdout + is_stderr + is_preimage_write + is_hint_write;
+            let other_fd = Env::constant(1) - known_fd.clone();
+
+            // We're either reading stdin, in which case we get `(0, 0)` as desired, or we've hit a
+            // bad FD that we reject with EBADF.
+            let v0 = known_fd * write_length + other_fd.clone() * Env::constant(0xFFFFFFFF);
+            let v1 = other_fd * Env::constant(0x9); // EBADF
+
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallFcntl => {
             let fd_id = env.read_register(&Env::constant(4));
             let fd_cmd = env.read_register(&Env::constant(5));
