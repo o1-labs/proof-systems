@@ -2,7 +2,7 @@ use crate::{
     cannon::PAGE_ADDRESS_SIZE,
     mips::registers::{
         REGISTER_CURRENT_IP, REGISTER_HEAP_POINTER, REGISTER_HI, REGISTER_LO, REGISTER_NEXT_IP,
-        REGISTER_PREIMAGE_KEY_END,
+        REGISTER_PREIMAGE_KEY_END, REGISTER_PREIMAGE_OFFSET,
     },
 };
 use log::debug;
@@ -1188,17 +1188,33 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             };
 
             let value = {
-                let value = ((overwrite_0.clone() * m0 + (Env::constant(1) - overwrite_0) * r0)
+                let value = ((overwrite_0.clone() * m0
+                    + (Env::constant(1) - overwrite_0.clone()) * r0)
                     * Env::constant(1 << 24))
-                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1) * r1)
+                    + ((overwrite_1.clone() * m1 + (Env::constant(1) - overwrite_1.clone()) * r1)
                         * Env::constant(1 << 16))
-                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2) * r2)
+                    + ((overwrite_2.clone() * m2 + (Env::constant(1) - overwrite_2.clone()) * r2)
                         * Env::constant(1 << 8))
-                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3) * r3);
+                    + (overwrite_3.clone() * m3 + (Env::constant(1) - overwrite_3.clone()) * r3);
                 let pos = env.alloc_scratch();
                 env.copy(&value, pos)
             };
+
+            // Update the preimage key.
             env.write_register(&register_idx, value);
+            // Reset the preimage offset.
+            env.write_register(
+                &Env::constant(REGISTER_PREIMAGE_OFFSET as u32),
+                Env::constant(0u32),
+            );
+            // Return the number of bytes read.
+            env.write_register(
+                &Env::constant(2),
+                overwrite_0 + overwrite_1 + overwrite_2 + overwrite_3,
+            );
+            // Set the error register to 0.
+            env.write_register(&Env::constant(7), Env::constant(0u32));
+
             env.set_instruction_pointer(next_instruction_pointer.clone());
             env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
             // REMOVEME: when all itype instructions are implemented.

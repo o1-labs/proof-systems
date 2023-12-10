@@ -500,8 +500,9 @@ impl<Fp: Field> Env<Fp> {
             let preimage_key = {
                 let mut preimage_key = [0u32; 8];
                 for i in 0..8 {
-                    preimage_key[i] =
-                        u32::from_be_bytes(state.preimage_key[i * 4..i * 4 + 3].try_into().unwrap())
+                    preimage_key[i] = u32::from_be_bytes(
+                        state.preimage_key[i * 4..(i + 1) * 4].try_into().unwrap(),
+                    )
                 }
                 preimage_key
             };
