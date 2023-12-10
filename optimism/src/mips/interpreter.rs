@@ -1039,7 +1039,34 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallWriteHint => (),
         RTypeInstruction::SyscallWritePreimage => (),
         RTypeInstruction::SyscallWriteOther => (),
-        RTypeInstruction::SyscallFcntl => (),
+        RTypeInstruction::SyscallFcntl => {
+            let fd_id = env.read_register(&Env::constant(4));
+            let fd_cmd = env.read_register(&Env::constant(5));
+            let is_getfl = env.equal(&fd_cmd, &Env::constant(3));
+            let is_stdout = env.equal(&fd_id, &Env::constant(FD_STDOUT));
+            let is_stderr = env.equal(&fd_id, &Env::constant(FD_STDERR));
+            let is_preimage_write = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_WRITE));
+            let is_hint_write = env.equal(&fd_id, &Env::constant(FD_HINT_WRITE));
+            let is_stdin = env.equal(&fd_id, &Env::constant(FD_STDIN));
+            let is_preimage_read = env.equal(&fd_id, &Env::constant(FD_PREIMAGE_READ));
+            let is_hint_read = env.equal(&fd_id, &Env::constant(FD_HINT_READ));
+
+            let is_read = is_stdin + is_preimage_read + is_hint_read;
+            let is_write = is_stdout + is_stderr + is_preimage_write + is_hint_write;
+
+            let v0 = is_getfl.clone()
+                * (is_write.clone()
+                    + (Env::constant(1) - is_read.clone() - is_write.clone())
+                        * Env::constant(0xFFFFFFFF))
+                + (Env::constant(1) - is_getfl.clone()) * Env::constant(0xFFFFFFFF);
+            let v1 = is_getfl.clone() * (Env::constant(1) - is_read - is_write.clone()) * Env::constant(0x9) /* EBADF */ + (Env::constant(1) - fd_cmd) * Env::constant(0x16) /* EINVAL */;
+
+            env.write_register(&Env::constant(2), v0);
+            env.write_register(&Env::constant(7), v1);
+            env.set_instruction_pointer(next_instruction_pointer.clone());
+            env.set_next_instruction_pointer(next_instruction_pointer + Env::constant(4u32));
+            return;
+        }
         RTypeInstruction::SyscallOther => {
             let syscall_num = env.read_register(&Env::constant(2));
             let is_sysbrk = env.equal(&syscall_num, &Env::constant(SYSCALL_BRK));
