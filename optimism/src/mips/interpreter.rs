@@ -1074,6 +1074,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
         RTypeInstruction::SyscallWritePreimage => {
             let addr = env.read_register(&Env::constant(5));
             let write_length = env.read_register(&Env::constant(6));
+            //println!("addr={:?} write_length={:?}", addr, write_length);
 
             // Cannon assumes that the remaining `byte_length` represents how much remains to be
             // read (i.e. all write calls send the full data in one syscall, and attempt to retry
@@ -1137,10 +1138,14 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
             // bytes in the register, to avoid an expensive bitshift.
             let read_address = addr.clone() - bytes_to_preserve_in_register.clone();
 
+            //println!("read_address={:?}", read_address);
+
             let m0 = env.read_memory(&read_address);
             let m1 = env.read_memory(&(read_address.clone() + Env::constant(1)));
             let m2 = env.read_memory(&(read_address.clone() + Env::constant(2)));
             let m3 = env.read_memory(&(read_address.clone() + Env::constant(3)));
+
+            //println!("m0={:?} m1={:?} m2={:?} m3={:?}", m0, m1, m2, m3);
 
             // Now, for some complexity. From the perspective of the write operation, we should be
             // reading the `4 - bytes_to_preserve_in_register`. However, to match cannon 1:1, we
@@ -1188,6 +1193,10 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 };
                 [overwrite_0, overwrite_1, overwrite_2, overwrite_3]
             };
+            //println!(
+                //"overwrite_0={:?} overwrite_1={:?} overwrite_2={:?} overwrite_3={:?}",
+                //overwrite_0, overwrite_1, overwrite_2, overwrite_3
+            //);
 
             let value = {
                 let value = ((overwrite_0.clone() * m0
@@ -1201,6 +1210,7 @@ pub fn interpret_rtype<Env: InterpreterEnv>(env: &mut Env, instr: RTypeInstructi
                 let pos = env.alloc_scratch();
                 env.copy(&value, pos)
             };
+            //println!("register_idx={:?} value={:?}", register_idx, value);
 
             // Update the preimage key.
             env.write_register(&register_idx, value);
